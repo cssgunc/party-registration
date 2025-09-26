@@ -44,5 +44,3 @@ Then,
 - Run the command **Dev Containers: Rebuild and Reopen in Container**
 - This should open the dev container with the same file directory mounted so any changes in the dev container will be seen in the local repo
 - The dev container is sucessfully opened once you can see file directory getting populated
-
-test
