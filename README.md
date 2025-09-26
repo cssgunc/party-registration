@@ -32,10 +32,10 @@ git clone https://github.com/cssgunc/party-registration.git
 Open a terminal at the project root and run the following commands
 ```
 cd frontend
-cp .env.template .env // duplcates the template and renames it to .env
+cp .env.template .env // duplicates the template and renames it to .env
 
 cd ../backend
-cp .env.template .env // duplcates the template and renames it to .env
+cp .env.template .env // duplicates the template and renames it to .env
 ```
 Or, you can do the actions manually  
 Then,
