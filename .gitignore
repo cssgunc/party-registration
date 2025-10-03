@@ -1,1 +1,44 @@
-/backend/.env
+# Secrets
+.env*
+!.env.template
+
+# Node.js / Next.js
+node_modules/
+.npm/
+.next/
+dist/
+*.local
+*.log
+out/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+ENV/
+*.sqlite3
+.pytest_cache/
+
+# OS/Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# Build output
+frontend/build/
+backend/build/
+
+# Misc
+*.bak
+*.tmp
+
+# Ignore coverage reports
+coverage/
+.coverage
+htmlcov/
+*.cover
