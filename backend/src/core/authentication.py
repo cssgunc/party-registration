@@ -1,7 +1,8 @@
-from core.exceptions import CredentialsException
+from src.core.exceptions import CredentialsException
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from modules.user.user_model import User
+
+from src.modules.user.user_model import User
 
 
 class HTTPBearer401(HTTPBearer):

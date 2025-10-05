@@ -1,4 +1,4 @@
-from core.database import EntityBase
+from src.core.database import EntityBase
 from sqlalchemy import Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 

@@ -1,10 +1,18 @@
+"""
+This script resets the database for development mode, including:
+- Dropping and recreating the existing database
+- Dropping and recreating all tables
+- Populating tables with initial data
+"""
+
 import asyncio
 
-from core.config import env
-from core.database import AsyncSessionLocal, EntityBase, server_url
-from core.database import engine as async_engine
+import src.modules  # Ensure all modules are imported so their entities are registered # noqa: F401
 from sqlalchemy import create_engine, text
-import modules # Ensure all modules are imported so their entities are registered # noqa: F401
+from src.core.config import env
+from src.core.database import AsyncSessionLocal, EntityBase, server_url
+from src.core.database import engine as async_engine
+
 
 async def reset_dev():
     server_engine = create_engine(server_url(sync=True), isolation_level="AUTOCOMMIT")

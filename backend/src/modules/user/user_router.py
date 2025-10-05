@@ -1,7 +1,7 @@
-from core.authentication import authenticate_user
+from src.core.authentication import authenticate_user
 from fastapi import APIRouter, Depends
-from modules.user.user_model import User, UserData
-from modules.user.user_service import UserService
+from .user_model import User, UserData
+from .user_service import UserService
 
 user_router = APIRouter(prefix="/api/users", tags=["users"])
 

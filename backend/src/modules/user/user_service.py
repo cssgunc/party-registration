@@ -1,12 +1,12 @@
-from core.database import get_session
-from core.exceptions import ConflictException, NotFoundException
 from fastapi import Depends
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from src.core.database import get_session
+from src.core.exceptions import ConflictException, NotFoundException
 
-from modules.user.user_entity import UserEntity
-from modules.user.user_model import User, UserData
+from .user_entity import UserEntity
+from .user_model import User, UserData
 
 
 class UserNotFoundException(NotFoundException):
@@ -41,17 +41,17 @@ class UserService:
     async def get_users(self) -> list[User]:
         result = await self.session.execute(select(UserEntity))
         users = result.scalars().all()
-        return [User.from_entity(user) for user in users]
+        return [user.to_model() for user in users]
 
     async def get_user_by_id(self, user_id: int) -> User:
         user_entity = await self._get_user_entity_by_id(user_id)
-        return User.from_entity(user_entity)
+        return user_entity.to_model()
 
     async def create_user(self, data: UserData) -> User:
         if await self._get_user_entity_by_email(data.email):
             raise UserConflictException(data.email)
 
-        new_user = UserEntity(email=data.email)
+        new_user = UserEntity.from_model(data)
         try:
             self.session.add(new_user)
             await self.session.commit()
@@ -59,7 +59,7 @@ class UserService:
             # handle race condition where another session inserted the same email
             raise UserConflictException(data.email)
         await self.session.refresh(new_user)
-        return User.from_entity(new_user)
+        return new_user.to_model()
 
     async def update_user(self, user_id: int, data: UserData) -> User:
         user_entity = await self._get_user_entity_by_id(user_id)
@@ -80,11 +80,11 @@ class UserService:
         except IntegrityError:
             raise UserConflictException(data.email)
         await self.session.refresh(user_entity)
-        return User.from_entity(user_entity)
+        return user_entity.to_model()
 
     async def delete_user(self, user_id: int) -> User:
         user_entity = await self._get_user_entity_by_id(user_id)
-        user = User.from_entity(user_entity)
+        user = user_entity.to_model()
         await self.session.delete(user_entity)
         await self.session.commit()
         return user

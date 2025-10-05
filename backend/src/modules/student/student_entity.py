@@ -1,6 +1,6 @@
 import enum
 
-from core.database import EntityBase
+from src.core.database import EntityBase
 from sqlalchemy import DateTime, Enum, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 

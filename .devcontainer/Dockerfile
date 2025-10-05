@@ -4,6 +4,9 @@ FROM python:3.12-slim
 RUN mkdir /workspace
 WORKDIR /workspace
 
+# Set Python path
+ENV PYTHONPATH=/workspace/backend
+
 # Install useful system utilities
 ENV TZ=America/New_York
 ENV DEBIAN_FRONTEND=noninteractive
@@ -72,7 +75,8 @@ WORKDIR /workspace/backend
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
-EXPOSE 8000
+# Expose application ports
+EXPOSE 8000 3000
 
 # Keep the container running
 CMD ["tail", "-f", "/dev/null"]
