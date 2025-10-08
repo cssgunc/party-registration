@@ -2,8 +2,8 @@ type Party = {
   id: string;
   datetime: string;
   addressId: number;
-  contactOneStudentId: number;
-  contactTwoStudentId: number;
+  contactOneId: number;
+  contactTwoId: number;
 };
 
 type PartyData = {
