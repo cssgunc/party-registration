@@ -19,7 +19,7 @@ class PartyService {
     return response.data;
   }
 
-  async updateParty(id: string, data: Partial<PartyData>): Promise<Party> {
+  async updateParty(id: string, data: PartyData): Promise<Party> {
     const response = await this.apiClient.put<Party>(`/parties/${id}`, data);
     return response.data;
   }

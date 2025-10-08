@@ -9,8 +9,8 @@ type Party = {
 type PartyData = {
   datetime: string;
   addressId: number;
-  contactOneStudentId: number;
-  contactTwoStudentId: number;
+  contactOneId: number;
+  contactTwoId: number;
 };
 
 export type { Party, PartyData };
