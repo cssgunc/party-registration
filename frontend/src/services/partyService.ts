@@ -9,7 +9,7 @@ class PartyService {
     return response.data;
   }
 
-  async getPartyById(id: string): Promise<Party> {
+  async getPartyById(id: number): Promise<Party> {
     const response = await this.apiClient.get<Party>(`/parties/${id}`);
     return response.data;
   }
@@ -19,12 +19,12 @@ class PartyService {
     return response.data;
   }
 
-  async updateParty(id: string, data: PartyData): Promise<Party> {
+  async updateParty(id: number, data: PartyData): Promise<Party> {
     const response = await this.apiClient.put<Party>(`/parties/${id}`, data);
     return response.data;
   }
 
-  async deleteParty(id: string): Promise<Party> {
+  async deleteParty(id: number): Promise<Party> {
     const response = await this.apiClient.delete<Party>(`/parties/${id}`);
     return response.data;
   }
