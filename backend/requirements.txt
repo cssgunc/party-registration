@@ -1,6 +1,3 @@
-pytest
-sqlalchemy
-pydantic
 fastapi[standard]
 uvicorn
 sqlalchemy[asyncio]
