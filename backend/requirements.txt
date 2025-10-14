@@ -4,3 +4,6 @@ sqlalchemy[asyncio]
 pydantic-settings
 asyncpg
 psycopg2-binary
+bcrypt
+pytest
+pytest-asyncio

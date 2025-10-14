@@ -13,14 +13,21 @@ Usage: import this package at startup or in scripts that create the DB:
 
         import modules  # ensures models are registered
 
-This file's sole purpose is to trigger module imports 
+This file's sole purpose is to trigger module imports
 so table definitions are registered with SQLAlchemy.
 """
 
-from .user.user_entity import UserEntity
-from .student.student_entity import StudentEntity
-from .account.account_entity import AccountEntity
-from .party.party_entity import PartyEntity
+from .account.account_entity import AccountEntity, AccountRole
 from .address.address_entity import AddressEntity
+from .party.party_entity import PartyEntity
+from .student.student_entity import StudentEntity
+from .user.user_entity import UserEntity
 
-__all__ = ["UserEntity", "StudentEntity", "AccountEntity", "PartyEntity", "AddressEntity"]
+__all__ = [
+    "UserEntity",
+    "StudentEntity",
+    "AccountEntity",
+    "AccountRole",
+    "PartyEntity",
+    "AddressEntity",
+]
