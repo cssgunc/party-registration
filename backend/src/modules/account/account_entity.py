@@ -2,6 +2,8 @@ import enum
 
 from core.database import EntityBase
 from sqlalchemy import Enum, Integer, String
+from src.core.database import EntityBase
+from sqlalchemy import Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 
