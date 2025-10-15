@@ -9,8 +9,8 @@ class AccountService {
     return response.data;
   }
 
-  async getAccountByEmail(email: string): Promise<Account> {
-    const response = await this.apiClient.get<Account>(`/accounts/${email}`);
+  async getAccountByID(id: number): Promise<Account> {
+    const response = await this.apiClient.get<Account>(`/accounts/${id}`);
     return response.data;
   }
 
@@ -19,19 +19,13 @@ class AccountService {
     return response.data;
   }
 
-  async updateAccount(
-    email: string,
-    data: Partial<AccountData>
-  ): Promise<Account> {
-    const response = await this.apiClient.put<Account>(
-      `/accounts/${email}`,
-      data
-    );
+  async updateAccount(id: number, data: AccountData): Promise<Account> {
+    const response = await this.apiClient.put<Account>(`/accounts/${id}`, data);
     return response.data;
   }
 
-  async deleteAccount(email: string): Promise<Account> {
-    const response = await this.apiClient.delete<Account>(`/accounts/${email}`);
+  async deleteAccount(id: number): Promise<Account> {
+    const response = await this.apiClient.delete<Account>(`/accounts/${id}`);
     return response.data;
   }
 }
