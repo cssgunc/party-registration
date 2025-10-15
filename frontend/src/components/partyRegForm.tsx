@@ -164,7 +164,6 @@ export default function PartyRegistrationForm({ onSubmit }: PartyRegistrationFor
                 disabled={(date) =>
                   !isAfter(startOfDay(date), addBusinessDays(startOfDay(new Date()), 1))
                 }
-                initialFocus
               />
             </PopoverContent>
           </Popover>
