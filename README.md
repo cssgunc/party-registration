@@ -108,3 +108,5 @@ pytest
   - Display Name: party-reg
 - You should see a new entry appear in the sidebar
 - In this interface, you can explore the database, make queries, etc.
+
+this is a change
