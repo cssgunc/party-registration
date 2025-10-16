@@ -18,14 +18,12 @@ async def test_create_user(user_service: UserService) -> None:
     data = UserData(email="test@example.com")
     user = await user_service.create_user(data)
     assert user is not None
-    assert False
     assert user.id is not None
     assert user.email == "test@example.com"
 
 
 @pytest.mark.asyncio
 async def test_create_user_conflict(user_service: UserService) -> None:
-    raise Exception("This is a failing test")
     data = UserData(email="test@example.com")
     await user_service.create_user(data)
     with pytest.raises(UserConflictException):
