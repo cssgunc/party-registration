@@ -10,4 +10,4 @@ class AddressEntity(EntityBase):
     latitude: Mapped[float] = mapped_column(DECIMAL(10, 8), nullable=False)
     longitude: Mapped[float] = mapped_column(DECIMAL(11, 8), nullable=False)
 
-    __table_args__ = (Index("idx_lat_lng", "latitude", "longitude"),)
+    __table_args__ = (Index("idx_lat_lng_addr", "latitude", "longitude"),)
