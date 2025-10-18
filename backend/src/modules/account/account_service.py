@@ -5,6 +5,7 @@ from fastapi import Depends
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from src.core.exceptions import CredentialsException
 
 from modules.account.account_entity import AccountEntity, AccountRole
 from modules.account.account_model import Account, AccountData
@@ -18,6 +19,11 @@ class AccountNotFoundException(NotFoundException):
 class AccountConflictException(ConflictException):
     def __init__(self, email: str):
         super().__init__(f"Account with email {email} already exists")
+
+
+class AccountByEmailNotFoundException(NotFoundException):
+    def __init__(self, email: str):
+        super().__init__(f"Account with email {email} not found")
 
 
 class AccountService:
@@ -61,7 +67,7 @@ class AccountService:
     async def get_account_by_email(self, email: str) -> Account:
         account_entity = await self._get_account_entity_by_email(email)
         if account_entity is None:
-            raise AccountNotFoundException(f"Account with email {email} not found")
+            raise AccountByEmailNotFoundException(email)
         return Account.from_entity(account_entity)
 
     async def create_account(self, data: AccountData) -> Account:
@@ -110,14 +116,12 @@ class AccountService:
         await self.session.commit()
         return account
 
-    async def verify_account_credentials(
-        self, email: str, password: str
-    ) -> Account | None:
+    async def verify_account_credentials(self, email: str, password: str) -> Account:
         """Verify account credentials and return account if valid."""
         account_entity = await self._get_account_entity_by_email(email)
         if account_entity is None:
-            return None
+            raise AccountByEmailNotFoundException(email)
 
         if self._verify_password(password, account_entity.hashed_password):
             return Account.from_entity(account_entity)
-        return None
+        raise CredentialsException()
