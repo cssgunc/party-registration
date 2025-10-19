@@ -8,15 +8,6 @@ DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
 
 @pytest_asyncio.fixture(scope="function")
-async def test_async_engine():
-    engine = create_async_engine(DATABASE_URL, echo=False, future=True)
-    async with engine.begin() as conn:
-        await conn.run_sync(EntityBase.metadata.create_all)
-    yield engine
-    await engine.dispose()
-
-
-@pytest_asyncio.fixture(scope="function")
 async def test_async_session():
     engine = create_async_engine(DATABASE_URL, echo=False)
     async with engine.begin() as conn:

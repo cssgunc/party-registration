@@ -1,7 +1,9 @@
 import pytest
+import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.modules.account.account_entity import AccountEntity
-from src.modules.student.student_model import CallOrTextPref, StudentData
+from src.modules.student.student_entity import StudentEntity
+from src.modules.student.student_model import ContactPreference, StudentData
 from src.modules.student.student_service import (
     StudentConflictException,
     StudentNotFoundException,
@@ -14,6 +16,30 @@ def student_service(test_async_session: AsyncSession) -> StudentService:
     return StudentService(session=test_async_session)
 
 
+@pytest_asyncio.fixture()
+async def student_entity(
+    test_async_session: AsyncSession, test_account: AccountEntity
+) -> StudentEntity:
+    data = StudentData(
+        first_name="Isolated",
+        last_name="User",
+        call_or_text_pref=ContactPreference.text,
+        phone_number="9999999999",
+    )
+    entity = StudentEntity.from_model(data, test_account.id)
+    test_async_session.add(entity)
+    await test_async_session.commit()
+    await test_async_session.refresh(entity)
+    return entity
+
+
+@pytest.mark.asyncio
+async def test_get_students_empty(student_service: StudentService):
+    students = await student_service.get_students()
+    assert isinstance(students, list)
+    assert len(students) == 0
+
+
 @pytest.mark.asyncio
 async def test_create_student(
     student_service: StudentService, test_account: AccountEntity
@@ -21,7 +47,7 @@ async def test_create_student(
     data = StudentData(
         first_name="John",
         last_name="Doe",
-        call_or_text_pref=CallOrTextPref.text,
+        call_or_text_pref=ContactPreference.text,
         phone_number="1234567890",
     )
     student = await student_service.create_student(data, account_id=test_account.id)
@@ -40,7 +66,7 @@ async def test_create_student_conflict(
     data = StudentData(
         first_name="John",
         last_name="Doe",
-        call_or_text_pref=CallOrTextPref.text,
+        call_or_text_pref=ContactPreference.text,
         phone_number="1234567890",
     )
     await student_service.create_student(data, account_id=test_account.id)
@@ -56,26 +82,59 @@ async def test_get_students(
         StudentData(
             first_name="Alice",
             last_name="Smith",
-            call_or_text_pref=CallOrTextPref.call,
+            call_or_text_pref=ContactPreference.call,
             phone_number="1111111111",
         ),
         StudentData(
             first_name="Bob",
             last_name="Jones",
-            call_or_text_pref=CallOrTextPref.text,
+            call_or_text_pref=ContactPreference.text,
             phone_number="2222222222",
         ),
         StudentData(
             first_name="Charlie",
             last_name="Brown",
-            call_or_text_pref=CallOrTextPref.call,
+            call_or_text_pref=ContactPreference.call,
             phone_number="3333333333",
         ),
     ]
     for data in students_data:
         await student_service.create_student(data, account_id=test_account.id)
+
     students = await student_service.get_students()
     assert len(students) == 3
+
+    expected = {
+        "1111111111": "Alice Smith",
+        "2222222222": "Bob Jones",
+        "3333333333": "Charlie Brown",
+    }
+    phones = {s.phone_number for s in students}
+    assert phones == set(expected.keys())
+
+    names = {s.full_name for s in students}
+    assert names == set(expected.values())
+
+    for s in students:
+        assert s.phone_number in expected
+        assert s.full_name == expected[s.phone_number]
+        assert isinstance(s.id, int)
+        assert getattr(s, "call_or_text_pref", None) in (
+            ContactPreference.call,
+            ContactPreference.text,
+            "call",
+            "text",
+        )
+
+
+@pytest.mark.asyncio
+async def test_get_student_by_id_isolated(
+    student_service: StudentService, student_entity: StudentEntity
+):
+    fetched = await student_service.get_student_by_id(student_entity.id)
+    assert fetched.id == student_entity.id
+    assert fetched.phone_number == "9999999999"
+    assert fetched.full_name == "Isolated User"
 
 
 @pytest.mark.asyncio
@@ -85,7 +144,7 @@ async def test_get_student_by_id(
     data = StudentData(
         first_name="John",
         last_name="Doe",
-        call_or_text_pref=CallOrTextPref.text,
+        call_or_text_pref=ContactPreference.text,
         phone_number="1234567890",
     )
     student = await student_service.create_student(data, account_id=test_account.id)
@@ -107,14 +166,14 @@ async def test_update_student(
     data = StudentData(
         first_name="John",
         last_name="Doe",
-        call_or_text_pref=CallOrTextPref.text,
+        call_or_text_pref=ContactPreference.text,
         phone_number="1234567890",
     )
     student = await student_service.create_student(data, account_id=test_account.id)
     update_data = StudentData(
         first_name="Jane",
         last_name="Doe",
-        call_or_text_pref=CallOrTextPref.call,
+        call_or_text_pref=ContactPreference.call,
         phone_number="0987654321",
     )
     updated = await student_service.update_student(student.id, update_data)
@@ -128,7 +187,7 @@ async def test_update_student_not_found(student_service: StudentService):
     update_data = StudentData(
         first_name="Jane",
         last_name="Doe",
-        call_or_text_pref=CallOrTextPref.call,
+        call_or_text_pref=ContactPreference.call,
         phone_number="0987654321",
     )
     with pytest.raises(StudentNotFoundException):
@@ -142,13 +201,13 @@ async def test_update_student_conflict(
     data1 = StudentData(
         first_name="Alice",
         last_name="Smith",
-        call_or_text_pref=CallOrTextPref.call,
+        call_or_text_pref=ContactPreference.call,
         phone_number="1111111111",
     )
     data2 = StudentData(
         first_name="Bob",
         last_name="Jones",
-        call_or_text_pref=CallOrTextPref.text,
+        call_or_text_pref=ContactPreference.text,
         phone_number="2222222222",
     )
     await student_service.create_student(data1, account_id=test_account.id)
@@ -159,7 +218,7 @@ async def test_update_student_conflict(
             StudentData(
                 first_name="Bob",
                 last_name="Jones",
-                call_or_text_pref=CallOrTextPref.text,
+                call_or_text_pref=ContactPreference.text,
                 phone_number="1111111111",
             ),
         )
@@ -172,7 +231,7 @@ async def test_delete_student(
     data = StudentData(
         first_name="John",
         last_name="Doe",
-        call_or_text_pref=CallOrTextPref.text,
+        call_or_text_pref=ContactPreference.text,
         phone_number="1234567890",
     )
     student = await student_service.create_student(data, account_id=test_account.id)

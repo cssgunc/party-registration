@@ -1,13 +1,11 @@
-from typing import TYPE_CHECKING, Self
+from datetime import datetime
+from typing import Self
 
 from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 from src.core.database import EntityBase
 
-from .student_model import CallOrTextPref, Student, StudentData
-
-if TYPE_CHECKING:
-    from src.modules.account.account_entity import AccountEntity
+from .student_model import ContactPreference, Student, StudentData
 
 
 class StudentEntity(EntityBase):
@@ -16,18 +14,13 @@ class StudentEntity(EntityBase):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     first_name: Mapped[str] = mapped_column(String, nullable=False)
     last_name: Mapped[str] = mapped_column(String, nullable=False)
-    call_or_text_pref: Mapped["CallOrTextPref"] = mapped_column(
-        Enum("CallOrTextPref"), nullable=False
+    call_or_text_pref: Mapped[ContactPreference] = mapped_column(
+        Enum(ContactPreference), nullable=False
     )
-    last_registered: Mapped[DateTime | None] = mapped_column(DateTime, nullable=True)
+    last_registered: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     phone_number: Mapped[str] = mapped_column(String, nullable=False)
 
-    # Foreign key relationship to account
     account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id"), nullable=False)
-    # Use string reference for the type
-    account: Mapped["AccountEntity"] = relationship(
-        "AccountEntity", back_populates="students"
-    )
 
     @classmethod
     def from_model(cls, data: "StudentData", account_id: int) -> Self:
