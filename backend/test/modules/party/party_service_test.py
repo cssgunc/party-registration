@@ -19,51 +19,34 @@ def party_service(test_async_session: AsyncSession) -> PartyService:
 
 
 @pytest_asyncio.fixture()
-async def sample_address(test_async_session: AsyncSession) -> AddressEntity:
+async def sample_party_data(test_async_session: AsyncSession) -> PartyData:
+    # Create address
     address = AddressEntity(id=1)
     test_async_session.add(address)
-    await test_async_session.commit()
-    await test_async_session.refresh(address)
-    return address
 
-
-@pytest_asyncio.fixture()
-async def sample_student_one(test_async_session: AsyncSession) -> StudentEntity:
-    student = StudentEntity(
+    # Create students
+    student_one = StudentEntity(
         id=1,
         first_name="John",
         last_name="Doe",
         call_or_text_pref=CallOrTextPref.call,
         phone_number="1234567890"
     )
-    test_async_session.add(student)
-    await test_async_session.commit()
-    await test_async_session.refresh(student)
-    return student
-
-
-@pytest_asyncio.fixture()
-async def sample_student_two(test_async_session: AsyncSession) -> StudentEntity:
-    student = StudentEntity(
+    student_two = StudentEntity(
         id=2,
         first_name="Jane",
         last_name="Smith",
         call_or_text_pref=CallOrTextPref.text,
         phone_number="0987654321"
     )
-    test_async_session.add(student)
+    test_async_session.add_all([student_one, student_two])
     await test_async_session.commit()
-    await test_async_session.refresh(student)
-    return student
 
-
-@pytest_asyncio.fixture()
-async def sample_party_data(sample_address: AddressEntity, sample_student_one: StudentEntity, sample_student_two: StudentEntity) -> PartyData:
     return PartyData(
         party_datetime=datetime.now() + timedelta(days=1),
-        address_id=sample_address.id,
-        contact_one_id=sample_student_one.id,
-        contact_two_id=sample_student_two.id
+        address_id=1,
+        contact_one_id=1,
+        contact_two_id=2
     )
 
 
