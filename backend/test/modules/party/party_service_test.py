@@ -21,7 +21,7 @@ def party_service(test_async_session: AsyncSession) -> PartyService:
 @pytest_asyncio.fixture()
 async def sample_party_data(test_async_session: AsyncSession) -> PartyData:
     # Create address
-    address = AddressEntity(id=1)
+    address = AddressEntity(id=1, latitude=40.7128, longitude=-74.0060)
     test_async_session.add(address)
 
     # Create students
@@ -103,7 +103,7 @@ async def test_get_parties(party_service: PartyService, sample_party_data: Party
     party1 = await party_service.create_party(sample_party_data)
 
     # Create additional entities for second party
-    address2 = AddressEntity(id=2)
+    address2 = AddressEntity(id=2, latitude=34.0522, longitude=-118.2437)
     student3 = StudentEntity(id=3, first_name="Bob", last_name="Johnson", call_or_text_pref=CallOrTextPref.call, phone_number="1111111111")
     student4 = StudentEntity(id=4, first_name="Alice", last_name="Williams", call_or_text_pref=CallOrTextPref.text, phone_number="2222222222")
     test_async_session.add_all([address2, student3, student4])
@@ -180,7 +180,7 @@ async def test_get_parties_by_date_range_multiple_parties(party_service: PartySe
     party1 = await party_service.create_party(sample_party_data)
 
     # Create additional entities for second party
-    address2 = AddressEntity(id=2)
+    address2 = AddressEntity(id=2, latitude=34.0522, longitude=-118.2437)
     student3 = StudentEntity(id=3, first_name="Bob", last_name="Johnson", call_or_text_pref=CallOrTextPref.call, phone_number="1111111111")
     student4 = StudentEntity(id=4, first_name="Alice", last_name="Williams", call_or_text_pref=CallOrTextPref.text, phone_number="2222222222")
     test_async_session.add_all([address2, student3, student4])
@@ -195,7 +195,7 @@ async def test_get_parties_by_date_range_multiple_parties(party_service: PartySe
     party2 = await party_service.create_party(party_data_2)
 
     # Create additional entities for third party
-    address3 = AddressEntity(id=3)
+    address3 = AddressEntity(id=3, latitude=41.8781, longitude=-87.6298)
     student5 = StudentEntity(id=5, first_name="Charlie", last_name="Brown", call_or_text_pref=CallOrTextPref.call, phone_number="3333333333")
     student6 = StudentEntity(id=6, first_name="Diana", last_name="Davis", call_or_text_pref=CallOrTextPref.text, phone_number="4444444444")
     test_async_session.add_all([address3, student5, student6])

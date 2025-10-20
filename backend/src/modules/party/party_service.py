@@ -1,6 +1,5 @@
 from fastapi import Depends
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 from typing import List
