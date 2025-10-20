@@ -11,16 +11,16 @@ from .party_model import Party, PartyData
 class PartyEntity(EntityBase):
     __tablename__ = "parties"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     party_datetime: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     address_id: Mapped[int] = mapped_column(Integer, ForeignKey('addresses.id'), nullable=False)
     contact_one_id: Mapped[int] = mapped_column(Integer, ForeignKey('students.id'), nullable=False)
     contact_two_id: Mapped[int] = mapped_column(Integer, ForeignKey('students.id'), nullable=False)
 
     # Relationships
-    address = relationship("AddressEntity", back_populates="parties")
-    contact_one = relationship("StudentEntity", foreign_keys=[contact_one_id], back_populates="parties_as_contact_one")
-    contact_two = relationship("StudentEntity", foreign_keys=[contact_two_id], back_populates="parties_as_contact_two")
+    address: Mapped["AddressEntity"] = relationship("AddressEntity")
+    contact_one: Mapped["StudentEntity"] = relationship("StudentEntity", foreign_keys=[contact_one_id])
+    contact_two: Mapped["StudentEntity"] = relationship("StudentEntity", foreign_keys=[contact_two_id])
 
     @classmethod
     def from_model(cls, data: PartyData) -> Self:
