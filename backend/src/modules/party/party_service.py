@@ -10,11 +10,23 @@ from src.core.exceptions import ConflictException, NotFoundException
 
 from .party_entity import PartyEntity
 from .party_model import Party, PartyData
+from ..address.address_entity import AddressEntity
+from ..student.student_entity import StudentEntity
 
 
 class PartyNotFoundException(NotFoundException):
     def __init__(self, party_id: int):
         super().__init__(f"Party with ID {party_id} not found")
+
+
+class AddressNotFoundException(NotFoundException):
+    def __init__(self, address_id: int):
+        super().__init__(f"Address with ID {address_id} not found")
+
+
+class StudentNotFoundException(NotFoundException):
+    def __init__(self, student_id: int):
+        super().__init__(f"Student with ID {student_id} not found")
 
 
 class PartyConflictException(ConflictException):
@@ -34,6 +46,20 @@ class PartyService:
         if party_entity is None:
             raise PartyNotFoundException(party_id)
         return party_entity
+
+    async def _validate_address_exists(self, address_id: int) -> None:
+        result = await self.session.execute(
+            select(AddressEntity).where(AddressEntity.id == address_id)
+        )
+        if result.scalar_one_or_none() is None:
+            raise AddressNotFoundException(address_id)
+
+    async def _validate_student_exists(self, student_id: int) -> None:
+        result = await self.session.execute(
+            select(StudentEntity).where(StudentEntity.id == student_id)
+        )
+        if result.scalar_one_or_none() is None:
+            raise StudentNotFoundException(student_id)
 
     async def get_parties(self, skip: int = 0, limit: int = 100) -> List[Party]:
         result = await self.session.execute(
@@ -74,6 +100,11 @@ class PartyService:
         return [party.to_model() for party in parties]
 
     async def create_party(self, data: PartyData) -> Party:
+        # Validate that referenced resources exist
+        await self._validate_address_exists(data.address_id)
+        await self._validate_student_exists(data.contact_one_id)
+        await self._validate_student_exists(data.contact_two_id)
+
         new_party = PartyEntity.from_model(data)
         try:
             self.session.add(new_party)
@@ -85,6 +116,11 @@ class PartyService:
 
     async def update_party(self, party_id: int, data: PartyData) -> Party:
         party_entity = await self._get_party_entity_by_id(party_id)
+
+        # Validate that referenced resources exist
+        await self._validate_address_exists(data.address_id)
+        await self._validate_student_exists(data.contact_one_id)
+        await self._validate_student_exists(data.contact_two_id)
 
         for key, value in data.model_dump().items():
             if key == "id":

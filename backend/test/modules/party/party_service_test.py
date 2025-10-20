@@ -3,9 +3,10 @@ from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.modules.party.party_model import PartyData
 from src.modules.party.party_service import (
-    PartyConflictException,
+    AddressNotFoundException,
     PartyNotFoundException,
     PartyService,
+    StudentNotFoundException,
 )
 
 
@@ -36,10 +37,46 @@ async def test_create_party(party_service: PartyService, sample_party_data: Part
 
 
 @pytest.mark.asyncio
+async def test_create_party_invalid_address(party_service: PartyService, sample_party_data: PartyData) -> None:
+    invalid_data = PartyData(
+        party_datetime=sample_party_data.party_datetime,
+        address_id=999,  # Non-existent address
+        contact_one_id=sample_party_data.contact_one_id,
+        contact_two_id=sample_party_data.contact_two_id
+    )
+    with pytest.raises(AddressNotFoundException):
+        await party_service.create_party(invalid_data)
+
+
+@pytest.mark.asyncio
+async def test_create_party_invalid_contact_one(party_service: PartyService, sample_party_data: PartyData) -> None:
+    invalid_data = PartyData(
+        party_datetime=sample_party_data.party_datetime,
+        address_id=sample_party_data.address_id,
+        contact_one_id=999,  # Non-existent student
+        contact_two_id=sample_party_data.contact_two_id
+    )
+    with pytest.raises(StudentNotFoundException):
+        await party_service.create_party(invalid_data)
+
+
+@pytest.mark.asyncio
+async def test_create_party_invalid_contact_two(party_service: PartyService, sample_party_data: PartyData) -> None:
+    invalid_data = PartyData(
+        party_datetime=sample_party_data.party_datetime,
+        address_id=sample_party_data.address_id,
+        contact_one_id=sample_party_data.contact_one_id,
+        contact_two_id=999  # Non-existent student
+    )
+    with pytest.raises(StudentNotFoundException):
+        await party_service.create_party(invalid_data)
+
+
+@pytest.mark.asyncio
 async def test_get_parties(party_service: PartyService, sample_party_data: PartyData):
     # Create multiple parties
     party1 = await party_service.create_party(sample_party_data)
-    
+
     party_data_2 = PartyData(
         party_datetime=datetime.now() + timedelta(days=2),
         address_id=2,
@@ -47,9 +84,9 @@ async def test_get_parties(party_service: PartyService, sample_party_data: Party
         contact_two_id=4
     )
     party2 = await party_service.create_party(party_data_2)
-    
+
     parties = await party_service.get_parties()
-    assert len(parties) >= 2
+    assert len(parties) == 2
     party_ids = [p.id for p in parties]
     assert party1.id in party_ids
     assert party2.id in party_ids
@@ -74,35 +111,130 @@ async def test_get_party_by_id_not_found(party_service: PartyService):
 async def test_get_parties_by_address(party_service: PartyService, sample_party_data: PartyData):
     party = await party_service.create_party(sample_party_data)
     parties = await party_service.get_parties_by_address(sample_party_data.address_id)
-    assert len(parties) >= 1
-    assert any(p.id == party.id for p in parties)
+    assert len(parties) == 1
+    assert parties[0].id == party.id
 
 
 @pytest.mark.asyncio
 async def test_get_parties_by_contact(party_service: PartyService, sample_party_data: PartyData):
     party = await party_service.create_party(sample_party_data)
-    
+
     # Test contact one
     parties = await party_service.get_parties_by_contact(sample_party_data.contact_one_id)
-    assert len(parties) >= 1
-    assert any(p.id == party.id for p in parties)
-    
+    assert len(parties) == 1
+    assert parties[0].id == party.id
+
     # Test contact two
     parties = await party_service.get_parties_by_contact(sample_party_data.contact_two_id)
-    assert len(parties) >= 1
-    assert any(p.id == party.id for p in parties)
+    assert len(parties) == 1
+    assert parties[0].id == party.id
 
 
 @pytest.mark.asyncio
 async def test_get_parties_by_date_range(party_service: PartyService, sample_party_data: PartyData):
     party = await party_service.create_party(sample_party_data)
-    
+
     start_date = sample_party_data.party_datetime - timedelta(hours=1)
     end_date = sample_party_data.party_datetime + timedelta(hours=1)
-    
+
     parties = await party_service.get_parties_by_date_range(start_date, end_date)
-    assert len(parties) >= 1
-    assert any(p.id == party.id for p in parties)
+    assert len(parties) == 1
+    assert parties[0].id == party.id
+
+
+@pytest.mark.asyncio
+async def test_get_parties_by_date_range_multiple_parties(party_service: PartyService, sample_party_data: PartyData):
+    # Create parties at different dates
+    party1 = await party_service.create_party(sample_party_data)
+
+    party_data_2 = PartyData(
+        party_datetime=sample_party_data.party_datetime + timedelta(hours=2),
+        address_id=2,
+        contact_one_id=3,
+        contact_two_id=4
+    )
+    party2 = await party_service.create_party(party_data_2)
+
+    party_data_3 = PartyData(
+        party_datetime=sample_party_data.party_datetime + timedelta(days=5),
+        address_id=3,
+        contact_one_id=5,
+        contact_two_id=6
+    )
+    party3 = await party_service.create_party(party_data_3)
+
+    # Query range that includes party1 and party2 but not party3
+    start_date = sample_party_data.party_datetime - timedelta(hours=1)
+    end_date = sample_party_data.party_datetime + timedelta(hours=3)
+
+    parties = await party_service.get_parties_by_date_range(start_date, end_date)
+    assert len(parties) == 2
+    party_ids = [p.id for p in parties]
+    assert party1.id in party_ids
+    assert party2.id in party_ids
+    assert party3.id not in party_ids
+
+
+@pytest.mark.asyncio
+async def test_get_parties_by_date_range_no_results(party_service: PartyService, sample_party_data: PartyData):
+    party = await party_service.create_party(sample_party_data)
+
+    # Query range that doesn't include the party
+    start_date = sample_party_data.party_datetime + timedelta(days=1)
+    end_date = sample_party_data.party_datetime + timedelta(days=2)
+
+    parties = await party_service.get_parties_by_date_range(start_date, end_date)
+    assert len(parties) == 0
+
+
+@pytest.mark.asyncio
+async def test_get_parties_by_date_range_boundary_start(party_service: PartyService, sample_party_data: PartyData):
+    party = await party_service.create_party(sample_party_data)
+
+    # Query where party datetime equals start date (inclusive boundary)
+    start_date = sample_party_data.party_datetime
+    end_date = sample_party_data.party_datetime + timedelta(hours=1)
+
+    parties = await party_service.get_parties_by_date_range(start_date, end_date)
+    assert len(parties) == 1
+    assert parties[0].id == party.id
+
+
+@pytest.mark.asyncio
+async def test_get_parties_by_date_range_boundary_end(party_service: PartyService, sample_party_data: PartyData):
+    party = await party_service.create_party(sample_party_data)
+
+    # Query where party datetime equals end date (inclusive boundary)
+    start_date = sample_party_data.party_datetime - timedelta(hours=1)
+    end_date = sample_party_data.party_datetime
+
+    parties = await party_service.get_parties_by_date_range(start_date, end_date)
+    assert len(parties) == 1
+    assert parties[0].id == party.id
+
+
+@pytest.mark.asyncio
+async def test_get_parties_by_date_range_outside_before(party_service: PartyService, sample_party_data: PartyData):
+    party = await party_service.create_party(sample_party_data)
+
+    # Query range that ends just before the party datetime
+    start_date = sample_party_data.party_datetime - timedelta(days=2)
+    end_date = sample_party_data.party_datetime - timedelta(seconds=1)
+
+    parties = await party_service.get_parties_by_date_range(start_date, end_date)
+    assert len(parties) == 0
+
+
+@pytest.mark.asyncio
+async def test_get_parties_by_date_range_outside_after(party_service: PartyService, sample_party_data: PartyData):
+    party = await party_service.create_party(sample_party_data)
+
+    # Query range that starts just after the party datetime
+    start_date = sample_party_data.party_datetime + timedelta(seconds=1)
+    end_date = sample_party_data.party_datetime + timedelta(days=2)
+
+    parties = await party_service.get_parties_by_date_range(start_date, end_date)
+    assert len(parties) == 0
 
 
 @pytest.mark.asyncio
@@ -128,6 +260,48 @@ async def test_update_party_not_found(party_service: PartyService, sample_party_
 
 
 @pytest.mark.asyncio
+async def test_update_party_invalid_address(party_service: PartyService, sample_party_data: PartyData):
+    party = await party_service.create_party(sample_party_data)
+
+    invalid_update = PartyData(
+        party_datetime=sample_party_data.party_datetime,
+        address_id=999,  # Non-existent address
+        contact_one_id=sample_party_data.contact_one_id,
+        contact_two_id=sample_party_data.contact_two_id
+    )
+    with pytest.raises(AddressNotFoundException):
+        await party_service.update_party(party.id, invalid_update)
+
+
+@pytest.mark.asyncio
+async def test_update_party_invalid_contact_one(party_service: PartyService, sample_party_data: PartyData):
+    party = await party_service.create_party(sample_party_data)
+
+    invalid_update = PartyData(
+        party_datetime=sample_party_data.party_datetime,
+        address_id=sample_party_data.address_id,
+        contact_one_id=999,  # Non-existent student
+        contact_two_id=sample_party_data.contact_two_id
+    )
+    with pytest.raises(StudentNotFoundException):
+        await party_service.update_party(party.id, invalid_update)
+
+
+@pytest.mark.asyncio
+async def test_update_party_invalid_contact_two(party_service: PartyService, sample_party_data: PartyData):
+    party = await party_service.create_party(sample_party_data)
+
+    invalid_update = PartyData(
+        party_datetime=sample_party_data.party_datetime,
+        address_id=sample_party_data.address_id,
+        contact_one_id=sample_party_data.contact_one_id,
+        contact_two_id=999  # Non-existent student
+    )
+    with pytest.raises(StudentNotFoundException):
+        await party_service.update_party(party.id, invalid_update)
+
+
+@pytest.mark.asyncio
 async def test_delete_party(party_service: PartyService, sample_party_data: PartyData):
     party = await party_service.create_party(sample_party_data)
     deleted = await party_service.delete_party(party.id)
@@ -147,8 +321,8 @@ async def test_delete_party_not_found(party_service: PartyService):
 @pytest.mark.asyncio
 async def test_party_exists(party_service: PartyService, sample_party_data: PartyData):
     party = await party_service.create_party(sample_party_data)
-    assert await party_service.party_exists(party.id) == True
-    assert await party_service.party_exists(999) == False
+    assert await party_service.party_exists(party.id) 
+    assert not await party_service.party_exists(999)
 
 
 @pytest.mark.asyncio
@@ -162,27 +336,27 @@ async def test_get_party_count(party_service: PartyService, sample_party_data: P
 @pytest.mark.asyncio
 async def test_get_parties_by_student_and_date(party_service: PartyService, sample_party_data: PartyData):
     party = await party_service.create_party(sample_party_data)
-    
+
     # Test with contact one
     parties = await party_service.get_parties_by_student_and_date(
-        sample_party_data.contact_one_id, 
+        sample_party_data.contact_one_id,
         sample_party_data.party_datetime
     )
-    assert len(parties) >= 1
-    assert any(p.id == party.id for p in parties)
-    
+    assert len(parties) == 1
+    assert parties[0].id == party.id
+
     # Test with contact two
     parties = await party_service.get_parties_by_student_and_date(
-        sample_party_data.contact_two_id, 
+        sample_party_data.contact_two_id,
         sample_party_data.party_datetime
     )
-    assert len(parties) >= 1
-    assert any(p.id == party.id for p in parties)
-    
+    assert len(parties) == 1
+    assert parties[0].id == party.id
+
     # Test with different date (should return empty)
     different_date = sample_party_data.party_datetime + timedelta(days=10)
     parties = await party_service.get_parties_by_student_and_date(
-        sample_party_data.contact_one_id, 
+        sample_party_data.contact_one_id,
         different_date
     )
-    assert not any(p.id == party.id for p in parties)
+    assert len(parties) == 0
