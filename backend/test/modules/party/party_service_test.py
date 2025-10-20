@@ -1,4 +1,5 @@
 import pytest
+import pytest_asyncio
 from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.modules.party.party_model import PartyData
@@ -17,7 +18,7 @@ def party_service(test_async_session: AsyncSession) -> PartyService:
     return PartyService(session=test_async_session)
 
 
-@pytest.fixture()
+@pytest_asyncio.fixture()
 async def sample_address(test_async_session: AsyncSession) -> AddressEntity:
     address = AddressEntity(id=1)
     test_async_session.add(address)
@@ -26,7 +27,7 @@ async def sample_address(test_async_session: AsyncSession) -> AddressEntity:
     return address
 
 
-@pytest.fixture()
+@pytest_asyncio.fixture()
 async def sample_student_one(test_async_session: AsyncSession) -> StudentEntity:
     student = StudentEntity(
         id=1,
@@ -41,7 +42,7 @@ async def sample_student_one(test_async_session: AsyncSession) -> StudentEntity:
     return student
 
 
-@pytest.fixture()
+@pytest_asyncio.fixture()
 async def sample_student_two(test_async_session: AsyncSession) -> StudentEntity:
     student = StudentEntity(
         id=2,
@@ -56,7 +57,7 @@ async def sample_student_two(test_async_session: AsyncSession) -> StudentEntity:
     return student
 
 
-@pytest.fixture()
+@pytest_asyncio.fixture()
 async def sample_party_data(sample_address: AddressEntity, sample_student_one: StudentEntity, sample_student_two: StudentEntity) -> PartyData:
     return PartyData(
         party_datetime=datetime.now() + timedelta(days=1),
