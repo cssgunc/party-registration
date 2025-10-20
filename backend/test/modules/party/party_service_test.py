@@ -57,7 +57,7 @@ async def sample_student_two(test_async_session: AsyncSession) -> StudentEntity:
 
 
 @pytest.fixture()
-def sample_party_data(sample_address: AddressEntity, sample_student_one: StudentEntity, sample_student_two: StudentEntity) -> PartyData:
+async def sample_party_data(sample_address: AddressEntity, sample_student_one: StudentEntity, sample_student_two: StudentEntity) -> PartyData:
     return PartyData(
         party_datetime=datetime.now() + timedelta(days=1),
         address_id=sample_address.id,
