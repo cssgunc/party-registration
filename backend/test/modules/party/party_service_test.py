@@ -8,6 +8,8 @@ from src.modules.party.party_service import (
     PartyService,
     StudentNotFoundException,
 )
+from src.modules.address.address_entity import AddressEntity
+from src.modules.student.student_entity import StudentEntity, CallOrTextPref
 
 
 @pytest.fixture()
@@ -16,12 +18,51 @@ def party_service(test_async_session: AsyncSession) -> PartyService:
 
 
 @pytest.fixture()
-def sample_party_data() -> PartyData:
+async def sample_address(test_async_session: AsyncSession) -> AddressEntity:
+    address = AddressEntity(id=1)
+    test_async_session.add(address)
+    await test_async_session.commit()
+    await test_async_session.refresh(address)
+    return address
+
+
+@pytest.fixture()
+async def sample_student_one(test_async_session: AsyncSession) -> StudentEntity:
+    student = StudentEntity(
+        id=1,
+        first_name="John",
+        last_name="Doe",
+        call_or_text_pref=CallOrTextPref.call,
+        phone_number="1234567890"
+    )
+    test_async_session.add(student)
+    await test_async_session.commit()
+    await test_async_session.refresh(student)
+    return student
+
+
+@pytest.fixture()
+async def sample_student_two(test_async_session: AsyncSession) -> StudentEntity:
+    student = StudentEntity(
+        id=2,
+        first_name="Jane",
+        last_name="Smith",
+        call_or_text_pref=CallOrTextPref.text,
+        phone_number="0987654321"
+    )
+    test_async_session.add(student)
+    await test_async_session.commit()
+    await test_async_session.refresh(student)
+    return student
+
+
+@pytest.fixture()
+def sample_party_data(sample_address: AddressEntity, sample_student_one: StudentEntity, sample_student_two: StudentEntity) -> PartyData:
     return PartyData(
         party_datetime=datetime.now() + timedelta(days=1),
-        address_id=1,
-        contact_one_id=1,
-        contact_two_id=2
+        address_id=sample_address.id,
+        contact_one_id=sample_student_one.id,
+        contact_two_id=sample_student_two.id
     )
 
 
@@ -73,9 +114,16 @@ async def test_create_party_invalid_contact_two(party_service: PartyService, sam
 
 
 @pytest.mark.asyncio
-async def test_get_parties(party_service: PartyService, sample_party_data: PartyData):
+async def test_get_parties(party_service: PartyService, sample_party_data: PartyData, test_async_session: AsyncSession):
     # Create multiple parties
     party1 = await party_service.create_party(sample_party_data)
+
+    # Create additional entities for second party
+    address2 = AddressEntity(id=2)
+    student3 = StudentEntity(id=3, first_name="Bob", last_name="Johnson", call_or_text_pref=CallOrTextPref.call, phone_number="1111111111")
+    student4 = StudentEntity(id=4, first_name="Alice", last_name="Williams", call_or_text_pref=CallOrTextPref.text, phone_number="2222222222")
+    test_async_session.add_all([address2, student3, student4])
+    await test_async_session.commit()
 
     party_data_2 = PartyData(
         party_datetime=datetime.now() + timedelta(days=2),
@@ -143,9 +191,16 @@ async def test_get_parties_by_date_range(party_service: PartyService, sample_par
 
 
 @pytest.mark.asyncio
-async def test_get_parties_by_date_range_multiple_parties(party_service: PartyService, sample_party_data: PartyData):
+async def test_get_parties_by_date_range_multiple_parties(party_service: PartyService, sample_party_data: PartyData, test_async_session: AsyncSession):
     # Create parties at different dates
     party1 = await party_service.create_party(sample_party_data)
+
+    # Create additional entities for second party
+    address2 = AddressEntity(id=2)
+    student3 = StudentEntity(id=3, first_name="Bob", last_name="Johnson", call_or_text_pref=CallOrTextPref.call, phone_number="1111111111")
+    student4 = StudentEntity(id=4, first_name="Alice", last_name="Williams", call_or_text_pref=CallOrTextPref.text, phone_number="2222222222")
+    test_async_session.add_all([address2, student3, student4])
+    await test_async_session.commit()
 
     party_data_2 = PartyData(
         party_datetime=sample_party_data.party_datetime + timedelta(hours=2),
@@ -154,6 +209,13 @@ async def test_get_parties_by_date_range_multiple_parties(party_service: PartySe
         contact_two_id=4
     )
     party2 = await party_service.create_party(party_data_2)
+
+    # Create additional entities for third party
+    address3 = AddressEntity(id=3)
+    student5 = StudentEntity(id=5, first_name="Charlie", last_name="Brown", call_or_text_pref=CallOrTextPref.call, phone_number="3333333333")
+    student6 = StudentEntity(id=6, first_name="Diana", last_name="Davis", call_or_text_pref=CallOrTextPref.text, phone_number="4444444444")
+    test_async_session.add_all([address3, student5, student6])
+    await test_async_session.commit()
 
     party_data_3 = PartyData(
         party_datetime=sample_party_data.party_datetime + timedelta(days=5),
