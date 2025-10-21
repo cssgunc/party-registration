@@ -63,7 +63,7 @@ async def sample_party_setup(test_async_session: AsyncSession):
 @pytest.mark.asyncio
 async def test_get_parties_empty(client: AsyncClient):
     """Test GET /api/parties with no parties in database."""
-    response = await client.get("/api/parties")
+    response = await client.get("/api/parties/")
     assert response.status_code == 200
 
     data = response.json()
@@ -92,7 +92,7 @@ async def test_get_parties_with_data(
         test_async_session.add(party)
     await test_async_session.commit()
 
-    response = await client.get("/api/parties")
+    response = await client.get("/api/parties/")
     assert response.status_code == 200
 
     data = response.json()
@@ -122,7 +122,7 @@ async def test_get_parties_pagination(
     await test_async_session.commit()
 
     # Test page 1
-    response = await client.get("/api/parties?page_number=1&page_size=10")
+    response = await client.get("/api/parties/?page_number=1&page_size=10")
     assert response.status_code == 200
     data = response.json()
     assert data["total_records"] == 25
@@ -132,7 +132,7 @@ async def test_get_parties_pagination(
     assert data["total_pages"] == 3
 
     # Test page 2
-    response = await client.get("/api/parties?page_number=2&page_size=10")
+    response = await client.get("/api/parties/?page_number=2&page_size=10")
     assert response.status_code == 200
     data = response.json()
     assert data["total_records"] == 25
@@ -141,7 +141,7 @@ async def test_get_parties_pagination(
     assert data["total_pages"] == 3
 
     # Test page 3 (partial page)
-    response = await client.get("/api/parties?page_number=3&page_size=10")
+    response = await client.get("/api/parties/?page_number=3&page_size=10")
     assert response.status_code == 200
     data = response.json()
     assert data["total_records"] == 25
@@ -169,7 +169,7 @@ async def test_get_parties_pagination_beyond_available(
     await test_async_session.commit()
 
     # Request page 10 when only 1 page exists
-    response = await client.get("/api/parties?page_number=10&page_size=10")
+    response = await client.get("/api/parties/?page_number=10&page_size=10")
     assert response.status_code == 200
     data = response.json()
     assert data["total_records"] == 5
@@ -197,7 +197,7 @@ async def test_get_parties_custom_page_size(
     await test_async_session.commit()
 
     # Request page size of 3
-    response = await client.get("/api/parties?page_size=3")
+    response = await client.get("/api/parties/?page_size=3")
     assert response.status_code == 200
     data = response.json()
     assert data["total_records"] == 10
@@ -209,7 +209,7 @@ async def test_get_parties_custom_page_size(
 @pytest.mark.asyncio
 async def test_get_parties_invalid_page_number(client: AsyncClient):
     """Test GET /api/parties with invalid page number (less than 1)."""
-    response = await client.get("/api/parties?page_number=0")
+    response = await client.get("/api/parties/?page_number=0")
     assert response.status_code == 422  # Validation error
 
 
@@ -217,11 +217,11 @@ async def test_get_parties_invalid_page_number(client: AsyncClient):
 async def test_get_parties_invalid_page_size(client: AsyncClient):
     """Test GET /api/parties with invalid page size."""
     # Page size less than 1
-    response = await client.get("/api/parties?page_size=0")
+    response = await client.get("/api/parties/?page_size=0")
     assert response.status_code == 422
 
     # Page size greater than 100
-    response = await client.get("/api/parties?page_size=101")
+    response = await client.get("/api/parties/?page_size=101")
     assert response.status_code == 422
 
 
@@ -319,7 +319,7 @@ async def test_delete_party_removes_from_list(
     await test_async_session.commit()
 
     # Get all parties
-    response = await client.get("/api/parties")
+    response = await client.get("/api/parties/")
     assert response.status_code == 200
     initial_data = response.json()
     assert initial_data["total_records"] == 3
@@ -330,7 +330,7 @@ async def test_delete_party_removes_from_list(
     assert response.status_code == 200
 
     # Verify count decreased
-    response = await client.get("/api/parties")
+    response = await client.get("/api/parties/")
     assert response.status_code == 200
     final_data = response.json()
     assert final_data["total_records"] == 2
