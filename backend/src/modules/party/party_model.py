@@ -11,3 +11,11 @@ class PartyData(BaseModel):
 
 class Party(PartyData):
     id: int
+
+
+class PaginatedPartiesResponse(BaseModel):
+    parties: list[Party]
+    total_records: int
+    page_size: int
+    page_number: int
+    total_pages: int
