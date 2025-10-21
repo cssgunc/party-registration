@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from src.modules.user.user_router import user_router
+from src.modules.party.party_router import party_router
 
 app = FastAPI()
 
@@ -36,3 +37,4 @@ def read_root():
 
 
 app.include_router(user_router)
+app.include_router(party_router)
