@@ -23,7 +23,7 @@ export default function Home() {
         fostering a sense of belonging and engagement for all students
         regardless of their housing situation.
       </p>
-      <EmbeddedMap />
+      <EmbeddedMap parties={[]} />
     </div>
   );
 }
