@@ -22,5 +22,6 @@ from .student.student_entity import StudentEntity
 from .account.account_entity import AccountEntity
 from .party.party_entity import PartyEntity
 from .address.address_entity import AddressEntity
+from .location.location_entity import LocationEntity
 
-__all__ = ["UserEntity", "StudentEntity", "AccountEntity", "PartyEntity", "AddressEntity"]
+__all__ = ["UserEntity", "StudentEntity", "AccountEntity", "PartyEntity", "AddressEntity", "LocationEntity"]

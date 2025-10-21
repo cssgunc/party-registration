@@ -69,10 +69,10 @@ Open a terminal at the project root and run the following commands
 
 ```
 cd frontend
-cp .env.template .env // duplicates the template and renames it to .env
+cp .env.template .env.local # duplicates the template and renames it to .env.local
 
 cd ../backend
-cp .env.template .env.local // duplicates the template and renames it to .env
+cp .env.template .env # duplicates the template and renames it to .env
 ```
 
 Or you can do the actions manually. Then,
@@ -100,6 +100,15 @@ npm run dev
 ```
 
 Navigate to [http://localhost:3000]() to view the website
+
+## Running backend tests
+
+The best way to run tests is by using the "Testing" window on the sidebar. This provides an intuitive GUI for running tests within the IDE.  
+You can also run all tests by opening a new terminal and simply running
+
+```sh
+pytest
+```
 
 ## Accessing the database
 

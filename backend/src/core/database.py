@@ -1,8 +1,9 @@
 from typing import AsyncGenerator
 
-from core.config import env
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
+
+from .config import env
 
 
 def server_url(sync: bool = False) -> str:
