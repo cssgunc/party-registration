@@ -17,7 +17,7 @@ This file's sole purpose is to trigger module imports
 so table definitions are registered with SQLAlchemy.
 """
 
-from .account.account_entity import AccountEntity, AccountRole
+from .account.account_entity import AccountEntity
 from .address.address_entity import AddressEntity
 from .location.location_entity import LocationEntity
 from .party.party_entity import PartyEntity
