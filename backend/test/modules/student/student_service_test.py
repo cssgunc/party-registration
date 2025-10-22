@@ -21,7 +21,7 @@ async def student_entity(
     test_async_session: AsyncSession, test_account: AccountEntity
 ) -> StudentEntity:
     data = StudentData(
-        first_name="Isolated",
+        first_name="Test",
         last_name="User",
         call_or_text_pref=ContactPreference.text,
         phone_number="9999999999",
@@ -76,7 +76,9 @@ async def test_create_student_conflict(
 
 @pytest.mark.asyncio
 async def test_get_students(
-    student_service: StudentService, test_account: AccountEntity
+    student_service: StudentService,
+    test_async_session: AsyncSession,
+    test_account: AccountEntity,
 ):
     students_data = [
         StudentData(
@@ -99,7 +101,9 @@ async def test_get_students(
         ),
     ]
     for data in students_data:
-        await student_service.create_student(data, account_id=test_account.id)
+        entity = StudentEntity.from_model(data, test_account.id)
+        test_async_session.add(entity)
+    await test_async_session.commit()
 
     students = await student_service.get_students()
     assert len(students) == 3
@@ -122,35 +126,17 @@ async def test_get_students(
         assert getattr(s, "call_or_text_pref", None) in (
             ContactPreference.call,
             ContactPreference.text,
-            "call",
-            "text",
         )
 
 
 @pytest.mark.asyncio
-async def test_get_student_by_id_isolated(
+async def test_get_student_by_id(
     student_service: StudentService, student_entity: StudentEntity
 ):
     fetched = await student_service.get_student_by_id(student_entity.id)
     assert fetched.id == student_entity.id
     assert fetched.phone_number == "9999999999"
-    assert fetched.full_name == "Isolated User"
-
-
-@pytest.mark.asyncio
-async def test_get_student_by_id(
-    student_service: StudentService, test_account: AccountEntity
-):
-    data = StudentData(
-        first_name="John",
-        last_name="Doe",
-        call_or_text_pref=ContactPreference.text,
-        phone_number="1234567890",
-    )
-    student = await student_service.create_student(data, account_id=test_account.id)
-    fetched = await student_service.get_student_by_id(student.id)
-    assert student.phone_number == fetched.phone_number
-    assert fetched.full_name == "John Doe"
+    assert fetched.full_name == "Test User"
 
 
 @pytest.mark.asyncio
@@ -161,7 +147,9 @@ async def test_get_student_by_id_not_found(student_service: StudentService):
 
 @pytest.mark.asyncio
 async def test_update_student(
-    student_service: StudentService, test_account: AccountEntity
+    student_service: StudentService,
+    test_async_session: AsyncSession,
+    test_account: AccountEntity,
 ):
     data = StudentData(
         first_name="John",
@@ -169,15 +157,19 @@ async def test_update_student(
         call_or_text_pref=ContactPreference.text,
         phone_number="1234567890",
     )
-    student = await student_service.create_student(data, account_id=test_account.id)
+    entity = StudentEntity.from_model(data, test_account.id)
+    test_async_session.add(entity)
+    await test_async_session.commit()
+    await test_async_session.refresh(entity)
+
     update_data = StudentData(
         first_name="Jane",
         last_name="Doe",
         call_or_text_pref=ContactPreference.call,
         phone_number="0987654321",
     )
-    updated = await student_service.update_student(student.id, update_data)
-    assert student.id == updated.id
+    updated = await student_service.update_student(entity.id, update_data)
+    assert entity.id == updated.id
     assert updated.first_name == "Jane"
     assert updated.phone_number == "0987654321"
 
@@ -196,7 +188,9 @@ async def test_update_student_not_found(student_service: StudentService):
 
 @pytest.mark.asyncio
 async def test_update_student_conflict(
-    student_service: StudentService, test_account: AccountEntity
+    student_service: StudentService,
+    test_async_session: AsyncSession,
+    test_account: AccountEntity,
 ):
     data1 = StudentData(
         first_name="Alice",
@@ -210,23 +204,31 @@ async def test_update_student_conflict(
         call_or_text_pref=ContactPreference.text,
         phone_number="2222222222",
     )
-    await student_service.create_student(data1, account_id=test_account.id)
-    student2 = await student_service.create_student(data2, account_id=test_account.id)
+    entity1 = StudentEntity.from_model(data1, test_account.id)
+    entity2 = StudentEntity.from_model(data2, test_account.id)
+    test_async_session.add(entity1)
+    test_async_session.add(entity2)
+    await test_async_session.commit()
+    await test_async_session.refresh(entity1)
+    await test_async_session.refresh(entity2)
+
     with pytest.raises(StudentConflictException):
         await student_service.update_student(
-            student2.id,
+            entity2.id,
             StudentData(
                 first_name="Bob",
                 last_name="Jones",
                 call_or_text_pref=ContactPreference.text,
-                phone_number="1111111111",
+                phone_number=entity1.phone_number,
             ),
         )
 
 
 @pytest.mark.asyncio
 async def test_delete_student(
-    student_service: StudentService, test_account: AccountEntity
+    student_service: StudentService,
+    test_async_session: AsyncSession,
+    test_account: AccountEntity,
 ):
     data = StudentData(
         first_name="John",
@@ -234,11 +236,15 @@ async def test_delete_student(
         call_or_text_pref=ContactPreference.text,
         phone_number="1234567890",
     )
-    student = await student_service.create_student(data, account_id=test_account.id)
-    deleted = await student_service.delete_student(student.id)
-    assert deleted.phone_number == student.phone_number
+    entity = StudentEntity.from_model(data, test_account.id)
+    test_async_session.add(entity)
+    await test_async_session.commit()
+    await test_async_session.refresh(entity)
+
+    deleted = await student_service.delete_student(entity.id)
+    assert deleted.phone_number == entity.phone_number
     with pytest.raises(StudentNotFoundException):
-        await student_service.get_student_by_id(student.id)
+        await student_service.get_student_by_id(entity.id)
 
 
 @pytest.mark.asyncio
