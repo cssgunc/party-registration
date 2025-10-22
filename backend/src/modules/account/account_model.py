@@ -2,8 +2,7 @@ from enum import Enum
 from typing import Self
 
 from pydantic import BaseModel, EmailStr
-
-from modules.account.account_entity import AccountEntity
+from src.modules.account.account_entity import AccountEntity
 
 
 class AccountRoleEnum(str, Enum):
@@ -15,12 +14,13 @@ class AccountRoleEnum(str, Enum):
 class AccountData(BaseModel):
     email: EmailStr
     password: str
-    role: AccountRoleEnum = AccountRoleEnum.STUDENT
+    role: AccountRoleEnum
 
 
 class Account(BaseModel):
     id: int
     email: EmailStr
+    password: str
     role: AccountRoleEnum
 
     @classmethod
@@ -28,5 +28,6 @@ class Account(BaseModel):
         return cls(
             id=account_entity.id,
             email=account_entity.email,
+            password=account_entity.hashed_password,
             role=AccountRoleEnum(account_entity.role.value),
         )

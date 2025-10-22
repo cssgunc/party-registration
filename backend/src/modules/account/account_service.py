@@ -1,14 +1,16 @@
 import bcrypt
-from core.database import get_session
-from core.exceptions import ConflictException, NotFoundException
 from fastapi import Depends
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.core.exceptions import CredentialsException
-
-from modules.account.account_entity import AccountEntity, AccountRole
-from modules.account.account_model import Account, AccountData
+from src.core.database import get_session
+from src.core.exceptions import (
+    ConflictException,
+    CredentialsException,
+    NotFoundException,
+)
+from src.modules.account.account_entity import AccountEntity, AccountRole
+from src.modules.account.account_model import Account, AccountData
 
 
 class AccountNotFoundException(NotFoundException):
@@ -51,7 +53,7 @@ class AccountService:
 
     async def _get_account_entity_by_email(self, email: str) -> AccountEntity | None:
         result = await self.session.execute(
-            select(AccountEntity).where(AccountEntity.email == email)
+            select(AccountEntity).where(AccountEntity.email.ilike(email))
         )
         return result.scalar_one_or_none()
 
@@ -98,7 +100,11 @@ class AccountService:
 
         # Update fields
         account_entity.email = data.email
-        account_entity.hashed_password = self._hash_password(data.password)
+
+        # Only re-hash password if it's different from the current one
+        if not self._verify_password(data.password, account_entity.hashed_password):
+            account_entity.hashed_password = self._hash_password(data.password)
+
         account_entity.role = AccountRole(data.role.value)
 
         try:
