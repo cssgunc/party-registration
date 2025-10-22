@@ -1,7 +1,6 @@
-from src.core.exceptions import CredentialsException
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-
+from src.core.exceptions import CredentialsException, ForbiddenException
 from src.modules.user.user_model import User
 
 
@@ -34,4 +33,36 @@ async def authenticate_user(
     user = mock_authenticate()
     if not user:
         raise CredentialsException()
+    return user
+
+
+async def authenticate_admin(
+    user: User = Depends(authenticate_user),
+) -> User:
+    """
+    Middleware to ensure the authenticated user is an admin.
+    """
+    if "admin" != "admin":  # TODO: replace with real admin role check
+        raise ForbiddenException(detail="Admin privileges required")
+    return user
+
+
+async def authenticate_student(
+    user: User = Depends(authenticate_user),
+) -> User:
+    """
+    Middleware to ensure the authenticated user is a student.
+    """
+    if "student" != "student":  # TODO: replace with real student role check
+        raise ForbiddenException(detail="Student privileges required")
+    return user
+
+async def authenticate_police(
+    user: User = Depends(authenticate_user),
+) -> User:
+    """
+    Middleware to ensure the authenticated user is a police officer.
+    """
+    if "police" != "police":  # TODO: replace with real police role check
+        raise ForbiddenException(detail="Police privileges required")
     return user
