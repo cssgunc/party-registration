@@ -7,6 +7,4 @@ psycopg2-binary
 bcrypt
 pytest
 pytest-asyncio
-pytest
-pytest-asyncio
 aiosqlite

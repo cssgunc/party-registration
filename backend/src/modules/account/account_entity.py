@@ -14,7 +14,7 @@ class AccountRole(enum.Enum):
 class AccountEntity(EntityBase):
     __tablename__ = "accounts"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     email: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(String, nullable=False)
     role: Mapped[AccountRole] = mapped_column(Enum(AccountRole), nullable=False)
