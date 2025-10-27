@@ -11,7 +11,8 @@ from src.modules.party.party_service import (
     PartyService,
     StudentNotFoundException,
 )
-from src.modules.student.student_entity import CallOrTextPref, StudentEntity
+from src.modules.student.student_entity import StudentEntity
+from src.modules.student.student_model import ContactPreference
 
 
 @pytest.fixture()
@@ -30,14 +31,14 @@ async def sample_party_data(test_async_session: AsyncSession) -> PartyData:
         id=1,
         first_name="John",
         last_name="Doe",
-        call_or_text_pref=CallOrTextPref.call,
+        call_or_text_pref=ContactPreference.call,
         phone_number="1234567890",
     )
     student_two = StudentEntity(
         id=2,
         first_name="Jane",
         last_name="Smith",
-        call_or_text_pref=CallOrTextPref.text,
+        call_or_text_pref=ContactPreference.text,
         phone_number="0987654321",
     )
     test_async_session.add_all([student_one, student_two])
@@ -121,14 +122,14 @@ async def test_get_parties(
         id=3,
         first_name="Bob",
         last_name="Johnson",
-        call_or_text_pref=CallOrTextPref.call,
+        call_or_text_pref=ContactPreference.call,
         phone_number="1111111111",
     )
     student4 = StudentEntity(
         id=4,
         first_name="Alice",
         last_name="Williams",
-        call_or_text_pref=CallOrTextPref.text,
+        call_or_text_pref=ContactPreference.text,
         phone_number="2222222222",
     )
     test_async_session.add_all([address2, student3, student4])
@@ -226,14 +227,14 @@ async def test_get_parties_by_date_range_multiple_parties(
         id=3,
         first_name="Bob",
         last_name="Johnson",
-        call_or_text_pref=CallOrTextPref.call,
+        call_or_text_pref=ContactPreference.call,
         phone_number="1111111111",
     )
     student4 = StudentEntity(
         id=4,
         first_name="Alice",
         last_name="Williams",
-        call_or_text_pref=CallOrTextPref.text,
+        call_or_text_pref=ContactPreference.text,
         phone_number="2222222222",
     )
     test_async_session.add_all([address2, student3, student4])
@@ -253,14 +254,14 @@ async def test_get_parties_by_date_range_multiple_parties(
         id=5,
         first_name="Charlie",
         last_name="Brown",
-        call_or_text_pref=CallOrTextPref.call,
+        call_or_text_pref=ContactPreference.call,
         phone_number="3333333333",
     )
     student6 = StudentEntity(
         id=6,
         first_name="Diana",
         last_name="Davis",
-        call_or_text_pref=CallOrTextPref.text,
+        call_or_text_pref=ContactPreference.text,
         phone_number="4444444444",
     )
     test_async_session.add_all([address3, student5, student6])
@@ -504,42 +505,42 @@ async def test_get_parties_by_radius(
         id=1,
         first_name="John",
         last_name="Doe",
-        call_or_text_pref=CallOrTextPref.call,
+        call_or_text_pref=ContactPreference.call,
         phone_number="1234567890",
     )
     student2 = StudentEntity(
         id=2,
         first_name="Jane",
         last_name="Smith",
-        call_or_text_pref=CallOrTextPref.text,
+        call_or_text_pref=ContactPreference.text,
         phone_number="0987654321",
     )
     student3 = StudentEntity(
         id=3,
         first_name="Bob",
         last_name="Johnson",
-        call_or_text_pref=CallOrTextPref.call,
+        call_or_text_pref=ContactPreference.call,
         phone_number="1111111111",
     )
     student4 = StudentEntity(
         id=4,
         first_name="Alice",
         last_name="Williams",
-        call_or_text_pref=CallOrTextPref.text,
+        call_or_text_pref=ContactPreference.text,
         phone_number="2222222222",
     )
     student5 = StudentEntity(
         id=5,
         first_name="Charlie",
         last_name="Brown",
-        call_or_text_pref=CallOrTextPref.call,
+        call_or_text_pref=ContactPreference.call,
         phone_number="3333333333",
     )
     student6 = StudentEntity(
         id=6,
         first_name="Diana",
         last_name="Davis",
-        call_or_text_pref=CallOrTextPref.text,
+        call_or_text_pref=ContactPreference.text,
         phone_number="4444444444",
     )
     test_async_session.add_all(
@@ -638,14 +639,14 @@ async def test_get_parties_by_radius_time_window_outside_past(
         id=1,
         first_name="John",
         last_name="Doe",
-        call_or_text_pref=CallOrTextPref.call,
+        call_or_text_pref=ContactPreference.call,
         phone_number="1234567890",
     )
     student2 = StudentEntity(
         id=2,
         first_name="Jane",
         last_name="Smith",
-        call_or_text_pref=CallOrTextPref.text,
+        call_or_text_pref=ContactPreference.text,
         phone_number="0987654321",
     )
     test_async_session.add_all([student1, student2])
@@ -687,14 +688,14 @@ async def test_get_parties_by_radius_time_window_outside_future(
         id=1,
         first_name="John",
         last_name="Doe",
-        call_or_text_pref=CallOrTextPref.call,
+        call_or_text_pref=ContactPreference.call,
         phone_number="1234567890",
     )
     student2 = StudentEntity(
         id=2,
         first_name="Jane",
         last_name="Smith",
-        call_or_text_pref=CallOrTextPref.text,
+        call_or_text_pref=ContactPreference.text,
         phone_number="0987654321",
     )
     test_async_session.add_all([student1, student2])
@@ -736,28 +737,28 @@ async def test_get_parties_by_radius_time_window_boundaries(
         id=1,
         first_name="John",
         last_name="Doe",
-        call_or_text_pref=CallOrTextPref.call,
+        call_or_text_pref=ContactPreference.call,
         phone_number="1234567890",
     )
     student2 = StudentEntity(
         id=2,
         first_name="Jane",
         last_name="Smith",
-        call_or_text_pref=CallOrTextPref.text,
+        call_or_text_pref=ContactPreference.text,
         phone_number="0987654321",
     )
     student3 = StudentEntity(
         id=3,
         first_name="Bob",
         last_name="Johnson",
-        call_or_text_pref=CallOrTextPref.call,
+        call_or_text_pref=ContactPreference.call,
         phone_number="1111111111",
     )
     student4 = StudentEntity(
         id=4,
         first_name="Alice",
         last_name="Williams",
-        call_or_text_pref=CallOrTextPref.text,
+        call_or_text_pref=ContactPreference.text,
         phone_number="2222222222",
     )
     test_async_session.add_all([student1, student2, student3, student4])
@@ -816,14 +817,14 @@ async def test_get_parties_by_radius_missing_address_skipped(
         id=1,
         first_name="John",
         last_name="Doe",
-        call_or_text_pref=CallOrTextPref.call,
+        call_or_text_pref=ContactPreference.call,
         phone_number="1234567890",
     )
     student2 = StudentEntity(
         id=2,
         first_name="Jane",
         last_name="Smith",
-        call_or_text_pref=CallOrTextPref.text,
+        call_or_text_pref=ContactPreference.text,
         phone_number="0987654321",
     )
     test_async_session.add_all([student1, student2])
