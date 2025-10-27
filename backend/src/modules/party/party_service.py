@@ -1,5 +1,6 @@
 from fastapi import Depends
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 from typing import List
@@ -105,8 +106,11 @@ class PartyService:
         await self._validate_student_exists(data.contact_two_id)
 
         new_party = PartyEntity.from_model(data)
-        self.session.add(new_party)
-        await self.session.commit()
+        try:
+            self.session.add(new_party)
+            await self.session.commit()
+        except IntegrityError as e:
+            raise PartyConflictException(f"Failed to create party: {str(e)}")
         await self.session.refresh(new_party)
         return new_party.to_model()
 
@@ -124,8 +128,11 @@ class PartyService:
             if hasattr(party_entity, key):
                 setattr(party_entity, key, value)
 
-        self.session.add(party_entity)
-        await self.session.commit()
+        try:
+            self.session.add(party_entity)
+            await self.session.commit()
+        except IntegrityError as e:
+            raise PartyConflictException(f"Failed to update party: {str(e)}")
         await self.session.refresh(party_entity)
         return party_entity.to_model()
 

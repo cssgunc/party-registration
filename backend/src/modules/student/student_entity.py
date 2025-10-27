@@ -1,11 +1,14 @@
 from datetime import datetime
-from typing import Self
+from typing import Self, TYPE_CHECKING
 
 from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.core.database import EntityBase
 
 from .student_model import ContactPreference, Student, StudentData
+
+if TYPE_CHECKING:
+    from ..party.party_entity import PartyEntity
 
 
 class StudentEntity(EntityBase):
@@ -21,6 +24,10 @@ class StudentEntity(EntityBase):
     phone_number: Mapped[str] = mapped_column(String, nullable=False)
 
     account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id"), nullable=False)
+
+    # Relationships
+    parties_as_contact_one: Mapped[list["PartyEntity"]] = relationship("PartyEntity", foreign_keys="PartyEntity.contact_one_id", back_populates="contact_one")
+    parties_as_contact_two: Mapped[list["PartyEntity"]] = relationship("PartyEntity", foreign_keys="PartyEntity.contact_two_id", back_populates="contact_two")
 
     @classmethod
     def from_model(cls, data: "StudentData", account_id: int) -> Self:
