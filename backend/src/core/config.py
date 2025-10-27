@@ -12,6 +12,7 @@ class Config(BaseSettings):
     POSTGRES_HOST: str = "db"
     POSTGRES_PORT: int = 5432
     HOST: str = "localhost"
+    PARTY_SEARCH_RADIUS_MILES: float = 3.0
 
 
 env = Config()

@@ -5,6 +5,8 @@ from src.core.database import EntityBase
 from sqlalchemy import DateTime, Integer, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from src.modules.address.address_entity import AddressEntity
+from src.modules.student.student_entity import StudentEntity
 from .party_model import Party, PartyData
 
 
