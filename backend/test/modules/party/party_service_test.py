@@ -2,7 +2,7 @@ import pytest
 import pytest_asyncio
 from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.modules.party.party_model import PartyData
+from src.modules.party.party_model import Party, PartyData
 from src.modules.party.party_service import (
     AddressNotFoundException,
     PartyNotFoundException,
@@ -10,7 +10,8 @@ from src.modules.party.party_service import (
     StudentNotFoundException,
 )
 from src.modules.address.address_entity import AddressEntity
-from src.modules.student.student_entity import StudentEntity, CallOrTextPref
+from src.modules.student.student_entity import StudentEntity
+from src.modules.student.student_model import ContactPreference
 
 
 @pytest.fixture()
@@ -29,14 +30,14 @@ async def sample_party_data(test_async_session: AsyncSession) -> PartyData:
         id=1,
         first_name="John",
         last_name="Doe",
-        call_or_text_pref=CallOrTextPref.call,
+        call_or_text_pref=ContactPreference.call,
         phone_number="1234567890"
     )
     student_two = StudentEntity(
         id=2,
         first_name="Jane",
         last_name="Smith",
-        call_or_text_pref=CallOrTextPref.text,
+        call_or_text_pref=ContactPreference.text,
         phone_number="0987654321"
     )
     test_async_session.add_all([student_one, student_two])
@@ -51,7 +52,7 @@ async def sample_party_data(test_async_session: AsyncSession) -> PartyData:
 
 
 @pytest_asyncio.fixture()
-async def party_in_db(test_async_session: AsyncSession, sample_party_data: PartyData):
+async def party_in_db(test_async_session: AsyncSession, sample_party_data: PartyData) -> Party:
     """Create a party directly in the database, bypassing the service layer."""
     from src.modules.party.party_entity import PartyEntity
 
@@ -145,10 +146,10 @@ async def test_get_parties(party_service: PartyService, test_async_session: Asyn
     # Create address and students for parties
     address1 = AddressEntity(id=1, latitude=40.7128, longitude=-74.0060)
     address2 = AddressEntity(id=2, latitude=34.0522, longitude=-118.2437)
-    student1 = StudentEntity(id=1, first_name="John", last_name="Doe", call_or_text_pref=CallOrTextPref.call, phone_number="1234567890")
-    student2 = StudentEntity(id=2, first_name="Jane", last_name="Smith", call_or_text_pref=CallOrTextPref.text, phone_number="0987654321")
-    student3 = StudentEntity(id=3, first_name="Bob", last_name="Johnson", call_or_text_pref=CallOrTextPref.call, phone_number="1111111111")
-    student4 = StudentEntity(id=4, first_name="Alice", last_name="Williams", call_or_text_pref=CallOrTextPref.text, phone_number="2222222222")
+    student1 = StudentEntity(id=1, first_name="John", last_name="Doe", call_or_text_pref=ContactPreference.call, phone_number="1234567890")
+    student2 = StudentEntity(id=2, first_name="Jane", last_name="Smith", call_or_text_pref=ContactPreference.text, phone_number="0987654321")
+    student3 = StudentEntity(id=3, first_name="Bob", last_name="Johnson", call_or_text_pref=ContactPreference.call, phone_number="1111111111")
+    student4 = StudentEntity(id=4, first_name="Alice", last_name="Williams", call_or_text_pref=ContactPreference.text, phone_number="2222222222")
     test_async_session.add_all([address1, address2, student1, student2, student3, student4])
     await test_async_session.commit()
 
@@ -178,7 +179,7 @@ async def test_get_parties(party_service: PartyService, test_async_session: Asyn
 
 
 @pytest.mark.asyncio
-async def test_get_party_by_id(party_service: PartyService, party_in_db: PartyData):
+async def test_get_party_by_id(party_service: PartyService, party_in_db: Party):
     fetched = await party_service.get_party_by_id(party_in_db.id)
     assert party_in_db.id == fetched.id
     assert party_in_db.party_datetime == fetched.party_datetime
@@ -192,14 +193,14 @@ async def test_get_party_by_id_not_found(party_service: PartyService):
 
 
 @pytest.mark.asyncio
-async def test_get_parties_by_address(party_service: PartyService, party_in_db: PartyData):
+async def test_get_parties_by_address(party_service: PartyService, party_in_db: Party):
     parties = await party_service.get_parties_by_address(party_in_db.address_id)
     assert len(parties) == 1
     assert parties[0].id == party_in_db.id
 
 
 @pytest.mark.asyncio
-async def test_get_parties_by_contact(party_service: PartyService, party_in_db: PartyData):
+async def test_get_parties_by_contact(party_service: PartyService, party_in_db: Party):
     # Test contact one
     parties = await party_service.get_parties_by_contact(party_in_db.contact_one_id)
     assert len(parties) == 1
@@ -212,7 +213,7 @@ async def test_get_parties_by_contact(party_service: PartyService, party_in_db: 
 
 
 @pytest.mark.asyncio
-async def test_get_parties_by_date_range(party_service: PartyService, party_in_db: PartyData):
+async def test_get_parties_by_date_range(party_service: PartyService, party_in_db: Party):
     start_date = party_in_db.party_datetime - timedelta(hours=1)
     end_date = party_in_db.party_datetime + timedelta(hours=1)
 
@@ -229,12 +230,12 @@ async def test_get_parties_by_date_range_multiple_parties(party_service: PartySe
     address1 = AddressEntity(id=1, latitude=40.7128, longitude=-74.0060)
     address2 = AddressEntity(id=2, latitude=34.0522, longitude=-118.2437)
     address3 = AddressEntity(id=3, latitude=41.8781, longitude=-87.6298)
-    student1 = StudentEntity(id=1, first_name="John", last_name="Doe", call_or_text_pref=CallOrTextPref.call, phone_number="1234567890")
-    student2 = StudentEntity(id=2, first_name="Jane", last_name="Smith", call_or_text_pref=CallOrTextPref.text, phone_number="0987654321")
-    student3 = StudentEntity(id=3, first_name="Bob", last_name="Johnson", call_or_text_pref=CallOrTextPref.call, phone_number="1111111111")
-    student4 = StudentEntity(id=4, first_name="Alice", last_name="Williams", call_or_text_pref=CallOrTextPref.text, phone_number="2222222222")
-    student5 = StudentEntity(id=5, first_name="Charlie", last_name="Brown", call_or_text_pref=CallOrTextPref.call, phone_number="3333333333")
-    student6 = StudentEntity(id=6, first_name="Diana", last_name="Davis", call_or_text_pref=CallOrTextPref.text, phone_number="4444444444")
+    student1 = StudentEntity(id=1, first_name="John", last_name="Doe", call_or_text_pref=ContactPreference.call, phone_number="1234567890")
+    student2 = StudentEntity(id=2, first_name="Jane", last_name="Smith", call_or_text_pref=ContactPreference.text, phone_number="0987654321")
+    student3 = StudentEntity(id=3, first_name="Bob", last_name="Johnson", call_or_text_pref=ContactPreference.call, phone_number="1111111111")
+    student4 = StudentEntity(id=4, first_name="Alice", last_name="Williams", call_or_text_pref=ContactPreference.text, phone_number="2222222222")
+    student5 = StudentEntity(id=5, first_name="Charlie", last_name="Brown", call_or_text_pref=ContactPreference.call, phone_number="3333333333")
+    student6 = StudentEntity(id=6, first_name="Diana", last_name="Davis", call_or_text_pref=ContactPreference.text, phone_number="4444444444")
     test_async_session.add_all([address1, address2, address3, student1, student2, student3, student4, student5, student6])
     await test_async_session.commit()
 
@@ -277,7 +278,7 @@ async def test_get_parties_by_date_range_multiple_parties(party_service: PartySe
 
 
 @pytest.mark.asyncio
-async def test_get_parties_by_date_range_no_results(party_service: PartyService, party_in_db: PartyData):
+async def test_get_parties_by_date_range_no_results(party_service: PartyService, party_in_db: Party):
     # Query range that doesn't include the party
     start_date = party_in_db.party_datetime + timedelta(days=1)
     end_date = party_in_db.party_datetime + timedelta(days=2)
@@ -287,7 +288,7 @@ async def test_get_parties_by_date_range_no_results(party_service: PartyService,
 
 
 @pytest.mark.asyncio
-async def test_get_parties_by_date_range_boundary_start(party_service: PartyService, party_in_db: PartyData):
+async def test_get_parties_by_date_range_boundary_start(party_service: PartyService, party_in_db: Party):
     # Query where party datetime equals start date (inclusive boundary)
     start_date = party_in_db.party_datetime
     end_date = party_in_db.party_datetime + timedelta(hours=1)
@@ -298,7 +299,7 @@ async def test_get_parties_by_date_range_boundary_start(party_service: PartyServ
 
 
 @pytest.mark.asyncio
-async def test_get_parties_by_date_range_boundary_end(party_service: PartyService, party_in_db: PartyData):
+async def test_get_parties_by_date_range_boundary_end(party_service: PartyService, party_in_db: Party):
     # Query where party datetime equals end date (inclusive boundary)
     start_date = party_in_db.party_datetime - timedelta(hours=1)
     end_date = party_in_db.party_datetime
@@ -309,7 +310,7 @@ async def test_get_parties_by_date_range_boundary_end(party_service: PartyServic
 
 
 @pytest.mark.asyncio
-async def test_get_parties_by_date_range_outside_before(party_service: PartyService, party_in_db: PartyData):
+async def test_get_parties_by_date_range_outside_before(party_service: PartyService, party_in_db: Party):
     # Query range that ends just before the party datetime
     start_date = party_in_db.party_datetime - timedelta(days=2)
     end_date = party_in_db.party_datetime - timedelta(seconds=1)
@@ -319,7 +320,7 @@ async def test_get_parties_by_date_range_outside_before(party_service: PartyServ
 
 
 @pytest.mark.asyncio
-async def test_get_parties_by_date_range_outside_after(party_service: PartyService, party_in_db: PartyData):
+async def test_get_parties_by_date_range_outside_after(party_service: PartyService, party_in_db: Party):
     # Query range that starts just after the party datetime
     start_date = party_in_db.party_datetime + timedelta(seconds=1)
     end_date = party_in_db.party_datetime + timedelta(days=2)
@@ -329,7 +330,7 @@ async def test_get_parties_by_date_range_outside_after(party_service: PartyServi
 
 
 @pytest.mark.asyncio
-async def test_update_party(party_service: PartyService, party_in_db: PartyData):
+async def test_update_party(party_service: PartyService, party_in_db: Party):
     update_data = PartyData(
         party_datetime=party_in_db.party_datetime + timedelta(hours=2),
         address_id=party_in_db.address_id,
@@ -349,7 +350,7 @@ async def test_update_party_not_found(party_service: PartyService, sample_party_
 
 
 @pytest.mark.asyncio
-async def test_update_party_invalid_address(party_service: PartyService, party_in_db: PartyData):
+async def test_update_party_invalid_address(party_service: PartyService, party_in_db: Party):
     invalid_update = PartyData(
         party_datetime=party_in_db.party_datetime,
         address_id=999,  # Non-existent address
@@ -361,7 +362,7 @@ async def test_update_party_invalid_address(party_service: PartyService, party_i
 
 
 @pytest.mark.asyncio
-async def test_update_party_invalid_contact_one(party_service: PartyService, party_in_db: PartyData):
+async def test_update_party_invalid_contact_one(party_service: PartyService, party_in_db: Party):
     invalid_update = PartyData(
         party_datetime=party_in_db.party_datetime,
         address_id=party_in_db.address_id,
@@ -373,7 +374,7 @@ async def test_update_party_invalid_contact_one(party_service: PartyService, par
 
 
 @pytest.mark.asyncio
-async def test_update_party_invalid_contact_two(party_service: PartyService, party_in_db: PartyData):
+async def test_update_party_invalid_contact_two(party_service: PartyService, party_in_db: Party):
     invalid_update = PartyData(
         party_datetime=party_in_db.party_datetime,
         address_id=party_in_db.address_id,
@@ -385,7 +386,7 @@ async def test_update_party_invalid_contact_two(party_service: PartyService, par
 
 
 @pytest.mark.asyncio
-async def test_delete_party(party_service: PartyService, party_in_db: PartyData):
+async def test_delete_party(party_service: PartyService, party_in_db: Party):
     deleted = await party_service.delete_party(party_in_db.id)
     assert deleted.id == party_in_db.id
     assert deleted.party_datetime == party_in_db.party_datetime
@@ -401,7 +402,7 @@ async def test_delete_party_not_found(party_service: PartyService):
 
 
 @pytest.mark.asyncio
-async def test_party_exists(party_service: PartyService, party_in_db: PartyData):
+async def test_party_exists(party_service: PartyService, party_in_db: Party):
     assert await party_service.party_exists(party_in_db.id)
     assert not await party_service.party_exists(999)
 
@@ -412,8 +413,8 @@ async def test_get_party_count(party_service: PartyService, test_async_session: 
 
     # Create address and students for party
     address = AddressEntity(id=1, latitude=40.7128, longitude=-74.0060)
-    student1 = StudentEntity(id=1, first_name="John", last_name="Doe", call_or_text_pref=CallOrTextPref.call, phone_number="1234567890")
-    student2 = StudentEntity(id=2, first_name="Jane", last_name="Smith", call_or_text_pref=CallOrTextPref.text, phone_number="0987654321")
+    student1 = StudentEntity(id=1, first_name="John", last_name="Doe", call_or_text_pref=ContactPreference.call, phone_number="1234567890")
+    student2 = StudentEntity(id=2, first_name="Jane", last_name="Smith", call_or_text_pref=ContactPreference.text, phone_number="0987654321")
     test_async_session.add_all([address, student1, student2])
     await test_async_session.commit()
 
@@ -434,7 +435,7 @@ async def test_get_party_count(party_service: PartyService, test_async_session: 
 
 
 @pytest.mark.asyncio
-async def test_get_parties_by_student_and_date(party_service: PartyService, party_in_db: PartyData):
+async def test_get_parties_by_student_and_date(party_service: PartyService, party_in_db: Party):
     # Test with contact one
     parties = await party_service.get_parties_by_student_and_date(
         party_in_db.contact_one_id,
