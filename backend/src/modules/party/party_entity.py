@@ -1,4 +1,4 @@
-from typing import Self
+from typing import Self, TYPE_CHECKING
 from datetime import datetime
 
 from src.core.database import EntityBase
@@ -6,6 +6,10 @@ from sqlalchemy import DateTime, Integer, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .party_model import Party, PartyData
+
+if TYPE_CHECKING:
+    from ..address.address_entity import AddressEntity
+    from ..student.student_entity import StudentEntity
 
 
 class PartyEntity(EntityBase):
