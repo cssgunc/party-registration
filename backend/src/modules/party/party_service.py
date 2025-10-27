@@ -9,7 +9,7 @@ from src.core.exceptions import ConflictException, NotFoundException
 
 from .party_entity import PartyEntity
 from .party_model import Party, PartyData
-from ..address.address_entity import AddressEntity
+from ..location.location_entity import LocationEntity
 from ..student.student_entity import StudentEntity
 
 
@@ -18,9 +18,9 @@ class PartyNotFoundException(NotFoundException):
         super().__init__(f"Party with ID {party_id} not found")
 
 
-class AddressNotFoundException(NotFoundException):
-    def __init__(self, address_id: int):
-        super().__init__(f"Address with ID {address_id} not found")
+class LocationNotFoundException(NotFoundException):
+    def __init__(self, location_id: int):
+        super().__init__(f"Location with ID {location_id} not found")
 
 
 class StudentNotFoundException(NotFoundException):
@@ -46,12 +46,12 @@ class PartyService:
             raise PartyNotFoundException(party_id)
         return party_entity
 
-    async def _validate_address_exists(self, address_id: int) -> None:
+    async def _validate_location_exists(self, location_id: int) -> None:
         result = await self.session.execute(
-            select(AddressEntity).where(AddressEntity.id == address_id)
+            select(LocationEntity).where(LocationEntity.id == location_id)
         )
         if result.scalar_one_or_none() is None:
-            raise AddressNotFoundException(address_id)
+            raise LocationNotFoundException(location_id)
 
     async def _validate_student_exists(self, student_id: int) -> None:
         result = await self.session.execute(
@@ -71,9 +71,9 @@ class PartyService:
         party_entity = await self._get_party_entity_by_id(party_id)
         return party_entity.to_model()
 
-    async def get_parties_by_address(self, address_id: int) -> List[Party]:
+    async def get_parties_by_location(self, location_id: int) -> List[Party]:
         result = await self.session.execute(
-            select(PartyEntity).where(PartyEntity.address_id == address_id)
+            select(PartyEntity).where(PartyEntity.location_id == location_id)
         )
         parties = result.scalars().all()
         return [party.to_model() for party in parties]
@@ -100,7 +100,7 @@ class PartyService:
 
     async def create_party(self, data: PartyData) -> Party:
         # Validate that referenced resources exist
-        await self._validate_address_exists(data.address_id)
+        await self._validate_location_exists(data.location_id)
         await self._validate_student_exists(data.contact_one_id)
         await self._validate_student_exists(data.contact_two_id)
 
@@ -114,7 +114,7 @@ class PartyService:
         party_entity = await self._get_party_entity_by_id(party_id)
 
         # Validate that referenced resources exist
-        await self._validate_address_exists(data.address_id)
+        await self._validate_location_exists(data.location_id)
         await self._validate_student_exists(data.contact_one_id)
         await self._validate_student_exists(data.contact_two_id)
 

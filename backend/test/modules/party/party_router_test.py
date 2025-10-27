@@ -8,8 +8,10 @@ from src.main import app
 from src.core.database import get_session
 from src.core.authentication import authenticate_user
 from src.modules.party.party_entity import PartyEntity
-from src.modules.address.address_entity import AddressEntity
-from src.modules.student.student_entity import StudentEntity, CallOrTextPref
+from src.modules.location.location_entity import LocationEntity
+from src.modules.student.student_entity import StudentEntity
+from src.modules.student.student_model import ContactPreference
+from src.modules.account.account_entity import AccountEntity, AccountRole
 from src.modules.user.user_model import User
 
 
@@ -36,31 +38,48 @@ async def client(test_async_session: AsyncSession):
 
 @pytest_asyncio.fixture()
 async def sample_party_setup(test_async_session: AsyncSession):
-    """Create sample address and students for party tests."""
-    # Create address
-    address = AddressEntity(id=1, latitude=40.7128, longitude=-74.0060)
-    test_async_session.add(address)
+    """Create sample location and students for party tests."""
+    # Create account
+    account = AccountEntity(
+        id=1,
+        email="test@example.com",
+        hashed_password="hashed_password",
+        role=AccountRole.STUDENT
+    )
+    test_async_session.add(account)
+
+    # Create location
+    location = LocationEntity(
+        id=1,
+        latitude=40.7128,
+        longitude=-74.0060,
+        google_place_id="test_place_id_1",
+        formatted_address="123 Test St, Test City, TC 12345"
+    )
+    test_async_session.add(location)
 
     # Create students
     student_one = StudentEntity(
         id=1,
         first_name="John",
         last_name="Doe",
-        call_or_text_pref=CallOrTextPref.call,
-        phone_number="1234567890"
+        call_or_text_pref=ContactPreference.call,
+        phone_number="1234567890",
+        account_id=1
     )
     student_two = StudentEntity(
         id=2,
         first_name="Jane",
         last_name="Smith",
-        call_or_text_pref=CallOrTextPref.text,
-        phone_number="0987654321"
+        call_or_text_pref=ContactPreference.text,
+        phone_number="0987654321",
+        account_id=1
     )
     test_async_session.add_all([student_one, student_two])
     await test_async_session.commit()
 
     return {
-        "address_id": 1,
+        "location_id": 1,
         "contact_one_id": 1,
         "contact_two_id": 2
     }
@@ -91,7 +110,7 @@ async def test_get_parties_with_data(
     for i in range(5):
         party = PartyEntity(
             party_datetime=datetime.now() + timedelta(days=i),
-            address_id=sample_party_setup["address_id"],
+            location_id=sample_party_setup["location_id"],
             contact_one_id=sample_party_setup["contact_one_id"],
             contact_two_id=sample_party_setup["contact_two_id"]
         )
@@ -120,7 +139,7 @@ async def test_get_parties_pagination(
     for i in range(25):
         party = PartyEntity(
             party_datetime=datetime.now() + timedelta(days=i),
-            address_id=sample_party_setup["address_id"],
+            location_id=sample_party_setup["location_id"],
             contact_one_id=sample_party_setup["contact_one_id"],
             contact_two_id=sample_party_setup["contact_two_id"]
         )
@@ -167,7 +186,7 @@ async def test_get_parties_pagination_beyond_available(
     for i in range(5):
         party = PartyEntity(
             party_datetime=datetime.now() + timedelta(days=i),
-            address_id=sample_party_setup["address_id"],
+            location_id=sample_party_setup["location_id"],
             contact_one_id=sample_party_setup["contact_one_id"],
             contact_two_id=sample_party_setup["contact_two_id"]
         )
@@ -195,7 +214,7 @@ async def test_get_parties_custom_page_size(
     for i in range(10):
         party = PartyEntity(
             party_datetime=datetime.now() + timedelta(days=i),
-            address_id=sample_party_setup["address_id"],
+            location_id=sample_party_setup["location_id"],
             contact_one_id=sample_party_setup["contact_one_id"],
             contact_two_id=sample_party_setup["contact_two_id"]
         )
@@ -242,7 +261,7 @@ async def test_get_party_by_id(
     party_datetime = datetime.now() + timedelta(days=1)
     party = PartyEntity(
         party_datetime=party_datetime,
-        address_id=sample_party_setup["address_id"],
+        location_id=sample_party_setup["location_id"],
         contact_one_id=sample_party_setup["contact_one_id"],
         contact_two_id=sample_party_setup["contact_two_id"]
     )
@@ -256,7 +275,7 @@ async def test_get_party_by_id(
 
     data = response.json()
     assert data["id"] == party.id
-    assert data["address_id"] == sample_party_setup["address_id"]
+    assert data["location_id"] == sample_party_setup["location_id"]
     assert data["contact_one_id"] == sample_party_setup["contact_one_id"]
     assert data["contact_two_id"] == sample_party_setup["contact_two_id"]
 
@@ -278,7 +297,7 @@ async def test_delete_party(
     # Create a party
     party = PartyEntity(
         party_datetime=datetime.now() + timedelta(days=1),
-        address_id=sample_party_setup["address_id"],
+        location_id=sample_party_setup["location_id"],
         contact_one_id=sample_party_setup["contact_one_id"],
         contact_two_id=sample_party_setup["contact_two_id"]
     )
@@ -317,7 +336,7 @@ async def test_delete_party_removes_from_list(
     for i in range(3):
         party = PartyEntity(
             party_datetime=datetime.now() + timedelta(days=i),
-            address_id=sample_party_setup["address_id"],
+            location_id=sample_party_setup["location_id"],
             contact_one_id=sample_party_setup["contact_one_id"],
             contact_two_id=sample_party_setup["contact_two_id"]
         )

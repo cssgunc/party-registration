@@ -13,12 +13,12 @@ class PartyEntity(EntityBase):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     party_datetime: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    address_id: Mapped[int] = mapped_column(Integer, ForeignKey('addresses.id'), nullable=False)
+    location_id: Mapped[int] = mapped_column(Integer, ForeignKey('locations.id'), nullable=False)
     contact_one_id: Mapped[int] = mapped_column(Integer, ForeignKey('students.id'), nullable=False)
     contact_two_id: Mapped[int] = mapped_column(Integer, ForeignKey('students.id'), nullable=False)
 
     # Relationships
-    address: Mapped["AddressEntity"] = relationship("AddressEntity")
+    location: Mapped["LocationEntity"] = relationship("LocationEntity")
     contact_one: Mapped["StudentEntity"] = relationship("StudentEntity", foreign_keys=[contact_one_id])
     contact_two: Mapped["StudentEntity"] = relationship("StudentEntity", foreign_keys=[contact_two_id])
 
@@ -26,7 +26,7 @@ class PartyEntity(EntityBase):
     def from_model(cls, data: PartyData) -> Self:
         return cls(
             party_datetime=data.party_datetime,
-            address_id=data.address_id,
+            location_id=data.location_id,
             contact_one_id=data.contact_one_id,
             contact_two_id=data.contact_two_id
         )
@@ -35,7 +35,7 @@ class PartyEntity(EntityBase):
         return Party(
             id=self.id,
             party_datetime=self.party_datetime,
-            address_id=self.address_id,
+            location_id=self.location_id,
             contact_one_id=self.contact_one_id,
             contact_two_id=self.contact_two_id
         )
