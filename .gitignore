@@ -10,6 +10,7 @@ dist/
 *.local
 *.log
 out/
+backend/package-lock.json
 
 # Python
 __pycache__/
