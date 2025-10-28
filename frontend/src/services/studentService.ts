@@ -19,10 +19,7 @@ class StudentService {
     return response.data;
   }
 
-  async updateStudent(
-    id: string,
-    data: Partial<StudentData>
-  ): Promise<Student> {
+  async updateStudent(id: number, data: StudentData): Promise<Student> {
     const response = await this.apiClient.put<Student>(`/students/${id}`, data);
     return response.data;
   }

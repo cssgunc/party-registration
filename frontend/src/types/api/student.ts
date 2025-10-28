@@ -1,5 +1,6 @@
 type Student = {
   id: number;
+  accountId: number;
   firstName: string;
   lastName: string;
   contactPrefrence: "call" | "text";
@@ -12,6 +13,7 @@ type Student = {
 
 type StudentData = {
   id: number;
+  accountId: number;
   firstName: string;
   lastName: string;
   contactPrefrence: "call" | "text";
