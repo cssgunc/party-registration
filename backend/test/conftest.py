@@ -1,7 +1,8 @@
-import src.modules  # Ensure all modules are imported so their entities are registered # noqa: F401
 import pytest_asyncio
+import src.modules  # Ensure all modules are imported so their entities are registered # noqa: F401
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from src.core.database import EntityBase
+from src.modules.account.account_entity import AccountEntity, AccountRole
 
 DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
@@ -17,3 +18,15 @@ async def test_async_session():
     async with TestAsyncSessionLocal() as session:
         yield session
     await engine.dispose()
+
+
+@pytest_asyncio.fixture
+async def test_account(test_async_session: AsyncSession) -> AccountEntity:
+    """Create a test account for use in tests."""
+    account = AccountEntity(
+        email="test@example.com", hashed_password="$2b$12$test_hashed_password", role=AccountRole.STUDENT
+    )
+    test_async_session.add(account)
+    await test_async_session.commit()
+    await test_async_session.refresh(account)
+    return account
