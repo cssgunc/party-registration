@@ -4,14 +4,15 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.database import get_session
 from src.core.exceptions import ConflictException, NotFoundException
+from src.modules.account.account_entity import AccountEntity
 
 from .student_entity import StudentEntity
-from .student_model import Student, StudentData
+from .student_model import StudentData, StudentDTO
 
 
 class StudentNotFoundException(NotFoundException):
-    def __init__(self, student_id: int):
-        super().__init__(f"Student with ID {student_id} not found")
+    def __init__(self, account_id: int):
+        super().__init__(f"Student with ID {account_id} not found")
 
 
 class StudentConflictException(ConflictException):
@@ -23,13 +24,13 @@ class StudentService:
     def __init__(self, session: AsyncSession = Depends(get_session)):
         self.session = session
 
-    async def _get_student_entity_by_id(self, student_id: int) -> StudentEntity:
+    async def _get_student_entity_by_account_id(self, account_id: int) -> StudentEntity:
         result = await self.session.execute(
-            select(StudentEntity).where(StudentEntity.id == student_id)
+            select(StudentEntity).where(StudentEntity.account_id == account_id)
         )
         student_entity = result.scalar_one_or_none()
         if student_entity is None:
-            raise StudentNotFoundException(student_id)
+            raise StudentNotFoundException(account_id)
         return student_entity
 
     async def _get_student_entity_by_phone(
@@ -40,16 +41,41 @@ class StudentService:
         )
         return result.scalar_one_or_none()
 
-    async def get_students(self) -> list[Student]:
-        result = await self.session.execute(select(StudentEntity))
-        students = result.scalars().all()
-        return [student.to_model() for student in students]
+    async def _get_account_entity_by_id(self, account_id: int) -> AccountEntity:
+        result = await self.session.execute(
+            select(AccountEntity).where(AccountEntity.id == account_id)
+        )
+        account = result.scalar_one_or_none()
+        if account is None:
+            raise StudentNotFoundException(account_id)
+        return account
 
-    async def get_student_by_id(self, student_id: int) -> Student:
-        student_entity = await self._get_student_entity_by_id(student_id)
-        return student_entity.to_model()
+    def _to_dto(self, student: StudentEntity, account: AccountEntity) -> StudentDTO:
+        return StudentDTO(
+            id=student.account_id,
+            pid=str(student.account_id),
+            email=account.email,
+            first_name=student.first_name,
+            last_name=student.last_name,
+            phone_number=student.phone_number,
+            last_registered=student.last_registered,
+        )
 
-    async def create_student(self, data: StudentData, account_id: int) -> Student:
+    async def get_students(self) -> list[StudentDTO]:
+        result = await self.session.execute(
+            select(StudentEntity, AccountEntity).join(
+                AccountEntity, StudentEntity.account_id == AccountEntity.id
+            )
+        )
+        rows = result.all()
+        return [self._to_dto(s, a) for (s, a) in rows]
+
+    async def get_student_by_id(self, account_id: int) -> StudentDTO:
+        student_entity = await self._get_student_entity_by_account_id(account_id)
+        account = await self._get_account_entity_by_id(account_id)
+        return self._to_dto(student_entity, account)
+
+    async def create_student(self, data: StudentData, account_id: int) -> StudentDTO:
         if await self._get_student_entity_by_phone(data.phone_number):
             raise StudentConflictException(data.phone_number)
 
@@ -61,10 +87,11 @@ class StudentService:
             raise StudentConflictException(data.phone_number)
 
         await self.session.refresh(new_student)
-        return new_student.to_model()
+        account = await self._get_account_entity_by_id(account_id)
+        return self._to_dto(new_student, account)
 
-    async def update_student(self, student_id: int, data: StudentData) -> Student:
-        student_entity = await self._get_student_entity_by_id(student_id)
+    async def update_student(self, account_id: int, data: StudentData) -> StudentDTO:
+        student_entity = await self._get_student_entity_by_account_id(account_id)
 
         if data.phone_number != student_entity.phone_number:
             if await self._get_student_entity_by_phone(data.phone_number):
@@ -80,11 +107,13 @@ class StudentService:
         except IntegrityError:
             raise StudentConflictException(data.phone_number)
         await self.session.refresh(student_entity)
-        return student_entity.to_model()
+        account = await self._get_account_entity_by_id(account_id)
+        return self._to_dto(student_entity, account)
 
-    async def delete_student(self, student_id: int) -> Student:
-        student_entity = await self._get_student_entity_by_id(student_id)
-        student = student_entity.to_model()
+    async def delete_student(self, account_id: int) -> StudentDTO:
+        student_entity = await self._get_student_entity_by_account_id(account_id)
+        account = await self._get_account_entity_by_id(account_id)
+        student_dto = self._to_dto(student_entity, account)
         await self.session.delete(student_entity)
         await self.session.commit()
-        return student
+        return student_dto
