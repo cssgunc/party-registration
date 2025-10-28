@@ -4,6 +4,7 @@ import apiClient from "@/lib/network/apiClient";
 import { SessionProvider, useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 
+// Use separate page component to wrap the CSR page content in a SessionProvider since this is a client-side rendered page
 export default function CSRPage() {
   return (
     <SessionProvider>

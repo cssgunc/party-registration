@@ -9,7 +9,7 @@ type AuthTokens = {
 
 const authOptions: NextAuthOptions = {
   providers: [
-    // TODO: Add note about how to actually config credentials provider
+    // Once we receive details about how ONYEN SSO works, we can add the clientId, clientSecret, authorization, etc. here
     CredentialsProvider({
       name: "Credentials",
       credentials: {

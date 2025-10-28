@@ -3,6 +3,7 @@
 import { SessionProvider, signIn, signOut, useSession } from "next-auth/react";
 import Link from "next/link";
 
+// Wrap the AuthTest component in a SessionProvider since this is a client-side rendered page
 export default function AuthTestWrapper() {
   return (
     <SessionProvider>
