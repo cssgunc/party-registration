@@ -2,10 +2,17 @@
 Reads configuration from environment variables or .env file.
 """
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Config(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
     POSTGRES_DATABASE: str = "ocsl"
     POSTGRES_USER: str = "postgres"
     POSTGRES_PASSWORD: str = "admin"
