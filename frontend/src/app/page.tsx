@@ -1,4 +1,5 @@
 import EmbeddedMap from "@/components/EmbeddedMap";
+import EmbeddedMapReact from "@/components/EmbeddedMapReact";
 
 export default function Home() {
   return (
@@ -24,6 +25,7 @@ export default function Home() {
         regardless of their housing situation.
       </p>
       <EmbeddedMap parties={[]} />
+      <EmbeddedMapReact/>
     </div>
   );
 }

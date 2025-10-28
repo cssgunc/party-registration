@@ -1,4 +1,7 @@
+import { APIProvider, Map } from "@vis.gl/react-google-maps";
+
 const EmbeddedMapReact = () => {
+  const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
   return (
     <div>
       <APIProvider apiKey={API_KEY}>
