@@ -1,27 +1,20 @@
-from enum import Enum
 from typing import Self
 
 from pydantic import BaseModel, EmailStr
-from src.modules.account.account_entity import AccountEntity
-
-
-class AccountRoleEnum(str, Enum):
-    STUDENT = "student"
-    ADMIN = "admin"
-    POLICE = "police"
+from src.modules.account.account_entity import AccountEntity, AccountRole
 
 
 class AccountData(BaseModel):
     email: EmailStr
     password: str
-    role: AccountRoleEnum
+    role: AccountRole
 
 
 class Account(BaseModel):
     id: int
     email: EmailStr
     password: str
-    role: AccountRoleEnum
+    role: AccountRole
 
     @classmethod
     def from_entity(cls, account_entity: AccountEntity) -> Self:
@@ -29,5 +22,5 @@ class Account(BaseModel):
             id=account_entity.id,
             email=account_entity.email,
             password=account_entity.hashed_password,
-            role=AccountRoleEnum(account_entity.role.value),
+            role=AccountRole(account_entity.role.value),
         )
