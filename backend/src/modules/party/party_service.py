@@ -4,6 +4,7 @@ from typing import List
 
 from fastapi import Depends
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.config import env
 from src.core.database import get_session
@@ -109,8 +110,11 @@ class PartyService:
         await self._validate_student_exists(data.contact_two_id)
 
         new_party = PartyEntity.from_model(data)
-        self.session.add(new_party)
-        await self.session.commit()
+        try:
+            self.session.add(new_party)
+            await self.session.commit()
+        except IntegrityError as e:
+            raise PartyConflictException(f"Failed to create party: {str(e)}")
         await self.session.refresh(new_party)
         return new_party.to_model()
 
@@ -128,8 +132,11 @@ class PartyService:
             if hasattr(party_entity, key):
                 setattr(party_entity, key, value)
 
-        self.session.add(party_entity)
-        await self.session.commit()
+        try:
+            self.session.add(party_entity)
+            await self.session.commit()
+        except IntegrityError as e:
+            raise PartyConflictException(f"Failed to update party: {str(e)}")
         await self.session.refresh(party_entity)
         return party_entity.to_model()
 
@@ -151,8 +158,9 @@ class PartyService:
         parties = result.scalars().all()
         return len(parties)
 
-    async def get_parties_by_student_and_date(self, student_id: int, target_date: datetime) -> List[Party]:
-        
+    async def get_parties_by_student_and_date(
+        self, student_id: int, target_date: datetime
+    ) -> List[Party]:
         start_of_day = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
         end_of_day = target_date.replace(
             hour=23, minute=59, second=59, microsecond=999999
@@ -171,8 +179,9 @@ class PartyService:
         parties = result.scalars().all()
         return [party.to_model() for party in parties]
 
-    async def get_parties_by_radius(self, latitude: float, longitude: float) -> List[Party]:
-
+    async def get_parties_by_radius(
+        self, latitude: float, longitude: float
+    ) -> List[Party]:
         current_time = datetime.now()
         start_time = current_time - timedelta(hours=6)
         end_time = current_time + timedelta(hours=12)
@@ -204,8 +213,9 @@ class PartyService:
 
         return [party.to_model() for party in parties_within_radius]
 
-    def _calculate_haversine_distance(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-
+    def _calculate_haversine_distance(
+        self, lat1: float, lon1: float, lat2: float, lon2: float
+    ) -> float:
         lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
 
         dlat = lat2 - lat1
