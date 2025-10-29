@@ -2,6 +2,7 @@ import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
+from src.core.authentication import authenticate_admin
 from src.core.database import get_session
 from src.main import app
 from src.modules.account.account_entity import AccountEntity, AccountRole
@@ -14,7 +15,11 @@ async def override_dependencies(test_async_session: AsyncSession):
     async def _get_test_session():
         yield test_async_session
 
+    async def _fake_admin():
+        return {"sub": "test-admin", "role": "admin"}
+
     app.dependency_overrides[get_session] = _get_test_session
+    app.dependency_overrides[authenticate_admin] = _fake_admin
     yield
     app.dependency_overrides.clear()
 
