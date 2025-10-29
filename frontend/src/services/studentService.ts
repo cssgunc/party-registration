@@ -9,7 +9,7 @@ class StudentService {
     return response.data;
   }
 
-  async getStudentById(id: string): Promise<Student> {
+  async getStudentById(id: number): Promise<Student> {
     const response = await this.apiClient.get<Student>(`/students/${id}`);
     return response.data;
   }
@@ -24,7 +24,7 @@ class StudentService {
     return response.data;
   }
 
-  async deleteStudent(id: string): Promise<Student> {
+  async deleteStudent(id: number): Promise<Student> {
     const response = await this.apiClient.delete<Student>(`/students/${id}`);
     return response.data;
   }
