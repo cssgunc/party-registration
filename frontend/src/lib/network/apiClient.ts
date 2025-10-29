@@ -4,7 +4,11 @@ import { getServerSession } from "next-auth";
 
 const apiClient = axios.create({
   withCredentials: true,
+<<<<<<< HEAD
   baseURL: process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000",
+=======
+  baseURL: `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"}/api`,
+>>>>>>> d5b14ad (pre sprint changes (#52))
   headers: {
     "Content-Type": "application/json",
   },
