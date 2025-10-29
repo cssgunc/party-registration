@@ -1,16 +1,19 @@
-from fastapi import Depends
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import datetime
+import math
+from datetime import datetime, timedelta
 from typing import List
 
+from fastapi import Depends
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
+from src.core.config import env
 from src.core.database import get_session
 from src.core.exceptions import ConflictException, NotFoundException
 
-from .party_entity import PartyEntity
-from .party_model import Party, PartyData
 from ..address.address_entity import AddressEntity
 from ..student.student_entity import StudentEntity
+from .party_entity import PartyEntity
+from .party_model import Party, PartyData
 
 
 class PartyNotFoundException(NotFoundException):
@@ -81,18 +84,20 @@ class PartyService:
     async def get_parties_by_contact(self, student_id: int) -> List[Party]:
         result = await self.session.execute(
             select(PartyEntity).where(
-                (PartyEntity.contact_one_id == student_id) | 
-                (PartyEntity.contact_two_id == student_id)
+                (PartyEntity.contact_one_id == student_id)
+                | (PartyEntity.contact_two_id == student_id)
             )
         )
         parties = result.scalars().all()
         return [party.to_model() for party in parties]
 
-    async def get_parties_by_date_range(self, start_date: datetime, end_date: datetime) -> List[Party]:
+    async def get_parties_by_date_range(
+        self, start_date: datetime, end_date: datetime
+    ) -> List[Party]:
         result = await self.session.execute(
             select(PartyEntity).where(
                 PartyEntity.party_datetime >= start_date,
-                PartyEntity.party_datetime <= end_date
+                PartyEntity.party_datetime <= end_date,
             )
         )
         parties = result.scalars().all()
@@ -105,8 +110,11 @@ class PartyService:
         await self._validate_student_exists(data.contact_two_id)
 
         new_party = PartyEntity.from_model(data)
-        self.session.add(new_party)
-        await self.session.commit()
+        try:
+            self.session.add(new_party)
+            await self.session.commit()
+        except IntegrityError as e:
+            raise PartyConflictException(f"Failed to create party: {str(e)}")
         await self.session.refresh(new_party)
         return new_party.to_model()
 
@@ -124,8 +132,11 @@ class PartyService:
             if hasattr(party_entity, key):
                 setattr(party_entity, key, value)
 
-        self.session.add(party_entity)
-        await self.session.commit()
+        try:
+            self.session.add(party_entity)
+            await self.session.commit()
+        except IntegrityError as e:
+            raise PartyConflictException(f"Failed to update party: {str(e)}")
         await self.session.refresh(party_entity)
         return party_entity.to_model()
 
@@ -147,16 +158,73 @@ class PartyService:
         parties = result.scalars().all()
         return len(parties)
 
-    async def get_parties_by_student_and_date(self, student_id: int, target_date: datetime) -> List[Party]:
+    async def get_parties_by_student_and_date(
+        self, student_id: int, target_date: datetime
+    ) -> List[Party]:
         start_of_day = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
-        end_of_day = target_date.replace(hour=23, minute=59, second=59, microsecond=999999)
-        
+        end_of_day = target_date.replace(
+            hour=23, minute=59, second=59, microsecond=999999
+        )
+
         result = await self.session.execute(
             select(PartyEntity).where(
-                ((PartyEntity.contact_one_id == student_id) | (PartyEntity.contact_two_id == student_id)),
+                (
+                    (PartyEntity.contact_one_id == student_id)
+                    | (PartyEntity.contact_two_id == student_id)
+                ),
                 PartyEntity.party_datetime >= start_of_day,
-                PartyEntity.party_datetime <= end_of_day
+                PartyEntity.party_datetime <= end_of_day,
             )
         )
         parties = result.scalars().all()
         return [party.to_model() for party in parties]
+
+    async def get_parties_by_radius(
+        self, latitude: float, longitude: float
+    ) -> List[Party]:
+        current_time = datetime.now()
+        start_time = current_time - timedelta(hours=6)
+        end_time = current_time + timedelta(hours=12)
+
+        result = await self.session.execute(
+            select(PartyEntity).where(
+                PartyEntity.party_datetime >= start_time,
+                PartyEntity.party_datetime <= end_time,
+            )
+        )
+        parties = result.scalars().all()
+
+        parties_within_radius = []
+        for party in parties:
+            address_result = await self.session.execute(
+                select(AddressEntity).where(AddressEntity.id == party.address_id)
+            )
+            address = address_result.scalar_one_or_none()
+
+            if address is None:
+                continue
+
+            distance = self._calculate_haversine_distance(
+                latitude, longitude, float(address.latitude), float(address.longitude)
+            )
+
+            if distance <= env.PARTY_SEARCH_RADIUS_MILES:
+                parties_within_radius.append(party)
+
+        return [party.to_model() for party in parties_within_radius]
+
+    def _calculate_haversine_distance(
+        self, lat1: float, lon1: float, lat2: float, lon2: float
+    ) -> float:
+        lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
+
+        dlat = lat2 - lat1
+        dlon = lon2 - lon1
+        a = (
+            math.sin(dlat / 2) ** 2
+            + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+        )
+        c = 2 * math.asin(math.sqrt(a))
+
+        r = 3959
+        return c * r
