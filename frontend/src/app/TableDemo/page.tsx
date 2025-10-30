@@ -1,6 +1,6 @@
 "use client";
-import { TableTemplate } from "@/components/Table";
 import { ColumnDef } from "@tanstack/react-table";
+import { TableTemplate } from "../../components/TableTemplate";
 
 
 export default function Home() {
