@@ -1,26 +1,39 @@
-import os
-from typing import Any, List
+import asyncio
 
 import googlemaps
+from fastapi import Depends
 from googlemaps import places
+from src.core.config import env
+from src.core.exceptions import InternalServerException
 
 from .location_model import AutocompleteResult, LocationData
 
 
-class LocationService:
-    def __init__(self, gmaps_client: Any | None = None):
-        if gmaps_client is None:
-            api_key = os.getenv("GOOGLE_MAPS_API_KEY")
-            if not api_key:
-                raise ValueError("GOOGLE_MAPS_API_KEY environment variable is required")
-            self.gmaps_client = googlemaps.Client(key=api_key)
-        else:
-            self.gmaps_client = gmaps_client
+class LocationServiceException(InternalServerException):
+    def __init__(self, detail: str):
+        super().__init__(f"Location service error: {detail}")
 
-    def autocomplete_address(self, input_text: str) -> List[AutocompleteResult]:
+
+def get_gmaps_client() -> googlemaps.Client:
+    # Dependency injection function for Google Maps client.
+    return googlemaps.Client(key=env.GOOGLE_MAPS_API_KEY)
+
+
+class LocationService:
+    def __init__(self, gmaps_client: googlemaps.Client = Depends(get_gmaps_client)):
+        self.gmaps_client = gmaps_client
+
+    async def autocomplete_address(self, input_text: str) -> list[AutocompleteResult]:
+        # Autocomplete an address using Google Maps Places API. Biased towards Chapel Hill, NC area
         try:
-            autocomplete_result = places.places_autocomplete(
-                self.gmaps_client, input_text=input_text, types="address", language="en"
+            autocomplete_result = await asyncio.to_thread(
+                places.places_autocomplete,
+                self.gmaps_client,
+                input_text=input_text,
+                types="address",
+                language="en",
+                location=(35.9132, -79.0558),  # Chapel Hill, NC coordinates
+                radius=50000,  # 50km radius around Chapel Hill
             )
 
             suggestions = []
@@ -34,19 +47,21 @@ class LocationService:
             return suggestions
 
         except Exception as e:
-            print(f"Error fetching autocomplete suggestions: {e}")
-            return []
+            raise LocationServiceException(f"Failed to autocomplete address: {str(e)}")
 
-    def get_place_details(self, place_id: str) -> LocationData | None:
+    async def get_place_details(self, place_id: str) -> LocationData:
+        # Get detailed location data for a Google Maps place ID
+        # Raises LocationServiceException if the place cannot be found/API fails
         try:
-            place_result = places.place(
+            place_result = await asyncio.to_thread(
+                places.place,
                 self.gmaps_client,
                 place_id=place_id,
-                fields=["formatted_address", "geometry", "address_components"],
+                fields=["formatted_address", "geometry", "address_component"],
             )
 
             if "result" not in place_result:
-                return None
+                raise LocationServiceException(f"Place with ID {place_id} not found")
 
             place = place_result["result"]
 
@@ -58,7 +73,7 @@ class LocationService:
             country = None
             zip_code = None
 
-            for component in place.get("address_components", []):
+            for component in place.get("address_component", []):
                 types = component["types"]
                 if "street_number" in types:
                     street_number = component["long_name"]
@@ -78,6 +93,11 @@ class LocationService:
             geometry = place.get("geometry", {})
             location = geometry.get("location", {})
 
+            if not location:
+                raise LocationServiceException(
+                    f"No geometry data found for place ID {place_id}"
+                )
+
             return LocationData(
                 google_place_id=place_id,
                 formatted_address=place.get("formatted_address", ""),
@@ -92,6 +112,7 @@ class LocationService:
                 zip_code=zip_code,
             )
 
+        except LocationServiceException:
+            raise
         except Exception as e:
-            print(f"Error fetching place details: {e}")
-            return None
+            raise LocationServiceException(f"Failed to get place details: {str(e)}")

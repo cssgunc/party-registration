@@ -2,7 +2,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from src.modules.location.location_model import AutocompleteResult, LocationData
-from src.modules.location.location_service import LocationService
+from src.modules.location.location_service import (
+    LocationService,
+    LocationServiceException,
+)
 
 
 @pytest.fixture
@@ -18,10 +21,10 @@ def location_service(mock_gmaps_client: MagicMock) -> LocationService:
 
 
 @patch("src.modules.location.location_service.places.places_autocomplete")
-def test_autocomplete_address_success(
+@pytest.mark.asyncio
+async def test_autocomplete_address_success(
     mock_places_autocomplete: MagicMock,
     location_service: LocationService,
-    mock_gmaps_client: MagicMock,
 ) -> None:
     # Mock the response from Google Maps API
     mock_predictions = [
@@ -31,7 +34,7 @@ def test_autocomplete_address_success(
 
     mock_places_autocomplete.return_value = mock_predictions
 
-    results = location_service.autocomplete_address("123 Main St")
+    results = await location_service.autocomplete_address("123 Main St")
 
     assert len(results) == 2
     assert isinstance(results[0], AutocompleteResult)
@@ -45,46 +48,49 @@ def test_autocomplete_address_success(
         input_text="123 Main St",
         types="address",
         language="en",
+        location=(35.9132, -79.0558),
+        radius=50000,
     )
 
 
 @patch("src.modules.location.location_service.places.places_autocomplete")
-def test_autocomplete_address_empty_results(
+@pytest.mark.asyncio
+async def test_autocomplete_address_empty_results(
     mock_places_autocomplete: MagicMock,
     location_service: LocationService,
-    mock_gmaps_client: MagicMock,
 ) -> None:
     mock_places_autocomplete.return_value = []
 
-    results = location_service.autocomplete_address("nonexistent address")
+    results = await location_service.autocomplete_address("nonexistent address")
 
     assert results == []
 
 
 @patch("src.modules.location.location_service.places.places_autocomplete")
-def test_autocomplete_address_api_error(
+@pytest.mark.asyncio
+async def test_autocomplete_address_api_error(
     mock_places_autocomplete: MagicMock,
     location_service: LocationService,
-    mock_gmaps_client: MagicMock,
 ) -> None:
     mock_places_autocomplete.side_effect = Exception("API Error")
 
-    results = location_service.autocomplete_address("123 Main St")
-
-    assert results == []
+    with pytest.raises(
+        LocationServiceException, match="Failed to autocomplete address"
+    ):
+        await location_service.autocomplete_address("123 Main St")
 
 
 @patch("src.modules.location.location_service.places.place")
-def test_get_place_details_success(
+@pytest.mark.asyncio
+async def test_get_place_details_success(
     mock_place: MagicMock,
     location_service: LocationService,
-    mock_gmaps_client: MagicMock,
 ) -> None:
     mock_place_result = {
         "result": {
             "formatted_address": "123 Main St, Chapel Hill, NC 27514, USA",
             "geometry": {"location": {"lat": 35.9132, "lng": -79.0558}},
-            "address_components": [
+            "address_component": [
                 {"long_name": "123", "short_name": "123", "types": ["street_number"]},
                 {
                     "long_name": "Main Street",
@@ -118,7 +124,7 @@ def test_get_place_details_success(
 
     mock_place.return_value = mock_place_result
 
-    result = location_service.get_place_details("ChIJ123abc")
+    result = await location_service.get_place_details("ChIJ123abc")
 
     assert isinstance(result, LocationData)
     assert result.google_place_id == "ChIJ123abc"
@@ -136,53 +142,53 @@ def test_get_place_details_success(
     mock_place.assert_called_once_with(
         location_service.gmaps_client,
         place_id="ChIJ123abc",
-        fields=["formatted_address", "geometry", "address_components"],
+        fields=["formatted_address", "geometry", "address_component"],
     )
 
 
 @patch("src.modules.location.location_service.places.place")
-def test_get_place_details_not_found(
+@pytest.mark.asyncio
+async def test_get_place_details_not_found(
     mock_place: MagicMock,
     location_service: LocationService,
-    mock_gmaps_client: MagicMock,
 ) -> None:
     mock_place.return_value = {}
 
-    result = location_service.get_place_details("invalid_place_id")
-
-    assert result is None
+    with pytest.raises(
+        LocationServiceException, match="Place with ID invalid_place_id not found"
+    ):
+        await location_service.get_place_details("invalid_place_id")
 
 
 @patch("src.modules.location.location_service.places.place")
-def test_get_place_details_api_error(
+@pytest.mark.asyncio
+async def test_get_place_details_api_error(
     mock_place: MagicMock,
     location_service: LocationService,
-    mock_gmaps_client: MagicMock,
 ) -> None:
     mock_place.side_effect = Exception("API Error")
 
-    result = location_service.get_place_details("ChIJ123abc")
-
-    assert result is None
+    with pytest.raises(LocationServiceException, match="Failed to get place details"):
+        await location_service.get_place_details("ChIJ123abc")
 
 
 @patch("src.modules.location.location_service.places.place")
-def test_get_place_details_missing_components(
+@pytest.mark.asyncio
+async def test_get_place_details_missing_components(
     mock_place: MagicMock,
     location_service: LocationService,
-    mock_gmaps_client: MagicMock,
 ) -> None:
     mock_place_result = {
         "result": {
             "formatted_address": "Somewhere",
             "geometry": {"location": {"lat": 0.0, "lng": 0.0}},
-            "address_components": [],
+            "address_component": [],
         }
     }
 
     mock_place.return_value = mock_place_result
 
-    result = location_service.get_place_details("ChIJ123abc")
+    result = await location_service.get_place_details("ChIJ123abc")
 
     assert isinstance(result, LocationData)
     assert result.google_place_id == "ChIJ123abc"
@@ -198,14 +204,21 @@ def test_get_place_details_missing_components(
     assert result.zip_code is None
 
 
-def test_location_service_missing_api_key():
-    with patch.dict("os.environ", {}, clear=True):
-        with pytest.raises(
-            ValueError, match="GOOGLE_MAPS_API_KEY environment variable is required"
-        ):
-            LocationService()
-        with pytest.raises(
-            ValueError, match="GOOGLE_MAPS_API_KEY environment variable is required"
-        ):
-            LocationService()
-            LocationService()
+@patch("src.modules.location.location_service.places.place")
+@pytest.mark.asyncio
+async def test_get_place_details_missing_geometry(
+    mock_place: MagicMock,
+    location_service: LocationService,
+) -> None:
+    mock_place_result = {
+        "result": {
+            "formatted_address": "Somewhere",
+            "geometry": {},
+            "address_component": [],
+        }
+    }
+
+    mock_place.return_value = mock_place_result
+
+    with pytest.raises(LocationServiceException, match="No geometry data found"):
+        await location_service.get_place_details("ChIJ123abc")
