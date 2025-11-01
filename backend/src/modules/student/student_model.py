@@ -40,7 +40,7 @@ class StudentDTO(BaseModel):
     """
 
     id: int
-    pid: str = ""
+    pid: str
     email: EmailStr
     first_name: str
     last_name: str
