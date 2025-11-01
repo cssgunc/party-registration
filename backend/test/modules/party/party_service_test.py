@@ -45,20 +45,18 @@ async def sample_party_data(test_async_session: AsyncSession) -> PartyData:
 
     # Create students
     student_one = StudentEntity(
-        id=1,
+        account_id=1,
         first_name="John",
         last_name="Doe",
         call_or_text_pref=ContactPreference.call,
         phone_number="1234567890",
-        account_id=1,
     )
     student_two = StudentEntity(
-        id=2,
+        account_id=2,
         first_name="Jane",
         last_name="Smith",
         call_or_text_pref=ContactPreference.text,
         phone_number="0987654321",
-        account_id=2,
     )
     test_async_session.add_all([student_one, student_two])
     await test_async_session.commit()
@@ -196,14 +194,13 @@ async def test_get_parties(
         accounts.append(account)
 
         student = StudentEntity(
-            id=i,
+            account_id=i,
             first_name=f"Student{i}",
             last_name=f"Last{i}",
             call_or_text_pref=ContactPreference.call
             if i % 2 == 1
             else ContactPreference.text,
             phone_number=str(i) * 10,
-            account_id=i,
         )
         students.append(student)
 
@@ -304,14 +301,13 @@ async def test_get_parties_by_date_range_multiple_parties(
         accounts.append(account)
 
         student = StudentEntity(
-            id=i,
+            account_id=i,
             first_name=f"Student{i}",
             last_name=f"Last{i}",
             call_or_text_pref=ContactPreference.call
             if i % 2 == 1
             else ContactPreference.text,
             phone_number=str(i) * 10,
-            account_id=i,
         )
         students.append(student)
 
@@ -524,14 +520,13 @@ async def test_get_party_count(
         accounts.append(account)
 
         student = StudentEntity(
-            id=i,
+            account_id=i,
             first_name=f"Student{i}",
             last_name=f"Last{i}",
             call_or_text_pref=ContactPreference.call
             if i % 2 == 1
             else ContactPreference.text,
             phone_number=str(i) * 10,
-            account_id=i,
         )
         students.append(student)
 

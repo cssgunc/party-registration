@@ -1,26 +1,33 @@
 from datetime import datetime
-from typing import Self
+from typing import TYPE_CHECKING, Self
 
 from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.core.database import EntityBase
 
-from .student_model import ContactPreference, Student, StudentData
+from .student_model import ContactPreference, Student, StudentData, StudentDTO
+
+if TYPE_CHECKING:
+    from src.modules.account.account_entity import AccountEntity
 
 
 class StudentEntity(EntityBase):
     __tablename__ = "students"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    account_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("accounts.id"), primary_key=True, index=True
+    )
     first_name: Mapped[str] = mapped_column(String, nullable=False)
     last_name: Mapped[str] = mapped_column(String, nullable=False)
     call_or_text_pref: Mapped[ContactPreference] = mapped_column(
         Enum(ContactPreference), nullable=False
     )
-    last_registered: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    phone_number: Mapped[str] = mapped_column(String, nullable=False)
+    last_registered: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    phone_number: Mapped[str] = mapped_column(String, nullable=False, unique=True)
 
-    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id"), nullable=False)
+    account: Mapped["AccountEntity"] = relationship("AccountEntity")
 
     @classmethod
     def from_model(cls, data: "StudentData", account_id: int) -> Self:
@@ -35,11 +42,22 @@ class StudentEntity(EntityBase):
 
     def to_model(self) -> "Student":
         return Student(
-            id=self.id,
             account_id=self.account_id,
             first_name=self.first_name,
             last_name=self.last_name,
             call_or_text_pref=self.call_or_text_pref,
             last_registered=self.last_registered,
             phone_number=self.phone_number,
+        )
+
+    def to_dto(self) -> "StudentDTO":
+        """Convert entity to DTO using the account relationship."""
+        return StudentDTO(
+            id=self.account_id,
+            pid=str(self.account_id),
+            email=self.account.email,
+            first_name=self.first_name,
+            last_name=self.last_name,
+            phone_number=self.phone_number,
+            last_registered=self.last_registered,
         )

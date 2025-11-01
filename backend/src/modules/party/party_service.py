@@ -1,16 +1,16 @@
-from fastapi import Depends
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 from typing import List
 
+from fastapi import Depends
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.database import get_session
 from src.core.exceptions import ConflictException, NotFoundException
 
-from .party_entity import PartyEntity
-from .party_model import Party, PartyData
 from ..address.address_entity import AddressEntity
 from ..student.student_entity import StudentEntity
+from .party_entity import PartyEntity
+from .party_model import Party, PartyData
 
 
 class PartyNotFoundException(NotFoundException):
@@ -55,7 +55,7 @@ class PartyService:
 
     async def _validate_student_exists(self, student_id: int) -> None:
         result = await self.session.execute(
-            select(StudentEntity).where(StudentEntity.id == student_id)
+            select(StudentEntity).where(StudentEntity.account_id == student_id)
         )
         if result.scalar_one_or_none() is None:
             raise StudentNotFoundException(student_id)
@@ -81,18 +81,20 @@ class PartyService:
     async def get_parties_by_contact(self, student_id: int) -> List[Party]:
         result = await self.session.execute(
             select(PartyEntity).where(
-                (PartyEntity.contact_one_id == student_id) | 
-                (PartyEntity.contact_two_id == student_id)
+                (PartyEntity.contact_one_id == student_id)
+                | (PartyEntity.contact_two_id == student_id)
             )
         )
         parties = result.scalars().all()
         return [party.to_model() for party in parties]
 
-    async def get_parties_by_date_range(self, start_date: datetime, end_date: datetime) -> List[Party]:
+    async def get_parties_by_date_range(
+        self, start_date: datetime, end_date: datetime
+    ) -> List[Party]:
         result = await self.session.execute(
             select(PartyEntity).where(
                 PartyEntity.party_datetime >= start_date,
-                PartyEntity.party_datetime <= end_date
+                PartyEntity.party_datetime <= end_date,
             )
         )
         parties = result.scalars().all()
@@ -147,15 +149,22 @@ class PartyService:
         parties = result.scalars().all()
         return len(parties)
 
-    async def get_parties_by_student_and_date(self, student_id: int, target_date: datetime) -> List[Party]:
+    async def get_parties_by_student_and_date(
+        self, student_id: int, target_date: datetime
+    ) -> List[Party]:
         start_of_day = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
-        end_of_day = target_date.replace(hour=23, minute=59, second=59, microsecond=999999)
-        
+        end_of_day = target_date.replace(
+            hour=23, minute=59, second=59, microsecond=999999
+        )
+
         result = await self.session.execute(
             select(PartyEntity).where(
-                ((PartyEntity.contact_one_id == student_id) | (PartyEntity.contact_two_id == student_id)),
+                (
+                    (PartyEntity.contact_one_id == student_id)
+                    | (PartyEntity.contact_two_id == student_id)
+                ),
                 PartyEntity.party_datetime >= start_of_day,
-                PartyEntity.party_datetime <= end_of_day
+                PartyEntity.party_datetime <= end_of_day,
             )
         )
         parties = result.scalars().all()
