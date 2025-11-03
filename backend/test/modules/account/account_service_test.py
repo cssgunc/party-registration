@@ -1,7 +1,7 @@
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.exceptions import CredentialsException
-from src.modules.account.account_model import AccountData, AccountRoleEnum
+from src.modules.account.account_model import AccountData, AccountRole
 from src.modules.account.account_service import (
     AccountByEmailNotFoundException,
     AccountConflictException,
@@ -18,13 +18,13 @@ def account_service(test_async_session: AsyncSession) -> AccountService:
 @pytest.mark.asyncio
 async def test_create_account(account_service: AccountService) -> None:
     data = AccountData(
-        email="test@example.com", password="password", role=AccountRoleEnum.STUDENT
+        email="test@example.com", password="password", role=AccountRole.STUDENT
     )
     account = await account_service.create_account(data)
     assert account is not None
     assert account.id is not None
     assert account.email == "test@example.com"
-    assert account.role == AccountRoleEnum.STUDENT
+    assert account.role == AccountRole.STUDENT
     assert account.password != "password"
     assert len(account.password) > 20  # Check that it's a hash
 
@@ -32,7 +32,7 @@ async def test_create_account(account_service: AccountService) -> None:
 @pytest.mark.asyncio
 async def test_create_account_conflict(account_service: AccountService) -> None:
     data = AccountData(
-        email="test@example.com", password="password", role=AccountRoleEnum.STUDENT
+        email="test@example.com", password="password", role=AccountRole.STUDENT
     )
     await account_service.create_account(data)
     with pytest.raises(AccountConflictException):
@@ -44,7 +44,7 @@ async def test_get_accounts(account_service: AccountService):
     emails = ["a@example.com", "b@example.com", "c@example.com"]
     for email in emails:
         await account_service.create_account(
-            AccountData(email=email, password="password", role=AccountRoleEnum.STUDENT)
+            AccountData(email=email, password="password", role=AccountRole.STUDENT)
         )
     accounts = await account_service.get_accounts()
     assert sorted([a.email for a in accounts]) == sorted(emails)
@@ -59,7 +59,7 @@ async def test_get_accounts_empty(account_service: AccountService):
 @pytest.mark.asyncio
 async def test_get_account_by_id(account_service: AccountService):
     data = AccountData(
-        email="test@example.com", password="password", role=AccountRoleEnum.STUDENT
+        email="test@example.com", password="password", role=AccountRole.STUDENT
     )
     account = await account_service.create_account(data)
     fetched = await account_service.get_account_by_id(account.id)
@@ -76,7 +76,7 @@ async def test_get_account_by_id_not_found(account_service: AccountService):
 @pytest.mark.asyncio
 async def test_get_account_by_email(account_service: AccountService):
     data = AccountData(
-        email="test@example.com", password="password", role=AccountRoleEnum.STUDENT
+        email="test@example.com", password="password", role=AccountRole.STUDENT
     )
     account = await account_service.create_account(data)
     fetched = await account_service.get_account_by_email(account.email)
@@ -93,20 +93,20 @@ async def test_get_account_by_email_not_found(account_service: AccountService):
 @pytest.mark.asyncio
 async def test_update_account_full(account_service: AccountService):
     data = AccountData(
-        email="test@example.com", password="password", role=AccountRoleEnum.STUDENT
+        email="test@example.com", password="password", role=AccountRole.STUDENT
     )
     account = await account_service.create_account(data)
 
     original_hash = account.password
 
     update_data = AccountData(
-        email="updated@example.com", password="newpassword", role=AccountRoleEnum.ADMIN
+        email="updated@example.com", password="newpassword", role=AccountRole.ADMIN
     )
     updated = await account_service.update_account(account.id, update_data)
 
     assert account.id == updated.id
     assert updated.email == "updated@example.com"
-    assert updated.role == AccountRoleEnum.ADMIN
+    assert updated.role == AccountRole.ADMIN
     assert updated.password != "newpassword"
     assert updated.password != original_hash
 
@@ -114,7 +114,7 @@ async def test_update_account_full(account_service: AccountService):
 @pytest.mark.asyncio
 async def test_update_account_partial(account_service: AccountService):
     data = AccountData(
-        email="test@example.com", password="password", role=AccountRoleEnum.STUDENT
+        email="test@example.com", password="password", role=AccountRole.STUDENT
     )
     account = await account_service.create_account(data)
     original_hash = account.password
@@ -124,12 +124,12 @@ async def test_update_account_partial(account_service: AccountService):
     update_data = AccountData(
         email=account.email,
         password="password",  # Provide original password
-        role=AccountRoleEnum.ADMIN,
+        role=AccountRole.ADMIN,
     )
     updated = await account_service.update_account(account.id, update_data)
 
     assert updated.id == account.id
-    assert updated.role == AccountRoleEnum.ADMIN
+    assert updated.role == AccountRole.ADMIN
     assert updated.email == "test@example.com"
     assert (
         updated.password == original_hash
@@ -139,7 +139,7 @@ async def test_update_account_partial(account_service: AccountService):
 @pytest.mark.asyncio
 async def test_update_account_not_found(account_service: AccountService):
     update_data = AccountData(
-        email="updated@example.com", password="newpassword", role=AccountRoleEnum.ADMIN
+        email="updated@example.com", password="newpassword", role=AccountRole.ADMIN
     )
     with pytest.raises(AccountNotFoundException):
         await account_service.update_account(999, update_data)
@@ -148,10 +148,10 @@ async def test_update_account_not_found(account_service: AccountService):
 @pytest.mark.asyncio
 async def test_update_account_conflict(account_service: AccountService):
     data1 = AccountData(
-        email="a@example.com", password="password", role=AccountRoleEnum.STUDENT
+        email="a@example.com", password="password", role=AccountRole.STUDENT
     )
     data2 = AccountData(
-        email="b@example.com", password="password", role=AccountRoleEnum.STUDENT
+        email="b@example.com", password="password", role=AccountRole.STUDENT
     )
     await account_service.create_account(data1)
     account2 = await account_service.create_account(data2)
@@ -160,7 +160,7 @@ async def test_update_account_conflict(account_service: AccountService):
         await account_service.update_account(
             account2.id,
             AccountData(
-                email="a@example.com", password="password", role=AccountRoleEnum.STUDENT
+                email="a@example.com", password="password", role=AccountRole.STUDENT
             ),
         )
 
@@ -168,7 +168,7 @@ async def test_update_account_conflict(account_service: AccountService):
 @pytest.mark.asyncio
 async def test_delete_account(account_service: AccountService):
     data = AccountData(
-        email="test@example.com", password="password", role=AccountRoleEnum.STUDENT
+        email="test@example.com", password="password", role=AccountRole.STUDENT
     )
     account = await account_service.create_account(data)
     deleted = await account_service.delete_account(account.id)
@@ -188,7 +188,7 @@ async def test_delete_account_not_found(account_service: AccountService):
 @pytest.mark.asyncio
 async def test_verify_account_credentials(account_service: AccountService):
     data = AccountData(
-        email="test@example.com", password="password", role=AccountRoleEnum.STUDENT
+        email="test@example.com", password="password", role=AccountRole.STUDENT
     )
     account = await account_service.create_account(data)
 
@@ -204,7 +204,7 @@ async def test_verify_account_credentials_case_insensitive(
     account_service: AccountService,
 ):
     data = AccountData(
-        email="test@example.com", password="password", role=AccountRoleEnum.STUDENT
+        email="test@example.com", password="password", role=AccountRole.STUDENT
     )
     await account_service.create_account(data)
 
@@ -217,7 +217,7 @@ async def test_verify_account_credentials_case_insensitive(
 @pytest.mark.asyncio
 async def test_verify_account_credentials_invalid(account_service: AccountService):
     data = AccountData(
-        email="test@example.com", password="password", role=AccountRoleEnum.STUDENT
+        email="test@example.com", password="password", role=AccountRole.STUDENT
     )
     await account_service.create_account(data)
 

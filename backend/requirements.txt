@@ -8,5 +8,4 @@ bcrypt
 pytest
 pytest-asyncio
 aiosqlite
-sqlalchemy
-pydantic
+googlemaps
