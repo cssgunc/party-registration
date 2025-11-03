@@ -1,12 +1,20 @@
 "use client";
 
 import apiClient from "@/lib/network/apiClient";
-import Cookies from "js-cookie";
-import { useEffect, useState } from "react";
+import { SessionProvider, useSession } from "next-auth/react";
+import { useState } from "react";
+
+export default function CSRPage() {
+  return (
+    <SessionProvider>
+      <CSRPageContent />
+    </SessionProvider>
+  );
+}
 
 // Use separate page component to wrap the CSR page content in a SessionProvider since this is a client-side rendered page
-export default function CSRPage() {
-  const [accessToken, setAccessToken] = useState<string | null>(null);
+function CSRPageContent() {
+  const { data: session } = useSession();
   const [apiResponse, setApiResponse] = useState<{
     success: boolean;
     accessToken: string | null;
@@ -14,13 +22,8 @@ export default function CSRPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Read access token from cookie
-  useEffect(() => {
-    setAccessToken(Cookies.get("access-token") ?? null);
-  }, []);
-
   // Fetch access token from the test API route to verify that the custom API client is automatically pulling the access
-  // token from the cookie.
+  // token from the session.
   const fetchTokenFromAPI = async () => {
     setLoading(true);
     setError(null);
@@ -42,8 +45,8 @@ export default function CSRPage() {
       </h1>
 
       <p className="mb-4 text-lg text-center">
-        This client-side rendered page reads the access token cookie and
-        attempts to display the access token from the cookie and API.
+        This client-side rendered page reads the access token from the NextAuth
+        session and attempts to display it from the session and API.
       </p>
 
       <div className="w-full space-y-4 mb-6">
@@ -77,15 +80,24 @@ export default function CSRPage() {
 
       <div className="w-full space-y-4">
         <div className="bg-white shadow rounded p-4">
-          <h2 className="font-semibold mb-2">Access Token (Cookie)</h2>
+          <h2 className="font-semibold mb-2">Access Token (Session)</h2>
           <div className="space-y-2">
             <div>
               <strong>Access Token:</strong>
               <pre className="break-words bg-gray-50 p-2 rounded mt-1">
-                {accessToken ?? "Not Available"}
+                {session?.accessToken ?? "Not Available"}
               </pre>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div className="w-full space-y-4">
+        <div className="bg-white shadow rounded p-4">
+          <h2 className="font-semibold mb-2">Full Session Data</h2>
+          <pre className="text-sm bg-gray-50 p-2 rounded overflow-x-auto">
+            {JSON.stringify(session, null, 2)}
+          </pre>
         </div>
       </div>
     </div>

@@ -1,10 +1,9 @@
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import apiClient from "@/lib/network/apiClient";
-import { cookies } from "next/headers";
+import { getServerSession } from "next-auth";
 
 export default async function SSRPage() {
-  // Read access token from cookie
-  const cookieStore = await cookies();
-  const cookieAccessToken = cookieStore.get("access-token")?.value ?? null;
+  const session = await getServerSession(authOptions);
 
   // Fetch access token from the test API route to verify that the custom API client is automatically pulling the access
   // token from the cookie.
@@ -25,8 +24,9 @@ export default async function SSRPage() {
       </h1>
 
       <p className="mb-4 text-lg text-center">
-        This server-rendered page reads the access token cookie and attempts to
-        display the access token from the cookie and API.
+        This server-rendered page reads the access token from the NextAuth
+        session and attempts to display the access token from the session and
+        API.
       </p>
 
       <div className="w-full space-y-4 mb-6">
@@ -57,15 +57,24 @@ export default async function SSRPage() {
 
       <div className="w-full space-y-4">
         <div className="bg-white shadow rounded p-4">
-          <h2 className="font-semibold mb-2">Access Token (Cookie)</h2>
+          <h2 className="font-semibold mb-2">Access Token (Session)</h2>
           <div className="space-y-2">
             <div>
               <strong>Access Token:</strong>
               <pre className="break-words bg-gray-50 p-2 rounded mt-1">
-                {cookieAccessToken ?? "Not Available"}
+                {session?.accessToken ?? "Not Available"}
               </pre>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div className="w-full space-y-4">
+        <div className="bg-white shadow rounded p-4">
+          <h2 className="font-semibold mb-2">Full Session Data</h2>
+          <pre className="text-sm bg-gray-50 p-2 rounded overflow-x-auto">
+            {JSON.stringify(session, null, 2)}
+          </pre>
         </div>
       </div>
     </div>

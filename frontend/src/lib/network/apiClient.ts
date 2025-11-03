@@ -1,5 +1,6 @@
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import axios, { AxiosRequestConfig, AxiosRequestHeaders } from "axios";
-import Cookies from "js-cookie";
+import { getServerSession } from "next-auth";
 
 const apiClient = axios.create({
   withCredentials: true,
@@ -26,76 +27,26 @@ const processQueue = (error: Error | null, token: string | null = null) => {
   failedQueue = [];
 };
 
-// Refresh access token using the refresh token (sent automatically via HTTP-only cookie)
-async function refreshAccessToken(): Promise<string | null> {
-  // The refresh token is automatically sent via HTTP-only cookie (withCredentials: true)
-  // Make a request to the backend refresh endpoint
-  const response = await axios.post(
-    "http://localhost:3000/api/auth/refresh", // TODO: Replace with the actual refresh endpoint
-    {},
-    {
-      withCredentials: true,
-    }
-  );
-
-  const newAccessToken = response.data?.accessToken;
-  if (!newAccessToken) return null;
-
-  // Update the access token cookie
+// This loads the access token from the session. If the access token is not available, it will trigger the NextAuth jwt
+// callback to refresh the token.
+async function resolveFreshAccessToken(): Promise<string | undefined> {
   if (typeof window === "undefined") {
-    // Server-side: set cookie using next/headers
-    const { cookies } = await import("next/headers");
-    const cookieStore = await cookies();
-    cookieStore.set("access-token", newAccessToken, {
-      httpOnly: false,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 60 * 60, // 1 hour
-    });
+    const session = await getServerSession(authOptions);
+    return session?.accessToken as string | undefined;
   } else {
-    // Client-side: set cookie using js-cookie
-    Cookies.set("access-token", newAccessToken, {
-      expires: 1 / 24, // 1 hour in days
-      path: "/",
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-    });
+    const { getSession } = await import("next-auth/react");
+    const session = await getSession();
+    return session?.accessToken as string | undefined;
   }
-
-  return newAccessToken;
 }
 
 // Use an async interceptor to attach the access token to the request and forward cookies for requests made
 // in the SSR context.
 apiClient.interceptors.request.use(async (config) => {
-  // Get access token from cookie
-  let accessToken: string | undefined;
-  if (typeof window === "undefined") {
-    // Server-side: read from next/headers cookies
-    const { cookies } = await import("next/headers");
-    const cookieStore = await cookies();
-    accessToken = cookieStore.get("access-token")?.value;
-  } else {
-    // Client-side: read from cookie using js-cookie
-    accessToken = Cookies.get("access-token") ?? undefined;
-  }
+  // Get access token via NextAuth session (triggers refresh in jwt callback if needed)
+  const accessToken = await resolveFreshAccessToken();
 
   if (accessToken) config.headers["Authorization"] = `Bearer ${accessToken}`;
-
-  // Forward cookies for server-side requests (SSR context)
-  // Client-side: browser automatically attaches cookies (including HTTP-only) via withCredentials: true
-  // SSR: When apiClient is used in SSR page components, axios doesn't have access to browser cookie jar.
-  if (typeof window === "undefined") {
-    const { headers } = await import("next/headers");
-    const headerList = await headers();
-    const cookieHeader = headerList.get("cookie");
-    if (cookieHeader) {
-      const headers = (config.headers ?? {}) as AxiosRequestHeaders;
-      headers["Cookie"] = cookieHeader;
-      config.headers = headers;
-    }
-  }
 
   return config;
 });
@@ -132,7 +83,8 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const newAccessToken = await refreshAccessToken();
+        // Re-read session to trigger NextAuth jwt callback refresh
+        const newAccessToken = await resolveFreshAccessToken();
 
         if (newAccessToken) {
           processQueue(null, newAccessToken);

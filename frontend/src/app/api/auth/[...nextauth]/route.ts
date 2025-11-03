@@ -1,6 +1,8 @@
+import axios from "axios";
+import type { Session, User } from "next-auth";
 import NextAuth, { NextAuthOptions } from "next-auth";
+import type { JWT } from "next-auth/jwt";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { cookies } from "next/headers";
 
 const authOptions: NextAuthOptions = {
   providers: [
@@ -11,7 +13,9 @@ const authOptions: NextAuthOptions = {
         username: { label: "Username", type: "text" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(
+        credentials: Record<string, string> | undefined
+      ): Promise<User | null> {
         const username = credentials?.username;
         const password = credentials?.password;
 
@@ -22,6 +26,7 @@ const authOptions: NextAuthOptions = {
             name: "Admin User",
             email: "admin@example.com",
             accessToken: "fake-access-token-for-dev",
+            refreshToken: "fake-refresh-token-for-dev",
           };
         }
         return null;
@@ -31,40 +36,64 @@ const authOptions: NextAuthOptions = {
   session: {
     strategy: "jwt",
   },
-  events: {
-    async signIn({ user }) {
-      // Set access token as a cookie (not HTTP-only so it can be read by client-side JS)
-      try {
-        const cookieStore = await cookies();
-        const { accessToken } = (user as { accessToken?: string }) || {};
+  callbacks: {
+    async jwt({
+      token,
+      user,
+    }: {
+      token: JWT;
+      user?: User | null;
+    }): Promise<JWT> {
+      // On sign-in, persist tokens to the JWT. JWT is stored as HTTP-only cookie by default in NextAuth.
+      if (user) {
+        const u = user as { accessToken?: string; refreshToken?: string };
+        if (u.accessToken) token.accessToken = u.accessToken;
+        if (u.refreshToken) token.refreshToken = u.refreshToken;
+        if (!token.accessTokenExpires)
+          token.accessTokenExpires = Date.now() + 60 * 60 * 1000;
+        return token;
+      }
 
-        if (accessToken) {
-          cookieStore.set("access-token", accessToken, {
-            httpOnly: false,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
-            path: "/",
-            maxAge: 60 * 60, // 1 hour
-          });
-        }
-      } catch (error) {
-        console.error("Error setting access token cookie:", error);
+      // If token still valid, return as-is
+      if (
+        token.accessToken &&
+        token.accessTokenExpires &&
+        Date.now() < token.accessTokenExpires
+      ) {
+        return token;
+      }
+
+      // Refresh using refreshToken stored on JWT. Since we always pull latest session data in the API client, the jwt()
+      // callback will be called again and refresh the token if needed before it is used by the API client.
+      try {
+        const base =
+          process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+        const resp = await axios.post(`${base}/api/auth/refresh`, {
+          refreshToken: token.refreshToken,
+        });
+        const data = resp.data || {};
+        if (data.accessToken) token.accessToken = data.accessToken as string;
+        if (data.refreshToken) token.refreshToken = data.refreshToken as string;
+        token.accessTokenExpires = Date.now() + 60 * 60 * 1000;
+        return token;
+      } catch {
+        // Invalidate tokens on failure
+        delete token.accessToken;
+        delete token.refreshToken;
+        delete token.accessTokenExpires;
+        return token;
       }
     },
-    async signOut() {
-      // Clear access token cookie on sign out
-      try {
-        const cookieStore = await cookies();
-        cookieStore.set("access-token", "", {
-          httpOnly: false,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "lax",
-          path: "/",
-          maxAge: 0,
-        });
-      } catch (error) {
-        console.error("Error clearing access token cookie:", error);
-      }
+    async session({
+      session,
+      token,
+    }: {
+      session: Session;
+      token: JWT;
+    }): Promise<Session> {
+      // Add access token to session
+      if (token.accessToken) session.accessToken = token.accessToken;
+      return session;
     },
   },
 };
