@@ -1,19 +1,14 @@
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import apiClient from "@/lib/network/apiClient";
 import { getServerSession } from "next-auth";
-import { cookies } from "next/headers";
 
 export default async function SSRPage() {
-  const session = await getServerSession();
+  const session = await getServerSession(authOptions);
 
-  // Read cookies server-side
-  const cookieStore = await cookies();
-  const cookieAccessToken = cookieStore.get("access-token")?.value ?? null;
-  const cookieRefreshToken = cookieStore.get("refresh-token")?.value ?? null;
-
-  // Fetch tokens from the backend API route using axios
+  // Fetch access token from the test API route to verify that the custom API client is automatically pulling the access
+  // token from the session.
   let apiResponse = null;
   let apiError = null;
-
   try {
     const response = await apiClient.get("/auth-test/api/tokens");
     apiResponse = response.data;
@@ -30,7 +25,7 @@ export default async function SSRPage() {
 
       <p className="mb-4 text-lg text-center">
         This server-rendered page reads the server session (if available) and
-        attempts to display access/refresh tokens from both the session and API.
+        attempts to display access token from the session and API.
       </p>
 
       <div className="w-full space-y-4 mb-6">
@@ -69,18 +64,12 @@ export default async function SSRPage() {
       ) : (
         <div className="w-full space-y-4">
           <div className="bg-white shadow rounded p-4">
-            <h2 className="font-semibold mb-2">Cookies (server-side)</h2>
+            <h2 className="font-semibold mb-2">Session Access Token (JWT)</h2>
             <div className="space-y-2">
               <div>
-                <strong>access-token (cookie):</strong>
+                <strong>Access Token:</strong>
                 <pre className="break-words bg-gray-50 p-2 rounded mt-1">
-                  {cookieAccessToken ?? "Not found"}
-                </pre>
-              </div>
-              <div>
-                <strong>refresh-token (cookie):</strong>
-                <pre className="break-words bg-gray-50 p-2 rounded mt-1">
-                  {cookieRefreshToken ?? "Not set"}
+                  {session?.accessToken ?? "Not Available"}
                 </pre>
               </div>
             </div>

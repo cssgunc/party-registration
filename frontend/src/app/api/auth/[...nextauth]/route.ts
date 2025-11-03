@@ -1,11 +1,5 @@
-import NextAuth, { NextAuthOptions, User } from "next-auth";
+import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { cookies } from "next/headers";
-
-type AuthTokens = {
-  accessToken?: string;
-  refreshToken?: string;
-};
 
 const authOptions: NextAuthOptions = {
   providers: [
@@ -20,14 +14,13 @@ const authOptions: NextAuthOptions = {
         const username = credentials?.username;
         const password = credentials?.password;
 
-        // Replace this with the actual authentication logic.
+        // Replace this with the actual authentication logic once we know how ONYEN SSO works
         if (username === "admin" && password === "password") {
           return {
             id: "1",
             name: "Admin User",
             email: "admin@example.com",
             accessToken: "fake-access-token-for-dev",
-            refreshToken: "fake-refresh-token-for-dev",
           };
         }
         return null;
@@ -37,62 +30,24 @@ const authOptions: NextAuthOptions = {
   session: {
     strategy: "jwt",
   },
-  events: {
-    async signIn({ user }) {
-      // Set refresh token as HTTP-only; access token is readable by client and server
-      try {
-        const cookieStore = await cookies();
-
-        const { accessToken, refreshToken } = (user as User & AuthTokens) || {};
-
-        if (accessToken) {
-          cookieStore.set("access-token", accessToken, {
-            httpOnly: false,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
-            path: "/",
-            maxAge: 60 * 60, // 1 hour
-          });
-        }
-
-        if (refreshToken) {
-          cookieStore.set("refresh-token", refreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
-            path: "/",
-            maxAge: 60 * 60 * 24 * 7, // 7 days
-          });
-        }
-      } catch (error) {
-        console.error("Error setting auth cookies:", error);
+  callbacks: {
+    async jwt({ token, user }) {
+      // Store access token in JWT when user signs in
+      if (user && user.accessToken) {
+        token.accessToken = user.accessToken;
       }
+      return token;
     },
-    async signOut() {
-      // Clear auth cookies on sign out
-      try {
-        const cookieStore = await cookies();
-        cookieStore.set("access-token", "", {
-          httpOnly: false,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "lax",
-          path: "/",
-          maxAge: 0,
-        });
-        cookieStore.set("refresh-token", "", {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "lax",
-          path: "/",
-          maxAge: 0,
-        });
-      } catch (error) {
-        console.error("Error clearing auth cookies on sign out:", error);
+    async session({ session, token }) {
+      // Attach access token to session object
+      if (token.accessToken) {
+        session.accessToken = token.accessToken;
       }
+      return session;
     },
   },
 };
 
 const handler = NextAuth(authOptions);
 
-export { handler as GET, handler as POST };
+export { handler as GET, handler as POST, authOptions };

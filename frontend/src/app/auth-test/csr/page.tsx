@@ -2,7 +2,7 @@
 
 import apiClient from "@/lib/network/apiClient";
 import { SessionProvider, useSession } from "next-auth/react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 // Use separate page component to wrap the CSR page content in a SessionProvider since this is a client-side rendered page
 export default function CSRPage() {
@@ -15,21 +15,16 @@ export default function CSRPage() {
 
 function CSRPageContent() {
   const { data: session } = useSession();
-  const [cookieAccessToken, setCookieAccessToken] = useState<string | null>(
-    null
-  );
-  const [cookieRefreshToken, setCookieRefreshToken] = useState<string | null>(
-    null
-  );
   const [apiResponse, setApiResponse] = useState<{
     success: boolean;
     accessToken: string | null;
-    refreshToken: string | null;
   } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchTokens = async () => {
+  // Fetch access token from the test API route to verify that the custom API client is automatically pulling the access
+  // token from the session.
+  const fetchTokenFromAPI = async () => {
     setLoading(true);
     setError(null);
 
@@ -43,24 +38,6 @@ function CSRPageContent() {
     }
   };
 
-  useEffect(() => {
-    const getCookie = (name: string): string | null => {
-      if (typeof document === "undefined") return null;
-      const nameEQ = name + "=";
-      const ca = document.cookie.split(";");
-      for (let i = 0; i < ca.length; i++) {
-        let c = ca[i];
-        while (c.charAt(0) === " ") c = c.substring(1, c.length);
-        if (c.indexOf(nameEQ) === 0)
-          return decodeURIComponent(c.substring(nameEQ.length, c.length));
-      }
-      return null;
-    };
-
-    setCookieAccessToken(getCookie("access-token"));
-    setCookieRefreshToken(getCookie("refresh-token"));
-  }, []);
-
   return (
     <div className="font-sans min-h-screen flex flex-col items-center justify-start p-8 sm:p-20 max-w-3xl mx-auto">
       <h1 className="text-3xl font-bold mb-6 text-center">
@@ -69,18 +46,18 @@ function CSRPageContent() {
 
       <p className="mb-4 text-lg text-center">
         This client-side rendered page reads the session using useSession hook
-        and attempts to display access/refresh tokens.
+        and attempts to display access token.
       </p>
 
       <div className="w-full space-y-4 mb-6">
         <div className="bg-blue-50 border border-blue-200 p-4 rounded">
           <h2 className="font-semibold mb-2">API Token Test</h2>
           <button
-            onClick={fetchTokens}
+            onClick={fetchTokenFromAPI}
             disabled={loading}
             className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
           >
-            {loading ? "Fetching..." : "Fetch Tokens from API"}
+            {loading ? "Fetching..." : "Fetch Token from API"}
           </button>
         </div>
 
@@ -111,20 +88,12 @@ function CSRPageContent() {
       ) : (
         <div className="w-full space-y-4">
           <div className="bg-white shadow rounded p-4">
-            <h2 className="font-semibold mb-2">
-              Extracted Tokens (from cookies)
-            </h2>
+            <h2 className="font-semibold mb-2">Session Access Token (JWT)</h2>
             <div className="space-y-2">
               <div>
                 <strong>Access Token:</strong>
                 <pre className="break-words bg-gray-50 p-2 rounded mt-1">
-                  {cookieAccessToken ?? "Not found"}
-                </pre>
-              </div>
-              <div>
-                <strong>Refresh Token:</strong>
-                <pre className="break-words bg-gray-50 p-2 rounded mt-1">
-                  {cookieRefreshToken ?? "Not accessible (httpOnly) or not set"}
+                  {session?.accessToken ?? "Not Available"}
                 </pre>
               </div>
             </div>
