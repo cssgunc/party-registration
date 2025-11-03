@@ -1,20 +1,12 @@
 "use client";
 
 import apiClient from "@/lib/network/apiClient";
-import { SessionProvider, useSession } from "next-auth/react";
-import { useState } from "react";
+import Cookies from "js-cookie";
+import { useEffect, useState } from "react";
 
 // Use separate page component to wrap the CSR page content in a SessionProvider since this is a client-side rendered page
 export default function CSRPage() {
-  return (
-    <SessionProvider>
-      <CSRPageContent />
-    </SessionProvider>
-  );
-}
-
-function CSRPageContent() {
-  const { data: session } = useSession();
+  const [accessToken, setAccessToken] = useState<string | null>(null);
   const [apiResponse, setApiResponse] = useState<{
     success: boolean;
     accessToken: string | null;
@@ -22,8 +14,13 @@ function CSRPageContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Read access token from cookie
+  useEffect(() => {
+    setAccessToken(Cookies.get("access-token") ?? null);
+  }, []);
+
   // Fetch access token from the test API route to verify that the custom API client is automatically pulling the access
-  // token from the session.
+  // token from the cookie.
   const fetchTokenFromAPI = async () => {
     setLoading(true);
     setError(null);
@@ -45,8 +42,8 @@ function CSRPageContent() {
       </h1>
 
       <p className="mb-4 text-lg text-center">
-        This client-side rendered page reads the session using useSession hook
-        and attempts to display access token.
+        This client-side rendered page reads the access token cookie and
+        attempts to display the access token from the cookie and API.
       </p>
 
       <div className="w-full space-y-4 mb-6">
@@ -78,35 +75,19 @@ function CSRPageContent() {
         )}
       </div>
 
-      {!session ? (
-        <div className="bg-yellow-50 border border-yellow-200 p-4 rounded">
-          <p className="text-yellow-800">
-            No session found on the client. Ensure you are signed in and that
-            useSession + authOptions are configured correctly.
-          </p>
-        </div>
-      ) : (
-        <div className="w-full space-y-4">
-          <div className="bg-white shadow rounded p-4">
-            <h2 className="font-semibold mb-2">Session Access Token (JWT)</h2>
-            <div className="space-y-2">
-              <div>
-                <strong>Access Token:</strong>
-                <pre className="break-words bg-gray-50 p-2 rounded mt-1">
-                  {session?.accessToken ?? "Not Available"}
-                </pre>
-              </div>
+      <div className="w-full space-y-4">
+        <div className="bg-white shadow rounded p-4">
+          <h2 className="font-semibold mb-2">Access Token (Cookie)</h2>
+          <div className="space-y-2">
+            <div>
+              <strong>Access Token:</strong>
+              <pre className="break-words bg-gray-50 p-2 rounded mt-1">
+                {accessToken ?? "Not Available"}
+              </pre>
             </div>
           </div>
-
-          <div className="bg-white shadow rounded p-4">
-            <h2 className="font-semibold mb-2">Full Session (debug)</h2>
-            <pre className="text-sm bg-gray-50 p-2 rounded overflow-x-auto">
-              {JSON.stringify(session, null, 2)}
-            </pre>
-          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

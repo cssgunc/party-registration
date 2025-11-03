@@ -1,6 +1,5 @@
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import axios, { AxiosRequestConfig, AxiosRequestHeaders } from "axios";
-import { getServerSession } from "next-auth";
+import Cookies from "js-cookie";
 
 const apiClient = axios.create({
   withCredentials: true,
@@ -39,41 +38,47 @@ async function refreshAccessToken(): Promise<string | null> {
     }
   );
 
-  // Update the access token in the NextAuth session
-  if (typeof window !== "undefined") {
-    // Client-side: update the session using the useSession hook (dynamically imported because next-auth/react is
-    // client-only)
-    const nextAuthReact = await import("next-auth/react");
-    if (
-      response.data?.accessToken &&
-      "update" in nextAuthReact &&
-      typeof nextAuthReact.update === "function"
-    ) {
-      await nextAuthReact.update({ accessToken: response.data.accessToken });
-      return response.data.accessToken;
-    }
-    return response.data?.accessToken || null;
+  const newAccessToken = response.data?.accessToken;
+  if (!newAccessToken) return null;
+
+  // Update the access token cookie
+  if (typeof window === "undefined") {
+    // Server-side: set cookie using next/headers
+    const { cookies } = await import("next/headers");
+    const cookieStore = await cookies();
+    cookieStore.set("access-token", newAccessToken, {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60, // 1 hour
+    });
   } else {
-    // Server-side: return the new token from the response
-    // Note: Server-side session updates are handled differently in NextAuth
-    return response.data?.accessToken || null;
+    // Client-side: set cookie using js-cookie
+    Cookies.set("access-token", newAccessToken, {
+      expires: 1 / 24, // 1 hour in days
+      path: "/",
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+    });
   }
+
+  return newAccessToken;
 }
 
 // Use an async interceptor to attach the access token to the request and forward cookies for requests made
 // in the SSR context.
 apiClient.interceptors.request.use(async (config) => {
+  // Get access token from cookie
   let accessToken: string | undefined;
   if (typeof window === "undefined") {
-    // Server-side: use getServerSession with authOptions
-    const session = await getServerSession(authOptions);
-    accessToken = session?.accessToken;
+    // Server-side: read from next/headers cookies
+    const { cookies } = await import("next/headers");
+    const cookieStore = await cookies();
+    accessToken = cookieStore.get("access-token")?.value;
   } else {
-    // Client-side: use getSession from next-auth/react
-    // Dynamic import needed because next-auth/react is client-only
-    const { getSession } = await import("next-auth/react");
-    const session = await getSession();
-    accessToken = session?.accessToken;
+    // Client-side: read from cookie using js-cookie
+    accessToken = Cookies.get("access-token") ?? undefined;
   }
 
   if (accessToken) config.headers["Authorization"] = `Bearer ${accessToken}`;

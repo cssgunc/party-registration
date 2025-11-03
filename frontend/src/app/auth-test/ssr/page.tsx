@@ -1,12 +1,13 @@
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import apiClient from "@/lib/network/apiClient";
-import { getServerSession } from "next-auth";
+import { cookies } from "next/headers";
 
 export default async function SSRPage() {
-  const session = await getServerSession(authOptions);
+  // Read access token from cookie
+  const cookieStore = await cookies();
+  const cookieAccessToken = cookieStore.get("access-token")?.value ?? null;
 
   // Fetch access token from the test API route to verify that the custom API client is automatically pulling the access
-  // token from the session.
+  // token from the cookie.
   let apiResponse = null;
   let apiError = null;
   try {
@@ -24,8 +25,8 @@ export default async function SSRPage() {
       </h1>
 
       <p className="mb-4 text-lg text-center">
-        This server-rendered page reads the server session (if available) and
-        attempts to display access token from the session and API.
+        This server-rendered page reads the access token cookie and attempts to
+        display the access token from the cookie and API.
       </p>
 
       <div className="w-full space-y-4 mb-6">
@@ -54,35 +55,19 @@ export default async function SSRPage() {
         )}
       </div>
 
-      {!session ? (
-        <div className="bg-yellow-50 border border-yellow-200 p-4 rounded">
-          <p className="text-yellow-800">
-            No session found on the server. Ensure you are signed in and that
-            getServerSession + authOptions are configured correctly.
-          </p>
-        </div>
-      ) : (
-        <div className="w-full space-y-4">
-          <div className="bg-white shadow rounded p-4">
-            <h2 className="font-semibold mb-2">Session Access Token (JWT)</h2>
-            <div className="space-y-2">
-              <div>
-                <strong>Access Token:</strong>
-                <pre className="break-words bg-gray-50 p-2 rounded mt-1">
-                  {session?.accessToken ?? "Not Available"}
-                </pre>
-              </div>
+      <div className="w-full space-y-4">
+        <div className="bg-white shadow rounded p-4">
+          <h2 className="font-semibold mb-2">Access Token (Cookie)</h2>
+          <div className="space-y-2">
+            <div>
+              <strong>Access Token:</strong>
+              <pre className="break-words bg-gray-50 p-2 rounded mt-1">
+                {cookieAccessToken ?? "Not Available"}
+              </pre>
             </div>
           </div>
-
-          <div className="bg-white shadow rounded p-4">
-            <h2 className="font-semibold mb-2">Full Session (debug)</h2>
-            <pre className="text-sm bg-gray-50 p-2 rounded overflow-x-auto">
-              {JSON.stringify(session, null, 2)}
-            </pre>
-          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

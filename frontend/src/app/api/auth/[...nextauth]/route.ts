@@ -1,5 +1,6 @@
 import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import { cookies } from "next/headers";
 
 const authOptions: NextAuthOptions = {
   providers: [
@@ -30,20 +31,40 @@ const authOptions: NextAuthOptions = {
   session: {
     strategy: "jwt",
   },
-  callbacks: {
-    async jwt({ token, user }) {
-      // Store access token in JWT when user signs in
-      if (user && user.accessToken) {
-        token.accessToken = user.accessToken;
+  events: {
+    async signIn({ user }) {
+      // Set access token as a cookie (not HTTP-only so it can be read by client-side JS)
+      try {
+        const cookieStore = await cookies();
+        const { accessToken } = (user as { accessToken?: string }) || {};
+
+        if (accessToken) {
+          cookieStore.set("access-token", accessToken, {
+            httpOnly: false,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            path: "/",
+            maxAge: 60 * 60, // 1 hour
+          });
+        }
+      } catch (error) {
+        console.error("Error setting access token cookie:", error);
       }
-      return token;
     },
-    async session({ session, token }) {
-      // Attach access token to session object
-      if (token.accessToken) {
-        session.accessToken = token.accessToken;
+    async signOut() {
+      // Clear access token cookie on sign out
+      try {
+        const cookieStore = await cookies();
+        cookieStore.set("access-token", "", {
+          httpOnly: false,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          path: "/",
+          maxAge: 0,
+        });
+      } catch (error) {
+        console.error("Error clearing access token cookie:", error);
       }
-      return session;
     },
   },
 };
