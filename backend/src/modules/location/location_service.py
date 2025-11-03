@@ -4,14 +4,28 @@ import googlemaps
 from fastapi import Depends
 from googlemaps import places
 from src.core.config import env
-from src.core.exceptions import InternalServerException
+from src.core.exceptions import (
+    BadRequestException,
+    InternalServerException,
+    NotFoundException,
+)
 
 from .location_model import AutocompleteResult, LocationData
 
 
-class LocationServiceException(InternalServerException):
+class GoogleMapsAPIException(InternalServerException):
     def __init__(self, detail: str):
-        super().__init__(f"Location service error: {detail}")
+        super().__init__(f"Google Maps API error: {detail}")
+
+
+class PlaceNotFoundException(NotFoundException):
+    def __init__(self, place_id: str):
+        super().__init__(f"Place with ID {place_id} not found")
+
+
+class InvalidPlaceIdException(BadRequestException):
+    def __init__(self, place_id: str):
+        super().__init__(f"Invalid place ID: {place_id}")
 
 
 def get_gmaps_client() -> googlemaps.Client:
@@ -46,12 +60,26 @@ class LocationService:
 
             return suggestions
 
+        except GoogleMapsAPIException:
+            raise
+        except googlemaps.exceptions.ApiError as e:
+            raise GoogleMapsAPIException(f"API error ({e.status}): {str(e)}")
+        except googlemaps.exceptions.Timeout as e:
+            raise GoogleMapsAPIException(f"Request timed out: {str(e)}")
+        except googlemaps.exceptions.HTTPError as e:
+            raise GoogleMapsAPIException(f"HTTP error: {str(e)}")
+        except googlemaps.exceptions.TransportError as e:
+            raise GoogleMapsAPIException(f"Transport error: {str(e)}")
         except Exception as e:
-            raise LocationServiceException(f"Failed to autocomplete address: {str(e)}")
+            raise GoogleMapsAPIException(f"Failed to autocomplete address: {str(e)}")
 
     async def get_place_details(self, place_id: str) -> LocationData:
-        # Get detailed location data for a Google Maps place ID
-        # Raises LocationServiceException if the place cannot be found/API fails
+        """
+        Get detailed location data for a Google Maps place ID
+        Raises PlaceNotFoundException if the place cannot be found
+        Raises InvalidPlaceIdException if the place ID format is invalid
+        Raises GoogleMapsAPIException for other API errors
+        """
         try:
             place_result = await asyncio.to_thread(
                 places.place,
@@ -61,7 +89,7 @@ class LocationService:
             )
 
             if "result" not in place_result:
-                raise LocationServiceException(f"Place with ID {place_id} not found")
+                raise PlaceNotFoundException(place_id)
 
             place = place_result["result"]
 
@@ -94,7 +122,7 @@ class LocationService:
             location = geometry.get("location", {})
 
             if not location:
-                raise LocationServiceException(
+                raise GoogleMapsAPIException(
                     f"No geometry data found for place ID {place_id}"
                 )
 
@@ -112,7 +140,25 @@ class LocationService:
                 zip_code=zip_code,
             )
 
-        except LocationServiceException:
+        except (
+            PlaceNotFoundException,
+            InvalidPlaceIdException,
+            GoogleMapsAPIException,
+        ):
             raise
+        except googlemaps.exceptions.ApiError as e:
+            # Map Google Maps API error statuses to appropriate exceptions
+            if e.status == "NOT_FOUND":
+                raise PlaceNotFoundException(place_id)
+            elif e.status == "INVALID_REQUEST":
+                raise InvalidPlaceIdException(place_id)
+            else:
+                raise GoogleMapsAPIException(f"API error ({e.status}): {str(e)}")
+        except googlemaps.exceptions.Timeout as e:
+            raise GoogleMapsAPIException(f"Request timed out: {str(e)}")
+        except googlemaps.exceptions.HTTPError as e:
+            raise GoogleMapsAPIException(f"HTTP error: {str(e)}")
+        except googlemaps.exceptions.TransportError as e:
+            raise GoogleMapsAPIException(f"Transport error: {str(e)}")
         except Exception as e:
-            raise LocationServiceException(f"Failed to get place details: {str(e)}")
+            raise GoogleMapsAPIException(f"Failed to get place details: {str(e)}")
