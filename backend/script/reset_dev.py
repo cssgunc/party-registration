@@ -33,8 +33,38 @@ async def reset_dev():
 
     print("Populating tables...")
     async with AsyncSessionLocal() as session:
-        # No data yet
+        from src.modules.account.account_entity import AccountEntity, AccountRole
+        from src.modules.student.student_entity import StudentEntity
+        from src.modules.student.student_model import ContactPreference
 
+        student_account = AccountEntity(
+            email="student@example.com",
+            hashed_password="student",
+            role=AccountRole.STUDENT,
+        )
+        admin_account = AccountEntity(
+            email="admin@example.com",
+            hashed_password="admin",
+            role=AccountRole.ADMIN,
+        )
+        police_account = AccountEntity(
+            email="police@example.com",
+            hashed_password="police",
+            role=AccountRole.POLICE,
+        )
+
+        session.add_all([student_account, admin_account, police_account])
+        await session.flush()
+
+        student = StudentEntity(
+            first_name="John",
+            last_name="Doe",
+            call_or_text_pref=ContactPreference.call,
+            phone_number="1234567890",
+            account_id=student_account.id,
+        )
+
+        session.add(student)
         await session.commit()
 
     print("Database successfully reset!")

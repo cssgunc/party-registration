@@ -10,14 +10,25 @@
   },
   "dependencies": {
     "@vis.gl/react-google-maps": "^1.6.1",
+    "@hookform/resolvers": "^5.2.2",
+    "@radix-ui/react-label": "^2.1.7",
+    "@radix-ui/react-popover": "^1.1.15",
+    "@radix-ui/react-select": "^2.2.6",
+    "@radix-ui/react-separator": "^1.1.7",
+    "@radix-ui/react-slot": "^1.2.3",
     "axios": "^1.12.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
     "lucide-react": "^0.544.0",
     "next": "15.5.4",
     "react": "19.1.0",
+    "react-day-picker": "^9.11.1",
     "react-dom": "19.1.0",
-    "tailwind-merge": "^3.3.1"
+    "react-hook-form": "^7.65.0",
+    "zod": "^4.1.12",
+    "tailwind-merge": "^3.3.1",
+    "@tanstack/react-table": "^8.21.3"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
