@@ -1,16 +1,19 @@
+import type { Location } from "./location";
+import type { Student } from "./student";
+
 type Party = {
   id: number;
   datetime: Date;
-  addressId: number;
-  contactOneId: number;
-  contactTwoId: number;
+  location: Location;
+  contact_one: Student;
+  contact_two: Student;
 };
 
 type PartyData = {
   datetime: Date;
-  addressId: number;
-  contactOneId: number;
-  contactTwoId: number;
+  location: Location;
+  contact_one: Student;
+  contact_two: Student;
 };
 
 export type { Party, PartyData };
