@@ -1,4 +1,6 @@
-export default function Home() {
+import EmbeddedMap from "@/components/EmbeddedMap";
+
+const page = () => {
   return (
     <div className="font-sans min-h-screen flex flex-col items-center justify-center p-8 sm:p-20 max-w-2xl mx-auto">
       <h1 className="text-3xl font-bold mb-6 text-center">
@@ -21,6 +23,9 @@ export default function Home() {
         fostering a sense of belonging and engagement for all students
         regardless of their housing situation.
       </p>
+      <EmbeddedMap parties={[]} />
     </div>
   );
-}
+};
+
+export default page;
