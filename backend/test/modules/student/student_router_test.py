@@ -216,7 +216,7 @@ async def test_create_student_wrong_role(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
         res = await client.post("/api/students/", json=payload, headers=auth_headers())
-        assert res.status_code == 409
+        assert res.status_code == 400
 
 
 @pytest.mark.asyncio
@@ -566,7 +566,7 @@ async def test_routes_require_authentication(
             res = await client.post(path, json=body)
         elif method == "PUT":
             res = await client.put(path, json=body)
-        elif method == "DELETE":
+        else:
             res = await client.delete(path)
 
         assert res.status_code in [401, 403]

@@ -4,7 +4,11 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from src.core.database import get_session
-from src.core.exceptions import ConflictException, NotFoundException
+from src.core.exceptions import (
+    BadRequestException,
+    ConflictException,
+    NotFoundException,
+)
 from src.modules.account.account_entity import AccountEntity, AccountRole
 
 from .student_entity import StudentEntity
@@ -26,7 +30,7 @@ class AccountNotFoundException(NotFoundException):
         super().__init__(f"Account with ID {account_id} not found")
 
 
-class InvalidAccountRoleException(ConflictException):
+class InvalidAccountRoleException(BadRequestException):
     def __init__(self, account_id: int, role: AccountRole):
         super().__init__(
             f"Account with ID {account_id} has role '{role.value}', expected 'student'"
