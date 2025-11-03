@@ -11,6 +11,7 @@ from src.core.exceptions import (
 )
 
 from .location_model import AutocompleteResult, LocationData
+import json
 
 
 class GoogleMapsAPIException(InternalServerException):
@@ -93,6 +94,8 @@ class LocationService:
 
             place = place_result["result"]
 
+            print(json.dumps(place, indent=2, ensure_ascii=False))
+
             street_number = None
             street_name = None
             city = None
@@ -101,7 +104,7 @@ class LocationService:
             country = None
             zip_code = None
 
-            for component in place.get("address_component", []):
+            for component in place.get("address_components", []):
                 types = component["types"]
                 if "street_number" in types:
                     street_number = component["long_name"]

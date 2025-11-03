@@ -91,7 +91,7 @@ async def test_get_place_details_success(
         "result": {
             "formatted_address": "123 Main St, Chapel Hill, NC 27514, USA",
             "geometry": {"location": {"lat": 35.9132, "lng": -79.0558}},
-            "address_component": [
+            "address_components": [
                 {"long_name": "123", "short_name": "123", "types": ["street_number"]},
                 {
                     "long_name": "Main Street",
@@ -228,7 +228,7 @@ async def test_get_place_details_missing_components(
         "result": {
             "formatted_address": "Somewhere",
             "geometry": {"location": {"lat": 0.0, "lng": 0.0}},
-            "address_component": [],
+            "address_components": [],
         }
     }
 
@@ -260,7 +260,7 @@ async def test_get_place_details_missing_geometry(
         "result": {
             "formatted_address": "Somewhere",
             "geometry": {},
-            "address_component": [],
+            "address_components": [],
         }
     }
 
