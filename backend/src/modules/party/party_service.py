@@ -6,6 +6,7 @@ from fastapi import Depends
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 from src.core.config import env
 from src.core.database import get_session
 from src.core.exceptions import ConflictException, NotFoundException
@@ -187,7 +188,9 @@ class PartyService:
         end_time = current_time + timedelta(hours=12)
 
         result = await self.session.execute(
-            select(PartyEntity).where(
+            select(PartyEntity)
+            .options(selectinload(PartyEntity.address))
+            .where(
                 PartyEntity.party_datetime >= start_time,
                 PartyEntity.party_datetime <= end_time,
             )
@@ -196,16 +199,14 @@ class PartyService:
 
         parties_within_radius = []
         for party in parties:
-            address_result = await self.session.execute(
-                select(AddressEntity).where(AddressEntity.id == party.address_id)
-            )
-            address = address_result.scalar_one_or_none()
-
-            if address is None:
+            if party.address is None:
                 continue
 
             distance = self._calculate_haversine_distance(
-                latitude, longitude, float(address.latitude), float(address.longitude)
+                latitude,
+                longitude,
+                float(party.address.latitude),
+                float(party.address.longitude),
             )
 
             if distance <= env.PARTY_SEARCH_RADIUS_MILES:
