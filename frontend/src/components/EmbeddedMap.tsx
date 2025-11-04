@@ -32,16 +32,19 @@ const default_locations: Poi[] = [
 
 const EmbeddedMapReact = ({ parties }: EmbeddedMapProps) => {
   const locations =
-    // parties && parties.length > 0
-    //   ? parties.map((party) => ({
-    //       key: party.id.toString(),
-    //       location: {
-    //         lat: party.latitude,
-    //         lng: party.longitude,
-    //       },
-    //     }))
-    //   :
-    default_locations;
+    parties && parties.length > 0
+      ? parties.map((party) => ({
+          key: party.id.toString(),
+          location: {
+            lat: party.location.latitude,
+            lng: party.location.longitude,
+          },
+        }))
+      : default_locations;
+  const defaultCenter =
+    parties && parties.length > 0
+      ? locations[0].location
+      : { lat: -33.860664, lng: 151.208138 };
   const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
   return (
     <div className="w-full h-[450px] overflow-hidden rounded-2xl shadow-md">
@@ -51,7 +54,7 @@ const EmbeddedMapReact = ({ parties }: EmbeddedMapProps) => {
       >
         <Map
           defaultZoom={13}
-          defaultCenter={{ lat: -33.860664, lng: 151.208138 }}
+          defaultCenter={defaultCenter}
           mapId={process.env.NEXT_PUBLIC_GOOGLE_MAP_ID!}
           onCameraChanged={(ev: MapCameraChangedEvent) =>
             console.log(
@@ -74,9 +77,9 @@ const PoiMarkers = (props: { pois: Poi[] }) => {
       {props.pois.map((poi: Poi) => (
         <AdvancedMarker key={poi.key} position={poi.location}>
           <Pin
-            background={"#FBBC04"}
-            glyphColor={"#000"}
-            borderColor={"#000"}
+            background={"#EA4335"}
+            glyphColor={"#fff"}
+            borderColor={"#B31412"}
           />
         </AdvancedMarker>
       ))}
