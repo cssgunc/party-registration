@@ -4,33 +4,31 @@ import { Party } from "@/types/api/party";
 import {
   AdvancedMarker,
   APIProvider,
+  InfoWindow,
   Map,
   MapCameraChangedEvent,
   Pin,
+  useMap,
 } from "@vis.gl/react-google-maps";
+import { useCallback, useState } from "react";
+
 interface EmbeddedMapProps {
   parties: Party[];
+  activeParty?: Party;
+}
+interface PoiMarkersProps {
+  pois: Poi[];
+  activePoiKey?: string;
 }
 type Poi = { key: string; location: google.maps.LatLngLiteral };
-const default_locations: Poi[] = [
-  { key: "operaHouse", location: { lat: -33.8567844, lng: 151.213108 } },
-  { key: "tarongaZoo", location: { lat: -33.8472767, lng: 151.2188164 } },
-  { key: "manlyBeach", location: { lat: -33.8209738, lng: 151.2563253 } },
-  { key: "hyderPark", location: { lat: -33.8690081, lng: 151.2052393 } },
-  { key: "theRocks", location: { lat: -33.8587568, lng: 151.2058246 } },
-  { key: "circularQuay", location: { lat: -33.858761, lng: 151.2055688 } },
-  { key: "harbourBridge", location: { lat: -33.852228, lng: 151.2038374 } },
-  { key: "kingsCross", location: { lat: -33.8737375, lng: 151.222569 } },
-  { key: "botanicGardens", location: { lat: -33.864167, lng: 151.216387 } },
-  { key: "museumOfSydney", location: { lat: -33.8636005, lng: 151.2092542 } },
-  { key: "maritimeMuseum", location: { lat: -33.869395, lng: 151.198648 } },
-  { key: "kingStreetWharf", location: { lat: -33.8665445, lng: 151.1989808 } },
-  { key: "aquarium", location: { lat: -33.869627, lng: 151.202146 } },
-  { key: "darlingHarbour", location: { lat: -33.87488, lng: 151.1987113 } },
-  { key: "barangaroo", location: { lat: -33.8605523, lng: 151.1972205 } },
-];
 
-const EmbeddedMapReact = ({ parties }: EmbeddedMapProps) => {
+const EmbeddedMap = ({ parties, activeParty }: EmbeddedMapProps) => {
+  const default_locations: Poi[] = [
+    { key: "polkPlace", location: { lat: 35.911232, lng: -79.050331 } },
+    { key: "davisLibrary", location: { lat: 35.910784, lng: -79.047729 } },
+    { key: "oldWell", location: { lat: 35.911473, lng: -79.050105 } },
+    { key: "kenanStadium", location: { lat: 35.906839, lng: -79.047793 } },
+  ];
   const locations =
     parties && parties.length > 0
       ? parties.map((party) => ({
@@ -41,10 +39,12 @@ const EmbeddedMapReact = ({ parties }: EmbeddedMapProps) => {
           },
         }))
       : default_locations;
+  const activePoiKey = activeParty ? activeParty.id.toString() : undefined;
+  const defaultZoom = 13;
   const defaultCenter =
     parties && parties.length > 0
       ? locations[0].location
-      : { lat: -33.860664, lng: 151.208138 };
+      : { lat: 35.911232, lng: -79.050331 };
   const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
   return (
     <div className="w-full h-[450px] overflow-hidden rounded-2xl shadow-md">
@@ -53,7 +53,7 @@ const EmbeddedMapReact = ({ parties }: EmbeddedMapProps) => {
         onLoad={() => console.log("Maps API has loaded.")}
       >
         <Map
-          defaultZoom={13}
+          defaultZoom={defaultZoom}
           defaultCenter={defaultCenter}
           mapId={process.env.NEXT_PUBLIC_GOOGLE_MAP_ID!}
           onCameraChanged={(ev: MapCameraChangedEvent) =>
@@ -65,26 +65,51 @@ const EmbeddedMapReact = ({ parties }: EmbeddedMapProps) => {
             )
           }
         >
-          <PoiMarkers pois={locations} />
+          <PoiMarkers pois={locations} activePoiKey={activePoiKey} />
         </Map>
       </APIProvider>
     </div>
   );
 };
-const PoiMarkers = (props: { pois: Poi[] }) => {
+const PoiMarkers = ({ pois }: PoiMarkersProps) => {
+  const map = useMap();
+  const [selectedPoi, setSelectedPoi] = useState<Poi | null>(null);
+
+  const handleClick = useCallback(
+    (poi: Poi) => (ev: google.maps.MapMouseEvent) => {
+      if (!map || !ev.latLng) return;
+      map.panTo(ev.latLng);
+      setSelectedPoi(poi);
+    },
+    [map]
+  );
+
   return (
     <>
-      {props.pois.map((poi: Poi) => (
-        <AdvancedMarker key={poi.key} position={poi.location}>
+      {pois.map((poi: Poi) => (
+        <AdvancedMarker
+          key={poi.key}
+          position={poi.location}
+          clickable={true}
+          onClick={handleClick(poi)}
+        >
           <Pin
-            background={"#EA4335"}
+            background={poi == selectedPoi ? "#4285F4" : "#EA4335"}
             glyphColor={"#fff"}
-            borderColor={"#B31412"}
+            borderColor={poi == selectedPoi ? "#1967D2" : "#B31412"}
           />
         </AdvancedMarker>
       ))}
+      {selectedPoi && (
+        <InfoWindow
+          position={selectedPoi.location}
+          onCloseClick={() => setSelectedPoi(null)}
+        >
+          <div>{selectedPoi.key}</div>
+        </InfoWindow>
+      )}
     </>
   );
 };
 
-export default EmbeddedMapReact;
+export default EmbeddedMap;
