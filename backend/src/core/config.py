@@ -22,7 +22,7 @@ class Config(BaseSettings):
     POSTGRES_PORT: int = 5432
     HOST: str = "localhost"
     PARTY_SEARCH_RADIUS_MILES: float = 3.0
-    GOOGLE_MAPS_API_KEY: str
+    GOOGLE_MAPS_API_KEY: str = "" # Only for testing purposes, there shouldn't be a default value here.
 
 
 env = Config()  # pyright: ignore[reportCallIssue]
