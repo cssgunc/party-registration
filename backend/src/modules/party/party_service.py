@@ -58,7 +58,7 @@ class PartyService:
 
     async def _validate_student_exists(self, student_id: int) -> None:
         result = await self.session.execute(
-            select(StudentEntity).where(StudentEntity.id == student_id)
+            select(StudentEntity).where(StudentEntity.account_id == student_id)
         )
         if result.scalar_one_or_none() is None:
             raise StudentNotFoundException(student_id)
