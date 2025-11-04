@@ -56,3 +56,14 @@ class StudentCreate(BaseModel):
 
     account_id: int
     data: StudentData
+
+
+class PaginationMetadata(BaseModel):
+    total_records: int
+    page: int
+    page_size: int
+    total_pages: int
+
+class PaginatedResponse(BaseModel):
+    data: list[StudentDTO]
+    metadata: PaginationMetadata

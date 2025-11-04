@@ -53,7 +53,12 @@ async def test_list_students_empty(override_dependencies_admin: Any):
     ) as client:
         res = await client.get("/api/students/", headers=auth_headers())
         assert res.status_code == 200
-        assert res.json() == []
+        body = res.json()
+        assert body["data"] == []
+        assert body["metadata"]["total_records"] == 0
+        assert body["metadata"]["page"] == 1
+        assert body["metadata"]["page_size"] == 10
+        assert body["metadata"]["total_pages"] == 0
 
 
 @pytest.mark.asyncio
@@ -95,8 +100,297 @@ async def test_list_students_with_data(
     ) as client:
         res = await client.get("/api/students/", headers=auth_headers())
         assert res.status_code == 200
-        data = res.json()
-        assert len(data) == 3
+        body = res.json()
+        assert len(body["data"]) == 3
+        assert body["metadata"]["total_records"] == 3
+        assert body["metadata"]["page"] == 1
+        assert body["metadata"]["page_size"] == 10
+        assert body["metadata"]["total_pages"] == 1
+
+
+@pytest.mark.asyncio
+async def test_list_students_pagination_custom_page_size(
+    override_dependencies_admin: Any, test_async_session: AsyncSession
+):
+    from sqlalchemy import select
+
+    for i in range(25):
+        acc = AccountEntity(
+            email=f"pagesize{i}@example.com",
+            hashed_password="$2b$12$test_hashed_password",
+            role=AccountRole.STUDENT,
+        )
+        test_async_session.add(acc)
+    await test_async_session.commit()
+
+    result = await test_async_session.execute(
+        select(AccountEntity).order_by(AccountEntity.id)
+    )
+    accounts = result.scalars().all()
+
+    for idx, acc in enumerate(accounts):
+        student = StudentEntity.from_model(
+            StudentData(
+                first_name=f"PageSize{idx}",
+                last_name=f"Test{idx}",
+                call_or_text_pref=ContactPreference.text,
+                phone_number=f"555222{idx:04d}",
+            ),
+            acc.id,
+        )
+        test_async_session.add(student)
+    await test_async_session.commit()
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        res = await client.get(
+            "/api/students/", params={"page_size": 5}, headers=auth_headers()
+        )
+        assert res.status_code == 200
+        body = res.json()
+        assert len(body["data"]) == 5
+        assert body["metadata"]["total_records"] == 25
+        assert body["metadata"]["page"] == 1
+        assert body["metadata"]["page_size"] == 5
+        assert body["metadata"]["total_pages"] == 5
+
+
+@pytest.mark.asyncio
+async def test_list_students_pagination_second_page(
+    override_dependencies_admin: Any, test_async_session: AsyncSession
+):
+    from sqlalchemy import select
+
+    for i in range(15):
+        acc = AccountEntity(
+            email=f"page2{i}@example.com",
+            hashed_password="$2b$12$test_hashed_password",
+            role=AccountRole.STUDENT,
+        )
+        test_async_session.add(acc)
+    await test_async_session.commit()
+
+    result = await test_async_session.execute(
+        select(AccountEntity).order_by(AccountEntity.id)
+    )
+    accounts = result.scalars().all()
+
+    for idx, acc in enumerate(accounts):
+        student = StudentEntity.from_model(
+            StudentData(
+                first_name=f"Page2{idx}",
+                last_name=f"Test{idx}",
+                call_or_text_pref=ContactPreference.text,
+                phone_number=f"555333{idx:04d}",
+            ),
+            acc.id,
+        )
+        test_async_session.add(student)
+    await test_async_session.commit()
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        res = await client.get(
+            "/api/students/",
+            params={"page": 2, "page_size": 10},
+            headers=auth_headers(),
+        )
+        assert res.status_code == 200
+        body = res.json()
+        assert len(body["data"]) == 5
+        assert body["metadata"]["total_records"] == 15
+        assert body["metadata"]["page"] == 2
+        assert body["metadata"]["page_size"] == 10
+        assert body["metadata"]["total_pages"] == 2
+
+
+@pytest.mark.asyncio
+async def test_list_students_pagination_last_page(
+    override_dependencies_admin: Any, test_async_session: AsyncSession
+):
+    from sqlalchemy import select
+
+    for i in range(23):
+        acc = AccountEntity(
+            email=f"lastpage{i}@example.com",
+            hashed_password="$2b$12$test_hashed_password",
+            role=AccountRole.STUDENT,
+        )
+        test_async_session.add(acc)
+    await test_async_session.commit()
+
+    result = await test_async_session.execute(
+        select(AccountEntity).order_by(AccountEntity.id)
+    )
+    accounts = result.scalars().all()
+
+    for idx, acc in enumerate(accounts):
+        student = StudentEntity.from_model(
+            StudentData(
+                first_name=f"LastPage{idx}",
+                last_name=f"Test{idx}",
+                call_or_text_pref=ContactPreference.text,
+                phone_number=f"555444{idx:04d}",
+            ),
+            acc.id,
+        )
+        test_async_session.add(student)
+    await test_async_session.commit()
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        res = await client.get(
+            "/api/students/",
+            params={"page": 3, "page_size": 10},
+            headers=auth_headers(),
+        )
+        assert res.status_code == 200
+        body = res.json()
+        assert len(body["data"]) == 3
+        assert body["metadata"]["total_records"] == 23
+        assert body["metadata"]["page"] == 3
+        assert body["metadata"]["page_size"] == 10
+        assert body["metadata"]["total_pages"] == 3
+
+
+@pytest.mark.asyncio
+async def test_list_students_pagination_page_beyond_total(
+    override_dependencies_admin: Any, test_async_session: AsyncSession
+):
+    from sqlalchemy import select
+
+    for i in range(5):
+        acc = AccountEntity(
+            email=f"beyond{i}@example.com",
+            hashed_password="$2b$12$test_hashed_password",
+            role=AccountRole.STUDENT,
+        )
+        test_async_session.add(acc)
+    await test_async_session.commit()
+
+    result = await test_async_session.execute(
+        select(AccountEntity).order_by(AccountEntity.id)
+    )
+    accounts = result.scalars().all()
+
+    for idx, acc in enumerate(accounts):
+        student = StudentEntity.from_model(
+            StudentData(
+                first_name=f"Beyond{idx}",
+                last_name=f"Test{idx}",
+                call_or_text_pref=ContactPreference.text,
+                phone_number=f"555555{idx:04d}",
+            ),
+            acc.id,
+        )
+        test_async_session.add(student)
+    await test_async_session.commit()
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        res = await client.get(
+            "/api/students/",
+            params={"page": 10, "page_size": 10},
+            headers=auth_headers(),
+        )
+        assert res.status_code == 200
+        body = res.json()
+        assert len(body["data"]) == 0
+        assert body["metadata"]["total_records"] == 5
+        assert body["metadata"]["page"] == 10
+        assert body["metadata"]["page_size"] == 10
+        assert body["metadata"]["total_pages"] == 1
+
+
+@pytest.mark.asyncio
+async def test_list_students_pagination_max_page_size(
+    override_dependencies_admin: Any, test_async_session: AsyncSession
+):
+    from sqlalchemy import select
+
+    for i in range(100):
+        acc = AccountEntity(
+            email=f"maxsize{i}@example.com",
+            hashed_password="$2b$12$test_hashed_password",
+            role=AccountRole.STUDENT,
+        )
+        test_async_session.add(acc)
+    await test_async_session.commit()
+
+    result = await test_async_session.execute(
+        select(AccountEntity).order_by(AccountEntity.id)
+    )
+    accounts = result.scalars().all()
+
+    for idx, acc in enumerate(accounts):
+        student = StudentEntity.from_model(
+            StudentData(
+                first_name=f"MaxSize{idx}",
+                last_name=f"Test{idx}",
+                call_or_text_pref=ContactPreference.text,
+                phone_number=f"555666{idx:04d}",
+            ),
+            acc.id,
+        )
+        test_async_session.add(student)
+    await test_async_session.commit()
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        res = await client.get(
+            "/api/students/", params={"page_size": 100}, headers=auth_headers()
+        )
+        assert res.status_code == 200
+        body = res.json()
+        assert len(body["data"]) == 100
+        assert body["metadata"]["total_records"] == 100
+        assert body["metadata"]["page"] == 1
+        assert body["metadata"]["page_size"] == 100
+        assert body["metadata"]["total_pages"] == 1
+
+
+@pytest.mark.asyncio
+async def test_list_students_pagination_invalid_page(
+    override_dependencies_admin: Any,
+):
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        res = await client.get(
+            "/api/students/", params={"page": 0}, headers=auth_headers()
+        )
+        assert res.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_list_students_pagination_invalid_page_size_too_small(
+    override_dependencies_admin: Any,
+):
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        res = await client.get(
+            "/api/students/", params={"page_size": 0}, headers=auth_headers()
+        )
+        assert res.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_list_students_pagination_invalid_page_size_too_large(
+    override_dependencies_admin: Any,
+):
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        res = await client.get(
+            "/api/students/", params={"page_size": 101}, headers=auth_headers()
+        )
+        assert res.status_code == 422
 
 
 @pytest.mark.asyncio
@@ -573,13 +867,49 @@ async def test_routes_require_authentication(
 
 
 @pytest.mark.asyncio
-async def test_list_students_empty_workflow(override_dependencies_admin: Any):
+async def test_list_students_pagination_default(
+    override_dependencies_admin: Any, test_async_session: AsyncSession
+):
+    from sqlalchemy import select
+
+    for i in range(15):
+        acc = AccountEntity(
+            email=f"pagestudent{i}@example.com",
+            hashed_password="$2b$12$test_hashed_password",
+            role=AccountRole.STUDENT,
+        )
+        test_async_session.add(acc)
+    await test_async_session.commit()
+
+    result = await test_async_session.execute(
+        select(AccountEntity).order_by(AccountEntity.id)
+    )
+    accounts = result.scalars().all()
+
+    for idx, acc in enumerate(accounts):
+        student = StudentEntity.from_model(
+            StudentData(
+                first_name=f"PageStudent{idx}",
+                last_name=f"Test{idx}",
+                call_or_text_pref=ContactPreference.text,
+                phone_number=f"555111{idx:04d}",
+            ),
+            acc.id,
+        )
+        test_async_session.add(student)
+    await test_async_session.commit()
+
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
         res = await client.get("/api/students/", headers=auth_headers())
         assert res.status_code == 200
-        assert res.json() == []
+        body = res.json()
+        assert len(body["data"]) == 10
+        assert body["metadata"]["total_records"] == 15
+        assert body["metadata"]["page"] == 1
+        assert body["metadata"]["page_size"] == 10
+        assert body["metadata"]["total_pages"] == 2
 
 
 @pytest.mark.asyncio

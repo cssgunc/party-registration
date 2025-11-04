@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from src.core.authentication import authenticate_admin
 
-from .student_model import StudentCreate, StudentData, StudentDTO
+from .student_model import PaginatedResponse, StudentCreate, StudentData, StudentDTO
 from .student_service import StudentService
 
 student_router = APIRouter(prefix="/api/students", tags=["students"])
@@ -9,9 +9,12 @@ student_router = APIRouter(prefix="/api/students", tags=["students"])
 
 @student_router.get("/")
 async def list_students(
-    student_service: StudentService = Depends(), _=Depends(authenticate_admin)
-) -> list[StudentDTO]:
-    return await student_service.get_students()
+    page: int = Query(1, ge=1, description="Page number, starting from 1"),
+    page_size: int = Query(10, ge=1, le=100, description="Number of items per page"),
+    student_service: StudentService = Depends(),
+    _=Depends(authenticate_admin),
+) -> PaginatedResponse:
+    return await student_service.get_students(page=page, page_size=page_size)
 
 
 @student_router.get("/{student_id}")
