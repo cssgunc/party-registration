@@ -12,7 +12,7 @@ from src.core.exceptions import (
 from src.modules.account.account_entity import AccountEntity, AccountRole
 
 from .student_entity import StudentEntity
-from .student_model import StudentData, StudentDTO
+from .student_model import Student, StudentData
 
 
 class StudentNotFoundException(NotFoundException):
@@ -89,18 +89,18 @@ class StudentService:
 
         return account
 
-    async def get_students(self) -> list[StudentDTO]:
+    async def get_students(self) -> list[Student]:
         result = await self.session.execute(
             select(StudentEntity).options(selectinload(StudentEntity.account))
         )
         students = result.scalars().all()
         return [student.to_dto() for student in students]
 
-    async def get_student_by_id(self, account_id: int) -> StudentDTO:
+    async def get_student_by_id(self, account_id: int) -> Student:
         student_entity = await self._get_student_entity_by_account_id(account_id)
         return student_entity.to_dto()
 
-    async def create_student(self, data: StudentData, account_id: int) -> StudentDTO:
+    async def create_student(self, data: StudentData, account_id: int) -> Student:
         await self._validate_account_for_student(account_id)
 
         if await self._get_student_entity_by_phone(data.phone_number):
@@ -117,7 +117,7 @@ class StudentService:
         await self.session.refresh(new_student, ["account"])
         return new_student.to_dto()
 
-    async def update_student(self, account_id: int, data: StudentData) -> StudentDTO:
+    async def update_student(self, account_id: int, data: StudentData) -> Student:
         student_entity = await self._get_student_entity_by_account_id(account_id)
 
         account = await self._get_account_entity_by_id(account_id)
@@ -142,7 +142,7 @@ class StudentService:
         await self.session.refresh(student_entity, ["account"])
         return student_entity.to_dto()
 
-    async def delete_student(self, account_id: int) -> StudentDTO:
+    async def delete_student(self, account_id: int) -> Student:
         student_entity = await self._get_student_entity_by_account_id(account_id)
         student_dto = student_entity.to_dto()
         await self.session.delete(student_entity)

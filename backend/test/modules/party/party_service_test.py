@@ -48,14 +48,14 @@ async def sample_party_data(test_async_session: AsyncSession) -> PartyData:
         account_id=1,
         first_name="John",
         last_name="Doe",
-        call_or_text_pref=ContactPreference.call,
+        contact_preference=ContactPreference.call,
         phone_number="1234567890",
     )
     student_two = StudentEntity(
         account_id=2,
         first_name="Jane",
         last_name="Smith",
-        call_or_text_pref=ContactPreference.text,
+        contact_preference=ContactPreference.text,
         phone_number="0987654321",
     )
     test_async_session.add_all([student_one, student_two])
@@ -197,7 +197,7 @@ async def test_get_parties(
             account_id=i,
             first_name=f"Student{i}",
             last_name=f"Last{i}",
-            call_or_text_pref=ContactPreference.call
+            contact_preference=ContactPreference.call
             if i % 2 == 1
             else ContactPreference.text,
             phone_number=str(i) * 10,
@@ -304,7 +304,7 @@ async def test_get_parties_by_date_range_multiple_parties(
             account_id=i,
             first_name=f"Student{i}",
             last_name=f"Last{i}",
-            call_or_text_pref=ContactPreference.call
+            contact_preference=ContactPreference.call
             if i % 2 == 1
             else ContactPreference.text,
             phone_number=str(i) * 10,
@@ -523,7 +523,7 @@ async def test_get_party_count(
             account_id=i,
             first_name=f"Student{i}",
             last_name=f"Last{i}",
-            call_or_text_pref=ContactPreference.call
+            contact_preference=ContactPreference.call
             if i % 2 == 1
             else ContactPreference.text,
             phone_number=str(i) * 10,
