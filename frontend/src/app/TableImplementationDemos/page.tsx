@@ -199,8 +199,8 @@ export default function Home() {
     const locations: Location[] = [
         {
             id: 1,
-            warning_count: 1,
-            citation_count: 0,
+            warning_count: 2,
+            citation_count: 1,
             hold_expiration: new Date(2025, 11, 1, 20, 20, 0, 0),
             has_active_hold: true,
             google_place_id: "abc123",
@@ -218,8 +218,8 @@ export default function Home() {
         },
         {
             id: 1,
-            warning_count: 4,
-            citation_count: 2,
+            warning_count: 0,
+            citation_count: 0,
             hold_expiration: null,
             has_active_hold: true,
             google_place_id: "abc123",

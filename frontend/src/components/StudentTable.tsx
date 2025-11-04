@@ -2,9 +2,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Student } from "@/types/api/student";
 import { ColumnDef } from "@tanstack/react-table";
 import { TableTemplate } from "./TableTemplate";
-
-// import { InfoChip } from "../ui/InfoChip";
-// import { Checkbox } from "../ui/Checkbox";
+// import { InfoChip } from "@/components/ui/InfoChip";
 
 export const StudentTable = ({ data }: { data: Student[] }) => {
 
@@ -27,7 +25,11 @@ export const StudentTable = ({ data }: { data: Student[] }) => {
         },
         {
             accessorKey: "phoneNumber",
-            header: "Phone Number"
+            header: "Phone Number",
+            cell: ({ row }) => {
+                const number = row.getValue("phoneNumber") as string;
+                return number ? `(${number.slice(0, 3)}) ${number.slice(3, 6)}-${number.slice(6, 10)}` : "—";
+            },
         },
         {
             accessorKey: "contactPreference",
@@ -36,11 +38,10 @@ export const StudentTable = ({ data }: { data: Student[] }) => {
         {
             accessorKey: "lastRegistered",
             header: "Is Registered",
-            cell: ({ row }) => {
+            cell: ({ row }) => { // TODO: implement functionality/toggability for checkbox
                 const registered = row.getValue("lastRegistered") as boolean
                 return (<Checkbox
-                    checked={registered}
-                // onCheckedChange={(value) => row.toggleSelected(!!value)}
+                    checked={!!registered}
                 />
                 )
             },
