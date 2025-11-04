@@ -27,7 +27,7 @@ export const PartyTable = ({ data }: { data: Party[] }) => {
             },
         },
         {
-            accessorKey: "datetime",
+            accessorKey: "time",
             header: "Time",
             cell: ({ row }) => {
                 const datetime = row.getValue("datetime") as string;
