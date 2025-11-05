@@ -1,10 +1,11 @@
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import axios, { AxiosRequestConfig, AxiosRequestHeaders } from "axios";
 import { getServerSession } from "next-auth";
+import { getSession, signOut } from "next-auth/react";
 
 const apiClient = axios.create({
   withCredentials: true,
-  baseURL: `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"}/api`,
+  baseURL: `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"}`,
   headers: {
     "Content-Type": "application/json",
   },
@@ -34,7 +35,6 @@ async function resolveFreshAccessToken(): Promise<string | undefined> {
     const session = await getServerSession(authOptions);
     return session?.accessToken as string | undefined;
   } else {
-    const { getSession } = await import("next-auth/react");
     const session = await getSession();
     return session?.accessToken as string | undefined;
   }
@@ -101,7 +101,6 @@ apiClient.interceptors.response.use(
           // Refresh failed, sign out user
           processQueue(new Error("Token refresh failed"), null);
           if (typeof window !== "undefined") {
-            const { signOut } = await import("next-auth/react");
             signOut();
           }
           return Promise.reject(error);
@@ -113,7 +112,6 @@ apiClient.interceptors.response.use(
             : new Error("Token refresh failed");
         processQueue(error, null);
         if (typeof window !== "undefined") {
-          const { signOut } = await import("next-auth/react");
           signOut();
         }
         return Promise.reject(refreshError);
