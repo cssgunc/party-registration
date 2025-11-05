@@ -5,7 +5,7 @@ import { getSession, signOut } from "next-auth/react";
 
 const apiClient = axios.create({
   withCredentials: true,
-  baseURL: `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"}`,
+  baseURL: `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"}/api`,
   headers: {
     "Content-Type": "application/json",
   },
