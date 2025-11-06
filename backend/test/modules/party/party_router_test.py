@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.main import app
 from src.core.database import get_session
-from src.core.authentication import authenticate_user
+from src.core.authentication import authenticate_admin
 from src.modules.party.party_entity import PartyEntity
 from src.modules.location.location_entity import LocationEntity
 from src.modules.student.student_entity import StudentEntity
@@ -21,11 +21,11 @@ async def client(test_async_session: AsyncSession):
     async def override_get_session():
         yield test_async_session
 
-    async def override_authenticate_user():
+    async def override_authenticate_admin():
         return User(id=1, email="admin@test.com")
 
     app.dependency_overrides[get_session] = override_get_session
-    app.dependency_overrides[authenticate_user] = override_authenticate_user
+    app.dependency_overrides[authenticate_admin] = override_authenticate_admin
 
     async with AsyncClient(
         transport=ASGITransport(app=app),

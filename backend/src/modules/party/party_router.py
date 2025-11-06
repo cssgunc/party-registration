@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, Query
-from src.core.authentication import authenticate_user
+from src.core.authentication import authenticate_admin
 from .party_model import Party, PaginatedPartiesResponse
 from .party_service import PartyService
 
@@ -11,7 +11,7 @@ async def list_parties(
     page_number: int = Query(1, ge=1, description="Page number (1-indexed)"),
     page_size: int = Query(10, ge=1, le=100, description="Items per page"),
     party_service: PartyService = Depends(),
-    _=Depends(authenticate_user)
+    _=Depends(authenticate_admin)
 ) -> PaginatedPartiesResponse:
     """
     Returns all party registrations in the database with pagination.
@@ -50,7 +50,7 @@ async def list_parties(
 async def get_party(
     party_id: int,
     party_service: PartyService = Depends(),
-    _=Depends(authenticate_user)
+    _=Depends(authenticate_admin)
 ) -> Party:
     """
     Returns a party registration by ID.
@@ -71,7 +71,7 @@ async def get_party(
 async def delete_party(
     party_id: int,
     party_service: PartyService = Depends(),
-    _=Depends(authenticate_user)
+    _=Depends(authenticate_admin)
 ) -> Party:
     """
     Deletes a party registration by ID.

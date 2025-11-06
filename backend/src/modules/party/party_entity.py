@@ -8,7 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .party_model import Party, PartyData
 
 if TYPE_CHECKING:
-    from ..address.address_entity import AddressEntity
+    from ..location.location_entity import LocationEntity
     from ..student.student_entity import StudentEntity
 
 
