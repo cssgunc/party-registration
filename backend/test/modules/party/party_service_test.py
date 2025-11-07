@@ -35,13 +35,19 @@ async def sample_party_data(test_async_session: AsyncSession) -> PartyData:
     test_async_session.add(location)
 
     # Create account for students
-    account = AccountEntity(
+    account_one = AccountEntity(
         id=1,
         email="test@example.com",
         hashed_password="hashed_password",
         role=AccountRole.STUDENT,
     )
-    test_async_session.add(account)
+    account_two = AccountEntity(
+        id=2,
+        email="test2@example.com",
+        hashed_password="hashed_password",
+        role=AccountRole.STUDENT,
+    )
+    test_async_session.add_all([account_one, account_two])
 
     # Create students
     student_one = StudentEntity(
@@ -56,7 +62,7 @@ async def sample_party_data(test_async_session: AsyncSession) -> PartyData:
         last_name="Smith",
         call_or_text_pref=ContactPreference.text,
         phone_number="0987654321",
-        account_id=1,
+        account_id=2,
     )
     test_async_session.add_all([student_one, student_two])
     await test_async_session.commit()
@@ -173,12 +179,35 @@ async def test_get_parties(
     party_service: PartyService, test_async_session: AsyncSession
 ):
     # Create account, locations and students for parties
-    account = AccountEntity(
+
+    account1 = AccountEntity(
         id=1,
-        email="test@example.com",
-        hashed_password="hashed",
+        email="student1@example.com",
+        hashed_password="hashed_pw_1",
         role=AccountRole.STUDENT,
     )
+
+    account2 = AccountEntity(
+        id=2,
+        email="student2@example.com",
+        hashed_password="hashed_pw_2",
+        role=AccountRole.STUDENT,
+    )
+
+    account3 = AccountEntity(
+        id=3,
+        email="admin@example.com",
+        hashed_password="hashed_pw_3",
+        role=AccountRole.ADMIN,
+    )
+
+    account4 = AccountEntity(
+        id=4,
+        email="police@example.com",
+        hashed_password="hashed_pw_4",
+        role=AccountRole.POLICE,
+    )
+
     address1 = LocationEntity(
         id=1,
         latitude=40.7128,
@@ -194,7 +223,6 @@ async def test_get_parties(
         formatted_address="LA Test Address",
     )
     student1 = StudentEntity(
-        id=1,
         first_name="John",
         last_name="Doe",
         call_or_text_pref=ContactPreference.call,
@@ -202,31 +230,39 @@ async def test_get_parties(
         account_id=1,
     )
     student2 = StudentEntity(
-        id=2,
         first_name="Jane",
         last_name="Smith",
         call_or_text_pref=ContactPreference.text,
         phone_number="0987654321",
-        account_id=1,
+        account_id=2,
     )
     student3 = StudentEntity(
-        id=3,
         first_name="Bob",
         last_name="Johnson",
         call_or_text_pref=ContactPreference.call,
         phone_number="1111111111",
-        account_id=1,
+        account_id=3,
     )
     student4 = StudentEntity(
-        id=4,
         first_name="Alice",
         last_name="Williams",
         call_or_text_pref=ContactPreference.text,
         phone_number="2222222222",
-        account_id=1,
+        account_id=4,
     )
     test_async_session.add_all(
-        [account, address1, address2, student1, student2, student3, student4]
+        [
+            account1,
+            account2,
+            account3,
+            account4,
+            address1,
+            address2,
+            student1,
+            student2,
+            student3,
+            student4,
+        ]
     )
     await test_async_session.commit()
 
@@ -306,9 +342,39 @@ async def test_get_parties_by_date_range_multiple_parties(
     party_service: PartyService, test_async_session: AsyncSession
 ):
     # Create account, locations and students for parties
-    account = AccountEntity(
+    account1 = AccountEntity(
         id=1,
-        email="test@example.com",
+        email="john.doe@example.com",
+        hashed_password="hashed",
+        role=AccountRole.STUDENT,
+    )
+    account2 = AccountEntity(
+        id=2,
+        email="jane.smith@example.com",
+        hashed_password="hashed",
+        role=AccountRole.STUDENT,
+    )
+    account3 = AccountEntity(
+        id=3,
+        email="bob.johnson@example.com",
+        hashed_password="hashed",
+        role=AccountRole.STUDENT,
+    )
+    account4 = AccountEntity(
+        id=4,
+        email="alice.williams@example.com",
+        hashed_password="hashed",
+        role=AccountRole.STUDENT,
+    )
+    account5 = AccountEntity(
+        id=5,
+        email="charlie.brown@example.com",
+        hashed_password="hashed",
+        role=AccountRole.STUDENT,
+    )
+    account6 = AccountEntity(
+        id=6,
+        email="diana.davis@example.com",
         hashed_password="hashed",
         role=AccountRole.STUDENT,
     )
@@ -334,7 +400,6 @@ async def test_get_parties_by_date_range_multiple_parties(
         formatted_address="Chicago Test Address",
     )
     student1 = StudentEntity(
-        id=1,
         first_name="John",
         last_name="Doe",
         call_or_text_pref=ContactPreference.call,
@@ -342,48 +407,48 @@ async def test_get_parties_by_date_range_multiple_parties(
         account_id=1,
     )
     student2 = StudentEntity(
-        id=2,
         first_name="Jane",
         last_name="Smith",
         call_or_text_pref=ContactPreference.text,
         phone_number="0987654321",
-        account_id=1,
+        account_id=2,
     )
     student3 = StudentEntity(
-        id=3,
         first_name="Bob",
         last_name="Johnson",
         call_or_text_pref=ContactPreference.call,
         phone_number="1111111111",
-        account_id=1,
+        account_id=3,
     )
     student4 = StudentEntity(
-        id=4,
         first_name="Alice",
         last_name="Williams",
         call_or_text_pref=ContactPreference.text,
         phone_number="2222222222",
-        account_id=1,
+        account_id=4,
     )
     student5 = StudentEntity(
-        id=5,
         first_name="Charlie",
         last_name="Brown",
         call_or_text_pref=ContactPreference.call,
         phone_number="3333333333",
-        account_id=1,
+        account_id=5,
     )
     student6 = StudentEntity(
-        id=6,
         first_name="Diana",
         last_name="Davis",
         call_or_text_pref=ContactPreference.text,
         phone_number="4444444444",
-        account_id=1,
+        account_id=6,
     )
     test_async_session.add_all(
         [
-            account,
+            account1,
+            account2,
+            account3,
+            account4,
+            account5,
+            account6,
             address1,
             address2,
             address3,
@@ -585,9 +650,15 @@ async def test_get_party_count(
     party_service: PartyService, test_async_session: AsyncSession
 ):
     # Create account, location and students for party
-    account = AccountEntity(
+    account_one = AccountEntity(
         id=1,
         email="test@example.com",
+        hashed_password="hashed",
+        role=AccountRole.STUDENT,
+    )
+    account_two = AccountEntity(
+        id=2,
+        email="test2@example.com",
         hashed_password="hashed",
         role=AccountRole.STUDENT,
     )
@@ -599,7 +670,6 @@ async def test_get_party_count(
         formatted_address="NYC Test Address",
     )
     student1 = StudentEntity(
-        id=1,
         first_name="John",
         last_name="Doe",
         call_or_text_pref=ContactPreference.call,
@@ -607,14 +677,13 @@ async def test_get_party_count(
         account_id=1,
     )
     student2 = StudentEntity(
-        id=2,
         first_name="Jane",
         last_name="Smith",
         call_or_text_pref=ContactPreference.text,
         phone_number="0987654321",
-        account_id=1,
+        account_id=2,
     )
-    test_async_session.add_all([account, address, student1, student2])
+    test_async_session.add_all([account_one, account_two, address, student1, student2])
     await test_async_session.commit()
 
     initial_count = await party_service.get_party_count()
