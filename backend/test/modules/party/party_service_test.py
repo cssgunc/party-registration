@@ -4,11 +4,11 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.modules.account.account_entity import AccountEntity, AccountRole
-from src.modules.address.address_entity import AddressEntity
+from src.modules.location.location_entity import LocationEntity
 from src.modules.party.party_entity import PartyEntity
 from src.modules.party.party_model import Party, PartyData
 from src.modules.party.party_service import (
-    AddressNotFoundException,
+    LocationNotFoundException,
     PartyNotFoundException,
     PartyService,
     StudentNotFoundException,
@@ -24,46 +24,52 @@ def party_service(test_async_session: AsyncSession) -> PartyService:
 
 @pytest_asyncio.fixture()
 async def sample_party_data(test_async_session: AsyncSession) -> PartyData:
-    # Create address
-    address = AddressEntity(id=1, latitude=40.7128, longitude=-74.0060)
-    test_async_session.add(address)
+    # Create location
+    location = LocationEntity(
+        id=1,
+        latitude=40.7128,
+        longitude=-74.0060,
+        google_place_id="test_place_id_1",
+        formatted_address="123 Test St, Test City, TC 12345",
+    )
+    test_async_session.add(location)
 
-    # Create accounts
+    # Create account for students
     account_one = AccountEntity(
         id=1,
-        email="test_one@example.com",
-        hashed_password="$2b$12$test_hashed_password_one",
+        email="test@example.com",
+        hashed_password="hashed_password",
         role=AccountRole.STUDENT,
     )
     account_two = AccountEntity(
         id=2,
-        email="test_two@example.com",
-        hashed_password="$2b$12$test_hashed_password_two",
+        email="test2@example.com",
+        hashed_password="hashed_password",
         role=AccountRole.STUDENT,
     )
     test_async_session.add_all([account_one, account_two])
 
     # Create students
     student_one = StudentEntity(
-        account_id=1,
         first_name="John",
         last_name="Doe",
         call_or_text_pref=ContactPreference.call,
         phone_number="1234567890",
+        account_id=1,
     )
     student_two = StudentEntity(
-        account_id=2,
         first_name="Jane",
         last_name="Smith",
         call_or_text_pref=ContactPreference.text,
         phone_number="0987654321",
+        account_id=2,
     )
     test_async_session.add_all([student_one, student_two])
     await test_async_session.commit()
 
     return PartyData(
         party_datetime=datetime.now() + timedelta(days=1),
-        address_id=1,
+        location_id=1,
         contact_one_id=1,
         contact_two_id=2,
     )
@@ -74,11 +80,10 @@ async def party_in_db(
     test_async_session: AsyncSession, sample_party_data: PartyData
 ) -> Party:
     """Create a party directly in the database, bypassing the service layer."""
-    from src.modules.party.party_entity import PartyEntity
 
     party_entity = PartyEntity(
         party_datetime=sample_party_data.party_datetime,
-        address_id=sample_party_data.address_id,
+        location_id=sample_party_data.location_id,
         contact_one_id=sample_party_data.contact_one_id,
         contact_two_id=sample_party_data.contact_two_id,
     )
@@ -93,14 +98,13 @@ async def multiple_parties_in_db(
     test_async_session: AsyncSession, sample_party_data: PartyData
 ):
     """Create multiple parties directly in the database for testing."""
-    from src.modules.party.party_entity import PartyEntity
 
     parties = []
 
     for days_offset in [1, 2, 5]:
         party_entity = PartyEntity(
             party_datetime=datetime.now() + timedelta(days=days_offset),
-            address_id=sample_party_data.address_id,
+            location_id=sample_party_data.location_id,
             contact_one_id=sample_party_data.contact_one_id,
             contact_two_id=sample_party_data.contact_two_id,
         )
@@ -123,22 +127,22 @@ async def test_create_party(
     assert party is not None
     assert party.id is not None
     assert party.party_datetime == sample_party_data.party_datetime
-    assert party.address_id == sample_party_data.address_id
+    assert party.location_id == sample_party_data.location_id
     assert party.contact_one_id == sample_party_data.contact_one_id
     assert party.contact_two_id == sample_party_data.contact_two_id
 
 
 @pytest.mark.asyncio
-async def test_create_party_invalid_address(
+async def test_create_party_invalid_location(
     party_service: PartyService, sample_party_data: PartyData
 ) -> None:
     invalid_data = PartyData(
         party_datetime=sample_party_data.party_datetime,
-        address_id=999,  # Non-existent address
+        location_id=999,  # Non-existent location
         contact_one_id=sample_party_data.contact_one_id,
         contact_two_id=sample_party_data.contact_two_id,
     )
-    with pytest.raises(AddressNotFoundException):
+    with pytest.raises(LocationNotFoundException):
         await party_service.create_party(invalid_data)
 
 
@@ -148,7 +152,7 @@ async def test_create_party_invalid_contact_one(
 ) -> None:
     invalid_data = PartyData(
         party_datetime=sample_party_data.party_datetime,
-        address_id=sample_party_data.address_id,
+        location_id=sample_party_data.location_id,
         contact_one_id=999,  # Non-existent student
         contact_two_id=sample_party_data.contact_two_id,
     )
@@ -162,7 +166,7 @@ async def test_create_party_invalid_contact_two(
 ) -> None:
     invalid_data = PartyData(
         party_datetime=sample_party_data.party_datetime,
-        address_id=sample_party_data.address_id,
+        location_id=sample_party_data.location_id,
         contact_one_id=sample_party_data.contact_one_id,
         contact_two_id=999,  # Non-existent student
     )
@@ -174,49 +178,104 @@ async def test_create_party_invalid_contact_two(
 async def test_get_parties(
     party_service: PartyService, test_async_session: AsyncSession
 ):
-    from src.modules.party.party_entity import PartyEntity
+    # Create account, locations and students for parties
 
-    # Create addresses
-    address1 = AddressEntity(id=1, latitude=40.7128, longitude=-74.0060)
-    address2 = AddressEntity(id=2, latitude=34.0522, longitude=-118.2437)
-    test_async_session.add_all([address1, address2])
+    account1 = AccountEntity(
+        id=1,
+        email="student1@example.com",
+        hashed_password="hashed_pw_1",
+        role=AccountRole.STUDENT,
+    )
 
-    # Create accounts and students
-    accounts = []
-    students = []
-    for i in range(1, 5):  # Create 4 students
-        account = AccountEntity(
-            id=i,
-            email=f"student{i}@example.com",
-            hashed_password=f"$2b$12$test_hashed_password_{i}",
-            role=AccountRole.STUDENT,
-        )
-        accounts.append(account)
+    account2 = AccountEntity(
+        id=2,
+        email="student2@example.com",
+        hashed_password="hashed_pw_2",
+        role=AccountRole.STUDENT,
+    )
 
-        student = StudentEntity(
-            account_id=i,
-            first_name=f"Student{i}",
-            last_name=f"Last{i}",
-            call_or_text_pref=ContactPreference.call
-            if i % 2 == 1
-            else ContactPreference.text,
-            phone_number=str(i) * 10,
-        )
-        students.append(student)
+    account3 = AccountEntity(
+        id=3,
+        email="admin@example.com",
+        hashed_password="hashed_pw_3",
+        role=AccountRole.ADMIN,
+    )
 
-    test_async_session.add_all(accounts + students)
+    account4 = AccountEntity(
+        id=4,
+        email="police@example.com",
+        hashed_password="hashed_pw_4",
+        role=AccountRole.POLICE,
+    )
+
+    address1 = LocationEntity(
+        id=1,
+        latitude=40.7128,
+        longitude=-74.0060,
+        google_place_id="test_place_1",
+        formatted_address="NYC Test Address",
+    )
+    address2 = LocationEntity(
+        id=2,
+        latitude=34.0522,
+        longitude=-118.2437,
+        google_place_id="test_place_2",
+        formatted_address="LA Test Address",
+    )
+    student1 = StudentEntity(
+        first_name="John",
+        last_name="Doe",
+        call_or_text_pref=ContactPreference.call,
+        phone_number="1234567890",
+        account_id=1,
+    )
+    student2 = StudentEntity(
+        first_name="Jane",
+        last_name="Smith",
+        call_or_text_pref=ContactPreference.text,
+        phone_number="0987654321",
+        account_id=2,
+    )
+    student3 = StudentEntity(
+        first_name="Bob",
+        last_name="Johnson",
+        call_or_text_pref=ContactPreference.call,
+        phone_number="1111111111",
+        account_id=3,
+    )
+    student4 = StudentEntity(
+        first_name="Alice",
+        last_name="Williams",
+        call_or_text_pref=ContactPreference.text,
+        phone_number="2222222222",
+        account_id=4,
+    )
+    test_async_session.add_all(
+        [
+            account1,
+            account2,
+            account3,
+            account4,
+            address1,
+            address2,
+            student1,
+            student2,
+            student3,
+            student4,
+        ]
+    )
     await test_async_session.commit()
 
     # Create multiple parties directly in the database
     party1 = PartyEntity(
         party_datetime=datetime.now() + timedelta(days=1),
-        address_id=1,
+        location_id=1,
         contact_one_id=1,
         contact_two_id=2,
     )
     party2 = PartyEntity(
         party_datetime=datetime.now() + timedelta(days=2),
-        address_id=2,
+        location_id=2,
         contact_one_id=3,
         contact_two_id=4,
     )
@@ -237,7 +296,7 @@ async def test_get_party_by_id(party_service: PartyService, party_in_db: Party):
     fetched = await party_service.get_party_by_id(party_in_db.id)
     assert party_in_db.id == fetched.id
     assert party_in_db.party_datetime == fetched.party_datetime
-    assert party_in_db.address_id == fetched.address_id
+    assert party_in_db.location_id == fetched.location_id
 
 
 @pytest.mark.asyncio
@@ -247,8 +306,8 @@ async def test_get_party_by_id_not_found(party_service: PartyService):
 
 
 @pytest.mark.asyncio
-async def test_get_parties_by_address(party_service: PartyService, party_in_db: Party):
-    parties = await party_service.get_parties_by_address(party_in_db.address_id)
+async def test_get_parties_by_location(party_service: PartyService, party_in_db: Party):
+    parties = await party_service.get_parties_by_location(party_in_db.location_id)
     assert len(parties) == 1
     assert parties[0].id == party_in_db.id
 
@@ -282,52 +341,141 @@ async def test_get_parties_by_date_range(
 async def test_get_parties_by_date_range_multiple_parties(
     party_service: PartyService, test_async_session: AsyncSession
 ):
-    # Create addresses
-    address1 = AddressEntity(id=1, latitude=40.7128, longitude=-74.0060)
-    address2 = AddressEntity(id=2, latitude=34.0522, longitude=-118.2437)
-    address3 = AddressEntity(id=3, latitude=41.8781, longitude=-87.6298)
-    test_async_session.add_all([address1, address2, address3])
-
-    # Create accounts and students
-    accounts = []
-    students = []
-    for i in range(1, 7):  # Create 6 students
-        account = AccountEntity(
-            id=i,
-            email=f"student{i}@example.com",
-            hashed_password=f"$2b$12$test_hashed_password_{i}",
-            role=AccountRole.STUDENT,
-        )
-        accounts.append(account)
-
-        student = StudentEntity(
-            account_id=i,
-            first_name=f"Student{i}",
-            last_name=f"Last{i}",
-            call_or_text_pref=ContactPreference.call
-            if i % 2 == 1
-            else ContactPreference.text,
-            phone_number=str(i) * 10,
-        )
-        students.append(student)
-
-    test_async_session.add_all(accounts + students)
+    # Create account, locations and students for parties
+    account1 = AccountEntity(
+        id=1,
+        email="john.doe@example.com",
+        hashed_password="hashed",
+        role=AccountRole.STUDENT,
+    )
+    account2 = AccountEntity(
+        id=2,
+        email="jane.smith@example.com",
+        hashed_password="hashed",
+        role=AccountRole.STUDENT,
+    )
+    account3 = AccountEntity(
+        id=3,
+        email="bob.johnson@example.com",
+        hashed_password="hashed",
+        role=AccountRole.STUDENT,
+    )
+    account4 = AccountEntity(
+        id=4,
+        email="alice.williams@example.com",
+        hashed_password="hashed",
+        role=AccountRole.STUDENT,
+    )
+    account5 = AccountEntity(
+        id=5,
+        email="charlie.brown@example.com",
+        hashed_password="hashed",
+        role=AccountRole.STUDENT,
+    )
+    account6 = AccountEntity(
+        id=6,
+        email="diana.davis@example.com",
+        hashed_password="hashed",
+        role=AccountRole.STUDENT,
+    )
+    address1 = LocationEntity(
+        id=1,
+        latitude=40.7128,
+        longitude=-74.0060,
+        google_place_id="test_place_1",
+        formatted_address="NYC Test Address",
+    )
+    address2 = LocationEntity(
+        id=2,
+        latitude=34.0522,
+        longitude=-118.2437,
+        google_place_id="test_place_2",
+        formatted_address="LA Test Address",
+    )
+    address3 = LocationEntity(
+        id=3,
+        latitude=41.8781,
+        longitude=-87.6298,
+        google_place_id="test_place_3",
+        formatted_address="Chicago Test Address",
+    )
+    student1 = StudentEntity(
+        first_name="John",
+        last_name="Doe",
+        call_or_text_pref=ContactPreference.call,
+        phone_number="1234567890",
+        account_id=1,
+    )
+    student2 = StudentEntity(
+        first_name="Jane",
+        last_name="Smith",
+        call_or_text_pref=ContactPreference.text,
+        phone_number="0987654321",
+        account_id=2,
+    )
+    student3 = StudentEntity(
+        first_name="Bob",
+        last_name="Johnson",
+        call_or_text_pref=ContactPreference.call,
+        phone_number="1111111111",
+        account_id=3,
+    )
+    student4 = StudentEntity(
+        first_name="Alice",
+        last_name="Williams",
+        call_or_text_pref=ContactPreference.text,
+        phone_number="2222222222",
+        account_id=4,
+    )
+    student5 = StudentEntity(
+        first_name="Charlie",
+        last_name="Brown",
+        call_or_text_pref=ContactPreference.call,
+        phone_number="3333333333",
+        account_id=5,
+    )
+    student6 = StudentEntity(
+        first_name="Diana",
+        last_name="Davis",
+        call_or_text_pref=ContactPreference.text,
+        phone_number="4444444444",
+        account_id=6,
+    )
+    test_async_session.add_all(
+        [
+            account1,
+            account2,
+            account3,
+            account4,
+            account5,
+            account6,
+            address1,
+            address2,
+            address3,
+            student1,
+            student2,
+            student3,
+            student4,
+            student5,
+            student6,
+        ]
+    )
     await test_async_session.commit()
 
     # Create parties directly in the database at different dates
     base_datetime = datetime.now() + timedelta(days=1)
     party1 = PartyEntity(
-        party_datetime=base_datetime, address_id=1, contact_one_id=1, contact_two_id=2
+        party_datetime=base_datetime, location_id=1, contact_one_id=1, contact_two_id=2
     )
     party2 = PartyEntity(
         party_datetime=base_datetime + timedelta(hours=2),
-        address_id=2,
+        location_id=2,
         contact_one_id=3,
         contact_two_id=4,
     )
     party3 = PartyEntity(
         party_datetime=base_datetime + timedelta(days=5),
-        address_id=3,
+        location_id=3,
         contact_one_id=5,
         contact_two_id=6,
     )
@@ -415,7 +563,7 @@ async def test_get_parties_by_date_range_outside_after(
 async def test_update_party(party_service: PartyService, party_in_db: Party):
     update_data = PartyData(
         party_datetime=party_in_db.party_datetime + timedelta(hours=2),
-        address_id=party_in_db.address_id,
+        location_id=party_in_db.location_id,
         contact_one_id=party_in_db.contact_one_id,
         contact_two_id=party_in_db.contact_two_id,
     )
@@ -434,16 +582,16 @@ async def test_update_party_not_found(
 
 
 @pytest.mark.asyncio
-async def test_update_party_invalid_address(
+async def test_update_party_invalid_location(
     party_service: PartyService, party_in_db: Party
 ):
     invalid_update = PartyData(
         party_datetime=party_in_db.party_datetime,
-        address_id=999,  # Non-existent address
+        location_id=999,  # Non-existent location
         contact_one_id=party_in_db.contact_one_id,
         contact_two_id=party_in_db.contact_two_id,
     )
-    with pytest.raises(AddressNotFoundException):
+    with pytest.raises(LocationNotFoundException):
         await party_service.update_party(party_in_db.id, invalid_update)
 
 
@@ -453,7 +601,7 @@ async def test_update_party_invalid_contact_one(
 ):
     invalid_update = PartyData(
         party_datetime=party_in_db.party_datetime,
-        address_id=party_in_db.address_id,
+        location_id=party_in_db.location_id,
         contact_one_id=999,  # Non-existent student
         contact_two_id=party_in_db.contact_two_id,
     )
@@ -467,7 +615,7 @@ async def test_update_party_invalid_contact_two(
 ):
     invalid_update = PartyData(
         party_datetime=party_in_db.party_datetime,
-        address_id=party_in_db.address_id,
+        location_id=party_in_db.location_id,
         contact_one_id=party_in_db.contact_one_id,
         contact_two_id=999,  # Non-existent student
     )
@@ -501,36 +649,41 @@ async def test_party_exists(party_service: PartyService, party_in_db: Party):
 async def test_get_party_count(
     party_service: PartyService, test_async_session: AsyncSession
 ):
-    from src.modules.party.party_entity import PartyEntity
-
-    # Create address
-    address = AddressEntity(id=1, latitude=40.7128, longitude=-74.0060)
-    test_async_session.add(address)
-
-    # Create accounts and students
-    accounts = []
-    students = []
-    for i in range(1, 3):  # Create 2 students
-        account = AccountEntity(
-            id=i,
-            email=f"student{i}@example.com",
-            hashed_password=f"$2b$12$test_hashed_password_{i}",
-            role=AccountRole.STUDENT,
-        )
-        accounts.append(account)
-
-        student = StudentEntity(
-            account_id=i,
-            first_name=f"Student{i}",
-            last_name=f"Last{i}",
-            call_or_text_pref=ContactPreference.call
-            if i % 2 == 1
-            else ContactPreference.text,
-            phone_number=str(i) * 10,
-        )
-        students.append(student)
-
-    test_async_session.add_all(accounts + students)
+    # Create account, location and students for party
+    account_one = AccountEntity(
+        id=1,
+        email="test@example.com",
+        hashed_password="hashed",
+        role=AccountRole.STUDENT,
+    )
+    account_two = AccountEntity(
+        id=2,
+        email="test2@example.com",
+        hashed_password="hashed",
+        role=AccountRole.STUDENT,
+    )
+    address = LocationEntity(
+        id=1,
+        latitude=40.7128,
+        longitude=-74.0060,
+        google_place_id="test_place_1",
+        formatted_address="NYC Test Address",
+    )
+    student1 = StudentEntity(
+        first_name="John",
+        last_name="Doe",
+        call_or_text_pref=ContactPreference.call,
+        phone_number="1234567890",
+        account_id=1,
+    )
+    student2 = StudentEntity(
+        first_name="Jane",
+        last_name="Smith",
+        call_or_text_pref=ContactPreference.text,
+        phone_number="0987654321",
+        account_id=2,
+    )
+    test_async_session.add_all([account_one, account_two, address, student1, student2])
     await test_async_session.commit()
 
     initial_count = await party_service.get_party_count()
@@ -538,7 +691,7 @@ async def test_get_party_count(
     # Add a party directly to the database
     party = PartyEntity(
         party_datetime=datetime.now() + timedelta(days=1),
-        address_id=1,
+        location_id=1,
         contact_one_id=1,
         contact_two_id=2,
     )
