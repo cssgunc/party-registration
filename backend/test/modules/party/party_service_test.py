@@ -163,48 +163,54 @@ async def parties_with_radius_addresses(
     search_lon = -74.0060
 
     # Address 1: ~2.4 km away (within radius)
-    address1 = AddressEntity(
+    address1 = LocationEntity(
         id=1,
         latitude=search_lat + 0.0217,
         longitude=search_lon,
+        google_place_id="test_place_radius_1",
+        formatted_address="Test Address 1",
     )
     test_async_session.add(address1)
 
     party1 = PartyEntity(
         party_datetime=datetime.now() + timedelta(hours=2),
-        address_id=1,
+        location_id=1,
         contact_one_id=1,
         contact_two_id=2,
     )
     test_async_session.add(party1)
 
     # Address 2: ~4 km away (within radius)
-    address2 = AddressEntity(
+    address2 = LocationEntity(
         id=2,
         latitude=search_lat - 0.0362,
         longitude=search_lon,
+        google_place_id="test_place_radius_2",
+        formatted_address="Test Address 2",
     )
     test_async_session.add(address2)
 
     party2 = PartyEntity(
         party_datetime=datetime.now() + timedelta(hours=4),
-        address_id=2,
+        location_id=2,
         contact_one_id=3,
         contact_two_id=4,
     )
     test_async_session.add(party2)
 
     # Address 3: ~6.4 km away (outside radius)
-    address3 = AddressEntity(
+    address3 = LocationEntity(
         id=3,
         latitude=search_lat + 0.0580,
         longitude=search_lon,
+        google_place_id="test_place_radius_3",
+        formatted_address="Test Address 3",
     )
     test_async_session.add(address3)
 
     party3 = PartyEntity(
         party_datetime=datetime.now() + timedelta(hours=6),
-        address_id=3,
+        location_id=3,
         contact_one_id=5,
         contact_two_id=6,
     )
@@ -913,17 +919,19 @@ async def test_get_parties_by_radius_time_window_outside_past(
     search_lat = 40.7128
     search_lon = -74.0060
 
-    address1 = AddressEntity(
+    address1 = LocationEntity(
         id=1,
         latitude=search_lat + 0.01,
         longitude=search_lon,
+        google_place_id="test_place_time_past",
+        formatted_address="Test Address Time Past",
     )
     test_async_session.add(address1)
     await test_async_session.commit()
 
     party1 = PartyEntity(
         party_datetime=datetime.now() - timedelta(hours=7),
-        address_id=1,
+        location_id=1,
         contact_one_id=1,
         contact_two_id=2,
     )
@@ -944,17 +952,19 @@ async def test_get_parties_by_radius_time_window_outside_future(
     search_lat = 40.7128
     search_lon = -74.0060
 
-    address1 = AddressEntity(
+    address1 = LocationEntity(
         id=1,
         latitude=search_lat + 0.01,
         longitude=search_lon,
+        google_place_id="test_place_time_future",
+        formatted_address="Test Address Time Future",
     )
     test_async_session.add(address1)
     await test_async_session.commit()
 
     party1 = PartyEntity(
         party_datetime=datetime.now() + timedelta(hours=13),
-        address_id=1,
+        location_id=1,
         contact_one_id=1,
         contact_two_id=2,
     )
@@ -1008,22 +1018,26 @@ async def test_get_parties_by_radius_time_window_boundaries(
     search_lat = 40.7128
     search_lon = -74.0060
 
-    address1 = AddressEntity(
+    address1 = LocationEntity(
         id=1,
         latitude=search_lat + 0.01,
         longitude=search_lon,
+        google_place_id="test_place_boundary_1",
+        formatted_address="Test Address Boundary 1",
     )
-    address2 = AddressEntity(
+    address2 = LocationEntity(
         id=2,
         latitude=search_lat + 0.01,
         longitude=search_lon,
+        google_place_id="test_place_boundary_2",
+        formatted_address="Test Address Boundary 2",
     )
     test_async_session.add_all([address1, address2])
     await test_async_session.commit()
 
     party1 = PartyEntity(
         party_datetime=datetime.now() - timedelta(hours=5, minutes=59),
-        address_id=1,
+        location_id=1,
         contact_one_id=1,
         contact_two_id=2,
     )
@@ -1031,7 +1045,7 @@ async def test_get_parties_by_radius_time_window_boundaries(
 
     party2 = PartyEntity(
         party_datetime=datetime.now() + timedelta(hours=11, minutes=59),
-        address_id=2,
+        location_id=2,
         contact_one_id=3,
         contact_two_id=4,
     )
@@ -1058,17 +1072,19 @@ async def test_get_parties_by_radius_missing_address_skipped(
     search_lat = 40.7128
     search_lon = -74.0060
 
-    address1 = AddressEntity(
+    address1 = LocationEntity(
         id=1,
         latitude=search_lat + 0.01,
         longitude=search_lon,
+        google_place_id="test_place_missing",
+        formatted_address="Test Address Missing",
     )
     test_async_session.add(address1)
     await test_async_session.commit()
 
     party1 = PartyEntity(
         party_datetime=datetime.now() + timedelta(hours=2),
-        address_id=1,
+        location_id=1,
         contact_one_id=1,
         contact_two_id=2,
     )
@@ -1078,7 +1094,7 @@ async def test_get_parties_by_radius_missing_address_skipped(
 
     invalid_party = PartyEntity(
         party_datetime=datetime.now() + timedelta(hours=3),
-        address_id=999,
+        location_id=999,
         contact_one_id=1,
         contact_two_id=2,
     )

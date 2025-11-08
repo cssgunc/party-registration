@@ -190,7 +190,7 @@ class PartyService:
 
         result = await self.session.execute(
             select(PartyEntity)
-            .options(selectinload(PartyEntity.address))
+            .options(selectinload(PartyEntity.location))
             .where(
                 PartyEntity.party_datetime >= start_time,
                 PartyEntity.party_datetime <= end_time,
@@ -200,14 +200,14 @@ class PartyService:
 
         parties_within_radius = []
         for party in parties:
-            if party.address is None:
+            if party.location is None:
                 continue
 
             distance = self._calculate_haversine_distance(
                 latitude,
                 longitude,
-                float(party.address.latitude),
-                float(party.address.longitude),
+                float(party.location.latitude),
+                float(party.location.longitude),
             )
 
             if distance <= env.PARTY_SEARCH_RADIUS_MILES:
