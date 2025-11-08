@@ -16,6 +16,24 @@ from src.modules.user.user_model import User
 
 
 @pytest_asyncio.fixture()
+async def unauthenticated_client(test_async_session: AsyncSession):
+    """Create an async test client WITHOUT authentication override."""
+    async def override_get_session():
+        yield test_async_session
+
+    app.dependency_overrides[get_session] = override_get_session
+    # Note: We do NOT override authenticate_admin here
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test"
+    ) as ac:
+        yield ac
+
+    app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture()
 async def client(test_async_session: AsyncSession):
     """Create an async test client with database session override."""
     async def override_get_session():
@@ -95,8 +113,8 @@ async def test_get_parties_empty(client: AsyncClient):
     assert data["total_records"] == 0
     assert data["parties"] == []
     assert data["page_number"] == 1
-    assert data["page_size"] == 10
-    assert data["total_pages"] == 0
+    assert data["page_size"] == 0  # No page_size specified, defaults to total_records
+    assert data["total_pages"] == 1
 
 
 @pytest.mark.asyncio
@@ -105,7 +123,7 @@ async def test_get_parties_with_data(
     test_async_session: AsyncSession,
     sample_party_setup: dict
 ):
-    """Test GET /api/parties with multiple parties."""
+    """Test GET /api/parties with multiple parties (returns all by default)."""
     # Create 5 parties
     for i in range(5):
         party = PartyEntity(
@@ -124,8 +142,122 @@ async def test_get_parties_with_data(
     assert data["total_records"] == 5
     assert len(data["parties"]) == 5
     assert data["page_number"] == 1
-    assert data["page_size"] == 10
+    assert data["page_size"] == 5  # No page_size specified, defaults to total_records
     assert data["total_pages"] == 1
+
+
+@pytest.mark.asyncio
+async def test_get_parties_validates_content(
+    client: AsyncClient,
+    test_async_session: AsyncSession,
+    sample_party_setup: dict
+):
+    """Test GET /api/parties returns correct party content and structure."""
+    # Create parties with specific data for validation
+    party_datetime_1 = datetime(2024, 6, 15, 20, 0, 0)
+    party_datetime_2 = datetime(2024, 7, 20, 21, 30, 0)
+
+    party1 = PartyEntity(
+        party_datetime=party_datetime_1,
+        location_id=sample_party_setup["location_id"],
+        contact_one_id=sample_party_setup["contact_one_id"],
+        contact_two_id=sample_party_setup["contact_two_id"]
+    )
+    party2 = PartyEntity(
+        party_datetime=party_datetime_2,
+        location_id=sample_party_setup["location_id"],
+        contact_one_id=sample_party_setup["contact_one_id"],
+        contact_two_id=sample_party_setup["contact_two_id"]
+    )
+    test_async_session.add_all([party1, party2])
+    await test_async_session.commit()
+    await test_async_session.refresh(party1)
+    await test_async_session.refresh(party2)
+
+    response = await client.get("/api/parties/")
+    assert response.status_code == 200
+
+    data = response.json()
+    parties = data["parties"]
+
+    # Verify we got the correct number of parties
+    assert len(parties) == 2
+
+    # Validate structure and content of each party
+    for party in parties:
+        # Check all required fields are present
+        assert "id" in party
+        assert "party_datetime" in party
+        assert "location_id" in party
+        assert "contact_one_id" in party
+        assert "contact_two_id" in party
+
+        # Validate field values match what we created
+        assert party["location_id"] == sample_party_setup["location_id"]
+        assert party["contact_one_id"] == sample_party_setup["contact_one_id"]
+        assert party["contact_two_id"] == sample_party_setup["contact_two_id"]
+
+        # Validate IDs are positive integers
+        assert isinstance(party["id"], int)
+        assert party["id"] > 0
+
+    # Verify specific party datetimes
+    party_datetimes = [p["party_datetime"] for p in parties]
+    assert party_datetime_1.isoformat() in party_datetimes
+    assert party_datetime_2.isoformat() in party_datetimes
+
+
+@pytest.mark.asyncio
+async def test_get_parties_content_with_pagination(
+    client: AsyncClient,
+    test_async_session: AsyncSession,
+    sample_party_setup: dict
+):
+    """Test paginated parties return correct content in order."""
+    # Create 10 parties with incrementing dates
+    created_parties = []
+    for i in range(10):
+        party = PartyEntity(
+            party_datetime=datetime(2024, 1, 1, 10, 0, 0) + timedelta(days=i),
+            location_id=sample_party_setup["location_id"],
+            contact_one_id=sample_party_setup["contact_one_id"],
+            contact_two_id=sample_party_setup["contact_two_id"]
+        )
+        test_async_session.add(party)
+        created_parties.append(party)
+    await test_async_session.commit()
+
+    # Refresh all to get IDs
+    for party in created_parties:
+        await test_async_session.refresh(party)
+
+    # Request first page
+    response = await client.get("/api/parties/?page_size=5&page_number=1")
+    assert response.status_code == 200
+    page1_data = response.json()
+
+    # Verify page 1 content
+    assert len(page1_data["parties"]) == 5
+    page1_ids = [p["id"] for p in page1_data["parties"]]
+
+    # Request second page
+    response = await client.get("/api/parties/?page_size=5&page_number=2")
+    assert response.status_code == 200
+    page2_data = response.json()
+
+    # Verify page 2 content
+    assert len(page2_data["parties"]) == 5
+    page2_ids = [p["id"] for p in page2_data["parties"]]
+
+    # Ensure no overlap between pages
+    assert len(set(page1_ids) & set(page2_ids)) == 0
+
+    # Verify all parties have correct structure and data
+    for party in page1_data["parties"] + page2_data["parties"]:
+        assert party["location_id"] == sample_party_setup["location_id"]
+        assert party["contact_one_id"] == sample_party_setup["contact_one_id"]
+        assert party["contact_two_id"] == sample_party_setup["contact_two_id"]
+        assert "party_datetime" in party
 
 
 @pytest.mark.asyncio
@@ -364,3 +496,37 @@ async def test_delete_party_removes_from_list(
     # Verify deleted party is not in the list
     party_ids = [p["id"] for p in final_data["parties"]]
     assert party_to_delete not in party_ids
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "method,endpoint",
+    [
+        ("GET", "/api/parties/"),
+        ("GET", "/api/parties/1"),
+        ("DELETE", "/api/parties/1"),
+    ]
+)
+async def test_admin_authentication_required(
+    unauthenticated_client: AsyncClient,
+    method: str,
+    endpoint: str
+):
+    """
+    Parameterized test to verify all party routes require admin authentication.
+    Tests that requests without authentication return 401 Unauthorized.
+    """
+    if method == "GET":
+        response = await unauthenticated_client.get(endpoint)
+    elif method == "DELETE":
+        response = await unauthenticated_client.delete(endpoint)
+
+    assert response.status_code == 401, f"{method} {endpoint} should require authentication"
+
+    # Check that the response indicates authentication is required
+    response_json = response.json()
+    if "detail" in response_json:
+        assert "not authenticated" in response_json["detail"].lower()
+    else:
+        # Handle different response formats
+        assert response.status_code == 401

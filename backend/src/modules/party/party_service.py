@@ -60,10 +60,11 @@ class PartyService:
         if result.scalar_one_or_none() is None:
             raise StudentNotFoundException(student_id)
 
-    async def get_parties(self, skip: int = 0, limit: int = 100) -> List[Party]:
-        result = await self.session.execute(
-            select(PartyEntity).offset(skip).limit(limit)
-        )
+    async def get_parties(self, skip: int = 0, limit: int | None = None) -> List[Party]:
+        query = select(PartyEntity).offset(skip)
+        if limit is not None:
+            query = query.limit(limit)
+        result = await self.session.execute(query)
         parties = result.scalars().all()
         return [party.to_model() for party in parties]
 

@@ -9,30 +9,43 @@ party_router = APIRouter(prefix="/api/parties", tags=["parties"])
 @party_router.get("/")
 async def list_parties(
     page_number: int = Query(1, ge=1, description="Page number (1-indexed)"),
-    page_size: int = Query(10, ge=1, le=100, description="Items per page"),
+    page_size: int | None = Query(None, ge=1, le=100, description="Items per page (default: all)"),
     party_service: PartyService = Depends(),
     _=Depends(authenticate_admin)
 ) -> PaginatedPartiesResponse:
     """
-    Returns all party registrations in the database with pagination.
+    Returns all party registrations in the database with optional pagination.
 
     Query Parameters:
     - page_number: The page number to retrieve (1-indexed)
-    - page_size: Number of items per page (max 100)
+    - page_size: Number of items per page (max 100, default: returns all parties)
 
     Returns:
     - parties: List of party registrations
     - total_records: Total number of records in the database
-    - page_size: Requested page size
+    - page_size: Requested page size (or total_records if not specified)
     - page_number: Requested page number
     - total_pages: Total number of pages based on page size
     """
-    # Calculate skip and limit for the service
+    # Get total count first
+    total_records = await party_service.get_party_count()
+
+    # If page_size is None, return all parties
+    if page_size is None:
+        parties = await party_service.get_parties(skip=0, limit=None)
+        return PaginatedPartiesResponse(
+            parties=parties,
+            total_records=total_records,
+            page_size=total_records,
+            page_number=1,
+            total_pages=1
+        )
+
+    # Calculate skip and limit for pagination
     skip = (page_number - 1) * page_size
 
-    # Get parties and total count
+    # Get parties with pagination
     parties = await party_service.get_parties(skip=skip, limit=page_size)
-    total_records = await party_service.get_party_count()
 
     # Calculate total pages (ceiling division)
     total_pages = (total_records + page_size - 1) // page_size if total_records > 0 else 0
