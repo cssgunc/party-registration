@@ -502,10 +502,10 @@ async def test_admin_authentication_required(
     Parameterized test to verify all party routes require admin authentication.
     Tests that requests without authentication return 401 Unauthorized.
     """
-    if method == "GET":
-        response = await unauthenticated_client.get(endpoint)
-    elif method == "DELETE":
+    if method == "DELETE":
         response = await unauthenticated_client.delete(endpoint)
+    else:
+        response = await unauthenticated_client.get(endpoint)
 
     assert response.status_code == 401, f"{method} {endpoint} should require authentication"
 
