@@ -1,9 +1,9 @@
-from typing import Self, TYPE_CHECKING
 from datetime import datetime
+from typing import TYPE_CHECKING, Self
 
-from src.core.database import EntityBase
-from sqlalchemy import DateTime, Integer, ForeignKey
+from sqlalchemy import DateTime, ForeignKey, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from src.core.database import EntityBase
 
 from .party_model import Party, PartyData
 
@@ -17,14 +17,24 @@ class PartyEntity(EntityBase):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     party_datetime: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    location_id: Mapped[int] = mapped_column(Integer, ForeignKey('locations.id'), nullable=False)
-    contact_one_id: Mapped[int] = mapped_column(Integer, ForeignKey('students.id'), nullable=False)
-    contact_two_id: Mapped[int] = mapped_column(Integer, ForeignKey('students.id'), nullable=False)
+    location_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("locations.id"), nullable=False
+    )
+    contact_one_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("students.account_id"), nullable=False
+    )
+    contact_two_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("students.account_id"), nullable=False
+    )
 
     # Relationships
     location: Mapped["LocationEntity"] = relationship("LocationEntity")
-    contact_one: Mapped["StudentEntity"] = relationship("StudentEntity", foreign_keys=[contact_one_id])
-    contact_two: Mapped["StudentEntity"] = relationship("StudentEntity", foreign_keys=[contact_two_id])
+    contact_one: Mapped["StudentEntity"] = relationship(
+        "StudentEntity", foreign_keys=[contact_one_id]
+    )
+    contact_two: Mapped["StudentEntity"] = relationship(
+        "StudentEntity", foreign_keys=[contact_two_id]
+    )
 
     @classmethod
     def from_model(cls, data: PartyData) -> Self:
@@ -32,7 +42,7 @@ class PartyEntity(EntityBase):
             party_datetime=data.party_datetime,
             location_id=data.location_id,
             contact_one_id=data.contact_one_id,
-            contact_two_id=data.contact_two_id
+            contact_two_id=data.contact_two_id,
         )
 
     def to_model(self) -> Party:
@@ -41,5 +51,5 @@ class PartyEntity(EntityBase):
             party_datetime=self.party_datetime,
             location_id=self.location_id,
             contact_one_id=self.contact_one_id,
-            contact_two_id=self.contact_two_id
+            contact_two_id=self.contact_two_id,
         )

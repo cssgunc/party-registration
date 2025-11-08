@@ -1,17 +1,17 @@
+from datetime import datetime, timedelta
+
 import pytest
 import pytest_asyncio
-from datetime import datetime, timedelta
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from src.main import app
-from src.core.database import get_session
 from src.core.authentication import authenticate_admin
-from src.modules.party.party_entity import PartyEntity
+from src.core.database import get_session
+from src.main import app
+from src.modules.account.account_entity import AccountEntity, AccountRole
 from src.modules.location.location_entity import LocationEntity
+from src.modules.party.party_entity import PartyEntity
 from src.modules.student.student_entity import StudentEntity
 from src.modules.student.student_model import ContactPreference
-from src.modules.account.account_entity import AccountEntity, AccountRole
 from src.modules.user.user_model import User
 
 
@@ -36,6 +36,7 @@ async def unauthenticated_client(test_async_session: AsyncSession):
 @pytest_asyncio.fixture()
 async def client(test_async_session: AsyncSession):
     """Create an async test client with database session override."""
+
     async def override_get_session():
         yield test_async_session
 
@@ -46,8 +47,7 @@ async def client(test_async_session: AsyncSession):
     app.dependency_overrides[authenticate_admin] = override_authenticate_admin
 
     async with AsyncClient(
-        transport=ASGITransport(app=app),
-        base_url="http://test"
+        transport=ASGITransport(app=app), base_url="http://test"
     ) as ac:
         yield ac
 
@@ -58,13 +58,19 @@ async def client(test_async_session: AsyncSession):
 async def sample_party_setup(test_async_session: AsyncSession):
     """Create sample location and students for party tests."""
     # Create account
-    account = AccountEntity(
+    account_one = AccountEntity(
         id=1,
         email="test@example.com",
         hashed_password="hashed_password",
-        role=AccountRole.STUDENT
+        role=AccountRole.STUDENT,
     )
-    test_async_session.add(account)
+    account_two = AccountEntity(
+        id=2,
+        email="test2@example.com",
+        hashed_password="hashed_password",
+        role=AccountRole.STUDENT,
+    )
+    test_async_session.add_all([account_one, account_two])
 
     # Create location
     location = LocationEntity(
@@ -72,35 +78,29 @@ async def sample_party_setup(test_async_session: AsyncSession):
         latitude=40.7128,
         longitude=-74.0060,
         google_place_id="test_place_id_1",
-        formatted_address="123 Test St, Test City, TC 12345"
+        formatted_address="123 Test St, Test City, TC 12345",
     )
     test_async_session.add(location)
 
     # Create students
     student_one = StudentEntity(
-        id=1,
         first_name="John",
         last_name="Doe",
         call_or_text_pref=ContactPreference.call,
         phone_number="1234567890",
-        account_id=1
+        account_id=1,
     )
     student_two = StudentEntity(
-        id=2,
         first_name="Jane",
         last_name="Smith",
         call_or_text_pref=ContactPreference.text,
         phone_number="0987654321",
-        account_id=1
+        account_id=2,
     )
     test_async_session.add_all([student_one, student_two])
     await test_async_session.commit()
 
-    return {
-        "location_id": 1,
-        "contact_one_id": 1,
-        "contact_two_id": 2
-    }
+    return {"location_id": 1, "contact_one_id": 1, "contact_two_id": 2}
 
 
 @pytest.mark.asyncio
@@ -119,9 +119,7 @@ async def test_get_parties_empty(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_get_parties_with_data(
-    client: AsyncClient,
-    test_async_session: AsyncSession,
-    sample_party_setup: dict
+    client: AsyncClient, test_async_session: AsyncSession, sample_party_setup: dict
 ):
     """Test GET /api/parties with multiple parties (returns all by default)."""
     # Create 5 parties
@@ -130,7 +128,7 @@ async def test_get_parties_with_data(
             party_datetime=datetime.now() + timedelta(days=i),
             location_id=sample_party_setup["location_id"],
             contact_one_id=sample_party_setup["contact_one_id"],
-            contact_two_id=sample_party_setup["contact_two_id"]
+            contact_two_id=sample_party_setup["contact_two_id"],
         )
         test_async_session.add(party)
     await test_async_session.commit()
@@ -262,9 +260,7 @@ async def test_get_parties_content_with_pagination(
 
 @pytest.mark.asyncio
 async def test_get_parties_pagination(
-    client: AsyncClient,
-    test_async_session: AsyncSession,
-    sample_party_setup: dict
+    client: AsyncClient, test_async_session: AsyncSession, sample_party_setup: dict
 ):
     """Test GET /api/parties pagination with multiple pages."""
     # Create 25 parties
@@ -273,7 +269,7 @@ async def test_get_parties_pagination(
             party_datetime=datetime.now() + timedelta(days=i),
             location_id=sample_party_setup["location_id"],
             contact_one_id=sample_party_setup["contact_one_id"],
-            contact_two_id=sample_party_setup["contact_two_id"]
+            contact_two_id=sample_party_setup["contact_two_id"],
         )
         test_async_session.add(party)
     await test_async_session.commit()
@@ -309,9 +305,7 @@ async def test_get_parties_pagination(
 
 @pytest.mark.asyncio
 async def test_get_parties_pagination_beyond_available(
-    client: AsyncClient,
-    test_async_session: AsyncSession,
-    sample_party_setup: dict
+    client: AsyncClient, test_async_session: AsyncSession, sample_party_setup: dict
 ):
     """Test GET /api/parties with page number beyond available data."""
     # Create 5 parties
@@ -320,7 +314,7 @@ async def test_get_parties_pagination_beyond_available(
             party_datetime=datetime.now() + timedelta(days=i),
             location_id=sample_party_setup["location_id"],
             contact_one_id=sample_party_setup["contact_one_id"],
-            contact_two_id=sample_party_setup["contact_two_id"]
+            contact_two_id=sample_party_setup["contact_two_id"],
         )
         test_async_session.add(party)
     await test_async_session.commit()
@@ -337,9 +331,7 @@ async def test_get_parties_pagination_beyond_available(
 
 @pytest.mark.asyncio
 async def test_get_parties_custom_page_size(
-    client: AsyncClient,
-    test_async_session: AsyncSession,
-    sample_party_setup: dict
+    client: AsyncClient, test_async_session: AsyncSession, sample_party_setup: dict
 ):
     """Test GET /api/parties with custom page size."""
     # Create 10 parties
@@ -348,7 +340,7 @@ async def test_get_parties_custom_page_size(
             party_datetime=datetime.now() + timedelta(days=i),
             location_id=sample_party_setup["location_id"],
             contact_one_id=sample_party_setup["contact_one_id"],
-            contact_two_id=sample_party_setup["contact_two_id"]
+            contact_two_id=sample_party_setup["contact_two_id"],
         )
         test_async_session.add(party)
     await test_async_session.commit()
@@ -384,9 +376,7 @@ async def test_get_parties_invalid_page_size(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_get_party_by_id(
-    client: AsyncClient,
-    test_async_session: AsyncSession,
-    sample_party_setup: dict
+    client: AsyncClient, test_async_session: AsyncSession, sample_party_setup: dict
 ):
     """Test GET /api/parties/{party_id} successfully retrieves a party."""
     # Create a party
@@ -395,7 +385,7 @@ async def test_get_party_by_id(
         party_datetime=party_datetime,
         location_id=sample_party_setup["location_id"],
         contact_one_id=sample_party_setup["contact_one_id"],
-        contact_two_id=sample_party_setup["contact_two_id"]
+        contact_two_id=sample_party_setup["contact_two_id"],
     )
     test_async_session.add(party)
     await test_async_session.commit()
@@ -421,9 +411,7 @@ async def test_get_party_by_id_not_found(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_delete_party(
-    client: AsyncClient,
-    test_async_session: AsyncSession,
-    sample_party_setup: dict
+    client: AsyncClient, test_async_session: AsyncSession, sample_party_setup: dict
 ):
     """Test DELETE /api/parties/{party_id} successfully deletes a party."""
     # Create a party
@@ -431,7 +419,7 @@ async def test_delete_party(
         party_datetime=datetime.now() + timedelta(days=1),
         location_id=sample_party_setup["location_id"],
         contact_one_id=sample_party_setup["contact_one_id"],
-        contact_two_id=sample_party_setup["contact_two_id"]
+        contact_two_id=sample_party_setup["contact_two_id"],
     )
     test_async_session.add(party)
     await test_async_session.commit()
@@ -459,9 +447,7 @@ async def test_delete_party_not_found(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_delete_party_removes_from_list(
-    client: AsyncClient,
-    test_async_session: AsyncSession,
-    sample_party_setup: dict
+    client: AsyncClient, test_async_session: AsyncSession, sample_party_setup: dict
 ):
     """Test that deleting a party removes it from the list."""
     # Create 3 parties
@@ -470,7 +456,7 @@ async def test_delete_party_removes_from_list(
             party_datetime=datetime.now() + timedelta(days=i),
             location_id=sample_party_setup["location_id"],
             contact_one_id=sample_party_setup["contact_one_id"],
-            contact_two_id=sample_party_setup["contact_two_id"]
+            contact_two_id=sample_party_setup["contact_two_id"],
         )
         test_async_session.add(party)
     await test_async_session.commit()
