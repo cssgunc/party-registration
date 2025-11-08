@@ -23,6 +23,7 @@ We aim to facilitate and better secure the party registration process at UNC.
 | Mason Mines      | Developer       |
 | Vidur Shah       | Developer       |
 | Shlok Bhutani    | Developer       |
+| Vasu Bansal      | Developer       |
 
 ## Tech Stack
 
