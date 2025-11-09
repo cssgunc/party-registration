@@ -692,6 +692,58 @@ async def override_dependencies_student(test_async_session: AsyncSession):
     app.dependency_overrides.clear()
 
 
+@pytest_asyncio.fixture()
+async def override_dependencies_admin_for_student_routes(
+    test_async_session: AsyncSession,
+):
+    """Override dependencies to simulate admin trying to access student routes."""
+    from src.modules.account.account_model import Account, AccountRole
+
+    async def _get_test_session():
+        yield test_async_session
+
+    async def _fake_admin_user():
+        return Account(
+            id=2,
+            email="admin@example.com",
+            password="hashed",
+            role=AccountRole.ADMIN,
+        )
+
+    app.dependency_overrides[get_session] = _get_test_session
+    from src.core.authentication import authenticate_user
+
+    app.dependency_overrides[authenticate_user] = _fake_admin_user
+    yield
+    app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture()
+async def override_dependencies_police_for_student_routes(
+    test_async_session: AsyncSession,
+):
+    """Override dependencies to simulate police trying to access student routes."""
+    from src.modules.account.account_model import Account, AccountRole
+
+    async def _get_test_session():
+        yield test_async_session
+
+    async def _fake_police_user():
+        return Account(
+            id=3,
+            email="police@example.com",
+            password="hashed",
+            role=AccountRole.POLICE,
+        )
+
+    app.dependency_overrides[get_session] = _get_test_session
+    from src.core.authentication import authenticate_user
+
+    app.dependency_overrides[authenticate_user] = _fake_police_user
+    yield
+    app.dependency_overrides.clear()
+
+
 @pytest.mark.asyncio
 async def test_get_me_success(
     override_dependencies_student: Any, test_async_session: AsyncSession
@@ -746,6 +798,36 @@ async def test_get_me_unauthenticated(override_dependencies_no_auth: Any):
     ) as client:
         res = await client.get("/api/students/me")
         assert res.status_code in [401, 403]
+
+
+@pytest.mark.asyncio
+async def test_get_me_forbidden_admin(
+    override_dependencies_admin_for_student_routes: Any,
+):
+    """Test that admin users cannot access GET /api/students/me endpoint."""
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        res = await client.get("/api/students/me", headers=auth_headers())
+        assert res.status_code == 403
+        response_data = res.json()
+        assert "message" in response_data
+        assert "Student privileges required" in response_data["message"]
+
+
+@pytest.mark.asyncio
+async def test_get_me_forbidden_police(
+    override_dependencies_police_for_student_routes: Any,
+):
+    """Test that police users cannot access GET /api/students/me endpoint."""
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        res = await client.get("/api/students/me", headers=auth_headers())
+        assert res.status_code == 403
+        response_data = res.json()
+        assert "message" in response_data
+        assert "Student privileges required" in response_data["message"]
 
 
 @pytest.mark.asyncio
@@ -864,6 +946,52 @@ async def test_update_me_unauthenticated(override_dependencies_no_auth: Any):
 
 
 @pytest.mark.asyncio
+async def test_update_me_forbidden_admin(
+    override_dependencies_admin_for_student_routes: Any,
+):
+    """Test that admin users cannot access PUT /api/students/me endpoint."""
+    update_payload = {
+        "first_name": "Test",
+        "last_name": "User",
+        "contact_preference": "text",
+        "phone_number": "5551112222",
+    }
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        res = await client.put(
+            "/api/students/me", json=update_payload, headers=auth_headers()
+        )
+        assert res.status_code == 403
+        response_data = res.json()
+        assert "message" in response_data
+        assert "Student privileges required" in response_data["message"]
+
+
+@pytest.mark.asyncio
+async def test_update_me_forbidden_police(
+    override_dependencies_police_for_student_routes: Any,
+):
+    """Test that police users cannot access PUT /api/students/me endpoint."""
+    update_payload = {
+        "first_name": "Test",
+        "last_name": "User",
+        "contact_preference": "text",
+        "phone_number": "5551112222",
+    }
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        res = await client.put(
+            "/api/students/me", json=update_payload, headers=auth_headers()
+        )
+        assert res.status_code == 403
+        response_data = res.json()
+        assert "message" in response_data
+        assert "Student privileges required" in response_data["message"]
+
+
+@pytest.mark.asyncio
 async def test_get_me_parties_empty(
     override_dependencies_student: Any, test_async_session: AsyncSession
 ):
@@ -900,7 +1028,7 @@ async def test_get_me_parties_empty(
 async def test_get_me_parties_with_data(
     override_dependencies_student: Any, test_async_session: AsyncSession
 ):
-    from src.modules.address.address_entity import AddressEntity
+    from src.modules.location.location_entity import LocationEntity
     from src.modules.party.party_entity import PartyEntity
 
     acc1 = AccountEntity(
@@ -938,19 +1066,25 @@ async def test_get_me_parties_with_data(
     )
     test_async_session.add_all([student1, student2])
 
-    address = AddressEntity(id=1, latitude=40.7128, longitude=-74.0060)
-    test_async_session.add(address)
+    location = LocationEntity(
+        id=1,
+        latitude=40.7128,
+        longitude=-74.0060,
+        google_place_id="test_place_1",
+        formatted_address="Test Address 1",
+    )
+    test_async_session.add(location)
     await test_async_session.commit()
 
     party1 = PartyEntity(
         party_datetime=datetime(2024, 12, 1, 20, 0, 0, tzinfo=timezone.utc),
-        address_id=1,
+        location_id=1,
         contact_one_id=1,
         contact_two_id=2,
     )
     party2 = PartyEntity(
         party_datetime=datetime(2024, 12, 15, 21, 0, 0, tzinfo=timezone.utc),
-        address_id=1,
+        location_id=1,
         contact_one_id=2,
         contact_two_id=1,
     )
@@ -976,3 +1110,33 @@ async def test_get_me_parties_unauthenticated(override_dependencies_no_auth: Any
     ) as client:
         res = await client.get("/api/students/me/parties")
         assert res.status_code in [401, 403]
+
+
+@pytest.mark.asyncio
+async def test_get_me_parties_forbidden_admin(
+    override_dependencies_admin_for_student_routes: Any,
+):
+    """Test that admin users cannot access GET /api/students/me/parties endpoint."""
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        res = await client.get("/api/students/me/parties", headers=auth_headers())
+        assert res.status_code == 403
+        response_data = res.json()
+        assert "message" in response_data
+        assert "Student privileges required" in response_data["message"]
+
+
+@pytest.mark.asyncio
+async def test_get_me_parties_forbidden_police(
+    override_dependencies_police_for_student_routes: Any,
+):
+    """Test that police users cannot access GET /api/students/me/parties endpoint."""
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        res = await client.get("/api/students/me/parties", headers=auth_headers())
+        assert res.status_code == 403
+        response_data = res.json()
+        assert "message" in response_data
+        assert "Student privileges required" in response_data["message"]
