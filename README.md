@@ -23,6 +23,7 @@ We aim to facilitate and better secure the party registration process at UNC.
 | Mason Mines      | Developer       |
 | Vidur Shah       | Developer       |
 | Shlok Bhutani    | Developer       |
+| Vasu Bansal      | Developer       |
 
 ## Tech Stack
 
@@ -103,7 +104,14 @@ Navigate to [http://localhost:3000]() to view the website
 
 ## Running backend tests
 
-The best way to run tests is by using the "Testing" window on the sidebar. This provides an intuitive GUI for running tests within the IDE.  
+### Local Testing
+After running the backend, navigate to [http://localhost:3000/docs]()  
+Click on the "Authorize 🔓" button in the top right, and enter "admin", "student", or "police" as the mock token for the respective role  
+You can then make any requests using the provided GUI
+
+### Unit Tests
+
+The best way to run unit tests is by using the "Testing" window on the sidebar. This provides an intuitive GUI for running tests within the IDE.  
 You can also run all tests by opening a new terminal and simply running
 
 ```sh
