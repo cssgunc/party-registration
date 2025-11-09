@@ -17,8 +17,6 @@ class StudentEntity(EntityBase):
     account_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("accounts.id"), primary_key=True, index=True
     )
-    first_name: Mapped[str] = mapped_column(String, nullable=False)
-    last_name: Mapped[str] = mapped_column(String, nullable=False)
     call_or_text_pref: Mapped[ContactPreference] = mapped_column(
         Enum(ContactPreference), nullable=False
     )
@@ -32,8 +30,6 @@ class StudentEntity(EntityBase):
     @classmethod
     def from_model(cls, data: "StudentData", account_id: int) -> Self:
         return cls(
-            first_name=data.first_name,
-            last_name=data.last_name,
             call_or_text_pref=data.call_or_text_pref,
             last_registered=data.last_registered,
             phone_number=data.phone_number,
@@ -43,8 +39,6 @@ class StudentEntity(EntityBase):
     def to_model(self) -> "Student":
         return Student(
             account_id=self.account_id,
-            first_name=self.first_name,
-            last_name=self.last_name,
             call_or_text_pref=self.call_or_text_pref,
             last_registered=self.last_registered,
             phone_number=self.phone_number,
@@ -54,10 +48,10 @@ class StudentEntity(EntityBase):
         """Convert entity to DTO using the account relationship."""
         return StudentDTO(
             id=self.account_id,
-            pid=str(self.account_id),
+            pid=self.account.pid or str(self.account_id),
             email=self.account.email,
-            first_name=self.first_name,
-            last_name=self.last_name,
+            first_name=self.account.first_name or "",
+            last_name=self.account.last_name or "",
             phone_number=self.phone_number,
             last_registered=self.last_registered,
         )

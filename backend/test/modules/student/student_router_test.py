@@ -10,7 +10,11 @@ from src.core.database import get_session
 from src.main import app
 from src.modules.account.account_entity import AccountEntity, AccountRole
 from src.modules.student.student_entity import StudentEntity
-from src.modules.student.student_model import ContactPreference, StudentData
+from src.modules.student.student_model import (
+    ContactPreference,
+    StudentData,
+    StudentDataWithNames,
+)
 
 
 @pytest_asyncio.fixture()
@@ -66,7 +70,8 @@ async def test_list_students_with_data(
     for i in range(3):
         acc = AccountEntity(
             email=f"student{i}@example.com",
-            hashed_password="$2b$12$test_hashed_password",
+            first_name="Test",
+            last_name="User",
             role=AccountRole.STUDENT,
         )
         test_async_session.add(acc)
@@ -79,7 +84,7 @@ async def test_list_students_with_data(
 
     for idx, acc in enumerate(accounts):
         student = StudentEntity.from_model(
-            StudentData(
+            StudentDataWithNames(
                 first_name=f"Student{idx}",
                 last_name=f"Test{idx}",
                 call_or_text_pref=ContactPreference.text,
@@ -106,7 +111,8 @@ async def test_create_student_success(
     """Test successfully creating a student."""
     acc = AccountEntity(
         email="newstudent@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Test",
+        last_name="User",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(acc)
@@ -143,7 +149,8 @@ async def test_create_student_with_datetime(
     """Test creating a student with last_registered datetime."""
     acc = AccountEntity(
         email="datetime@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Test",
+        last_name="User",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(acc)
@@ -196,7 +203,8 @@ async def test_create_student_wrong_role(
     """Test creating a student with account that has non-student role."""
     admin_acc = AccountEntity(
         email="admin@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Test",
+        last_name="User",
         role=AccountRole.ADMIN,
     )
     test_async_session.add(admin_acc)
@@ -226,7 +234,8 @@ async def test_create_student_duplicate_account(
     """Test creating a student when account already has a student record."""
     acc = AccountEntity(
         email="duplicate@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Test",
+        last_name="User",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(acc)
@@ -234,7 +243,7 @@ async def test_create_student_duplicate_account(
     await test_async_session.refresh(acc)
 
     student1 = StudentEntity.from_model(
-        StudentData(
+        StudentDataWithNames(
             first_name="First",
             last_name="Student",
             call_or_text_pref=ContactPreference.text,
@@ -268,12 +277,14 @@ async def test_create_student_duplicate_phone(
     """Test creating students with duplicate phone numbers."""
     acc1 = AccountEntity(
         email="phone1@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Test",
+        last_name="User",
         role=AccountRole.STUDENT,
     )
     acc2 = AccountEntity(
         email="phone2@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Test",
+        last_name="User",
         role=AccountRole.STUDENT,
     )
     test_async_session.add_all([acc1, acc2])
@@ -282,7 +293,7 @@ async def test_create_student_duplicate_phone(
     await test_async_session.refresh(acc2)
 
     student1 = StudentEntity.from_model(
-        StudentData(
+        StudentDataWithNames(
             first_name="First",
             last_name="Student",
             call_or_text_pref=ContactPreference.text,
@@ -316,7 +327,8 @@ async def test_get_student_success(
     """Test successfully getting a student by ID."""
     acc = AccountEntity(
         email="getstudent@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Get",
+        last_name="Student",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(acc)
@@ -325,8 +337,6 @@ async def test_get_student_success(
 
     student = StudentEntity.from_model(
         StudentData(
-            first_name="Get",
-            last_name="Student",
             call_or_text_pref=ContactPreference.text,
             phone_number="5558888888",
         ),
@@ -343,6 +353,7 @@ async def test_get_student_success(
         body = res.json()
         assert body["id"] == acc.id
         assert body["first_name"] == "Get"
+        assert body["last_name"] == "Student"
         assert body["phone_number"] == "5558888888"
 
 
@@ -363,7 +374,8 @@ async def test_update_student_success(
     """Test successfully updating a student."""
     acc = AccountEntity(
         email="updatestudent@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Test",
+        last_name="User",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(acc)
@@ -371,7 +383,7 @@ async def test_update_student_success(
     await test_async_session.refresh(acc)
 
     student = StudentEntity.from_model(
-        StudentData(
+        StudentDataWithNames(
             first_name="Old",
             last_name="Name",
             call_or_text_pref=ContactPreference.text,
@@ -426,12 +438,14 @@ async def test_update_student_phone_conflict(
     """Test updating student with phone number that already exists."""
     acc1 = AccountEntity(
         email="update1@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Test",
+        last_name="User",
         role=AccountRole.STUDENT,
     )
     acc2 = AccountEntity(
         email="update2@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Test",
+        last_name="User",
         role=AccountRole.STUDENT,
     )
     test_async_session.add_all([acc1, acc2])
@@ -440,7 +454,7 @@ async def test_update_student_phone_conflict(
     await test_async_session.refresh(acc2)
 
     student1 = StudentEntity.from_model(
-        StudentData(
+        StudentDataWithNames(
             first_name="Student",
             last_name="One",
             call_or_text_pref=ContactPreference.text,
@@ -449,7 +463,7 @@ async def test_update_student_phone_conflict(
         acc1.id,
     )
     student2 = StudentEntity.from_model(
-        StudentData(
+        StudentDataWithNames(
             first_name="Student",
             last_name="Two",
             call_or_text_pref=ContactPreference.text,
@@ -482,7 +496,8 @@ async def test_delete_student_success(
     """Test successfully deleting a student."""
     acc = AccountEntity(
         email="deletestudent@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Test",
+        last_name="User",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(acc)
@@ -490,7 +505,7 @@ async def test_delete_student_success(
     await test_async_session.refresh(acc)
 
     student = StudentEntity.from_model(
-        StudentData(
+        StudentDataWithNames(
             first_name="Delete",
             last_name="Me",
             call_or_text_pref=ContactPreference.text,
@@ -588,7 +603,8 @@ async def test_create_and_get_student(
 ):
     acc = AccountEntity(
         email="router1@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Test",
+        last_name="User",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(acc)
@@ -628,7 +644,8 @@ async def test_update_and_delete_student(
 ):
     acc = AccountEntity(
         email="router2@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Test",
+        last_name="User",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(acc)
@@ -636,7 +653,7 @@ async def test_update_and_delete_student(
     await test_async_session.refresh(acc)
 
     student = StudentEntity.from_model(
-        StudentData(
+        StudentDataWithNames(
             first_name="John",
             last_name="Doe",
             call_or_text_pref=ContactPreference.text,

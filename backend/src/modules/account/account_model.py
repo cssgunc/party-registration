@@ -5,15 +5,21 @@ from src.modules.account.account_entity import AccountEntity, AccountRole
 
 
 class AccountData(BaseModel):
+    """DTO for creating/updating an Account."""
+
     email: EmailStr
-    password: str
+    first_name: str | None = None
+    last_name: str | None = None
     role: AccountRole
 
 
 class Account(BaseModel):
+    """DTO for Account responses."""
+
     id: int
     email: EmailStr
-    password: str
+    first_name: str | None
+    last_name: str | None
     role: AccountRole
 
     @classmethod
@@ -21,6 +27,7 @@ class Account(BaseModel):
         return cls(
             id=account_entity.id,
             email=account_entity.email,
-            password=account_entity.hashed_password,
+            first_name=account_entity.first_name,
+            last_name=account_entity.last_name,
             role=AccountRole(account_entity.role.value),
         )

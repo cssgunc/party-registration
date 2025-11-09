@@ -10,6 +10,16 @@ class ContactPreference(enum.Enum):
 
 
 class StudentData(BaseModel):
+    """Student data without names (names are stored in Account)."""
+
+    call_or_text_pref: ContactPreference
+    last_registered: datetime | None = None
+    phone_number: str = Field(pattern=r"^\+?1?\d{9,15}$")
+
+
+class StudentDataWithNames(BaseModel):
+    """Student data including names for create/update operations."""
+
     first_name: str = Field(min_length=1)
     last_name: str = Field(min_length=1)
     call_or_text_pref: ContactPreference
@@ -18,15 +28,13 @@ class StudentData(BaseModel):
 
 
 class Student(StudentData):
+    """Student model with account_id."""
+
     account_id: int
 
     @property
     def id(self) -> int:
         return self.account_id
-
-    @property
-    def full_name(self) -> str:
-        return f"{self.first_name} {self.last_name}"
 
 
 class StudentDTO(BaseModel):
@@ -36,7 +44,8 @@ class StudentDTO(BaseModel):
     - id: account id (primary key)
     - pid: PID string
     - email: account email
-    - first_name, last_name, phone_number, last_registered from student
+    - first_name, last_name: from account
+    - phone_number, last_registered: from student
     """
 
     id: int
@@ -55,4 +64,4 @@ class StudentCreate(BaseModel):
     """
 
     account_id: int
-    data: StudentData
+    data: StudentDataWithNames

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from src.core.authentication import authenticate_admin
 
-from .student_model import StudentCreate, StudentData, StudentDTO
+from .student_model import StudentCreate, StudentDataWithNames, StudentDTO
 from .student_service import StudentService
 
 student_router = APIRouter(prefix="/api/students", tags=["students"])
@@ -35,7 +35,7 @@ async def create_student(
 @student_router.put("/{student_id}")
 async def update_student(
     student_id: int,
-    data: StudentData,
+    data: StudentDataWithNames,
     student_service: StudentService = Depends(),
     _=Depends(authenticate_admin),
 ) -> StudentDTO:
