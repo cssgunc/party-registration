@@ -115,19 +115,41 @@ export default function RegistrationTracker({
                     </div>
                     <div className="text-sm">
                         <div className="font-medium mt-3 mb-1">Contacts:</div>
-                        <div>
-                            {party.contactOne.firstName}{" "}
-                            {party.contactOne.lastName}
-                        </div>
-                        <div className="text-muted-foreground">
-                            {party.contactOne.email}
-                        </div>
+
                         <div className="mt-2">
-                            {party.contactTwo.firstName}{" "}
-                            {party.contactTwo.lastName}
+                            <div className="font-medium">
+                                {party.contactOne.firstName}{" "}
+                                {party.contactOne.lastName}
+                            </div>
+                            <div className="text-muted-foreground">
+                                {party.contactOne.email}
+                            </div>
+                            <div className="text-muted-foreground">
+                                {party.contactOne.phoneNumber}
+                            </div>
+                            <div className="text-muted-foreground">
+                                {party.contactOne.contactPreference === "call"
+                                    ? "Call"
+                                    : "Text"}
+                            </div>
                         </div>
-                        <div className="text-muted-foreground">
-                            {party.contactTwo.email}
+
+                        <div className="mt-3">
+                            <div className="font-medium">
+                                {party.contactTwo.firstName}{" "}
+                                {party.contactTwo.lastName}
+                            </div>
+                            <div className="text-muted-foreground">
+                                {party.contactTwo.email}
+                            </div>
+                            <div className="text-muted-foreground">
+                                {party.contactTwo.phoneNumber}
+                            </div>
+                            <div className="text-muted-foreground">
+                                {party.contactTwo.contactPreference === "call"
+                                    ? "Call"
+                                    : "Text"}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -144,8 +166,12 @@ export default function RegistrationTracker({
                 }
             >
                 <TabsList className="w-full grid grid-cols-2">
-                    <TabsTrigger value="active">Active</TabsTrigger>
-                    <TabsTrigger value="past">Past Events</TabsTrigger>
+                    <TabsTrigger value="active" className="cursor-pointer">
+                        Active
+                    </TabsTrigger>
+                    <TabsTrigger value="past" className="cursor-pointer">
+                        Past Events
+                    </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="active" className="mt-4">
