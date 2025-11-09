@@ -1,19 +1,10 @@
 "use client";
 
 import apiClient from "@/lib/network/apiClient";
-import { SessionProvider, useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { useState } from "react";
 
 export default function CSRPage() {
-  return (
-    <SessionProvider>
-      <CSRPageContent />
-    </SessionProvider>
-  );
-}
-
-// Use separate page component to wrap the CSR page content in a SessionProvider since this is a client-side rendered page
-function CSRPageContent() {
   const { data: session } = useSession();
   const [apiResponse, setApiResponse] = useState<{
     success: boolean;
