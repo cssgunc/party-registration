@@ -10,7 +10,9 @@ export default async function SSRPage() {
   let apiResponse = null;
   let apiError = null;
   try {
-    const response = await apiClient.get("/auth-test/api/tokens");
+    const response = await apiClient.get(
+      "http://localhost:3000/auth-test/api/tokens"
+    );
     apiResponse = response.data;
   } catch (error) {
     apiError =

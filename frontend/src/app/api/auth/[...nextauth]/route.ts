@@ -37,13 +37,7 @@ const authOptions: NextAuthOptions = {
     strategy: "jwt",
   },
   callbacks: {
-    async jwt({
-      token,
-      user,
-    }: {
-      token: JWT;
-      user?: User | null;
-    }): Promise<JWT> {
+    async jwt({ token, user }) {
       // On sign-in, persist tokens to the JWT. JWT is stored as HTTP-only cookie by default in NextAuth.
       if (user) {
         const u = user as { accessToken?: string; refreshToken?: string };
@@ -68,9 +62,11 @@ const authOptions: NextAuthOptions = {
       try {
         const base =
           process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
-        const resp = await axios.post(`${base}/api/auth/refresh`, {
-          refreshToken: token.refreshToken,
-        });
+        const resp = await axios.post(
+          `${base}/api/auth/refresh`,
+          {},
+          { withCredentials: true }
+        );
         const data = resp.data || {};
         if (data.accessToken) token.accessToken = data.accessToken as string;
         if (data.refreshToken) token.refreshToken = data.refreshToken as string;

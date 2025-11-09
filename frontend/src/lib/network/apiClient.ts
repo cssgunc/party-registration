@@ -59,68 +59,69 @@ apiClient.interceptors.response.use(
       _retry?: boolean;
     };
 
+    // If error is not 401 or we have already tried to refresh, reject the error
+    if (error.response?.status !== 401 || originalRequest._retry) {
+      return Promise.reject(error);
+    }
+
     // If error is 401 and we haven't already tried to refresh
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      if (isRefreshing) {
-        // If already refreshing, queue this request
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        })
-          .then((token) => {
-            if (token && originalRequest.headers) {
-              (originalRequest.headers as AxiosRequestHeaders)[
-                "Authorization"
-              ] = `Bearer ${token}`;
-            }
-            return apiClient(originalRequest);
-          })
-          .catch((err) => {
-            return Promise.reject(err);
-          });
-      }
-
-      originalRequest._retry = true;
-      isRefreshing = true;
-
-      try {
-        // Re-read session to trigger NextAuth jwt callback refresh
-        const newAccessToken = await resolveFreshAccessToken();
-
-        if (newAccessToken) {
-          processQueue(null, newAccessToken);
-
-          // Retry the original request with new token
-          if (originalRequest.headers) {
+    if (isRefreshing) {
+      // If already refreshing, queue this request
+      return new Promise((resolve, reject) => {
+        failedQueue.push({ resolve, reject });
+      })
+        .then((token) => {
+          if (token && originalRequest.headers) {
             (originalRequest.headers as AxiosRequestHeaders)[
               "Authorization"
-            ] = `Bearer ${newAccessToken}`;
+            ] = `Bearer ${token}`;
           }
-
           return apiClient(originalRequest);
-        } else {
-          // Refresh failed, sign out user
-          processQueue(new Error("Token refresh failed"), null);
-          if (typeof window !== "undefined") {
-            signOut();
-          }
-          return Promise.reject(error);
+        })
+        .catch((err) => {
+          return Promise.reject(err);
+        });
+    }
+
+    originalRequest._retry = true;
+    isRefreshing = true;
+
+    try {
+      // Re-read session to trigger NextAuth jwt callback refresh
+      const newAccessToken = await resolveFreshAccessToken();
+
+      if (newAccessToken) {
+        processQueue(null, newAccessToken);
+
+        // Retry the original request with new token
+        if (originalRequest.headers) {
+          (originalRequest.headers as AxiosRequestHeaders)[
+            "Authorization"
+          ] = `Bearer ${newAccessToken}`;
         }
-      } catch (refreshError) {
-        const error =
-          refreshError instanceof Error
-            ? refreshError
-            : new Error("Token refresh failed");
-        processQueue(error, null);
+
+        return apiClient(originalRequest);
+      } else {
+        // Refresh failed, sign out user
+        processQueue(new Error("Token refresh failed"), null);
         if (typeof window !== "undefined") {
           signOut();
         }
-        return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
+        return Promise.reject(error);
       }
+    } catch (refreshError) {
+      const error =
+        refreshError instanceof Error
+          ? refreshError
+          : new Error("Token refresh failed");
+      processQueue(error, null);
+      if (typeof window !== "undefined") {
+        signOut();
+      }
+      return Promise.reject(refreshError);
+    } finally {
+      isRefreshing = false;
     }
-
-    return Promise.reject(error);
   }
 );
 

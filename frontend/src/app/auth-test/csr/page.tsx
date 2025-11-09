@@ -29,7 +29,9 @@ function CSRPageContent() {
     setError(null);
 
     try {
-      const response = await apiClient.get("/auth-test/api/tokens");
+      const response = await apiClient.get(
+        "http://localhost:3000/auth-test/api/tokens"
+      );
       setApiResponse(response.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error occurred");
