@@ -1,14 +1,18 @@
 from datetime import datetime, timedelta
+from unittest.mock import AsyncMock
 
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.core.authentication import authenticate_admin
+from src.core.authentication import authenticate_admin, authenticate_user
 from src.core.database import get_session
 from src.main import app
 from src.modules.account.account_entity import AccountEntity, AccountRole
+from src.modules.account.account_model import Account
 from src.modules.location.location_entity import LocationEntity
+from src.modules.location.location_service import LocationService
+from src.modules.location.location_model import LocationData
 from src.modules.party.party_entity import PartyEntity
 from src.modules.student.student_entity import StudentEntity
 from src.modules.student.student_model import ContactPreference
@@ -16,12 +20,34 @@ from src.modules.user.user_model import User
 
 
 @pytest_asyncio.fixture()
-async def unauthenticated_client(test_async_session: AsyncSession):
+async def mock_location_service():
+    """Create a mock LocationService that returns test data."""
+    mock_service = AsyncMock(spec=LocationService)
+    mock_service.get_place_details = AsyncMock(return_value=LocationData(
+        google_place_id="test_place_id_123",
+        formatted_address="456 New St, Test City, TC 67890",
+        latitude=35.9132,
+        longitude=-79.0558,
+        street_number="456",
+        street_name="New St",
+        unit=None,
+        city="Test City",
+        county="Test County",
+        state="NC",
+        country="US",
+        zip_code="67890"
+    ))
+    return mock_service
+
+
+@pytest_asyncio.fixture()
+async def unauthenticated_client(test_async_session: AsyncSession, mock_location_service: AsyncMock):
     """Create an async test client WITHOUT authentication override."""
     async def override_get_session():
         yield test_async_session
 
     app.dependency_overrides[get_session] = override_get_session
+    app.dependency_overrides[LocationService] = lambda: mock_location_service
     # Note: We do NOT override authenticate_admin here
 
     async with AsyncClient(
@@ -34,7 +60,7 @@ async def unauthenticated_client(test_async_session: AsyncSession):
 
 
 @pytest_asyncio.fixture()
-async def client(test_async_session: AsyncSession):
+async def client(test_async_session: AsyncSession, mock_location_service: AsyncMock):
     """Create an async test client with database session override."""
 
     async def override_get_session():
@@ -45,6 +71,59 @@ async def client(test_async_session: AsyncSession):
 
     app.dependency_overrides[get_session] = override_get_session
     app.dependency_overrides[authenticate_admin] = override_authenticate_admin
+    app.dependency_overrides[LocationService] = lambda: mock_location_service
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        yield ac
+
+    app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture()
+async def student_client(test_async_session: AsyncSession, mock_location_service: AsyncMock):
+    """Create an async test client authenticated as a student."""
+    async def override_get_session():
+        yield test_async_session
+
+    async def override_authenticate_user():
+        return Account(
+            id=1,
+            email="student@test.com",
+            password="hashed_password",
+            role=AccountRole.STUDENT
+        )
+
+    app.dependency_overrides[get_session] = override_get_session
+    app.dependency_overrides[authenticate_user] = override_authenticate_user
+    app.dependency_overrides[LocationService] = lambda: mock_location_service
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        yield ac
+
+    app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture()
+async def admin_client(test_async_session: AsyncSession, mock_location_service: AsyncMock):
+    """Create an async test client authenticated as an admin."""
+    async def override_get_session():
+        yield test_async_session
+
+    async def override_authenticate_user():
+        return Account(
+            id=2,
+            email="admin@test.com",
+            password="hashed_password",
+            role=AccountRole.ADMIN
+        )
+
+    app.dependency_overrides[get_session] = override_get_session
+    app.dependency_overrides[authenticate_user] = override_authenticate_user
+    app.dependency_overrides[LocationService] = lambda: mock_location_service
 
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
@@ -516,3 +595,194 @@ async def test_admin_authentication_required(
     else:
         # Handle different response formats
         assert response.status_code == 401
+
+
+
+@pytest.mark.asyncio
+async def test_create_party_as_student(
+    student_client: AsyncClient,
+    test_async_session: AsyncSession,
+    sample_party_setup: dict,
+    mock_location_service: AsyncMock
+):
+    """Test POST /api/parties as a student (contact_one auto-filled)."""
+    from src.modules.location.location_service import LocationService
+    from src.main import app
+
+    # Override LocationService with mock
+    app.dependency_overrides[LocationService] = lambda: mock_location_service
+
+    party_datetime = datetime.now() + timedelta(days=1)
+    party_data = {
+        "party_datetime": party_datetime.isoformat(),
+        "place_id": "test_place_id_123",
+        "contact_two_id": 2
+    }
+
+    response = await student_client.post("/api/parties/", json=party_data)
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["party_datetime"] == party_datetime.isoformat()
+    assert data["contact_one_id"] == 1  # Auto-filled from student account
+    assert data["contact_two_id"] == 2
+    assert "id" in data
+    assert "location_id" in data
+
+    # Clean up override
+    app.dependency_overrides.pop(LocationService, None)
+
+
+@pytest.mark.asyncio
+async def test_create_party_as_admin(
+    admin_client: AsyncClient,
+    test_async_session: AsyncSession,
+    sample_party_setup: dict,
+    mock_location_service: AsyncMock
+):
+    """Test POST /api/parties as an admin (both contacts specified)."""
+    from src.modules.location.location_service import LocationService
+    from src.main import app
+
+    # Override LocationService with mock
+    app.dependency_overrides[LocationService] = lambda: mock_location_service
+
+    party_datetime = datetime.now() + timedelta(days=1)
+    party_data = {
+        "party_datetime": party_datetime.isoformat(),
+        "place_id": "test_place_id_123",
+        "contact_one_id": 1,
+        "contact_two_id": 2
+    }
+
+    response = await admin_client.post("/api/parties/", json=party_data)
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["party_datetime"] == party_datetime.isoformat()
+    assert data["contact_one_id"] == 1
+    assert data["contact_two_id"] == 2
+    assert "id" in data
+    assert "location_id" in data
+
+    # Clean up override
+    app.dependency_overrides.pop(LocationService, None)
+
+
+@pytest.mark.asyncio
+async def test_update_party_as_student(
+    student_client: AsyncClient,
+    test_async_session: AsyncSession,
+    sample_party_setup: dict,
+    mock_location_service: AsyncMock
+):
+    """Test PUT /api/parties/:id as a student (contact_one auto-filled)."""
+    from src.modules.location.location_service import LocationService
+    from src.main import app
+
+    # Create an initial party
+    existing_party = PartyEntity(
+        party_datetime=datetime.now() + timedelta(days=1),
+        location_id=sample_party_setup["location_id"],
+        contact_one_id=1,
+        contact_two_id=2
+    )
+    test_async_session.add(existing_party)
+    await test_async_session.commit()
+    await test_async_session.refresh(existing_party)
+
+    # Override LocationService with mock
+    app.dependency_overrides[LocationService] = lambda: mock_location_service
+
+    new_party_datetime = datetime.now() + timedelta(days=5)
+    update_data = {
+        "party_datetime": new_party_datetime.isoformat(),
+        "place_id": "test_place_id_123",
+        "contact_two_id": 2
+    }
+
+    response = await student_client.put(f"/api/parties/{existing_party.id}", json=update_data)
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["id"] == existing_party.id
+    assert data["party_datetime"] == new_party_datetime.isoformat()
+    assert data["contact_one_id"] == 1  # Auto-filled from student account
+    assert data["contact_two_id"] == 2
+
+    # Clean up override
+    app.dependency_overrides.pop(LocationService, None)
+
+
+@pytest.mark.asyncio
+async def test_update_party_as_admin(
+    admin_client: AsyncClient,
+    test_async_session: AsyncSession,
+    sample_party_setup: dict,
+    mock_location_service: AsyncMock
+):
+    """Test PUT /api/parties/:id as an admin (both contacts specified)."""
+    from src.modules.location.location_service import LocationService
+    from src.main import app
+
+    # Create an initial party
+    existing_party = PartyEntity(
+        party_datetime=datetime.now() + timedelta(days=1),
+        location_id=sample_party_setup["location_id"],
+        contact_one_id=1,
+        contact_two_id=2
+    )
+    test_async_session.add(existing_party)
+    await test_async_session.commit()
+    await test_async_session.refresh(existing_party)
+
+    # Override LocationService with mock
+    app.dependency_overrides[LocationService] = lambda: mock_location_service
+
+    new_party_datetime = datetime.now() + timedelta(days=5)
+    update_data = {
+        "party_datetime": new_party_datetime.isoformat(),
+        "place_id": "test_place_id_123",
+        "contact_one_id": 2,
+        "contact_two_id": 1
+    }
+
+    response = await admin_client.put(f"/api/parties/{existing_party.id}", json=update_data)
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["id"] == existing_party.id
+    assert data["party_datetime"] == new_party_datetime.isoformat()
+    assert data["contact_one_id"] == 2
+    assert data["contact_two_id"] == 1
+
+    # Clean up override
+    app.dependency_overrides.pop(LocationService, None)
+
+
+@pytest.mark.asyncio
+async def test_update_party_not_found(
+    admin_client: AsyncClient,
+    test_async_session: AsyncSession,
+    mock_location_service: AsyncMock
+):
+    """Test PUT /api/parties/:id with non-existent party ID."""
+    from src.modules.location.location_service import LocationService
+    from src.main import app
+
+    # Override LocationService with mock
+    app.dependency_overrides[LocationService] = lambda: mock_location_service
+
+    party_datetime = datetime.now() + timedelta(days=1)
+    update_data = {
+        "party_datetime": party_datetime.isoformat(),
+        "place_id": "test_place_id_123",
+        "contact_one_id": 1,
+        "contact_two_id": 2
+    }
+
+    response = await admin_client.put("/api/parties/999", json=update_data)
+    assert response.status_code == 404
+
+    # Clean up override
+    app.dependency_overrides.pop(LocationService, None)

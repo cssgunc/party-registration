@@ -8,9 +8,10 @@ from src.core.database import get_session
 from src.core.exceptions import ConflictException, NotFoundException
 
 from ..location.location_entity import LocationEntity
+from ..location.location_service import LocationService
 from ..student.student_entity import StudentEntity
 from .party_entity import PartyEntity
-from .party_model import Party, PartyData
+from .party_model import Party, PartyData, AdminCreatePartyDTO, StudentCreatePartyDTO
 
 
 class PartyNotFoundException(NotFoundException):
@@ -34,8 +35,13 @@ class PartyConflictException(ConflictException):
 
 
 class PartyService:
-    def __init__(self, session: AsyncSession = Depends(get_session)):
+    def __init__(
+        self,
+        session: AsyncSession = Depends(get_session),
+        location_service: LocationService = Depends()
+    ):
         self.session = session
+        self.location_service = location_service
 
     async def _get_party_entity_by_id(self, party_id: int) -> PartyEntity:
         result = await self.session.execute(
@@ -59,6 +65,53 @@ class PartyService:
         )
         if result.scalar_one_or_none() is None:
             raise StudentNotFoundException(student_id)
+
+    async def _get_location_by_place_id(self, place_id: str) -> LocationEntity | None:
+        """Get a location from the database by Google Maps place_id."""
+        result = await self.session.execute(
+            select(LocationEntity).where(LocationEntity.google_place_id == place_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def _create_location_from_place_id(self, place_id: str) -> LocationEntity:
+        """Create a new location in the database using Google Maps API."""
+        # Get location details from Google Maps API
+        location_data = await self.location_service.get_place_details(place_id)
+
+        # Create new location entity
+        new_location = LocationEntity(
+            google_place_id=location_data.google_place_id,
+            formatted_address=location_data.formatted_address,
+            latitude=location_data.latitude,
+            longitude=location_data.longitude,
+            street_number=location_data.street_number,
+            street_name=location_data.street_name,
+            unit=location_data.unit,
+            city=location_data.city,
+            county=location_data.county,
+            state=location_data.state,
+            country=location_data.country,
+            zip_code=location_data.zip_code,
+            warning_count=0,
+            citation_count=0,
+            hold_expiration=None
+        )
+
+        self.session.add(new_location)
+        await self.session.commit()
+        await self.session.refresh(new_location)
+        return new_location
+
+    async def get_or_create_location(self, place_id: str) -> LocationEntity:
+        """Get existing location by place_id, or create it if it doesn't exist."""
+        # Try to get existing location
+        location = await self._get_location_by_place_id(place_id)
+
+        if location is None:
+            # Location doesn't exist, create it
+            location = await self._create_location_from_place_id(place_id)
+
+        return location
 
     async def get_parties(self, skip: int = 0, limit: int | None = None) -> List[Party]:
         query = select(PartyEntity).offset(skip)
@@ -126,6 +179,106 @@ class PartyService:
                 continue
             if hasattr(party_entity, key):
                 setattr(party_entity, key, value)
+
+        self.session.add(party_entity)
+        await self.session.commit()
+        await self.session.refresh(party_entity)
+        return party_entity.to_model()
+
+    async def create_party_from_student_dto(
+        self, dto: StudentCreatePartyDTO, student_account_id: int
+    ) -> Party:
+        """Create a party registration from a student. contact_one is auto-filled."""
+        # Get or create location
+        location = await self.get_or_create_location(dto.place_id)
+
+        # Validate students exist
+        await self._validate_student_exists(student_account_id)
+        await self._validate_student_exists(dto.contact_two_id)
+
+        # Create party data
+        party_data = PartyData(
+            party_datetime=dto.party_datetime,
+            location_id=location.id,
+            contact_one_id=student_account_id,
+            contact_two_id=dto.contact_two_id
+        )
+
+        # Create party
+        new_party = PartyEntity.from_model(party_data)
+        self.session.add(new_party)
+        await self.session.commit()
+        await self.session.refresh(new_party)
+        return new_party.to_model()
+
+    async def create_party_from_admin_dto(self, dto: AdminCreatePartyDTO) -> Party:
+        """Create a party registration from an admin. Both contacts must be specified."""
+        # Get or create location
+        location = await self.get_or_create_location(dto.place_id)
+
+        # Validate students exist
+        await self._validate_student_exists(dto.contact_one_id)
+        await self._validate_student_exists(dto.contact_two_id)
+
+        # Create party data
+        party_data = PartyData(
+            party_datetime=dto.party_datetime,
+            location_id=location.id,
+            contact_one_id=dto.contact_one_id,
+            contact_two_id=dto.contact_two_id
+        )
+
+        # Create party
+        new_party = PartyEntity.from_model(party_data)
+        self.session.add(new_party)
+        await self.session.commit()
+        await self.session.refresh(new_party)
+        return new_party.to_model()
+
+    async def update_party_from_student_dto(
+        self, party_id: int, dto: StudentCreatePartyDTO, student_account_id: int
+    ) -> Party:
+        """Update a party registration from a student. contact_one is auto-filled."""
+        # Get existing party
+        party_entity = await self._get_party_entity_by_id(party_id)
+
+        # Get or create location
+        location = await self.get_or_create_location(dto.place_id)
+
+        # Validate students exist
+        await self._validate_student_exists(student_account_id)
+        await self._validate_student_exists(dto.contact_two_id)
+
+        # Update party fields
+        party_entity.party_datetime = dto.party_datetime
+        party_entity.location_id = location.id
+        party_entity.contact_one_id = student_account_id
+        party_entity.contact_two_id = dto.contact_two_id
+
+        self.session.add(party_entity)
+        await self.session.commit()
+        await self.session.refresh(party_entity)
+        return party_entity.to_model()
+
+    async def update_party_from_admin_dto(
+        self, party_id: int, dto: AdminCreatePartyDTO
+    ) -> Party:
+        """Update a party registration from an admin. Both contacts must be specified."""
+        # Get existing party
+        party_entity = await self._get_party_entity_by_id(party_id)
+
+        # Get or create location
+        location = await self.get_or_create_location(dto.place_id)
+
+        # Validate students exist
+        await self._validate_student_exists(dto.contact_one_id)
+        await self._validate_student_exists(dto.contact_two_id)
+
+        # Update party fields
+        party_entity.party_datetime = dto.party_datetime
+        party_entity.location_id = location.id
+        party_entity.contact_one_id = dto.contact_one_id
+        party_entity.contact_two_id = dto.contact_two_id
 
         self.session.add(party_entity)
         await self.session.commit()

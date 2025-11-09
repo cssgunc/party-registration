@@ -1,9 +1,37 @@
-from fastapi import APIRouter, Depends, Query
-from src.core.authentication import authenticate_admin
-from .party_model import Party, PaginatedPartiesResponse
+from fastapi import APIRouter, Depends, Query, Body
+from src.core.authentication import authenticate_admin, authenticate_user
+from src.modules.account.account_model import Account, AccountRole
+from .party_model import Party, PaginatedPartiesResponse, StudentCreatePartyDTO, AdminCreatePartyDTO
 from .party_service import PartyService
 
 party_router = APIRouter(prefix="/api/parties", tags=["parties"])
+
+
+@party_router.post("/")
+async def create_party(
+    party_data: dict = Body(...),
+    party_service: PartyService = Depends(),
+    user: Account = Depends(authenticate_user)
+) -> Party:
+    """
+    Create a new party registration.
+
+    - Students: provide party_datetime, place_id, and contact_two_id (contact_one is auto-filled)
+    - Admins: provide party_datetime, place_id, contact_one_id, and contact_two_id
+
+    The location will be automatically created if it doesn't exist in the database.
+    """
+    if user.role == AccountRole.STUDENT:
+        # Parse as StudentCreatePartyDTO
+        dto = StudentCreatePartyDTO(**party_data)
+        return await party_service.create_party_from_student_dto(dto, user.id)
+    elif user.role == AccountRole.ADMIN:
+        # Parse as AdminCreatePartyDTO
+        dto = AdminCreatePartyDTO(**party_data)
+        return await party_service.create_party_from_admin_dto(dto)
+    else:
+        from src.core.exceptions import ForbiddenException
+        raise ForbiddenException(detail="Only students and admins can create parties")
 
 
 @party_router.get("/")
@@ -57,6 +85,34 @@ async def list_parties(
         page_number=page_number,
         total_pages=total_pages
     )
+
+
+@party_router.put("/{party_id}")
+async def update_party(
+    party_id: int,
+    party_data: dict = Body(...),
+    party_service: PartyService = Depends(),
+    user: Account = Depends(authenticate_user)
+) -> Party:
+    """
+    Update an existing party registration.
+
+    - Students: provide party_datetime, place_id, and contact_two_id (contact_one is auto-filled)
+    - Admins: provide party_datetime, place_id, contact_one_id, and contact_two_id
+
+    The location will be automatically created if it doesn't exist in the database.
+    """
+    if user.role == AccountRole.STUDENT:
+        # Parse as StudentCreatePartyDTO
+        dto = StudentCreatePartyDTO(**party_data)
+        return await party_service.update_party_from_student_dto(party_id, dto, user.id)
+    elif user.role == AccountRole.ADMIN:
+        # Parse as AdminCreatePartyDTO
+        dto = AdminCreatePartyDTO(**party_data)
+        return await party_service.update_party_from_admin_dto(party_id, dto)
+    else:
+        from src.core.exceptions import ForbiddenException
+        raise ForbiddenException(detail="Only students and admins can update parties")
 
 
 @party_router.get("/{party_id}")
