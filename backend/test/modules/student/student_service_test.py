@@ -7,9 +7,9 @@ from src.modules.account.account_entity import AccountEntity, AccountRole
 from src.modules.student.student_entity import StudentEntity
 from src.modules.student.student_model import (
     ContactPreference,
+    Student,
     StudentData,
     StudentDataWithNames,
-    StudentDTO,
 )
 from src.modules.student.student_service import (
     AccountNotFoundException,
@@ -31,7 +31,7 @@ async def student_entity(
     test_async_session: AsyncSession, test_account: AccountEntity
 ) -> StudentEntity:
     data = StudentData(
-        call_or_text_pref=ContactPreference.text,
+        contact_preference=ContactPreference.text,
         phone_number="9999999999",
     )
     entity = StudentEntity.from_model(data, test_account.id)
@@ -55,11 +55,11 @@ async def test_create_student(
     data = StudentDataWithNames(
         first_name="John",
         last_name="Doe",
-        call_or_text_pref=ContactPreference.text,
+        contact_preference=ContactPreference.text,
         phone_number="1234567890",
     )
     student = await student_service.create_student(data, account_id=test_account.id)
-    assert isinstance(student, StudentDTO)
+    assert isinstance(student, Student)
     assert student.id == test_account.id
     assert student.first_name == "John"
     assert student.last_name == "Doe"
@@ -75,7 +75,7 @@ async def test_create_student_conflict(
     data = StudentDataWithNames(
         first_name="John",
         last_name="Doe",
-        call_or_text_pref=ContactPreference.text,
+        contact_preference=ContactPreference.text,
         phone_number="1234567890",
     )
     await student_service.create_student(data, account_id=test_account.id)
@@ -114,7 +114,7 @@ async def test_get_students(
     await test_async_session.commit()
     for idx, acc in enumerate(accounts):
         data = StudentData(
-            call_or_text_pref=[
+            contact_preference=[
                 ContactPreference.call,
                 ContactPreference.text,
                 ContactPreference.call,
@@ -167,7 +167,7 @@ async def test_update_student(
     data = StudentDataWithNames(
         first_name="John",
         last_name="Doe",
-        call_or_text_pref=ContactPreference.text,
+        contact_preference=ContactPreference.text,
         phone_number="1234567890",
     )
     entity = StudentEntity.from_model(data, test_account.id)
@@ -178,7 +178,7 @@ async def test_update_student(
     update_data = StudentDataWithNames(
         first_name="Jane",
         last_name="Doe",
-        call_or_text_pref=ContactPreference.call,
+        contact_preference=ContactPreference.call,
         phone_number="0987654321",
     )
     updated = await student_service.update_student(entity.account_id, update_data)
@@ -192,7 +192,7 @@ async def test_update_student_not_found(student_service: StudentService):
     update_data = StudentDataWithNames(
         first_name="Jane",
         last_name="Doe",
-        call_or_text_pref=ContactPreference.call,
+        contact_preference=ContactPreference.call,
         phone_number="0987654321",
     )
     with pytest.raises(StudentNotFoundException):
@@ -208,13 +208,13 @@ async def test_update_student_conflict(
     data1 = StudentDataWithNames(
         first_name="Alice",
         last_name="Smith",
-        call_or_text_pref=ContactPreference.call,
+        contact_preference=ContactPreference.call,
         phone_number="1111111111",
     )
     data2 = StudentDataWithNames(
         first_name="Bob",
         last_name="Jones",
-        call_or_text_pref=ContactPreference.text,
+        contact_preference=ContactPreference.text,
         phone_number="2222222222",
     )
     account2 = AccountEntity(
@@ -241,7 +241,7 @@ async def test_update_student_conflict(
             StudentDataWithNames(
                 first_name="Bob",
                 last_name="Jones",
-                call_or_text_pref=ContactPreference.text,
+                contact_preference=ContactPreference.text,
                 phone_number=entity1.phone_number,
             ),
         )
@@ -256,7 +256,7 @@ async def test_delete_student(
     data = StudentDataWithNames(
         first_name="John",
         last_name="Doe",
-        call_or_text_pref=ContactPreference.text,
+        contact_preference=ContactPreference.text,
         phone_number="1234567890",
     )
     entity = StudentEntity.from_model(data, test_account.id)
@@ -286,7 +286,7 @@ async def test_create_student_with_datetime_timezone(
     data = StudentDataWithNames(
         first_name="Jane",
         last_name="Smith",
-        call_or_text_pref=ContactPreference.call,
+        contact_preference=ContactPreference.call,
         phone_number="5551234567",
         last_registered=last_reg,
     )
@@ -303,7 +303,7 @@ async def test_update_student_with_datetime_timezone(
     data = StudentDataWithNames(
         first_name="John",
         last_name="Doe",
-        call_or_text_pref=ContactPreference.text,
+        contact_preference=ContactPreference.text,
         phone_number="5559876543",
     )
     entity = StudentEntity.from_model(data, test_account.id)
@@ -315,7 +315,7 @@ async def test_update_student_with_datetime_timezone(
     update_data = StudentDataWithNames(
         first_name="John",
         last_name="Doe",
-        call_or_text_pref=ContactPreference.text,
+        contact_preference=ContactPreference.text,
         phone_number="5559876543",
         last_registered=last_reg,
     )
@@ -330,7 +330,7 @@ async def test_create_student_with_nonexistent_account(
     data = StudentDataWithNames(
         first_name="Test",
         last_name="User",
-        call_or_text_pref=ContactPreference.text,
+        contact_preference=ContactPreference.text,
         phone_number="5551112222",
     )
     with pytest.raises(AccountNotFoundException):
@@ -355,7 +355,7 @@ async def test_create_student_with_non_student_role(
     data = StudentDataWithNames(
         first_name="Test",
         last_name="User",
-        call_or_text_pref=ContactPreference.text,
+        contact_preference=ContactPreference.text,
         phone_number="5553334444",
     )
     with pytest.raises(InvalidAccountRoleException):
@@ -371,7 +371,7 @@ async def test_create_student_duplicate_account_id(
     data1 = StudentDataWithNames(
         first_name="First",
         last_name="Student",
-        call_or_text_pref=ContactPreference.text,
+        contact_preference=ContactPreference.text,
         phone_number="5555555555",
     )
     await student_service.create_student(data1, account_id=test_account.id)
@@ -379,7 +379,7 @@ async def test_create_student_duplicate_account_id(
     data2 = StudentDataWithNames(
         first_name="Second",
         last_name="Student",
-        call_or_text_pref=ContactPreference.call,
+        contact_preference=ContactPreference.call,
         phone_number="5556666666",
     )
     with pytest.raises(StudentAlreadyExistsException):
@@ -395,7 +395,7 @@ async def test_update_student_with_non_student_role(
     data = StudentDataWithNames(
         first_name="John",
         last_name="Doe",
-        call_or_text_pref=ContactPreference.text,
+        contact_preference=ContactPreference.text,
         phone_number="5557778888",
     )
     entity = StudentEntity.from_model(data, test_account.id)
@@ -409,7 +409,7 @@ async def test_update_student_with_non_student_role(
     update_data = StudentDataWithNames(
         first_name="Jane",
         last_name="Doe",
-        call_or_text_pref=ContactPreference.call,
+        contact_preference=ContactPreference.call,
         phone_number="5557778888",
     )
     with pytest.raises(InvalidAccountRoleException):

@@ -18,6 +18,7 @@ from src.modules.user.user_model import User
 @pytest_asyncio.fixture()
 async def unauthenticated_client(test_async_session: AsyncSession):
     """Create an async test client WITHOUT authentication override."""
+
     async def override_get_session():
         yield test_async_session
 
@@ -25,8 +26,7 @@ async def unauthenticated_client(test_async_session: AsyncSession):
     # Note: We do NOT override authenticate_admin here
 
     async with AsyncClient(
-        transport=ASGITransport(app=app),
-        base_url="http://test"
+        transport=ASGITransport(app=app), base_url="http://test"
     ) as ac:
         yield ac
 
@@ -61,13 +61,15 @@ async def sample_party_setup(test_async_session: AsyncSession):
     account_one = AccountEntity(
         id=1,
         email="test@example.com",
-        first_name="Test", last_name="User",
+        first_name="Test",
+        last_name="User",
         role=AccountRole.STUDENT,
     )
     account_two = AccountEntity(
         id=2,
         email="test2@example.com",
-        first_name="Test", last_name="User",
+        first_name="Test",
+        last_name="User",
         role=AccountRole.STUDENT,
     )
     test_async_session.add_all([account_one, account_two])
@@ -84,12 +86,12 @@ async def sample_party_setup(test_async_session: AsyncSession):
 
     # Create students
     student_one = StudentEntity(
-        call_or_text_pref=ContactPreference.call,
+        contact_preference=ContactPreference.call,
         phone_number="1234567890",
         account_id=1,
     )
     student_two = StudentEntity(
-        call_or_text_pref=ContactPreference.text,
+        contact_preference=ContactPreference.text,
         phone_number="0987654321",
         account_id=2,
     )
@@ -142,9 +144,7 @@ async def test_get_parties_with_data(
 
 @pytest.mark.asyncio
 async def test_get_parties_validates_content(
-    client: AsyncClient,
-    test_async_session: AsyncSession,
-    sample_party_setup: dict
+    client: AsyncClient, test_async_session: AsyncSession, sample_party_setup: dict
 ):
     """Test GET /api/parties returns correct party content and structure."""
     # Create parties with specific data for validation
@@ -155,13 +155,13 @@ async def test_get_parties_validates_content(
         party_datetime=party_datetime_1,
         location_id=sample_party_setup["location_id"],
         contact_one_id=sample_party_setup["contact_one_id"],
-        contact_two_id=sample_party_setup["contact_two_id"]
+        contact_two_id=sample_party_setup["contact_two_id"],
     )
     party2 = PartyEntity(
         party_datetime=party_datetime_2,
         location_id=sample_party_setup["location_id"],
         contact_one_id=sample_party_setup["contact_one_id"],
-        contact_two_id=sample_party_setup["contact_two_id"]
+        contact_two_id=sample_party_setup["contact_two_id"],
     )
     test_async_session.add_all([party1, party2])
     await test_async_session.commit()
@@ -203,9 +203,7 @@ async def test_get_parties_validates_content(
 
 @pytest.mark.asyncio
 async def test_get_parties_content_with_pagination(
-    client: AsyncClient,
-    test_async_session: AsyncSession,
-    sample_party_setup: dict
+    client: AsyncClient, test_async_session: AsyncSession, sample_party_setup: dict
 ):
     """Test paginated parties return correct content in order."""
     # Create 10 parties with incrementing dates
@@ -215,7 +213,7 @@ async def test_get_parties_content_with_pagination(
             party_datetime=datetime(2024, 1, 1, 10, 0, 0) + timedelta(days=i),
             location_id=sample_party_setup["location_id"],
             contact_one_id=sample_party_setup["contact_one_id"],
-            contact_two_id=sample_party_setup["contact_two_id"]
+            contact_two_id=sample_party_setup["contact_two_id"],
         )
         test_async_session.add(party)
         created_parties.append(party)
@@ -487,12 +485,10 @@ async def test_delete_party_removes_from_list(
         ("GET", "/api/parties/"),
         ("GET", "/api/parties/1"),
         ("DELETE", "/api/parties/1"),
-    ]
+    ],
 )
 async def test_admin_authentication_required(
-    unauthenticated_client: AsyncClient,
-    method: str,
-    endpoint: str
+    unauthenticated_client: AsyncClient, method: str, endpoint: str
 ):
     """
     Parameterized test to verify all party routes require admin authentication.
@@ -503,7 +499,9 @@ async def test_admin_authentication_required(
     else:
         response = await unauthenticated_client.get(endpoint)
 
-    assert response.status_code == 401, f"{method} {endpoint} should require authentication"
+    assert response.status_code == 401, (
+        f"{method} {endpoint} should require authentication"
+    )
 
     # Check that the response indicates authentication is required
     response_json = response.json()

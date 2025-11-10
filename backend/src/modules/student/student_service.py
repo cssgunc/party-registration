@@ -12,7 +12,7 @@ from src.core.exceptions import (
 from src.modules.account.account_entity import AccountEntity, AccountRole
 
 from .student_entity import StudentEntity
-from .student_model import StudentData, StudentDataWithNames, StudentDTO
+from .student_model import Student, StudentData, StudentDataWithNames
 
 
 class StudentNotFoundException(NotFoundException):
@@ -89,20 +89,20 @@ class StudentService:
 
         return account
 
-    async def get_students(self) -> list[StudentDTO]:
+    async def get_students(self) -> list[Student]:
         result = await self.session.execute(
             select(StudentEntity).options(selectinload(StudentEntity.account))
         )
         students = result.scalars().all()
         return [student.to_dto() for student in students]
 
-    async def get_student_by_id(self, account_id: int) -> StudentDTO:
+    async def get_student_by_id(self, account_id: int) -> Student:
         student_entity = await self._get_student_entity_by_account_id(account_id)
         return student_entity.to_dto()
 
     async def create_student(
         self, data: StudentDataWithNames, account_id: int
-    ) -> StudentDTO:
+    ) -> Student:
         account = await self._validate_account_for_student(account_id)
 
         if await self._get_student_entity_by_phone(data.phone_number):
@@ -113,7 +113,7 @@ class StudentService:
         self.session.add(account)
 
         student_data = StudentData(
-            call_or_text_pref=data.call_or_text_pref,
+            contact_preference=data.contact_preference,
             last_registered=data.last_registered,
             phone_number=data.phone_number,
         )
@@ -129,11 +129,14 @@ class StudentService:
         return new_student.to_dto()
 
     async def update_student(
-        self, account_id: int, data: StudentDataWithNames
-    ) -> StudentDTO:
+        self, account_id: int, data: StudentData | StudentDataWithNames
+    ) -> Student:
         student_entity = await self._get_student_entity_by_account_id(account_id)
 
-        account = await self._get_account_entity_by_id(account_id)
+        account = student_entity.account
+        if account is None:
+            raise AccountNotFoundException(account_id)
+
         if account.role != AccountRole.STUDENT:
             raise InvalidAccountRoleException(account_id, account.role)
 
@@ -141,11 +144,13 @@ class StudentService:
             if await self._get_student_entity_by_phone(data.phone_number):
                 raise StudentConflictException(data.phone_number)
 
-        account.first_name = data.first_name
-        account.last_name = data.last_name
-        self.session.add(account)
+        # Only update account names if data includes them (StudentDataWithNames)
+        if isinstance(data, StudentDataWithNames):
+            account.first_name = data.first_name
+            account.last_name = data.last_name
+            self.session.add(account)
 
-        student_entity.call_or_text_pref = data.call_or_text_pref
+        student_entity.contact_preference = data.contact_preference
         student_entity.last_registered = data.last_registered
         student_entity.phone_number = data.phone_number
 
@@ -159,7 +164,7 @@ class StudentService:
         await self.session.refresh(student_entity, ["account"])
         return student_entity.to_dto()
 
-    async def delete_student(self, account_id: int) -> StudentDTO:
+    async def delete_student(self, account_id: int) -> Student:
         student_entity = await self._get_student_entity_by_account_id(account_id)
         student_dto = student_entity.to_dto()
         await self.session.delete(student_entity)

@@ -24,12 +24,13 @@ def mock_authenticate(role: AccountRole) -> Account | None:
     role_to_id = {
         AccountRole.STUDENT: 1,
         AccountRole.ADMIN: 2,
-        AccountRole.POLICE: 3,
+        AccountRole.STAFF: 3,
     }
     return Account(
         id=role_to_id[role],
         email="user@example.com",
-        password="hashed_password",
+        first_name="Test",
+        last_name="User",
         role=role,
     )
 
@@ -39,14 +40,15 @@ async def authenticate_user(
 ) -> Account:
     """
     Middleware to authenticate user from Bearer token.
-    Expects token to be one of: "student", "admin", "police" for mock authentication.
+    Expects token to be one of: "student", "admin", "staff" for mock authentication.
+    Note: Police authenticate separately via the police singleton table.
     """
     token = authorization.credentials.lower()
 
     role_map = {
         "student": AccountRole.STUDENT,
         "admin": AccountRole.ADMIN,
-        "police": AccountRole.POLICE,
+        "staff": AccountRole.STAFF,
     }
 
     if token not in role_map:
@@ -80,15 +82,3 @@ async def authenticate_student(
     if not student or user.role != AccountRole.STUDENT:
         raise ForbiddenException(detail="Student privileges required")
     return student
-
-
-async def authenticate_police(
-    user: Account = Depends(authenticate_user),
-) -> Account:
-    """
-    Middleware to ensure the authenticated user is a police officer.
-    """
-    police = mock_authenticate(AccountRole.POLICE)
-    if not police or user.role != AccountRole.POLICE:
-        raise ForbiddenException(detail="Police privileges required")
-    return police

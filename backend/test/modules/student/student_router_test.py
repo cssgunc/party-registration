@@ -87,7 +87,7 @@ async def test_list_students_with_data(
             StudentDataWithNames(
                 first_name=f"Student{idx}",
                 last_name=f"Test{idx}",
-                call_or_text_pref=ContactPreference.text,
+                contact_preference=ContactPreference.text,
                 phone_number=f"555000{idx}{idx}{idx}{idx}",
             ),
             acc.id,
@@ -124,7 +124,7 @@ async def test_create_student_success(
         "data": {
             "first_name": "Rita",
             "last_name": "Lee",
-            "call_or_text_pref": "text",
+            "contact_preference": "text",
             "phone_number": "5555555555",
             "last_registered": None,
         },
@@ -163,7 +163,7 @@ async def test_create_student_with_datetime(
         "data": {
             "first_name": "John",
             "last_name": "Date",
-            "call_or_text_pref": "call",
+            "contact_preference": "call",
             "phone_number": "5551234567",
             "last_registered": dt.isoformat(),
         },
@@ -185,7 +185,7 @@ async def test_create_student_nonexistent_account(override_dependencies_admin: A
         "data": {
             "first_name": "Test",
             "last_name": "User",
-            "call_or_text_pref": "text",
+            "contact_preference": "text",
             "phone_number": "5551112222",
         },
     }
@@ -216,7 +216,7 @@ async def test_create_student_wrong_role(
         "data": {
             "first_name": "Test",
             "last_name": "User",
-            "call_or_text_pref": "text",
+            "contact_preference": "text",
             "phone_number": "5553334444",
         },
     }
@@ -246,7 +246,7 @@ async def test_create_student_duplicate_account(
         StudentDataWithNames(
             first_name="First",
             last_name="Student",
-            call_or_text_pref=ContactPreference.text,
+            contact_preference=ContactPreference.text,
             phone_number="5555555555",
         ),
         acc.id,
@@ -259,7 +259,7 @@ async def test_create_student_duplicate_account(
         "data": {
             "first_name": "Second",
             "last_name": "Student",
-            "call_or_text_pref": "call",
+            "contact_preference": "call",
             "phone_number": "5556666666",
         },
     }
@@ -296,7 +296,7 @@ async def test_create_student_duplicate_phone(
         StudentDataWithNames(
             first_name="First",
             last_name="Student",
-            call_or_text_pref=ContactPreference.text,
+            contact_preference=ContactPreference.text,
             phone_number="5557777777",
         ),
         acc1.id,
@@ -309,7 +309,7 @@ async def test_create_student_duplicate_phone(
         "data": {
             "first_name": "Second",
             "last_name": "Student",
-            "call_or_text_pref": "call",
+            "contact_preference": "call",
             "phone_number": "5557777777",
         },
     }
@@ -337,7 +337,7 @@ async def test_get_student_success(
 
     student = StudentEntity.from_model(
         StudentData(
-            call_or_text_pref=ContactPreference.text,
+            contact_preference=ContactPreference.text,
             phone_number="5558888888",
         ),
         acc.id,
@@ -386,7 +386,7 @@ async def test_update_student_success(
         StudentDataWithNames(
             first_name="Old",
             last_name="Name",
-            call_or_text_pref=ContactPreference.text,
+            contact_preference=ContactPreference.text,
             phone_number="5559999999",
         ),
         acc.id,
@@ -397,7 +397,7 @@ async def test_update_student_success(
     update_payload = {
         "first_name": "New",
         "last_name": "Name",
-        "call_or_text_pref": "call",
+        "contact_preference": "call",
         "phone_number": "5550000000",
         "last_registered": None,
     }
@@ -419,7 +419,7 @@ async def test_update_student_not_found(override_dependencies_admin: Any):
     update_payload = {
         "first_name": "Test",
         "last_name": "User",
-        "call_or_text_pref": "text",
+        "contact_preference": "text",
         "phone_number": "5551112222",
     }
     async with AsyncClient(
@@ -457,7 +457,7 @@ async def test_update_student_phone_conflict(
         StudentDataWithNames(
             first_name="Student",
             last_name="One",
-            call_or_text_pref=ContactPreference.text,
+            contact_preference=ContactPreference.text,
             phone_number="5551111111",
         ),
         acc1.id,
@@ -466,7 +466,7 @@ async def test_update_student_phone_conflict(
         StudentDataWithNames(
             first_name="Student",
             last_name="Two",
-            call_or_text_pref=ContactPreference.text,
+            contact_preference=ContactPreference.text,
             phone_number="5552222222",
         ),
         acc2.id,
@@ -477,7 +477,7 @@ async def test_update_student_phone_conflict(
     update_payload = {
         "first_name": "Student",
         "last_name": "Two",
-        "call_or_text_pref": "text",
+        "contact_preference": "text",
         "phone_number": "5551111111",
     }
     async with AsyncClient(
@@ -508,7 +508,7 @@ async def test_delete_student_success(
         StudentDataWithNames(
             first_name="Delete",
             last_name="Me",
-            call_or_text_pref=ContactPreference.text,
+            contact_preference=ContactPreference.text,
             phone_number="5553333333",
         ),
         acc.id,
@@ -549,7 +549,7 @@ async def test_delete_student_not_found(override_dependencies_admin: Any):
                 "data": {
                     "first_name": "Test",
                     "last_name": "User",
-                    "call_or_text_pref": "text",
+                    "contact_preference": "text",
                     "phone_number": "5551234567",
                 },
             },
@@ -560,7 +560,7 @@ async def test_delete_student_not_found(override_dependencies_admin: Any):
             {
                 "first_name": "Test",
                 "last_name": "User",
-                "call_or_text_pref": "text",
+                "contact_preference": "text",
                 "phone_number": "5551234567",
             },
         ),
@@ -616,7 +616,7 @@ async def test_create_and_get_student(
         "data": {
             "first_name": "Rita",
             "last_name": "Lee",
-            "call_or_text_pref": "text",
+            "contact_preference": "text",
             "phone_number": "5555555555",
             "last_registered": None,
         },
@@ -656,7 +656,7 @@ async def test_update_and_delete_student(
         StudentDataWithNames(
             first_name="John",
             last_name="Doe",
-            call_or_text_pref=ContactPreference.text,
+            contact_preference=ContactPreference.text,
             phone_number="1111111111",
         ),
         acc.id,
@@ -667,7 +667,7 @@ async def test_update_and_delete_student(
     update_payload = {
         "first_name": "Jane",
         "last_name": "Doe",
-        "call_or_text_pref": "call",
+        "contact_preference": "call",
         "phone_number": "9999990000",
         "last_registered": None,
     }
@@ -684,3 +684,471 @@ async def test_update_and_delete_student(
         assert res2.status_code == 200
         res3 = await client.get(f"/api/students/{acc.id}", headers=auth_headers())
         assert res3.status_code == 404
+
+
+@pytest_asyncio.fixture()
+async def override_dependencies_student(test_async_session: AsyncSession):
+    from src.modules.account.account_model import Account, AccountRole
+
+    async def _get_test_session():
+        yield test_async_session
+
+    async def _fake_student():
+        return Account(
+            id=1,
+            email="student@example.com",
+            first_name="Test",
+            last_name="Student",
+            role=AccountRole.STUDENT,
+        )
+
+    app.dependency_overrides[get_session] = _get_test_session
+    from src.core.authentication import authenticate_student
+
+    app.dependency_overrides[authenticate_student] = _fake_student
+    yield
+    app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture()
+async def override_dependencies_admin_for_student_routes(
+    test_async_session: AsyncSession,
+):
+    """Override dependencies to simulate admin trying to access student routes."""
+    from src.modules.account.account_model import Account, AccountRole
+
+    async def _get_test_session():
+        yield test_async_session
+
+    async def _fake_admin_user():
+        return Account(
+            id=2,
+            email="admin@example.com",
+            first_name="Admin",
+            last_name="User",
+            role=AccountRole.ADMIN,
+        )
+
+    app.dependency_overrides[get_session] = _get_test_session
+    from src.core.authentication import authenticate_user
+
+    app.dependency_overrides[authenticate_user] = _fake_admin_user
+    yield
+    app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture()
+async def override_dependencies_police_for_student_routes(
+    test_async_session: AsyncSession,
+):
+    """Override dependencies to simulate staff trying to access student routes."""
+    from src.modules.account.account_model import Account, AccountRole
+
+    async def _get_test_session():
+        yield test_async_session
+
+    async def _fake_staff_user():
+        return Account(
+            id=3,
+            email="staff@example.com",
+            first_name="Staff",
+            last_name="User",
+            role=AccountRole.STAFF,
+        )
+
+    app.dependency_overrides[get_session] = _get_test_session
+    from src.core.authentication import authenticate_user
+
+    app.dependency_overrides[authenticate_user] = _fake_staff_user
+    yield
+    app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_get_me_success(
+    override_dependencies_student: Any, test_async_session: AsyncSession
+):
+    acc = AccountEntity(
+        id=1,
+        email="student@example.com",
+        first_name="Current",
+        last_name="User",
+        role=AccountRole.STUDENT,
+    )
+    test_async_session.add(acc)
+    await test_async_session.commit()
+
+    student = StudentEntity.from_model(
+        StudentData(
+            contact_preference=ContactPreference.text,
+            phone_number="5551234567",
+        ),
+        acc.id,
+    )
+    test_async_session.add(student)
+    await test_async_session.commit()
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        res = await client.get("/api/students/me", headers=auth_headers())
+        assert res.status_code == 200
+        body = res.json()
+        assert body["id"] == 1
+        assert body["first_name"] == "Current"
+        assert body["last_name"] == "User"
+        assert body["phone_number"] == "5551234567"
+        assert body["contact_preference"] == "text"
+
+
+@pytest.mark.asyncio
+async def test_get_me_not_found(override_dependencies_student: Any):
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        res = await client.get("/api/students/me", headers=auth_headers())
+        assert res.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_get_me_unauthenticated(override_dependencies_no_auth: Any):
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        res = await client.get("/api/students/me")
+        assert res.status_code in [401, 403]
+
+
+@pytest.mark.asyncio
+async def test_get_me_forbidden_admin(
+    override_dependencies_admin_for_student_routes: Any,
+):
+    """Test that admin users cannot access GET /api/students/me endpoint."""
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        res = await client.get("/api/students/me", headers=auth_headers())
+        assert res.status_code == 403
+        response_data = res.json()
+        assert "message" in response_data
+        assert "Student privileges required" in response_data["message"]
+
+
+@pytest.mark.asyncio
+async def test_get_me_forbidden_police(
+    override_dependencies_police_for_student_routes: Any,
+):
+    """Test that police users cannot access GET /api/students/me endpoint."""
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        res = await client.get("/api/students/me", headers=auth_headers())
+        assert res.status_code == 403
+        response_data = res.json()
+        assert "message" in response_data
+        assert "Student privileges required" in response_data["message"]
+
+
+@pytest.mark.asyncio
+async def test_update_me_success(
+    override_dependencies_student: Any, test_async_session: AsyncSession
+):
+    acc = AccountEntity(
+        id=1,
+        email="student@example.com",
+        first_name="Old",
+        last_name="Name",
+        role=AccountRole.STUDENT,
+    )
+    test_async_session.add(acc)
+    await test_async_session.commit()
+
+    student = StudentEntity.from_model(
+        StudentData(
+            contact_preference=ContactPreference.text,
+            phone_number="5551111111",
+        ),
+        acc.id,
+    )
+    test_async_session.add(student)
+    await test_async_session.commit()
+
+    update_payload = {
+        "contact_preference": "call",
+        "phone_number": "5552222222",
+        "last_registered": None,
+    }
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        res = await client.put(
+            "/api/students/me", json=update_payload, headers=auth_headers()
+        )
+        assert res.status_code == 200
+        body = res.json()
+        assert (
+            body["first_name"] == "Old"
+        )  # Account names don't change via /me endpoint
+        assert body["last_name"] == "Name"
+        assert body["phone_number"] == "5552222222"
+        assert body["contact_preference"] == "call"
+
+
+@pytest.mark.asyncio
+async def test_update_me_phone_conflict(
+    override_dependencies_student: Any, test_async_session: AsyncSession
+):
+    acc1 = AccountEntity(
+        id=1,
+        email="student1@example.com",
+        first_name="Student",
+        last_name="One",
+        role=AccountRole.STUDENT,
+    )
+    acc2 = AccountEntity(
+        id=2,
+        email="student2@example.com",
+        first_name="Student",
+        last_name="Two",
+        role=AccountRole.STUDENT,
+    )
+    test_async_session.add_all([acc1, acc2])
+    await test_async_session.commit()
+
+    student1 = StudentEntity.from_model(
+        StudentData(
+            contact_preference=ContactPreference.text,
+            phone_number="5551111111",
+        ),
+        acc1.id,
+    )
+    student2 = StudentEntity.from_model(
+        StudentData(
+            contact_preference=ContactPreference.text,
+            phone_number="5552222222",
+        ),
+        acc2.id,
+    )
+    test_async_session.add_all([student1, student2])
+    await test_async_session.commit()
+
+    update_payload = {
+        "contact_preference": "text",
+        "phone_number": "5552222222",
+    }
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        res = await client.put(
+            "/api/students/me", json=update_payload, headers=auth_headers()
+        )
+        assert res.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_update_me_unauthenticated(override_dependencies_no_auth: Any):
+    update_payload = {
+        "first_name": "Test",
+        "last_name": "User",
+        "contact_preference": "text",
+        "phone_number": "5551112222",
+    }
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        res = await client.put("/api/students/me", json=update_payload)
+        assert res.status_code in [401, 403]
+
+
+@pytest.mark.asyncio
+async def test_update_me_forbidden_admin(
+    override_dependencies_admin_for_student_routes: Any,
+):
+    """Test that admin users cannot access PUT /api/students/me endpoint."""
+    update_payload = {
+        "first_name": "Test",
+        "last_name": "User",
+        "contact_preference": "text",
+        "phone_number": "5551112222",
+    }
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        res = await client.put(
+            "/api/students/me", json=update_payload, headers=auth_headers()
+        )
+        assert res.status_code == 403
+        response_data = res.json()
+        assert "message" in response_data
+        assert "Student privileges required" in response_data["message"]
+
+
+@pytest.mark.asyncio
+async def test_update_me_forbidden_police(
+    override_dependencies_police_for_student_routes: Any,
+):
+    """Test that police users cannot access PUT /api/students/me endpoint."""
+    update_payload = {
+        "first_name": "Test",
+        "last_name": "User",
+        "contact_preference": "text",
+        "phone_number": "5551112222",
+    }
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        res = await client.put(
+            "/api/students/me", json=update_payload, headers=auth_headers()
+        )
+        assert res.status_code == 403
+        response_data = res.json()
+        assert "message" in response_data
+        assert "Student privileges required" in response_data["message"]
+
+
+@pytest.mark.asyncio
+async def test_get_me_parties_empty(
+    override_dependencies_student: Any, test_async_session: AsyncSession
+):
+    acc = AccountEntity(
+        id=1,
+        email="student@example.com",
+        first_name="Student",
+        last_name="NoParties",
+        role=AccountRole.STUDENT,
+    )
+    test_async_session.add(acc)
+    await test_async_session.commit()
+
+    student = StudentEntity.from_model(
+        StudentData(
+            contact_preference=ContactPreference.text,
+            phone_number="5551234567",
+        ),
+        acc.id,
+    )
+    test_async_session.add(student)
+    await test_async_session.commit()
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        res = await client.get("/api/students/me/parties", headers=auth_headers())
+        assert res.status_code == 200
+        assert res.json() == []
+
+
+@pytest.mark.asyncio
+async def test_get_me_parties_with_data(
+    override_dependencies_student: Any, test_async_session: AsyncSession
+):
+    from src.modules.location.location_entity import LocationEntity
+    from src.modules.party.party_entity import PartyEntity
+
+    acc1 = AccountEntity(
+        id=1,
+        email="student1@example.com",
+        first_name="Student",
+        last_name="One",
+        role=AccountRole.STUDENT,
+    )
+    acc2 = AccountEntity(
+        id=2,
+        email="student2@example.com",
+        first_name="Student",
+        last_name="Two",
+        role=AccountRole.STUDENT,
+    )
+    test_async_session.add_all([acc1, acc2])
+    await test_async_session.commit()
+
+    student1 = StudentEntity.from_model(
+        StudentData(
+            contact_preference=ContactPreference.text,
+            phone_number="5551111111",
+        ),
+        acc1.id,
+    )
+    student2 = StudentEntity.from_model(
+        StudentData(
+            contact_preference=ContactPreference.call,
+            phone_number="5552222222",
+        ),
+        acc2.id,
+    )
+    test_async_session.add_all([student1, student2])
+
+    location = LocationEntity(
+        id=1,
+        latitude=40.7128,
+        longitude=-74.0060,
+        google_place_id="test_place_1",
+        formatted_address="Test Address 1",
+    )
+    test_async_session.add(location)
+    await test_async_session.commit()
+
+    party1 = PartyEntity(
+        party_datetime=datetime(2024, 12, 1, 20, 0, 0, tzinfo=timezone.utc),
+        location_id=1,
+        contact_one_id=1,
+        contact_two_id=2,
+    )
+    party2 = PartyEntity(
+        party_datetime=datetime(2024, 12, 15, 21, 0, 0, tzinfo=timezone.utc),
+        location_id=1,
+        contact_one_id=2,
+        contact_two_id=1,
+    )
+    test_async_session.add_all([party1, party2])
+    await test_async_session.commit()
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        res = await client.get("/api/students/me/parties", headers=auth_headers())
+        assert res.status_code == 200
+        parties = res.json()
+        assert len(parties) == 2
+        party_ids = [p["id"] for p in parties]
+        assert party1.id in party_ids
+        assert party2.id in party_ids
+
+
+@pytest.mark.asyncio
+async def test_get_me_parties_unauthenticated(override_dependencies_no_auth: Any):
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        res = await client.get("/api/students/me/parties")
+        assert res.status_code in [401, 403]
+
+
+@pytest.mark.asyncio
+async def test_get_me_parties_forbidden_admin(
+    override_dependencies_admin_for_student_routes: Any,
+):
+    """Test that admin users cannot access GET /api/students/me/parties endpoint."""
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        res = await client.get("/api/students/me/parties", headers=auth_headers())
+        assert res.status_code == 403
+        response_data = res.json()
+        assert "message" in response_data
+        assert "Student privileges required" in response_data["message"]
+
+
+@pytest.mark.asyncio
+async def test_get_me_parties_forbidden_police(
+    override_dependencies_police_for_student_routes: Any,
+):
+    """Test that police users cannot access GET /api/students/me/parties endpoint."""
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        res = await client.get("/api/students/me/parties", headers=auth_headers())
+        assert res.status_code == 403
+        response_data = res.json()
+        assert "message" in response_data
+        assert "Student privileges required" in response_data["message"]

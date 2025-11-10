@@ -5,7 +5,7 @@ from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.core.database import EntityBase
 
-from .student_model import ContactPreference, Student, StudentData, StudentDTO
+from .student_model import ContactPreference, DbStudent, Student, StudentData
 
 if TYPE_CHECKING:
     from src.modules.account.account_entity import AccountEntity
@@ -17,7 +17,7 @@ class StudentEntity(EntityBase):
     account_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("accounts.id"), primary_key=True, index=True
     )
-    call_or_text_pref: Mapped[ContactPreference] = mapped_column(
+    contact_preference: Mapped[ContactPreference] = mapped_column(
         Enum(ContactPreference), nullable=False
     )
     last_registered: Mapped[datetime | None] = mapped_column(
@@ -30,28 +30,29 @@ class StudentEntity(EntityBase):
     @classmethod
     def from_model(cls, data: "StudentData", account_id: int) -> Self:
         return cls(
-            call_or_text_pref=data.call_or_text_pref,
+            contact_preference=data.contact_preference,
             last_registered=data.last_registered,
             phone_number=data.phone_number,
             account_id=account_id,
         )
 
-    def to_model(self) -> "Student":
-        return Student(
+    def to_model(self) -> "DbStudent":
+        return DbStudent(
             account_id=self.account_id,
-            call_or_text_pref=self.call_or_text_pref,
+            contact_preference=self.contact_preference,
             last_registered=self.last_registered,
             phone_number=self.phone_number,
         )
 
-    def to_dto(self) -> "StudentDTO":
+    def to_dto(self) -> "Student":
         """Convert entity to DTO using the account relationship."""
-        return StudentDTO(
+        return Student(
             id=self.account_id,
             pid=self.account.pid or str(self.account_id),
             email=self.account.email,
-            first_name=self.account.first_name or "",
-            last_name=self.account.last_name or "",
+            first_name=self.account.first_name,
+            last_name=self.account.last_name,
             phone_number=self.phone_number,
+            contact_preference=self.contact_preference,
             last_registered=self.last_registered,
         )

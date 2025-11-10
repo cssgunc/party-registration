@@ -8,8 +8,8 @@ class AccountData(BaseModel):
     """DTO for creating/updating an Account."""
 
     email: EmailStr
-    first_name: str | None = None
-    last_name: str | None = None
+    first_name: str
+    last_name: str
     role: AccountRole
 
 
@@ -18,8 +18,8 @@ class Account(BaseModel):
 
     id: int
     email: EmailStr
-    first_name: str | None
-    last_name: str | None
+    first_name: str
+    last_name: str
     role: AccountRole
 
     @classmethod

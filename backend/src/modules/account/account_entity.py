@@ -16,8 +16,8 @@ class AccountEntity(EntityBase):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     email: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
-    first_name: Mapped[str | None] = mapped_column(String, nullable=True)
-    last_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    first_name: Mapped[str] = mapped_column(String, nullable=False)
+    last_name: Mapped[str] = mapped_column(String, nullable=False)
     pid: Mapped[str | None] = mapped_column(
         String(9),
         CheckConstraint("length(pid) = 9", name="check_pid_length"),
