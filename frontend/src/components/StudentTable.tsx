@@ -1,10 +1,13 @@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Student } from "@/types/api/student";
 import { ColumnDef } from "@tanstack/react-table";
+import { useState } from 'react';
 import { TableTemplate } from "./TableTemplate";
 // import { InfoChip } from "@/components/ui/InfoChip";
 
 export const StudentTable = ({ data }: { data: Student[] }) => {
+
+    const [tableData, setTableData] = useState<Student[]>(data);
 
     const columns: ColumnDef<Student>[] = [
         {
@@ -38,34 +41,30 @@ export const StudentTable = ({ data }: { data: Student[] }) => {
         {
             accessorKey: "lastRegistered",
             header: "Is Registered",
-            cell: ({ row }) => { // TODO: implement functionality/toggability for checkbox
-                const registered = row.getValue("lastRegistered") as boolean
-                return (<Checkbox
-                    checked={!!registered}
-                />
-                )
+            cell: ({ row }) => {
+                const pid = row.getValue("pid") as string;
+                const student = tableData.find((s) => s.pid === pid);
+                const isRegistered = !!student?.lastRegistered;
+                return (
+                    <Checkbox
+                        checked={isRegistered}
+                        onCheckedChange={(checked) => {
+                            setTableData(prev =>
+                                prev.map(student =>
+                                    student.pid === pid
+                                        ? {
+                                            ...student,
+                                            lastRegistered: checked ? new Date() : null, // set/remove date
+                                        }
+                                        : student
+                                )
+                            );
+                        }}
+                    />
+                );
             },
         }
     ];
-
-    // id: "select",
-    // header: ({ table }) => (
-    //   <Checkbox
-    //     checked={
-    //       table.getIsAllPageRowsSelected() ||
-    //       (table.getIsSomePageRowsSelected() && "indeterminate")
-    //     }
-    //     onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-    //     aria-label="Select all"
-    //   />
-    // ),
-    // cell: ({ row }) => (
-    //   <Checkbox
-    //     checked={row.getIsSelected()}
-    //     onCheckedChange={(value) => row.toggleSelected(!!value)}
-    //     aria-label="Select row"
-    //   />
-    // ),
 
     return <TableTemplate data={data} columns={columns} details="Student table" />;
 };
