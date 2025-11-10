@@ -120,7 +120,10 @@ class StudentService:
     async def update_student(self, account_id: int, data: StudentData) -> Student:
         student_entity = await self._get_student_entity_by_account_id(account_id)
 
-        account = await self._get_account_entity_by_id(account_id)
+        account = student_entity.account
+        if account is None:
+            raise AccountNotFoundException(account_id)
+
         if account.role != AccountRole.STUDENT:
             raise InvalidAccountRoleException(account_id, account.role)
 
