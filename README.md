@@ -24,6 +24,7 @@ We aim to facilitate and better secure the party registration process at UNC.
 | Vidur Shah       | Developer       |
 | Shlok Bhutani    | Developer       |
 | Vasu Bansal      | Developer       |
+| Caleb Han        | Developer       |
 
 ## Tech Stack
 
@@ -105,6 +106,7 @@ Navigate to [http://localhost:3000]() to view the website
 ## Running backend tests
 
 ### Local Testing
+
 After running the backend, navigate to [http://localhost:3000/docs]()  
 Click on the "Authorize 🔓" button in the top right, and enter "admin", "student", or "police" as the mock token for the respective role  
 You can then make any requests using the provided GUI
