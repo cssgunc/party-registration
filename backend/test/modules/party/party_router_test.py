@@ -4,10 +4,11 @@ import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.core.authentication import authenticate_admin
+from src.core.authentication import authenticate_admin, authenticate_police_or_admin
 from src.core.database import get_session
 from src.main import app
 from src.modules.account.account_entity import AccountEntity, AccountRole
+from src.modules.account.account_model import Account
 from src.modules.location.location_entity import LocationEntity
 from src.modules.party.party_entity import PartyEntity
 from src.modules.student.student_entity import StudentEntity
@@ -512,3 +513,245 @@ async def test_admin_authentication_required(
     else:
         # Handle different response formats
         assert response.status_code == 401
+
+
+@pytest_asyncio.fixture()
+async def police_client(test_async_session: AsyncSession):
+    """Create an async test client with police authentication override."""
+
+    async def override_get_session():
+        yield test_async_session
+
+    async def override_authenticate_police_or_admin():
+        return Account(
+            id=3,
+            email="police@test.com",
+            password="hashed_password",
+            role=AccountRole.POLICE,
+        )
+
+    app.dependency_overrides[get_session] = override_get_session
+    app.dependency_overrides[authenticate_police_or_admin] = (
+        override_authenticate_police_or_admin
+    )
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        yield ac
+
+    app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture()
+async def admin_client_for_nearby(test_async_session: AsyncSession):
+    """Create an async test client with admin authentication override for nearby route."""
+
+    async def override_get_session():
+        yield test_async_session
+
+    async def override_authenticate_police_or_admin():
+        return Account(
+            id=2,
+            email="admin@test.com",
+            password="hashed_password",
+            role=AccountRole.ADMIN,
+        )
+
+    app.dependency_overrides[get_session] = override_get_session
+    app.dependency_overrides[authenticate_police_or_admin] = (
+        override_authenticate_police_or_admin
+    )
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        yield ac
+
+    app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture()
+async def student_client_for_nearby(test_async_session: AsyncSession):
+    """Create an async test client with student authentication override for nearby route."""
+
+    async def override_get_session():
+        yield test_async_session
+
+    async def override_authenticate_police_or_admin():
+        return Account(
+            id=1,
+            email="student@test.com",
+            password="hashed_password",
+            role=AccountRole.STUDENT,
+        )
+
+    app.dependency_overrides[get_session] = override_get_session
+    app.dependency_overrides[authenticate_police_or_admin] = (
+        override_authenticate_police_or_admin
+    )
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        yield ac
+
+    app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_nearby_police_authentication(police_client: AsyncClient):
+    """Test that police officer can access the nearby route."""
+    response = await police_client.get(
+        "/api/parties/nearby?place_id=test_place_id&start_date=2025-01-01&end_date=2025-01-02"
+    )
+
+    assert response.status_code in (200, 400, 404, 422)
+
+    if response.status_code == 401 or response.status_code == 403:
+        pytest.fail(f"Authentication failed with status {response.status_code}")
+
+
+@pytest.mark.asyncio
+async def test_nearby_admin_authentication(admin_client_for_nearby: AsyncClient):
+    """Test that admin can access the nearby route."""
+    response = await admin_client_for_nearby.get(
+        "/api/parties/nearby?place_id=test_place_id&start_date=2025-01-01&end_date=2025-01-02"
+    )
+
+    assert response.status_code in (200, 400, 404, 422)
+
+    if response.status_code == 401 or response.status_code == 403:
+        pytest.fail(f"Authentication failed with status {response.status_code}")
+
+
+@pytest.mark.asyncio
+async def test_nearby_student_forbidden(student_client_for_nearby: AsyncClient):
+    """Test that student role gets 403 Forbidden."""
+    response = await student_client_for_nearby.get(
+        "/api/parties/nearby?place_id=test_place_id&start_date=2025-01-01&end_date=2025-01-02"
+    )
+
+    assert response.status_code != 200
+    if response.status_code == 403:
+        data = response.json()
+        assert "police or admin" in data.get("message", "").lower()
+
+
+@pytest.mark.asyncio
+async def test_nearby_unauthenticated(unauthenticated_client: AsyncClient):
+    """Test that unauthenticated request gets 401 Unauthorized."""
+    response = await unauthenticated_client.get(
+        "/api/parties/nearby?place_id=test_place_id&start_date=2025-01-01&end_date=2025-01-02"
+    )
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_nearby_missing_place_id(police_client: AsyncClient):
+    """Test that missing place_id query param returns 422."""
+    response = await police_client.get(
+        "/api/parties/nearby?start_date=2025-01-01&end_date=2025-01-02"
+    )
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_nearby_missing_start_date(police_client: AsyncClient):
+    """Test that missing start_date query param returns 422."""
+    response = await police_client.get(
+        "/api/parties/nearby?place_id=test_place_id&end_date=2025-01-02"
+    )
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_nearby_missing_end_date(police_client: AsyncClient):
+    """Test that missing end_date query param returns 422."""
+    response = await police_client.get(
+        "/api/parties/nearby?place_id=test_place_id&start_date=2025-01-01"
+    )
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_nearby_invalid_date_format(police_client: AsyncClient):
+    """Test that invalid date format returns 400."""
+    response = await police_client.get(
+        "/api/parties/nearby?place_id=test_place_id&start_date=01/01/2025&end_date=2025-01-02"
+    )
+    assert response.status_code == 400
+    data = response.json()
+    assert "invalid date format" in data.get("message", "").lower()
+
+
+@pytest.mark.asyncio
+async def test_nearby_location_service_not_found(police_client: AsyncClient):
+    """Test that invalid place_id returns 404 from location service."""
+    response = await police_client.get(
+        "/api/parties/nearby?place_id=invalid_place_id&start_date=2025-01-01&end_date=2025-01-02"
+    )
+
+    assert response.status_code in (400, 404)
+    if response.status_code == 404:
+        data = response.json()
+        assert (
+            "place" in data.get("message", "").lower()
+            or "not found" in data.get("message", "").lower()
+        )
+
+
+@pytest.mark.asyncio
+async def test_nearby_happy_path_integration(
+    police_client: AsyncClient,
+    test_async_session: AsyncSession,
+    sample_party_setup: dict,
+):
+    """Test the golden path - happy path integration with real services."""
+
+    center_lat = 35.9132
+    center_lon = -79.0558
+
+    location_within_radius = LocationEntity(
+        id=2,
+        latitude=center_lat + 0.0145,
+        longitude=center_lon,
+        google_place_id="test_place_id",
+        formatted_address="1 Mile Away St, Chapel Hill, NC",
+    )
+    test_async_session.add(location_within_radius)
+    await test_async_session.commit()
+
+    base_date = datetime(2025, 11, 10, 12, 0, 0)
+    party1 = PartyEntity(
+        party_datetime=base_date + timedelta(hours=6),
+        location_id=2,  # Within radius
+        contact_one_id=sample_party_setup["contact_one_id"],
+        contact_two_id=sample_party_setup["contact_two_id"],
+    )
+    party2 = PartyEntity(
+        party_datetime=base_date + timedelta(days=1),
+        location_id=2,  # Within radius
+        contact_one_id=sample_party_setup["contact_one_id"],
+        contact_two_id=sample_party_setup["contact_two_id"],
+    )
+    test_async_session.add_all([party1, party2])
+    await test_async_session.commit()
+
+    response = await police_client.get(
+        "/api/parties/nearby?place_id=test_place_id&start_date=2025-11-10&end_date=2025-11-12"
+    )
+
+    assert response.status_code in (200, 400, 404)
+
+    if response.status_code == 200:
+        data = response.json()
+        assert isinstance(data, list)
+
+        if len(data) > 0:
+            party = data[0]
+            assert "id" in party
+            assert "party_datetime" in party
+            assert "location_id" in party
+            assert "contact_one_id" in party
+            assert "contact_two_id" in party

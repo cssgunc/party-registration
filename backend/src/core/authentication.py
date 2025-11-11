@@ -92,3 +92,14 @@ async def authenticate_police(
     if not police or user.role != AccountRole.POLICE:
         raise ForbiddenException(detail="Police privileges required")
     return police
+
+
+async def authenticate_police_or_admin(
+    user: Account = Depends(authenticate_user),
+) -> Account:
+    """
+    Middleware to ensure the authenticated user is either a police officer or admin.
+    """
+    if user.role not in (AccountRole.POLICE, AccountRole.ADMIN):
+        raise ForbiddenException(detail="Police or admin privileges required")
+    return user
