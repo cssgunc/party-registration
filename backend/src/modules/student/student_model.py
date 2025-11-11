@@ -12,12 +12,12 @@ class ContactPreference(enum.Enum):
 class StudentData(BaseModel):
     first_name: str = Field(min_length=1)
     last_name: str = Field(min_length=1)
-    call_or_text_pref: ContactPreference
+    contact_preference: ContactPreference
     last_registered: datetime | None = None
     phone_number: str = Field(pattern=r"^\+?1?\d{9,15}$")
 
 
-class Student(StudentData):
+class DbStudent(StudentData):
     account_id: int
 
     @property
@@ -29,7 +29,7 @@ class Student(StudentData):
         return f"{self.first_name} {self.last_name}"
 
 
-class StudentDTO(BaseModel):
+class Student(BaseModel):
     """
     Admin-facing Student DTO combining student and account data.
 
@@ -45,6 +45,7 @@ class StudentDTO(BaseModel):
     first_name: str
     last_name: str
     phone_number: str
+    contact_preference: ContactPreference
     last_registered: datetime | None = None
 
 
@@ -64,6 +65,7 @@ class PaginationMetadata(BaseModel):
     page_size: int
     total_pages: int
 
+
 class PaginatedResponse(BaseModel):
-    data: list[StudentDTO]
+    data: list[Student]
     metadata: PaginationMetadata
