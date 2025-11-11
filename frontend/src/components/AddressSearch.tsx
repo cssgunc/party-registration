@@ -43,13 +43,14 @@ export default function AddressSearch({
   const displayError = externalError || internalError;
 
   /**
-   * Sync internal state with external value prop
+   * Sync internal state with external value prop only on mount or when externally changed
    */
   useEffect(() => {
-    if (value !== searchTerm && !selectedAddress) {
+    if (value && value !== searchTerm && !selectedAddress) {
       setSearchTerm(value);
     }
-  }, [value, searchTerm, selectedAddress]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
 
   /**
    * Fetch address suggestions with debouncing
@@ -138,17 +139,6 @@ export default function AddressSearch({
     setSearchTerm(e.target.value);
   };
 
-  /**
-   * Handle keyboard navigation
-   */
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Escape" && selectedAddress) {
-      e.preventDefault();
-      // Allow user to clear selection with Escape key
-      handleClear();
-    }
-  };
-
   return (
     <div className={cn("relative w-full", className)}>
       <Popover open={open && !selectedAddress && !disabled} onOpenChange={setOpen}>
@@ -157,7 +147,6 @@ export default function AddressSearch({
             <Input
               value={searchTerm}
               onChange={handleInputChange}
-              onKeyDown={handleKeyDown}
               placeholder={placeholder}
               disabled={disabled || !!selectedAddress}
               className={cn(
@@ -240,6 +229,14 @@ export default function AddressSearch({
           </Command>
         </PopoverContent>
       </Popover>
+      
+      {selectedAddress && (
+        <div className="mt-4 p-4 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
+          <p className="text-sm font-medium text-green-900 dark:text-green-100">
+            ✓ Selected: {selectedAddress.formatted_address}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
