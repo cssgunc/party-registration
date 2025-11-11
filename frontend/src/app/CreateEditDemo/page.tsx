@@ -46,14 +46,10 @@ export default function CreateEditDemo() {
     };
 
     return (
-        <main className="max-w-3xl mx-auto p-8 space-y-6">
+        <main className="max-w-xl mx-auto p-8 space-y-6">
             <div>
-                <h1 className="text-3xl font-bold">Register a Party</h1>
-                <p className="text-muted-foreground">
-                    Fill out the details below to create a new party registration.
-                </p>
-
                 <div className="p-6 border rounded-2xl shadow-sm bg-white">
+                    <div className="font-bold pb-4 text-2xl">Party create/edit</div>
                     <PartyTableCreateEditForm onSubmit={handleSubmitParty} />
                 </div>
 
@@ -67,12 +63,8 @@ export default function CreateEditDemo() {
                 ) : null}
             </div>
 
-            <h1 className="text-3xl font-bold">Register a Party</h1>
-            <p className="text-muted-foreground">
-                Fill out the details below to create a new location.
-            </p>
-
             <div className="p-6 border rounded-2xl shadow-sm bg-white">
+                <div className="font-bold pb-4 text-2xl">Location create/edit</div>
                 <LocationTableCreateEditForm onSubmit={handleSubmitLocation} />
             </div>
 
@@ -86,6 +78,7 @@ export default function CreateEditDemo() {
             ) : null}
 
             <div className="p-6 border rounded-2xl shadow-sm bg-white">
+                <div className="font-bold pb-4 text-2xl">Student create/edit</div>
                 <StudentTableCreateEditForm onSubmit={handleSubmitStudent} />
             </div>
 
@@ -99,6 +92,7 @@ export default function CreateEditDemo() {
             ) : null}
 
             <div className="p-6 border rounded-2xl shadow-sm bg-white">
+                <div className="font-bold pb-4 text-2xl ">Account create/edit</div>
                 <AccountTableCreateEditForm onSubmit={handleSubmitAccount} />
             </div>
 

@@ -170,7 +170,7 @@ export default function StudentTableCreateEditForm({ onSubmit }: StudentRegistra
                             onValueChange={(value) => updateField("contactPreference", value as "call" | "text")}
                         >
                             <SelectTrigger id="contact-two-preference">
-                                <SelectValue placeholder="Select your preference" />
+                                <SelectValue placeholder="Select preference" />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="call">Call</SelectItem>

@@ -182,8 +182,10 @@ export default function PartyTableCreateEditForm({ onSubmit }: PartyRegistration
                         {errors.contactOneEmail && <FieldError>{errors.contactOneEmail}</FieldError>}
                     </Field>
 
+                    <div className="font-bold">Second contact information </div>
+
                     <Field data-invalid={!!errors.contactTwoEmail}>
-                        <FieldLabel htmlFor="contact-two-email">Second Contact Email</FieldLabel>
+                        <FieldLabel htmlFor="contact-two-email">Contact Email</FieldLabel>
                         <Input
                             id="contact-two-email"
                             type="email"
@@ -222,7 +224,7 @@ export default function PartyTableCreateEditForm({ onSubmit }: PartyRegistration
                     </Field>
 
                     <Field data-invalid={!!errors.contactTwoPhoneNumber}>
-                        <FieldLabel htmlFor="contact-two-phone-number">Your Phone Number</FieldLabel>
+                        <FieldLabel htmlFor="contact-two-phone-number"> Phone Number</FieldLabel>
                         <Input
                             id="contact-two-phone-number"
                             placeholder="(123) 456-7890"
@@ -240,7 +242,7 @@ export default function PartyTableCreateEditForm({ onSubmit }: PartyRegistration
                             onValueChange={(value) => updateField("contactTwoPreference", value as "call" | "text")}
                         >
                             <SelectTrigger id="contact-two-preference">
-                                <SelectValue placeholder="Select your preference" />
+                                <SelectValue placeholder="Select preference" />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="call">Call</SelectItem>

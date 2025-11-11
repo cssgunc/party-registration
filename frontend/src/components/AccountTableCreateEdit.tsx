@@ -124,13 +124,13 @@ export default function StudentTableCreateEditForm({ onSubmit }: StudentRegistra
                     </Field>
 
                     <Field data-invalid={!!errors.role}>
-                        <FieldLabel htmlFor="contact-preference">Contact Preference</FieldLabel>
+                        <FieldLabel htmlFor="role">Role</FieldLabel>
                         <Select
                             value={formData.role}
-                            onValueChange={(value) => updateField("role", value as "call" | "text")}
+                            onValueChange={(value) => updateField("role", value as "staff" | "admin" | "student")}
                         >
-                            <SelectTrigger id="contact-two-preference">
-                                <SelectValue placeholder="Select your preference" />
+                            <SelectTrigger id="role">
+                                <SelectValue placeholder="Select role" />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="staff">Staff</SelectItem>

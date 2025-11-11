@@ -99,11 +99,11 @@ export default function LocationTableCreateEditForm({ onSubmit }: StudentRegistr
                     </Field>
 
                     <Field data-invalid={!!errors.holdExpiration}>
-                        <FieldLabel htmlFor="party-date">Party Date</FieldLabel>
+                        <FieldLabel htmlFor="hold-expiration">Hold Expiration</FieldLabel>
                         <Popover>
                             <PopoverTrigger asChild>
                                 <Button
-                                    id="party-date"
+                                    id="hold-expiration"
                                     variant="outline"
                                     className={`w-full justify-start text-left font-normal ${!formData.holdExpiration && "text-muted-foreground"
                                         }`}
