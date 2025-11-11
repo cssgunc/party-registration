@@ -19,6 +19,11 @@ class UserConflictException(ConflictException):
         super().__init__(f"User with email {email} already exists")
 
 
+class UserByEmailNotFoundException(NotFoundException):
+    def __init__(self, email: str):
+        super().__init__(f"User with email {email} not found")
+
+
 class UserService:
     def __init__(self, session: AsyncSession = Depends(get_session)):
         self.session = session
@@ -32,11 +37,14 @@ class UserService:
             raise UserNotFoundException(user_id)
         return user_entity
 
-    async def _get_user_entity_by_email(self, email: str) -> UserEntity | None:
+    async def _get_user_entity_by_email(self, email: str) -> UserEntity:
         result = await self.session.execute(
             select(UserEntity).where(UserEntity.email == email)
         )
-        return result.scalar_one_or_none()
+        user = result.scalar_one_or_none()
+        if user is None:
+            raise UserByEmailNotFoundException(email)
+        return user
 
     async def get_users(self) -> list[User]:
         result = await self.session.execute(select(UserEntity))
@@ -48,8 +56,13 @@ class UserService:
         return user_entity.to_model()
 
     async def create_user(self, data: UserData) -> User:
-        if await self._get_user_entity_by_email(data.email):
+        try:
+            await self._get_user_entity_by_email(data.email)
+            # If we get here, user exists
             raise UserConflictException(data.email)
+        except UserByEmailNotFoundException:
+            # User doesn't exist, proceed with creation
+            pass
 
         new_user = UserEntity.from_model(data)
         try:
@@ -65,8 +78,13 @@ class UserService:
         user_entity = await self._get_user_entity_by_id(user_id)
 
         if data.email != user_entity.email:
-            if await self._get_user_entity_by_email(data.email):
+            try:
+                await self._get_user_entity_by_email(data.email)
+                # If we get here, user with this email exists
                 raise UserConflictException(data.email)
+            except UserByEmailNotFoundException:
+                # Email is available, proceed
+                pass
 
         for key, value in data.model_dump().items():
             if key == "id":

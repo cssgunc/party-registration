@@ -42,6 +42,11 @@ class StudentAlreadyExistsException(ConflictException):
         super().__init__(f"Student with account ID {account_id} already exists")
 
 
+class StudentByPhoneNotFoundException(NotFoundException):
+    def __init__(self, phone_number: str):
+        super().__init__(f"Student with phone number {phone_number} not found")
+
+
 class StudentService:
     def __init__(self, session: AsyncSession = Depends(get_session)):
         self.session = session
@@ -59,11 +64,14 @@ class StudentService:
 
     async def _get_student_entity_by_phone(
         self, phone_number: str
-    ) -> StudentEntity | None:
+    ) -> StudentEntity:
         result = await self.session.execute(
             select(StudentEntity).where(StudentEntity.phone_number == phone_number)
         )
-        return result.scalar_one_or_none()
+        student = result.scalar_one_or_none()
+        if student is None:
+            raise StudentByPhoneNotFoundException(phone_number)
+        return student
 
     async def _get_account_entity_by_id(self, account_id: int) -> AccountEntity:
         result = await self.session.execute(
@@ -103,8 +111,13 @@ class StudentService:
     async def create_student(self, data: StudentData, account_id: int) -> StudentDTO:
         await self._validate_account_for_student(account_id)
 
-        if await self._get_student_entity_by_phone(data.phone_number):
+        try:
+            await self._get_student_entity_by_phone(data.phone_number)
+            # If we get here, student exists
             raise StudentConflictException(data.phone_number)
+        except StudentByPhoneNotFoundException:
+            # Student doesn't exist, proceed with creation
+            pass
 
         new_student = StudentEntity.from_model(data, account_id)
         try:
@@ -125,8 +138,13 @@ class StudentService:
             raise InvalidAccountRoleException(account_id, account.role)
 
         if data.phone_number != student_entity.phone_number:
-            if await self._get_student_entity_by_phone(data.phone_number):
+            try:
+                await self._get_student_entity_by_phone(data.phone_number)
+                # If we get here, student with this phone exists
                 raise StudentConflictException(data.phone_number)
+            except StudentByPhoneNotFoundException:
+                # Phone is available, proceed
+                pass
 
         for key, value in data.model_dump().items():
             if hasattr(student_entity, key):
