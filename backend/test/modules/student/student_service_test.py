@@ -40,8 +40,8 @@ async def student_entity(
 
 @pytest.mark.asyncio
 async def test_get_students_empty(student_service: StudentService):
-    students = await student_service.get_students(page=1, page_size=10)
-    assert len(students.data) == 0
+    students = await student_service.get_students(page_number=1, page_size=10)
+    assert len(students.items) == 0
 
 
 @pytest.mark.asyncio
@@ -120,18 +120,18 @@ async def test_get_students(
         test_async_session.add(entity)
     await test_async_session.commit()
 
-    students = await student_service.get_students(page=1, page_size=10)
-    assert len(students.data) == 3
+    students = await student_service.get_students(page_number=1, page_size=10)
+    assert len(students.items) == 3
 
     expected = {
         "1111111111": "Alice Smith",
         "2222222222": "Bob Jones",
         "3333333333": "Charlie Brown",
     }
-    phones = {s.phone_number for s in students.data}
+    phones = {s.phone_number for s in students.items}
     assert phones == set(expected.keys())
 
-    for s in students.data:
+    for s in students.items:
         assert s.phone_number in expected
         assert f"{s.first_name} {s.last_name}" == expected[s.phone_number]
         assert isinstance(s.id, int)

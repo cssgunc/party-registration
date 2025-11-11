@@ -54,11 +54,11 @@ async def test_list_students_empty(override_dependencies_admin: Any):
         res = await client.get("/api/students/", headers=auth_headers())
         assert res.status_code == 200
         body = res.json()
-        assert body["data"] == []
-        assert body["metadata"]["total_records"] == 0
-        assert body["metadata"]["page"] == 1
-        assert body["metadata"]["page_size"] == 10
-        assert body["metadata"]["total_pages"] == 0
+        assert body["items"] == []
+        assert body["total_records"] == 0
+        assert body["page_number"] == 1
+        assert body["page_size"] == 10
+        assert body["total_pages"] == 0
 
 
 @pytest.mark.asyncio
@@ -101,11 +101,11 @@ async def test_list_students_with_data(
         res = await client.get("/api/students/", headers=auth_headers())
         assert res.status_code == 200
         body = res.json()
-        assert len(body["data"]) == 3
-        assert body["metadata"]["total_records"] == 3
-        assert body["metadata"]["page"] == 1
-        assert body["metadata"]["page_size"] == 10
-        assert body["metadata"]["total_pages"] == 1
+        assert len(body["items"]) == 3
+        assert body["total_records"] == 3
+        assert body["page_number"] == 1
+        assert body["page_size"] == 10
+        assert body["total_pages"] == 1
 
 
 @pytest.mark.asyncio
@@ -133,7 +133,7 @@ async def test_list_students_pagination_custom_page_size(
             StudentData(
                 first_name=f"PageSize{idx}",
                 last_name=f"Test{idx}",
-                call_or_text_pref=ContactPreference.text,
+                contact_preference=ContactPreference.text,
                 phone_number=f"555222{idx:04d}",
             ),
             acc.id,
@@ -149,11 +149,11 @@ async def test_list_students_pagination_custom_page_size(
         )
         assert res.status_code == 200
         body = res.json()
-        assert len(body["data"]) == 5
-        assert body["metadata"]["total_records"] == 25
-        assert body["metadata"]["page"] == 1
-        assert body["metadata"]["page_size"] == 5
-        assert body["metadata"]["total_pages"] == 5
+        assert len(body["items"]) == 5
+        assert body["total_records"] == 25
+        assert body["page_number"] == 1
+        assert body["page_size"] == 5
+        assert body["total_pages"] == 5
 
 
 @pytest.mark.asyncio
@@ -181,7 +181,7 @@ async def test_list_students_pagination_second_page(
             StudentData(
                 first_name=f"Page2{idx}",
                 last_name=f"Test{idx}",
-                call_or_text_pref=ContactPreference.text,
+                contact_preference=ContactPreference.text,
                 phone_number=f"555333{idx:04d}",
             ),
             acc.id,
@@ -194,16 +194,16 @@ async def test_list_students_pagination_second_page(
     ) as client:
         res = await client.get(
             "/api/students/",
-            params={"page": 2, "page_size": 10},
+            params={"page_number": 2, "page_size": 10},
             headers=auth_headers(),
         )
         assert res.status_code == 200
         body = res.json()
-        assert len(body["data"]) == 5
-        assert body["metadata"]["total_records"] == 15
-        assert body["metadata"]["page"] == 2
-        assert body["metadata"]["page_size"] == 10
-        assert body["metadata"]["total_pages"] == 2
+        assert len(body["items"]) == 5
+        assert body["total_records"] == 15
+        assert body["page_number"] == 2
+        assert body["page_size"] == 10
+        assert body["total_pages"] == 2
 
 
 @pytest.mark.asyncio
@@ -231,7 +231,7 @@ async def test_list_students_pagination_last_page(
             StudentData(
                 first_name=f"LastPage{idx}",
                 last_name=f"Test{idx}",
-                call_or_text_pref=ContactPreference.text,
+                contact_preference=ContactPreference.text,
                 phone_number=f"555444{idx:04d}",
             ),
             acc.id,
@@ -244,16 +244,16 @@ async def test_list_students_pagination_last_page(
     ) as client:
         res = await client.get(
             "/api/students/",
-            params={"page": 3, "page_size": 10},
+            params={"page_number": 3, "page_size": 10},
             headers=auth_headers(),
         )
         assert res.status_code == 200
         body = res.json()
-        assert len(body["data"]) == 3
-        assert body["metadata"]["total_records"] == 23
-        assert body["metadata"]["page"] == 3
-        assert body["metadata"]["page_size"] == 10
-        assert body["metadata"]["total_pages"] == 3
+        assert len(body["items"]) == 3
+        assert body["total_records"] == 23
+        assert body["page_number"] == 3
+        assert body["page_size"] == 10
+        assert body["total_pages"] == 3
 
 
 @pytest.mark.asyncio
@@ -281,7 +281,7 @@ async def test_list_students_pagination_page_beyond_total(
             StudentData(
                 first_name=f"Beyond{idx}",
                 last_name=f"Test{idx}",
-                call_or_text_pref=ContactPreference.text,
+                contact_preference=ContactPreference.text,
                 phone_number=f"555555{idx:04d}",
             ),
             acc.id,
@@ -294,16 +294,16 @@ async def test_list_students_pagination_page_beyond_total(
     ) as client:
         res = await client.get(
             "/api/students/",
-            params={"page": 10, "page_size": 10},
+            params={"page_number": 10, "page_size": 10},
             headers=auth_headers(),
         )
         assert res.status_code == 200
         body = res.json()
-        assert len(body["data"]) == 0
-        assert body["metadata"]["total_records"] == 5
-        assert body["metadata"]["page"] == 10
-        assert body["metadata"]["page_size"] == 10
-        assert body["metadata"]["total_pages"] == 1
+        assert len(body["items"]) == 0
+        assert body["total_records"] == 5
+        assert body["page_number"] == 10
+        assert body["page_size"] == 10
+        assert body["total_pages"] == 1
 
 
 @pytest.mark.asyncio
@@ -331,7 +331,7 @@ async def test_list_students_pagination_max_page_size(
             StudentData(
                 first_name=f"MaxSize{idx}",
                 last_name=f"Test{idx}",
-                call_or_text_pref=ContactPreference.text,
+                contact_preference=ContactPreference.text,
                 phone_number=f"555666{idx:04d}",
             ),
             acc.id,
@@ -347,11 +347,11 @@ async def test_list_students_pagination_max_page_size(
         )
         assert res.status_code == 200
         body = res.json()
-        assert len(body["data"]) == 100
-        assert body["metadata"]["total_records"] == 100
-        assert body["metadata"]["page"] == 1
-        assert body["metadata"]["page_size"] == 100
-        assert body["metadata"]["total_pages"] == 1
+        assert len(body["items"]) == 100
+        assert body["total_records"] == 100
+        assert body["page_number"] == 1
+        assert body["page_size"] == 100
+        assert body["total_pages"] == 1
 
 
 @pytest.mark.asyncio
@@ -362,7 +362,7 @@ async def test_list_students_pagination_invalid_page(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
         res = await client.get(
-            "/api/students/", params={"page": 0}, headers=auth_headers()
+            "/api/students/", params={"page_number": 0}, headers=auth_headers()
         )
         assert res.status_code == 422
 
@@ -891,7 +891,7 @@ async def test_list_students_pagination_default(
             StudentData(
                 first_name=f"PageStudent{idx}",
                 last_name=f"Test{idx}",
-                call_or_text_pref=ContactPreference.text,
+                contact_preference=ContactPreference.text,
                 phone_number=f"555111{idx:04d}",
             ),
             acc.id,
@@ -905,11 +905,11 @@ async def test_list_students_pagination_default(
         res = await client.get("/api/students/", headers=auth_headers())
         assert res.status_code == 200
         body = res.json()
-        assert len(body["data"]) == 10
-        assert body["metadata"]["total_records"] == 15
-        assert body["metadata"]["page"] == 1
-        assert body["metadata"]["page_size"] == 10
-        assert body["metadata"]["total_pages"] == 2
+        assert len(body["items"]) == 10
+        assert body["total_records"] == 15
+        assert body["page_number"] == 1
+        assert body["page_size"] == 10
+        assert body["total_pages"] == 2
 
 
 @pytest.mark.asyncio
