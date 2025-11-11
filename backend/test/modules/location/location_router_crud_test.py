@@ -27,14 +27,17 @@ async def mock_location_service() -> LocationService:
 
 
 @pytest_asyncio.fixture()
-async def unauthenticated_client(test_async_session: AsyncSession):
+async def unauthenticated_client(test_async_session: AsyncSession, mock_location_service: LocationService):
     """Create an async test client WITHOUT authentication override."""
 
     async def override_get_session():
         yield test_async_session
 
+    def get_mock_location_service():
+        return mock_location_service
+    
+    app.dependency_overrides[LocationService] = get_mock_location_service
     app.dependency_overrides[get_session] = override_get_session
-    # Note: We do NOT override authenticate_admin here
 
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
