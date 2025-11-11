@@ -1,6 +1,8 @@
 "use client";
 
 import EmbeddedMap from "@/components/EmbeddedMap";
+import { GenericChipDetails } from "@/components/GenericChipDetails";
+import { GenericInfoChip } from "@/components/GenericInfoChip";
 import PartyList from "@/components/PartyList";
 import { useSidebar } from "@/components/SidebarContext";
 
@@ -15,6 +17,22 @@ const Page = () => {
       <button onClick={() => openSidebar(<div>Hello from Sidebar!</div>)}>
         Open Sidebar
       </button>
+      <GenericInfoChip
+        data={{ name: "Mason", age: 22 }}
+        renderSidebar={(data, onSave) => (
+          <GenericChipDetails
+            data={data}
+            onSave={onSave}
+            renderForm={(d, setD) => (
+              <input
+                className="border p-2 w-full"
+                value={d.name}
+                onChange={(e) => setD({ ...d, name: e.target.value })}
+              />
+            )}
+          />
+        )}
+      />
     </div>
   );
 };

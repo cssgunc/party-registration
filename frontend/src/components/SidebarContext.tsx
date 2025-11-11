@@ -7,10 +7,13 @@ type SidebarContextType = {
   openSidebar: (content: ReactNode) => void;
   closeSidebar: () => void;
 };
+interface SidebarProviderProps {
+  children: ReactNode;
+}
 
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
 
-export function SidebarProvider({ children }: { children: ReactNode }) {
+export function SidebarProvider({ children }: SidebarProviderProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [content, setContent] = useState<ReactNode | null>(null);
 
