@@ -12,6 +12,7 @@ from src.main import app
 from src.modules.account.account_entity import AccountEntity, AccountRole
 from src.modules.account.account_model import Account
 from src.modules.location.location_entity import LocationEntity
+from src.modules.location.location_service import get_gmaps_client
 from src.modules.party.party_entity import PartyEntity
 from src.modules.student.student_entity import StudentEntity
 from src.modules.student.student_model import ContactPreference
@@ -25,7 +26,12 @@ async def unauthenticated_client(test_async_session: AsyncSession):
     async def override_get_session():
         yield test_async_session
 
+    def override_get_gmaps_client():
+        """Return a mock Google Maps client to avoid API key validation."""
+        return MagicMock()
+
     app.dependency_overrides[get_session] = override_get_session
+    app.dependency_overrides[get_gmaps_client] = override_get_gmaps_client
     # Note: We do NOT override authenticate_admin here
 
     async with AsyncClient(
@@ -532,10 +538,15 @@ async def police_client(test_async_session: AsyncSession):
             role=AccountRole.POLICE,
         )
 
+    def override_get_gmaps_client():
+        """Return a mock Google Maps client to avoid API key validation."""
+        return MagicMock()
+
     app.dependency_overrides[get_session] = override_get_session
     app.dependency_overrides[authenticate_police_or_admin] = (
         override_authenticate_police_or_admin
     )
+    app.dependency_overrides[get_gmaps_client] = override_get_gmaps_client
 
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
@@ -560,10 +571,15 @@ async def admin_client_for_nearby(test_async_session: AsyncSession):
             role=AccountRole.ADMIN,
         )
 
+    def override_get_gmaps_client():
+        """Return a mock Google Maps client to avoid API key validation."""
+        return MagicMock()
+
     app.dependency_overrides[get_session] = override_get_session
     app.dependency_overrides[authenticate_police_or_admin] = (
         override_authenticate_police_or_admin
     )
+    app.dependency_overrides[get_gmaps_client] = override_get_gmaps_client
 
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
@@ -588,10 +604,15 @@ async def student_client_for_nearby(test_async_session: AsyncSession):
             role=AccountRole.STUDENT,
         )
 
+    def override_get_gmaps_client():
+        """Return a mock Google Maps client to avoid API key validation."""
+        return MagicMock()
+
     app.dependency_overrides[get_session] = override_get_session
     app.dependency_overrides[authenticate_police_or_admin] = (
         override_authenticate_police_or_admin
     )
+    app.dependency_overrides[get_gmaps_client] = override_get_gmaps_client
 
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
