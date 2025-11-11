@@ -30,6 +30,7 @@ export function GenericInfoChip<T>({
       className="cursor-pointer hover:bg-blue-500 px-3 py-1"
     >
       {"Open Sidebar"}
+      {/* TODO: Replace with actual data description */}
     </Badge>
   );
 }

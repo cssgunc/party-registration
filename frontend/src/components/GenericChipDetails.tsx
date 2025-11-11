@@ -31,13 +31,7 @@ export function GenericChipDetails<T>({
           className="bg-blue-500 text-white px-3 py-1 rounded"
           onClick={handleSave}
         >
-          Save
-        </button>
-        <button
-          className="bg-gray-300 text-black px-3 py-1 rounded"
-          onClick={closeSidebar}
-        >
-          Cancel
+          Save Changes
         </button>
       </div>
     </div>
