@@ -6,7 +6,6 @@ import {
   APIProvider,
   InfoWindow,
   Map,
-  MapCameraChangedEvent,
   Pin,
   useMap,
 } from "@vis.gl/react-google-maps";
@@ -56,14 +55,6 @@ const EmbeddedMap = ({ parties, activeParty }: EmbeddedMapProps) => {
           defaultZoom={defaultZoom}
           defaultCenter={defaultCenter}
           mapId={process.env.NEXT_PUBLIC_GOOGLE_MAP_ID!}
-          onCameraChanged={(ev: MapCameraChangedEvent) =>
-            console.log(
-              "camera changed:",
-              ev.detail.center,
-              "zoom:",
-              ev.detail.zoom
-            )
-          }
         >
           <PoiMarkers pois={locations} activePoiKey={activePoiKey} />
         </Map>
