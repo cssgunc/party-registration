@@ -17,6 +17,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import apiClient from "@/lib/network/apiClient";
+import StudentService from "@/services/studentService";
+import type { StudentData } from "@/types/api/student";
 import { useState } from "react";
 import * as z from "zod";
 
@@ -39,14 +42,13 @@ const studentInfoSchema = z.object({
 type StudentInfoValues = z.infer<typeof studentInfoSchema>;
 
 interface StudentInfoProps {
+  id?: number;
   initialData?: Partial<StudentInfoValues>;
-  onSubmit?: (data: StudentInfoValues) => void | Promise<void>;
 }
 
-export default function StudentInfo({
-  initialData,
-  onSubmit,
-}: StudentInfoProps) {
+const studentService = new StudentService(apiClient);
+
+export default function StudentInfo({ id, initialData }: StudentInfoProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<Partial<StudentInfoValues>>({
     firstName: initialData?.firstName || "",
@@ -78,10 +80,32 @@ export default function StudentInfo({
     // Safely handle submission
     setIsSubmitting(true);
     try {
-      if (onSubmit) {
-        await onSubmit(result.data);
+      if (id) {
+        // Map form data to API format (camelCase to snake_case)
+        // The backend expects snake_case, but the frontend StudentData type uses camelCase
+        const apiData = {
+          first_name: result.data.firstName,
+          last_name: result.data.lastName,
+          phone_number: result.data.phoneNumber,
+          contact_preference: result.data.contactPreference,
+        } as unknown as StudentData; // Use "as unknown" since apiData is missing some properties of StudentData (ex: pid)
+
+        await studentService.updateStudent(id, apiData);
+
+        // Update formData with the submitted values to reflect in display
+        setFormData(result.data);
       }
+
       setIsEditing(false);
+    } catch (error) {
+      // Handle API errors
+      console.error("Failed to update student info:", error);
+      setErrors({
+        submit:
+          error instanceof Error
+            ? error.message
+            : "Failed to update student information",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -218,6 +242,12 @@ export default function StudentInfo({
               <FieldError>{errors.contactPreference}</FieldError>
             )}
           </Field>
+
+          {errors.submit && (
+            <Field>
+              <FieldError>{errors.submit}</FieldError>
+            </Field>
+          )}
 
           <Field orientation="horizontal">
             <Button type="submit" disabled={isSubmitting}>
