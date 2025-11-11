@@ -59,7 +59,7 @@ async def reset_dev():
         student = StudentEntity(
             first_name="John",
             last_name="Doe",
-            call_or_text_pref=ContactPreference.call,
+            contact_preference=ContactPreference.call,
             phone_number="1234567890",
             account_id=student_account.id,
         )

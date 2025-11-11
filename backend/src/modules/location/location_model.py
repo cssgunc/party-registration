@@ -1,6 +1,11 @@
 from pydantic import BaseModel
 
 
+class AutocompleteInput(BaseModel):
+    # Input for address autocomplete
+    address: str
+
+
 class AutocompleteResult(BaseModel):
     # Result from Google Maps autocomplete
     formatted_address: str
