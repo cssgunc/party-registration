@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta
+from unittest.mock import MagicMock, patch
 
+import googlemaps
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
@@ -599,9 +601,21 @@ async def student_client_for_nearby(test_async_session: AsyncSession):
     app.dependency_overrides.clear()
 
 
+@patch("src.modules.location.location_service.places.place")
 @pytest.mark.asyncio
-async def test_nearby_police_authentication(police_client: AsyncClient):
+async def test_nearby_police_authentication(
+    mock_place: MagicMock, police_client: AsyncClient
+):
     """Test that police officer can access the nearby route."""
+    # Mock successful Google Maps API response
+    mock_place.return_value = {
+        "result": {
+            "formatted_address": "123 Test St, Test City, TC 12345",
+            "geometry": {"location": {"lat": 35.9132, "lng": -79.0558}},
+            "address_components": [],
+        }
+    }
+
     response = await police_client.get(
         "/api/parties/nearby?place_id=test_place_id&start_date=2025-01-01&end_date=2025-01-02"
     )
@@ -612,9 +626,21 @@ async def test_nearby_police_authentication(police_client: AsyncClient):
         pytest.fail(f"Authentication failed with status {response.status_code}")
 
 
+@patch("src.modules.location.location_service.places.place")
 @pytest.mark.asyncio
-async def test_nearby_admin_authentication(admin_client_for_nearby: AsyncClient):
+async def test_nearby_admin_authentication(
+    mock_place: MagicMock, admin_client_for_nearby: AsyncClient
+):
     """Test that admin can access the nearby route."""
+    # Mock successful Google Maps API response
+    mock_place.return_value = {
+        "result": {
+            "formatted_address": "123 Test St, Test City, TC 12345",
+            "geometry": {"location": {"lat": 35.9132, "lng": -79.0558}},
+            "address_components": [],
+        }
+    }
+
     response = await admin_client_for_nearby.get(
         "/api/parties/nearby?place_id=test_place_id&start_date=2025-01-01&end_date=2025-01-02"
     )
@@ -685,9 +711,17 @@ async def test_nearby_invalid_date_format(police_client: AsyncClient):
     assert "invalid date format" in data.get("message", "").lower()
 
 
+@patch("src.modules.location.location_service.places.place")
 @pytest.mark.asyncio
-async def test_nearby_location_service_not_found(police_client: AsyncClient):
+async def test_nearby_location_service_not_found(
+    mock_place: MagicMock, police_client: AsyncClient
+):
     """Test that invalid place_id returns 404 from location service."""
+    # Mock Google Maps API NOT_FOUND error
+    api_error = googlemaps.exceptions.ApiError("NOT_FOUND")
+    api_error.status = "NOT_FOUND"
+    mock_place.side_effect = api_error
+
     response = await police_client.get(
         "/api/parties/nearby?place_id=invalid_place_id&start_date=2025-01-01&end_date=2025-01-02"
     )
@@ -701,16 +735,43 @@ async def test_nearby_location_service_not_found(police_client: AsyncClient):
         )
 
 
+@patch("src.modules.location.location_service.places.place")
 @pytest.mark.asyncio
 async def test_nearby_happy_path_integration(
+    mock_place: MagicMock,
     police_client: AsyncClient,
     test_async_session: AsyncSession,
     sample_party_setup: dict,
 ):
-    """Test the golden path - happy path integration with real services."""
+    """Test the golden path - happy path integration with mocked Google Maps API."""
 
     center_lat = 35.9132
     center_lon = -79.0558
+
+    # Mock successful Google Maps API response with Chapel Hill coordinates
+    mock_place.return_value = {
+        "result": {
+            "formatted_address": "Chapel Hill, NC, USA",
+            "geometry": {"location": {"lat": center_lat, "lng": center_lon}},
+            "address_components": [
+                {
+                    "long_name": "Chapel Hill",
+                    "short_name": "Chapel Hill",
+                    "types": ["locality", "political"],
+                },
+                {
+                    "long_name": "North Carolina",
+                    "short_name": "NC",
+                    "types": ["administrative_area_level_1", "political"],
+                },
+                {
+                    "long_name": "United States",
+                    "short_name": "US",
+                    "types": ["country", "political"],
+                },
+            ],
+        }
+    }
 
     location_within_radius = LocationEntity(
         id=2,
