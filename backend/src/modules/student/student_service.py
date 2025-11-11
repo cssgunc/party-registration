@@ -92,10 +92,8 @@ class StudentService:
         return account
 
     async def get_students(
-        self, page_number: int, page_size: int
+        self, page_number: int | None = None, page_size: int | None = None
     ) -> PaginatedStudentsResponse:
-        offset = (page_number - 1) * page_size
-
         count_query = select(func.count(StudentEntity.account_id))
         count_result = await self.session.execute(count_query)
         total_records = count_result.scalar_one()
@@ -104,11 +102,30 @@ class StudentService:
             return PaginatedStudentsResponse(
                 items=[],
                 total_records=0,
-                page_size=page_size,
-                page_number=page_number,
+                page_size=0,
+                page_number=1,
                 total_pages=0,
             )
 
+        # If pagination params are not provided, return all students
+        if page_number is None or page_size is None:
+            data_query = select(StudentEntity).options(
+                selectinload(StudentEntity.account)
+            )
+            data_result = await self.session.execute(data_query)
+            students = data_result.scalars().all()
+            student_dtos = [student.to_dto() for student in students]
+
+            return PaginatedStudentsResponse(
+                items=student_dtos,
+                total_records=total_records,
+                page_size=total_records,
+                page_number=1,
+                total_pages=1,
+            )
+
+        # Pagination logic when params are provided
+        offset = (page_number - 1) * page_size
         total_pages = math.ceil(total_records / page_size)
 
         data_query = (

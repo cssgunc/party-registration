@@ -42,8 +42,17 @@ async def get_my_parties(
 
 @student_router.get("/")
 async def list_students(
-    page_number: int = Query(1, ge=1, description="Page number (1-indexed)"),
-    page_size: int = Query(10, ge=1, le=100, description="Items per page"),
+    page_number: int | None = Query(
+        None,
+        ge=1,
+        description="Page number (1-indexed). If not provided, returns all students.",
+    ),
+    page_size: int | None = Query(
+        None,
+        ge=1,
+        le=100,
+        description="Items per page. If not provided, returns all students.",
+    ),
     student_service: StudentService = Depends(),
     _=Depends(authenticate_admin),
 ) -> PaginatedStudentsResponse:
