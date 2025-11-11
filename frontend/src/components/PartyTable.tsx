@@ -17,7 +17,7 @@ export const PartyTable = ({ data }: { data: Party[] }) => {
                     ? `${address.street_number} ${address.street_name}`
                     : "—";
             },
-            // Custom filter function to search within nested object
+
             filterFn: (row, columnId, filterValue) => {
                 const location = row.getValue(columnId) as {
                     street_number: string;
@@ -39,7 +39,7 @@ export const PartyTable = ({ data }: { data: Party[] }) => {
                 const date = new Date(datetime);
                 return date.toLocaleDateString();
             },
-            // Custom filter to search formatted date
+
             filterFn: (row, columnId, filterValue) => {
                 const datetime = row.getValue(columnId) as Date;
                 const date = new Date(datetime);
@@ -59,7 +59,7 @@ export const PartyTable = ({ data }: { data: Party[] }) => {
                     minute: "2-digit",
                 });
             },
-            // Custom filter to search formatted time
+
             filterFn: (row, columnId, filterValue) => {
                 const datetime = row.original.datetime as Date;
                 const date = new Date(datetime);
@@ -83,7 +83,7 @@ export const PartyTable = ({ data }: { data: Party[] }) => {
                     ? `${contact.firstName} ${contact.lastName}`
                     : "—";
             },
-            // Custom filter to search within nested object
+
             filterFn: (row, columnId, filterValue) => {
                 const contact = row.getValue(columnId) as {
                     firstName: string;
@@ -107,7 +107,7 @@ export const PartyTable = ({ data }: { data: Party[] }) => {
                     ? `${contact.firstName} ${contact.lastName}`
                     : "—";
             },
-            // Custom filter to search within nested object
+
             filterFn: (row, columnId, filterValue) => {
                 const contact = row.getValue(columnId) as {
                     firstName: string;

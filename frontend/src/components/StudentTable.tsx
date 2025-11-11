@@ -50,7 +50,7 @@ export const StudentTable = ({ data }: { data: Student[] }) => {
         {
             accessorKey: "lastRegistered",
             header: "Is Registered",
-            enableColumnFilter: false, // Disable filtering for checkbox column
+            enableColumnFilter: false, // disable filtering for checkbox column
             cell: ({ row }) => {
                 const pid = row.getValue("pid") as string;
                 const student = tableData.find((s) => s.pid === pid);
@@ -58,7 +58,7 @@ export const StudentTable = ({ data }: { data: Student[] }) => {
                 return (
                     <Checkbox
                         checked={isRegistered}
-                        onCheckedChange={(checked) => {
+                        onCheckedChange={(checked: boolean) => {
                             setTableData((prev) =>
                                 prev.map((student) =>
                                     student.pid === pid

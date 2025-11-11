@@ -31,7 +31,7 @@ export const LocationTable = ({ data }: { data: Location[] }) => {
                 }
                 return "no active hold";
             },
-            // Custom filter to search formatted hold text
+
             filterFn: (row, columnId, filterValue) => {
                 const hold = row.getValue(columnId) as string | null;
                 const displayText = hold
