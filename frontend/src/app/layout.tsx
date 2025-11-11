@@ -1,4 +1,4 @@
-import { Sidebar } from "@/components/GlobalSidebar";
+import GlobalSidebar from "@/components/GlobalSidebar";
 import { SidebarProvider } from "@/components/SidebarContext";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
@@ -32,7 +32,7 @@ export default function RootLayout({
         <SidebarProvider>
           {" "}
           {children}
-          <Sidebar />
+          <GlobalSidebar />
         </SidebarProvider>
       </body>
     </html>
