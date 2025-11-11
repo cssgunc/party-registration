@@ -1,20 +1,32 @@
 from fastapi import APIRouter, Depends
 from src.core.authentication import authenticate_admin
-from src.modules.location.location_model import LocationCreate, LocationData
+from src.modules.location.location_model import (
+    Location,
+    LocationCreate,
+    LocationData,
+    PaginatedLocationResponse,
+)
 from src.modules.location.location_service import LocationService
 
 location_router = APIRouter(prefix="/locations", tags=["locations"])
 
 
-@location_router.get("/")
+@location_router.get("/", response_model=PaginatedLocationResponse)
 async def get_locations(
     location_service: LocationService = Depends(),
     _=Depends(authenticate_admin),
 ):
-    return await location_service.get_locations()
+    locations = await location_service.get_locations()
+    return PaginatedLocationResponse(
+        items=locations,
+        total_records=len(locations),
+        page_number=1,
+        page_size=len(locations),
+        total_pages=1,
+    )
 
 
-@location_router.get("/{location_id}")
+@location_router.get("/{location_id}", response_model=Location)
 async def get_location(
     location_id: int,
     location_service: LocationService = Depends(),
@@ -23,7 +35,7 @@ async def get_location(
     return await location_service.get_location_by_id(location_id)
 
 
-@location_router.post("/", status_code=201)
+@location_router.post("/", status_code=201, response_model=Location)
 async def create_location(
     data: LocationCreate,
     location_service: LocationService = Depends(),
@@ -40,7 +52,7 @@ async def create_location(
     )
 
 
-@location_router.put("/{location_id}")
+@location_router.put("/{location_id}", response_model=Location)
 async def update_location(
     location_id: int,
     data: LocationCreate,
@@ -71,7 +83,7 @@ async def update_location(
     return await location_service.update_location(location_id, location_data)
 
 
-@location_router.delete("/{location_id}")
+@location_router.delete("/{location_id}", response_model=Location)
 async def delete_location(
     location_id: int,
     location_service: LocationService = Depends(),

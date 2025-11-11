@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Self
 
 from pydantic import BaseModel
+from src.core.models import PaginatedResponse
 
 
 class AddressData(BaseModel):
@@ -54,6 +55,9 @@ class LocationData(AddressData):
 
 class Location(LocationData):
     id: int
+
+
+PaginatedLocationResponse = PaginatedResponse[Location]
 
 
 class LocationCreate(BaseModel):
