@@ -167,7 +167,11 @@ async def test_get_locations_empty(client: AsyncClient, mock_location_service: A
     assert response.status_code == 200
 
     data = response.json()
-    assert data == []
+    assert data["items"] == []
+    assert data["total_records"] == 0
+    assert data["page_number"] == 1
+    assert data["page_size"] == 0
+    assert data["total_pages"] == 1
     mock_location_service.get_locations.assert_called_once()
 
 
@@ -182,23 +186,27 @@ async def test_get_locations_with_data(
     assert response.status_code == 200
 
     data = response.json()
-    assert len(data) == 2
+    assert data["total_records"] == 2
+    assert data["page_number"] == 1
+    assert data["page_size"] == 2
+    assert data["total_pages"] == 1
+    assert len(data["items"]) == 2
 
     # Verify first location
-    assert data[0]["id"] == 1
-    assert data[0]["google_place_id"] == "ChIJ123abc"
-    assert data[0]["formatted_address"] == "123 Main St, Chapel Hill, NC 27514, USA"
-    assert data[0]["latitude"] == 35.9132
-    assert data[0]["longitude"] == -79.0558
-    assert data[0]["warning_count"] == 0
-    assert data[0]["citation_count"] == 0
+    assert data["items"][0]["id"] == 1
+    assert data["items"][0]["google_place_id"] == "ChIJ123abc"
+    assert data["items"][0]["formatted_address"] == "123 Main St, Chapel Hill, NC 27514, USA"
+    assert data["items"][0]["latitude"] == 35.9132
+    assert data["items"][0]["longitude"] == -79.0558
+    assert data["items"][0]["warning_count"] == 0
+    assert data["items"][0]["citation_count"] == 0
 
     # Verify second location
-    assert data[1]["id"] == 2
-    assert data[1]["google_place_id"] == "ChIJ456def"
-    assert data[1]["unit"] == "Apt 2B"
-    assert data[1]["warning_count"] == 1
-    assert data[1]["citation_count"] == 2
+    assert data["items"][1]["id"] == 2
+    assert data["items"][1]["google_place_id"] == "ChIJ456def"
+    assert data["items"][1]["unit"] == "Apt 2B"
+    assert data["items"][1]["warning_count"] == 1
+    assert data["items"][1]["citation_count"] == 2
 
     mock_location_service.get_locations.assert_called_once()
 
