@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from src.core.authentication import authenticate_admin
-from .party_model import Party, PaginatedPartiesResponse
+
+from .party_model import PaginatedPartiesResponse, Party
 from .party_service import PartyService
 
 party_router = APIRouter(prefix="/api/parties", tags=["parties"])
@@ -9,9 +10,11 @@ party_router = APIRouter(prefix="/api/parties", tags=["parties"])
 @party_router.get("/")
 async def list_parties(
     page_number: int = Query(1, ge=1, description="Page number (1-indexed)"),
-    page_size: int | None = Query(None, ge=1, le=100, description="Items per page (default: all)"),
+    page_size: int | None = Query(
+        None, ge=1, le=100, description="Items per page (default: all)"
+    ),
     party_service: PartyService = Depends(),
-    _=Depends(authenticate_admin)
+    _=Depends(authenticate_admin),
 ) -> PaginatedPartiesResponse:
     """
     Returns all party registrations in the database with optional pagination.
@@ -21,7 +24,7 @@ async def list_parties(
     - page_size: Number of items per page (max 100, default: returns all parties)
 
     Returns:
-    - parties: List of party registrations
+    - items: List of party registrations
     - total_records: Total number of records in the database
     - page_size: Requested page size (or total_records if not specified)
     - page_number: Requested page number
@@ -34,11 +37,11 @@ async def list_parties(
     if page_size is None:
         parties = await party_service.get_parties(skip=0, limit=None)
         return PaginatedPartiesResponse(
-            parties=parties,
+            items=parties,
             total_records=total_records,
             page_size=total_records,
             page_number=1,
-            total_pages=1
+            total_pages=1,
         )
 
     # Calculate skip and limit for pagination
@@ -48,14 +51,16 @@ async def list_parties(
     parties = await party_service.get_parties(skip=skip, limit=page_size)
 
     # Calculate total pages (ceiling division)
-    total_pages = (total_records + page_size - 1) // page_size if total_records > 0 else 0
+    total_pages = (
+        (total_records + page_size - 1) // page_size if total_records > 0 else 0
+    )
 
     return PaginatedPartiesResponse(
-        parties=parties,
+        items=parties,
         total_records=total_records,
         page_size=page_size,
         page_number=page_number,
-        total_pages=total_pages
+        total_pages=total_pages,
     )
 
 
@@ -63,7 +68,7 @@ async def list_parties(
 async def get_party(
     party_id: int,
     party_service: PartyService = Depends(),
-    _=Depends(authenticate_admin)
+    _=Depends(authenticate_admin),
 ) -> Party:
     """
     Returns a party registration by ID.
@@ -84,7 +89,7 @@ async def get_party(
 async def delete_party(
     party_id: int,
     party_service: PartyService = Depends(),
-    _=Depends(authenticate_admin)
+    _=Depends(authenticate_admin),
 ) -> Party:
     """
     Deletes a party registration by ID.

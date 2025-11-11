@@ -4,7 +4,12 @@ from src.modules.account.account_model import Account
 from src.modules.party.party_model import Party
 from src.modules.party.party_service import PartyService
 
-from .student_model import PaginatedResponse, Student, StudentCreate, StudentData
+from .student_model import (
+    PaginatedStudentsResponse,
+    Student,
+    StudentCreate,
+    StudentData,
+)
 from .student_service import StudentService
 
 student_router = APIRouter(prefix="/api/students", tags=["students"])
@@ -37,12 +42,14 @@ async def get_my_parties(
 
 @student_router.get("/")
 async def list_students(
-    page: int = Query(1, ge=1, description="Page number, starting from 1"),
-    page_size: int = Query(10, ge=1, le=100, description="Number of items per page"),
+    page_number: int = Query(1, ge=1, description="Page number (1-indexed)"),
+    page_size: int = Query(10, ge=1, le=100, description="Items per page"),
     student_service: StudentService = Depends(),
     _=Depends(authenticate_admin),
-) -> PaginatedResponse:
-    return await student_service.get_students(page=page, page_size=page_size)
+) -> PaginatedStudentsResponse:
+    return await student_service.get_students(
+        page_number=page_number, page_size=page_size
+    )
 
 
 @student_router.get("/{student_id}")

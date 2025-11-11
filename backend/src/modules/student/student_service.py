@@ -14,7 +14,7 @@ from src.core.exceptions import (
 from src.modules.account.account_entity import AccountEntity, AccountRole
 
 from .student_entity import StudentEntity
-from .student_model import PaginatedResponse, PaginationMetadata, Student, StudentData
+from .student_model import PaginatedStudentsResponse, Student, StudentData
 
 
 class StudentNotFoundException(NotFoundException):
@@ -91,19 +91,22 @@ class StudentService:
 
         return account
 
-    async def get_students(self, page: int, page_size: int) -> PaginatedResponse:
-        offset = (page - 1) * page_size
+    async def get_students(
+        self, page_number: int, page_size: int
+    ) -> PaginatedStudentsResponse:
+        offset = (page_number - 1) * page_size
 
         count_query = select(func.count(StudentEntity.account_id))
         count_result = await self.session.execute(count_query)
         total_records = count_result.scalar_one()
 
         if total_records == 0:
-            return PaginatedResponse(
-                data=[],
-                metadata=PaginationMetadata(
-                    total_records=0, page=page, page_size=page_size, total_pages=0
-                ),
+            return PaginatedStudentsResponse(
+                items=[],
+                total_records=0,
+                page_size=page_size,
+                page_number=page_number,
+                total_pages=0,
             )
 
         total_pages = math.ceil(total_records / page_size)
@@ -120,14 +123,12 @@ class StudentService:
 
         student_dtos = [student.to_dto() for student in students]
 
-        return PaginatedResponse(
-            data=student_dtos,
-            metadata=PaginationMetadata(
-                total_records=total_records,
-                page=page,
-                page_size=page_size,
-                total_pages=total_pages,
-            ),
+        return PaginatedStudentsResponse(
+            items=student_dtos,
+            total_records=total_records,
+            page_size=page_size,
+            page_number=page_number,
+            total_pages=total_pages,
         )
 
     async def get_student_by_id(self, account_id: int) -> Student:
