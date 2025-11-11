@@ -1,5 +1,3 @@
-import math
-
 from fastapi import Depends
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -14,7 +12,7 @@ from src.core.exceptions import (
 from src.modules.account.account_entity import AccountEntity, AccountRole
 
 from .student_entity import StudentEntity
-from .student_model import PaginatedStudentsResponse, Student, StudentData
+from .student_model import Student, StudentData
 
 
 class StudentNotFoundException(NotFoundException):
@@ -92,61 +90,23 @@ class StudentService:
         return account
 
     async def get_students(
-        self, page_number: int | None = None, page_size: int | None = None
-    ) -> PaginatedStudentsResponse:
-        count_query = select(func.count(StudentEntity.account_id))
-        count_result = await self.session.execute(count_query)
-        total_records = count_result.scalar_one()
-
-        if total_records == 0:
-            return PaginatedStudentsResponse(
-                items=[],
-                total_records=0,
-                page_size=0,
-                page_number=1,
-                total_pages=0,
-            )
-
-        # If pagination params are not provided, return all students
-        if page_number is None or page_size is None:
-            data_query = select(StudentEntity).options(
-                selectinload(StudentEntity.account)
-            )
-            data_result = await self.session.execute(data_query)
-            students = data_result.scalars().all()
-            student_dtos = [student.to_dto() for student in students]
-
-            return PaginatedStudentsResponse(
-                items=student_dtos,
-                total_records=total_records,
-                page_size=total_records,
-                page_number=1,
-                total_pages=1,
-            )
-
-        # Pagination logic when params are provided
-        offset = (page_number - 1) * page_size
-        total_pages = math.ceil(total_records / page_size)
-
-        data_query = (
+        self, skip: int = 0, limit: int | None = None
+    ) -> list[Student]:
+        query = (
             select(StudentEntity)
             .options(selectinload(StudentEntity.account))
-            .offset(offset)
-            .limit(page_size)
+            .offset(skip)
         )
+        if limit is not None:
+            query = query.limit(limit)
+        result = await self.session.execute(query)
+        students = result.scalars().all()
+        return [student.to_dto() for student in students]
 
-        data_result = await self.session.execute(data_query)
-        students = data_result.scalars().all()
-
-        student_dtos = [student.to_dto() for student in students]
-
-        return PaginatedStudentsResponse(
-            items=student_dtos,
-            total_records=total_records,
-            page_size=page_size,
-            page_number=page_number,
-            total_pages=total_pages,
-        )
+    async def get_student_count(self) -> int:
+        count_query = select(func.count(StudentEntity.account_id))
+        count_result = await self.session.execute(count_query)
+        return count_result.scalar_one()
 
     async def get_student_by_id(self, account_id: int) -> Student:
         student_entity = await self._get_student_entity_by_account_id(account_id)

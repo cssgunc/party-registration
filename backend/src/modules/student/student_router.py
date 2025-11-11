@@ -42,22 +42,54 @@ async def get_my_parties(
 
 @student_router.get("/")
 async def list_students(
-    page_number: int | None = Query(
-        None,
+    page_number: int = Query(
+        1,
         ge=1,
-        description="Page number (1-indexed). If not provided, returns all students.",
+        description="Page number (1-indexed). Defaults to 1.",
     ),
-    page_size: int | None = Query(
-        None,
+    page_size: int = Query(
+        10,
         ge=1,
         le=100,
-        description="Items per page. If not provided, returns all students.",
+        description="Items per page. Defaults to 10, max 100.",
     ),
     student_service: StudentService = Depends(),
     _=Depends(authenticate_admin),
 ) -> PaginatedStudentsResponse:
-    return await student_service.get_students(
-        page_number=page_number, page_size=page_size
+    """
+    Returns all students in the database with pagination.
+
+    Query Parameters:
+    - page_number: The page number to retrieve (1-indexed, default: 1)
+    - page_size: Number of items per page (default: 10, max: 100)
+
+    Returns:
+    - items: List of students
+    - total_records: Total number of records in the database
+    - page_size: Requested page size
+    - page_number: Requested page number
+    - total_pages: Total number of pages based on page size
+    """
+    # Get total count first
+    total_records = await student_service.get_student_count()
+
+    # Calculate skip and limit for pagination
+    skip = (page_number - 1) * page_size
+
+    # Get students with pagination
+    students = await student_service.get_students(skip=skip, limit=page_size)
+
+    # Calculate total pages (ceiling division)
+    total_pages = (
+        (total_records + page_size - 1) // page_size if total_records > 0 else 0
+    )
+
+    return PaginatedStudentsResponse(
+        items=students,
+        total_records=total_records,
+        page_size=page_size,
+        page_number=page_number,
+        total_pages=total_pages,
     )
 
 
