@@ -57,7 +57,7 @@ async def test_list_students_empty(override_dependencies_admin: Any):
         assert body["items"] == []
         assert body["total_records"] == 0
         assert body["page_number"] == 1
-        assert body["page_size"] == 10
+        assert body["page_size"] == 0
         assert body["total_pages"] == 0
 
 
@@ -104,7 +104,7 @@ async def test_list_students_with_data(
         assert len(body["items"]) == 3
         assert body["total_records"] == 3
         assert body["page_number"] == 1
-        assert body["page_size"] == 10
+        assert body["page_size"] == 3
         assert body["total_pages"] == 1
 
 
@@ -145,7 +145,9 @@ async def test_list_students_pagination_custom_page_size(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
         res = await client.get(
-            "/api/students/", params={"page_size": 5}, headers=auth_headers()
+            "/api/students/",
+            params={"page_number": 1, "page_size": 5},
+            headers=auth_headers(),
         )
         assert res.status_code == 200
         body = res.json()
@@ -343,7 +345,9 @@ async def test_list_students_pagination_max_page_size(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
         res = await client.get(
-            "/api/students/", params={"page_size": 100}, headers=auth_headers()
+            "/api/students/",
+            params={"page_number": 1, "page_size": 100},
+            headers=auth_headers(),
         )
         assert res.status_code == 200
         body = res.json()
@@ -905,11 +909,11 @@ async def test_list_students_pagination_default(
         res = await client.get("/api/students/", headers=auth_headers())
         assert res.status_code == 200
         body = res.json()
-        assert len(body["items"]) == 10
+        assert len(body["items"]) == 15
         assert body["total_records"] == 15
         assert body["page_number"] == 1
-        assert body["page_size"] == 10
-        assert body["total_pages"] == 2
+        assert body["page_size"] == 15
+        assert body["total_pages"] == 1
 
 
 @pytest.mark.asyncio

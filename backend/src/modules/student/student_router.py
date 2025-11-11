@@ -82,7 +82,7 @@ async def list_students(
             total_records=total_records,
             page_size=total_records,
             page_number=1,
-            total_pages=1,
+            total_pages=1 if total_records > 0 else 0,
         )
 
     # Calculate skip and limit for pagination
