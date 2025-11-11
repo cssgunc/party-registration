@@ -12,19 +12,22 @@ We aim to facilitate and better secure the party registration process at UNC.
 
 ## Team Members
 
-| Name | Role |
-|------|------|
-| Nicolas Asanov | Technical Lead |
+| Name             | Role            |
+| ---------------- | --------------- |
+| Nicolas Asanov   | Technical Lead  |
 | Abhimanyu Agashe | Product Manager |
-| Arnav Murthi | Developer |
-| Matthew Barghout | Developer |
-| Raymond Jiang | Developer |
-| Aileen Rashid | Developer |
-| Mason Mines | Developer |
-| Vidur Shah | Developer |
-| Shlok Bhutani | Developer |
+| Arnav Murthi     | Developer       |
+| Matthew Barghout | Developer       |
+| Raymond Jiang    | Developer       |
+| Aileen Rashid    | Developer       |
+| Mason Mines      | Developer       |
+| Vidur Shah       | Developer       |
+| Shlok Bhutani    | Developer       |
+| Vasu Bansal      | Developer       |
+| Caleb Han        | Developer       |
 
 ## Tech Stack
+
 - Backend
   - FastAPI
   - PostgreSQL
@@ -36,6 +39,7 @@ We aim to facilitate and better secure the party registration process at UNC.
   - Typescript
 
 ## File Structure
+
 ```
 \backend\src
   \core // Shared code and infrastructure
@@ -56,11 +60,15 @@ We aim to facilitate and better secure the party registration process at UNC.
 ```
 
 ## Onboarding
+
 Clone the repository into your preferred directory
+
 ```
 git clone https://github.com/cssgunc/party-registration.git
 ```
+
 Open a terminal at the project root and run the following commands
+
 ```
 cd frontend
 cp .env.template .env.local # duplicates the template and renames it to .env.local
@@ -68,7 +76,9 @@ cp .env.template .env.local # duplicates the template and renames it to .env.loc
 cd ../backend
 cp .env.template .env # duplicates the template and renames it to .env
 ```
+
 Or you can do the actions manually. Then,
+
 - Ensure you have Docker and the Dev Containers extension installed
 - Open the VS Code Command Palette (Mac - Cmd+Shift+P and Windows - Ctrl+Shift+P)
 - Run the command **Dev Containers: Rebuild and Reopen in Container**
@@ -76,27 +86,43 @@ Or you can do the actions manually. Then,
 - The dev container is fully built once the file directory is populated and the post create script finished running
 
 ## Starting the dev servers
+
 Open a new terminal and run these commands to start the backend
+
 ```
 cd backend/src
 fastapi dev
 ```
+
 Open another new terminal and run these commands to start the frontend
+
 ```
 cd frontend
 npm run dev
 ```
+
 Navigate to [http://localhost:3000]() to view the website
 
 ## Running backend tests
-The best way to run tests is by using the "Testing" window on the sidebar. This provides an intuitive GUI for running tests within the IDE.  
-You can also run all tests by opening a new terminal and simply running 
+
+### Local Testing
+
+After running the backend, navigate to [http://localhost:3000/docs]()  
+Click on the "Authorize 🔓" button in the top right, and enter "admin", "student", or "police" as the mock token for the respective role  
+You can then make any requests using the provided GUI
+
+### Unit Tests
+
+The best way to run unit tests is by using the "Testing" window on the sidebar. This provides an intuitive GUI for running tests within the IDE.  
+You can also run all tests by opening a new terminal and simply running
+
 ```sh
 pytest
 ```
 
 ## Accessing the database
-- Navigate to the PostgreSQL Explorer tab on the sidebar in VSCode  
+
+- Navigate to the PostgreSQL Explorer tab on the sidebar in VSCode
 - Click the plus icon in the top right
 - Enter these values as you are prompted
   - Hostname: db

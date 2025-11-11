@@ -1,13 +1,15 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from src.modules.student.student_router import student_router
 from src.modules.user.user_router import user_router
+from src.modules.party.party_router import party_router
 
 app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -36,3 +38,5 @@ def read_root():
 
 
 app.include_router(user_router)
+app.include_router(party_router)
+app.include_router(student_router)
