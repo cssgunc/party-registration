@@ -14,6 +14,7 @@ from src.modules.account.account_model import Account
 from src.modules.location.location_entity import LocationEntity
 from src.modules.location.location_service import get_gmaps_client
 from src.modules.party.party_entity import PartyEntity
+from src.modules.police.police_model import PoliceAccount
 from src.modules.student.student_entity import StudentEntity
 from src.modules.student.student_model import ContactPreference
 from src.modules.user.user_model import User
@@ -531,12 +532,7 @@ async def police_client(test_async_session: AsyncSession):
         yield test_async_session
 
     async def override_authenticate_police_or_admin():
-        return Account(
-            id=3,
-            email="police@test.com",
-            password="hashed_password",
-            role=AccountRole.POLICE,
-        )
+        return PoliceAccount(email="police@example.com")
 
     def override_get_gmaps_client():
         """Return a mock Google Maps client to avoid API key validation."""
@@ -567,7 +563,9 @@ async def admin_client_for_nearby(test_async_session: AsyncSession):
         return Account(
             id=2,
             email="admin@test.com",
-            password="hashed_password",
+            first_name="Admin",
+            last_name="User",
+            pid="222222222",
             role=AccountRole.ADMIN,
         )
 
@@ -600,7 +598,9 @@ async def student_client_for_nearby(test_async_session: AsyncSession):
         return Account(
             id=1,
             email="student@test.com",
-            password="hashed_password",
+            first_name="Student",
+            last_name="User",
+            pid="111111111",
             role=AccountRole.STUDENT,
         )
 
