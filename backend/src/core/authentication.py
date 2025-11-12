@@ -27,11 +27,17 @@ def mock_authenticate(role: AccountRole) -> Account | None:
         AccountRole.ADMIN: 2,
         AccountRole.STAFF: 3,
     }
+    role_to_pid = {
+        AccountRole.STUDENT: "111111111",
+        AccountRole.ADMIN: "222222222",
+        AccountRole.STAFF: "333333333",
+    }
     return Account(
         id=role_to_id[role],
         email="user@example.com",
         first_name="Test",
         last_name="User",
+        pid=role_to_pid[role],
         role=role,
     )
 

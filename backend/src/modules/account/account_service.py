@@ -65,6 +65,7 @@ class AccountService:
             email=data.email,
             first_name=data.first_name,
             last_name=data.last_name,
+            pid=data.pid,
             role=AccountRole(data.role.value),
         )
         try:
@@ -87,6 +88,7 @@ class AccountService:
         account_entity.email = data.email
         account_entity.first_name = data.first_name
         account_entity.last_name = data.last_name
+        account_entity.pid = data.pid
         account_entity.role = AccountRole(data.role.value)
 
         try:

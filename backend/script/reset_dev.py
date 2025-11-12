@@ -42,18 +42,21 @@ async def reset_dev():
             email="student@example.com",
             first_name="John",
             last_name="Doe",
+            pid="111111111",
             role=AccountRole.STUDENT,
         )
         admin_account = AccountEntity(
             email="admin@example.com",
             first_name="Admin",
             last_name="User",
+            pid="222222222",
             role=AccountRole.ADMIN,
         )
         staff_account = AccountEntity(
             email="staff@example.com",
             first_name="Staff",
             last_name="Member",
+            pid="333333333",
             role=AccountRole.STAFF,
         )
 

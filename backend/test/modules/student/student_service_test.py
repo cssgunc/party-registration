@@ -83,6 +83,7 @@ async def test_create_student_conflict(
         email="second@example.com",
         first_name="Test",
         last_name="User",
+        pid="987654321",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(second_account)
@@ -101,11 +102,13 @@ async def test_get_students(
 ):
     accounts = []
     names = [("Alice", "Smith"), ("Bob", "Jones"), ("Charlie", "Brown")]
+    pids = ["111111111", "222222222", "333333333"]
     for i in range(3):
         acc = AccountEntity(
             email=f"user{i}@example.com",
             first_name=names[i][0],
             last_name=names[i][1],
+            pid=pids[i],
             role=AccountEntity.role.type.enums[0],
         )
         test_async_session.add(acc)
@@ -220,6 +223,7 @@ async def test_update_student_conflict(
         email="second@example.com",
         first_name="Test",
         last_name="User",
+        pid="987654321",
         role=test_account.role,
     )
     test_async_session.add(account2)
@@ -345,6 +349,7 @@ async def test_create_student_with_non_student_role(
         email="admin@example.com",
         first_name="Test",
         last_name="User",
+        pid="444444444",
         role=AccountRole.ADMIN,
     )
     test_async_session.add(admin_account)
