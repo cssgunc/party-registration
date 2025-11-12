@@ -47,6 +47,18 @@ class AccountService:
         accounts = result.scalars().all()
         return [Account.from_entity(account) for account in accounts]
 
+    async def get_accounts_by_roles(
+        self, roles: list[AccountRole] | None = None
+    ) -> list[Account]:
+        if not roles:
+            return await self.get_accounts()
+
+        result = await self.session.execute(
+            select(AccountEntity).where(AccountEntity.role.in_(roles))
+        )
+        accounts = result.scalars().all()
+        return [Account.from_entity(account) for account in accounts]
+
     async def get_account_by_id(self, account_id: int) -> Account:
         account_entity = await self._get_account_entity_by_id(account_id)
         return Account.from_entity(account_entity)
