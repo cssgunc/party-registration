@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from src.core.authentication import authenticate_admin
+from src.core.authentication import authenticate_admin, authenticate_staff_or_admin
 from src.modules.location.location_model import (
     Location,
     LocationCreate,
@@ -14,7 +14,7 @@ location_router = APIRouter(prefix="/locations", tags=["locations"])
 @location_router.get("/", response_model=PaginatedLocationResponse)
 async def get_locations(
     location_service: LocationService = Depends(),
-    _=Depends(authenticate_admin),
+    _=Depends(authenticate_staff_or_admin),
 ):
     locations = await location_service.get_locations()
     return PaginatedLocationResponse(
@@ -30,7 +30,7 @@ async def get_locations(
 async def get_location(
     location_id: int,
     location_service: LocationService = Depends(),
-    _=Depends(authenticate_admin),
+    _=Depends(authenticate_staff_or_admin),
 ):
     return await location_service.get_location_by_id(location_id)
 

@@ -87,14 +87,26 @@ Or you can do the actions manually. Then,
 
 ## Starting the dev servers
 
-Open a new terminal and run these commands to start the backend
+### VSCode Debugger (Recommended)
+Navigate to the "Debug and Run" tab on the VSCode side bar.  
+
+At the top of the side bar, next to the green play button, select the desired module to run
+- **Backend**: Starts the FastAPI backend on http://localhost:8000
+- **Frontend**: Starts the Next.js frontend on http://localhost:3000 in a chrome debugger window
+- **Full Stack**: Starts both at once in separate terminals
+
+Then simply press the green play button
+
+### Manually
+
+**Backend**: Open a new terminal and run these commands
 
 ```
 cd backend/src
 fastapi dev
 ```
 
-Open another new terminal and run these commands to start the frontend
+**Frontend**: Open another new terminal and run these commands to start the frontend
 
 ```
 cd frontend

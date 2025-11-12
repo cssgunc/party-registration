@@ -5,11 +5,8 @@ import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.core.authentication import authenticate_admin
 from src.core.database import get_session
 from src.main import app
-from src.modules.account.account_entity import AccountRole
-from src.modules.account.account_model import Account
 from src.modules.location.location_model import AddressData, Location
 from src.modules.location.location_service import (
     GoogleMapsAPIException,
@@ -59,25 +56,16 @@ async def client(
     async def override_get_session():
         yield test_async_session
 
-    async def override_authenticate_admin():
-        return Account(
-            id=1,
-            email="admin@test.com",
-            first_name="Admin",
-            last_name="User",
-            pid="222222222",
-            role=AccountRole.ADMIN,
-        )
-
     def get_mock_location_service():
         return mock_location_service
 
     app.dependency_overrides[LocationService] = get_mock_location_service
     app.dependency_overrides[get_session] = override_get_session
-    app.dependency_overrides[authenticate_admin] = override_authenticate_admin
 
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+        headers={"Authorization": "Bearer admin"},
     ) as ac:
         yield ac
 

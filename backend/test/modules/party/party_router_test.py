@@ -4,11 +4,9 @@ import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.core.authentication import authenticate_admin
 from src.core.database import get_session
 from src.main import app
 from src.modules.account.account_entity import AccountEntity, AccountRole
-from src.modules.account.account_model import Account
 from src.modules.location.location_entity import LocationEntity
 from src.modules.party.party_entity import PartyEntity
 from src.modules.student.student_entity import StudentEntity
@@ -40,21 +38,12 @@ async def client(test_async_session: AsyncSession):
     async def override_get_session():
         yield test_async_session
 
-    async def override_authenticate_admin():
-        return Account(
-            id=1,
-            email="admin@test.com",
-            first_name="Admin",
-            last_name="User",
-            pid="222222222",
-            role=AccountRole.ADMIN,
-        )
-
     app.dependency_overrides[get_session] = override_get_session
-    app.dependency_overrides[authenticate_admin] = override_authenticate_admin
 
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+        headers={"Authorization": "Bearer admin"},
     ) as ac:
         yield ac
 
