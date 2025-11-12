@@ -2,6 +2,7 @@ import enum
 from datetime import datetime
 
 from pydantic import BaseModel, EmailStr, Field
+from src.core.models import PaginatedResponse
 
 
 class ContactPreference(enum.Enum):
@@ -64,3 +65,6 @@ class StudentCreate(BaseModel):
 
     account_id: int
     data: StudentDataWithNames
+
+
+PaginatedStudentsResponse = PaginatedResponse[Student]

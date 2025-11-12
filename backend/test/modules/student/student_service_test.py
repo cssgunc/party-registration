@@ -43,8 +43,7 @@ async def student_entity(
 
 @pytest.mark.asyncio
 async def test_get_students_empty(student_service: StudentService):
-    students = await student_service.get_students()
-    assert isinstance(students, list)
+    students = await student_service.get_students(skip=0, limit=10)
     assert len(students) == 0
 
 
@@ -125,7 +124,7 @@ async def test_get_students(
         test_async_session.add(entity)
     await test_async_session.commit()
 
-    students = await student_service.get_students()
+    students = await student_service.get_students(skip=0, limit=10)
     assert len(students) == 3
 
     expected = {

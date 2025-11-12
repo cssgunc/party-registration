@@ -1,5 +1,5 @@
 from fastapi import Depends
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -89,12 +89,24 @@ class StudentService:
 
         return account
 
-    async def get_students(self) -> list[Student]:
-        result = await self.session.execute(
-            select(StudentEntity).options(selectinload(StudentEntity.account))
+    async def get_students(
+        self, skip: int = 0, limit: int | None = None
+    ) -> list[Student]:
+        query = (
+            select(StudentEntity)
+            .options(selectinload(StudentEntity.account))
+            .offset(skip)
         )
+        if limit is not None:
+            query = query.limit(limit)
+        result = await self.session.execute(query)
         students = result.scalars().all()
         return [student.to_dto() for student in students]
+
+    async def get_student_count(self) -> int:
+        count_query = select(func.count(StudentEntity.account_id))
+        count_result = await self.session.execute(count_query)
+        return count_result.scalar_one()
 
     async def get_student_by_id(self, account_id: int) -> Student:
         student_entity = await self._get_student_entity_by_account_id(account_id)

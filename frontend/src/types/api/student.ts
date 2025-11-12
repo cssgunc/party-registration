@@ -1,10 +1,11 @@
 type Student = {
   id: number;
-  accountId: number;
+  pid: string;
+  email: string;
   firstName: string;
   lastName: string;
-  contactPrefrence: "call" | "text";
-  registerDate: Date | null;
+  contactPreference: "call" | "text";
+  lastRegistered: Date | null;
   phoneNumber: string;
 
   //client-side variables
@@ -13,11 +14,12 @@ type Student = {
 
 type StudentData = {
   id: number;
-  accountId: number;
+  pid: string;
+  email: string;
   firstName: string;
   lastName: string;
-  contactPrefrence: "call" | "text";
-  registerDate: Date | null;
+  contactPreference: "call" | "text";
+  lastRegistered: Date | null;
   phoneNumber: string;
 };
 
