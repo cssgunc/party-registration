@@ -1,12 +1,16 @@
-from pydantic import BaseModel, Field, EmailStr
-from typing import Union, Annotated, Literal
 from datetime import datetime
+from typing import Annotated, Literal, Union
+
+from pydantic import BaseModel, EmailStr, Field
+from src.core.models import PaginatedResponse
 from src.modules.student.student_model import ContactPreference
 
 
 class PartyData(BaseModel):
     party_datetime: datetime = Field(..., description="Date and time of the party")
-    location_id: int = Field(..., description="ID of the location where the party is held")
+    location_id: int = Field(
+        ..., description="ID of the location where the party is held"
+    )
     contact_one_id: int = Field(..., description="ID of the first contact student")
     contact_two_id: int = Field(..., description="ID of the second contact student")
 
@@ -17,42 +21,51 @@ class Party(PartyData):
 
 class ContactDTO(BaseModel):
     """DTO for contact information (contact_two in party registration)."""
+
     email: EmailStr = Field(..., description="Email address of the contact")
     first_name: str = Field(..., min_length=1, description="First name of the contact")
     last_name: str = Field(..., min_length=1, description="Last name of the contact")
-    phone_number: str = Field(..., pattern=r"^\+?1?\d{9,15}$", description="Phone number of the contact")
-    contact_preference: ContactPreference = Field(..., description="Preferred contact method: 'call' or 'text'")
+    phone_number: str = Field(
+        ..., pattern=r"^\+?1?\d{9,15}$", description="Phone number of the contact"
+    )
+    contact_preference: ContactPreference = Field(
+        ..., description="Preferred contact method: 'call' or 'text'"
+    )
 
 
 class StudentCreatePartyDTO(BaseModel):
     """DTO for students creating a party registration.
     contact_one will be automatically set from the authenticated student."""
-    type: Literal["student"] = Field("student", description="Request type discriminator")
+
+    type: Literal["student"] = Field(
+        "student", description="Request type discriminator"
+    )
     party_datetime: datetime = Field(..., description="Date and time of the party")
     place_id: str = Field(..., description="Google Maps place ID of the location")
-    contact_two: ContactDTO = Field(..., description="Contact information for the second contact")
+    contact_two: ContactDTO = Field(
+        ..., description="Contact information for the second contact"
+    )
 
 
 class AdminCreatePartyDTO(BaseModel):
     """DTO for admins creating or updating a party registration.
     Both contacts must be explicitly specified."""
+
     type: Literal["admin"] = Field("admin", description="Request type discriminator")
     party_datetime: datetime = Field(..., description="Date and time of the party")
     place_id: str = Field(..., description="Google Maps place ID of the location")
-    contact_one_email: EmailStr = Field(..., description="Email address of the first contact student")
-    contact_two: ContactDTO = Field(..., description="Contact information for the second contact")
-
-
-class PaginatedPartiesResponse(BaseModel):
-    parties: list[Party]
-    total_records: int
-    page_size: int
-    page_number: int
-    total_pages: int
+    contact_one_email: EmailStr = Field(
+        ..., description="Email address of the first contact student"
+    )
+    contact_two: ContactDTO = Field(
+        ..., description="Contact information for the second contact"
+    )
 
 
 # Discriminated union for party creation/update requests
 CreatePartyDTO = Annotated[
-    Union[StudentCreatePartyDTO, AdminCreatePartyDTO],
-    Field(discriminator="type")
+    Union[StudentCreatePartyDTO, AdminCreatePartyDTO], Field(discriminator="type")
 ]
+
+
+PaginatedPartiesResponse = PaginatedResponse[Party]

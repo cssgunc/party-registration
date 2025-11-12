@@ -53,14 +53,14 @@ async def sample_party_data(test_async_session: AsyncSession) -> PartyData:
     student_one = StudentEntity(
         first_name="John",
         last_name="Doe",
-        call_or_text_pref=ContactPreference.call,
+        contact_preference=ContactPreference.call,
         phone_number="1234567890",
         account_id=1,
     )
     student_two = StudentEntity(
         first_name="Jane",
         last_name="Smith",
-        call_or_text_pref=ContactPreference.text,
+        contact_preference=ContactPreference.text,
         phone_number="0987654321",
         account_id=2,
     )
@@ -139,7 +139,7 @@ async def radius_test_accounts_and_students(
             account_id=i,
             first_name=["John", "Jane", "Bob", "Alice", "Charlie", "Diana"][i - 1],
             last_name=["Doe", "Smith", "Johnson", "Williams", "Brown", "Davis"][i - 1],
-            call_or_text_pref=ContactPreference.call
+            contact_preference=ContactPreference.call
             if i % 2 == 1
             else ContactPreference.text,
             phone_number=str(i) * 10,
@@ -290,92 +290,49 @@ async def test_create_party_invalid_contact_two(
 async def test_get_parties(
     party_service: PartyService, test_async_session: AsyncSession
 ):
-    # Create account, locations and students for parties
+    from src.modules.party.party_entity import PartyEntity
 
-    account1 = AccountEntity(
-        id=1,
-        email="student1@example.com",
-        hashed_password="hashed_pw_1",
-        role=AccountRole.STUDENT,
-    )
-
-    account2 = AccountEntity(
-        id=2,
-        email="student2@example.com",
-        hashed_password="hashed_pw_2",
-        role=AccountRole.STUDENT,
-    )
-
-    account3 = AccountEntity(
-        id=3,
-        email="admin@example.com",
-        hashed_password="hashed_pw_3",
-        role=AccountRole.ADMIN,
-    )
-
-    account4 = AccountEntity(
-        id=4,
-        email="police@example.com",
-        hashed_password="hashed_pw_4",
-        role=AccountRole.POLICE,
-    )
-
+    # Create addresses
     address1 = LocationEntity(
         id=1,
         latitude=40.7128,
         longitude=-74.0060,
         google_place_id="test_place_1",
-        formatted_address="NYC Test Address",
+        formatted_address="Test Address 1",
     )
     address2 = LocationEntity(
         id=2,
         latitude=34.0522,
         longitude=-118.2437,
         google_place_id="test_place_2",
-        formatted_address="LA Test Address",
+        formatted_address="Test Address 2",
     )
-    student1 = StudentEntity(
-        first_name="John",
-        last_name="Doe",
-        call_or_text_pref=ContactPreference.call,
-        phone_number="1234567890",
-        account_id=1,
-    )
-    student2 = StudentEntity(
-        first_name="Jane",
-        last_name="Smith",
-        call_or_text_pref=ContactPreference.text,
-        phone_number="0987654321",
-        account_id=2,
-    )
-    student3 = StudentEntity(
-        first_name="Bob",
-        last_name="Johnson",
-        call_or_text_pref=ContactPreference.call,
-        phone_number="1111111111",
-        account_id=3,
-    )
-    student4 = StudentEntity(
-        first_name="Alice",
-        last_name="Williams",
-        call_or_text_pref=ContactPreference.text,
-        phone_number="2222222222",
-        account_id=4,
-    )
-    test_async_session.add_all(
-        [
-            account1,
-            account2,
-            account3,
-            account4,
-            address1,
-            address2,
-            student1,
-            student2,
-            student3,
-            student4,
-        ]
-    )
+    test_async_session.add_all([address1, address2])
+
+    # Create accounts and students
+    accounts = []
+    students = []
+    for i in range(1, 5):  # Create 4 students
+        account = AccountEntity(
+            id=i,
+            email=f"student{i}@example.com",
+            hashed_password=f"$2b$12$test_hashed_password_{i}",
+            role=AccountRole.STUDENT,
+        )
+        accounts.append(account)
+
+        student = StudentEntity(
+            account_id=i,
+            first_name=f"Student{i}",
+            last_name=f"Last{i}",
+            contact_preference=ContactPreference.call
+            if i % 2 == 1
+            else ContactPreference.text,
+            phone_number=str(i) * 10,
+        )
+        students.append(student)
+
+    test_async_session.add_all(accounts + students)
     await test_async_session.commit()
 
     # Create multiple parties directly in the database
@@ -453,125 +410,54 @@ async def test_get_parties_by_date_range(
 async def test_get_parties_by_date_range_multiple_parties(
     party_service: PartyService, test_async_session: AsyncSession
 ):
-    # Create account, locations and students for parties
-    account1 = AccountEntity(
-        id=1,
-        email="john.doe@example.com",
-        hashed_password="hashed",
-        role=AccountRole.STUDENT,
-    )
-    account2 = AccountEntity(
-        id=2,
-        email="jane.smith@example.com",
-        hashed_password="hashed",
-        role=AccountRole.STUDENT,
-    )
-    account3 = AccountEntity(
-        id=3,
-        email="bob.johnson@example.com",
-        hashed_password="hashed",
-        role=AccountRole.STUDENT,
-    )
-    account4 = AccountEntity(
-        id=4,
-        email="alice.williams@example.com",
-        hashed_password="hashed",
-        role=AccountRole.STUDENT,
-    )
-    account5 = AccountEntity(
-        id=5,
-        email="charlie.brown@example.com",
-        hashed_password="hashed",
-        role=AccountRole.STUDENT,
-    )
-    account6 = AccountEntity(
-        id=6,
-        email="diana.davis@example.com",
-        hashed_password="hashed",
-        role=AccountRole.STUDENT,
-    )
+    # Create addresses
     address1 = LocationEntity(
         id=1,
         latitude=40.7128,
         longitude=-74.0060,
         google_place_id="test_place_1",
-        formatted_address="NYC Test Address",
+        formatted_address="Test Address 1",
     )
     address2 = LocationEntity(
         id=2,
         latitude=34.0522,
         longitude=-118.2437,
         google_place_id="test_place_2",
-        formatted_address="LA Test Address",
+        formatted_address="Test Address 2",
     )
     address3 = LocationEntity(
         id=3,
         latitude=41.8781,
         longitude=-87.6298,
         google_place_id="test_place_3",
-        formatted_address="Chicago Test Address",
+        formatted_address="Test Address 3",
     )
-    student1 = StudentEntity(
-        first_name="John",
-        last_name="Doe",
-        call_or_text_pref=ContactPreference.call,
-        phone_number="1234567890",
-        account_id=1,
-    )
-    student2 = StudentEntity(
-        first_name="Jane",
-        last_name="Smith",
-        call_or_text_pref=ContactPreference.text,
-        phone_number="0987654321",
-        account_id=2,
-    )
-    student3 = StudentEntity(
-        first_name="Bob",
-        last_name="Johnson",
-        call_or_text_pref=ContactPreference.call,
-        phone_number="1111111111",
-        account_id=3,
-    )
-    student4 = StudentEntity(
-        first_name="Alice",
-        last_name="Williams",
-        call_or_text_pref=ContactPreference.text,
-        phone_number="2222222222",
-        account_id=4,
-    )
-    student5 = StudentEntity(
-        first_name="Charlie",
-        last_name="Brown",
-        call_or_text_pref=ContactPreference.call,
-        phone_number="3333333333",
-        account_id=5,
-    )
-    student6 = StudentEntity(
-        first_name="Diana",
-        last_name="Davis",
-        call_or_text_pref=ContactPreference.text,
-        phone_number="4444444444",
-        account_id=6,
-    )
-    test_async_session.add_all(
-        [
-            account1,
-            account2,
-            account3,
-            account4,
-            account5,
-            account6,
-            address1,
-            address2,
-            address3,
-            student1,
-            student2,
-            student3,
-            student4,
-            student5,
-            student6,
-        ]
-    )
+    test_async_session.add_all([address1, address2, address3])
+
+    # Create accounts and students
+    accounts = []
+    students = []
+    for i in range(1, 7):  # Create 6 students
+        account = AccountEntity(
+            id=i,
+            email=f"student{i}@example.com",
+            hashed_password=f"$2b$12$test_hashed_password_{i}",
+            role=AccountRole.STUDENT,
+        )
+        accounts.append(account)
+
+        student = StudentEntity(
+            account_id=i,
+            first_name=f"Student{i}",
+            last_name=f"Last{i}",
+            contact_preference=ContactPreference.call
+            if i % 2 == 1
+            else ContactPreference.text,
+            phone_number=str(i) * 10,
+        )
+        students.append(student)
+
+    test_async_session.add_all(accounts + students)
     await test_async_session.commit()
 
     # Create parties directly in the database at different dates
@@ -761,41 +647,42 @@ async def test_party_exists(party_service: PartyService, party_in_db: Party):
 async def test_get_party_count(
     party_service: PartyService, test_async_session: AsyncSession
 ):
-    # Create account, location and students for party
-    account_one = AccountEntity(
-        id=1,
-        email="test@example.com",
-        hashed_password="hashed",
-        role=AccountRole.STUDENT,
-    )
-    account_two = AccountEntity(
-        id=2,
-        email="test2@example.com",
-        hashed_password="hashed",
-        role=AccountRole.STUDENT,
-    )
+    from src.modules.party.party_entity import PartyEntity
+
+    # Create address
     address = LocationEntity(
         id=1,
         latitude=40.7128,
         longitude=-74.0060,
         google_place_id="test_place_1",
-        formatted_address="NYC Test Address",
+        formatted_address="Test Address 1",
     )
-    student1 = StudentEntity(
-        first_name="John",
-        last_name="Doe",
-        call_or_text_pref=ContactPreference.call,
-        phone_number="1234567890",
-        account_id=1,
-    )
-    student2 = StudentEntity(
-        first_name="Jane",
-        last_name="Smith",
-        call_or_text_pref=ContactPreference.text,
-        phone_number="0987654321",
-        account_id=2,
-    )
-    test_async_session.add_all([account_one, account_two, address, student1, student2])
+    test_async_session.add(address)
+
+    # Create accounts and students
+    accounts = []
+    students = []
+    for i in range(1, 3):  # Create 2 students
+        account = AccountEntity(
+            id=i,
+            email=f"student{i}@example.com",
+            hashed_password=f"$2b$12$test_hashed_password_{i}",
+            role=AccountRole.STUDENT,
+        )
+        accounts.append(account)
+
+        student = StudentEntity(
+            account_id=i,
+            first_name=f"Student{i}",
+            last_name=f"Last{i}",
+            contact_preference=ContactPreference.call
+            if i % 2 == 1
+            else ContactPreference.text,
+            phone_number=str(i) * 10,
+        )
+        students.append(student)
+
+    test_async_session.add_all(accounts + students)
     await test_async_session.commit()
 
     initial_count = await party_service.get_party_count()
@@ -887,14 +774,14 @@ async def basic_accounts_and_students(test_async_session: AsyncSession):
     student1 = StudentEntity(
         first_name="John",
         last_name="Doe",
-        call_or_text_pref=ContactPreference.call,
+        contact_preference=ContactPreference.call,
         phone_number="1234567890",
         account_id=1,
     )
     student2 = StudentEntity(
         first_name="Jane",
         last_name="Smith",
-        call_or_text_pref=ContactPreference.text,
+        contact_preference=ContactPreference.text,
         phone_number="0987654321",
         account_id=2,
     )
@@ -995,7 +882,7 @@ async def four_accounts_and_students(test_async_session: AsyncSession):
             account_id=i,
             first_name=first_names[i - 1],
             last_name=last_names[i - 1],
-            call_or_text_pref=ContactPreference.call
+            contact_preference=ContactPreference.call
             if i % 2 == 1
             else ContactPreference.text,
             phone_number=str(i) * 10,
