@@ -21,7 +21,7 @@ class AccountEntity(EntityBase):
     pid: Mapped[str] = mapped_column(
         String(9),
         CheckConstraint(
-            "length(pid) = 9 AND pid GLOB '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'",
+            "length(pid) = 9",
             name="check_pid_format",
         ),
         nullable=False,
