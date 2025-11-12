@@ -6,12 +6,12 @@ from src.core.database import get_session
 from src.core.exceptions import (
     ConflictException,
     CredentialsException,
-    NotFoundException,
+    InternalServerException,
 )
 from src.modules.police.police_entity import PoliceEntity
 
 
-class PoliceNotFoundException(NotFoundException):
+class PoliceNotFoundException(InternalServerException):
     def __init__(self):
         super().__init__("Police credentials not found")
 
@@ -51,24 +51,6 @@ class PoliceService:
 
         police.email = email
         police.hashed_password = self._hash_password(password)
-
-        self.session.add(police)
-        await self.session.commit()
-        await self.session.refresh(police)
-        return police
-
-    async def create_police(self, email: str, password: str) -> PoliceEntity:
-        """
-        Create the singleton police entity.
-        Raises PoliceAlreadyExistsException if police already exists.
-        """
-        result = await self.session.execute(select(PoliceEntity))
-        existing = result.scalar_one_or_none()
-        if existing is not None:
-            raise PoliceAlreadyExistsException()
-
-        hashed_password = self._hash_password(password)
-        police = PoliceEntity(email=email, hashed_password=hashed_password)
 
         self.session.add(police)
         await self.session.commit()

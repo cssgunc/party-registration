@@ -28,6 +28,7 @@ async def test_account(test_async_session: AsyncSession) -> AccountEntity:
         email="test@example.com",
         first_name="Test",
         last_name="User",
+        pid="123456789",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(account)

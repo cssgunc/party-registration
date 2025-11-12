@@ -65,6 +65,7 @@ async def client(
             email="admin@test.com",
             first_name="Admin",
             last_name="User",
+            pid="222222222",
             role=AccountRole.ADMIN,
         )
 

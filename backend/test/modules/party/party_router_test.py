@@ -46,6 +46,7 @@ async def client(test_async_session: AsyncSession):
             email="admin@test.com",
             first_name="Admin",
             last_name="User",
+            pid="222222222",
             role=AccountRole.ADMIN,
         )
 
@@ -69,6 +70,7 @@ async def sample_party_setup(test_async_session: AsyncSession):
         email="test@example.com",
         first_name="Test",
         last_name="User",
+        pid="306000001",
         role=AccountRole.STUDENT,
     )
     account_two = AccountEntity(
@@ -76,6 +78,7 @@ async def sample_party_setup(test_async_session: AsyncSession):
         email="test2@example.com",
         first_name="Test",
         last_name="User",
+        pid="306000002",
         role=AccountRole.STUDENT,
     )
     test_async_session.add_all([account_one, account_two])

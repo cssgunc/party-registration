@@ -48,7 +48,7 @@ class StudentEntity(EntityBase):
         """Convert entity to DTO using the account relationship."""
         return Student(
             id=self.account_id,
-            pid=self.account.pid or str(self.account_id),
+            pid=self.account.pid,
             email=self.account.email,
             first_name=self.account.first_name,
             last_name=self.account.last_name,

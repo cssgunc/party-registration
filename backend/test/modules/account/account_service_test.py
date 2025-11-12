@@ -20,6 +20,7 @@ async def test_create_account(account_service: AccountService) -> None:
         email="test@example.com",
         first_name="Test",
         last_name="User",
+        pid="123456789",
         role=AccountRole.STUDENT,
     )
     account = await account_service.create_account(data)
@@ -28,6 +29,7 @@ async def test_create_account(account_service: AccountService) -> None:
     assert account.email == "test@example.com"
     assert account.first_name == "Test"
     assert account.last_name == "User"
+    assert account.pid == "123456789"
     assert account.role == AccountRole.STUDENT
 
 
@@ -37,6 +39,7 @@ async def test_create_account_conflict(account_service: AccountService) -> None:
         email="test@example.com",
         first_name="Test",
         last_name="User",
+        pid="123456789",
         role=AccountRole.STUDENT,
     )
     await account_service.create_account(data)
@@ -47,12 +50,14 @@ async def test_create_account_conflict(account_service: AccountService) -> None:
 @pytest.mark.asyncio
 async def test_get_accounts(account_service: AccountService):
     emails = ["a@example.com", "b@example.com", "c@example.com"]
-    for email in emails:
+    pids = ["111111111", "222222222", "333333333"]
+    for email, pid in zip(emails, pids):
         await account_service.create_account(
             AccountData(
                 email=email,
                 first_name="Test",
                 last_name="User",
+                pid=pid,
                 role=AccountRole.STUDENT,
             )
         )
@@ -72,6 +77,7 @@ async def test_get_account_by_id(account_service: AccountService):
         email="test@example.com",
         first_name="Test",
         last_name="User",
+        pid="123456789",
         role=AccountRole.STUDENT,
     )
     account = await account_service.create_account(data)
@@ -94,6 +100,7 @@ async def test_get_account_by_email(account_service: AccountService):
         email="test@example.com",
         first_name="Test",
         last_name="User",
+        pid="123456789",
         role=AccountRole.STUDENT,
     )
     account = await account_service.create_account(data)
@@ -114,6 +121,7 @@ async def test_update_account_full(account_service: AccountService):
         email="test@example.com",
         first_name="Test",
         last_name="User",
+        pid="123456789",
         role=AccountRole.STUDENT,
     )
     account = await account_service.create_account(data)
@@ -122,6 +130,7 @@ async def test_update_account_full(account_service: AccountService):
         email="updated@example.com",
         first_name="Updated",
         last_name="Person",
+        pid="987654321",
         role=AccountRole.ADMIN,
     )
     updated = await account_service.update_account(account.id, update_data)
@@ -130,6 +139,7 @@ async def test_update_account_full(account_service: AccountService):
     assert updated.email == "updated@example.com"
     assert updated.first_name == "Updated"
     assert updated.last_name == "Person"
+    assert updated.pid == "987654321"
     assert updated.role == AccountRole.ADMIN
 
 
@@ -139,6 +149,7 @@ async def test_update_account_partial(account_service: AccountService):
         email="test@example.com",
         first_name="Test",
         last_name="User",
+        pid="123456789",
         role=AccountRole.STUDENT,
     )
     account = await account_service.create_account(data)
@@ -147,6 +158,7 @@ async def test_update_account_partial(account_service: AccountService):
         email=account.email,
         first_name=account.first_name,
         last_name=account.last_name,
+        pid=account.pid,
         role=AccountRole.ADMIN,
     )
     updated = await account_service.update_account(account.id, update_data)
@@ -164,6 +176,7 @@ async def test_update_account_not_found(account_service: AccountService):
         email="updated@example.com",
         first_name="Updated",
         last_name="Person",
+        pid="987654321",
         role=AccountRole.ADMIN,
     )
     with pytest.raises(AccountNotFoundException):
@@ -176,12 +189,14 @@ async def test_update_account_conflict(account_service: AccountService):
         email="a@example.com",
         first_name="Test",
         last_name="User",
+        pid="111111111",
         role=AccountRole.STUDENT,
     )
     data2 = AccountData(
         email="b@example.com",
         first_name="Test",
         last_name="User",
+        pid="222222222",
         role=AccountRole.STUDENT,
     )
     await account_service.create_account(data1)
@@ -194,6 +209,7 @@ async def test_update_account_conflict(account_service: AccountService):
                 email="a@example.com",
                 first_name="Test",
                 last_name="User",
+                pid="222222222",
                 role=AccountRole.STUDENT,
             ),
         )
@@ -205,6 +221,7 @@ async def test_delete_account(account_service: AccountService):
         email="test@example.com",
         first_name="Test",
         last_name="User",
+        pid="123456789",
         role=AccountRole.STUDENT,
     )
     account = await account_service.create_account(data)

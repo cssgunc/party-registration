@@ -77,6 +77,7 @@ async def test_list_students_with_data(
             email=f"student{i}@example.com",
             first_name="Test",
             last_name="User",
+            pid=f"11111111{i}",
             role=AccountRole.STUDENT,
         )
         test_async_session.add(acc)
@@ -124,6 +125,7 @@ async def test_list_students_pagination_custom_page_size(
             email=f"pagesize{i}@example.com",
             first_name=f"PageSize{i}",
             last_name=f"Test{i}",
+            pid=f"22222{i:04d}",
             role=AccountRole.STUDENT,
         )
         test_async_session.add(acc)
@@ -173,6 +175,7 @@ async def test_list_students_pagination_second_page(
             email=f"page2{i}@example.com",
             first_name=f"Page2{i}",
             last_name=f"Test{i}",
+            pid=f"33333{i:04d}",
             role=AccountRole.STUDENT,
         )
         test_async_session.add(acc)
@@ -222,6 +225,7 @@ async def test_list_students_pagination_last_page(
             email=f"lastpage{i}@example.com",
             first_name=f"LastPage{i}",
             last_name=f"Test{i}",
+            pid=f"44444{i:04d}",
             role=AccountRole.STUDENT,
         )
         test_async_session.add(acc)
@@ -271,6 +275,7 @@ async def test_list_students_pagination_page_beyond_total(
             email=f"beyond{i}@example.com",
             first_name=f"Beyond{i}",
             last_name=f"Test{i}",
+            pid=f"55555500{i}",
             role=AccountRole.STUDENT,
         )
         test_async_session.add(acc)
@@ -320,6 +325,7 @@ async def test_list_students_pagination_max_page_size(
             email=f"maxsize{i}@example.com",
             first_name=f"MaxSize{i}",
             last_name=f"Test{i}",
+            pid=f"66666{i:04d}",
             role=AccountRole.STUDENT,
         )
         test_async_session.add(acc)
@@ -406,6 +412,7 @@ async def test_create_student_success(
         email="newstudent@example.com",
         first_name="Test",
         last_name="User",
+        pid="777777777",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(acc)
@@ -444,6 +451,7 @@ async def test_create_student_with_datetime(
         email="datetime@example.com",
         first_name="Test",
         last_name="User",
+        pid="888888888",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(acc)
@@ -498,6 +506,7 @@ async def test_create_student_wrong_role(
         email="admin@example.com",
         first_name="Test",
         last_name="User",
+        pid="999999999",
         role=AccountRole.ADMIN,
     )
     test_async_session.add(admin_acc)
@@ -529,6 +538,7 @@ async def test_create_student_duplicate_account(
         email="duplicate@example.com",
         first_name="Test",
         last_name="User",
+        pid="100000001",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(acc)
@@ -572,12 +582,14 @@ async def test_create_student_duplicate_phone(
         email="phone1@example.com",
         first_name="Test",
         last_name="User",
+        pid="100000002",
         role=AccountRole.STUDENT,
     )
     acc2 = AccountEntity(
         email="phone2@example.com",
         first_name="Test",
         last_name="User",
+        pid="100000003",
         role=AccountRole.STUDENT,
     )
     test_async_session.add_all([acc1, acc2])
@@ -622,6 +634,7 @@ async def test_get_student_success(
         email="getstudent@example.com",
         first_name="Get",
         last_name="Student",
+        pid="100000004",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(acc)
@@ -669,6 +682,7 @@ async def test_update_student_success(
         email="updatestudent@example.com",
         first_name="Test",
         last_name="User",
+        pid="100000005",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(acc)
@@ -733,12 +747,14 @@ async def test_update_student_phone_conflict(
         email="update1@example.com",
         first_name="Test",
         last_name="User",
+        pid="100000006",
         role=AccountRole.STUDENT,
     )
     acc2 = AccountEntity(
         email="update2@example.com",
         first_name="Test",
         last_name="User",
+        pid="100000007",
         role=AccountRole.STUDENT,
     )
     test_async_session.add_all([acc1, acc2])
@@ -791,6 +807,7 @@ async def test_delete_student_success(
         email="deletestudent@example.com",
         first_name="Test",
         last_name="User",
+        pid="100000008",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(acc)
@@ -891,6 +908,7 @@ async def test_list_students_pagination_default(
             email=f"pagestudent{i}@example.com",
             first_name=f"PageStudent{i}",
             last_name=f"Test{i}",
+            pid=f"10000{i:04d}",
             role=AccountRole.STUDENT,
         )
         test_async_session.add(acc)
@@ -933,6 +951,7 @@ async def test_create_and_get_student(
         email="router1@example.com",
         first_name="Test",
         last_name="User",
+        pid="100000009",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(acc)
@@ -974,6 +993,7 @@ async def test_update_and_delete_student(
         email="router2@example.com",
         first_name="Test",
         last_name="User",
+        pid="100000010",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(acc)
@@ -1027,6 +1047,7 @@ async def override_dependencies_student(test_async_session: AsyncSession):
             email="student@example.com",
             first_name="Test",
             last_name="Student",
+            pid="111111111",
             role=AccountRole.STUDENT,
         )
 
@@ -1054,6 +1075,7 @@ async def override_dependencies_admin_for_student_routes(
             email="admin@example.com",
             first_name="Admin",
             last_name="User",
+            pid="222222222",
             role=AccountRole.ADMIN,
         )
 
@@ -1081,6 +1103,7 @@ async def override_dependencies_police_for_student_routes(
             email="staff@example.com",
             first_name="Staff",
             last_name="User",
+            pid="333333333",
             role=AccountRole.STAFF,
         )
 
@@ -1101,6 +1124,7 @@ async def test_get_me_success(
         email="student@example.com",
         first_name="Current",
         last_name="User",
+        pid="200000001",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(acc)
@@ -1186,6 +1210,7 @@ async def test_update_me_success(
         email="student@example.com",
         first_name="Old",
         last_name="Name",
+        pid="200000002",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(acc)
@@ -1231,6 +1256,7 @@ async def test_update_me_phone_conflict(
         email="student1@example.com",
         first_name="Student",
         last_name="One",
+        pid="200000003",
         role=AccountRole.STUDENT,
     )
     acc2 = AccountEntity(
@@ -1238,6 +1264,7 @@ async def test_update_me_phone_conflict(
         email="student2@example.com",
         first_name="Student",
         last_name="Two",
+        pid="200000004",
         role=AccountRole.STUDENT,
     )
     test_async_session.add_all([acc1, acc2])
@@ -1343,6 +1370,7 @@ async def test_get_me_parties_empty(
         email="student@example.com",
         first_name="Student",
         last_name="NoParties",
+        pid="200000005",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(acc)
@@ -1378,6 +1406,7 @@ async def test_get_me_parties_with_data(
         email="student1@example.com",
         first_name="Student",
         last_name="One",
+        pid="200000006",
         role=AccountRole.STUDENT,
     )
     acc2 = AccountEntity(
@@ -1385,6 +1414,7 @@ async def test_get_me_parties_with_data(
         email="student2@example.com",
         first_name="Student",
         last_name="Two",
+        pid="200000007",
         role=AccountRole.STUDENT,
     )
     test_async_session.add_all([acc1, acc2])

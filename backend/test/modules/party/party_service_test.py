@@ -40,6 +40,7 @@ async def sample_party_data(test_async_session: AsyncSession) -> PartyData:
         email="test@example.com",
         first_name="Test",
         last_name="User",
+        pid="300000001",
         role=AccountRole.STUDENT,
     )
     account_two = AccountEntity(
@@ -47,6 +48,7 @@ async def sample_party_data(test_async_session: AsyncSession) -> PartyData:
         email="test2@example.com",
         first_name="Test",
         last_name="User",
+        pid="300000002",
         role=AccountRole.STUDENT,
     )
     test_async_session.add_all([account_one, account_two])
@@ -130,6 +132,7 @@ async def radius_test_accounts_and_students(
             email=f"student{i}@example.com",
             first_name="Test",
             last_name="User",
+            pid=f"30000000{i}",
             role=AccountRole.STUDENT,
         )
         accounts.append(account)
@@ -315,6 +318,7 @@ async def test_get_parties(
             email=f"student{i}@example.com",
             first_name="Test",
             last_name="User",
+            pid=f"30100000{i}",
             role=AccountRole.STUDENT,
         )
         accounts.append(account)
@@ -439,6 +443,7 @@ async def test_get_parties_by_date_range_multiple_parties(
             email=f"student{i}@example.com",
             first_name="Test",
             last_name="User",
+            pid=f"30200000{i}",
             role=AccountRole.STUDENT,
         )
         accounts.append(account)
@@ -663,6 +668,7 @@ async def test_get_party_count(
             email=f"student{i}@example.com",
             first_name="Test",
             last_name="User",
+            pid=f"30300000{i}",
             role=AccountRole.STUDENT,
         )
         accounts.append(account)
@@ -755,6 +761,7 @@ async def basic_accounts_and_students(test_async_session: AsyncSession):
         email="student1@example.com",
         first_name="Test",
         last_name="User",
+        pid="304000001",
         role=AccountRole.STUDENT,
     )
     account2 = AccountEntity(
@@ -762,6 +769,7 @@ async def basic_accounts_and_students(test_async_session: AsyncSession):
         email="student2@example.com",
         first_name="Test",
         last_name="User",
+        pid="304000002",
         role=AccountRole.STUDENT,
     )
     test_async_session.add_all([account1, account2])
@@ -868,6 +876,7 @@ async def four_accounts_and_students(test_async_session: AsyncSession):
             email=f"student{i}@example.com",
             first_name=first_names[i - 1],
             last_name=last_names[i - 1],
+            pid=f"30500000{i}",
             role=AccountRole.STUDENT,
         )
         accounts.append(account)

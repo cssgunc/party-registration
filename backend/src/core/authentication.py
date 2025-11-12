@@ -2,6 +2,7 @@ from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from src.core.exceptions import CredentialsException, ForbiddenException
 from src.modules.account.account_model import Account, AccountRole
+from src.modules.police.police_model import PoliceAccount
 
 
 class HTTPBearer401(HTTPBearer):
@@ -26,11 +27,17 @@ def mock_authenticate(role: AccountRole) -> Account | None:
         AccountRole.ADMIN: 2,
         AccountRole.STAFF: 3,
     }
+    role_to_pid = {
+        AccountRole.STUDENT: "111111111",
+        AccountRole.ADMIN: "222222222",
+        AccountRole.STAFF: "333333333",
+    }
     return Account(
         id=role_to_id[role],
         email="user@example.com",
         first_name="Test",
         last_name="User",
+        pid=role_to_pid[role],
         role=role,
     )
 
@@ -82,3 +89,17 @@ async def authenticate_student(
     if not student or user.role != AccountRole.STUDENT:
         raise ForbiddenException(detail="Student privileges required")
     return student
+
+
+async def authenticate_police(
+    authorization: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+) -> PoliceAccount:
+    """
+    Middleware to ensure the authenticated user is a police officer.
+    """
+    token = authorization.credentials.lower()
+
+    if token != "police":
+        raise CredentialsException()
+    
+    return PoliceAccount(email="police@example.com")
