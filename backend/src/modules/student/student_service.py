@@ -12,7 +12,7 @@ from src.core.exceptions import (
 from src.modules.account.account_entity import AccountEntity, AccountRole
 
 from .student_entity import StudentEntity
-from .student_model import Student, StudentData
+from .student_model import Student, StudentData, StudentDataWithNames
 
 
 class StudentNotFoundException(NotFoundException):
@@ -112,13 +112,24 @@ class StudentService:
         student_entity = await self._get_student_entity_by_account_id(account_id)
         return student_entity.to_dto()
 
-    async def create_student(self, data: StudentData, account_id: int) -> Student:
-        await self._validate_account_for_student(account_id)
+    async def create_student(
+        self, data: StudentDataWithNames, account_id: int
+    ) -> Student:
+        account = await self._validate_account_for_student(account_id)
 
         if await self._get_student_entity_by_phone(data.phone_number):
             raise StudentConflictException(data.phone_number)
 
-        new_student = StudentEntity.from_model(data, account_id)
+        account.first_name = data.first_name
+        account.last_name = data.last_name
+        self.session.add(account)
+
+        student_data = StudentData(
+            contact_preference=data.contact_preference,
+            last_registered=data.last_registered,
+            phone_number=data.phone_number,
+        )
+        new_student = StudentEntity.from_model(student_data, account_id)
         try:
             self.session.add(new_student)
             await self.session.commit()
@@ -129,7 +140,9 @@ class StudentService:
         await self.session.refresh(new_student, ["account"])
         return new_student.to_dto()
 
-    async def update_student(self, account_id: int, data: StudentData) -> Student:
+    async def update_student(
+        self, account_id: int, data: StudentData | StudentDataWithNames
+    ) -> Student:
         student_entity = await self._get_student_entity_by_account_id(account_id)
 
         account = student_entity.account
@@ -143,9 +156,15 @@ class StudentService:
             if await self._get_student_entity_by_phone(data.phone_number):
                 raise StudentConflictException(data.phone_number)
 
-        for key, value in data.model_dump().items():
-            if hasattr(student_entity, key):
-                setattr(student_entity, key, value)
+        # Only update account names if data includes them (StudentDataWithNames)
+        if isinstance(data, StudentDataWithNames):
+            account.first_name = data.first_name
+            account.last_name = data.last_name
+            self.session.add(account)
+
+        student_entity.contact_preference = data.contact_preference
+        student_entity.last_registered = data.last_registered
+        student_entity.phone_number = data.phone_number
 
         try:
             self.session.add(student_entity)

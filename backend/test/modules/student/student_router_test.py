@@ -10,7 +10,11 @@ from src.core.database import get_session
 from src.main import app
 from src.modules.account.account_entity import AccountEntity, AccountRole
 from src.modules.student.student_entity import StudentEntity
-from src.modules.student.student_model import ContactPreference, StudentData
+from src.modules.student.student_model import (
+    ContactPreference,
+    StudentData,
+    StudentDataWithNames,
+)
 
 
 @pytest_asyncio.fixture()
@@ -71,7 +75,9 @@ async def test_list_students_with_data(
     for i in range(3):
         acc = AccountEntity(
             email=f"student{i}@example.com",
-            hashed_password="$2b$12$test_hashed_password",
+            first_name="Test",
+            last_name="User",
+            pid=f"11111111{i}",
             role=AccountRole.STUDENT,
         )
         test_async_session.add(acc)
@@ -84,7 +90,7 @@ async def test_list_students_with_data(
 
     for idx, acc in enumerate(accounts):
         student = StudentEntity.from_model(
-            StudentData(
+            StudentDataWithNames(
                 first_name=f"Student{idx}",
                 last_name=f"Test{idx}",
                 contact_preference=ContactPreference.text,
@@ -117,7 +123,9 @@ async def test_list_students_pagination_custom_page_size(
     for i in range(25):
         acc = AccountEntity(
             email=f"pagesize{i}@example.com",
-            hashed_password="$2b$12$test_hashed_password",
+            first_name=f"PageSize{i}",
+            last_name=f"Test{i}",
+            pid=f"22222{i:04d}",
             role=AccountRole.STUDENT,
         )
         test_async_session.add(acc)
@@ -131,8 +139,6 @@ async def test_list_students_pagination_custom_page_size(
     for idx, acc in enumerate(accounts):
         student = StudentEntity.from_model(
             StudentData(
-                first_name=f"PageSize{idx}",
-                last_name=f"Test{idx}",
                 contact_preference=ContactPreference.text,
                 phone_number=f"555222{idx:04d}",
             ),
@@ -167,7 +173,9 @@ async def test_list_students_pagination_second_page(
     for i in range(15):
         acc = AccountEntity(
             email=f"page2{i}@example.com",
-            hashed_password="$2b$12$test_hashed_password",
+            first_name=f"Page2{i}",
+            last_name=f"Test{i}",
+            pid=f"33333{i:04d}",
             role=AccountRole.STUDENT,
         )
         test_async_session.add(acc)
@@ -181,8 +189,6 @@ async def test_list_students_pagination_second_page(
     for idx, acc in enumerate(accounts):
         student = StudentEntity.from_model(
             StudentData(
-                first_name=f"Page2{idx}",
-                last_name=f"Test{idx}",
                 contact_preference=ContactPreference.text,
                 phone_number=f"555333{idx:04d}",
             ),
@@ -217,7 +223,9 @@ async def test_list_students_pagination_last_page(
     for i in range(23):
         acc = AccountEntity(
             email=f"lastpage{i}@example.com",
-            hashed_password="$2b$12$test_hashed_password",
+            first_name=f"LastPage{i}",
+            last_name=f"Test{i}",
+            pid=f"44444{i:04d}",
             role=AccountRole.STUDENT,
         )
         test_async_session.add(acc)
@@ -231,8 +239,6 @@ async def test_list_students_pagination_last_page(
     for idx, acc in enumerate(accounts):
         student = StudentEntity.from_model(
             StudentData(
-                first_name=f"LastPage{idx}",
-                last_name=f"Test{idx}",
                 contact_preference=ContactPreference.text,
                 phone_number=f"555444{idx:04d}",
             ),
@@ -267,7 +273,9 @@ async def test_list_students_pagination_page_beyond_total(
     for i in range(5):
         acc = AccountEntity(
             email=f"beyond{i}@example.com",
-            hashed_password="$2b$12$test_hashed_password",
+            first_name=f"Beyond{i}",
+            last_name=f"Test{i}",
+            pid=f"55555500{i}",
             role=AccountRole.STUDENT,
         )
         test_async_session.add(acc)
@@ -281,8 +289,6 @@ async def test_list_students_pagination_page_beyond_total(
     for idx, acc in enumerate(accounts):
         student = StudentEntity.from_model(
             StudentData(
-                first_name=f"Beyond{idx}",
-                last_name=f"Test{idx}",
                 contact_preference=ContactPreference.text,
                 phone_number=f"555555{idx:04d}",
             ),
@@ -317,7 +323,9 @@ async def test_list_students_pagination_max_page_size(
     for i in range(100):
         acc = AccountEntity(
             email=f"maxsize{i}@example.com",
-            hashed_password="$2b$12$test_hashed_password",
+            first_name=f"MaxSize{i}",
+            last_name=f"Test{i}",
+            pid=f"66666{i:04d}",
             role=AccountRole.STUDENT,
         )
         test_async_session.add(acc)
@@ -331,8 +339,6 @@ async def test_list_students_pagination_max_page_size(
     for idx, acc in enumerate(accounts):
         student = StudentEntity.from_model(
             StudentData(
-                first_name=f"MaxSize{idx}",
-                last_name=f"Test{idx}",
                 contact_preference=ContactPreference.text,
                 phone_number=f"555666{idx:04d}",
             ),
@@ -404,7 +410,9 @@ async def test_create_student_success(
     """Test successfully creating a student."""
     acc = AccountEntity(
         email="newstudent@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Test",
+        last_name="User",
+        pid="777777777",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(acc)
@@ -441,7 +449,9 @@ async def test_create_student_with_datetime(
     """Test creating a student with last_registered datetime."""
     acc = AccountEntity(
         email="datetime@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Test",
+        last_name="User",
+        pid="888888888",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(acc)
@@ -494,7 +504,9 @@ async def test_create_student_wrong_role(
     """Test creating a student with account that has non-student role."""
     admin_acc = AccountEntity(
         email="admin@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Test",
+        last_name="User",
+        pid="999999999",
         role=AccountRole.ADMIN,
     )
     test_async_session.add(admin_acc)
@@ -524,7 +536,9 @@ async def test_create_student_duplicate_account(
     """Test creating a student when account already has a student record."""
     acc = AccountEntity(
         email="duplicate@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Test",
+        last_name="User",
+        pid="100000001",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(acc)
@@ -532,7 +546,7 @@ async def test_create_student_duplicate_account(
     await test_async_session.refresh(acc)
 
     student1 = StudentEntity.from_model(
-        StudentData(
+        StudentDataWithNames(
             first_name="First",
             last_name="Student",
             contact_preference=ContactPreference.text,
@@ -566,12 +580,16 @@ async def test_create_student_duplicate_phone(
     """Test creating students with duplicate phone numbers."""
     acc1 = AccountEntity(
         email="phone1@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Test",
+        last_name="User",
+        pid="100000002",
         role=AccountRole.STUDENT,
     )
     acc2 = AccountEntity(
         email="phone2@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Test",
+        last_name="User",
+        pid="100000003",
         role=AccountRole.STUDENT,
     )
     test_async_session.add_all([acc1, acc2])
@@ -580,7 +598,7 @@ async def test_create_student_duplicate_phone(
     await test_async_session.refresh(acc2)
 
     student1 = StudentEntity.from_model(
-        StudentData(
+        StudentDataWithNames(
             first_name="First",
             last_name="Student",
             contact_preference=ContactPreference.text,
@@ -614,7 +632,9 @@ async def test_get_student_success(
     """Test successfully getting a student by ID."""
     acc = AccountEntity(
         email="getstudent@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Get",
+        last_name="Student",
+        pid="100000004",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(acc)
@@ -623,8 +643,6 @@ async def test_get_student_success(
 
     student = StudentEntity.from_model(
         StudentData(
-            first_name="Get",
-            last_name="Student",
             contact_preference=ContactPreference.text,
             phone_number="5558888888",
         ),
@@ -641,6 +659,7 @@ async def test_get_student_success(
         body = res.json()
         assert body["id"] == acc.id
         assert body["first_name"] == "Get"
+        assert body["last_name"] == "Student"
         assert body["phone_number"] == "5558888888"
 
 
@@ -661,7 +680,9 @@ async def test_update_student_success(
     """Test successfully updating a student."""
     acc = AccountEntity(
         email="updatestudent@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Test",
+        last_name="User",
+        pid="100000005",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(acc)
@@ -669,7 +690,7 @@ async def test_update_student_success(
     await test_async_session.refresh(acc)
 
     student = StudentEntity.from_model(
-        StudentData(
+        StudentDataWithNames(
             first_name="Old",
             last_name="Name",
             contact_preference=ContactPreference.text,
@@ -724,12 +745,16 @@ async def test_update_student_phone_conflict(
     """Test updating student with phone number that already exists."""
     acc1 = AccountEntity(
         email="update1@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Test",
+        last_name="User",
+        pid="100000006",
         role=AccountRole.STUDENT,
     )
     acc2 = AccountEntity(
         email="update2@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Test",
+        last_name="User",
+        pid="100000007",
         role=AccountRole.STUDENT,
     )
     test_async_session.add_all([acc1, acc2])
@@ -738,7 +763,7 @@ async def test_update_student_phone_conflict(
     await test_async_session.refresh(acc2)
 
     student1 = StudentEntity.from_model(
-        StudentData(
+        StudentDataWithNames(
             first_name="Student",
             last_name="One",
             contact_preference=ContactPreference.text,
@@ -747,7 +772,7 @@ async def test_update_student_phone_conflict(
         acc1.id,
     )
     student2 = StudentEntity.from_model(
-        StudentData(
+        StudentDataWithNames(
             first_name="Student",
             last_name="Two",
             contact_preference=ContactPreference.text,
@@ -780,7 +805,9 @@ async def test_delete_student_success(
     """Test successfully deleting a student."""
     acc = AccountEntity(
         email="deletestudent@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Test",
+        last_name="User",
+        pid="100000008",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(acc)
@@ -788,7 +815,7 @@ async def test_delete_student_success(
     await test_async_session.refresh(acc)
 
     student = StudentEntity.from_model(
-        StudentData(
+        StudentDataWithNames(
             first_name="Delete",
             last_name="Me",
             contact_preference=ContactPreference.text,
@@ -879,7 +906,9 @@ async def test_list_students_pagination_default(
     for i in range(15):
         acc = AccountEntity(
             email=f"pagestudent{i}@example.com",
-            hashed_password="$2b$12$test_hashed_password",
+            first_name=f"PageStudent{i}",
+            last_name=f"Test{i}",
+            pid=f"10000{i:04d}",
             role=AccountRole.STUDENT,
         )
         test_async_session.add(acc)
@@ -893,8 +922,6 @@ async def test_list_students_pagination_default(
     for idx, acc in enumerate(accounts):
         student = StudentEntity.from_model(
             StudentData(
-                first_name=f"PageStudent{idx}",
-                last_name=f"Test{idx}",
                 contact_preference=ContactPreference.text,
                 phone_number=f"555111{idx:04d}",
             ),
@@ -922,7 +949,9 @@ async def test_create_and_get_student(
 ):
     acc = AccountEntity(
         email="router1@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Test",
+        last_name="User",
+        pid="100000009",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(acc)
@@ -962,7 +991,9 @@ async def test_update_and_delete_student(
 ):
     acc = AccountEntity(
         email="router2@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Test",
+        last_name="User",
+        pid="100000010",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(acc)
@@ -970,7 +1001,7 @@ async def test_update_and_delete_student(
     await test_async_session.refresh(acc)
 
     student = StudentEntity.from_model(
-        StudentData(
+        StudentDataWithNames(
             first_name="John",
             last_name="Doe",
             contact_preference=ContactPreference.text,
@@ -1014,7 +1045,9 @@ async def override_dependencies_student(test_async_session: AsyncSession):
         return Account(
             id=1,
             email="student@example.com",
-            password="hashed",
+            first_name="Test",
+            last_name="Student",
+            pid="111111111",
             role=AccountRole.STUDENT,
         )
 
@@ -1040,7 +1073,9 @@ async def override_dependencies_admin_for_student_routes(
         return Account(
             id=2,
             email="admin@example.com",
-            password="hashed",
+            first_name="Admin",
+            last_name="User",
+            pid="222222222",
             role=AccountRole.ADMIN,
         )
 
@@ -1056,24 +1091,26 @@ async def override_dependencies_admin_for_student_routes(
 async def override_dependencies_police_for_student_routes(
     test_async_session: AsyncSession,
 ):
-    """Override dependencies to simulate police trying to access student routes."""
+    """Override dependencies to simulate staff trying to access student routes."""
     from src.modules.account.account_model import Account, AccountRole
 
     async def _get_test_session():
         yield test_async_session
 
-    async def _fake_police_user():
+    async def _fake_staff_user():
         return Account(
             id=3,
-            email="police@example.com",
-            password="hashed",
-            role=AccountRole.POLICE,
+            email="staff@example.com",
+            first_name="Staff",
+            last_name="User",
+            pid="333333333",
+            role=AccountRole.STAFF,
         )
 
     app.dependency_overrides[get_session] = _get_test_session
     from src.core.authentication import authenticate_user
 
-    app.dependency_overrides[authenticate_user] = _fake_police_user
+    app.dependency_overrides[authenticate_user] = _fake_staff_user
     yield
     app.dependency_overrides.clear()
 
@@ -1085,7 +1122,9 @@ async def test_get_me_success(
     acc = AccountEntity(
         id=1,
         email="student@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Current",
+        last_name="User",
+        pid="200000001",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(acc)
@@ -1093,8 +1132,6 @@ async def test_get_me_success(
 
     student = StudentEntity.from_model(
         StudentData(
-            first_name="Current",
-            last_name="User",
             contact_preference=ContactPreference.text,
             phone_number="5551234567",
         ),
@@ -1171,7 +1208,9 @@ async def test_update_me_success(
     acc = AccountEntity(
         id=1,
         email="student@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Old",
+        last_name="Name",
+        pid="200000002",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(acc)
@@ -1179,8 +1218,6 @@ async def test_update_me_success(
 
     student = StudentEntity.from_model(
         StudentData(
-            first_name="Old",
-            last_name="Name",
             contact_preference=ContactPreference.text,
             phone_number="5551111111",
         ),
@@ -1190,8 +1227,6 @@ async def test_update_me_success(
     await test_async_session.commit()
 
     update_payload = {
-        "first_name": "New",
-        "last_name": "Name",
         "contact_preference": "call",
         "phone_number": "5552222222",
         "last_registered": None,
@@ -1204,7 +1239,10 @@ async def test_update_me_success(
         )
         assert res.status_code == 200
         body = res.json()
-        assert body["first_name"] == "New"
+        assert (
+            body["first_name"] == "Old"
+        )  # Account names don't change via /me endpoint
+        assert body["last_name"] == "Name"
         assert body["phone_number"] == "5552222222"
         assert body["contact_preference"] == "call"
 
@@ -1216,13 +1254,17 @@ async def test_update_me_phone_conflict(
     acc1 = AccountEntity(
         id=1,
         email="student1@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Student",
+        last_name="One",
+        pid="200000003",
         role=AccountRole.STUDENT,
     )
     acc2 = AccountEntity(
         id=2,
         email="student2@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Student",
+        last_name="Two",
+        pid="200000004",
         role=AccountRole.STUDENT,
     )
     test_async_session.add_all([acc1, acc2])
@@ -1230,8 +1272,6 @@ async def test_update_me_phone_conflict(
 
     student1 = StudentEntity.from_model(
         StudentData(
-            first_name="Student",
-            last_name="One",
             contact_preference=ContactPreference.text,
             phone_number="5551111111",
         ),
@@ -1239,8 +1279,6 @@ async def test_update_me_phone_conflict(
     )
     student2 = StudentEntity.from_model(
         StudentData(
-            first_name="Student",
-            last_name="Two",
             contact_preference=ContactPreference.text,
             phone_number="5552222222",
         ),
@@ -1250,8 +1288,6 @@ async def test_update_me_phone_conflict(
     await test_async_session.commit()
 
     update_payload = {
-        "first_name": "Student",
-        "last_name": "One",
         "contact_preference": "text",
         "phone_number": "5552222222",
     }
@@ -1332,7 +1368,9 @@ async def test_get_me_parties_empty(
     acc = AccountEntity(
         id=1,
         email="student@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Student",
+        last_name="NoParties",
+        pid="200000005",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(acc)
@@ -1340,8 +1378,6 @@ async def test_get_me_parties_empty(
 
     student = StudentEntity.from_model(
         StudentData(
-            first_name="Student",
-            last_name="NoParties",
             contact_preference=ContactPreference.text,
             phone_number="5551234567",
         ),
@@ -1368,13 +1404,17 @@ async def test_get_me_parties_with_data(
     acc1 = AccountEntity(
         id=1,
         email="student1@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Student",
+        last_name="One",
+        pid="200000006",
         role=AccountRole.STUDENT,
     )
     acc2 = AccountEntity(
         id=2,
         email="student2@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Student",
+        last_name="Two",
+        pid="200000007",
         role=AccountRole.STUDENT,
     )
     test_async_session.add_all([acc1, acc2])
@@ -1382,8 +1422,6 @@ async def test_get_me_parties_with_data(
 
     student1 = StudentEntity.from_model(
         StudentData(
-            first_name="Student",
-            last_name="One",
             contact_preference=ContactPreference.text,
             phone_number="5551111111",
         ),
@@ -1391,8 +1429,6 @@ async def test_get_me_parties_with_data(
     )
     student2 = StudentEntity.from_model(
         StudentData(
-            first_name="Student",
-            last_name="Two",
             contact_preference=ContactPreference.call,
             phone_number="5552222222",
         ),

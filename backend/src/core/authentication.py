@@ -2,6 +2,7 @@ from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from src.core.exceptions import CredentialsException, ForbiddenException
 from src.modules.account.account_model import Account, AccountRole
+from src.modules.police.police_model import PoliceAccount
 
 
 class HTTPBearer401(HTTPBearer):
@@ -24,12 +25,19 @@ def mock_authenticate(role: AccountRole) -> Account | None:
     role_to_id = {
         AccountRole.STUDENT: 1,
         AccountRole.ADMIN: 2,
-        AccountRole.POLICE: 3,
+        AccountRole.STAFF: 3,
+    }
+    role_to_pid = {
+        AccountRole.STUDENT: "111111111",
+        AccountRole.ADMIN: "222222222",
+        AccountRole.STAFF: "333333333",
     }
     return Account(
         id=role_to_id[role],
         email="user@example.com",
-        password="hashed_password",
+        first_name="Test",
+        last_name="User",
+        pid=role_to_pid[role],
         role=role,
     )
 
@@ -39,14 +47,15 @@ async def authenticate_user(
 ) -> Account:
     """
     Middleware to authenticate user from Bearer token.
-    Expects token to be one of: "student", "admin", "police" for mock authentication.
+    Expects token to be one of: "student", "admin", "staff" for mock authentication.
+    Note: Police authenticate separately via the police singleton table.
     """
     token = authorization.credentials.lower()
 
     role_map = {
         "student": AccountRole.STUDENT,
         "admin": AccountRole.ADMIN,
-        "police": AccountRole.POLICE,
+        "staff": AccountRole.STAFF,
     }
 
     if token not in role_map:
@@ -83,12 +92,14 @@ async def authenticate_student(
 
 
 async def authenticate_police(
-    user: Account = Depends(authenticate_user),
-) -> Account:
+    authorization: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+) -> PoliceAccount:
     """
     Middleware to ensure the authenticated user is a police officer.
     """
-    police = mock_authenticate(AccountRole.POLICE)
-    if not police or user.role != AccountRole.POLICE:
-        raise ForbiddenException(detail="Police privileges required")
-    return police
+    token = authorization.credentials.lower()
+
+    if token != "police":
+        raise CredentialsException()
+    
+    return PoliceAccount(email="police@example.com")
