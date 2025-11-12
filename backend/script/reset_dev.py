@@ -34,37 +34,52 @@ async def reset_dev():
     print("Populating tables...")
     async with AsyncSessionLocal() as session:
         from src.modules.account.account_entity import AccountEntity, AccountRole
+        from src.modules.police.police_entity import PoliceEntity
         from src.modules.student.student_entity import StudentEntity
-        from src.modules.student.student_model import ContactPreference
+        from src.modules.student.student_model import ContactPreference, StudentData
 
         student_account = AccountEntity(
             email="student@example.com",
-            hashed_password="student",
+            first_name="John",
+            last_name="Doe",
+            pid="111111111",
             role=AccountRole.STUDENT,
         )
         admin_account = AccountEntity(
             email="admin@example.com",
-            hashed_password="admin",
+            first_name="Admin",
+            last_name="User",
+            pid="222222222",
             role=AccountRole.ADMIN,
         )
-        police_account = AccountEntity(
-            email="police@example.com",
-            hashed_password="police",
-            role=AccountRole.POLICE,
+        staff_account = AccountEntity(
+            email="staff@example.com",
+            first_name="Staff",
+            last_name="Member",
+            pid="333333333",
+            role=AccountRole.STAFF,
         )
 
-        session.add_all([student_account, admin_account, police_account])
+        session.add_all([student_account, admin_account, staff_account])
         await session.flush()
 
-        student = StudentEntity(
-            first_name="John",
-            last_name="Doe",
-            call_or_text_pref=ContactPreference.call,
-            phone_number="1234567890",
-            account_id=student_account.id,
+        student = StudentEntity.from_model(
+            StudentData(
+                contact_preference=ContactPreference.call,
+                phone_number="1234567890",
+            ),
+            student_account.id,
         )
 
         session.add(student)
+
+        police = PoliceEntity(
+            id=1,
+            email="police@example.com",
+            hashed_password="$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5NU7lCwEr0m6G",
+        )
+        session.add(police)
+
         await session.commit()
 
     print("Database successfully reset!")

@@ -18,22 +18,24 @@ class PartyEntity(EntityBase):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     party_datetime: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     location_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("locations.id"), nullable=False
+        Integer, ForeignKey("locations.id", ondelete="CASCADE"), nullable=False
     )
     contact_one_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("students.account_id"), nullable=False
+        Integer, ForeignKey("students.account_id", ondelete="CASCADE"), nullable=False
     )
     contact_two_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("students.account_id"), nullable=False
+        Integer, ForeignKey("students.account_id", ondelete="CASCADE"), nullable=False
     )
 
     # Relationships
-    location: Mapped["LocationEntity"] = relationship("LocationEntity")
+    location: Mapped["LocationEntity"] = relationship(
+        "LocationEntity", cascade="all, delete"
+    )
     contact_one: Mapped["StudentEntity"] = relationship(
-        "StudentEntity", foreign_keys=[contact_one_id]
+        "StudentEntity", foreign_keys=[contact_one_id], cascade="all, delete"
     )
     contact_two: Mapped["StudentEntity"] = relationship(
-        "StudentEntity", foreign_keys=[contact_two_id]
+        "StudentEntity", foreign_keys=[contact_two_id], cascade="all, delete"
     )
 
     @classmethod

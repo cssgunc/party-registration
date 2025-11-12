@@ -28,7 +28,7 @@ async def list_parties(
     - page_size: Number of items per page (max 100, default: returns all parties)
 
     Returns:
-    - parties: List of party registrations
+    - items: List of party registrations
     - total_records: Total number of records in the database
     - page_size: Requested page size (or total_records if not specified)
     - page_number: Requested page number
@@ -41,7 +41,7 @@ async def list_parties(
     if page_size is None:
         parties = await party_service.get_parties(skip=0, limit=None)
         return PaginatedPartiesResponse(
-            parties=parties,
+            items=parties,
             total_records=total_records,
             page_size=total_records,
             page_number=1,
@@ -60,7 +60,7 @@ async def list_parties(
     )
 
     return PaginatedPartiesResponse(
-        parties=parties,
+        items=parties,
         total_records=total_records,
         page_size=page_size,
         page_number=page_number,
