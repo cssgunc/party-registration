@@ -122,7 +122,8 @@ async def test_list_students_pagination_custom_page_size(
     for i in range(25):
         acc = AccountEntity(
             email=f"pagesize{i}@example.com",
-            hashed_password="$2b$12$test_hashed_password",
+            first_name=f"PageSize{i}",
+            last_name=f"Test{i}",
             role=AccountRole.STUDENT,
         )
         test_async_session.add(acc)
@@ -136,8 +137,6 @@ async def test_list_students_pagination_custom_page_size(
     for idx, acc in enumerate(accounts):
         student = StudentEntity.from_model(
             StudentData(
-                first_name=f"PageSize{idx}",
-                last_name=f"Test{idx}",
                 contact_preference=ContactPreference.text,
                 phone_number=f"555222{idx:04d}",
             ),
@@ -172,7 +171,8 @@ async def test_list_students_pagination_second_page(
     for i in range(15):
         acc = AccountEntity(
             email=f"page2{i}@example.com",
-            hashed_password="$2b$12$test_hashed_password",
+            first_name=f"Page2{i}",
+            last_name=f"Test{i}",
             role=AccountRole.STUDENT,
         )
         test_async_session.add(acc)
@@ -186,8 +186,6 @@ async def test_list_students_pagination_second_page(
     for idx, acc in enumerate(accounts):
         student = StudentEntity.from_model(
             StudentData(
-                first_name=f"Page2{idx}",
-                last_name=f"Test{idx}",
                 contact_preference=ContactPreference.text,
                 phone_number=f"555333{idx:04d}",
             ),
@@ -222,7 +220,8 @@ async def test_list_students_pagination_last_page(
     for i in range(23):
         acc = AccountEntity(
             email=f"lastpage{i}@example.com",
-            hashed_password="$2b$12$test_hashed_password",
+            first_name=f"LastPage{i}",
+            last_name=f"Test{i}",
             role=AccountRole.STUDENT,
         )
         test_async_session.add(acc)
@@ -236,8 +235,6 @@ async def test_list_students_pagination_last_page(
     for idx, acc in enumerate(accounts):
         student = StudentEntity.from_model(
             StudentData(
-                first_name=f"LastPage{idx}",
-                last_name=f"Test{idx}",
                 contact_preference=ContactPreference.text,
                 phone_number=f"555444{idx:04d}",
             ),
@@ -272,7 +269,8 @@ async def test_list_students_pagination_page_beyond_total(
     for i in range(5):
         acc = AccountEntity(
             email=f"beyond{i}@example.com",
-            hashed_password="$2b$12$test_hashed_password",
+            first_name=f"Beyond{i}",
+            last_name=f"Test{i}",
             role=AccountRole.STUDENT,
         )
         test_async_session.add(acc)
@@ -286,8 +284,6 @@ async def test_list_students_pagination_page_beyond_total(
     for idx, acc in enumerate(accounts):
         student = StudentEntity.from_model(
             StudentData(
-                first_name=f"Beyond{idx}",
-                last_name=f"Test{idx}",
                 contact_preference=ContactPreference.text,
                 phone_number=f"555555{idx:04d}",
             ),
@@ -322,7 +318,8 @@ async def test_list_students_pagination_max_page_size(
     for i in range(100):
         acc = AccountEntity(
             email=f"maxsize{i}@example.com",
-            hashed_password="$2b$12$test_hashed_password",
+            first_name=f"MaxSize{i}",
+            last_name=f"Test{i}",
             role=AccountRole.STUDENT,
         )
         test_async_session.add(acc)
@@ -336,8 +333,6 @@ async def test_list_students_pagination_max_page_size(
     for idx, acc in enumerate(accounts):
         student = StudentEntity.from_model(
             StudentData(
-                first_name=f"MaxSize{idx}",
-                last_name=f"Test{idx}",
                 contact_preference=ContactPreference.text,
                 phone_number=f"555666{idx:04d}",
             ),
@@ -894,7 +889,8 @@ async def test_list_students_pagination_default(
     for i in range(15):
         acc = AccountEntity(
             email=f"pagestudent{i}@example.com",
-            hashed_password="$2b$12$test_hashed_password",
+            first_name=f"PageStudent{i}",
+            last_name=f"Test{i}",
             role=AccountRole.STUDENT,
         )
         test_async_session.add(acc)
@@ -908,8 +904,6 @@ async def test_list_students_pagination_default(
     for idx, acc in enumerate(accounts):
         student = StudentEntity.from_model(
             StudentData(
-                first_name=f"PageStudent{idx}",
-                last_name=f"Test{idx}",
                 contact_preference=ContactPreference.text,
                 phone_number=f"555111{idx:04d}",
             ),
