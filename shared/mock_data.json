@@ -1,0 +1,155 @@
+{
+  "police": {
+    "email": "police@example.com",
+    "password": "securepassword",
+    "hashed_password": "$2b$12$KIXQJZ6Yh1rOqv1pX5E5EuFh8jFz1Z6Yh1rOqv1pX5E5EuFh8jFz1Z6"
+  },
+  "accounts": [
+    {
+      "id": 1,
+      "email": "admin@example.com",
+      "first_name": "John",
+      "last_name": "Doe",
+      "role": "admin"
+    },
+    {
+      "id": 2,
+      "email": "staff@example.com",
+      "first_name": "Jane",
+      "last_name": "Smith",
+      "role": "staff"
+    }
+  ],
+  "students": [
+    {
+      "id": 3,
+      "pid": "730565332",
+      "email": "alice@example.com",
+      "first_name": "Alice",
+      "last_name": "Johnson",
+      "phone_number": "1234567890",
+      "contact_preference": "call",
+      "last_registered": "NOW-30d"
+    },
+    {
+      "id": 4,
+      "pid": "730565333",
+      "email": "bob@example.com",
+      "first_name": "Bob",
+      "last_name": "Brown",
+      "phone_number": "0987654321",
+      "contact_preference": "text",
+      "last_registered": null
+    },
+    {
+      "id": 5,
+      "pid": "730565334",
+      "email": "charlie@example.com",
+      "first_name": "Charlie",
+      "last_name": "Davis",
+      "phone_number": "5555555555",
+      "contact_preference": "call",
+      "last_registered": "NOW-10d"
+    }
+  ],
+  "locations": [
+    {
+      "id": 1,
+      "citation_count": 0,
+      "warning_count": 0,
+      "hold_expiration_date": null,
+      "has_active_hold": false,
+      "google_place_id": "ChIJW552s-fCrIkRc4-J8QJ-H1w",
+      "formatted_address": "112 Fraternity Ct, Chapel Hill, NC 27516, USA",
+      "latitude": 35.911172,
+      "longitude": -79.0550386,
+      "street_number": "112",
+      "street_name": "Fraternity Court",
+      "unit": null,
+      "city": "Chapel Hill",
+      "county": "Orange County",
+      "state": "NC",
+      "country": "US",
+      "zip_code": "27516"
+    },
+    {
+      "id": 2,
+      "citation_count": 0,
+      "warning_count": 0,
+      "hold_expiration_date": null,
+      "has_active_hold": false,
+      "google_place_id": "ChIJEbmrUubCrIkRvDCJOI-LJs0",
+      "formatted_address": "107 Fraternity Ct, Chapel Hill, NC 27516, USA",
+      "latitude": 35.9110547,
+      "longitude": -79.055335,
+      "street_number": "107",
+      "street_name": "Fraternity Court",
+      "unit": null,
+      "city": "Chapel Hill",
+      "county": "Orange County",
+      "state": "NC",
+      "country": "US",
+      "zip_code": "27516"
+    },
+    {
+      "id": 3,
+      "citation_count": 1,
+      "warning_count": 2,
+      "hold_expiration_date": "NOW+30d",
+      "has_active_hold": true,
+      "google_place_id": "ChIJpXrqrufCrIkRNDWEBylUCJE",
+      "formatted_address": "106 Fraternity Ct, Chapel Hill, NC 27516, USA",
+      "latitude": 35.9115003,
+      "longitude": -79.0556198,
+      "street_number": "106",
+      "street_name": "Fraternity Court",
+      "unit": null,
+      "city": "Chapel Hill",
+      "county": "Orange County",
+      "state": "NC",
+      "country": "US",
+      "zip_code": "27516"
+    }
+  ],
+  "parties": [
+    {
+      "id": 1,
+      "party_datetime": "NOW+1h",
+      "location_id": 1,
+      "contact_one_id": 3,
+      "contact_two": {
+        "email": "aaron@example.com",
+        "first_name": "Aaron",
+        "last_name": "Johnson",
+        "phone_number": "9876543210",
+        "contact_preference": "text"
+      }
+    },
+    {
+      "id": 2,
+      "party_datetime": "NOW+2h",
+      "location_id": 2,
+      "contact_one_id": 4,
+      "contact_two": {
+        "email": "jesse@example.com",
+        "first_name": "Jesse",
+        "last_name": "Smith",
+        "phone_number": "1237567890",
+        "contact_preference": "call"
+      }
+    },
+    {
+      "id": 3,
+      "party_datetime": "NOW+3h",
+      "location_id": 3,
+      "contact_one_id": 5,
+      "contact_two": {
+        "email": "charlie@example.com",
+        "first_name": "Charlie",
+        "last_name": "Davis",
+        "phone_number": "5555955555",
+        "contact_preference": "call"
+      }
+    }
+  ]
+}

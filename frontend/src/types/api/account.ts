@@ -1,14 +1,13 @@
 type Account = {
   id: number;
   email: string;
-  role: "student" | "admin" | "police";
+  firstName: string;
+  lastName: string;
+  role: "staff" | "admin" | "student";
 };
 
-type AccountData = {
-  id: number;
+type PoliceAccount = {
   email: string;
-  password: string;
-  role: "student" | "admin" | "police";
 };
 
-export type { Account, AccountData };
+export type { Account, PoliceAccount };

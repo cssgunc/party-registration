@@ -4,23 +4,17 @@ type Student = {
   email: string;
   firstName: string;
   lastName: string;
-  contactPreference: "call" | "text";
-  lastRegistered: Date | null;
   phoneNumber: string;
-
-  //client-side variables
-  fullName: string;
+  contactPreference: "call" | "text";
+  lastRegistered: string | null;
 };
 
-type StudentData = {
-  id: number;
-  pid: string;
+type Contact = {
   email: string;
   firstName: string;
   lastName: string;
-  contactPreference: "call" | "text";
-  lastRegistered: Date | null;
   phoneNumber: string;
+  contactPreference: "call" | "text";
 };
 
-export type { Student, StudentData };
+export type { Student, Contact };
