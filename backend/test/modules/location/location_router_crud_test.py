@@ -40,7 +40,7 @@ async def unauthenticated_client(test_async_session: AsyncSession, mock_location
     app.dependency_overrides[get_session] = override_get_session
 
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
+        transport=ASGITransport(app=app), base_url="http://test/api"
     ) as ac:
         yield ac
 
@@ -67,7 +67,7 @@ async def client(
     app.dependency_overrides[authenticate_admin] = override_authenticate_admin
 
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
+        transport=ASGITransport(app=app), base_url="http://test/api"
     ) as ac:
         yield ac
 

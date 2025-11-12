@@ -25,7 +25,9 @@ async def override_dependencies(mock_location_service: AsyncMock):
         return Account(
             id=1,
             email="test@example.com",
-            password="hashed_password",
+            first_name="Test",
+            last_name="User",
+            pid="123456789",
             role=AccountRole.STUDENT,
         )
 
