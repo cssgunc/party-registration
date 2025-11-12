@@ -9,6 +9,7 @@ from .student_model import (
     Student,
     StudentCreate,
     StudentData,
+    StudentDataWithNames,
 )
 from .student_service import StudentService
 
@@ -126,7 +127,7 @@ async def create_student(
 @student_router.put("/{student_id}")
 async def update_student(
     student_id: int,
-    data: StudentData,
+    data: StudentDataWithNames,
     student_service: StudentService = Depends(),
     _=Depends(authenticate_admin),
 ) -> Student:

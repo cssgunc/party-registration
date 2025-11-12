@@ -146,13 +146,17 @@ async def sample_party_setup(test_async_session: AsyncSession):
     account_one = AccountEntity(
         id=1,
         email="test@example.com",
-        hashed_password="hashed_password",
+        first_name="Test",
+        last_name="User",
+        pid="306000001",
         role=AccountRole.STUDENT,
     )
     account_two = AccountEntity(
         id=2,
         email="test2@example.com",
-        hashed_password="hashed_password",
+        first_name="Test",
+        last_name="User",
+        pid="306000002",
         role=AccountRole.STUDENT,
     )
     test_async_session.add_all([account_one, account_two])
@@ -169,16 +173,12 @@ async def sample_party_setup(test_async_session: AsyncSession):
 
     # Create students with last_registered date (Party Smart completed)
     student_one = StudentEntity(
-        first_name="John",
-        last_name="Doe",
         contact_preference=ContactPreference.call,
         phone_number="1234567890",
         account_id=1,
         last_registered=datetime.now() - timedelta(days=30),  # Completed 30 days ago
     )
     student_two = StudentEntity(
-        first_name="Jane",
-        last_name="Smith",
         contact_preference=ContactPreference.text,
         phone_number="0987654321",
         account_id=2,
