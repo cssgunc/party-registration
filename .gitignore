@@ -38,6 +38,7 @@ backend/build/
 # Misc
 *.bak
 *.tmp
+backend/script/test.py
 
 # Ignore coverage reports
 coverage/

@@ -110,7 +110,7 @@ async def reset_dev():
                     contact_preference=ContactPreference(
                         student_data["contact_preference"]
                     ),
-                    phone_number=student_data["phone_number"],
+                    phone_number=re.sub(r"\D", "", student_data.get("phone_number", "") or ""),
                     last_registered=parse_date(student_data.get("last_registered")),
                 ),
                 account.id,
