@@ -18,7 +18,7 @@ class StudentData(BaseModel):
     phone_number: str = Field(pattern=r"^\+?1?\d{9,15}$")
 
 
-class StudentDataWithNames(BaseModel):
+class StudentDataWithNames(StudentData):
     """Student data including names for create/update operations."""
 
     first_name: str = Field(min_length=1)
