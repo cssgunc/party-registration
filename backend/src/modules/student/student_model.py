@@ -2,6 +2,7 @@ import enum
 from datetime import datetime
 
 from pydantic import BaseModel, EmailStr, Field
+from src.core.models import PaginatedResponse
 
 
 class ContactPreference(enum.Enum):
@@ -15,6 +16,14 @@ class StudentData(BaseModel):
     contact_preference: ContactPreference
     last_registered: datetime | None = None
     phone_number: str = Field(pattern=r"^\+?1?\d{9,15}$")
+
+
+class StudentDataWithNames(StudentData):
+    """
+    Student data including name fields for account updates.
+    When used in update operations, names are synced to both student and account entities.
+    """
+    pass
 
 
 class Student(StudentData):
@@ -56,3 +65,7 @@ class StudentCreate(BaseModel):
 
     account_id: int
     data: StudentData
+
+
+# Type alias for paginated student responses
+PaginatedStudentsResponse = PaginatedResponse[Student]

@@ -38,13 +38,17 @@ async def sample_party_data(test_async_session: AsyncSession) -> PartyData:
     account_one = AccountEntity(
         id=1,
         email="test@example.com",
-        hashed_password="hashed_password",
+        first_name="Test",
+        last_name="User",
+        pid="300000001",
         role=AccountRole.STUDENT,
     )
     account_two = AccountEntity(
         id=2,
         email="test2@example.com",
-        hashed_password="hashed_password",
+        first_name="Test",
+        last_name="User",
+        pid="300000001",
         role=AccountRole.STUDENT,
     )
     test_async_session.add_all([account_one, account_two])
