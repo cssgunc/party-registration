@@ -79,7 +79,9 @@ async def test_list_students_empty(override_dependencies_admin: Any):
     ) as client:
         res = await client.get("/api/students/", headers=auth_headers())
         assert res.status_code == 200
-        assert res.json() == []
+        data = res.json()
+        assert data["items"] == []
+        assert data["total_records"] == 0
 
 
 @pytest.mark.asyncio
@@ -92,7 +94,9 @@ async def test_list_students_with_data(
     for i in range(3):
         acc = AccountEntity(
             email=f"student{i}@example.com",
-            hashed_password="$2b$12$test_hashed_password",
+            first_name=f"Student{i}",
+            last_name=f"Test{i}",
+            pid=f"12345678{i}",
             role=AccountRole.STUDENT,
         )
         test_async_session.add(acc)
@@ -122,7 +126,8 @@ async def test_list_students_with_data(
         res = await client.get("/api/students/", headers=auth_headers())
         assert res.status_code == 200
         data = res.json()
-        assert len(data) == 3
+        assert len(data["items"]) == 3
+        assert data["total_records"] == 3
 
 
 @pytest.mark.asyncio
@@ -132,7 +137,9 @@ async def test_create_student_success(
     """Test successfully creating a student."""
     acc = AccountEntity(
         email="newstudent@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="New",
+        last_name="Student",
+        pid="123456789",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(acc)
@@ -156,7 +163,6 @@ async def test_create_student_success(
         assert res.status_code == 201
         body = res.json()
         assert body["id"] == acc.id
-        assert body["email"] == acc.email
         assert body["first_name"] == "Rita"
         assert body["last_name"] == "Lee"
         assert body["phone_number"] == "5555555555"
@@ -169,7 +175,9 @@ async def test_create_student_with_datetime(
     """Test creating a student with last_registered datetime."""
     acc = AccountEntity(
         email="datetime@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="DateTime",
+        last_name="Test",
+        pid="987654321",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(acc)
@@ -222,7 +230,9 @@ async def test_create_student_wrong_role(
     """Test creating a student with account that has non-student role."""
     admin_acc = AccountEntity(
         email="admin@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Admin",
+        last_name="User",
+        pid="111111111",
         role=AccountRole.ADMIN,
     )
     test_async_session.add(admin_acc)
@@ -252,7 +262,9 @@ async def test_create_student_duplicate_account(
     """Test creating a student when account already has a student record."""
     acc = AccountEntity(
         email="duplicate@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Duplicate",
+        last_name="Student",
+        pid="222222222",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(acc)
@@ -294,12 +306,16 @@ async def test_create_student_duplicate_phone(
     """Test creating students with duplicate phone numbers."""
     acc1 = AccountEntity(
         email="phone1@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Phone",
+        last_name="One",
+        pid="333333333",
         role=AccountRole.STUDENT,
     )
     acc2 = AccountEntity(
         email="phone2@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Phone",
+        last_name="Two",
+        pid="444444444",
         role=AccountRole.STUDENT,
     )
     test_async_session.add_all([acc1, acc2])
@@ -342,7 +358,9 @@ async def test_get_student_success(
     """Test successfully getting a student by ID."""
     acc = AccountEntity(
         email="getstudent@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Get",
+        last_name="Student",
+        pid="555555555",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(acc)
@@ -389,7 +407,9 @@ async def test_update_student_success(
     """Test successfully updating a student."""
     acc = AccountEntity(
         email="updatestudent@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Update",
+        last_name="Student",
+        pid="666666666",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(acc)
@@ -452,12 +472,16 @@ async def test_update_student_phone_conflict(
     """Test updating student with phone number that already exists."""
     acc1 = AccountEntity(
         email="update1@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Update",
+        last_name="One",
+        pid="777777777",
         role=AccountRole.STUDENT,
     )
     acc2 = AccountEntity(
         email="update2@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Update",
+        last_name="Two",
+        pid="888888888",
         role=AccountRole.STUDENT,
     )
     test_async_session.add_all([acc1, acc2])
@@ -508,7 +532,9 @@ async def test_delete_student_success(
     """Test successfully deleting a student."""
     acc = AccountEntity(
         email="deletestudent@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Delete",
+        last_name="Me",
+        pid="999999999",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(acc)
@@ -605,7 +631,9 @@ async def test_list_students_empty_workflow(override_dependencies_admin: Any):
     ) as client:
         res = await client.get("/api/students/", headers=auth_headers())
         assert res.status_code == 200
-        assert res.json() == []
+        data = res.json()
+        assert data["items"] == []
+        assert data["total_records"] == 0
 
 
 @pytest.mark.asyncio
@@ -614,7 +642,9 @@ async def test_create_and_get_student(
 ):
     acc = AccountEntity(
         email="router1@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Router",
+        last_name="One",
+        pid="111222333",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(acc)
@@ -638,7 +668,6 @@ async def test_create_and_get_student(
         assert res.status_code == 201, res.text
         body = res.json()
         assert body["id"] == acc.id
-        assert body["email"] == acc.email
         assert body["first_name"] == "Rita"
 
         res2 = await client.get(f"/api/students/{acc.id}", headers=auth_headers())
@@ -654,7 +683,9 @@ async def test_update_and_delete_student(
 ):
     acc = AccountEntity(
         email="router2@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Router",
+        last_name="Two",
+        pid="444555666",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(acc)

@@ -109,7 +109,7 @@ class StudentService:
             query = query.limit(limit)
         result = await self.session.execute(query)
         students = result.scalars().all()
-        return [student.to_dto() for student in students]
+        return [student.to_model() for student in students]
 
     async def get_student_count(self) -> int:
         count_query = select(func.count(StudentEntity.account_id))
@@ -118,7 +118,7 @@ class StudentService:
 
     async def get_student_by_id(self, account_id: int) -> Student:
         student_entity = await self._get_student_entity_by_account_id(account_id)
-        return student_entity.to_dto()
+        return student_entity.to_model()
 
     async def create_student(
         self, data: StudentDataWithNames, account_id: int
@@ -138,6 +138,8 @@ class StudentService:
         self.session.add(account)
 
         student_data = StudentData(
+            first_name=data.first_name,
+            last_name=data.last_name,
             contact_preference=data.contact_preference,
             last_registered=data.last_registered,
             phone_number=data.phone_number,
@@ -151,7 +153,7 @@ class StudentService:
             raise StudentConflictException(data.phone_number)
 
         await self.session.refresh(new_student, ["account"])
-        return new_student.to_dto()
+        return new_student.to_model()
 
     async def update_student(
         self, account_id: int, data: StudentData | StudentDataWithNames
@@ -179,6 +181,8 @@ class StudentService:
             account.first_name = data.first_name
             account.last_name = data.last_name
             self.session.add(account)
+            student_entity.first_name = data.first_name
+            student_entity.last_name = data.last_name
 
         student_entity.contact_preference = data.contact_preference
         student_entity.last_registered = data.last_registered
@@ -192,11 +196,11 @@ class StudentService:
             raise StudentConflictException(data.phone_number)
 
         await self.session.refresh(student_entity, ["account"])
-        return student_entity.to_dto()
+        return student_entity.to_model()
 
     async def delete_student(self, account_id: int) -> Student:
         student_entity = await self._get_student_entity_by_account_id(account_id)
-        student_dto = student_entity.to_dto()
+        student_model = student_entity.to_model()
         await self.session.delete(student_entity)
         await self.session.commit()
-        return student_dto
+        return student_model

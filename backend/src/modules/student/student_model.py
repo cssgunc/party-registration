@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from src.core.models import PaginatedResponse
 
 
@@ -27,7 +27,9 @@ class StudentDataWithNames(StudentData):
 
 
 class Student(StudentData):
-    account_id: int
+    model_config = ConfigDict(populate_by_name=True)
+
+    account_id: int = Field(serialization_alias="id")
 
     @property
     def id(self) -> int:
