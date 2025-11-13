@@ -19,7 +19,7 @@ class StudentEntity(EntityBase):
     )
     first_name: Mapped[str] = mapped_column(String, nullable=False)
     last_name: Mapped[str] = mapped_column(String, nullable=False)
-    contact_preference: Mapped[ContactPreference] = mapped_column(
+    call_or_text_pref: Mapped[ContactPreference] = mapped_column(
         Enum(ContactPreference), nullable=False
     )
     last_registered: Mapped[datetime | None] = mapped_column(
@@ -34,7 +34,7 @@ class StudentEntity(EntityBase):
         return cls(
             first_name=data.first_name,
             last_name=data.last_name,
-            contact_preference=data.contact_preference,
+            call_or_text_pref=data.call_or_text_pref,
             last_registered=data.last_registered,
             phone_number=data.phone_number,
             account_id=account_id,
@@ -45,7 +45,7 @@ class StudentEntity(EntityBase):
             account_id=self.account_id,
             first_name=self.first_name,
             last_name=self.last_name,
-            contact_preference=self.contact_preference,
+            call_or_text_pref=self.call_or_text_pref,
             last_registered=self.last_registered,
             phone_number=self.phone_number,
         )
