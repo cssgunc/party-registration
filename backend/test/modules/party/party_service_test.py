@@ -146,7 +146,9 @@ async def radius_test_accounts_and_students(
         account = AccountEntity(
             id=i,
             email=f"student{i}@example.com",
-            hashed_password="...",
+            first_name="Test",
+        last_name="User",
+        pid="300000001",
             role=AccountRole.STUDENT,
         )
         accounts.append(account)
@@ -321,29 +323,37 @@ async def test_get_parties(
     account1 = AccountEntity(
         id=1,
         email="student1@example.com",
-        hashed_password="hashed_pw_1",
+        first_name="Test",
+        last_name="User",
+        pid="300000001",
         role=AccountRole.STUDENT,
     )
 
     account2 = AccountEntity(
         id=2,
         email="student2@example.com",
-        hashed_password="hashed_pw_2",
+        first_name="Test",
+        last_name="User",
+        pid="300000001",
         role=AccountRole.STUDENT,
     )
 
     account3 = AccountEntity(
         id=3,
         email="admin@example.com",
-        hashed_password="hashed_pw_3",
+        first_name="Test",
+        last_name="User",
+        pid="300000001",
         role=AccountRole.ADMIN,
     )
 
     account4 = AccountEntity(
         id=4,
         email="police@example.com",
-        hashed_password="hashed_pw_4",
-        role=AccountRole.POLICE,
+        first_name="Test",
+        last_name="User",
+        pid="300000001",
+        role=AccountRole.STAFF,
     )
 
     address1 = LocationEntity(
@@ -488,37 +498,49 @@ async def test_get_parties_by_date_range_multiple_parties(
     account1 = AccountEntity(
         id=1,
         email="john.doe@example.com",
-        hashed_password="hashed",
+        first_name="Test",
+        last_name="User",
+        pid="300000001",
         role=AccountRole.STUDENT,
     )
     account2 = AccountEntity(
         id=2,
         email="jane.smith@example.com",
-        hashed_password="hashed",
+        first_name="Test",
+        last_name="User",
+        pid="300000001",
         role=AccountRole.STUDENT,
     )
     account3 = AccountEntity(
         id=3,
         email="bob.johnson@example.com",
-        hashed_password="hashed",
+        first_name="Test",
+        last_name="User",
+        pid="300000001",
         role=AccountRole.STUDENT,
     )
     account4 = AccountEntity(
         id=4,
         email="alice.williams@example.com",
-        hashed_password="hashed",
+        first_name="Test",
+        last_name="User",
+        pid="300000001",
         role=AccountRole.STUDENT,
     )
     account5 = AccountEntity(
         id=5,
         email="charlie.brown@example.com",
-        hashed_password="hashed",
+        first_name="Test",
+        last_name="User",
+        pid="300000001",
         role=AccountRole.STUDENT,
     )
     account6 = AccountEntity(
         id=6,
         email="diana.davis@example.com",
-        hashed_password="hashed",
+        first_name="Test",
+        last_name="User",
+        pid="300000001",
         role=AccountRole.STUDENT,
     )
     address1 = LocationEntity(
@@ -810,13 +832,17 @@ async def test_get_party_count(
     account_one = AccountEntity(
         id=1,
         email="test@example.com",
-        hashed_password="hashed",
+        first_name="Test",
+        last_name="User",
+        pid="300000001",
         role=AccountRole.STUDENT,
     )
     account_two = AccountEntity(
         id=2,
         email="test2@example.com",
-        hashed_password="hashed",
+        first_name="Test",
+        last_name="User",
+        pid="300000001",
         role=AccountRole.STUDENT,
     )
     address = LocationEntity(
@@ -917,13 +943,17 @@ async def basic_accounts_and_students(test_async_session: AsyncSession):
     account1 = AccountEntity(
         id=1,
         email="student1@example.com",
-        hashed_password="...",
+        first_name="Test",
+        last_name="User",
+        pid="300000001",
         role=AccountRole.STUDENT,
     )
     account2 = AccountEntity(
         id=2,
         email="student2@example.com",
-        hashed_password="...",
+        first_name="Test",
+        last_name="User",
+        pid="300000001",
         role=AccountRole.STUDENT,
     )
     test_async_session.add_all([account1, account2])
@@ -1037,7 +1067,9 @@ async def four_accounts_and_students(test_async_session: AsyncSession):
         account = AccountEntity(
             id=i,
             email=f"student{i}@example.com",
-            hashed_password="...",
+            first_name="Test",
+        last_name="User",
+        pid="300000001",
             role=AccountRole.STUDENT,
         )
         accounts.append(account)
