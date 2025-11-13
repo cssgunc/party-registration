@@ -193,7 +193,7 @@ async def sample_party_setup(test_async_session: AsyncSession):
     student_one = StudentEntity(
         first_name="John",
         last_name="Doe",
-        contact_preference=ContactPreference.call,
+        call_or_text_pref=ContactPreference.call,
         phone_number="1234567890",
         account_id=1,
         last_registered=valid_date,
@@ -201,7 +201,7 @@ async def sample_party_setup(test_async_session: AsyncSession):
     student_two = StudentEntity(
         first_name="Jane",
         last_name="Smith",
-        contact_preference=ContactPreference.text,
+        call_or_text_pref=ContactPreference.text,
         phone_number="0987654321",
         account_id=2,
         last_registered=valid_date,
@@ -241,7 +241,7 @@ async def test_get_parties_with_data(
         contact_two_first_name="Jane",
         contact_two_last_name="Smith",
         contact_two_phone_number="0987654321",
-        contact_two_contact_preference=ContactPreference.text,
+        contact_two_call_or_text_pref=ContactPreference.text,
         )
         test_async_session.add(party)
     await test_async_session.commit()
@@ -276,7 +276,7 @@ async def test_get_parties_validates_content(
         contact_two_first_name="Jane",
         contact_two_last_name="Smith",
         contact_two_phone_number="0987654321",
-        contact_two_contact_preference=ContactPreference.text
+        contact_two_call_or_text_pref=ContactPreference.text
     )
     party2 = PartyEntity(
         party_datetime=party_datetime_2,
@@ -286,7 +286,7 @@ async def test_get_parties_validates_content(
         contact_two_first_name="Jane",
         contact_two_last_name="Smith",
         contact_two_phone_number="0987654321",
-        contact_two_contact_preference=ContactPreference.text
+        contact_two_call_or_text_pref=ContactPreference.text
     )
     test_async_session.add_all([party1, party2])
     await test_async_session.commit()
@@ -345,7 +345,7 @@ async def test_get_parties_content_with_pagination(
         contact_two_first_name="Jane",
         contact_two_last_name="Smith",
         contact_two_phone_number="0987654321",
-        contact_two_contact_preference=ContactPreference.text
+        contact_two_call_or_text_pref=ContactPreference.text
         )
         test_async_session.add(party)
         created_parties.append(party)
@@ -399,7 +399,7 @@ async def test_get_parties_pagination(
         contact_two_first_name="Jane",
         contact_two_last_name="Smith",
         contact_two_phone_number="0987654321",
-        contact_two_contact_preference=ContactPreference.text,
+        contact_two_call_or_text_pref=ContactPreference.text,
         )
         test_async_session.add(party)
     await test_async_session.commit()
@@ -448,7 +448,7 @@ async def test_get_parties_pagination_beyond_available(
         contact_two_first_name="Jane",
         contact_two_last_name="Smith",
         contact_two_phone_number="0987654321",
-        contact_two_contact_preference=ContactPreference.text,
+        contact_two_call_or_text_pref=ContactPreference.text,
         )
         test_async_session.add(party)
     await test_async_session.commit()
@@ -478,7 +478,7 @@ async def test_get_parties_custom_page_size(
         contact_two_first_name="Jane",
         contact_two_last_name="Smith",
         contact_two_phone_number="0987654321",
-        contact_two_contact_preference=ContactPreference.text,
+        contact_two_call_or_text_pref=ContactPreference.text,
         )
         test_async_session.add(party)
     await test_async_session.commit()
@@ -527,7 +527,7 @@ async def test_get_party_by_id(
         contact_two_first_name="Jane",
         contact_two_last_name="Smith",
         contact_two_phone_number="0987654321",
-        contact_two_contact_preference=ContactPreference.text,
+        contact_two_call_or_text_pref=ContactPreference.text,
     )
     test_async_session.add(party)
     await test_async_session.commit()
@@ -565,7 +565,7 @@ async def test_delete_party(
         contact_two_first_name="Jane",
         contact_two_last_name="Smith",
         contact_two_phone_number="0987654321",
-        contact_two_contact_preference=ContactPreference.text,
+        contact_two_call_or_text_pref=ContactPreference.text,
     )
     test_async_session.add(party)
     await test_async_session.commit()
@@ -606,7 +606,7 @@ async def test_delete_party_removes_from_list(
         contact_two_first_name="Jane",
         contact_two_last_name="Smith",
         contact_two_phone_number="0987654321",
-        contact_two_contact_preference=ContactPreference.text,
+        contact_two_call_or_text_pref=ContactPreference.text,
         )
         test_async_session.add(party)
     await test_async_session.commit()
@@ -687,7 +687,7 @@ async def test_create_party_as_student(
             "first_name": "Jane",
             "last_name": "Smith",
             "phone_number": "0987654321",
-            "contact_preference": "text"
+            "call_or_text_pref": "text"
         }
     }
 
@@ -721,7 +721,7 @@ async def test_create_party_as_admin(
             "first_name": "Jane",
             "last_name": "Smith",
             "phone_number": "0987654321",
-            "contact_preference": "text"
+            "call_or_text_pref": "text"
         }
     }
 
@@ -753,7 +753,7 @@ async def test_update_party_as_student(
         contact_two_first_name="Jane",
         contact_two_last_name="Smith",
         contact_two_phone_number="0987654321",
-        contact_two_contact_preference=ContactPreference.text,
+        contact_two_call_or_text_pref=ContactPreference.text,
     )
     test_async_session.add(existing_party)
     await test_async_session.commit()
@@ -769,7 +769,7 @@ async def test_update_party_as_student(
             "first_name": "Jane",
             "last_name": "Smith",
             "phone_number": "0987654321",
-            "contact_preference": "text"
+            "call_or_text_pref": "text"
         }
     }
 
@@ -800,7 +800,7 @@ async def test_update_party_as_admin(
         contact_two_first_name="Jane",
         contact_two_last_name="Smith",
         contact_two_phone_number="0987654321",
-        contact_two_contact_preference=ContactPreference.text,
+        contact_two_call_or_text_pref=ContactPreference.text,
     )
     test_async_session.add(existing_party)
     await test_async_session.commit()
@@ -817,7 +817,7 @@ async def test_update_party_as_admin(
             "first_name": "John",
             "last_name": "Doe",
             "phone_number": "1234567890",
-            "contact_preference": "call"
+            "call_or_text_pref": "call"
         }
     }
 
@@ -849,7 +849,7 @@ async def test_update_party_not_found(
             "first_name": "Jane",
             "last_name": "Smith",
             "phone_number": "0987654321",
-            "contact_preference": "text"
+            "call_or_text_pref": "text"
         }
     }
 
@@ -878,7 +878,7 @@ async def test_create_party_date_too_soon(
             "first_name": "Jane",
             "last_name": "Smith",
             "phone_number": "0987654321",
-            "contact_preference": "text"
+            "call_or_text_pref": "text"
         }
     }
 
@@ -904,7 +904,7 @@ async def test_update_party_date_too_soon(
         contact_two_first_name="Jane",
         contact_two_last_name="Smith",
         contact_two_phone_number="0987654321",
-        contact_two_contact_preference=ContactPreference.text,
+        contact_two_call_or_text_pref=ContactPreference.text,
     )
     test_async_session.add(existing_party)
     await test_async_session.commit()
@@ -921,7 +921,7 @@ async def test_update_party_date_too_soon(
             "first_name": "Jane",
             "last_name": "Smith",
             "phone_number": "0987654321",
-            "contact_preference": "text"
+            "call_or_text_pref": "text"
         }
     }
 
@@ -949,7 +949,7 @@ async def test_create_party_student_no_party_smart(
     student = StudentEntity(
         first_name="No",
         last_name="PartySmart",
-        contact_preference=ContactPreference.call,
+        call_or_text_pref=ContactPreference.call,
         phone_number="5555555555",
         account_id=3,
         last_registered=None  # No Party Smart attendance
@@ -981,7 +981,7 @@ async def test_create_party_student_no_party_smart(
             "first_name": "John",
             "last_name": "Doe",
             "phone_number": "1234567890",
-            "contact_preference": "call"
+            "call_or_text_pref": "call"
         }
     }
 
@@ -1024,7 +1024,7 @@ async def test_create_party_student_party_smart_expired(
     student = StudentEntity(
         first_name="Expired",
         last_name="PartySmart",
-        contact_preference=ContactPreference.call,
+        call_or_text_pref=ContactPreference.call,
         phone_number="6666666666",
         account_id=4,
         last_registered=expired_date
@@ -1056,7 +1056,7 @@ async def test_create_party_student_party_smart_expired(
             "first_name": "John",
             "last_name": "Doe",
             "phone_number": "1234567890",
-            "contact_preference": "call"
+            "call_or_text_pref": "call"
         }
     }
 
@@ -1096,7 +1096,7 @@ async def test_create_party_location_has_active_hold(
             "first_name": "Jane",
             "last_name": "Smith",
             "phone_number": "0987654321",
-            "contact_preference": "text"
+            "call_or_text_pref": "text"
         }
     }
 
@@ -1133,7 +1133,7 @@ async def test_create_party_location_expired_hold(
             "first_name": "Jane",
             "last_name": "Smith",
             "phone_number": "0987654321",
-            "contact_preference": "text"
+            "call_or_text_pref": "text"
         }
     }
 
@@ -1160,7 +1160,7 @@ async def test_create_party_student_using_admin_dto(
             "first_name": "Jane",
             "last_name": "Smith",
             "phone_number": "0987654321",
-            "contact_preference": "text"
+            "call_or_text_pref": "text"
         }
     }
 
@@ -1187,7 +1187,7 @@ async def test_create_party_admin_using_student_dto(
             "first_name": "Jane",
             "last_name": "Smith",
             "phone_number": "0987654321",
-            "contact_preference": "text"
+            "call_or_text_pref": "text"
         }
     }
 

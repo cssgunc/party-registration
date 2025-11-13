@@ -30,7 +30,7 @@ class PartyEntity(EntityBase):
     contact_two_first_name: Mapped[str] = mapped_column(String, nullable=False)
     contact_two_last_name: Mapped[str] = mapped_column(String, nullable=False)
     contact_two_phone_number: Mapped[str] = mapped_column(String, nullable=False)
-    contact_two_contact_preference: Mapped[ContactPreference] = mapped_column(
+    contact_two_call_or_text_pref: Mapped[ContactPreference] = mapped_column(
         Enum(ContactPreference), nullable=False
     )
 
@@ -50,7 +50,7 @@ class PartyEntity(EntityBase):
             contact_two_first_name=data.contact_two_first_name,
             contact_two_last_name=data.contact_two_last_name,
             contact_two_phone_number=data.contact_two_phone_number,
-            contact_two_contact_preference=data.contact_two_contact_preference,
+            contact_two_call_or_text_pref=data.contact_two_call_or_text_pref,
         )
 
     def to_model(self) -> Party:
@@ -63,5 +63,5 @@ class PartyEntity(EntityBase):
             contact_two_first_name=self.contact_two_first_name,
             contact_two_last_name=self.contact_two_last_name,
             contact_two_phone_number=self.contact_two_phone_number,
-            contact_two_contact_preference=self.contact_two_contact_preference,
+            contact_two_call_or_text_pref=self.contact_two_call_or_text_pref,
         )

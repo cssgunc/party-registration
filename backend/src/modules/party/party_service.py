@@ -334,7 +334,7 @@ class PartyService:
             contact_two_first_name=dto.contact_two.first_name,
             contact_two_last_name=dto.contact_two.last_name,
             contact_two_phone_number=dto.contact_two.phone_number,
-            contact_two_contact_preference=dto.contact_two.contact_preference,
+            contact_two_call_or_text_pref=dto.contact_two.call_or_text_pref,
         )
 
         # Create party
@@ -362,7 +362,7 @@ class PartyService:
             contact_two_first_name=dto.contact_two.first_name,
             contact_two_last_name=dto.contact_two.last_name,
             contact_two_phone_number=dto.contact_two.phone_number,
-            contact_two_contact_preference=dto.contact_two.contact_preference,
+            contact_two_call_or_text_pref=dto.contact_two.call_or_text_pref,
         )
 
         # Create party
@@ -396,7 +396,7 @@ class PartyService:
         party_entity.contact_two_first_name = dto.contact_two.first_name
         party_entity.contact_two_last_name = dto.contact_two.last_name
         party_entity.contact_two_phone_number = dto.contact_two.phone_number
-        party_entity.contact_two_contact_preference = dto.contact_two.contact_preference
+        party_entity.contact_two_call_or_text_pref = dto.contact_two.call_or_text_pref
 
         self.session.add(party_entity)
         await self.session.commit()
@@ -425,7 +425,7 @@ class PartyService:
         party_entity.contact_two_first_name = dto.contact_two.first_name
         party_entity.contact_two_last_name = dto.contact_two.last_name
         party_entity.contact_two_phone_number = dto.contact_two.phone_number
-        party_entity.contact_two_contact_preference = dto.contact_two.contact_preference
+        party_entity.contact_two_call_or_text_pref = dto.contact_two.call_or_text_pref
 
         self.session.add(party_entity)
         await self.session.commit()

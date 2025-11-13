@@ -16,7 +16,7 @@ class PartyData(BaseModel):
     contact_two_first_name: str = Field(..., description="First name of the second contact")
     contact_two_last_name: str = Field(..., description="Last name of the second contact")
     contact_two_phone_number: str = Field(..., description="Phone number of the second contact")
-    contact_two_contact_preference: ContactPreference = Field(..., description="Contact preference of the second contact")
+    contact_two_call_or_text_pref: ContactPreference = Field(..., description="Contact preference of the second contact")
 
 
 class Party(PartyData):
@@ -32,7 +32,7 @@ class ContactDTO(BaseModel):
     phone_number: str = Field(
         ..., pattern=r"^\+?1?\d{9,15}$", description="Phone number of the contact"
     )
-    contact_preference: ContactPreference = Field(
+    call_or_text_pref: ContactPreference = Field(
         ..., description="Preferred contact method: 'call' or 'text'"
     )
 

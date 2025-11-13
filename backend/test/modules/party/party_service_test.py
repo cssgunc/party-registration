@@ -57,14 +57,14 @@ async def sample_party_data(test_async_session: AsyncSession) -> PartyData:
     student_one = StudentEntity(
         first_name="John",
         last_name="Doe",
-        contact_preference=ContactPreference.call,
+        call_or_text_pref=ContactPreference.call,
         phone_number="1234567890",
         account_id=1,
     )
     student_two = StudentEntity(
         first_name="Jane",
         last_name="Smith",
-        contact_preference=ContactPreference.text,
+        call_or_text_pref=ContactPreference.text,
         phone_number="0987654321",
         account_id=2,
     )
@@ -79,7 +79,7 @@ async def sample_party_data(test_async_session: AsyncSession) -> PartyData:
         contact_two_first_name="Jane",
         contact_two_last_name="Smith",
         contact_two_phone_number="0987654321",
-        contact_two_contact_preference=ContactPreference.text,
+        contact_two_call_or_text_pref=ContactPreference.text,
     )
 
 
@@ -97,7 +97,7 @@ async def party_in_db(
         contact_two_first_name=sample_party_data.contact_two_first_name,
         contact_two_last_name=sample_party_data.contact_two_last_name,
         contact_two_phone_number=sample_party_data.contact_two_phone_number,
-        contact_two_contact_preference=sample_party_data.contact_two_contact_preference,
+        contact_two_call_or_text_pref=sample_party_data.contact_two_call_or_text_pref,
     )
     test_async_session.add(party_entity)
     await test_async_session.commit()
@@ -122,7 +122,7 @@ async def multiple_parties_in_db(
         contact_two_first_name=sample_party_data.contact_two_first_name,
         contact_two_last_name=sample_party_data.contact_two_last_name,
         contact_two_phone_number=sample_party_data.contact_two_phone_number,
-        contact_two_contact_preference=sample_party_data.contact_two_contact_preference,
+        contact_two_call_or_text_pref=sample_party_data.contact_two_call_or_text_pref,
         )
         test_async_session.add(party_entity)
         parties.append(party_entity)
@@ -157,7 +157,7 @@ async def radius_test_accounts_and_students(
             account_id=i,
             first_name=["John", "Jane", "Bob", "Alice", "Charlie", "Diana"][i - 1],
             last_name=["Doe", "Smith", "Johnson", "Williams", "Brown", "Davis"][i - 1],
-            contact_preference=ContactPreference.call
+            call_or_text_pref=ContactPreference.call
             if i % 2 == 1
             else ContactPreference.text,
             phone_number=str(i) * 10,
@@ -198,7 +198,7 @@ async def parties_with_radius_addresses(
         contact_two_first_name="Jane",
         contact_two_last_name="Smith",
         contact_two_phone_number="0987654321",
-        contact_two_contact_preference=ContactPreference.text,
+        contact_two_call_or_text_pref=ContactPreference.text,
     )
     test_async_session.add(party1)
 
@@ -220,7 +220,7 @@ async def parties_with_radius_addresses(
         contact_two_first_name="Contact",
         contact_two_last_name="Four",
         contact_two_phone_number="4444444444",
-        contact_two_contact_preference=ContactPreference.call,
+        contact_two_call_or_text_pref=ContactPreference.call,
     )
     test_async_session.add(party2)
 
@@ -242,7 +242,7 @@ async def parties_with_radius_addresses(
         contact_two_first_name="Contact",
         contact_two_last_name="Six",
         contact_two_phone_number="6666666666",
-        contact_two_contact_preference=ContactPreference.text,
+        contact_two_call_or_text_pref=ContactPreference.text,
     )
     test_async_session.add(party3)
 
@@ -286,7 +286,7 @@ async def test_create_party_invalid_location(
         contact_two_first_name=sample_party_data.contact_two_first_name,
         contact_two_last_name=sample_party_data.contact_two_last_name,
         contact_two_phone_number=sample_party_data.contact_two_phone_number,
-        contact_two_contact_preference=sample_party_data.contact_two_contact_preference,
+        contact_two_call_or_text_pref=sample_party_data.contact_two_call_or_text_pref,
     )
     with pytest.raises(LocationNotFoundException):
         await party_service.create_party(invalid_data)
@@ -304,7 +304,7 @@ async def test_create_party_invalid_contact_one(
         contact_two_first_name=sample_party_data.contact_two_first_name,
         contact_two_last_name=sample_party_data.contact_two_last_name,
         contact_two_phone_number=sample_party_data.contact_two_phone_number,
-        contact_two_contact_preference=sample_party_data.contact_two_contact_preference,
+        contact_two_call_or_text_pref=sample_party_data.contact_two_call_or_text_pref,
     )
     with pytest.raises(StudentNotFoundException):
         await party_service.create_party(invalid_data)
@@ -373,28 +373,28 @@ async def test_get_parties(
     student1 = StudentEntity(
         first_name="John",
         last_name="Doe",
-        contact_preference=ContactPreference.call,
+        call_or_text_pref=ContactPreference.call,
         phone_number="1234567890",
         account_id=1,
     )
     student2 = StudentEntity(
         first_name="Jane",
         last_name="Smith",
-        contact_preference=ContactPreference.text,
+        call_or_text_pref=ContactPreference.text,
         phone_number="0987654321",
         account_id=2,
     )
     student3 = StudentEntity(
         first_name="Bob",
         last_name="Johnson",
-        contact_preference=ContactPreference.call,
+        call_or_text_pref=ContactPreference.call,
         phone_number="1111111111",
         account_id=3,
     )
     student4 = StudentEntity(
         first_name="Alice",
         last_name="Williams",
-        contact_preference=ContactPreference.text,
+        call_or_text_pref=ContactPreference.text,
         phone_number="2222222222",
         account_id=4,
     )
@@ -423,7 +423,7 @@ async def test_get_parties(
         contact_two_first_name="Jane",
         contact_two_last_name="Smith",
         contact_two_phone_number="0987654321",
-        contact_two_contact_preference=ContactPreference.text,
+        contact_two_call_or_text_pref=ContactPreference.text,
     )
     party2 = PartyEntity(
         party_datetime=datetime.now() + timedelta(days=2),
@@ -433,7 +433,7 @@ async def test_get_parties(
         contact_two_first_name="Contact",
         contact_two_last_name="Four",
         contact_two_phone_number="4444444444",
-        contact_two_contact_preference=ContactPreference.call,
+        contact_two_call_or_text_pref=ContactPreference.call,
     )
     test_async_session.add_all([party1, party2])
     await test_async_session.commit()
@@ -567,42 +567,42 @@ async def test_get_parties_by_date_range_multiple_parties(
     student1 = StudentEntity(
         first_name="John",
         last_name="Doe",
-        contact_preference=ContactPreference.call,
+        call_or_text_pref=ContactPreference.call,
         phone_number="1234567890",
         account_id=1,
     )
     student2 = StudentEntity(
         first_name="Jane",
         last_name="Smith",
-        contact_preference=ContactPreference.text,
+        call_or_text_pref=ContactPreference.text,
         phone_number="0987654321",
         account_id=2,
     )
     student3 = StudentEntity(
         first_name="Bob",
         last_name="Johnson",
-        contact_preference=ContactPreference.call,
+        call_or_text_pref=ContactPreference.call,
         phone_number="1111111111",
         account_id=3,
     )
     student4 = StudentEntity(
         first_name="Alice",
         last_name="Williams",
-        contact_preference=ContactPreference.text,
+        call_or_text_pref=ContactPreference.text,
         phone_number="2222222222",
         account_id=4,
     )
     student5 = StudentEntity(
         first_name="Charlie",
         last_name="Brown",
-        contact_preference=ContactPreference.call,
+        call_or_text_pref=ContactPreference.call,
         phone_number="3333333333",
         account_id=5,
     )
     student6 = StudentEntity(
         first_name="Diana",
         last_name="Davis",
-        contact_preference=ContactPreference.text,
+        call_or_text_pref=ContactPreference.text,
         phone_number="4444444444",
         account_id=6,
     )
@@ -634,7 +634,7 @@ async def test_get_parties_by_date_range_multiple_parties(
         contact_two_first_name="Jane",
         contact_two_last_name="Smith",
         contact_two_phone_number="0987654321",
-        contact_two_contact_preference=ContactPreference.text
+        contact_two_call_or_text_pref=ContactPreference.text
     )
     party2 = PartyEntity(
         party_datetime=base_datetime + timedelta(hours=2),
@@ -644,7 +644,7 @@ async def test_get_parties_by_date_range_multiple_parties(
         contact_two_first_name="Contact",
         contact_two_last_name="Four",
         contact_two_phone_number="4444444444",
-        contact_two_contact_preference=ContactPreference.call,
+        contact_two_call_or_text_pref=ContactPreference.call,
     )
     party3 = PartyEntity(
         party_datetime=base_datetime + timedelta(days=5),
@@ -654,7 +654,7 @@ async def test_get_parties_by_date_range_multiple_parties(
         contact_two_first_name="Contact",
         contact_two_last_name="Six",
         contact_two_phone_number="6666666666",
-        contact_two_contact_preference=ContactPreference.text,
+        contact_two_call_or_text_pref=ContactPreference.text,
     )
     test_async_session.add_all([party1, party2, party3])
     await test_async_session.commit()
@@ -746,7 +746,7 @@ async def test_update_party(party_service: PartyService, party_in_db: Party):
         contact_two_first_name=party_in_db.contact_two_first_name,
         contact_two_last_name=party_in_db.contact_two_last_name,
         contact_two_phone_number=party_in_db.contact_two_phone_number,
-        contact_two_contact_preference=party_in_db.contact_two_contact_preference,
+        contact_two_call_or_text_pref=party_in_db.contact_two_call_or_text_pref,
     )
 
     updated = await party_service.update_party(party_in_db.id, update_data)
@@ -774,7 +774,7 @@ async def test_update_party_invalid_location(
         contact_two_first_name=party_in_db.contact_two_first_name,
         contact_two_last_name=party_in_db.contact_two_last_name,
         contact_two_phone_number=party_in_db.contact_two_phone_number,
-        contact_two_contact_preference=party_in_db.contact_two_contact_preference,
+        contact_two_call_or_text_pref=party_in_db.contact_two_call_or_text_pref,
     )
     with pytest.raises(LocationNotFoundException):
         await party_service.update_party(party_in_db.id, invalid_update)
@@ -792,7 +792,7 @@ async def test_update_party_invalid_contact_one(
         contact_two_first_name=party_in_db.contact_two_first_name,
         contact_two_last_name=party_in_db.contact_two_last_name,
         contact_two_phone_number=party_in_db.contact_two_phone_number,
-        contact_two_contact_preference=party_in_db.contact_two_contact_preference,
+        contact_two_call_or_text_pref=party_in_db.contact_two_call_or_text_pref,
     )
     with pytest.raises(StudentNotFoundException):
         await party_service.update_party(party_in_db.id, invalid_update)
@@ -855,14 +855,14 @@ async def test_get_party_count(
     student1 = StudentEntity(
         first_name="John",
         last_name="Doe",
-        contact_preference=ContactPreference.call,
+        call_or_text_pref=ContactPreference.call,
         phone_number="1234567890",
         account_id=1,
     )
     student2 = StudentEntity(
         first_name="Jane",
         last_name="Smith",
-        contact_preference=ContactPreference.text,
+        call_or_text_pref=ContactPreference.text,
         phone_number="0987654321",
         account_id=2,
     )
@@ -879,7 +879,7 @@ async def test_get_party_count(
         contact_two_first_name="Jane",
         contact_two_last_name="Smith",
         contact_two_phone_number="0987654321",
-        contact_two_contact_preference=ContactPreference.text,
+        contact_two_call_or_text_pref=ContactPreference.text,
     )
     test_async_session.add(party)
     await test_async_session.commit()
@@ -962,14 +962,14 @@ async def basic_accounts_and_students(test_async_session: AsyncSession):
     student1 = StudentEntity(
         first_name="John",
         last_name="Doe",
-        contact_preference=ContactPreference.call,
+        call_or_text_pref=ContactPreference.call,
         phone_number="1234567890",
         account_id=1,
     )
     student2 = StudentEntity(
         first_name="Jane",
         last_name="Smith",
-        contact_preference=ContactPreference.text,
+        call_or_text_pref=ContactPreference.text,
         phone_number="0987654321",
         account_id=2,
     )
@@ -1012,7 +1012,7 @@ async def test_get_parties_by_radius_time_window_outside_past(
         contact_two_first_name="Jane",
         contact_two_last_name="Smith",
         contact_two_phone_number="0987654321",
-        contact_two_contact_preference=ContactPreference.text,
+        contact_two_call_or_text_pref=ContactPreference.text,
     )
     test_async_session.add(party1)
     await test_async_session.commit()
@@ -1049,7 +1049,7 @@ async def test_get_parties_by_radius_time_window_outside_future(
         contact_two_first_name="Jane",
         contact_two_last_name="Smith",
         contact_two_phone_number="0987654321",
-        contact_two_contact_preference=ContactPreference.text,
+        contact_two_call_or_text_pref=ContactPreference.text,
     )
     test_async_session.add(party1)
     await test_async_session.commit()
@@ -1080,7 +1080,7 @@ async def four_accounts_and_students(test_async_session: AsyncSession):
             account_id=i,
             first_name=first_names[i - 1],
             last_name=last_names[i - 1],
-            contact_preference=ContactPreference.call
+            call_or_text_pref=ContactPreference.call
             if i % 2 == 1
             else ContactPreference.text,
             phone_number=str(i) * 10,
@@ -1128,7 +1128,7 @@ async def test_get_parties_by_radius_time_window_boundaries(
         contact_two_first_name="Jane",
         contact_two_last_name="Smith",
         contact_two_phone_number="0987654321",
-        contact_two_contact_preference=ContactPreference.text,
+        contact_two_call_or_text_pref=ContactPreference.text,
     )
     test_async_session.add(party1)
 
@@ -1140,7 +1140,7 @@ async def test_get_parties_by_radius_time_window_boundaries(
         contact_two_first_name="Contact",
         contact_two_last_name="Four",
         contact_two_phone_number="4444444444",
-        contact_two_contact_preference=ContactPreference.call,
+        contact_two_call_or_text_pref=ContactPreference.call,
     )
     test_async_session.add(party2)
 
@@ -1183,7 +1183,7 @@ async def test_get_parties_by_radius_missing_address_skipped(
         contact_two_first_name="Jane",
         contact_two_last_name="Smith",
         contact_two_phone_number="0987654321",
-        contact_two_contact_preference=ContactPreference.text,
+        contact_two_call_or_text_pref=ContactPreference.text,
     )
     test_async_session.add(party1)
     await test_async_session.commit()
@@ -1197,7 +1197,7 @@ async def test_get_parties_by_radius_missing_address_skipped(
         contact_two_first_name="Jane",
         contact_two_last_name="Smith",
         contact_two_phone_number="0987654321",
-        contact_two_contact_preference=ContactPreference.text,
+        contact_two_call_or_text_pref=ContactPreference.text,
     )
     test_async_session.add(invalid_party)
     await test_async_session.commit()
