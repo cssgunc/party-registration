@@ -7,6 +7,7 @@
   "accounts": [
     {
       "id": 1,
+      "pid": "730737345",
       "email": "admin@example.com",
       "first_name": "John",
       "last_name": "Doe",
@@ -15,6 +16,7 @@
     {
       "id": 2,
       "email": "staff@example.com",
+      "pid": "730737926",
       "first_name": "Jane",
       "last_name": "Smith",
       "role": "staff"
@@ -27,7 +29,7 @@
       "email": "heatherkim@unc.edu",
       "first_name": "Steven",
       "last_name": "Morrison",
-      "phone_number": "(536) 782-9443",
+      "phone_number": "5367829443",
       "contact_preference": "text",
       "last_registered": "NOW-571d"
     },
@@ -37,7 +39,7 @@
       "email": "williamlewis@unc.edu",
       "first_name": "Monica",
       "last_name": "Malone",
-      "phone_number": "(724) 766-4088",
+      "phone_number": "7247664088",
       "contact_preference": "text",
       "last_registered": "NOW-266d"
     },
@@ -47,7 +49,7 @@
       "email": "melanie92@unc.edu",
       "first_name": "Laura",
       "last_name": "Gonzales",
-      "phone_number": "(856) 575-3194",
+      "phone_number": "8565753194",
       "contact_preference": "call",
       "last_registered": "NOW-700d"
     },
@@ -57,7 +59,7 @@
       "email": "dustin94@unc.edu",
       "first_name": "Jonathan",
       "last_name": "Bowers",
-      "phone_number": "(413) 666-5062",
+      "phone_number": "4136665062",
       "contact_preference": "text",
       "last_registered": "NOW-580d"
     },
@@ -67,7 +69,7 @@
       "email": "walkeranthony@unc.edu",
       "first_name": "Joshua",
       "last_name": "Taylor",
-      "phone_number": "(355) 296-5822",
+      "phone_number": "3552965822",
       "contact_preference": "call",
       "last_registered": "NOW-306d"
     },
@@ -77,7 +79,7 @@
       "email": "tonymorales@unc.edu",
       "first_name": "Carolyn",
       "last_name": "Wall",
-      "phone_number": "(028) 938-3947",
+      "phone_number": "0289383947",
       "contact_preference": "text",
       "last_registered": "NOW-118d"
     },
@@ -87,7 +89,7 @@
       "email": "gmeza@unc.edu",
       "first_name": "Amber",
       "last_name": "Callahan",
-      "phone_number": "(811) 540-1257",
+      "phone_number": "8115401257",
       "contact_preference": "text",
       "last_registered": "NOW-594d"
     },
@@ -97,7 +99,7 @@
       "email": "ocarrillo@unc.edu",
       "first_name": "George",
       "last_name": "Perry",
-      "phone_number": "(163) 023-6315",
+      "phone_number": "1630236315",
       "contact_preference": "text",
       "last_registered": "NOW-171d"
     },
@@ -107,7 +109,7 @@
       "email": "emartin@unc.edu",
       "first_name": "Martin",
       "last_name": "Ellis",
-      "phone_number": "(504) 059-9133",
+      "phone_number": "5040599133",
       "contact_preference": "text",
       "last_registered": "NOW-526d"
     },
@@ -117,7 +119,7 @@
       "email": "geraldreed@unc.edu",
       "first_name": "William",
       "last_name": "Lamb",
-      "phone_number": "(355) 042-6305",
+      "phone_number": "3550426305",
       "contact_preference": "text",
       "last_registered": "NOW-395d"
     },
@@ -127,7 +129,7 @@
       "email": "jasmingomez@unc.edu",
       "first_name": "Theodore",
       "last_name": "Smith",
-      "phone_number": "(699) 109-8313",
+      "phone_number": "6991098313",
       "contact_preference": "call",
       "last_registered": "NOW-699d"
     },
@@ -137,7 +139,7 @@
       "email": "joseph42@unc.edu",
       "first_name": "Nicholas",
       "last_name": "Boone",
-      "phone_number": "(673) 885-3178",
+      "phone_number": "6738853178",
       "contact_preference": "call",
       "last_registered": "NOW-240d"
     },
@@ -147,7 +149,7 @@
       "email": "april41@unc.edu",
       "first_name": "Bryan",
       "last_name": "Garcia",
-      "phone_number": "(087) 169-1117",
+      "phone_number": "0871691117",
       "contact_preference": "text",
       "last_registered": "NOW-450d"
     },
@@ -157,7 +159,7 @@
       "email": "michaelstokes@unc.edu",
       "first_name": "Karen",
       "last_name": "Boone",
-      "phone_number": "(690) 995-0691",
+      "phone_number": "6909950691",
       "contact_preference": "call",
       "last_registered": "NOW-621d"
     },
@@ -167,7 +169,7 @@
       "email": "markmccoy@unc.edu",
       "first_name": "Mark",
       "last_name": "Mccoy",
-      "phone_number": "(696) 482-7095",
+      "phone_number": "6964827095",
       "contact_preference": "call",
       "last_registered": null
     },
@@ -177,7 +179,7 @@
       "email": "burkerobert@unc.edu",
       "first_name": "Eric",
       "last_name": "Bennett",
-      "phone_number": "(477) 407-0184",
+      "phone_number": "4774070184",
       "contact_preference": "call",
       "last_registered": "NOW-77d"
     },
@@ -187,7 +189,7 @@
       "email": "cassandraschroeder@unc.edu",
       "first_name": "Caroline",
       "last_name": "Walker",
-      "phone_number": "(074) 344-0309",
+      "phone_number": "0743440309",
       "contact_preference": "call",
       "last_registered": "NOW-578d"
     },
@@ -197,7 +199,7 @@
       "email": "umiller@unc.edu",
       "first_name": "Mary",
       "last_name": "Williams",
-      "phone_number": "(437) 106-7072",
+      "phone_number": "4371067072",
       "contact_preference": "call",
       "last_registered": "NOW-141d"
     },
@@ -207,7 +209,7 @@
       "email": "dhoover@unc.edu",
       "first_name": "Jordan",
       "last_name": "Wilson",
-      "phone_number": "(285) 062-5038",
+      "phone_number": "2850625038",
       "contact_preference": "text",
       "last_registered": "NOW-516d"
     },
@@ -217,7 +219,7 @@
       "email": "jhall@unc.edu",
       "first_name": "Jeremy",
       "last_name": "Ramos",
-      "phone_number": "(201) 925-6153",
+      "phone_number": "2019256153",
       "contact_preference": "call",
       "last_registered": "NOW-491d"
     },
@@ -227,7 +229,7 @@
       "email": "johnsonpatrick@unc.edu",
       "first_name": "Ronald",
       "last_name": "Jones",
-      "phone_number": "(538) 318-4902",
+      "phone_number": "5383184902",
       "contact_preference": "text",
       "last_registered": "NOW-3d"
     },
@@ -237,7 +239,7 @@
       "email": "shannon79@unc.edu",
       "first_name": "Manuel",
       "last_name": "Schwartz",
-      "phone_number": "(268) 674-3843",
+      "phone_number": "2686743843",
       "contact_preference": "call",
       "last_registered": "NOW-448d"
     },
@@ -247,7 +249,7 @@
       "email": "crystalporter@unc.edu",
       "first_name": "Timothy",
       "last_name": "Cohen",
-      "phone_number": "(060) 869-5584",
+      "phone_number": "0608695584",
       "contact_preference": "text",
       "last_registered": "NOW-231d"
     },
@@ -257,7 +259,7 @@
       "email": "alanlawrence@unc.edu",
       "first_name": "Christine",
       "last_name": "Olson",
-      "phone_number": "(132) 628-0027",
+      "phone_number": "1326280027",
       "contact_preference": "text",
       "last_registered": "NOW-180d"
     },
@@ -267,7 +269,7 @@
       "email": "pdavis@unc.edu",
       "first_name": "Kristina",
       "last_name": "Davidson",
-      "phone_number": "(982) 761-5102",
+      "phone_number": "9827615102",
       "contact_preference": "call",
       "last_registered": "NOW-409d"
     },
@@ -277,7 +279,7 @@
       "email": "jessicasmall@unc.edu",
       "first_name": "Richard",
       "last_name": "Mccoy",
-      "phone_number": "(817) 401-5134",
+      "phone_number": "8174015134",
       "contact_preference": "text",
       "last_registered": "NOW-186d"
     },
@@ -287,7 +289,7 @@
       "email": "tommy11@unc.edu",
       "first_name": "Timothy",
       "last_name": "Lopez",
-      "phone_number": "(115) 952-2119",
+      "phone_number": "1159522119",
       "contact_preference": "text",
       "last_registered": "NOW-689d"
     },
@@ -297,7 +299,7 @@
       "email": "davidanderson@unc.edu",
       "first_name": "Perry",
       "last_name": "Colon",
-      "phone_number": "(932) 952-2805",
+      "phone_number": "9329522805",
       "contact_preference": "call",
       "last_registered": "NOW-420d"
     },
@@ -307,7 +309,7 @@
       "email": "youngkimberly@unc.edu",
       "first_name": "Katelyn",
       "last_name": "Bennett",
-      "phone_number": "(808) 079-5200",
+      "phone_number": "8080795200",
       "contact_preference": "call",
       "last_registered": "NOW-690d"
     },
@@ -317,7 +319,7 @@
       "email": "connor62@unc.edu",
       "first_name": "David",
       "last_name": "Howe",
-      "phone_number": "(547) 040-0829",
+      "phone_number": "5470400829",
       "contact_preference": "call",
       "last_registered": "NOW-110d"
     },
@@ -327,7 +329,7 @@
       "email": "btaylor@unc.edu",
       "first_name": "Jonathan",
       "last_name": "Thomas",
-      "phone_number": "(970) 286-8495",
+      "phone_number": "9702868495",
       "contact_preference": "text",
       "last_registered": "NOW-282d"
     },
@@ -337,7 +339,7 @@
       "email": "vdavis@unc.edu",
       "first_name": "Mercedes",
       "last_name": "Davenport",
-      "phone_number": "(139) 304-9091",
+      "phone_number": "1393049091",
       "contact_preference": "call",
       "last_registered": "NOW-434d"
     },
@@ -347,7 +349,7 @@
       "email": "matthew59@unc.edu",
       "first_name": "Susan",
       "last_name": "Jones",
-      "phone_number": "(562) 316-0025",
+      "phone_number": "5623160025",
       "contact_preference": "call",
       "last_registered": "NOW-508d"
     },
@@ -357,7 +359,7 @@
       "email": "kristinblack@unc.edu",
       "first_name": "Nancy",
       "last_name": "Patterson",
-      "phone_number": "(859) 761-3689",
+      "phone_number": "8597613689",
       "contact_preference": "text",
       "last_registered": "NOW-518d"
     },
@@ -367,7 +369,7 @@
       "email": "marykim@unc.edu",
       "first_name": "Amanda",
       "last_name": "Benson",
-      "phone_number": "(034) 704-1827",
+      "phone_number": "0347041827",
       "contact_preference": "text",
       "last_registered": "NOW-384d"
     },
@@ -377,7 +379,7 @@
       "email": "kaisermarcus@unc.edu",
       "first_name": "Briana",
       "last_name": "Jones",
-      "phone_number": "(232) 975-0026",
+      "phone_number": "2329750026",
       "contact_preference": "text",
       "last_registered": "NOW-724d"
     },
@@ -387,7 +389,7 @@
       "email": "fmoore@unc.edu",
       "first_name": "Austin",
       "last_name": "Douglas",
-      "phone_number": "(803) 424-5803",
+      "phone_number": "8034245803",
       "contact_preference": "text",
       "last_registered": "NOW-652d"
     },
@@ -397,7 +399,7 @@
       "email": "vanessamcintyre@unc.edu",
       "first_name": "Kelly",
       "last_name": "Pruitt",
-      "phone_number": "(432) 319-1835",
+      "phone_number": "4323191835",
       "contact_preference": "text",
       "last_registered": "NOW-223d"
     },
@@ -407,7 +409,7 @@
       "email": "grayjeremy@unc.edu",
       "first_name": "Angela",
       "last_name": "Sawyer",
-      "phone_number": "(790) 010-7653",
+      "phone_number": "7900107653",
       "contact_preference": "text",
       "last_registered": "NOW-690d"
     },
@@ -417,7 +419,7 @@
       "email": "eblair@unc.edu",
       "first_name": "Michelle",
       "last_name": "Booth",
-      "phone_number": "(705) 547-1558",
+      "phone_number": "7055471558",
       "contact_preference": "text",
       "last_registered": "NOW-453d"
     },
@@ -427,7 +429,7 @@
       "email": "april42@unc.edu",
       "first_name": "Michelle",
       "last_name": "Lawson",
-      "phone_number": "(715) 470-4515",
+      "phone_number": "7154704515",
       "contact_preference": "text",
       "last_registered": "NOW-458d"
     },
@@ -437,7 +439,7 @@
       "email": "rodrigueztony@unc.edu",
       "first_name": "Ashley",
       "last_name": "Gordon",
-      "phone_number": "(172) 010-7314",
+      "phone_number": "1720107314",
       "contact_preference": "text",
       "last_registered": "NOW-393d"
     },
@@ -447,7 +449,7 @@
       "email": "donald74@unc.edu",
       "first_name": "Douglas",
       "last_name": "Trujillo",
-      "phone_number": "(481) 090-4735",
+      "phone_number": "4810904735",
       "contact_preference": "text",
       "last_registered": "NOW-692d"
     },
@@ -457,7 +459,7 @@
       "email": "elizabeth95@unc.edu",
       "first_name": "Ana",
       "last_name": "Washington",
-      "phone_number": "(444) 011-5552",
+      "phone_number": "4440115552",
       "contact_preference": "text",
       "last_registered": "NOW-312d"
     },
@@ -467,7 +469,7 @@
       "email": "livingstonsophia@unc.edu",
       "first_name": "Nicole",
       "last_name": "Doyle",
-      "phone_number": "(695) 482-7095",
+      "phone_number": "6954827095",
       "contact_preference": "call",
       "last_registered": "NOW-636d"
     },
@@ -477,7 +479,7 @@
       "email": "mcguiretracy@unc.edu",
       "first_name": "Shaun",
       "last_name": "Cardenas",
-      "phone_number": "(816) 228-7744",
+      "phone_number": "8162287744",
       "contact_preference": "text",
       "last_registered": "NOW-426d"
     },
@@ -487,7 +489,7 @@
       "email": "franklin61@unc.edu",
       "first_name": "Frank",
       "last_name": "Wallace",
-      "phone_number": "(469) 083-8189",
+      "phone_number": "4690838189",
       "contact_preference": "text",
       "last_registered": "NOW-353d"
     },
@@ -497,7 +499,7 @@
       "email": "matthew89@unc.edu",
       "first_name": "Keith",
       "last_name": "Martinez",
-      "phone_number": "(096) 496-6004",
+      "phone_number": "0964966004",
       "contact_preference": "text",
       "last_registered": "NOW-20d"
     },
@@ -507,7 +509,7 @@
       "email": "vhunter@unc.edu",
       "first_name": "Christopher",
       "last_name": "Miller",
-      "phone_number": "(887) 984-8197",
+      "phone_number": "8879848197",
       "contact_preference": "text",
       "last_registered": null
     },
@@ -517,7 +519,7 @@
       "email": "ogonzalez@unc.edu",
       "first_name": "Mark",
       "last_name": "Solis",
-      "phone_number": "(735) 658-5248",
+      "phone_number": "7356585248",
       "contact_preference": "text",
       "last_registered": "NOW-631d"
     },
@@ -527,7 +529,7 @@
       "email": "dylanyoung@unc.edu",
       "first_name": "Travis",
       "last_name": "Andersen",
-      "phone_number": "(904) 251-6249",
+      "phone_number": "9042516249",
       "contact_preference": "text",
       "last_registered": "NOW-659d"
     },
@@ -537,7 +539,7 @@
       "email": "qrobinson@unc.edu",
       "first_name": "Melinda",
       "last_name": "Holland",
-      "phone_number": "(197) 504-1368",
+      "phone_number": "1975041368",
       "contact_preference": "text",
       "last_registered": "NOW-726d"
     },
@@ -547,7 +549,7 @@
       "email": "sheila92@unc.edu",
       "first_name": "Catherine",
       "last_name": "Stevens",
-      "phone_number": "(325) 038-0312",
+      "phone_number": "3250380312",
       "contact_preference": "text",
       "last_registered": "NOW-585d"
     },
@@ -557,7 +559,7 @@
       "email": "marcusbrady@unc.edu",
       "first_name": "Joanne",
       "last_name": "White",
-      "phone_number": "(963) 729-6013",
+      "phone_number": "9637296013",
       "contact_preference": "call",
       "last_registered": "NOW-37d"
     },
@@ -567,7 +569,7 @@
       "email": "jpatterson@unc.edu",
       "first_name": "Savannah",
       "last_name": "Johnson",
-      "phone_number": "(063) 462-2490",
+      "phone_number": "0634622490",
       "contact_preference": "text",
       "last_registered": null
     },
@@ -577,7 +579,7 @@
       "email": "gallagherluke@unc.edu",
       "first_name": "Roy",
       "last_name": "Gonzalez",
-      "phone_number": "(879) 045-8763",
+      "phone_number": "8790458763",
       "contact_preference": "text",
       "last_registered": "NOW-162d"
     },
@@ -587,7 +589,7 @@
       "email": "ugonzales@unc.edu",
       "first_name": "Ryan",
       "last_name": "Pope",
-      "phone_number": "(864) 577-7450",
+      "phone_number": "8645777450",
       "contact_preference": "text",
       "last_registered": null
     },
@@ -597,7 +599,7 @@
       "email": "antoniofowler@unc.edu",
       "first_name": "Christopher",
       "last_name": "Smith",
-      "phone_number": "(483) 930-0352",
+      "phone_number": "4839300352",
       "contact_preference": "text",
       "last_registered": "NOW-384d"
     },
@@ -607,7 +609,7 @@
       "email": "abbottdavid@unc.edu",
       "first_name": "Carl",
       "last_name": "Smith",
-      "phone_number": "(873) 899-7432",
+      "phone_number": "8738997432",
       "contact_preference": "text",
       "last_registered": "NOW-135d"
     },
@@ -617,7 +619,7 @@
       "email": "brittany59@unc.edu",
       "first_name": "William",
       "last_name": "Perez",
-      "phone_number": "(279) 040-9215",
+      "phone_number": "2790409215",
       "contact_preference": "text",
       "last_registered": "NOW-592d"
     },
@@ -627,7 +629,7 @@
       "email": "jonescrystal@unc.edu",
       "first_name": "James",
       "last_name": "Wilson",
-      "phone_number": "(306) 664-5204",
+      "phone_number": "3066645204",
       "contact_preference": "call",
       "last_registered": "NOW-133d"
     },
@@ -637,7 +639,7 @@
       "email": "hannah13@unc.edu",
       "first_name": "Angelica",
       "last_name": "Hamilton",
-      "phone_number": "(984) 611-1710",
+      "phone_number": "9846111710",
       "contact_preference": "text",
       "last_registered": "NOW-22d"
     },
@@ -647,7 +649,7 @@
       "email": "beckrachel@unc.edu",
       "first_name": "Michael",
       "last_name": "Torres",
-      "phone_number": "(244) 426-8424",
+      "phone_number": "2444268424",
       "contact_preference": "text",
       "last_registered": "NOW-318d"
     },
@@ -657,7 +659,7 @@
       "email": "bryce42@unc.edu",
       "first_name": "Jeffrey",
       "last_name": "Taylor",
-      "phone_number": "(642) 440-1732",
+      "phone_number": "6424401732",
       "contact_preference": "text",
       "last_registered": "NOW-410d"
     },
@@ -667,7 +669,7 @@
       "email": "gkelley@unc.edu",
       "first_name": "Samantha",
       "last_name": "Marshall",
-      "phone_number": "(555) 786-0678",
+      "phone_number": "5557860678",
       "contact_preference": "text",
       "last_registered": "NOW-574d"
     },
@@ -677,7 +679,7 @@
       "email": "david66@unc.edu",
       "first_name": "Michael",
       "last_name": "Smith",
-      "phone_number": "(969) 209-4073",
+      "phone_number": "9692094073",
       "contact_preference": "call",
       "last_registered": "NOW-143d"
     },
@@ -687,7 +689,7 @@
       "email": "smithsarah@unc.edu",
       "first_name": "Hayley",
       "last_name": "Garcia",
-      "phone_number": "(627) 357-7824",
+      "phone_number": "6273577824",
       "contact_preference": "text",
       "last_registered": "NOW-673d"
     },
@@ -697,7 +699,7 @@
       "email": "baileyjohn@unc.edu",
       "first_name": "William",
       "last_name": "Middleton",
-      "phone_number": "(334) 514-1282",
+      "phone_number": "3345141282",
       "contact_preference": "text",
       "last_registered": "NOW-63d"
     },
@@ -707,7 +709,7 @@
       "email": "ann94@unc.edu",
       "first_name": "Bryan",
       "last_name": "Hale",
-      "phone_number": "(736) 202-2441",
+      "phone_number": "7362022441",
       "contact_preference": "call",
       "last_registered": "NOW-584d"
     },
@@ -717,7 +719,7 @@
       "email": "knoxbrandy@unc.edu",
       "first_name": "Diane",
       "last_name": "Merritt",
-      "phone_number": "(387) 040-7072",
+      "phone_number": "3870407072",
       "contact_preference": "call",
       "last_registered": "NOW-566d"
     },
@@ -727,7 +729,7 @@
       "email": "adamross@unc.edu",
       "first_name": "Angela",
       "last_name": "Todd",
-      "phone_number": "(889) 489-7302",
+      "phone_number": "8894897302",
       "contact_preference": "text",
       "last_registered": "NOW-223d"
     },
@@ -737,7 +739,7 @@
       "email": "carly61@unc.edu",
       "first_name": "Danielle",
       "last_name": "Stewart",
-      "phone_number": "(301) 741-0106",
+      "phone_number": "3017410106",
       "contact_preference": "text",
       "last_registered": "NOW-550d"
     },
@@ -747,7 +749,7 @@
       "email": "jeffreymiddleton@unc.edu",
       "first_name": "Ryan",
       "last_name": "Oliver",
-      "phone_number": "(670) 844-1824",
+      "phone_number": "6708441824",
       "contact_preference": "text",
       "last_registered": "NOW-79d"
     },
@@ -757,7 +759,7 @@
       "email": "scastaneda@unc.edu",
       "first_name": "Mason",
       "last_name": "Watson",
-      "phone_number": "(996) 015-1797",
+      "phone_number": "9960151797",
       "contact_preference": "text",
       "last_registered": "NOW-561d"
     }
@@ -772,7 +774,7 @@
         "email": "wanda00@unc.edu",
         "first_name": "Teresa",
         "last_name": "Griffin",
-        "phone_number": "(267) 072-1838",
+        "phone_number": "2670721838",
         "contact_preference": "text"
       }
     },
@@ -785,7 +787,7 @@
         "email": "john09@unc.edu",
         "first_name": "Daniel",
         "last_name": "Johnson",
-        "phone_number": "(913) 222-9878",
+        "phone_number": "9132229878",
         "contact_preference": "call"
       }
     },
@@ -798,7 +800,7 @@
         "email": "christinemartinez@unc.edu",
         "first_name": "Ashley",
         "last_name": "Griffin",
-        "phone_number": "(429) 813-7870",
+        "phone_number": "4298137870",
         "contact_preference": "call"
       }
     },
@@ -811,7 +813,7 @@
         "email": "wanda00@unc.edu",
         "first_name": "Teresa",
         "last_name": "Griffin",
-        "phone_number": "(267) 072-1838",
+        "phone_number": "2670721838",
         "contact_preference": "text"
       }
     },
@@ -824,7 +826,7 @@
         "email": "christinemartinez@unc.edu",
         "first_name": "Ashley",
         "last_name": "Griffin",
-        "phone_number": "(260) 713-5634",
+        "phone_number": "2607135634",
         "contact_preference": "call"
       }
     },
@@ -837,7 +839,7 @@
         "email": "christinemartinez@unc.edu",
         "first_name": "Ashley",
         "last_name": "Griffin",
-        "phone_number": "(260) 713-5634",
+        "phone_number": "2607135634",
         "contact_preference": "call"
       }
     },
@@ -850,7 +852,7 @@
         "email": "andrewwilliams@unc.edu",
         "first_name": "Sheena",
         "last_name": "Garza",
-        "phone_number": "(880) 733-6024",
+        "phone_number": "8807336024",
         "contact_preference": "call"
       }
     },
@@ -863,7 +865,7 @@
         "email": "wanda00@unc.edu",
         "first_name": "Teresa",
         "last_name": "Griffin",
-        "phone_number": "(267) 072-1838",
+        "phone_number": "2670721838",
         "contact_preference": "text"
       }
     },
@@ -876,7 +878,7 @@
         "email": "christinemartinez@unc.edu",
         "first_name": "Ashley",
         "last_name": "Griffin",
-        "phone_number": "(260) 713-5634",
+        "phone_number": "2607135634",
         "contact_preference": "call"
       }
     },
@@ -889,7 +891,7 @@
         "email": "christinemartinez@unc.edu",
         "first_name": "Ashley",
         "last_name": "Griffin",
-        "phone_number": "(260) 713-5634",
+        "phone_number": "2607135634",
         "contact_preference": "call"
       }
     },
@@ -902,7 +904,7 @@
         "email": "dylanyoung@unc.edu",
         "first_name": "Travis",
         "last_name": "Andersen",
-        "phone_number": "(904) 251-6249",
+        "phone_number": "9042516249",
         "contact_preference": "text"
       }
     },
@@ -915,7 +917,7 @@
         "email": "kellymark@unc.edu",
         "first_name": "Valerie",
         "last_name": "Casey",
-        "phone_number": "(690) 092-2391",
+        "phone_number": "6900922391",
         "contact_preference": "call"
       }
     },
@@ -928,7 +930,7 @@
         "email": "dylanyoung@unc.edu",
         "first_name": "Travis",
         "last_name": "Andersen",
-        "phone_number": "(904) 251-6249",
+        "phone_number": "9042516249",
         "contact_preference": "text"
       }
     },
@@ -941,7 +943,7 @@
         "email": "umiller@unc.edu",
         "first_name": "Mary",
         "last_name": "Williams",
-        "phone_number": "(355) 314-7977",
+        "phone_number": "3553147977",
         "contact_preference": "call"
       }
     },
@@ -954,7 +956,7 @@
         "email": "stevenstimothy@unc.edu",
         "first_name": "Tony",
         "last_name": "Delacruz",
-        "phone_number": "(400) 624-9809",
+        "phone_number": "4006249809",
         "contact_preference": "call"
       }
     },
@@ -967,7 +969,7 @@
         "email": "wanda00@unc.edu",
         "first_name": "Teresa",
         "last_name": "Griffin",
-        "phone_number": "(267) 072-1838",
+        "phone_number": "2670721838",
         "contact_preference": "text"
       }
     },
@@ -980,7 +982,7 @@
         "email": "christinemartinez@unc.edu",
         "first_name": "Ashley",
         "last_name": "Griffin",
-        "phone_number": "(260) 713-5634",
+        "phone_number": "2607135634",
         "contact_preference": "call"
       }
     },
@@ -993,7 +995,7 @@
         "email": "christinemartinez@unc.edu",
         "first_name": "Ashley",
         "last_name": "Griffin",
-        "phone_number": "(260) 713-5634",
+        "phone_number": "2607135634",
         "contact_preference": "call"
       }
     },
@@ -1006,7 +1008,7 @@
         "email": "andrewwilliams@unc.edu",
         "first_name": "Sheena",
         "last_name": "Garza",
-        "phone_number": "(880) 733-6024",
+        "phone_number": "8807336024",
         "contact_preference": "call"
       }
     },
@@ -1019,7 +1021,7 @@
         "email": "reginald74@unc.edu",
         "first_name": "Ashley",
         "last_name": "Hill",
-        "phone_number": "(630) 665-2657",
+        "phone_number": "6306652657",
         "contact_preference": "text"
       }
     },
@@ -1032,7 +1034,7 @@
         "email": "wanda00@unc.edu",
         "first_name": "Teresa",
         "last_name": "Griffin",
-        "phone_number": "(267) 072-1838",
+        "phone_number": "2670721838",
         "contact_preference": "text"
       }
     },
@@ -1045,7 +1047,7 @@
         "email": "christinemartinez@unc.edu",
         "first_name": "Ashley",
         "last_name": "Griffin",
-        "phone_number": "(260) 713-5634",
+        "phone_number": "2607135634",
         "contact_preference": "call"
       }
     },
@@ -1058,7 +1060,7 @@
         "email": "christinemartinez@unc.edu",
         "first_name": "Ashley",
         "last_name": "Griffin",
-        "phone_number": "(260) 713-5634",
+        "phone_number": "2607135634",
         "contact_preference": "call"
       }
     },
@@ -1071,7 +1073,7 @@
         "email": "dylanyoung@unc.edu",
         "first_name": "Travis",
         "last_name": "Andersen",
-        "phone_number": "(904) 251-6249",
+        "phone_number": "9042516249",
         "contact_preference": "text"
       }
     },
@@ -3348,7 +3350,7 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
+      "warning_count": 2,
       "citation_count": 0,
       "hold_expiration": null,
       "id": 8
@@ -3403,7 +3405,7 @@
       "country": "US",
       "zip_code": "27514",
       "warning_count": 0,
-      "citation_count": 0,
+      "citation_count": 1,
       "hold_expiration": null,
       "id": 11
     },
@@ -3456,7 +3458,7 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
+      "warning_count": 2,
       "citation_count": 0,
       "hold_expiration": null,
       "id": 14
@@ -3510,8 +3512,8 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
+      "warning_count": 2,
+      "citation_count": 1,
       "hold_expiration": null,
       "id": 17
     },

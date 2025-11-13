@@ -1,9 +1,9 @@
 import type { Location } from "./location";
-import type { Student, Contact } from "./student";
+import type { Contact, Student } from "./student";
 
 type Party = {
   id: number;
-  datetime: string;
+  datetime: Date;
   location: Location;
   contactOne: Student;
   contactTwo: Contact;

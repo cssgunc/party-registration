@@ -6,7 +6,7 @@ type Student = {
   lastName: string;
   phoneNumber: string;
   contactPreference: "call" | "text";
-  lastRegistered: string | null;
+  lastRegistered: Date | null;
 };
 
 type Contact = {

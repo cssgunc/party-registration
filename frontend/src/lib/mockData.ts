@@ -1,68 +1,8 @@
 import type { Account, PoliceAccount } from "@/types/api/account";
 import type { Location } from "@/types/api/location";
-import type { Student, Contact } from "@/types/api/student";
 import type { Party } from "@/types/api/party";
-// @ts-expect-error - JSON import without type definitions
-import mockDataJson from "@/../shared/mock_data.json";
-
-type MockDataJson = {
-  police: {
-    email: string;
-    password: string;
-    hashed_password: string;
-  };
-  accounts: Array<{
-    id: number;
-    email: string;
-    first_name: string;
-    last_name: string;
-    role: string;
-  }>;
-  students: Array<{
-    id: number;
-    pid: string;
-    email: string;
-    first_name: string;
-    last_name: string;
-    phone_number: string;
-    contact_preference: string;
-    last_registered: string | null;
-  }>;
-  locations: Array<{
-    id: number;
-    citation_count: number;
-    warning_count: number;
-    hold_expiration_date: string | null;
-    has_active_hold: boolean;
-    google_place_id: string;
-    formatted_address: string;
-    latitude: number;
-    longitude: number;
-    street_number: string | null;
-    street_name: string | null;
-    unit: string | null;
-    city: string | null;
-    county: string | null;
-    state: string | null;
-    country: string | null;
-    zip_code: string | null;
-  }>;
-  parties: Array<{
-    id: number;
-    party_datetime: string;
-    location_id: number;
-    contact_one_id: number;
-    contact_two: {
-      email: string;
-      first_name: string;
-      last_name: string;
-      phone_number: string;
-      contact_preference: string;
-    };
-  }>;
-};
-
-const mockData = mockDataJson as MockDataJson;
+import type { Contact, Student } from "@/types/api/student";
+import mockData from "@/../shared/mock_data.json";;
 
 /**
  * Parses relative date strings like "NOW+7d" or "NOW-30d" into Date objects
@@ -87,21 +27,22 @@ function parseRelativeDate(dateStr: string | null): Date | null {
 }
 
 // Parse Police Account
-export const policeAccount: PoliceAccount = {
+export const POLICE_ACCOUNT: PoliceAccount = {
   email: mockData.police.email,
 };
 
 // Parse Accounts
-export const accounts: Account[] = mockData.accounts.map((acc) => ({
+export const ACCOUNTS: Account[] = mockData.accounts.map((acc) => ({
   id: acc.id,
   email: acc.email,
+  pid: acc.pid,
   firstName: acc.first_name,
   lastName: acc.last_name,
   role: acc.role as "staff" | "admin" | "student",
 }));
 
 // Parse Students
-export const students: Student[] = mockData.students.map((student) => ({
+export const STUDENTS: Student[] = mockData.students.map((student) => ({
   id: student.id,
   pid: student.pid,
   email: student.email,
@@ -110,17 +51,17 @@ export const students: Student[] = mockData.students.map((student) => ({
   phoneNumber: student.phone_number,
   contactPreference: student.contact_preference as "call" | "text",
   lastRegistered: student.last_registered
-    ? parseRelativeDate(student.last_registered)?.toISOString() ?? null
+    ? parseRelativeDate(student.last_registered)
     : null,
 }));
 
 // Parse Locations
-export const locations: Location[] = mockData.locations.map((loc) => ({
+export const LOCATIONS: Location[] = mockData.locations.map((loc) => ({
   id: loc.id,
   citationCount: loc.citation_count,
   warningCount: loc.warning_count,
-  holdExpirationDate: parseRelativeDate(loc.hold_expiration_date),
-  hasActiveHold: loc.has_active_hold,
+  holdExpirationDate: parseRelativeDate(loc.hold_expiration),
+  hasActiveHold: !!loc.hold_expiration,
   googlePlaceId: loc.google_place_id,
   formattedAddress: loc.formatted_address,
   latitude: loc.latitude,
@@ -137,20 +78,22 @@ export const locations: Location[] = mockData.locations.map((loc) => ({
 
 // Helper to find student by ID
 function findStudentById(id: number): Student {
-  const student = students.find((s) => s.id === id);
+  const student = STUDENTS.find((s) => s.id === id);
   if (!student) throw new Error(`Student with id ${id} not found`);
   return student;
 }
 
 // Helper to find location by ID
 function findLocationById(id: number): Location {
-  const location = locations.find((l) => l.id === id);
+  const location = LOCATIONS.find((l) => l.id === id);
   if (!location) throw new Error(`Location with id ${id} not found`);
   return location;
 }
 
 // Parse contact two objects
-function parseContactTwo(contactData: MockDataJson["parties"][0]["contact_two"]): Contact {
+function parseContactTwo(
+  contactData: typeof mockData["parties"][0]["contact_two"]
+): Contact {
   return {
     email: contactData.email,
     firstName: contactData.first_name,
@@ -161,11 +104,9 @@ function parseContactTwo(contactData: MockDataJson["parties"][0]["contact_two"])
 }
 
 // Parse Parties
-export const parties: Party[] = mockData.parties.map((party) => ({
+export const PARTIES: Party[] = mockData.parties.map((party) => ({
   id: party.id,
-  datetime:
-    parseRelativeDate(party.party_datetime)?.toISOString() ??
-    new Date().toISOString(),
+  datetime: parseRelativeDate(party.party_datetime) ?? new Date(),
   location: findLocationById(party.location_id),
   contactOne: findStudentById(party.contact_one_id),
   contactTwo: parseContactTwo(party.contact_two),

@@ -14,9 +14,8 @@ from pathlib import Path
 import src.modules  # Ensure all modules are imported so their entities are registered # noqa: F401
 from sqlalchemy import create_engine, text
 from src.core.config import env
-from src.core.database import AsyncSessionLocal, EntityBase
+from src.core.database import AsyncSessionLocal, EntityBase, server_url
 from src.core.database import engine as async_engine
-from src.core.database import server_url
 
 
 def parse_date(date_str: str | None) -> datetime | None:
@@ -73,7 +72,7 @@ async def reset_dev():
         from src.modules.student.student_model import ContactPreference, StudentData
 
         with open(
-            str(Path(__file__).parent.parent.parent / "shared" / "mock_data.json"), "r"
+            str(Path(__file__).parent.parent.parent / "frontend" / "shared" / "mock_data.json"), "r"
         ) as f:
             data = json.load(f)
 
@@ -86,6 +85,7 @@ async def reset_dev():
 
         for account_data in data["accounts"]:
             account = AccountEntity(
+                pid=account_data["pid"],
                 email=account_data["email"],
                 first_name=account_data["first_name"],
                 last_name=account_data["last_name"],
@@ -97,6 +97,7 @@ async def reset_dev():
 
         for student_data in data["students"]:
             account = AccountEntity(
+                pid=student_data["pid"],
                 email=student_data["email"],
                 first_name=student_data["first_name"],
                 last_name=student_data["last_name"],
@@ -110,7 +111,7 @@ async def reset_dev():
                     contact_preference=ContactPreference(
                         student_data["contact_preference"]
                     ),
-                    phone_number=re.sub(r"\D", "", student_data.get("phone_number", "") or ""),
+                    phone_number=student_data["phone_number"],
                     last_registered=parse_date(student_data.get("last_registered")),
                 ),
                 account.id,
