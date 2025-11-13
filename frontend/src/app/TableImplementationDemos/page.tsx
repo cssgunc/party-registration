@@ -5,7 +5,6 @@ import { PartyTable } from "../../components/PartyTable";
 import { StudentTable } from "../../components/StudentTable";
 
 export default function Home() {
-  console.log("party", PARTIES[0]);
   return (
     <div className="p-8 px-24">
       <PartyTable data={PARTIES} />
