@@ -8,7 +8,11 @@ class PartyData(BaseModel):
     party_datetime: datetime = Field(..., description="Date and time of the party")
     location_id: int = Field(..., description="ID of the location where the party is held")
     contact_one_id: int = Field(..., description="ID of the first contact student")
-    contact_two_id: int = Field(..., description="ID of the second contact student")
+    contact_two_email: EmailStr = Field(..., description="Email of the second contact")
+    contact_two_first_name: str = Field(..., description="First name of the second contact")
+    contact_two_last_name: str = Field(..., description="Last name of the second contact")
+    contact_two_phone_number: str = Field(..., description="Phone number of the second contact")
+    contact_two_contact_preference: ContactPreference = Field(..., description="Contact preference of the second contact")
 
 
 class Party(PartyData):

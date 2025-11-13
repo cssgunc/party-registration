@@ -12,7 +12,7 @@ class ContactPreference(enum.Enum):
 class StudentData(BaseModel):
     first_name: str = Field(min_length=1)
     last_name: str = Field(min_length=1)
-    call_or_text_pref: ContactPreference
+    contact_preference: ContactPreference
     last_registered: datetime | None = None
     phone_number: str = Field(pattern=r"^\+?1?\d{9,15}$")
 

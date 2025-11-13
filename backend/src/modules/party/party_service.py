@@ -14,11 +14,9 @@ from src.core.exceptions import BadRequestException, ConflictException, NotFound
 from ..location.location_entity import LocationEntity
 from ..location.location_service import LocationService
 from ..student.student_entity import StudentEntity
-from ..student.student_model import StudentData
-from ..account.account_entity import AccountEntity, AccountRole
 from ..account.account_service import AccountService, AccountByEmailNotFoundException
 from .party_entity import PartyEntity
-from .party_model import Party, PartyData, AdminCreatePartyDTO, StudentCreatePartyDTO, ContactDTO
+from .party_model import Party, PartyData, AdminCreatePartyDTO, StudentCreatePartyDTO
 
 
 class PartyNotFoundException(NotFoundException):
@@ -122,7 +120,7 @@ class PartyService:
             raise PartyDateTooSoonException()
 
     async def _validate_party_smart_attendance(self, student_id: int) -> None:
-        """Validate that student has completed Party Smart within the past year."""
+        """Validate that student has completed Party Smart after the most recent August 1st."""
         result = await self.session.execute(
             select(StudentEntity).where(StudentEntity.account_id == student_id)
         )
@@ -134,9 +132,22 @@ class PartyService:
         if student.last_registered is None:
             raise PartySmartNotCompletedException(student_id)
 
-        # Check if last_registered is within the past year
-        one_year_ago = datetime.now() - timedelta(days=365)
-        if student.last_registered < one_year_ago:
+        # Calculate the most recent August 1st
+        now = datetime.now()
+        current_year = now.year
+
+        # August 1st of the current year
+        august_first_this_year = datetime(current_year, 8, 1, 0, 0, 0)
+
+        # If today is before August 1st, use last year's August 1st
+        # Otherwise, use this year's August 1st
+        if now < august_first_this_year:
+            most_recent_august_first = datetime(current_year - 1, 8, 1, 0, 0, 0)
+        else:
+            most_recent_august_first = august_first_this_year
+
+        # Check if last_registered is after the most recent August 1st
+        if student.last_registered < most_recent_august_first:
             raise PartySmartNotCompletedException(student_id)
 
     def _validate_location_hold(self, location: LocationEntity) -> None:
@@ -159,13 +170,6 @@ class PartyService:
         self._validate_party_date(party_datetime)
         await self._validate_party_smart_attendance(student_id)
 
-    async def _validate_both_students_exist(
-        self, contact_one_id: int, contact_two_id: int
-    ) -> None:
-        """Validate that both contact students exist."""
-        await self._validate_student_exists(contact_one_id)
-        await self._validate_student_exists(contact_two_id)
-
     async def _get_student_by_email(self, email: str) -> StudentEntity:
         """Get a student from the database by email address."""
         # First find the account by email
@@ -182,47 +186,6 @@ class PartyService:
         if student is None:
             raise StudentNotFoundException(account.id)
         return student
-
-    async def _get_or_create_student_from_contact(self, contact: ContactDTO) -> int:
-        """Get existing student by email or create new account + student record.
-        Returns the student's account_id."""
-        # Try to get existing student by email
-        try:
-            student = await self._get_student_by_email(contact.email)
-            return student.account_id
-        except StudentNotFoundException:
-            pass
-
-        # Student doesn't exist, create new account and student
-        # Generate a temporary password (can be reset via forgot password flow)
-        import secrets
-        temp_password = secrets.token_urlsafe(16)
-
-        # Create account
-        from ..account.account_model import AccountData, Role
-        account_data = AccountData(
-            email=contact.email,
-            first_name=contact.first_name,
-            last_name=contact.last_name,
-            role=Role.STUDENT,
-            password=temp_password
-        )
-        new_account = await self.account_service.create_account(account_data)
-
-        # Create student record
-        student_data = StudentData(
-            first_name=contact.first_name,
-            last_name=contact.last_name,
-            phone_number=contact.phone_number,
-            call_or_text_pref=contact.contact_preference,
-            last_registered=None
-        )
-        new_student = StudentEntity.from_model(student_data, new_account.id)
-        self.session.add(new_student)
-        await self.session.commit()
-        await self.session.refresh(new_student)
-
-        return new_student.account_id
 
     async def _get_location_by_place_id(self, place_id: str) -> LocationEntity:
         """Get a location from the database by Google Maps place_id."""
@@ -296,8 +259,7 @@ class PartyService:
     async def get_parties_by_contact(self, student_id: int) -> List[Party]:
         result = await self.session.execute(
             select(PartyEntity).where(
-                (PartyEntity.contact_one_id == student_id)
-                | (PartyEntity.contact_two_id == student_id)
+                PartyEntity.contact_one_id == student_id
             )
         )
         parties = result.scalars().all()
@@ -319,7 +281,6 @@ class PartyService:
         # Validate that referenced resources exist
         await self._validate_location_exists(data.location_id)
         await self._validate_student_exists(data.contact_one_id)
-        await self._validate_student_exists(data.contact_two_id)
 
         new_party = PartyEntity.from_model(data)
         try:
@@ -336,7 +297,6 @@ class PartyService:
         # Validate that referenced resources exist
         await self._validate_location_exists(data.location_id)
         await self._validate_student_exists(data.contact_one_id)
-        await self._validate_student_exists(data.contact_two_id)
 
         for key, value in data.model_dump().items():
             if key == "id":
@@ -362,18 +322,19 @@ class PartyService:
         # Get/create location and validate no hold
         location = await self._validate_and_get_location(dto.place_id)
 
-        # Get or create contact_two from ContactDTO
-        contact_two_id = await self._get_or_create_student_from_contact(dto.contact_two)
+        # Validate contact_one (student) exists
+        await self._validate_student_exists(student_account_id)
 
-        # Validate both students exist
-        await self._validate_both_students_exist(student_account_id, contact_two_id)
-
-        # Create party data
+        # Create party data with contact_two information directly
         party_data = PartyData(
             party_datetime=dto.party_datetime,
             location_id=location.id,
             contact_one_id=student_account_id,
-            contact_two_id=contact_two_id
+            contact_two_email=dto.contact_two.email,
+            contact_two_first_name=dto.contact_two.first_name,
+            contact_two_last_name=dto.contact_two.last_name,
+            contact_two_phone_number=dto.contact_two.phone_number,
+            contact_two_contact_preference=dto.contact_two.contact_preference,
         )
 
         # Create party
@@ -392,18 +353,16 @@ class PartyService:
         contact_one_student = await self._get_student_by_email(dto.contact_one_email)
         contact_one_id = contact_one_student.account_id
 
-        # Get or create contact_two from ContactDTO
-        contact_two_id = await self._get_or_create_student_from_contact(dto.contact_two)
-
-        # Validate both students exist
-        await self._validate_both_students_exist(contact_one_id, contact_two_id)
-
-        # Create party data
+        # Create party data with contact_two information directly
         party_data = PartyData(
             party_datetime=dto.party_datetime,
             location_id=location.id,
             contact_one_id=contact_one_id,
-            contact_two_id=contact_two_id
+            contact_two_email=dto.contact_two.email,
+            contact_two_first_name=dto.contact_two.first_name,
+            contact_two_last_name=dto.contact_two.last_name,
+            contact_two_phone_number=dto.contact_two.phone_number,
+            contact_two_contact_preference=dto.contact_two.contact_preference,
         )
 
         # Create party
@@ -426,17 +385,18 @@ class PartyService:
         # Get/create location and validate no hold
         location = await self._validate_and_get_location(dto.place_id)
 
-        # Get or create contact_two from ContactDTO
-        contact_two_id = await self._get_or_create_student_from_contact(dto.contact_two)
-
-        # Validate both students exist
-        await self._validate_both_students_exist(student_account_id, contact_two_id)
+        # Validate contact_one (student) exists
+        await self._validate_student_exists(student_account_id)
 
         # Update party fields
         party_entity.party_datetime = dto.party_datetime
         party_entity.location_id = location.id
         party_entity.contact_one_id = student_account_id
-        party_entity.contact_two_id = contact_two_id
+        party_entity.contact_two_email = dto.contact_two.email
+        party_entity.contact_two_first_name = dto.contact_two.first_name
+        party_entity.contact_two_last_name = dto.contact_two.last_name
+        party_entity.contact_two_phone_number = dto.contact_two.phone_number
+        party_entity.contact_two_contact_preference = dto.contact_two.contact_preference
 
         self.session.add(party_entity)
         await self.session.commit()
@@ -457,17 +417,15 @@ class PartyService:
         contact_one_student = await self._get_student_by_email(dto.contact_one_email)
         contact_one_id = contact_one_student.account_id
 
-        # Get or create contact_two from ContactDTO
-        contact_two_id = await self._get_or_create_student_from_contact(dto.contact_two)
-
-        # Validate both students exist
-        await self._validate_both_students_exist(contact_one_id, contact_two_id)
-
         # Update party fields
         party_entity.party_datetime = dto.party_datetime
         party_entity.location_id = location.id
         party_entity.contact_one_id = contact_one_id
-        party_entity.contact_two_id = contact_two_id
+        party_entity.contact_two_email = dto.contact_two.email
+        party_entity.contact_two_first_name = dto.contact_two.first_name
+        party_entity.contact_two_last_name = dto.contact_two.last_name
+        party_entity.contact_two_phone_number = dto.contact_two.phone_number
+        party_entity.contact_two_contact_preference = dto.contact_two.contact_preference
 
         self.session.add(party_entity)
         await self.session.commit()
@@ -502,10 +460,7 @@ class PartyService:
 
         result = await self.session.execute(
             select(PartyEntity).where(
-                (
-                    (PartyEntity.contact_one_id == student_id)
-                    | (PartyEntity.contact_two_id == student_id)
-                ),
+                PartyEntity.contact_one_id == student_id,
                 PartyEntity.party_datetime >= start_of_day,
                 PartyEntity.party_datetime <= end_of_day,
             )

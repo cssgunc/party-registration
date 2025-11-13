@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from typing import Any
+from unittest.mock import AsyncMock
 
 import pytest
 import pytest_asyncio
@@ -11,10 +12,33 @@ from src.main import app
 from src.modules.account.account_entity import AccountEntity, AccountRole
 from src.modules.student.student_entity import StudentEntity
 from src.modules.student.student_model import ContactPreference, StudentData
+from src.modules.location.location_service import LocationService
+from src.modules.location.location_model import LocationData
 
 
 @pytest_asyncio.fixture()
-async def override_dependencies_admin(test_async_session: AsyncSession):
+async def mock_location_service():
+    """Create a mock LocationService that returns test data."""
+    mock_service = AsyncMock(spec=LocationService)
+    mock_service.get_place_details = AsyncMock(return_value=LocationData(
+        google_place_id="test_place_id_123",
+        formatted_address="456 New St, Test City, TC 67890",
+        latitude=35.9132,
+        longitude=-79.0558,
+        street_number="456",
+        street_name="New St",
+        unit=None,
+        city="Test City",
+        county="Test County",
+        state="NC",
+        country="US",
+        zip_code="67890"
+    ))
+    return mock_service
+
+
+@pytest_asyncio.fixture()
+async def override_dependencies_admin(test_async_session: AsyncSession, mock_location_service: AsyncMock):
     """Override dependencies to simulate admin authentication."""
 
     async def _get_test_session():
@@ -25,18 +49,20 @@ async def override_dependencies_admin(test_async_session: AsyncSession):
 
     app.dependency_overrides[get_session] = _get_test_session
     app.dependency_overrides[authenticate_admin] = _fake_admin
+    app.dependency_overrides[LocationService] = lambda: mock_location_service
     yield
     app.dependency_overrides.clear()
 
 
 @pytest_asyncio.fixture()
-async def override_dependencies_no_auth(test_async_session: AsyncSession):
+async def override_dependencies_no_auth(test_async_session: AsyncSession, mock_location_service: AsyncMock):
     """Override dependencies without authentication."""
 
     async def _get_test_session():
         yield test_async_session
 
     app.dependency_overrides[get_session] = _get_test_session
+    app.dependency_overrides[LocationService] = lambda: mock_location_service
     yield
     app.dependency_overrides.clear()
 
@@ -82,7 +108,7 @@ async def test_list_students_with_data(
             StudentData(
                 first_name=f"Student{idx}",
                 last_name=f"Test{idx}",
-                call_or_text_pref=ContactPreference.text,
+                contact_preference=ContactPreference.text,
                 phone_number=f"555000{idx}{idx}{idx}{idx}",
             ),
             acc.id,
@@ -118,7 +144,7 @@ async def test_create_student_success(
         "data": {
             "first_name": "Rita",
             "last_name": "Lee",
-            "call_or_text_pref": "text",
+            "contact_preference": "text",
             "phone_number": "5555555555",
             "last_registered": None,
         },
@@ -156,7 +182,7 @@ async def test_create_student_with_datetime(
         "data": {
             "first_name": "John",
             "last_name": "Date",
-            "call_or_text_pref": "call",
+            "contact_preference": "call",
             "phone_number": "5551234567",
             "last_registered": dt.isoformat(),
         },
@@ -178,7 +204,7 @@ async def test_create_student_nonexistent_account(override_dependencies_admin: A
         "data": {
             "first_name": "Test",
             "last_name": "User",
-            "call_or_text_pref": "text",
+            "contact_preference": "text",
             "phone_number": "5551112222",
         },
     }
@@ -208,7 +234,7 @@ async def test_create_student_wrong_role(
         "data": {
             "first_name": "Test",
             "last_name": "User",
-            "call_or_text_pref": "text",
+            "contact_preference": "text",
             "phone_number": "5553334444",
         },
     }
@@ -237,7 +263,7 @@ async def test_create_student_duplicate_account(
         StudentData(
             first_name="First",
             last_name="Student",
-            call_or_text_pref=ContactPreference.text,
+            contact_preference=ContactPreference.text,
             phone_number="5555555555",
         ),
         acc.id,
@@ -250,7 +276,7 @@ async def test_create_student_duplicate_account(
         "data": {
             "first_name": "Second",
             "last_name": "Student",
-            "call_or_text_pref": "call",
+            "contact_preference": "call",
             "phone_number": "5556666666",
         },
     }
@@ -285,7 +311,7 @@ async def test_create_student_duplicate_phone(
         StudentData(
             first_name="First",
             last_name="Student",
-            call_or_text_pref=ContactPreference.text,
+            contact_preference=ContactPreference.text,
             phone_number="5557777777",
         ),
         acc1.id,
@@ -298,7 +324,7 @@ async def test_create_student_duplicate_phone(
         "data": {
             "first_name": "Second",
             "last_name": "Student",
-            "call_or_text_pref": "call",
+            "contact_preference": "call",
             "phone_number": "5557777777",
         },
     }
@@ -327,7 +353,7 @@ async def test_get_student_success(
         StudentData(
             first_name="Get",
             last_name="Student",
-            call_or_text_pref=ContactPreference.text,
+            contact_preference=ContactPreference.text,
             phone_number="5558888888",
         ),
         acc.id,
@@ -374,7 +400,7 @@ async def test_update_student_success(
         StudentData(
             first_name="Old",
             last_name="Name",
-            call_or_text_pref=ContactPreference.text,
+            contact_preference=ContactPreference.text,
             phone_number="5559999999",
         ),
         acc.id,
@@ -385,7 +411,7 @@ async def test_update_student_success(
     update_payload = {
         "first_name": "New",
         "last_name": "Name",
-        "call_or_text_pref": "call",
+        "contact_preference": "call",
         "phone_number": "5550000000",
         "last_registered": None,
     }
@@ -407,7 +433,7 @@ async def test_update_student_not_found(override_dependencies_admin: Any):
     update_payload = {
         "first_name": "Test",
         "last_name": "User",
-        "call_or_text_pref": "text",
+        "contact_preference": "text",
         "phone_number": "5551112222",
     }
     async with AsyncClient(
@@ -443,7 +469,7 @@ async def test_update_student_phone_conflict(
         StudentData(
             first_name="Student",
             last_name="One",
-            call_or_text_pref=ContactPreference.text,
+            contact_preference=ContactPreference.text,
             phone_number="5551111111",
         ),
         acc1.id,
@@ -452,7 +478,7 @@ async def test_update_student_phone_conflict(
         StudentData(
             first_name="Student",
             last_name="Two",
-            call_or_text_pref=ContactPreference.text,
+            contact_preference=ContactPreference.text,
             phone_number="5552222222",
         ),
         acc2.id,
@@ -463,7 +489,7 @@ async def test_update_student_phone_conflict(
     update_payload = {
         "first_name": "Student",
         "last_name": "Two",
-        "call_or_text_pref": "text",
+        "contact_preference": "text",
         "phone_number": "5551111111",
     }
     async with AsyncClient(
@@ -493,7 +519,7 @@ async def test_delete_student_success(
         StudentData(
             first_name="Delete",
             last_name="Me",
-            call_or_text_pref=ContactPreference.text,
+            contact_preference=ContactPreference.text,
             phone_number="5553333333",
         ),
         acc.id,
@@ -534,7 +560,7 @@ async def test_delete_student_not_found(override_dependencies_admin: Any):
                 "data": {
                     "first_name": "Test",
                     "last_name": "User",
-                    "call_or_text_pref": "text",
+                    "contact_preference": "text",
                     "phone_number": "5551234567",
                 },
             },
@@ -545,7 +571,7 @@ async def test_delete_student_not_found(override_dependencies_admin: Any):
             {
                 "first_name": "Test",
                 "last_name": "User",
-                "call_or_text_pref": "text",
+                "contact_preference": "text",
                 "phone_number": "5551234567",
             },
         ),
@@ -600,7 +626,7 @@ async def test_create_and_get_student(
         "data": {
             "first_name": "Rita",
             "last_name": "Lee",
-            "call_or_text_pref": "text",
+            "contact_preference": "text",
             "phone_number": "5555555555",
             "last_registered": None,
         },
@@ -639,7 +665,7 @@ async def test_update_and_delete_student(
         StudentData(
             first_name="John",
             last_name="Doe",
-            call_or_text_pref=ContactPreference.text,
+            contact_preference=ContactPreference.text,
             phone_number="1111111111",
         ),
         acc.id,
@@ -650,7 +676,7 @@ async def test_update_and_delete_student(
     update_payload = {
         "first_name": "Jane",
         "last_name": "Doe",
-        "call_or_text_pref": "call",
+        "contact_preference": "call",
         "phone_number": "9999990000",
         "last_registered": None,
     }
