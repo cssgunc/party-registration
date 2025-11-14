@@ -19,7 +19,8 @@ import {
 import { useState } from "react";
 import * as z from "zod";
 
-export const StudentCreateEditValues = z.object({
+export const AccountCreateEditValues = z.object({
+    pid: z.string().length(9, "Please input a valid PID"),
     email: z.email({ pattern: z.regexes.html5Email })
         .min(1, "Email is required"),
     firstName: z.string().min(1, "First name is required"),
@@ -27,18 +28,20 @@ export const StudentCreateEditValues = z.object({
     role: z.string().min(1, "Role is required"),
 });
 
-type StudentCreateEditValues = z.infer<typeof StudentCreateEditValues>;
+type AccountCreateEditValues = z.infer<typeof AccountCreateEditValues>;
 
-interface StudentRegistrationFormProps {
-    onSubmit: (data: StudentCreateEditValues) => void | Promise<void>;
+interface AccountRegistrationFormProps {
+    onSubmit: (data: AccountCreateEditValues) => void | Promise<void>;
+    editData?: AccountCreateEditValues
 }
 
-export default function StudentTableCreateEditForm({ onSubmit }: StudentRegistrationFormProps) {
-    const [formData, setFormData] = useState<Partial<StudentCreateEditValues>>({
-        email: "",
-        firstName: "",
-        lastName: "",
-        role: "",
+export default function AccountTableCreateEditForm({ onSubmit, editData }: AccountRegistrationFormProps) {
+    const [formData, setFormData] = useState<Partial<AccountCreateEditValues>>({
+        email: editData?.email ?? "",
+        firstName: editData?.firstName ?? "",
+        lastName: editData?.lastName ?? "",
+        role: editData?.role ?? "",
+        pid: editData?.pid ?? ""
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -47,7 +50,7 @@ export default function StudentTableCreateEditForm({ onSubmit }: StudentRegistra
         e.preventDefault();
         setErrors({});
 
-        const result = StudentCreateEditValues.safeParse(formData);
+        const result = AccountCreateEditValues.safeParse(formData);
 
         if (!result.success) {
             const fieldErrors: Record<string, string> = {};
@@ -68,9 +71,9 @@ export default function StudentTableCreateEditForm({ onSubmit }: StudentRegistra
         }
     };
 
-    const updateField = <K extends keyof StudentCreateEditValues>(
+    const updateField = <K extends keyof AccountCreateEditValues>(
         field: K,
-        value: StudentCreateEditValues[K]
+        value: AccountCreateEditValues[K]
     ) => {
         setFormData(prev => ({ ...prev, [field]: value }));
         if (errors[field]) {
@@ -97,6 +100,18 @@ export default function StudentTableCreateEditForm({ onSubmit }: StudentRegistra
                             aria-invalid={!!errors.email}
                         />
                         {errors.email && <FieldError>{errors.email}</FieldError>}
+                    </Field>
+
+                    <Field data-invalid={!!errors.pid}>
+                        <FieldLabel htmlFor="pid">PID</FieldLabel>
+                        <Input
+                            id="first-name"
+                            placeholder="123456789"
+                            value={formData.pid}
+                            onChange={(e) => updateField("pid", e.target.value)}
+                            aria-invalid={!!errors.pid}
+                        />
+                        {errors.pid && <FieldError>{errors.pid}</FieldError>}
                     </Field>
 
                     <Field data-invalid={!!errors.firstName}>
@@ -127,7 +142,7 @@ export default function StudentTableCreateEditForm({ onSubmit }: StudentRegistra
                         <FieldLabel htmlFor="role">Role</FieldLabel>
                         <Select
                             value={formData.role}
-                            onValueChange={(value) => updateField("role", value as "staff" | "admin" | "student")}
+                            onValueChange={(value) => updateField("role", value as "staff" | "admin")}
                         >
                             <SelectTrigger id="role">
                                 <SelectValue placeholder="Select role" />
@@ -135,7 +150,6 @@ export default function StudentTableCreateEditForm({ onSubmit }: StudentRegistra
                             <SelectContent>
                                 <SelectItem value="staff">Staff</SelectItem>
                                 <SelectItem value="admin">Admin</SelectItem>
-                                <SelectItem value="student">Student</SelectItem>
                             </SelectContent>
                         </Select>
                         {errors.role && <FieldError>{errors.role}</FieldError>}

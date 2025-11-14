@@ -32,22 +32,25 @@ export const StudentCreateEditValues = z.object({
     lastName: z.string().min(1, "Second name is required"),
     phoneNumber: z.string().min(1, "Phone number is required"),
     contactPreference: z.string(),
-    lastRegistered: z.date().nullable()
+    lastRegistered: z.date().nullable(),
+    pid: z.string().length(9, "Please input a valid PID")
 });
 
 type StudentCreateEditValues = z.infer<typeof StudentCreateEditValues>;
 
 interface StudentRegistrationFormProps {
     onSubmit: (data: StudentCreateEditValues) => void | Promise<void>;
+    editData?: StudentCreateEditValues
 }
 
-export default function StudentTableCreateEditForm({ onSubmit }: StudentRegistrationFormProps) {
+export default function StudentTableCreateEditForm({ onSubmit, editData }: StudentRegistrationFormProps) {
     const [formData, setFormData] = useState<Partial<StudentCreateEditValues>>({
-        firstName: "",
-        lastName: "",
-        phoneNumber: "",
-        contactPreference: "",
-        lastRegistered: null
+        pid: editData?.pid ?? "",
+        firstName: editData?.firstName ?? "",
+        lastName: editData?.lastName ?? "",
+        phoneNumber: editData?.phoneNumber ?? "",
+        contactPreference: editData?.contactPreference ?? "",
+        lastRegistered: editData?.lastRegistered ?? null
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -95,6 +98,17 @@ export default function StudentTableCreateEditForm({ onSubmit }: StudentRegistra
         <form onSubmit={handleSubmit}>
             <FieldGroup>
                 <FieldSet>
+                    <Field data-invalid={!!errors.pid}>
+                        <FieldLabel htmlFor="pid">PID</FieldLabel>
+                        <Input
+                            id="first-name"
+                            placeholder="123456789"
+                            value={formData.pid}
+                            onChange={(e) => updateField("pid", e.target.value)}
+                            aria-invalid={!!errors.pid}
+                        />
+                        {errors.pid && <FieldError>{errors.pid}</FieldError>}
+                    </Field>
                     <Field data-invalid={!!errors.firstName}>
                         <FieldLabel htmlFor="first-name">First name</FieldLabel>
                         <Input

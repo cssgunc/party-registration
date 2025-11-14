@@ -51,19 +51,20 @@ type PartyCreateEditValues = z.infer<typeof PartyTableCreateEditSchema>;
 
 interface PartyRegistrationFormProps {
     onSubmit: (data: PartyCreateEditValues) => void | Promise<void>;
+    editData?: PartyCreateEditValues
 }
 
-export default function PartyTableCreateEditForm({ onSubmit }: PartyRegistrationFormProps) {
+export default function PartyTableCreateEditForm({ onSubmit, editData }: PartyRegistrationFormProps) {
     const [formData, setFormData] = useState<Partial<PartyCreateEditValues>>({
-        address: "",
-        partyDate: undefined,
-        partyTime: "",
-        contactOneEmail: "",
-        contactTwoEmail: "",
-        contactTwoFirstName: "",
-        contactTwoLastName: "",
-        contactTwoPhoneNumber: "",
-        contactTwoPreference: ""
+        address: editData?.address ?? "",
+        partyDate: editData?.partyDate ?? undefined,
+        partyTime: editData?.partyTime ?? "",
+        contactOneEmail: editData?.contactOneEmail ?? "",
+        contactTwoEmail: editData?.contactTwoEmail ?? "",
+        contactTwoFirstName: editData?.contactTwoFirstName ?? "",
+        contactTwoLastName: editData?.contactTwoLastName ?? "",
+        contactTwoPhoneNumber: editData?.contactTwoPhoneNumber ?? "",
+        contactTwoPreference: editData?.contactTwoPreference ?? ""
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);

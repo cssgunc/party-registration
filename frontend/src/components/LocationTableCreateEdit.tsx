@@ -31,14 +31,15 @@ type LocationCreateEditValues = z.infer<typeof LocationTableCreateEditSchema>;
 
 interface StudentRegistrationFormProps {
     onSubmit: (data: LocationCreateEditValues) => void | Promise<void>;
+    editData?: LocationCreateEditValues
 }
 
-export default function LocationTableCreateEditForm({ onSubmit }: StudentRegistrationFormProps) {
+export default function LocationTableCreateEditForm({ onSubmit, editData = undefined }: StudentRegistrationFormProps) {
     const [formData, setFormData] = useState<Partial<LocationCreateEditValues>>({
-        address: "",
-        holdExpiration: null,
-        warningCount: 0,
-        citationCount: 0
+        address: editData?.address ?? "",
+        holdExpiration: editData?.holdExpiration ?? null,
+        warningCount: editData?.warningCount ?? 0,
+        citationCount: editData?.citationCount ?? 0,
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -127,7 +128,7 @@ export default function LocationTableCreateEditForm({ onSubmit }: StudentRegistr
                                 />
                             </PopoverContent>
                         </Popover>
-                        {errors.partyDate && <FieldError>{errors.partyDate}</FieldError>}
+                        {errors.holdExpiration && <FieldError>{errors.holdExpiration}</FieldError>}
                     </Field>
 
                     <Field data-invalid={!!errors.warningCount}>

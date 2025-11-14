@@ -29,6 +29,8 @@ export default function CreateEditDemo() {
         alert("Location successfully saved!");
     };
 
+    const locationData = [{ address: "123 Main St", holdExpiration: null, warningCount: 2, citationCount: 1 }]
+
     const [studentData, setsubmittedStudentData] = useState<StudentCreateEditValues | null>(null);
 
     const handleSubmitStudent = async (data: StudentCreateEditValues) => {
@@ -65,7 +67,7 @@ export default function CreateEditDemo() {
 
             <div className="p-6 border rounded-2xl shadow-sm bg-white">
                 <div className="font-bold pb-4 text-2xl">Location create/edit</div>
-                <LocationTableCreateEditForm onSubmit={handleSubmitLocation} />
+                <LocationTableCreateEditForm onSubmit={handleSubmitLocation} editData={locationData[0]} />
             </div>
 
             {submittedLocationData ? (
