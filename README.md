@@ -85,7 +85,9 @@ Or you can do the actions manually. Then,
 - This should open the dev container with the same file directory mounted so any changes in the dev container will be seen in the local repo
 - The dev container is fully built once the file directory is populated and the post create script finished running
 
-## Starting the dev servers
+## Running The App
+
+*If you haven't run in a day or more, run `python -m script.reset_dev` from the `/backend` directory to ensure all mock data is updated to be centered around today's date*
 
 ### VSCode Debugger (Recommended)
 Navigate to the "Debug and Run" tab on the VSCode side bar.  
@@ -115,9 +117,9 @@ npm run dev
 
 Navigate to [http://localhost:3000]() to view the website
 
-## Running backend tests
+## Running Backend Tests
 
-### Local Testing
+### Manual Testing
 
 After running the backend, navigate to [http://localhost:3000/docs]()  
 Click on the "Authorize 🔓" button in the top right, and enter "admin", "student", or "police" as the mock token for the respective role  
