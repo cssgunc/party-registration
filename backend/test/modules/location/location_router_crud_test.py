@@ -5,7 +5,6 @@ import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.core.authentication import authenticate_admin
 from src.core.database import get_session
 from src.main import app
 from src.modules.location.location_model import AddressData, Location
@@ -17,7 +16,6 @@ from src.modules.location.location_service import (
     LocationService,
     PlaceNotFoundException,
 )
-from src.modules.user.user_model import User
 
 
 @pytest_asyncio.fixture()
@@ -27,7 +25,9 @@ async def mock_location_service() -> LocationService:
 
 
 @pytest_asyncio.fixture()
-async def unauthenticated_client(test_async_session: AsyncSession, mock_location_service: LocationService):
+async def unauthenticated_client(
+    test_async_session: AsyncSession, mock_location_service: LocationService
+):
     """Create an async test client WITHOUT authentication override."""
 
     async def override_get_session():
@@ -35,7 +35,7 @@ async def unauthenticated_client(test_async_session: AsyncSession, mock_location
 
     def get_mock_location_service():
         return mock_location_service
-    
+
     app.dependency_overrides[LocationService] = get_mock_location_service
     app.dependency_overrides[get_session] = override_get_session
 
@@ -56,18 +56,16 @@ async def client(
     async def override_get_session():
         yield test_async_session
 
-    async def override_authenticate_admin():
-        return User(id=1, email="admin@test.com")
-
     def get_mock_location_service():
         return mock_location_service
 
     app.dependency_overrides[LocationService] = get_mock_location_service
     app.dependency_overrides[get_session] = override_get_session
-    app.dependency_overrides[authenticate_admin] = override_authenticate_admin
 
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test/api"
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+        headers={"Authorization": "Bearer admin"},
     ) as ac:
         yield ac
 
@@ -159,7 +157,9 @@ def sample_location_2() -> Location:
 
 
 @pytest.mark.asyncio
-async def test_get_locations_empty(client: AsyncClient, mock_location_service: AsyncMock):
+async def test_get_locations_empty(
+    client: AsyncClient, mock_location_service: AsyncMock
+):
     """Test GET /locations/ with no locations in database."""
     mock_location_service.get_locations.return_value = []
 
@@ -177,10 +177,16 @@ async def test_get_locations_empty(client: AsyncClient, mock_location_service: A
 
 @pytest.mark.asyncio
 async def test_get_locations_with_data(
-    client: AsyncClient, sample_location: Location, sample_location_2: Location, mock_location_service: AsyncMock
+    client: AsyncClient,
+    sample_location: Location,
+    sample_location_2: Location,
+    mock_location_service: AsyncMock,
 ):
     """Test GET /locations/ returns multiple locations."""
-    mock_location_service.get_locations.return_value = [sample_location, sample_location_2]
+    mock_location_service.get_locations.return_value = [
+        sample_location,
+        sample_location_2,
+    ]
 
     response = await client.get("/locations/")
     assert response.status_code == 200
@@ -195,7 +201,10 @@ async def test_get_locations_with_data(
     # Verify first location
     assert data["items"][0]["id"] == 1
     assert data["items"][0]["google_place_id"] == "ChIJ123abc"
-    assert data["items"][0]["formatted_address"] == "123 Main St, Chapel Hill, NC 27514, USA"
+    assert (
+        data["items"][0]["formatted_address"]
+        == "123 Main St, Chapel Hill, NC 27514, USA"
+    )
     assert data["items"][0]["latitude"] == 35.9132
     assert data["items"][0]["longitude"] == -79.0558
     assert data["items"][0]["warning_count"] == 0
@@ -235,7 +244,9 @@ async def test_get_location_by_id_success(
 
 
 @pytest.mark.asyncio
-async def test_get_location_by_id_not_found(client: AsyncClient, mock_location_service: AsyncMock):
+async def test_get_location_by_id_not_found(
+    client: AsyncClient, mock_location_service: AsyncMock
+):
     """Test GET /locations/{location_id} with non-existent ID returns 404."""
     mock_location_service.get_location_by_id.side_effect = LocationNotFoundException(
         location_id=999
@@ -252,7 +263,10 @@ async def test_get_location_by_id_not_found(client: AsyncClient, mock_location_s
 
 @pytest.mark.asyncio
 async def test_create_location_success(
-    client: AsyncClient, sample_location: Location, sample_address_data: AddressData, mock_location_service: AsyncMock
+    client: AsyncClient,
+    sample_location: Location,
+    sample_address_data: AddressData,
+    mock_location_service: AsyncMock,
 ):
     """Test POST /locations/ successfully creates a location."""
     mock_location_service.get_place_details.return_value = sample_address_data
@@ -281,7 +295,9 @@ async def test_create_location_success(
 
 @pytest.mark.asyncio
 async def test_create_location_with_warnings_and_citations(
-    client: AsyncClient, sample_address_data: AddressData, mock_location_service: AsyncMock
+    client: AsyncClient,
+    sample_address_data: AddressData,
+    mock_location_service: AsyncMock,
 ):
     """Test POST /locations/ creates location with warnings and citations."""
     mock_location_service.get_place_details.return_value = sample_address_data
@@ -312,7 +328,11 @@ async def test_create_location_with_warnings_and_citations(
 
 
 @pytest.mark.asyncio
-async def test_create_location_conflict(client: AsyncClient, sample_address_data: AddressData, mock_location_service: AsyncMock):
+async def test_create_location_conflict(
+    client: AsyncClient,
+    sample_address_data: AddressData,
+    mock_location_service: AsyncMock,
+):
     """Test POST /locations/ with duplicate google_place_id returns 409."""
     mock_location_service.get_place_details.return_value = sample_address_data
     mock_location_service.create_location.side_effect = LocationConflictException(
@@ -333,7 +353,9 @@ async def test_create_location_conflict(client: AsyncClient, sample_address_data
 
 
 @pytest.mark.asyncio
-async def test_create_location_invalid_place_id(client: AsyncClient, mock_location_service: AsyncMock):
+async def test_create_location_invalid_place_id(
+    client: AsyncClient, mock_location_service: AsyncMock
+):
     """Test POST /locations/ with invalid place_id returns 400."""
     mock_location_service.get_place_details.side_effect = InvalidPlaceIdException(
         "invalid_id"
@@ -353,7 +375,9 @@ async def test_create_location_invalid_place_id(client: AsyncClient, mock_locati
 
 
 @pytest.mark.asyncio
-async def test_create_location_place_not_found(client: AsyncClient, mock_location_service: AsyncMock):
+async def test_create_location_place_not_found(
+    client: AsyncClient, mock_location_service: AsyncMock
+):
     """Test POST /locations/ with non-existent place_id returns 404."""
     mock_location_service.get_place_details.side_effect = PlaceNotFoundException(
         "ChIJ_nonexistent"
@@ -373,7 +397,9 @@ async def test_create_location_place_not_found(client: AsyncClient, mock_locatio
 
 
 @pytest.mark.asyncio
-async def test_create_location_google_maps_api_error(client: AsyncClient, mock_location_service: AsyncMock):
+async def test_create_location_google_maps_api_error(
+    client: AsyncClient, mock_location_service: AsyncMock
+):
     """Test POST /locations/ with Google Maps API error returns 500."""
     mock_location_service.get_place_details.side_effect = GoogleMapsAPIException(
         "API quota exceeded"
@@ -400,7 +426,9 @@ async def test_update_location_success_same_place_id(
     mock_location_service.get_location_by_id.return_value = sample_location
 
     updated_location = Location(
-        **sample_location.model_dump(exclude={"warning_count", "citation_count", "hold_expiration"}),
+        **sample_location.model_dump(
+            exclude={"warning_count", "citation_count", "hold_expiration"}
+        ),
         warning_count=5,
         citation_count=3,
         hold_expiration=datetime(2026, 6, 15, 0, 0, 0),
@@ -483,7 +511,9 @@ async def test_update_location_success_new_place_id(
 
 
 @pytest.mark.asyncio
-async def test_update_location_not_found(client: AsyncClient, mock_location_service: AsyncMock):
+async def test_update_location_not_found(
+    client: AsyncClient, mock_location_service: AsyncMock
+):
     """Test PUT /locations/{location_id} with non-existent ID returns 404."""
     mock_location_service.get_location_by_id.side_effect = LocationNotFoundException(
         location_id=999
@@ -503,7 +533,12 @@ async def test_update_location_not_found(client: AsyncClient, mock_location_serv
 
 
 @pytest.mark.asyncio
-async def test_update_location_conflict(client: AsyncClient, sample_location: Location, sample_address_data_existing: AddressData, mock_location_service: AsyncMock):
+async def test_update_location_conflict(
+    client: AsyncClient,
+    sample_location: Location,
+    sample_address_data_existing: AddressData,
+    mock_location_service: AsyncMock,
+):
     """Test PUT /locations/{location_id} with conflicting place_id returns 409."""
     mock_location_service.get_location_by_id.return_value = sample_location
     mock_location_service.get_place_details.return_value = sample_address_data_existing
@@ -570,7 +605,9 @@ async def test_delete_location_success(
 
 
 @pytest.mark.asyncio
-async def test_delete_location_not_found(client: AsyncClient, mock_location_service: AsyncMock):
+async def test_delete_location_not_found(
+    client: AsyncClient, mock_location_service: AsyncMock
+):
     """Test DELETE /locations/{location_id} with non-existent ID returns 404."""
     mock_location_service.delete_location.side_effect = LocationNotFoundException(
         location_id=999
@@ -628,4 +665,5 @@ async def test_admin_authentication_required(
         assert "not authenticated" in response_json["detail"].lower()
     else:
         # Handle different response formats
+        assert response.status_code == 401
         assert response.status_code == 401

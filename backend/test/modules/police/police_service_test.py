@@ -1,12 +1,22 @@
+import bcrypt
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.exceptions import CredentialsException
 from src.modules.police.police_entity import PoliceEntity
 from src.modules.police.police_service import PoliceNotFoundException, PoliceService
+from unittest.mock import patch
 
 
 @pytest.fixture()
-def police_service(test_async_session: AsyncSession) -> PoliceService:
+def fast_bcrypt():
+    """Mock bcrypt.gensalt to use faster rounds (4 instead of 12) for testing."""
+    original_gensalt = bcrypt.gensalt
+    with patch("bcrypt.gensalt", side_effect=lambda rounds=4: original_gensalt(rounds=rounds)):
+        yield
+
+
+@pytest.fixture()
+def police_service(test_async_session: AsyncSession, fast_bcrypt) -> PoliceService:
     return PoliceService(session=test_async_session)
 
 

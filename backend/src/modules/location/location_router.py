@@ -1,5 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from src.core.authentication import authenticate_admin, authenticate_user
+from src.core.authentication import (
+    authenticate_admin,
+    authenticate_staff_or_admin,
+    authenticate_user,
+)
 from src.modules.account.account_model import Account
 from src.modules.location.location_model import (
     Location,
@@ -49,7 +53,7 @@ async def autocomplete_address(
 @location_router.get("/", response_model=PaginatedLocationResponse)
 async def get_locations(
     location_service: LocationService = Depends(),
-    _=Depends(authenticate_admin),
+    _=Depends(authenticate_staff_or_admin),
 ):
     locations = await location_service.get_locations()
     return PaginatedLocationResponse(
@@ -65,7 +69,7 @@ async def get_locations(
 async def get_location(
     location_id: int,
     location_service: LocationService = Depends(),
-    _=Depends(authenticate_admin),
+    _=Depends(authenticate_staff_or_admin),
 ):
     return await location_service.get_location_by_id(location_id)
 
