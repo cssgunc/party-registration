@@ -4,7 +4,6 @@ import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.core.authentication import authenticate_admin
 from src.core.database import get_session
 from src.main import app
 from src.modules.account.account_entity import AccountEntity, AccountRole
@@ -12,7 +11,6 @@ from src.modules.location.location_entity import LocationEntity
 from src.modules.party.party_entity import PartyEntity
 from src.modules.student.student_entity import StudentEntity
 from src.modules.student.student_model import ContactPreference
-from src.modules.user.user_model import User
 
 
 @pytest_asyncio.fixture()
@@ -40,14 +38,12 @@ async def client(test_async_session: AsyncSession):
     async def override_get_session():
         yield test_async_session
 
-    async def override_authenticate_admin():
-        return User(id=1, email="admin@test.com")
-
     app.dependency_overrides[get_session] = override_get_session
-    app.dependency_overrides[authenticate_admin] = override_authenticate_admin
 
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+        headers={"Authorization": "Bearer admin"},
     ) as ac:
         yield ac
 
@@ -61,13 +57,17 @@ async def sample_party_setup(test_async_session: AsyncSession):
     account_one = AccountEntity(
         id=1,
         email="test@example.com",
-        hashed_password="hashed_password",
+        first_name="Test",
+        last_name="User",
+        pid="306000001",
         role=AccountRole.STUDENT,
     )
     account_two = AccountEntity(
         id=2,
         email="test2@example.com",
-        hashed_password="hashed_password",
+        first_name="Test",
+        last_name="User",
+        pid="306000002",
         role=AccountRole.STUDENT,
     )
     test_async_session.add_all([account_one, account_two])
@@ -84,15 +84,11 @@ async def sample_party_setup(test_async_session: AsyncSession):
 
     # Create students
     student_one = StudentEntity(
-        first_name="John",
-        last_name="Doe",
         contact_preference=ContactPreference.call,
         phone_number="1234567890",
         account_id=1,
     )
     student_two = StudentEntity(
-        first_name="Jane",
-        last_name="Smith",
         contact_preference=ContactPreference.text,
         phone_number="0987654321",
         account_id=2,
@@ -111,7 +107,7 @@ async def test_get_parties_empty(client: AsyncClient):
 
     data = response.json()
     assert data["total_records"] == 0
-    assert data["parties"] == []
+    assert data["items"] == []
     assert data["page_number"] == 1
     assert data["page_size"] == 0  # No page_size specified, defaults to total_records
     assert data["total_pages"] == 1
@@ -138,7 +134,7 @@ async def test_get_parties_with_data(
 
     data = response.json()
     assert data["total_records"] == 5
-    assert len(data["parties"]) == 5
+    assert len(data["items"]) == 5
     assert data["page_number"] == 1
     assert data["page_size"] == 5  # No page_size specified, defaults to total_records
     assert data["total_pages"] == 1
@@ -174,7 +170,7 @@ async def test_get_parties_validates_content(
     assert response.status_code == 200
 
     data = response.json()
-    parties = data["parties"]
+    parties = data["items"]
 
     # Verify we got the correct number of parties
     assert len(parties) == 2
@@ -231,8 +227,8 @@ async def test_get_parties_content_with_pagination(
     page1_data = response.json()
 
     # Verify page 1 content
-    assert len(page1_data["parties"]) == 5
-    page1_ids = [p["id"] for p in page1_data["parties"]]
+    assert len(page1_data["items"]) == 5
+    page1_ids = [p["id"] for p in page1_data["items"]]
 
     # Request second page
     response = await client.get("/api/parties/?page_size=5&page_number=2")
@@ -240,14 +236,14 @@ async def test_get_parties_content_with_pagination(
     page2_data = response.json()
 
     # Verify page 2 content
-    assert len(page2_data["parties"]) == 5
-    page2_ids = [p["id"] for p in page2_data["parties"]]
+    assert len(page2_data["items"]) == 5
+    page2_ids = [p["id"] for p in page2_data["items"]]
 
     # Ensure no overlap between pages
     assert len(set(page1_ids) & set(page2_ids)) == 0
 
     # Verify all parties have correct structure and data
-    for party in page1_data["parties"] + page2_data["parties"]:
+    for party in page1_data["items"] + page2_data["items"]:
         assert party["location_id"] == sample_party_setup["location_id"]
         assert party["contact_one_id"] == sample_party_setup["contact_one_id"]
         assert party["contact_two_id"] == sample_party_setup["contact_two_id"]
@@ -275,7 +271,7 @@ async def test_get_parties_pagination(
     assert response.status_code == 200
     data = response.json()
     assert data["total_records"] == 25
-    assert len(data["parties"]) == 10
+    assert len(data["items"]) == 10
     assert data["page_number"] == 1
     assert data["page_size"] == 10
     assert data["total_pages"] == 3
@@ -285,7 +281,7 @@ async def test_get_parties_pagination(
     assert response.status_code == 200
     data = response.json()
     assert data["total_records"] == 25
-    assert len(data["parties"]) == 10
+    assert len(data["items"]) == 10
     assert data["page_number"] == 2
     assert data["total_pages"] == 3
 
@@ -294,7 +290,7 @@ async def test_get_parties_pagination(
     assert response.status_code == 200
     data = response.json()
     assert data["total_records"] == 25
-    assert len(data["parties"]) == 5
+    assert len(data["items"]) == 5
     assert data["page_number"] == 3
     assert data["total_pages"] == 3
 
@@ -320,7 +316,7 @@ async def test_get_parties_pagination_beyond_available(
     assert response.status_code == 200
     data = response.json()
     assert data["total_records"] == 5
-    assert len(data["parties"]) == 0  # No data on this page
+    assert len(data["items"]) == 0  # No data on this page
     assert data["page_number"] == 10
     assert data["total_pages"] == 1
 
@@ -346,7 +342,7 @@ async def test_get_parties_custom_page_size(
     assert response.status_code == 200
     data = response.json()
     assert data["total_records"] == 10
-    assert len(data["parties"]) == 3
+    assert len(data["items"]) == 3
     assert data["page_size"] == 3
     assert data["total_pages"] == 4
 
@@ -464,7 +460,7 @@ async def test_delete_party_removes_from_list(
     assert initial_data["total_records"] == 3
 
     # Delete one party
-    party_to_delete = initial_data["parties"][0]["id"]
+    party_to_delete = initial_data["items"][0]["id"]
     response = await client.delete(f"/api/parties/{party_to_delete}")
     assert response.status_code == 200
 
@@ -473,10 +469,10 @@ async def test_delete_party_removes_from_list(
     assert response.status_code == 200
     final_data = response.json()
     assert final_data["total_records"] == 2
-    assert len(final_data["parties"]) == 2
+    assert len(final_data["items"]) == 2
 
     # Verify deleted party is not in the list
-    party_ids = [p["id"] for p in final_data["parties"]]
+    party_ids = [p["id"] for p in final_data["items"]]
     assert party_to_delete not in party_ids
 
 

@@ -39,28 +39,28 @@ async def sample_party_data(test_async_session: AsyncSession) -> PartyData:
     account_one = AccountEntity(
         id=1,
         email="test@example.com",
-        hashed_password="hashed_password",
+        first_name="Test",
+        last_name="User",
+        pid="300000001",
         role=AccountRole.STUDENT,
     )
     account_two = AccountEntity(
         id=2,
         email="test2@example.com",
-        hashed_password="hashed_password",
+        first_name="Test",
+        last_name="User",
+        pid="300000002",
         role=AccountRole.STUDENT,
     )
     test_async_session.add_all([account_one, account_two])
 
     # Create students
     student_one = StudentEntity(
-        first_name="John",
-        last_name="Doe",
         contact_preference=ContactPreference.call,
         phone_number="1234567890",
         account_id=1,
     )
     student_two = StudentEntity(
-        first_name="Jane",
-        last_name="Smith",
         contact_preference=ContactPreference.text,
         phone_number="0987654321",
         account_id=2,
@@ -131,15 +131,15 @@ async def radius_test_accounts_and_students(
         account = AccountEntity(
             id=i,
             email=f"student{i}@example.com",
-            hashed_password="...",
+            first_name="Test",
+            last_name="User",
+            pid=f"30000000{i}",
             role=AccountRole.STUDENT,
         )
         accounts.append(account)
 
         student = StudentEntity(
             account_id=i,
-            first_name=["John", "Jane", "Bob", "Alice", "Charlie", "Diana"][i - 1],
-            last_name=["Doe", "Smith", "Johnson", "Williams", "Brown", "Davis"][i - 1],
             contact_preference=ContactPreference.call
             if i % 2 == 1
             else ContactPreference.text,
@@ -317,15 +317,15 @@ async def test_get_parties(
         account = AccountEntity(
             id=i,
             email=f"student{i}@example.com",
-            hashed_password=f"$2b$12$test_hashed_password_{i}",
+            first_name="Test",
+            last_name="User",
+            pid=f"30100000{i}",
             role=AccountRole.STUDENT,
         )
         accounts.append(account)
 
         student = StudentEntity(
             account_id=i,
-            first_name=f"Student{i}",
-            last_name=f"Last{i}",
             contact_preference=ContactPreference.call
             if i % 2 == 1
             else ContactPreference.text,
@@ -442,15 +442,15 @@ async def test_get_parties_by_date_range_multiple_parties(
         account = AccountEntity(
             id=i,
             email=f"student{i}@example.com",
-            hashed_password=f"$2b$12$test_hashed_password_{i}",
+            first_name="Test",
+            last_name="User",
+            pid=f"30200000{i}",
             role=AccountRole.STUDENT,
         )
         accounts.append(account)
 
         student = StudentEntity(
             account_id=i,
-            first_name=f"Student{i}",
-            last_name=f"Last{i}",
             contact_preference=ContactPreference.call
             if i % 2 == 1
             else ContactPreference.text,
@@ -667,15 +667,15 @@ async def test_get_party_count(
         account = AccountEntity(
             id=i,
             email=f"student{i}@example.com",
-            hashed_password=f"$2b$12$test_hashed_password_{i}",
+            first_name="Test",
+            last_name="User",
+            pid=f"30300000{i}",
             role=AccountRole.STUDENT,
         )
         accounts.append(account)
 
         student = StudentEntity(
             account_id=i,
-            first_name=f"Student{i}",
-            last_name=f"Last{i}",
             contact_preference=ContactPreference.call
             if i % 2 == 1
             else ContactPreference.text,
@@ -760,28 +760,28 @@ async def basic_accounts_and_students(test_async_session: AsyncSession):
     account1 = AccountEntity(
         id=1,
         email="student1@example.com",
-        hashed_password="...",
+        first_name="Test",
+        last_name="User",
+        pid="304000001",
         role=AccountRole.STUDENT,
     )
     account2 = AccountEntity(
         id=2,
         email="student2@example.com",
-        hashed_password="...",
+        first_name="Test",
+        last_name="User",
+        pid="304000002",
         role=AccountRole.STUDENT,
     )
     test_async_session.add_all([account1, account2])
     await test_async_session.commit()
 
     student1 = StudentEntity(
-        first_name="John",
-        last_name="Doe",
         contact_preference=ContactPreference.call,
         phone_number="1234567890",
         account_id=1,
     )
     student2 = StudentEntity(
-        first_name="Jane",
-        last_name="Smith",
         contact_preference=ContactPreference.text,
         phone_number="0987654321",
         account_id=2,
@@ -868,21 +868,22 @@ async def four_accounts_and_students(test_async_session: AsyncSession):
     """Create 4 accounts and students for boundary tests."""
     accounts = []
     students = []
+    first_names = ["John", "Jane", "Bob", "Alice"]
+    last_names = ["Doe", "Smith", "Johnson", "Williams"]
+
     for i in range(1, 5):
         account = AccountEntity(
             id=i,
             email=f"student{i}@example.com",
-            hashed_password="...",
+            first_name=first_names[i - 1],
+            last_name=last_names[i - 1],
+            pid=f"30500000{i}",
             role=AccountRole.STUDENT,
         )
         accounts.append(account)
 
-        first_names = ["John", "Jane", "Bob", "Alice"]
-        last_names = ["Doe", "Smith", "Johnson", "Williams"]
         student = StudentEntity(
             account_id=i,
-            first_name=first_names[i - 1],
-            last_name=last_names[i - 1],
             contact_preference=ContactPreference.call
             if i % 2 == 1
             else ContactPreference.text,
