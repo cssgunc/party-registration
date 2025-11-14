@@ -9,22 +9,22 @@ export const LocationTable = ({ data }: { data: Location[] }) => {
 
     const columns: ColumnDef<Location>[] = [
         {
-            accessorKey: "formatted_address",
+            accessorKey: "formattedAddress",
             header: "Address"
         },
         {
-            accessorKey: "warning_count",
+            accessorKey: "warningCount",
             header: "Warning Count"
         },
         {
-            accessorKey: "citation_count",
+            accessorKey: "citationCount",
             header: "Citation Count"
         },
         {
-            accessorKey: "hold_expiration",
+            accessorKey: "holdExpirationDate",
             header: "Active Hold",
             cell: ({ row }) => {
-                const hold = row.getValue("hold_expiration") as string | null;
+                const hold = row.getValue("holdExpirationDate") as string | null;
                 if (hold) {
                     const formattedDate = new Date(hold).toLocaleDateString();
                     return `until ${formattedDate}`;
