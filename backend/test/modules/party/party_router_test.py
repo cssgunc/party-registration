@@ -4,7 +4,6 @@ import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.core.authentication import authenticate_admin
 from src.core.database import get_session
 from src.main import app
 from src.modules.account.account_entity import AccountEntity, AccountRole
@@ -12,7 +11,6 @@ from src.modules.location.location_entity import LocationEntity
 from src.modules.party.party_entity import PartyEntity
 from src.modules.student.student_entity import StudentEntity
 from src.modules.student.student_model import ContactPreference
-from src.modules.user.user_model import User
 
 
 @pytest_asyncio.fixture()
@@ -40,14 +38,12 @@ async def client(test_async_session: AsyncSession):
     async def override_get_session():
         yield test_async_session
 
-    async def override_authenticate_admin():
-        return User(id=1, email="admin@test.com")
-
     app.dependency_overrides[get_session] = override_get_session
-    app.dependency_overrides[authenticate_admin] = override_authenticate_admin
 
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+        headers={"Authorization": "Bearer admin"},
     ) as ac:
         yield ac
 
@@ -61,13 +57,17 @@ async def sample_party_setup(test_async_session: AsyncSession):
     account_one = AccountEntity(
         id=1,
         email="test@example.com",
-        hashed_password="hashed_password",
+        first_name="Test",
+        last_name="User",
+        pid="306000001",
         role=AccountRole.STUDENT,
     )
     account_two = AccountEntity(
         id=2,
         email="test2@example.com",
-        hashed_password="hashed_password",
+        first_name="Test",
+        last_name="User",
+        pid="306000002",
         role=AccountRole.STUDENT,
     )
     test_async_session.add_all([account_one, account_two])
@@ -84,15 +84,11 @@ async def sample_party_setup(test_async_session: AsyncSession):
 
     # Create students
     student_one = StudentEntity(
-        first_name="John",
-        last_name="Doe",
         contact_preference=ContactPreference.call,
         phone_number="1234567890",
         account_id=1,
     )
     student_two = StudentEntity(
-        first_name="Jane",
-        last_name="Smith",
         contact_preference=ContactPreference.text,
         phone_number="0987654321",
         account_id=2,
