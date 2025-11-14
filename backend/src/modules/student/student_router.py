@@ -1,5 +1,9 @@
 from fastapi import APIRouter, Depends, Query
-from src.core.authentication import authenticate_admin, authenticate_staff_or_admin, authenticate_student
+from src.core.authentication import (
+    authenticate_admin,
+    authenticate_staff_or_admin,
+    authenticate_student,
+)
 from src.modules.account.account_model import Account
 from src.modules.party.party_model import Party
 from src.modules.party.party_service import PartyService
