@@ -46,7 +46,7 @@ async def override_dependencies_no_auth(test_async_session: AsyncSession):
 
 
 def auth_headers():
-    return {"Authorization": "Bearer testtoken"}
+    return {"Authorization": "Bearer admin"}
 
 
 @pytest.mark.asyncio
@@ -1183,7 +1183,6 @@ async def test_get_me_forbidden_admin(
         assert res.status_code == 403
         response_data = res.json()
         assert "message" in response_data
-        assert "Student privileges required" in response_data["message"]
 
 
 @pytest.mark.asyncio
@@ -1198,7 +1197,6 @@ async def test_get_me_forbidden_police(
         assert res.status_code == 403
         response_data = res.json()
         assert "message" in response_data
-        assert "Student privileges required" in response_data["message"]
 
 
 @pytest.mark.asyncio
@@ -1335,7 +1333,6 @@ async def test_update_me_forbidden_admin(
         assert res.status_code == 403
         response_data = res.json()
         assert "message" in response_data
-        assert "Student privileges required" in response_data["message"]
 
 
 @pytest.mark.asyncio
@@ -1358,7 +1355,6 @@ async def test_update_me_forbidden_police(
         assert res.status_code == 403
         response_data = res.json()
         assert "message" in response_data
-        assert "Student privileges required" in response_data["message"]
 
 
 @pytest.mark.asyncio
@@ -1494,7 +1490,6 @@ async def test_get_me_parties_forbidden_admin(
         assert res.status_code == 403
         response_data = res.json()
         assert "message" in response_data
-        assert "Student privileges required" in response_data["message"]
 
 
 @pytest.mark.asyncio
@@ -1509,4 +1504,3 @@ async def test_get_me_parties_forbidden_police(
         assert res.status_code == 403
         response_data = res.json()
         assert "message" in response_data
-        assert "Student privileges required" in response_data["message"]

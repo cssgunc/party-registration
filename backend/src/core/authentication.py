@@ -1,3 +1,5 @@
+from typing import Literal
+
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from src.core.exceptions import CredentialsException, ForbiddenException
@@ -67,59 +69,71 @@ async def authenticate_user(
     return user
 
 
+def authenticate_by_role(*roles: Literal["police", "student", "admin", "staff"]):
+    """
+    Middleware factory to ensure the authenticated user has one of the specified roles.
+    """
+
+    async def _authenticate(
+        authorization: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    ) -> Account | PoliceAccount:
+        token = authorization.credentials.lower()
+
+        if "police" in roles and token == "police":
+            return PoliceAccount(email="police@example.com")
+
+        role_map = {
+            "student": AccountRole.STUDENT,
+            "admin": AccountRole.ADMIN,
+            "staff": AccountRole.STAFF,
+        }
+
+        if token not in role_map:
+            raise CredentialsException()
+
+        user = mock_authenticate(role_map[token])
+        if not user or user.role.value not in roles:
+            raise ForbiddenException(detail="Insufficient privileges")
+        return user
+
+    return _authenticate
+
+
 async def authenticate_admin(
-    user: Account = Depends(authenticate_user),
+    account: Account | PoliceAccount = Depends(authenticate_by_role("admin")),
 ) -> Account:
-    """
-    Middleware to ensure the authenticated user is an admin.
-    """
-    admin = mock_authenticate(AccountRole.ADMIN)
-    if not admin or user.role != AccountRole.ADMIN:
-        raise ForbiddenException(detail="Admin privileges required")
-    return admin
+    if not isinstance(account, Account):
+        raise ForbiddenException(detail="Insufficient privileges")
+    return account
+
+
+async def authenticate_staff_or_admin(
+    account: Account | PoliceAccount = Depends(authenticate_by_role("staff", "admin")),
+) -> Account:
+    if not isinstance(account, Account):
+        raise ForbiddenException(detail="Insufficient privileges")
+    return account
+
+
+async def authenticate_student_or_admin(
+    account: Account | PoliceAccount = Depends(
+        authenticate_by_role("student", "admin")
+    ),
+) -> Account:
+    if not isinstance(account, Account):
+        raise ForbiddenException(detail="Insufficient privileges")
+    return account
 
 
 async def authenticate_student(
-    user: Account = Depends(authenticate_user),
+    account: Account | PoliceAccount = Depends(authenticate_by_role("student")),
 ) -> Account:
-    """
-    Middleware to ensure the authenticated user is a student.
-    """
-    student = mock_authenticate(AccountRole.STUDENT)
-    if not student or user.role != AccountRole.STUDENT:
-        raise ForbiddenException(detail="Student privileges required")
-    return student
-
-
-async def authenticate_police(
-    authorization: HTTPAuthorizationCredentials = Depends(bearer_scheme),
-) -> PoliceAccount:
-    """
-    Middleware to ensure the authenticated user is a police officer.
-    """
-    token = authorization.credentials.lower()
-
-    if token != "police":
-        raise CredentialsException()
-
-    return PoliceAccount(email="police@example.com")
+    if not isinstance(account, Account):
+        raise ForbiddenException(detail="Insufficient privileges")
+    return account
 
 
 async def authenticate_police_or_admin(
-    authorization: HTTPAuthorizationCredentials = Depends(bearer_scheme),
-) -> Account | PoliceAccount:
-    """
-    Middleware to ensure the authenticated user is either a police officer or admin.
-    """
-    token = authorization.credentials.lower()
-
-    if token not in ("police", "admin"):
-        raise ForbiddenException(detail="Police or admin privileges required")
-
-    if token == "police":
-        return PoliceAccount(email="police@example.com")
-    
-    account = mock_authenticate(AccountRole.ADMIN)
-    if not account:
-        raise CredentialsException()
+    account: Account | PoliceAccount = Depends(authenticate_by_role("police", "admin")),
+) -> PoliceAccount | Account:
     return account

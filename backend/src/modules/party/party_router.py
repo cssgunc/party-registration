@@ -1,7 +1,12 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query
-from src.core.authentication import authenticate_admin, authenticate_police_or_admin
+from src.core.authentication import (
+    authenticate_admin,
+    authenticate_by_role,
+    authenticate_police_or_admin,
+    authenticate_staff_or_admin,
+)
 from src.core.exceptions import BadRequestException
 from src.modules.location.location_service import LocationService
 
@@ -18,7 +23,7 @@ async def list_parties(
         None, ge=1, le=100, description="Items per page (default: all)"
     ),
     party_service: PartyService = Depends(),
-    _=Depends(authenticate_admin),
+    _=Depends(authenticate_by_role("admin", "staff", "police")),
 ) -> PaginatedPartiesResponse:
     """
     Returns all party registrations in the database with optional pagination.
@@ -121,7 +126,7 @@ async def get_parties_nearby(
 async def get_party(
     party_id: int,
     party_service: PartyService = Depends(),
-    _=Depends(authenticate_admin),
+    _=Depends(authenticate_staff_or_admin),
 ) -> Party:
     """
     Returns a party registration by ID.
