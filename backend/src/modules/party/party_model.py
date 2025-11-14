@@ -36,7 +36,7 @@ class Party(BaseModel):
     id: int
     party_datetime: datetime = Field(..., description="Date and time of the party")
     location: Location = Field(..., description="Location where the party is held")
-    contact_one: Student = Field(..., description="ID of the first contact student")
+    contact_one: Student = Field(..., description="First contact student")
     contact_two: Contact = Field(
         ..., description="Contact information for the second contact"
     )

@@ -5,7 +5,12 @@ import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.modules.account.account_entity import AccountEntity, AccountRole
 from src.modules.student.student_entity import StudentEntity
-from src.modules.student.student_model import ContactPreference, StudentData, StudentDTO
+from src.modules.student.student_model import (
+    ContactPreference,
+    Student,
+    StudentData,
+    StudentDataWithNames,
+)
 from src.modules.student.student_service import (
     AccountNotFoundException,
     InvalidAccountRoleException,
@@ -26,8 +31,6 @@ async def student_entity(
     test_async_session: AsyncSession, test_account: AccountEntity
 ) -> StudentEntity:
     data = StudentData(
-        first_name="Test",
-        last_name="User",
         contact_preference=ContactPreference.text,
         phone_number="9999999999",
     )
@@ -40,8 +43,7 @@ async def student_entity(
 
 @pytest.mark.asyncio
 async def test_get_students_empty(student_service: StudentService):
-    students = await student_service.get_students()
-    assert isinstance(students, list)
+    students = await student_service.get_students(skip=0, limit=10)
     assert len(students) == 0
 
 
@@ -49,14 +51,14 @@ async def test_get_students_empty(student_service: StudentService):
 async def test_create_student(
     student_service: StudentService, test_account: AccountEntity
 ) -> None:
-    data = StudentData(
+    data = StudentDataWithNames(
         first_name="John",
         last_name="Doe",
         contact_preference=ContactPreference.text,
         phone_number="1234567890",
     )
     student = await student_service.create_student(data, account_id=test_account.id)
-    assert isinstance(student, StudentDTO)
+    assert isinstance(student, Student)
     assert student.id == test_account.id
     assert student.first_name == "John"
     assert student.last_name == "Doe"
@@ -69,7 +71,7 @@ async def test_create_student_conflict(
     test_account: AccountEntity,
     test_async_session: AsyncSession,
 ) -> None:
-    data = StudentData(
+    data = StudentDataWithNames(
         first_name="John",
         last_name="Doe",
         contact_preference=ContactPreference.text,
@@ -79,7 +81,9 @@ async def test_create_student_conflict(
 
     second_account = AccountEntity(
         email="second@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Test",
+        last_name="User",
+        pid="987654321",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(second_account)
@@ -97,10 +101,14 @@ async def test_get_students(
     test_account: AccountEntity,
 ):
     accounts = []
+    names = [("Alice", "Smith"), ("Bob", "Jones"), ("Charlie", "Brown")]
+    pids = ["111111111", "222222222", "333333333"]
     for i in range(3):
         acc = AccountEntity(
             email=f"user{i}@example.com",
-            hashed_password="$2b$12$test_hashed_password",
+            first_name=names[i][0],
+            last_name=names[i][1],
+            pid=pids[i],
             role=AccountEntity.role.type.enums[0],
         )
         test_async_session.add(acc)
@@ -108,8 +116,6 @@ async def test_get_students(
     await test_async_session.commit()
     for idx, acc in enumerate(accounts):
         data = StudentData(
-            first_name=["Alice", "Bob", "Charlie"][idx],
-            last_name=["Smith", "Jones", "Brown"][idx],
             contact_preference=[
                 ContactPreference.call,
                 ContactPreference.text,
@@ -121,7 +127,7 @@ async def test_get_students(
         test_async_session.add(entity)
     await test_async_session.commit()
 
-    students = await student_service.get_students()
+    students = await student_service.get_students(skip=0, limit=10)
     assert len(students) == 3
 
     expected = {
@@ -160,7 +166,7 @@ async def test_update_student(
     test_async_session: AsyncSession,
     test_account: AccountEntity,
 ):
-    data = StudentData(
+    data = StudentDataWithNames(
         first_name="John",
         last_name="Doe",
         contact_preference=ContactPreference.text,
@@ -171,7 +177,7 @@ async def test_update_student(
     await test_async_session.commit()
     await test_async_session.refresh(entity)
 
-    update_data = StudentData(
+    update_data = StudentDataWithNames(
         first_name="Jane",
         last_name="Doe",
         contact_preference=ContactPreference.call,
@@ -185,7 +191,7 @@ async def test_update_student(
 
 @pytest.mark.asyncio
 async def test_update_student_not_found(student_service: StudentService):
-    update_data = StudentData(
+    update_data = StudentDataWithNames(
         first_name="Jane",
         last_name="Doe",
         contact_preference=ContactPreference.call,
@@ -201,13 +207,13 @@ async def test_update_student_conflict(
     test_async_session: AsyncSession,
     test_account: AccountEntity,
 ):
-    data1 = StudentData(
+    data1 = StudentDataWithNames(
         first_name="Alice",
         last_name="Smith",
         contact_preference=ContactPreference.call,
         phone_number="1111111111",
     )
-    data2 = StudentData(
+    data2 = StudentDataWithNames(
         first_name="Bob",
         last_name="Jones",
         contact_preference=ContactPreference.text,
@@ -215,7 +221,9 @@ async def test_update_student_conflict(
     )
     account2 = AccountEntity(
         email="second@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Test",
+        last_name="User",
+        pid="987654321",
         role=test_account.role,
     )
     test_async_session.add(account2)
@@ -233,7 +241,7 @@ async def test_update_student_conflict(
     with pytest.raises(StudentConflictException):
         await student_service.update_student(
             entity2.account_id,
-            StudentData(
+            StudentDataWithNames(
                 first_name="Bob",
                 last_name="Jones",
                 contact_preference=ContactPreference.text,
@@ -248,7 +256,7 @@ async def test_delete_student(
     test_async_session: AsyncSession,
     test_account: AccountEntity,
 ):
-    data = StudentData(
+    data = StudentDataWithNames(
         first_name="John",
         last_name="Doe",
         contact_preference=ContactPreference.text,
@@ -278,7 +286,7 @@ async def test_create_student_with_datetime_timezone(
     test_account: AccountEntity,
 ):
     last_reg = datetime(2024, 1, 15, 10, 30, 0, tzinfo=timezone.utc)
-    data = StudentData(
+    data = StudentDataWithNames(
         first_name="Jane",
         last_name="Smith",
         contact_preference=ContactPreference.call,
@@ -295,7 +303,7 @@ async def test_update_student_with_datetime_timezone(
     test_async_session: AsyncSession,
     test_account: AccountEntity,
 ):
-    data = StudentData(
+    data = StudentDataWithNames(
         first_name="John",
         last_name="Doe",
         contact_preference=ContactPreference.text,
@@ -307,7 +315,7 @@ async def test_update_student_with_datetime_timezone(
     await test_async_session.refresh(entity)
 
     last_reg = datetime(2024, 3, 20, 14, 45, 30, tzinfo=timezone.utc)
-    update_data = StudentData(
+    update_data = StudentDataWithNames(
         first_name="John",
         last_name="Doe",
         contact_preference=ContactPreference.text,
@@ -322,7 +330,7 @@ async def test_update_student_with_datetime_timezone(
 async def test_create_student_with_nonexistent_account(
     student_service: StudentService,
 ):
-    data = StudentData(
+    data = StudentDataWithNames(
         first_name="Test",
         last_name="User",
         contact_preference=ContactPreference.text,
@@ -339,14 +347,16 @@ async def test_create_student_with_non_student_role(
 ):
     admin_account = AccountEntity(
         email="admin@example.com",
-        hashed_password="$2b$12$test_hashed_password",
+        first_name="Test",
+        last_name="User",
+        pid="444444444",
         role=AccountRole.ADMIN,
     )
     test_async_session.add(admin_account)
     await test_async_session.commit()
     await test_async_session.refresh(admin_account)
 
-    data = StudentData(
+    data = StudentDataWithNames(
         first_name="Test",
         last_name="User",
         contact_preference=ContactPreference.text,
@@ -362,7 +372,7 @@ async def test_create_student_duplicate_account_id(
     test_async_session: AsyncSession,
     test_account: AccountEntity,
 ):
-    data1 = StudentData(
+    data1 = StudentDataWithNames(
         first_name="First",
         last_name="Student",
         contact_preference=ContactPreference.text,
@@ -370,7 +380,7 @@ async def test_create_student_duplicate_account_id(
     )
     await student_service.create_student(data1, account_id=test_account.id)
 
-    data2 = StudentData(
+    data2 = StudentDataWithNames(
         first_name="Second",
         last_name="Student",
         contact_preference=ContactPreference.call,
@@ -386,7 +396,7 @@ async def test_update_student_with_non_student_role(
     test_async_session: AsyncSession,
     test_account: AccountEntity,
 ):
-    data = StudentData(
+    data = StudentDataWithNames(
         first_name="John",
         last_name="Doe",
         contact_preference=ContactPreference.text,
@@ -400,7 +410,7 @@ async def test_update_student_with_non_student_role(
     test_async_session.add(test_account)
     await test_async_session.commit()
 
-    update_data = StudentData(
+    update_data = StudentDataWithNames(
         first_name="Jane",
         last_name="Doe",
         contact_preference=ContactPreference.call,
