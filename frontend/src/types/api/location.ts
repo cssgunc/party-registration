@@ -1,33 +1,27 @@
-type LocationDto = {
+type Location = {
   id: number;
-
-  // OCSL Data
-  warning_count: number;
-  citation_count: number;
-  hold_expiration: string | null;
-  has_active_hold: boolean;
+  citationCount: number;
+  warningCount: number;
+  holdExpirationDate: Date | null;
+  hasActiveHold: boolean;
 
   // Google Maps Data
-  google_place_id: string;
-  formatted_address: string;
+  googlePlaceId: string;
+  formattedAddress: string;
 
   // Geography
   latitude: number;
   longitude: number;
 
   // Address Components
-  street_number: string | null;
-  street_name: string | null;
+  streetNumber: string | null;
+  streetName: string | null;
   unit: string | null;
   city: string | null;
   county: string | null;
   state: string | null;
   country: string | null;
-  zip_code: string | null;
+  zipCode: string | null;
 };
 
-type Location = Omit<LocationDto, "hold_expiration"> & {
-  hold_expiration: Date | null;
-};
-
-export type { Location, LocationDto };
+export type { Location };
