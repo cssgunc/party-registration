@@ -1,12 +1,14 @@
 from datetime import datetime
 from typing import TYPE_CHECKING, Self
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Mapped, mapped_column, relationship, selectinload
 from src.core.database import EntityBase
 from src.modules.student.student_model import ContactPreference
 
-from .party_model import Party, PartyData
+from ..student.student_entity import StudentEntity
+from .party_model import Contact, Party, PartyData
 
 if TYPE_CHECKING:
     from ..location.location_entity import LocationEntity
@@ -19,25 +21,26 @@ class PartyEntity(EntityBase):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     party_datetime: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     location_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("locations.id"), nullable=False
+        Integer, ForeignKey("locations.id", ondelete="CASCADE"), nullable=False
     )
     contact_one_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("students.account_id"), nullable=False
+        Integer, ForeignKey("students.account_id", ondelete="CASCADE"), nullable=False
     )
 
-    # Contact two is stored directly (not as a foreign key to students)
     contact_two_email: Mapped[str] = mapped_column(String, nullable=False)
     contact_two_first_name: Mapped[str] = mapped_column(String, nullable=False)
     contact_two_last_name: Mapped[str] = mapped_column(String, nullable=False)
     contact_two_phone_number: Mapped[str] = mapped_column(String, nullable=False)
-    contact_two_call_or_text_pref: Mapped[ContactPreference] = mapped_column(
+    contact_two_contact_preference: Mapped[ContactPreference] = mapped_column(
         Enum(ContactPreference), nullable=False
     )
 
     # Relationships
-    location: Mapped["LocationEntity"] = relationship("LocationEntity")
+    location: Mapped["LocationEntity"] = relationship(
+        "LocationEntity", passive_deletes=True
+    )
     contact_one: Mapped["StudentEntity"] = relationship(
-        "StudentEntity", foreign_keys=[contact_one_id]
+        "StudentEntity", foreign_keys=[contact_one_id], passive_deletes=True
     )
 
     @classmethod
@@ -46,22 +49,44 @@ class PartyEntity(EntityBase):
             party_datetime=data.party_datetime,
             location_id=data.location_id,
             contact_one_id=data.contact_one_id,
-            contact_two_email=data.contact_two_email,
-            contact_two_first_name=data.contact_two_first_name,
-            contact_two_last_name=data.contact_two_last_name,
-            contact_two_phone_number=data.contact_two_phone_number,
-            contact_two_call_or_text_pref=data.contact_two_call_or_text_pref,
+            contact_two_email=data.contact_two.email,
+            contact_two_first_name=data.contact_two.first_name,
+            contact_two_last_name=data.contact_two.last_name,
+            contact_two_phone_number=data.contact_two.phone_number,
+            contact_two_contact_preference=data.contact_two.contact_preference,
         )
 
     def to_model(self) -> Party:
+        """Convert entity to model. Requires relationships to be eagerly loaded."""
         return Party(
             id=self.id,
             party_datetime=self.party_datetime,
-            location_id=self.location_id,
-            contact_one_id=self.contact_one_id,
-            contact_two_email=self.contact_two_email,
-            contact_two_first_name=self.contact_two_first_name,
-            contact_two_last_name=self.contact_two_last_name,
-            contact_two_phone_number=self.contact_two_phone_number,
-            contact_two_call_or_text_pref=self.contact_two_call_or_text_pref,
+            location=self.location.to_model(),
+            contact_one=self.contact_one.to_dto(),
+            contact_two=Contact(
+                email=self.contact_two_email,
+                first_name=self.contact_two_first_name,
+                last_name=self.contact_two_last_name,
+                phone_number=self.contact_two_phone_number,
+                contact_preference=self.contact_two_contact_preference,
+            ),
         )
+
+    async def load_model(self, session: AsyncSession) -> Party:
+        """
+        Load party with relationships from database and convert to model.
+        Should be used to get the model only if relationships haven't been loaded yet.
+        """
+
+        result = await session.execute(
+            select(self.__class__)
+            .where(self.__class__.id == self.id)
+            .options(
+                selectinload(self.__class__.location),
+                selectinload(self.__class__.contact_one).selectinload(
+                    StudentEntity.account
+                ),
+            )
+        )
+        party_entity = result.scalar_one()
+        return party_entity.to_model()

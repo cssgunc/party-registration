@@ -9,14 +9,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from src.core.config import env
 from src.core.database import get_session
-from src.core.exceptions import BadRequestException, ConflictException, NotFoundException
+from src.core.exceptions import (
+    BadRequestException,
+    ConflictException,
+    NotFoundException,
+)
 
+from ..account.account_service import AccountByEmailNotFoundException, AccountService
 from ..location.location_entity import LocationEntity
 from ..location.location_service import LocationService
 from ..student.student_entity import StudentEntity
-from ..account.account_service import AccountService, AccountByEmailNotFoundException
 from .party_entity import PartyEntity
-from .party_model import Party, PartyData, AdminCreatePartyDTO, StudentCreatePartyDTO
+from .party_model import AdminCreatePartyDTO, Party, PartyData, StudentCreatePartyDTO
 
 
 class PartyNotFoundException(NotFoundException):
@@ -68,7 +72,7 @@ class PartyService:
         self,
         session: AsyncSession = Depends(get_session),
         location_service: LocationService = Depends(),
-        account_service: AccountService = Depends()
+        account_service: AccountService = Depends(),
     ):
         self.session = session
         self.location_service = location_service
@@ -76,7 +80,14 @@ class PartyService:
 
     async def _get_party_entity_by_id(self, party_id: int) -> PartyEntity:
         result = await self.session.execute(
-            select(PartyEntity).where(PartyEntity.id == party_id)
+            select(PartyEntity)
+            .where(PartyEntity.id == party_id)
+            .options(
+                selectinload(PartyEntity.location),
+                selectinload(PartyEntity.contact_one).selectinload(
+                    StudentEntity.account
+                ),
+            )
         )
         party_entity = result.scalar_one_or_none()
         if party_entity is None:
@@ -100,7 +111,9 @@ class PartyService:
     def _calculate_business_days_ahead(self, target_date: datetime) -> int:
         """Calculate the number of business days between now and target date."""
         current_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-        target_date_only = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        target_date_only = target_date.replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
 
         business_days = 0
         current = current_date
@@ -180,7 +193,9 @@ class PartyService:
 
         # Then get the student entity
         result = await self.session.execute(
-            select(StudentEntity).where(StudentEntity.account_id == account.id)
+            select(StudentEntity)
+            .where(StudentEntity.account_id == account.id)
+            .options(selectinload(StudentEntity.account))
         )
         student = result.scalar_one_or_none()
         if student is None:
@@ -218,7 +233,7 @@ class PartyService:
             zip_code=location_data.zip_code,
             warning_count=0,
             citation_count=0,
-            hold_expiration=None
+            hold_expiration=None,
         )
 
         self.session.add(new_location)
@@ -238,7 +253,16 @@ class PartyService:
             return location
 
     async def get_parties(self, skip: int = 0, limit: int | None = None) -> List[Party]:
-        query = select(PartyEntity).offset(skip)
+        query = (
+            select(PartyEntity)
+            .offset(skip)
+            .options(
+                selectinload(PartyEntity.location),
+                selectinload(PartyEntity.contact_one).selectinload(
+                    StudentEntity.account
+                ),
+            )
+        )
         if limit is not None:
             query = query.limit(limit)
         result = await self.session.execute(query)
@@ -251,15 +275,27 @@ class PartyService:
 
     async def get_parties_by_location(self, location_id: int) -> List[Party]:
         result = await self.session.execute(
-            select(PartyEntity).where(PartyEntity.location_id == location_id)
+            select(PartyEntity)
+            .where(PartyEntity.location_id == location_id)
+            .options(
+                selectinload(PartyEntity.location),
+                selectinload(PartyEntity.contact_one).selectinload(
+                    StudentEntity.account
+                ),
+            )
         )
         parties = result.scalars().all()
         return [party.to_model() for party in parties]
 
     async def get_parties_by_contact(self, student_id: int) -> List[Party]:
         result = await self.session.execute(
-            select(PartyEntity).where(
-                PartyEntity.contact_one_id == student_id
+            select(PartyEntity)
+            .where(PartyEntity.contact_one_id == student_id)
+            .options(
+                selectinload(PartyEntity.location),
+                selectinload(PartyEntity.contact_one).selectinload(
+                    StudentEntity.account
+                ),
             )
         )
         parties = result.scalars().all()
@@ -269,9 +305,16 @@ class PartyService:
         self, start_date: datetime, end_date: datetime
     ) -> List[Party]:
         result = await self.session.execute(
-            select(PartyEntity).where(
+            select(PartyEntity)
+            .where(
                 PartyEntity.party_datetime >= start_date,
                 PartyEntity.party_datetime <= end_date,
+            )
+            .options(
+                selectinload(PartyEntity.location),
+                selectinload(PartyEntity.contact_one).selectinload(
+                    StudentEntity.account
+                ),
             )
         )
         parties = result.scalars().all()
@@ -288,8 +331,7 @@ class PartyService:
             await self.session.commit()
         except IntegrityError as e:
             raise PartyConflictException(f"Failed to create party: {str(e)}")
-        await self.session.refresh(new_party)
-        return new_party.to_model()
+        return await new_party.load_model(self.session)
 
     async def update_party(self, party_id: int, data: PartyData) -> Party:
         party_entity = await self._get_party_entity_by_id(party_id)
@@ -309,15 +351,16 @@ class PartyService:
             await self.session.commit()
         except IntegrityError as e:
             raise PartyConflictException(f"Failed to update party: {str(e)}")
-        await self.session.refresh(party_entity)
-        return party_entity.to_model()
+        return await party_entity.load_model(self.session)
 
     async def create_party_from_student_dto(
         self, dto: StudentCreatePartyDTO, student_account_id: int
     ) -> Party:
         """Create a party registration from a student. contact_one is auto-filled."""
         # Validate student party prerequisites (date and Party Smart)
-        await self._validate_student_party_prerequisites(student_account_id, dto.party_datetime)
+        await self._validate_student_party_prerequisites(
+            student_account_id, dto.party_datetime
+        )
 
         # Get/create location and validate no hold
         location = await self._validate_and_get_location(dto.place_id)
@@ -330,19 +373,14 @@ class PartyService:
             party_datetime=dto.party_datetime,
             location_id=location.id,
             contact_one_id=student_account_id,
-            contact_two_email=dto.contact_two.email,
-            contact_two_first_name=dto.contact_two.first_name,
-            contact_two_last_name=dto.contact_two.last_name,
-            contact_two_phone_number=dto.contact_two.phone_number,
-            contact_two_call_or_text_pref=dto.contact_two.call_or_text_pref,
+            contact_two=dto.contact_two,
         )
 
         # Create party
         new_party = PartyEntity.from_model(party_data)
         self.session.add(new_party)
         await self.session.commit()
-        await self.session.refresh(new_party)
-        return new_party.to_model()
+        return await new_party.load_model(self.session)
 
     async def create_party_from_admin_dto(self, dto: AdminCreatePartyDTO) -> Party:
         """Create a party registration from an admin. Both contacts must be specified."""
@@ -358,19 +396,14 @@ class PartyService:
             party_datetime=dto.party_datetime,
             location_id=location.id,
             contact_one_id=contact_one_id,
-            contact_two_email=dto.contact_two.email,
-            contact_two_first_name=dto.contact_two.first_name,
-            contact_two_last_name=dto.contact_two.last_name,
-            contact_two_phone_number=dto.contact_two.phone_number,
-            contact_two_call_or_text_pref=dto.contact_two.call_or_text_pref,
+            contact_two=dto.contact_two,
         )
 
         # Create party
         new_party = PartyEntity.from_model(party_data)
         self.session.add(new_party)
         await self.session.commit()
-        await self.session.refresh(new_party)
-        return new_party.to_model()
+        return await new_party.load_model(self.session)
 
     async def update_party_from_student_dto(
         self, party_id: int, dto: StudentCreatePartyDTO, student_account_id: int
@@ -380,7 +413,9 @@ class PartyService:
         party_entity = await self._get_party_entity_by_id(party_id)
 
         # Validate student party prerequisites (date and Party Smart)
-        await self._validate_student_party_prerequisites(student_account_id, dto.party_datetime)
+        await self._validate_student_party_prerequisites(
+            student_account_id, dto.party_datetime
+        )
 
         # Get/create location and validate no hold
         location = await self._validate_and_get_location(dto.place_id)
@@ -396,12 +431,11 @@ class PartyService:
         party_entity.contact_two_first_name = dto.contact_two.first_name
         party_entity.contact_two_last_name = dto.contact_two.last_name
         party_entity.contact_two_phone_number = dto.contact_two.phone_number
-        party_entity.contact_two_call_or_text_pref = dto.contact_two.call_or_text_pref
+        party_entity.contact_two_contact_preference = dto.contact_two.contact_preference
 
         self.session.add(party_entity)
         await self.session.commit()
-        await self.session.refresh(party_entity)
-        return party_entity.to_model()
+        return await party_entity.load_model(self.session)
 
     async def update_party_from_admin_dto(
         self, party_id: int, dto: AdminCreatePartyDTO
@@ -425,12 +459,11 @@ class PartyService:
         party_entity.contact_two_first_name = dto.contact_two.first_name
         party_entity.contact_two_last_name = dto.contact_two.last_name
         party_entity.contact_two_phone_number = dto.contact_two.phone_number
-        party_entity.contact_two_call_or_text_pref = dto.contact_two.call_or_text_pref
+        party_entity.contact_two_contact_preference = dto.contact_two.contact_preference
 
         self.session.add(party_entity)
         await self.session.commit()
-        await self.session.refresh(party_entity)
-        return party_entity.to_model()
+        return await party_entity.load_model(self.session)
 
     async def delete_party(self, party_id: int) -> Party:
         party_entity = await self._get_party_entity_by_id(party_id)
@@ -459,10 +492,17 @@ class PartyService:
         )
 
         result = await self.session.execute(
-            select(PartyEntity).where(
+            select(PartyEntity)
+            .where(
                 PartyEntity.contact_one_id == student_id,
                 PartyEntity.party_datetime >= start_of_day,
                 PartyEntity.party_datetime <= end_of_day,
+            )
+            .options(
+                selectinload(PartyEntity.location),
+                selectinload(PartyEntity.contact_one).selectinload(
+                    StudentEntity.account
+                ),
             )
         )
         parties = result.scalars().all()
@@ -477,7 +517,12 @@ class PartyService:
 
         result = await self.session.execute(
             select(PartyEntity)
-            .options(selectinload(PartyEntity.location))
+            .options(
+                selectinload(PartyEntity.location),
+                selectinload(PartyEntity.contact_one).selectinload(
+                    StudentEntity.account
+                ),
+            )
             .where(
                 PartyEntity.party_datetime >= start_time,
                 PartyEntity.party_datetime <= end_time,

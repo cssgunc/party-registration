@@ -3,7 +3,8 @@ from typing import Annotated, Literal, Union
 
 from pydantic import BaseModel, EmailStr, Field
 from src.core.models import PaginatedResponse
-from src.modules.student.student_model import ContactPreference
+from src.modules.location.location_model import Location
+from src.modules.student.student_model import ContactPreference, Student
 
 
 class PartyData(BaseModel):
@@ -12,18 +13,12 @@ class PartyData(BaseModel):
         ..., description="ID of the location where the party is held"
     )
     contact_one_id: int = Field(..., description="ID of the first contact student")
-    contact_two_email: EmailStr = Field(..., description="Email of the second contact")
-    contact_two_first_name: str = Field(..., description="First name of the second contact")
-    contact_two_last_name: str = Field(..., description="Last name of the second contact")
-    contact_two_phone_number: str = Field(..., description="Phone number of the second contact")
-    contact_two_call_or_text_pref: ContactPreference = Field(..., description="Contact preference of the second contact")
+    contact_two: "Contact" = Field(
+        ..., description="Contact information for the second contact"
+    )
 
 
-class Party(PartyData):
-    id: int
-
-
-class ContactDTO(BaseModel):
+class Contact(BaseModel):
     """DTO for contact information (contact_two in party registration)."""
 
     email: EmailStr = Field(..., description="Email address of the contact")
@@ -32,8 +27,18 @@ class ContactDTO(BaseModel):
     phone_number: str = Field(
         ..., pattern=r"^\+?1?\d{9,15}$", description="Phone number of the contact"
     )
-    call_or_text_pref: ContactPreference = Field(
+    contact_preference: ContactPreference = Field(
         ..., description="Preferred contact method: 'call' or 'text'"
+    )
+
+
+class Party(BaseModel):
+    id: int
+    party_datetime: datetime = Field(..., description="Date and time of the party")
+    location: Location = Field(..., description="Location where the party is held")
+    contact_one: Student = Field(..., description="ID of the first contact student")
+    contact_two: Contact = Field(
+        ..., description="Contact information for the second contact"
     )
 
 
@@ -46,7 +51,7 @@ class StudentCreatePartyDTO(BaseModel):
     )
     party_datetime: datetime = Field(..., description="Date and time of the party")
     place_id: str = Field(..., description="Google Maps place ID of the location")
-    contact_two: ContactDTO = Field(
+    contact_two: Contact = Field(
         ..., description="Contact information for the second contact"
     )
 
@@ -61,7 +66,7 @@ class AdminCreatePartyDTO(BaseModel):
     contact_one_email: EmailStr = Field(
         ..., description="Email address of the first contact student"
     )
-    contact_two: ContactDTO = Field(
+    contact_two: Contact = Field(
         ..., description="Contact information for the second contact"
     )
 
