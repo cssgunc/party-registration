@@ -26,7 +26,8 @@ ENV/
 # OS/Editor
 .DS_Store
 Thumbs.db
-.vscode/
+.vscode/*
+!.vscode/launch.json
 .idea/
 *.swp
 
@@ -37,6 +38,7 @@ backend/build/
 # Misc
 *.bak
 *.tmp
+backend/script/test.py
 
 # Ignore coverage reports
 coverage/
