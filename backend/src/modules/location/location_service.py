@@ -75,9 +75,6 @@ class LocationService:
         gmaps_client: googlemaps.Client = Depends(get_gmaps_client),
         session: AsyncSession = Depends(get_session),
     ):
-        print("hello world")
-        print("KEYEYYYK", env.GOOGLE_MAPS_API_KEY)
-
         self.session = session
         self.gmaps_client = gmaps_client
 
