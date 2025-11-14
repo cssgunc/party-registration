@@ -5,26 +5,23 @@ import { TableTemplate } from "./TableTemplate";
 export const LocationTable = ({ data }: { data: Location[] }) => {
     const columns: ColumnDef<Location>[] = [
         {
-            accessorKey: "formatted_address",
-            header: "Address",
-            enableColumnFilter: true,
+            accessorKey: "formattedAddress",
+            header: "Address"
         },
         {
-            accessorKey: "warning_count",
-            header: "Warning Count",
-            enableColumnFilter: true,
+            accessorKey: "warningCount",
+            header: "Warning Count"
         },
         {
-            accessorKey: "citation_count",
-            header: "Citation Count",
-            enableColumnFilter: true,
+            accessorKey: "citationCount",
+            header: "Citation Count"
         },
         {
-            accessorKey: "hold_expiration",
+            accessorKey: "holdExpirationDate",
             header: "Active Hold",
             enableColumnFilter: true,
             cell: ({ row }) => {
-                const hold = row.getValue("hold_expiration") as string | null;
+                const hold = row.getValue("holdExpirationDate") as string | null;
                 if (hold) {
                     const formattedDate = new Date(hold).toLocaleDateString();
                     return `until ${formattedDate}`;

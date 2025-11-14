@@ -71,11 +71,11 @@ export const PartyTable = ({ data }: { data: Party[] }) => {
             },
         },
         {
-            accessorKey: "contact_one",
+            accessorKey: "contactOne",
             header: "Contact One",
             enableColumnFilter: true,
             cell: ({ row }) => {
-                const contact = row.getValue("contact_one") as {
+                const contact = row.getValue("contactOne") as {
                     firstName: string;
                     lastName: string;
                 };
@@ -95,11 +95,11 @@ export const PartyTable = ({ data }: { data: Party[] }) => {
             },
         },
         {
-            accessorKey: "contact_two",
+            accessorKey: "contactTwo",
             header: "Contact Two",
             enableColumnFilter: true,
             cell: ({ row }) => {
-                const contact = row.getValue("contact_two") as {
+                const contact = row.getValue("contactTwo") as {
                     firstName: string;
                     lastName: string;
                 };
