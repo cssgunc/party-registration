@@ -17,8 +17,6 @@ class StudentEntity(EntityBase):
     account_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("accounts.id"), primary_key=True, index=True
     )
-    first_name: Mapped[str] = mapped_column(String, nullable=False)
-    last_name: Mapped[str] = mapped_column(String, nullable=False)
     contact_preference: Mapped[ContactPreference] = mapped_column(
         Enum(ContactPreference), nullable=False
     )
@@ -32,8 +30,6 @@ class StudentEntity(EntityBase):
     @classmethod
     def from_model(cls, data: "StudentData", account_id: int) -> Self:
         return cls(
-            first_name=data.first_name,
-            last_name=data.last_name,
             contact_preference=data.contact_preference,
             last_registered=data.last_registered,
             phone_number=data.phone_number,
@@ -43,8 +39,6 @@ class StudentEntity(EntityBase):
     def to_model(self) -> "DbStudent":
         return DbStudent(
             account_id=self.account_id,
-            first_name=self.first_name,
-            last_name=self.last_name,
             contact_preference=self.contact_preference,
             last_registered=self.last_registered,
             phone_number=self.phone_number,
@@ -54,10 +48,10 @@ class StudentEntity(EntityBase):
         """Convert entity to DTO using the account relationship."""
         return Student(
             id=self.account_id,
-            pid=str(self.account_id),
+            pid=self.account.pid,
             email=self.account.email,
-            first_name=self.first_name,
-            last_name=self.last_name,
+            first_name=self.account.first_name,
+            last_name=self.account.last_name,
             phone_number=self.phone_number,
             contact_preference=self.contact_preference,
             last_registered=self.last_registered,

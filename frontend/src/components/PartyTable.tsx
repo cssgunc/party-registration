@@ -12,8 +12,8 @@ export const PartyTable = ({ data }: { data: Party[] }) => {
             accessorKey: "location",
             header: "Address",
             cell: ({ row }) => {
-                const address = row.getValue("location") as { street_number: string, street_name: string };
-                return address ? `${address.street_number} ${address.street_name}` : "—";
+                const address = row.getValue("location") as { streetNumber: string, streetName: string };
+                return address ? `${address.streetNumber} ${address.streetName}` : "—";
             },
             // TODO: format as location info chip
         },
@@ -36,19 +36,19 @@ export const PartyTable = ({ data }: { data: Party[] }) => {
             },
         },
         {
-            accessorKey: "contact_one",
+            accessorKey: "contactOne",
             header: "Contact One",
             cell: ({ row }) => {
-                const contact = row.getValue("contact_one") as { firstName: string; lastName: string };
+                const contact = row.getValue("contactOne") as { firstName: string; lastName: string };
                 return contact ? `${contact.firstName} ${contact.lastName}` : "—";
             },
             // TODO: format as student info chip
         },
         {
-            accessorKey: "contact_two",
+            accessorKey: "contactTwo",
             header: "Contact Two",
             cell: ({ row }) => {
-                const contact = row.getValue("contact_two") as { firstName: string; lastName: string };
+                const contact = row.getValue("contactTwo") as { firstName: string; lastName: string };
                 return contact ? `${contact.firstName} ${contact.lastName}` : "—";
             },
             // TODO: format as student info chip

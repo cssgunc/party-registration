@@ -5,18 +5,15 @@ import { GenericInfoChip } from "@/components/GenericInfoChip";
 import LocationInfoChipDetails from "@/components/LocationInfoChipDetails";
 import { useSidebar } from "@/components/SidebarContext";
 import StudentInfoChipDetails from "@/components/StudentInfoChipDetails";
-import { Location } from "@/types/api/location";
-import { Student } from "@/types/api/student";
+import { LOCATIONS, STUDENTS } from "@/lib/mockData";
 import { Badge } from "lucide-react";
 import { useState } from "react";
 
 const Page = () => {
   const { openSidebar } = useSidebar();
-  const defaultStudent = getTestChipData().student;
-  const defaultLocation = getTestChipData().location;
   const [exampleData, setExampleData] = useState({ name: "Mason", age: 22 });
-  const [studentData, setStudentData] = useState(defaultStudent);
-  const [locationData, setLocationData] = useState(defaultLocation);
+  const [studentData, setStudentData] = useState(STUDENTS[0]);
+  const [locationData, setLocationData] = useState(LOCATIONS[0]);
 
   return (
     <div className="font-sans min-h-screen flex flex-col items-center justify-center p-8 sm:p-20 max-w-2xl mx-auto">
@@ -69,7 +66,7 @@ const Page = () => {
           Name: {studentData.firstName} {studentData.lastName}
         </p>
         <p>Phone: {studentData.phoneNumber}</p>
-        <p>Contact Pref: {studentData.contactPrefrence}</p>
+        <p>Contact Pref: {studentData.contactPreference}</p>
       </div>
       <h1 className="text-2xl font-bold mb-4">Location Info Chip</h1>
       <GenericInfoChip
@@ -86,46 +83,13 @@ const Page = () => {
       />
       <div className="mt-4 space-y-2">
         <h2 className="font-semibold text-xl">Location Info</h2>
-        <p>Address: {locationData.formatted_address}</p>
-        <p>Active Hold: {locationData.has_active_hold ? "Yes" : "No"}</p>
-        <p>Warnings: {locationData.warning_count}</p>
-        <p>Citations: {locationData.citation_count}</p>
+        <p>Address: {locationData.formattedAddress}</p>
+        <p>Active Hold: {locationData.hasActiveHold ? "Yes" : "No"}</p>
+        <p>Warnings: {locationData.warningCount}</p>
+        <p>Citations: {locationData.citationCount}</p>
       </div>
     </div>
   );
 };
-export function getTestChipData() {
-  const student: Student = {
-    id: 1,
-    accountId: 101,
-    firstName: "Mason",
-    lastName: "Beast",
-    fullName: "Mason Beast",
-    contactPrefrence: "text",
-    registerDate: new Date("2025-01-01"),
-    phoneNumber: "555-1234",
-  };
-
-  const location: Location = {
-    id: 1,
-    warning_count: 2,
-    citation_count: 1,
-    has_active_hold: true,
-    hold_expiration: new Date("2025-12-31"),
-    google_place_id: "abcd1234",
-    formatted_address: "123 Main St, Chapel Hill, NC",
-    latitude: 35.9132,
-    longitude: -79.0558,
-    street_number: "123",
-    street_name: "Main St",
-    unit: "Apt 4",
-    city: "Chapel Hill",
-    county: "Orange",
-    state: "NC",
-    country: "USA",
-    zip_code: "27514",
-  };
-  return { student, location };
-}
 
 export default Page;
