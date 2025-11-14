@@ -1,26 +1,36 @@
+import mockData from "@/../shared/mock_data.json";
 import type { Account, PoliceAccount } from "@/types/api/account";
 import type { Location } from "@/types/api/location";
 import type { Party } from "@/types/api/party";
 import type { Contact, Student } from "@/types/api/student";
-import mockData from "@/../shared/mock_data.json";;
 
 /**
- * Parses relative date strings like "NOW+7d" or "NOW-30d" into Date objects
+ * Parses relative date strings like "NOW+7d", "NOW-30d", "NOW+4h", or "NOW-2h" into Date objects
  */
 function parseRelativeDate(dateStr: string | null): Date | null {
   if (!dateStr) return null;
 
-  const match = dateStr.match(/^NOW([+-])(\d+)d$/);
+  const match = dateStr.match(/^NOW([+-])(\d+)([dh])$/);
   if (!match) return null;
 
-  const [, operator, days] = match;
+  const [, operator, amount, unit] = match;
   const date = new Date();
-  const daysNum = parseInt(days, 10);
+  const amountNum = parseInt(amount, 10);
 
-  if (operator === "+") {
-    date.setDate(date.getDate() + daysNum);
-  } else {
-    date.setDate(date.getDate() - daysNum);
+  if (unit === "d") {
+    // Days
+    if (operator === "+") {
+      date.setDate(date.getDate() + amountNum);
+    } else {
+      date.setDate(date.getDate() - amountNum);
+    }
+  } else if (unit === "h") {
+    // Hours
+    if (operator === "+") {
+      date.setHours(date.getHours() + amountNum);
+    } else {
+      date.setHours(date.getHours() - amountNum);
+    }
   }
 
   return date;
@@ -92,7 +102,7 @@ function findLocationById(id: number): Location {
 
 // Parse contact two objects
 function parseContactTwo(
-  contactData: typeof mockData["parties"][0]["contact_two"]
+  contactData: (typeof mockData)["parties"][0]["contact_two"]
 ): Contact {
   return {
     email: contactData.email,
