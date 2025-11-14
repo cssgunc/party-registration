@@ -142,7 +142,13 @@ async def reset_dev():
                 party_datetime=parse_date(party_data["party_datetime"]),
                 location_id=party_data["location_id"],
                 contact_one_id=party_data["contact_one_id"],
-                contact_two_id=party_data["contact_one_id"],
+                contact_two_first_name=party_data["contact_two"]["first_name"],
+                contact_two_last_name=party_data["contact_two"]["last_name"],
+                contact_two_email=party_data["contact_two"]["email"],
+                contact_two_phone_number=party_data["contact_two"]["phone_number"],
+                contact_two_contact_preference=party_data["contact_two"][
+                    "contact_preference"
+                ],
             )
             session.add(party)
 

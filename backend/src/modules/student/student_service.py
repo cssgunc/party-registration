@@ -16,8 +16,13 @@ from .student_model import Student, StudentData, StudentDataWithNames
 
 
 class StudentNotFoundException(NotFoundException):
-    def __init__(self, account_id: int):
-        super().__init__(f"Student with ID {account_id} not found")
+    def __init__(self, account_id: int | None = None, email: str | None = None):
+        if account_id is not None and email is not None:
+            raise ValueError("Provide either account_id or email, not both")
+        if account_id is not None:
+            super().__init__(f"Student with ID {account_id} not found")
+        elif email is not None:
+            super().__init__(f"Student with email {email} not found")
 
 
 class StudentConflictException(ConflictException):
@@ -111,6 +116,10 @@ class StudentService:
     async def get_student_by_id(self, account_id: int) -> Student:
         student_entity = await self._get_student_entity_by_account_id(account_id)
         return student_entity.to_dto()
+
+    async def assert_student_exists(self, account_id: int) -> None:
+        """Assert that a student with the given account ID exists."""
+        await self._get_student_entity_by_account_id(account_id)
 
     async def create_student(
         self, data: StudentDataWithNames, account_id: int

@@ -14,9 +14,10 @@ from src.core.exceptions import (
     ConflictException,
     NotFoundException,
 )
+from src.modules.location.location_model import Location
+from src.modules.student.student_service import StudentNotFoundException, StudentService
 
 from ..account.account_service import AccountByEmailNotFoundException, AccountService
-from ..location.location_entity import LocationEntity
 from ..location.location_service import LocationService
 from ..student.student_entity import StudentEntity
 from .party_entity import PartyEntity
@@ -26,21 +27,6 @@ from .party_model import AdminCreatePartyDTO, Party, PartyData, StudentCreatePar
 class PartyNotFoundException(NotFoundException):
     def __init__(self, party_id: int):
         super().__init__(f"Party with ID {party_id} not found")
-
-
-class LocationNotFoundException(NotFoundException):
-    def __init__(self, location_id: int):
-        super().__init__(f"Location with ID {location_id} not found")
-
-
-class LocationNotFoundByPlaceIdException(NotFoundException):
-    def __init__(self, place_id: str):
-        super().__init__(f"Location with Google Place ID {place_id} not found")
-
-
-class StudentNotFoundException(NotFoundException):
-    def __init__(self, student_id: int):
-        super().__init__(f"Student with ID {student_id} not found")
 
 
 class PartyConflictException(ConflictException):
@@ -60,23 +46,18 @@ class PartySmartNotCompletedException(BadRequestException):
         )
 
 
-class LocationHoldActiveException(BadRequestException):
-    def __init__(self, location_id: int, hold_expiration: datetime):
-        super().__init__(
-            f"Location {location_id} has an active hold until {hold_expiration.isoformat()}"
-        )
-
-
 class PartyService:
     def __init__(
         self,
         session: AsyncSession = Depends(get_session),
         location_service: LocationService = Depends(),
         account_service: AccountService = Depends(),
+        student_service: StudentService = Depends(),
     ):
         self.session = session
         self.location_service = location_service
         self.account_service = account_service
+        self.student_service = student_service
 
     async def _get_party_entity_by_id(self, party_id: int) -> PartyEntity:
         result = await self.session.execute(
@@ -93,20 +74,6 @@ class PartyService:
         if party_entity is None:
             raise PartyNotFoundException(party_id)
         return party_entity
-
-    async def _validate_location_exists(self, location_id: int) -> None:
-        result = await self.session.execute(
-            select(LocationEntity).where(LocationEntity.id == location_id)
-        )
-        if result.scalar_one_or_none() is None:
-            raise LocationNotFoundException(location_id)
-
-    async def _validate_student_exists(self, student_id: int) -> None:
-        result = await self.session.execute(
-            select(StudentEntity).where(StudentEntity.account_id == student_id)
-        )
-        if result.scalar_one_or_none() is None:
-            raise StudentNotFoundException(student_id)
 
     def _calculate_business_days_ahead(self, target_date: datetime) -> int:
         """Calculate the number of business days between now and target date."""
@@ -134,12 +101,7 @@ class PartyService:
 
     async def _validate_party_smart_attendance(self, student_id: int) -> None:
         """Validate that student has completed Party Smart after the most recent August 1st."""
-        result = await self.session.execute(
-            select(StudentEntity).where(StudentEntity.account_id == student_id)
-        )
-        student = result.scalar_one_or_none()
-        if student is None:
-            raise StudentNotFoundException(student_id)
+        student = await self.student_service.get_student_by_id(student_id)
 
         # Check if last_registered is null
         if student.last_registered is None:
@@ -163,17 +125,10 @@ class PartyService:
         if student.last_registered < most_recent_august_first:
             raise PartySmartNotCompletedException(student_id)
 
-    def _validate_location_hold(self, location: LocationEntity) -> None:
-        """Validate that location does not have an active hold."""
-        if location.hold_expiration is not None:
-            # Check if hold is still active
-            if location.hold_expiration > datetime.now():
-                raise LocationHoldActiveException(location.id, location.hold_expiration)
-
-    async def _validate_and_get_location(self, place_id: str) -> LocationEntity:
+    async def _validate_and_get_location(self, place_id: str) -> Location:
         """Get or create location and validate it has no active hold."""
-        location = await self.get_or_create_location(place_id)
-        self._validate_location_hold(location)
+        location = await self.location_service.get_or_create_location(place_id)
+        self.location_service.assert_valid_location_hold(location)
         return location
 
     async def _validate_student_party_prerequisites(
@@ -189,7 +144,7 @@ class PartyService:
         try:
             account = await self.account_service.get_account_by_email(email)
         except AccountByEmailNotFoundException:
-            raise StudentNotFoundException(0)  # We don't have an ID yet
+            raise StudentNotFoundException(email=email)
 
         # Then get the student entity
         result = await self.session.execute(
@@ -201,56 +156,6 @@ class PartyService:
         if student is None:
             raise StudentNotFoundException(account.id)
         return student
-
-    async def _get_location_by_place_id(self, place_id: str) -> LocationEntity:
-        """Get a location from the database by Google Maps place_id."""
-        result = await self.session.execute(
-            select(LocationEntity).where(LocationEntity.google_place_id == place_id)
-        )
-        location = result.scalar_one_or_none()
-        if location is None:
-            raise LocationNotFoundByPlaceIdException(place_id)
-        return location
-
-    async def _create_location_from_place_id(self, place_id: str) -> LocationEntity:
-        """Create a new location in the database using Google Maps API."""
-        # Get location details from Google Maps API
-        location_data = await self.location_service.get_place_details(place_id)
-
-        # Create new location entity
-        new_location = LocationEntity(
-            google_place_id=location_data.google_place_id,
-            formatted_address=location_data.formatted_address,
-            latitude=location_data.latitude,
-            longitude=location_data.longitude,
-            street_number=location_data.street_number,
-            street_name=location_data.street_name,
-            unit=location_data.unit,
-            city=location_data.city,
-            county=location_data.county,
-            state=location_data.state,
-            country=location_data.country,
-            zip_code=location_data.zip_code,
-            warning_count=0,
-            citation_count=0,
-            hold_expiration=None,
-        )
-
-        self.session.add(new_location)
-        await self.session.commit()
-        await self.session.refresh(new_location)
-        return new_location
-
-    async def get_or_create_location(self, place_id: str) -> LocationEntity:
-        """Get existing location by place_id, or create it if it doesn't exist."""
-        # Try to get existing location
-        try:
-            location = await self._get_location_by_place_id(place_id)
-            return location
-        except LocationNotFoundByPlaceIdException:
-            # Location doesn't exist, create it
-            location = await self._create_location_from_place_id(place_id)
-            return location
 
     async def get_parties(self, skip: int = 0, limit: int | None = None) -> List[Party]:
         query = (
@@ -322,8 +227,8 @@ class PartyService:
 
     async def create_party(self, data: PartyData) -> Party:
         # Validate that referenced resources exist
-        await self._validate_location_exists(data.location_id)
-        await self._validate_student_exists(data.contact_one_id)
+        await self.location_service.assert_location_exists(data.location_id)
+        await self.student_service.assert_student_exists(data.contact_one_id)
 
         new_party = PartyEntity.from_model(data)
         try:
@@ -337,8 +242,8 @@ class PartyService:
         party_entity = await self._get_party_entity_by_id(party_id)
 
         # Validate that referenced resources exist
-        await self._validate_location_exists(data.location_id)
-        await self._validate_student_exists(data.contact_one_id)
+        await self.location_service.assert_location_exists(data.location_id)
+        await self.student_service.assert_student_exists(data.contact_one_id)
 
         for key, value in data.model_dump().items():
             if key == "id":
@@ -365,9 +270,6 @@ class PartyService:
         # Get/create location and validate no hold
         location = await self._validate_and_get_location(dto.place_id)
 
-        # Validate contact_one (student) exists
-        await self._validate_student_exists(student_account_id)
-
         # Create party data with contact_two information directly
         party_data = PartyData(
             party_datetime=dto.party_datetime,
@@ -388,14 +290,15 @@ class PartyService:
         location = await self._validate_and_get_location(dto.place_id)
 
         # Get contact_one by email
-        contact_one_student = await self._get_student_by_email(dto.contact_one_email)
-        contact_one_id = contact_one_student.account_id
+        contact_one = await self._get_student_by_email(
+            dto.contact_one_email
+        )
 
         # Create party data with contact_two information directly
         party_data = PartyData(
             party_datetime=dto.party_datetime,
             location_id=location.id,
-            contact_one_id=contact_one_id,
+            contact_one_id=contact_one.account_id,
             contact_two=dto.contact_two,
         )
 
@@ -421,7 +324,7 @@ class PartyService:
         location = await self._validate_and_get_location(dto.place_id)
 
         # Validate contact_one (student) exists
-        await self._validate_student_exists(student_account_id)
+        await self.student_service.assert_student_exists(student_account_id)
 
         # Update party fields
         party_entity.party_datetime = dto.party_datetime

@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from unittest.mock import MagicMock
 
 import pytest
 import pytest_asyncio
@@ -6,22 +7,47 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from src.modules.account.account_entity import AccountEntity, AccountRole
+from src.modules.account.account_service import AccountService
 from src.modules.location.location_entity import LocationEntity
+from src.modules.location.location_service import (
+    LocationNotFoundException,
+    LocationService,
+)
 from src.modules.party.party_entity import PartyEntity
 from src.modules.party.party_model import Contact, Party, PartyData
 from src.modules.party.party_service import (
-    LocationNotFoundException,
     PartyNotFoundException,
     PartyService,
     StudentNotFoundException,
+    StudentService,
 )
 from src.modules.student.student_entity import StudentEntity
 from src.modules.student.student_model import ContactPreference
 
 
-@pytest.fixture()
-def party_service(test_async_session: AsyncSession) -> PartyService:
-    return PartyService(session=test_async_session)
+@pytest_asyncio.fixture
+async def mock_gmaps_client() -> MagicMock:
+    """Create a mock Google Maps client"""
+    return MagicMock()
+
+
+@pytest_asyncio.fixture()
+async def mock_location_service(
+    test_async_session: AsyncSession, mock_gmaps_client: MagicMock
+) -> LocationService:
+    return LocationService(session=test_async_session, gmaps_client=mock_gmaps_client)
+
+
+@pytest_asyncio.fixture()
+async def party_service(
+    test_async_session: AsyncSession, mock_location_service: LocationService
+) -> PartyService:
+    return PartyService(
+        session=test_async_session,
+        account_service=AccountService(test_async_session),
+        student_service=StudentService(test_async_session),
+        location_service=mock_location_service,
+    )
 
 
 @pytest_asyncio.fixture()
@@ -253,7 +279,7 @@ async def parties_with_radius_addresses(
     test_async_session.add(party3)
 
     await test_async_session.commit()
-    
+
     party_ids = [party1.id, party2.id, party3.id]
     result = await test_async_session.execute(
         select(PartyEntity)
