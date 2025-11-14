@@ -1150,28 +1150,28 @@ async def test_export_parties_to_csv_missing_location(
     # Create accounts and students
     account_one = AccountEntity(
         id=1,
+        pid="730123457",
+        first_name="John",
+        last_name="Doe",
         email="contact1@example.com",
-        hashed_password="hashed_password",
         role=AccountRole.STUDENT,
     )
     account_two = AccountEntity(
         id=2,
+        pid="730123477",
+        first_name="Jane",
+        last_name="Smith",
         email="contact2@example.com",
-        hashed_password="hashed_password",
         role=AccountRole.STUDENT,
     )
     test_async_session.add_all([account_one, account_two])
 
     student_one = StudentEntity(
-        first_name="John",
-        last_name="Doe",
         contact_preference=ContactPreference.call,
         phone_number="1234567890",
         account_id=1,
     )
     student_two = StudentEntity(
-        first_name="Jane",
-        last_name="Smith",
         contact_preference=ContactPreference.text,
         phone_number="0987654321",
         account_id=2,
@@ -1216,15 +1216,15 @@ async def test_export_parties_to_csv_missing_contact_one(
 
     account_two = AccountEntity(
         id=2,
+        pid="730123457",
         email="contact2@example.com",
-        hashed_password="hashed_password",
+        first_name="Jane",
+        last_name="Smith",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(account_two)
 
     student_two = StudentEntity(
-        first_name="Jane",
-        last_name="Smith",
         contact_preference=ContactPreference.text,
         phone_number="0987654321",
         account_id=2,
@@ -1275,17 +1275,17 @@ async def test_export_parties_to_csv_missing_contact_two(
 
     account_one = AccountEntity(
         id=1,
-        email="contact1@example.com",
-        hashed_password="hashed_password",
+        pid="730123457",
+        email="contact2@example.com",
+        first_name="John",
+        last_name="Doe",
         role=AccountRole.STUDENT,
     )
     test_async_session.add(account_one)
 
     student_one = StudentEntity(
-        first_name="John",
-        last_name="Doe",
-        contact_preference=ContactPreference.call,
-        phone_number="1234567890",
+        contact_preference=ContactPreference.text,
+        phone_number="0987654321",
         account_id=1,
     )
     test_async_session.add(student_one)
@@ -1336,28 +1336,28 @@ async def test_export_parties_to_csv_missing_account(
     # Actually, we need account for student, so create account but don't link properly
     account_one = AccountEntity(
         id=1,
+        pid="730123456",
+        first_name="John",
+        last_name="Doe",
         email="contact1@example.com",
-        hashed_password="hashed_password",
         role=AccountRole.STUDENT,
     )
     account_two = AccountEntity(
         id=2,
+        pid="730123457",
+        first_name="Jane",
+        last_name="Smith",
         email="contact2@example.com",
-        hashed_password="hashed_password",
         role=AccountRole.STUDENT,
     )
     test_async_session.add_all([account_one, account_two])
 
     student_one = StudentEntity(
-        first_name="John",
-        last_name="Doe",
         contact_preference=ContactPreference.call,
         phone_number="1234567890",
         account_id=1,
     )
     student_two = StudentEntity(
-        first_name="Jane",
-        last_name="Smith",
         contact_preference=ContactPreference.text,
         phone_number="0987654321",
         account_id=2,
@@ -1491,28 +1491,28 @@ async def test_export_parties_to_csv_special_characters(
 
     account_one = AccountEntity(
         id=1,
+        pid="730123456",
+        first_name="John, Jr.",
+        last_name="O'Brien",
         email="contact1@example.com",
-        hashed_password="hashed_password",
         role=AccountRole.STUDENT,
     )
     account_two = AccountEntity(
         id=2,
+        pid="730123457",
+        first_name="Jane",
+        last_name='Smith "The Great"',
         email="contact2@example.com",
-        hashed_password="hashed_password",
         role=AccountRole.STUDENT,
     )
     test_async_session.add_all([account_one, account_two])
 
     student_one = StudentEntity(
-        first_name="John, Jr.",
-        last_name="O'Brien",
         contact_preference=ContactPreference.call,
         phone_number="1234567890",
         account_id=1,
     )
     student_two = StudentEntity(
-        first_name="Jane",
-        last_name='Smith "The Great"',
         contact_preference=ContactPreference.text,
         phone_number="0987654321",
         account_id=2,
