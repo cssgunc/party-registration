@@ -40,7 +40,7 @@ async def unauthenticated_client(
     app.dependency_overrides[get_session] = override_get_session
 
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
+        transport=ASGITransport(app=app), base_url="http://test/api"
     ) as ac:
         yield ac
 
@@ -64,7 +64,7 @@ async def client(
 
     async with AsyncClient(
         transport=ASGITransport(app=app),
-        base_url="http://test",
+        base_url="http://test/api",
         headers={"Authorization": "Bearer admin"},
     ) as ac:
         yield ac

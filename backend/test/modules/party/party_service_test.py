@@ -1,3 +1,4 @@
+import csv
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock
 
@@ -1196,3 +1197,336 @@ async def test_get_parties_by_radius_missing_address_skipped(
     parties = await party_service.get_parties_by_radius(search_lat, search_lon)
     assert len(parties) == 1
     assert parties[0].id == party1.id
+
+
+@pytest_asyncio.fixture()
+async def parties_with_full_relationships(
+    test_async_session: AsyncSession,
+):
+    """Create parties with full relationships (location, contacts with accounts) for CSV export tests."""
+    # Create location
+    location = LocationEntity(
+        id=1,
+        latitude=40.7128,
+        longitude=-74.0060,
+        google_place_id="test_place_id_csv",
+        formatted_address="123 Test St, Test City, TC 12345",
+    )
+    test_async_session.add(location)
+
+    # Create accounts
+    account_one = AccountEntity(
+        id=1,
+        pid="730123456",
+        email="contact1@example.com",
+        first_name="John",
+        last_name="Doe",
+        role=AccountRole.STUDENT,
+    )
+    test_async_session.add_all([account_one])
+
+    # Create students
+    student_one = StudentEntity(
+        contact_preference=ContactPreference.call,
+        phone_number="1234567890",
+        account_id=1,
+    )
+    test_async_session.add(student_one)
+    await test_async_session.commit()
+
+    # Create parties
+    party1 = PartyEntity(
+        party_datetime=datetime(2024, 6, 15, 20, 30, 0),
+        location_id=1,
+        contact_one_id=1,
+        contact_two_email="contact2@example.com",
+        contact_two_first_name="Jane",
+        contact_two_last_name="Smith",
+        contact_two_phone_number="0987654321",
+        contact_two_contact_preference=ContactPreference.text,
+    )
+    party2 = PartyEntity(
+        party_datetime=datetime(2024, 7, 20, 18, 0, 0),
+        location_id=1,
+        contact_one_id=1,
+        contact_two_email="contact2@example.com",
+        contact_two_first_name="Jane",
+        contact_two_last_name="Smith",
+        contact_two_phone_number="0987654321",
+        contact_two_contact_preference=ContactPreference.text,
+    )
+    test_async_session.add_all([party1, party2])
+    await test_async_session.commit()
+    await test_async_session.refresh(party1)
+    await test_async_session.refresh(party2)
+
+    return [party1.to_model(), party2.to_model()]
+
+
+@pytest.mark.asyncio
+async def test_export_parties_to_csv_empty_list(party_service: PartyService):
+    """Test that empty list returns CSV with headers only."""
+    csv_content = await party_service.export_parties_to_csv([])
+
+    reader = csv.reader(csv_content.splitlines())
+    rows = list(reader)
+
+    assert len(rows) == 1  # Only header row
+    assert rows[0] == [
+        "Fully formatted address",
+        "Date of Party",
+        "Time of Party",
+        "Contact One Full Name",
+        "Contact One Email",
+        "Contact One Phone Number",
+        "Contact One Contact Preference",
+        "Contact Two Full Name",
+        "Contact Two Email",
+        "Contact Two Phone Number",
+        "Contact Two Contact Preference",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_export_parties_to_csv_single_party(
+    party_service: PartyService,
+    parties_with_full_relationships: list[Party],
+):
+    """Test single party with all relationships populated."""
+    csv_content = await party_service.export_parties_to_csv(
+        [parties_with_full_relationships[0]]
+    )
+
+    reader = csv.reader(csv_content.splitlines())
+    rows = list(reader)
+
+    assert len(rows) == 2  # Header + 1 data row
+    assert len(rows[0]) == 11  # 11 columns
+    assert len(rows[1]) == 11  # 11 columns
+
+    # Verify header
+    assert rows[0][0] == "Fully formatted address"
+
+    # Verify data row
+    data_row = rows[1]
+    assert data_row[0] == "123 Test St, Test City, TC 12345"  # Address
+    assert data_row[1] == "2024-06-15"  # Date
+    assert data_row[2] == "20:30:00"  # Time
+    assert data_row[3] == "John Doe"  # Contact One Full Name
+    assert data_row[4] == "contact1@example.com"  # Contact One Email
+    assert data_row[5] == "1234567890"  # Contact One Phone
+    assert data_row[6] == "call"  # Contact One Preference
+    assert data_row[7] == "Jane Smith"  # Contact Two Full Name
+    assert data_row[8] == "contact2@example.com"  # Contact Two Email
+    assert data_row[9] == "0987654321"  # Contact Two Phone
+    assert data_row[10] == "text"  # Contact Two Preference
+
+
+@pytest.mark.asyncio
+async def test_export_parties_to_csv_multiple_parties(
+    party_service: PartyService,
+    parties_with_full_relationships: list[Party],
+):
+    """Test multiple parties in correct order."""
+    csv_content = await party_service.export_parties_to_csv(
+        parties_with_full_relationships
+    )
+
+    reader = csv.reader(csv_content.splitlines())
+    rows = list(reader)
+
+    assert len(rows) == 3  # Header + 2 data rows
+    assert rows[1][1] == "2024-06-15"  # First party date
+    assert rows[2][1] == "2024-07-20"  # Second party date
+
+
+@pytest.mark.asyncio
+async def test_export_parties_to_csv_csv_format_validation(
+    party_service: PartyService,
+    parties_with_full_relationships: list[Party],
+):
+    """Verify CSV structure (headers, row count, column count)."""
+    csv_content = await party_service.export_parties_to_csv(
+        parties_with_full_relationships
+    )
+
+    reader = csv.reader(csv_content.splitlines())
+    rows = list(reader)
+
+    # Verify header row exists
+    assert len(rows) > 0
+    assert len(rows[0]) == 11  # 11 columns
+
+    # Verify all data rows have 11 columns
+    for row in rows[1:]:
+        assert len(row) == 11
+
+    # Verify header content
+    expected_headers = [
+        "Fully formatted address",
+        "Date of Party",
+        "Time of Party",
+        "Contact One Full Name",
+        "Contact One Email",
+        "Contact One Phone Number",
+        "Contact One Contact Preference",
+        "Contact Two Full Name",
+        "Contact Two Email",
+        "Contact Two Phone Number",
+        "Contact Two Contact Preference",
+    ]
+    assert rows[0] == expected_headers
+
+
+@pytest.mark.asyncio
+async def test_export_parties_to_csv_date_time_formatting(
+    party_service: PartyService,
+    parties_with_full_relationships: list[Party],
+):
+    """Verify date/time are formatted correctly (YYYY-MM-DD, HH:MM:SS)."""
+    csv_content = await party_service.export_parties_to_csv(
+        [parties_with_full_relationships[0]]
+    )
+
+    reader = csv.reader(csv_content.splitlines())
+    rows = list(reader)
+
+    data_row = rows[1]
+    # Verify date format YYYY-MM-DD
+    assert data_row[1] == "2024-06-15"
+    assert len(data_row[1]) == 10
+    assert data_row[1].count("-") == 2
+
+    # Verify time format HH:MM:SS
+    assert data_row[2] == "20:30:00"
+    assert len(data_row[2]) == 8
+    assert data_row[2].count(":") == 2
+
+
+@pytest.mark.asyncio
+async def test_export_parties_to_csv_contact_preference_values(
+    party_service: PartyService,
+    parties_with_full_relationships: list[Party],
+):
+    """Verify contact preference enum values are exported."""
+    csv_content = await party_service.export_parties_to_csv(
+        parties_with_full_relationships
+    )
+
+    reader = csv.reader(csv_content.splitlines())
+    rows = list(reader)
+
+    # First party: contact_one=call, contact_two=text
+    assert rows[1][6] == "call"
+    assert rows[1][10] == "text"
+
+    # Verify values are enum string values, not enum objects
+    assert isinstance(rows[1][6], str)
+    assert isinstance(rows[1][10], str)
+
+
+@pytest.mark.asyncio
+async def test_export_parties_to_csv_special_characters(
+    party_service: PartyService,
+    test_async_session: AsyncSession,
+):
+    """Test CSV escaping with special characters in names/addresses."""
+    location = LocationEntity(
+        id=1,
+        latitude=40.7128,
+        longitude=-74.0060,
+        google_place_id="test_place_id",
+        formatted_address='123 "Test" St, Test, City',
+    )
+    test_async_session.add(location)
+
+    account_one = AccountEntity(
+        id=1,
+        pid="730123456",
+        first_name="John, Jr.",
+        last_name="O'Brien",
+        email="contact1@example.com",
+        role=AccountRole.STUDENT,
+    )
+
+    test_async_session.add(account_one)
+
+    student_one = StudentEntity(
+        contact_preference=ContactPreference.call,
+        phone_number="1234567890",
+        account_id=1,
+    )
+
+    test_async_session.add(student_one)
+    await test_async_session.commit()
+
+    party = PartyEntity(
+        party_datetime=datetime(2024, 6, 15, 20, 30, 0),
+        location_id=1,
+        contact_one_id=1,
+        contact_two_email="contact2@example.com",
+        contact_two_first_name="Jane",
+        contact_two_last_name="Smith",
+        contact_two_phone_number="0987654321",
+        contact_two_contact_preference=ContactPreference.text,
+    )
+    test_async_session.add(party)
+    await test_async_session.commit()
+    await test_async_session.refresh(party)
+
+    csv_content = await party_service.export_parties_to_csv([await party.load_model(test_async_session)])
+
+    reader = csv.reader(csv_content.splitlines())
+    rows = list(reader)
+
+    # CSV reader should handle special characters correctly
+    assert len(rows) == 2
+    # Verify special characters are preserved (CSV module handles escaping)
+    assert "O'Brien" in rows[1][3] or '"O\'Brien"' in rows[1][3]
+    assert "Test" in rows[1][0]  # Address with quotes
+
+
+@pytest.mark.asyncio
+async def test_export_parties_to_csv_full_name_concatenation(
+    party_service: PartyService,
+    parties_with_full_relationships: list[Party],
+):
+    """Verify first_name + last_name formatting."""
+    csv_content = await party_service.export_parties_to_csv(
+        [parties_with_full_relationships[0]]
+    )
+
+    reader = csv.reader(csv_content.splitlines())
+    rows = list(reader)
+
+    # Verify full name concatenation
+    assert rows[1][3] == "John Doe"  # Contact One: "John" + " " + "Doe"
+    assert rows[1][7] == "Jane Smith"  # Contact Two: "Jane" + " " + "Smith"
+
+
+@pytest.mark.asyncio
+async def test_export_parties_to_csv_all_columns_populated(
+    party_service: PartyService,
+    parties_with_full_relationships: list[Party],
+):
+    """Verify all 11 columns have correct data."""
+    csv_content = await party_service.export_parties_to_csv(
+        [parties_with_full_relationships[0]]
+    )
+
+    reader = csv.reader(csv_content.splitlines())
+    rows = list(reader)
+
+    data_row = rows[1]
+    # Verify all columns are populated (not empty strings for valid data)
+    assert data_row[0] != ""  # Address
+    assert data_row[1] != ""  # Date
+    assert data_row[2] != ""  # Time
+    assert data_row[3] != ""  # Contact One Full Name
+    assert data_row[4] != ""  # Contact One Email
+    assert data_row[5] != ""  # Contact One Phone
+    assert data_row[6] != ""  # Contact One Preference
+    assert data_row[7] != ""  # Contact Two Full Name
+    assert data_row[8] != ""  # Contact Two Email
+    assert data_row[9] != ""  # Contact Two Phone
+    assert data_row[10] != ""  # Contact Two Preference

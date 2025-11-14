@@ -8,7 +8,7 @@ from src.modules.location.location_model import (
 )
 from src.modules.location.location_service import LocationService
 
-location_router = APIRouter(prefix="/locations", tags=["locations"])
+location_router = APIRouter(prefix="/api/locations", tags=["locations"])
 
 
 @location_router.get("/", response_model=PaginatedLocationResponse)
