@@ -5,6 +5,7 @@ import { CalendarIcon } from "lucide-react";
 import { useState } from "react";
 import * as z from "zod";
 
+import AddressSearch from "@/components/AddressSearch";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -28,6 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { AutocompleteResult, LocationService } from "@/services/locationService";
 
 const partyFormSchema = z.object({
   address: z.string().min(1, "Address is required"),
@@ -53,11 +55,14 @@ const partyFormSchema = z.object({
 
 type PartyFormValues = z.infer<typeof partyFormSchema>;
 
+export type { PartyFormValues };
+
 interface PartyRegistrationFormProps {
   onSubmit: (data: PartyFormValues) => void | Promise<void>;
+  locationService: LocationService;
 }
 
-export default function PartyRegistrationForm({ onSubmit }: PartyRegistrationFormProps) {
+export default function PartyRegistrationForm({ onSubmit, locationService }: PartyRegistrationFormProps) {
   const [formData, setFormData] = useState<Partial<PartyFormValues>>({
     address: "",
     partyDate: undefined,
@@ -108,21 +113,30 @@ export default function PartyRegistrationForm({ onSubmit }: PartyRegistrationFor
     }
   };
 
+  /**
+   * Handle address selection from AddressSearch component
+   */
+  const handleAddressSelect = (address: AutocompleteResult | null) => {
+    updateField("address", address?.formatted_address || "");
+  };
+
   return (
     <form onSubmit={handleSubmit}>
       <FieldGroup>
         <FieldSet>
           <Field data-invalid={!!errors.address}>
             <FieldLabel htmlFor="party-address">Party Address</FieldLabel>
-            <Input
-              id="party-address"
-              placeholder="123 Main St, Chapel Hill, NC"
+            <AddressSearch
               value={formData.address}
-              onChange={(e) => updateField("address", e.target.value)}
-              aria-invalid={!!errors.address}
+              onSelect={handleAddressSelect}
+              locationService={locationService}
+              placeholder="Search for the party address..."
+              className="w-full"
+              error={errors.address}
             />
             <FieldDescription>
-              Enter the address where the party will be held
+              Search and select the address where the party will be held. 
+              The address will be locked after selection.
             </FieldDescription>
             {errors.address && <FieldError>{errors.address}</FieldError>}
           </Field>
