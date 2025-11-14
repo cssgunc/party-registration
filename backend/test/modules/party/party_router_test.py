@@ -1,9 +1,10 @@
 from datetime import datetime, timedelta
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.authentication import authenticate_user
 from src.core.database import get_session
@@ -11,8 +12,11 @@ from src.main import app
 from src.modules.account.account_entity import AccountEntity, AccountRole
 from src.modules.account.account_model import Account
 from src.modules.location.location_entity import LocationEntity
-from src.modules.location.location_model import LocationData
-from src.modules.location.location_service import LocationService
+from src.modules.location.location_model import Location
+from src.modules.location.location_service import (
+    LocationHoldActiveException,
+    LocationService,
+)
 from src.modules.party.party_entity import PartyEntity
 from src.modules.party.party_model import (
     AdminCreatePartyDTO,
@@ -29,32 +33,47 @@ def get_valid_party_datetime() -> datetime:
     return datetime.now() + timedelta(days=days_ahead)
 
 
+@pytest.fixture
+def mock_gmaps_client() -> MagicMock:
+    """Create a mock Google Maps client"""
+    return MagicMock()
+
+
 @pytest_asyncio.fixture()
-async def mock_location_service():
-    """Create a mock LocationService that returns test data."""
+async def location_service(
+    test_async_session: AsyncSession, mock_gmaps_client: MagicMock
+):
+    return LocationService(session=test_async_session, gmaps_client=mock_gmaps_client)
+
+
+@pytest_asyncio.fixture()
+async def mock_location_service() -> AsyncMock:
     mock_service = AsyncMock(spec=LocationService)
-    mock_service.get_place_details = AsyncMock(
-        return_value=LocationData(
-            google_place_id="test_place_id_123",
-            formatted_address="456 New St, Test City, TC 67890",
-            latitude=35.9132,
-            longitude=-79.0558,
-            street_number="456",
-            street_name="New St",
-            unit=None,
-            city="Test City",
-            county="Test County",
-            state="NC",
-            country="US",
-            zip_code="67890",
-        )
+    mock_service.get_or_create_location.return_value = Location(
+        id=1,
+        google_place_id="ChIJ123abc",
+        formatted_address="123 Main St, Chapel Hill, NC 27514, USA",
+        latitude=35.9132,
+        longitude=-79.0558,
+        street_number="123",
+        street_name="Main Street",
+        unit=None,
+        city="Chapel Hill",
+        county="Orange County",
+        state="NC",
+        country="US",
+        zip_code="27514",
+        warning_count=0,
+        citation_count=0,
+        hold_expiration=None,
     )
+
     return mock_service
 
 
 @pytest_asyncio.fixture()
 async def unauthenticated_client(
-    test_async_session: AsyncSession, mock_location_service: AsyncMock
+    test_async_session: AsyncSession, location_service: LocationService
 ):
     """Create an async test client WITHOUT authentication override."""
 
@@ -62,7 +81,7 @@ async def unauthenticated_client(
         yield test_async_session
 
     app.dependency_overrides[get_session] = override_get_session
-    app.dependency_overrides[LocationService] = lambda: mock_location_service
+    app.dependency_overrides[LocationService] = lambda: location_service
     # Note: We do NOT override authenticate_admin here
 
     async with AsyncClient(
@@ -74,14 +93,14 @@ async def unauthenticated_client(
 
 
 @pytest_asyncio.fixture()
-async def client(test_async_session: AsyncSession, mock_location_service: AsyncMock):
+async def client(test_async_session: AsyncSession, location_service: LocationService):
     """Create an async test client with database session override."""
 
     async def override_get_session():
         yield test_async_session
 
     app.dependency_overrides[get_session] = override_get_session
-    app.dependency_overrides[LocationService] = lambda: mock_location_service
+    app.dependency_overrides[LocationService] = lambda: location_service
 
     async with AsyncClient(
         transport=ASGITransport(app=app),
@@ -707,7 +726,7 @@ async def test_create_party_as_student(
     response = await student_client.post(
         "/api/parties/", json=party_data.model_dump(mode="json")
     )
-    assert response.status_code == 200
+    assert response.status_code == 200, response.json()
 
     data = response.json()
     assert data["party_datetime"] == party_datetime.isoformat()
@@ -722,7 +741,7 @@ async def test_create_party_as_admin(
     admin_client: AsyncClient,
     test_async_session: AsyncSession,
     sample_party_setup: dict,
-    mock_location_service: AsyncMock,
+    location_service: LocationService,
 ):
     """Test POST /api/parties as an admin (both contacts specified)."""
     party_datetime = get_valid_party_datetime()
@@ -758,7 +777,7 @@ async def test_update_party_as_student(
     student_client: AsyncClient,
     test_async_session: AsyncSession,
     sample_party_setup: dict,
-    mock_location_service: AsyncMock,
+    location_service: LocationService,
 ):
     """Test PUT /api/parties/:id as a student (contact_one auto-filled)."""
     # Create an initial party
@@ -807,7 +826,7 @@ async def test_update_party_as_admin(
     admin_client: AsyncClient,
     test_async_session: AsyncSession,
     sample_party_setup: dict,
-    mock_location_service: AsyncMock,
+    location_service: LocationService,
 ):
     """Test PUT /api/parties/:id as an admin (both contacts specified)."""
     # Create an initial party
@@ -856,7 +875,7 @@ async def test_update_party_as_admin(
 async def test_update_party_not_found(
     admin_client: AsyncClient,
     test_async_session: AsyncSession,
-    mock_location_service: AsyncMock,
+    location_service: LocationService,
 ):
     """Test PUT /api/parties/:id with non-existent party ID."""
     party_datetime = get_valid_party_datetime()
@@ -888,7 +907,7 @@ async def test_create_party_date_too_soon(
     student_client: AsyncClient,
     test_async_session: AsyncSession,
     sample_party_setup: dict,
-    mock_location_service: AsyncMock,
+    location_service: LocationService,
 ):
     """Test POST /api/parties with party date less than 2 business days away."""
     # Party tomorrow (only 1 business day away)
@@ -918,7 +937,7 @@ async def test_update_party_date_too_soon(
     student_client: AsyncClient,
     test_async_session: AsyncSession,
     sample_party_setup: dict,
-    mock_location_service: AsyncMock,
+    location_service: LocationService,
 ):
     """Test PUT /api/parties/:id with party date less than 2 business days away."""
     # Create an initial party
@@ -962,7 +981,7 @@ async def test_update_party_date_too_soon(
 async def test_create_party_student_no_party_smart(
     student_client: AsyncClient,
     test_async_session: AsyncSession,
-    mock_location_service: AsyncMock,
+    location_service: LocationService,
 ):
     """Test POST /api/parties when student hasn't completed Party Smart."""
     # Create student without last_registered (no Party Smart)
@@ -1025,7 +1044,7 @@ async def test_create_party_student_no_party_smart(
 async def test_create_party_student_party_smart_expired(
     student_client: AsyncClient,
     test_async_session: AsyncSession,
-    mock_location_service: AsyncMock,
+    location_service: LocationService,
 ):
     """Test POST /api/parties when student's Party Smart attendance is before the most recent August 1st."""
     # Create student with expired last_registered (before the most recent August 1st)
@@ -1098,26 +1117,16 @@ async def test_create_party_student_party_smart_expired(
 
 @pytest.mark.asyncio
 async def test_create_party_location_has_active_hold(
-    student_client: AsyncClient,
     test_async_session: AsyncSession,
     sample_party_setup: dict,
     mock_location_service: AsyncMock,
+    student_client: AsyncClient,
 ):
     """Test POST /api/parties when location has an active hold."""
-    # Add a hold to the existing location from sample_party_setup
-    from sqlalchemy import select
 
-    result = await test_async_session.execute(
-        select(LocationEntity).where(
-            LocationEntity.id == sample_party_setup["location_id"]
-        )
+    mock_location_service.assert_valid_location_hold.side_effect = (
+        LocationHoldActiveException(1, datetime.now() + timedelta(days=30))
     )
-    location = result.scalar_one()
-    location.hold_expiration = datetime.now() + timedelta(
-        days=30
-    )  # Hold expires in 30 days
-    test_async_session.add(location)
-    await test_async_session.commit()
 
     party_datetime = get_valid_party_datetime()
     party_data = StudentCreatePartyDTO(
@@ -1145,11 +1154,10 @@ async def test_create_party_location_expired_hold(
     student_client: AsyncClient,
     test_async_session: AsyncSession,
     sample_party_setup: dict,
-    mock_location_service: AsyncMock,
+    location_service: LocationService,
 ):
     """Test POST /api/parties when location has an expired hold (should succeed)."""
     # Add an expired hold to the existing location from sample_party_setup
-    from sqlalchemy import select
 
     result = await test_async_session.execute(
         select(LocationEntity).where(
@@ -1188,7 +1196,7 @@ async def test_create_party_student_using_admin_dto(
     student_client: AsyncClient,
     test_async_session: AsyncSession,
     sample_party_setup: dict,
-    mock_location_service: AsyncMock,
+    location_service: LocationService,
 ):
     """Test POST /api/parties when student tries to use admin DTO."""
     party_datetime = get_valid_party_datetime()
@@ -1218,7 +1226,7 @@ async def test_create_party_admin_using_student_dto(
     admin_client: AsyncClient,
     test_async_session: AsyncSession,
     sample_party_setup: dict,
-    mock_location_service: AsyncMock,
+    location_service: LocationService,
 ):
     """Test POST /api/parties when admin tries to use student DTO."""
     party_datetime = get_valid_party_datetime()
