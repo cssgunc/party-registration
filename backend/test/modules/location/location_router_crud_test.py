@@ -64,7 +64,7 @@ async def client(
 
     async with AsyncClient(
         transport=ASGITransport(app=app),
-        base_url="http://test",
+        base_url="http://test/api",
         headers={"Authorization": "Bearer admin"},
     ) as ac:
         yield ac
