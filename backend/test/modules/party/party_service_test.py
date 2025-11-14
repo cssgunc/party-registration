@@ -1013,29 +1013,29 @@ async def parties_with_full_relationships(
     # Create accounts
     account_one = AccountEntity(
         id=1,
+        pid="730123456",
         email="contact1@example.com",
-        hashed_password="hashed_password",
+        first_name="John",
+        last_name="Doe",
         role=AccountRole.STUDENT,
     )
     account_two = AccountEntity(
         id=2,
+        pid="730123457",
         email="contact2@example.com",
-        hashed_password="hashed_password",
+        first_name="Jane",
+        last_name="Smith",
         role=AccountRole.STUDENT,
     )
     test_async_session.add_all([account_one, account_two])
 
     # Create students
     student_one = StudentEntity(
-        first_name="John",
-        last_name="Doe",
         contact_preference=ContactPreference.call,
         phone_number="1234567890",
         account_id=1,
     )
     student_two = StudentEntity(
-        first_name="Jane",
-        last_name="Smith",
         contact_preference=ContactPreference.text,
         phone_number="0987654321",
         account_id=2,

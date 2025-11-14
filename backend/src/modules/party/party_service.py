@@ -328,7 +328,7 @@ class PartyService:
             contact_one_phone = ""
             contact_one_preference = ""
             if party_entity.contact_one:
-                contact_one_full_name = f"{party_entity.contact_one.first_name} {party_entity.contact_one.last_name}"
+                contact_one_full_name = f"{party_entity.contact_one.account.first_name} {party_entity.contact_one.account.last_name}"
                 contact_one_phone = party_entity.contact_one.phone_number or ""
                 contact_one_preference = (
                     party_entity.contact_one.contact_preference.value
@@ -343,7 +343,7 @@ class PartyService:
             contact_two_phone = ""
             contact_two_preference = ""
             if party_entity.contact_two:
-                contact_two_full_name = f"{party_entity.contact_two.first_name} {party_entity.contact_two.last_name}"
+                contact_two_full_name = f"{party_entity.contact_two.account.first_name} {party_entity.contact_two.account.last_name}"
                 contact_two_phone = party_entity.contact_two.phone_number or ""
                 contact_two_preference = (
                     party_entity.contact_two.contact_preference.value
