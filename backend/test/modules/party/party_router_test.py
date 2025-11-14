@@ -1,26 +1,101 @@
 from datetime import datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from src.core.authentication import authenticate_user
 from src.core.database import get_session
 from src.main import app
 from src.modules.account.account_entity import AccountEntity, AccountRole
+from src.modules.account.account_model import Account
 from src.modules.location.location_entity import LocationEntity
+from src.modules.location.location_model import Location
+from src.modules.location.location_service import (
+    LocationHoldActiveException,
+    LocationService,
+)
 from src.modules.party.party_entity import PartyEntity
+from src.modules.party.party_model import (
+    AdminCreatePartyDTO,
+    Contact,
+    StudentCreatePartyDTO,
+)
 from src.modules.student.student_entity import StudentEntity
 from src.modules.student.student_model import ContactPreference
 
 
+def get_valid_party_datetime() -> datetime:
+    """Get a datetime that is at least 3 business days from now."""
+    days_ahead = 5  # Start with 5 calendar days to ensure 3 business days
+    return datetime.now() + timedelta(days=days_ahead)
+
+
+def get_party_from_setup(party_setup: dict, date: datetime) -> PartyEntity:
+    """Helper to create a PartyEntity from the party_setup fixture."""
+    return PartyEntity(
+        party_datetime=date,
+        location_id=party_setup["location_id"],
+        contact_one_id=party_setup["contact_one_id"],
+        contact_two_email="test2@example.com",
+        contact_two_first_name="Jane",
+        contact_two_last_name="Smith",
+        contact_two_phone_number="0987654321",
+        contact_two_contact_preference=ContactPreference.text,
+    )
+
+
+@pytest.fixture
+def mock_gmaps_client() -> MagicMock:
+    """Create a mock Google Maps client"""
+    return MagicMock()
+
+
 @pytest_asyncio.fixture()
-async def unauthenticated_client(test_async_session: AsyncSession):
+async def location_service(
+    test_async_session: AsyncSession, mock_gmaps_client: MagicMock
+):
+    return LocationService(session=test_async_session, gmaps_client=mock_gmaps_client)
+
+
+@pytest_asyncio.fixture()
+async def mock_location_service() -> AsyncMock:
+    mock_service = AsyncMock(spec=LocationService)
+    mock_service.get_or_create_location.return_value = Location(
+        id=1,
+        google_place_id="ChIJ123abc",
+        formatted_address="123 Main St, Chapel Hill, NC 27514, USA",
+        latitude=35.9132,
+        longitude=-79.0558,
+        street_number="123",
+        street_name="Main Street",
+        unit=None,
+        city="Chapel Hill",
+        county="Orange County",
+        state="NC",
+        country="US",
+        zip_code="27514",
+        warning_count=0,
+        citation_count=0,
+        hold_expiration=None,
+    )
+
+    return mock_service
+
+
+@pytest_asyncio.fixture()
+async def unauthenticated_client(
+    test_async_session: AsyncSession, location_service: LocationService
+):
     """Create an async test client WITHOUT authentication override."""
 
     async def override_get_session():
         yield test_async_session
 
     app.dependency_overrides[get_session] = override_get_session
+    app.dependency_overrides[LocationService] = lambda: location_service
     # Note: We do NOT override authenticate_admin here
 
     async with AsyncClient(
@@ -32,13 +107,82 @@ async def unauthenticated_client(test_async_session: AsyncSession):
 
 
 @pytest_asyncio.fixture()
-async def client(test_async_session: AsyncSession):
+async def client(test_async_session: AsyncSession, location_service: LocationService):
     """Create an async test client with database session override."""
 
     async def override_get_session():
         yield test_async_session
 
     app.dependency_overrides[get_session] = override_get_session
+    app.dependency_overrides[LocationService] = lambda: location_service
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+        headers={"Authorization": "Bearer admin"},
+    ) as ac:
+        yield ac
+
+    app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture()
+async def student_client(
+    test_async_session: AsyncSession, mock_location_service: AsyncMock
+):
+    """Create an async test client authenticated as a student."""
+
+    async def override_get_session():
+        yield test_async_session
+
+    async def override_authenticate_user():
+        return Account(
+            id=1,
+            email="student@test.com",
+            # password field removed from Account model
+            first_name="Test",
+            last_name="User",
+            pid="300000001",
+            role=AccountRole.STUDENT,
+        )
+
+    app.dependency_overrides[get_session] = override_get_session
+    app.dependency_overrides[authenticate_user] = override_authenticate_user
+    app.dependency_overrides[LocationService] = lambda: mock_location_service
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+        headers={"Authorization": "Bearer student"},
+    ) as ac:
+        yield ac
+
+    app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture()
+async def admin_client(
+    test_async_session: AsyncSession, mock_location_service: AsyncMock
+):
+    """Create an async test client authenticated as an admin."""
+
+    async def override_get_session():
+        yield test_async_session
+
+    async def override_authenticate_user():
+        return Account(
+            id=2,
+            email="admin@test.com",
+            # password field removed from Account model
+            first_name="Test",
+            last_name="User",
+            pid="300000001",
+            role=AccountRole.ADMIN,
+        )
+
+    app.dependency_overrides[get_session] = override_get_session
+    app.dependency_overrides[authenticate_user] = override_authenticate_user
+    app.dependency_overrides[LocationService] = lambda: mock_location_service
 
     async with AsyncClient(
         transport=ASGITransport(app=app),
@@ -67,7 +211,7 @@ async def sample_party_setup(test_async_session: AsyncSession):
         email="test2@example.com",
         first_name="Test",
         last_name="User",
-        pid="306000002",
+        pid="306000001",
         role=AccountRole.STUDENT,
     )
     test_async_session.add_all([account_one, account_two])
@@ -82,21 +226,35 @@ async def sample_party_setup(test_async_session: AsyncSession):
     )
     test_async_session.add(location)
 
-    # Create students
+    # Create students with last_registered date (Party Smart completed after most recent August 1st)
+    # Calculate a valid date after the most recent August 1st
+    now = datetime.now()
+    current_year = now.year
+    august_first_this_year = datetime(current_year, 8, 1, 0, 0, 0)
+
+    # If we're before August 1st, use last year's August 1st + 1 day
+    # Otherwise, use this year's August 1st + 1 day
+    if now < august_first_this_year:
+        valid_date = datetime(current_year - 1, 8, 2, 12, 0, 0)
+    else:
+        valid_date = datetime(current_year, 8, 2, 12, 0, 0)
+
     student_one = StudentEntity(
         contact_preference=ContactPreference.call,
         phone_number="1234567890",
         account_id=1,
+        last_registered=valid_date,
     )
     student_two = StudentEntity(
         contact_preference=ContactPreference.text,
         phone_number="0987654321",
         account_id=2,
+        last_registered=valid_date,
     )
     test_async_session.add_all([student_one, student_two])
     await test_async_session.commit()
 
-    return {"location_id": 1, "contact_one_id": 1, "contact_two_id": 2}
+    return {"location_id": 1, "contact_one_id": 1}
 
 
 @pytest.mark.asyncio
@@ -124,7 +282,11 @@ async def test_get_parties_with_data(
             party_datetime=datetime.now() + timedelta(days=i),
             location_id=sample_party_setup["location_id"],
             contact_one_id=sample_party_setup["contact_one_id"],
-            contact_two_id=sample_party_setup["contact_two_id"],
+            contact_two_email="test2@example.com",
+            contact_two_first_name="Jane",
+            contact_two_last_name="Smith",
+            contact_two_phone_number="0987654321",
+            contact_two_contact_preference=ContactPreference.text,
         )
         test_async_session.add(party)
     await test_async_session.commit()
@@ -153,13 +315,21 @@ async def test_get_parties_validates_content(
         party_datetime=party_datetime_1,
         location_id=sample_party_setup["location_id"],
         contact_one_id=sample_party_setup["contact_one_id"],
-        contact_two_id=sample_party_setup["contact_two_id"],
+        contact_two_email="test2@example.com",
+        contact_two_first_name="Jane",
+        contact_two_last_name="Smith",
+        contact_two_phone_number="0987654321",
+        contact_two_contact_preference=ContactPreference.text,
     )
     party2 = PartyEntity(
         party_datetime=party_datetime_2,
         location_id=sample_party_setup["location_id"],
         contact_one_id=sample_party_setup["contact_one_id"],
-        contact_two_id=sample_party_setup["contact_two_id"],
+        contact_two_email="test2@example.com",
+        contact_two_first_name="Jane",
+        contact_two_last_name="Smith",
+        contact_two_phone_number="0987654321",
+        contact_two_contact_preference=ContactPreference.text,
     )
     test_async_session.add_all([party1, party2])
     await test_async_session.commit()
@@ -170,7 +340,8 @@ async def test_get_parties_validates_content(
     assert response.status_code == 200
 
     data = response.json()
-    parties = data["items"]
+    items = data["items"]
+    parties = items
 
     # Verify we got the correct number of parties
     assert len(parties) == 2
@@ -180,14 +351,20 @@ async def test_get_parties_validates_content(
         # Check all required fields are present
         assert "id" in party
         assert "party_datetime" in party
-        assert "location_id" in party
-        assert "contact_one_id" in party
-        assert "contact_two_id" in party
+        assert "location" in party
+        assert "contact_one" in party
+        assert "contact_two" in party
 
-        # Validate field values match what we created
-        assert party["location_id"] == sample_party_setup["location_id"]
-        assert party["contact_one_id"] == sample_party_setup["contact_one_id"]
-        assert party["contact_two_id"] == sample_party_setup["contact_two_id"]
+        # Validate nested object structures
+        assert isinstance(party["location"], dict)
+        assert party["location"]["id"] == sample_party_setup["location_id"]
+
+        assert isinstance(party["contact_one"], dict)
+        assert party["contact_one"]["id"] == sample_party_setup["contact_one_id"]
+
+        assert isinstance(party["contact_two"], dict)
+        assert "email" in party["contact_two"]
+        assert "first_name" in party["contact_two"]
 
         # Validate IDs are positive integers
         assert isinstance(party["id"], int)
@@ -211,7 +388,11 @@ async def test_get_parties_content_with_pagination(
             party_datetime=datetime(2024, 1, 1, 10, 0, 0) + timedelta(days=i),
             location_id=sample_party_setup["location_id"],
             contact_one_id=sample_party_setup["contact_one_id"],
-            contact_two_id=sample_party_setup["contact_two_id"],
+            contact_two_email="test2@example.com",
+            contact_two_first_name="Jane",
+            contact_two_last_name="Smith",
+            contact_two_phone_number="0987654321",
+            contact_two_contact_preference=ContactPreference.text,
         )
         test_async_session.add(party)
         created_parties.append(party)
@@ -244,9 +425,9 @@ async def test_get_parties_content_with_pagination(
 
     # Verify all parties have correct structure and data
     for party in page1_data["items"] + page2_data["items"]:
-        assert party["location_id"] == sample_party_setup["location_id"]
-        assert party["contact_one_id"] == sample_party_setup["contact_one_id"]
-        assert party["contact_two_id"] == sample_party_setup["contact_two_id"]
+        assert party["location"]["id"] == sample_party_setup["location_id"]
+        assert party["contact_one"]["id"] == sample_party_setup["contact_one_id"]
+        assert "contact_two" in party
         assert "party_datetime" in party
 
 
@@ -261,7 +442,11 @@ async def test_get_parties_pagination(
             party_datetime=datetime.now() + timedelta(days=i),
             location_id=sample_party_setup["location_id"],
             contact_one_id=sample_party_setup["contact_one_id"],
-            contact_two_id=sample_party_setup["contact_two_id"],
+            contact_two_email="test2@example.com",
+            contact_two_first_name="Jane",
+            contact_two_last_name="Smith",
+            contact_two_phone_number="0987654321",
+            contact_two_contact_preference=ContactPreference.text,
         )
         test_async_session.add(party)
     await test_async_session.commit()
@@ -306,7 +491,11 @@ async def test_get_parties_pagination_beyond_available(
             party_datetime=datetime.now() + timedelta(days=i),
             location_id=sample_party_setup["location_id"],
             contact_one_id=sample_party_setup["contact_one_id"],
-            contact_two_id=sample_party_setup["contact_two_id"],
+            contact_two_email="test2@example.com",
+            contact_two_first_name="Jane",
+            contact_two_last_name="Smith",
+            contact_two_phone_number="0987654321",
+            contact_two_contact_preference=ContactPreference.text,
         )
         test_async_session.add(party)
     await test_async_session.commit()
@@ -332,7 +521,11 @@ async def test_get_parties_custom_page_size(
             party_datetime=datetime.now() + timedelta(days=i),
             location_id=sample_party_setup["location_id"],
             contact_one_id=sample_party_setup["contact_one_id"],
-            contact_two_id=sample_party_setup["contact_two_id"],
+            contact_two_email="test2@example.com",
+            contact_two_first_name="Jane",
+            contact_two_last_name="Smith",
+            contact_two_phone_number="0987654321",
+            contact_two_contact_preference=ContactPreference.text,
         )
         test_async_session.add(party)
     await test_async_session.commit()
@@ -377,7 +570,11 @@ async def test_get_party_by_id(
         party_datetime=party_datetime,
         location_id=sample_party_setup["location_id"],
         contact_one_id=sample_party_setup["contact_one_id"],
-        contact_two_id=sample_party_setup["contact_two_id"],
+        contact_two_email="test2@example.com",
+        contact_two_first_name="Jane",
+        contact_two_last_name="Smith",
+        contact_two_phone_number="0987654321",
+        contact_two_contact_preference=ContactPreference.text,
     )
     test_async_session.add(party)
     await test_async_session.commit()
@@ -389,9 +586,9 @@ async def test_get_party_by_id(
 
     data = response.json()
     assert data["id"] == party.id
-    assert data["location_id"] == sample_party_setup["location_id"]
-    assert data["contact_one_id"] == sample_party_setup["contact_one_id"]
-    assert data["contact_two_id"] == sample_party_setup["contact_two_id"]
+    assert data["location"]["id"] == sample_party_setup["location_id"]
+    assert data["contact_one"]["id"] == sample_party_setup["contact_one_id"]
+    assert data["contact_two"]["email"] == "test2@example.com"
 
 
 @pytest.mark.asyncio
@@ -411,7 +608,11 @@ async def test_delete_party(
         party_datetime=datetime.now() + timedelta(days=1),
         location_id=sample_party_setup["location_id"],
         contact_one_id=sample_party_setup["contact_one_id"],
-        contact_two_id=sample_party_setup["contact_two_id"],
+        contact_two_email="test2@example.com",
+        contact_two_first_name="Jane",
+        contact_two_last_name="Smith",
+        contact_two_phone_number="0987654321",
+        contact_two_contact_preference=ContactPreference.text,
     )
     test_async_session.add(party)
     await test_async_session.commit()
@@ -448,7 +649,11 @@ async def test_delete_party_removes_from_list(
             party_datetime=datetime.now() + timedelta(days=i),
             location_id=sample_party_setup["location_id"],
             contact_one_id=sample_party_setup["contact_one_id"],
-            contact_two_id=sample_party_setup["contact_two_id"],
+            contact_two_email="test2@example.com",
+            contact_two_first_name="Jane",
+            contact_two_last_name="Smith",
+            contact_two_phone_number="0987654321",
+            contact_two_contact_preference=ContactPreference.text,
         )
         test_async_session.add(party)
     await test_async_session.commit()
@@ -518,18 +723,9 @@ async def test_get_parties_csv_success(
 ):
     """Test valid date range returns CSV file."""
     # Create parties with specific dates
-    party1 = PartyEntity(
-        party_datetime=datetime(2024, 6, 15, 20, 30, 0),
-        location_id=sample_party_setup["location_id"],
-        contact_one_id=sample_party_setup["contact_one_id"],
-        contact_two_id=sample_party_setup["contact_two_id"],
-    )
-    party2 = PartyEntity(
-        party_datetime=datetime(2024, 6, 20, 18, 0, 0),
-        location_id=sample_party_setup["location_id"],
-        contact_one_id=sample_party_setup["contact_one_id"],
-        contact_two_id=sample_party_setup["contact_two_id"],
-    )
+    party1 = get_party_from_setup(sample_party_setup, datetime(2024, 6, 15, 20, 30, 0))
+    party2 = get_party_from_setup(sample_party_setup, datetime(2024, 6, 20, 18, 0, 0))
+
     test_async_session.add_all([party1, party2])
     await test_async_session.commit()
 
@@ -583,12 +779,7 @@ async def test_get_parties_csv_empty_result(
 ):
     """Test date range with no parties returns CSV with headers only."""
     # Create party outside the date range
-    party = PartyEntity(
-        party_datetime=datetime(2024, 7, 1, 20, 30, 0),
-        location_id=sample_party_setup["location_id"],
-        contact_one_id=sample_party_setup["contact_one_id"],
-        contact_two_id=sample_party_setup["contact_two_id"],
-    )
+    party = get_party_from_setup(sample_party_setup, datetime(2024, 7, 1, 20, 30, 0))
     test_async_session.add(party)
     await test_async_session.commit()
 
@@ -610,12 +801,7 @@ async def test_get_parties_csv_response_headers(
     sample_party_setup: dict,
 ):
     """Test CSV response headers are correct."""
-    party = PartyEntity(
-        party_datetime=datetime(2024, 6, 15, 20, 30, 0),
-        location_id=sample_party_setup["location_id"],
-        contact_one_id=sample_party_setup["contact_one_id"],
-        contact_two_id=sample_party_setup["contact_two_id"],
-    )
+    party = get_party_from_setup(sample_party_setup, datetime(2024, 6, 15, 20, 30, 0))
     test_async_session.add(party)
     await test_async_session.commit()
 
@@ -636,24 +822,9 @@ async def test_get_parties_csv_date_range_filtering(
 ):
     """Test only parties in date range are included."""
     # Create parties at different dates
-    party1 = PartyEntity(
-        party_datetime=datetime(2024, 6, 15, 20, 30, 0),
-        location_id=sample_party_setup["location_id"],
-        contact_one_id=sample_party_setup["contact_one_id"],
-        contact_two_id=sample_party_setup["contact_two_id"],
-    )
-    party2 = PartyEntity(
-        party_datetime=datetime(2024, 6, 18, 18, 0, 0),
-        location_id=sample_party_setup["location_id"],
-        contact_one_id=sample_party_setup["contact_one_id"],
-        contact_two_id=sample_party_setup["contact_two_id"],
-    )
-    party3 = PartyEntity(
-        party_datetime=datetime(2024, 7, 1, 20, 30, 0),  # Outside range
-        location_id=sample_party_setup["location_id"],
-        contact_one_id=sample_party_setup["contact_one_id"],
-        contact_two_id=sample_party_setup["contact_two_id"],
-    )
+    party1 = get_party_from_setup(sample_party_setup, datetime(2024, 6, 15, 20, 30, 0))
+    party2 = get_party_from_setup(sample_party_setup, datetime(2024, 6, 18, 18, 0, 0))
+    party3 = get_party_from_setup(sample_party_setup, datetime(2024, 7, 1, 20, 30, 0))
     test_async_session.add_all([party1, party2, party3])
     await test_async_session.commit()
 
@@ -678,12 +849,7 @@ async def test_get_parties_csv_end_date_includes_full_day(
 ):
     """Test end_date includes parties at end of day (23:59:59)."""
     # Create party at end of day
-    party = PartyEntity(
-        party_datetime=datetime(2024, 6, 20, 23, 59, 59),
-        location_id=sample_party_setup["location_id"],
-        contact_one_id=sample_party_setup["contact_one_id"],
-        contact_two_id=sample_party_setup["contact_two_id"],
-    )
+    party = get_party_from_setup(sample_party_setup, datetime(2024, 6, 20, 23, 59, 59))
     test_async_session.add(party)
     await test_async_session.commit()
 
@@ -716,12 +882,9 @@ async def test_get_parties_csv_boundary_start_date(
     sample_party_setup: dict,
 ):
     """Test party exactly at start_date is included."""
-    party = PartyEntity(
-        party_datetime=datetime(2024, 6, 15, 0, 0, 0),  # Start of day
-        location_id=sample_party_setup["location_id"],
-        contact_one_id=sample_party_setup["contact_one_id"],
-        contact_two_id=sample_party_setup["contact_two_id"],
-    )
+    party = get_party_from_setup(
+        sample_party_setup, datetime(2024, 6, 15, 0, 0, 0)
+    )  # Start of day
     test_async_session.add(party)
     await test_async_session.commit()
 
@@ -741,12 +904,9 @@ async def test_get_parties_csv_boundary_end_date(
     sample_party_setup: dict,
 ):
     """Test party exactly at end_date is included."""
-    party = PartyEntity(
-        party_datetime=datetime(2024, 6, 20, 23, 59, 59),  # End of day
-        location_id=sample_party_setup["location_id"],
-        contact_one_id=sample_party_setup["contact_one_id"],
-        contact_two_id=sample_party_setup["contact_two_id"],
-    )
+    party = get_party_from_setup(
+        sample_party_setup, datetime(2024, 6, 20, 23, 59, 59)
+    )  # End of day
     test_async_session.add(party)
     await test_async_session.commit()
 
@@ -769,11 +929,8 @@ async def test_get_parties_csv_multiple_parties_in_range(
     # Create multiple parties within range
     parties = []
     for day in range(15, 21):  # June 15-20
-        party = PartyEntity(
-            party_datetime=datetime(2024, 6, day, 20, 0, 0),
-            location_id=sample_party_setup["location_id"],
-            contact_one_id=sample_party_setup["contact_one_id"],
-            contact_two_id=sample_party_setup["contact_two_id"],
+        party = get_party_from_setup(
+            sample_party_setup, datetime(2024, 6, day, 20, 0, 0)
         )
         parties.append(party)
     test_async_session.add_all(parties)
@@ -787,3 +944,551 @@ async def test_get_parties_csv_multiple_parties_in_range(
     csv_content = response.text
     lines = csv_content.strip().split("\n")
     assert len(lines) == 7  # Header + 6 data rows (one for each day)
+
+
+async def test_create_party_as_student(
+    student_client: AsyncClient,
+    test_async_session: AsyncSession,
+    sample_party_setup: dict,
+    mock_location_service: AsyncMock,
+):
+    """Test POST /api/parties as a student (contact_one auto-filled)."""
+    party_datetime = get_valid_party_datetime()
+    party_data = StudentCreatePartyDTO(
+        type="student",
+        party_datetime=party_datetime,
+        place_id="test_place_id_123",
+        contact_two=Contact(
+            email="test2@example.com",
+            first_name="Jane",
+            last_name="Smith",
+            phone_number="0987654321",
+            contact_preference=ContactPreference.text,
+        ),
+    )
+
+    response = await student_client.post(
+        "/api/parties/", json=party_data.model_dump(mode="json")
+    )
+    assert response.status_code == 200, response.json()
+
+    data = response.json()
+    assert data["party_datetime"] == party_datetime.isoformat()
+    assert data["contact_one"]["id"] == 1  # Auto-filled from student account
+    assert data["contact_two"]["email"] == "test2@example.com"
+    assert "id" in data
+    assert "location" in data
+
+
+@pytest.mark.asyncio
+async def test_create_party_as_admin(
+    admin_client: AsyncClient,
+    test_async_session: AsyncSession,
+    sample_party_setup: dict,
+    location_service: LocationService,
+):
+    """Test POST /api/parties as an admin (both contacts specified)."""
+    party_datetime = get_valid_party_datetime()
+    party_data = AdminCreatePartyDTO(
+        type="admin",
+        party_datetime=party_datetime,
+        place_id="test_place_id_123",
+        contact_one_email="test@example.com",
+        contact_two=Contact(
+            email="test2@example.com",
+            first_name="Jane",
+            last_name="Smith",
+            phone_number="0987654321",
+            contact_preference=ContactPreference.text,
+        ),
+    )
+
+    response = await admin_client.post(
+        "/api/parties/", json=party_data.model_dump(mode="json")
+    )
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["party_datetime"] == party_datetime.isoformat()
+    assert data["contact_one"]["id"] == 1
+    assert data["contact_two"]["email"] == "test2@example.com"
+    assert "id" in data
+    assert "location" in data
+
+
+@pytest.mark.asyncio
+async def test_update_party_as_student(
+    student_client: AsyncClient,
+    test_async_session: AsyncSession,
+    sample_party_setup: dict,
+    location_service: LocationService,
+):
+    """Test PUT /api/parties/:id as a student (contact_one auto-filled)."""
+    # Create an initial party
+    existing_party = PartyEntity(
+        party_datetime=get_valid_party_datetime(),
+        location_id=sample_party_setup["location_id"],
+        contact_one_id=1,
+        contact_two_email="test2@example.com",
+        contact_two_first_name="Jane",
+        contact_two_last_name="Smith",
+        contact_two_phone_number="0987654321",
+        contact_two_contact_preference=ContactPreference.text,
+    )
+    test_async_session.add(existing_party)
+    await test_async_session.commit()
+    await test_async_session.refresh(existing_party)
+
+    new_party_datetime = get_valid_party_datetime() + timedelta(days=2)
+    update_data = StudentCreatePartyDTO(
+        type="student",
+        party_datetime=new_party_datetime,
+        place_id="test_place_id_123",
+        contact_two=Contact(
+            email="test2@example.com",
+            first_name="Jane",
+            last_name="Smith",
+            phone_number="0987654321",
+            contact_preference=ContactPreference.text,
+        ),
+    )
+
+    response = await student_client.put(
+        f"/api/parties/{existing_party.id}", json=update_data.model_dump(mode="json")
+    )
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["id"] == existing_party.id
+    assert data["party_datetime"] == new_party_datetime.isoformat()
+    assert data["contact_one"]["id"] == 1  # Auto-filled from student account
+    assert data["contact_two"]["email"] == "test2@example.com"
+
+
+@pytest.mark.asyncio
+async def test_update_party_as_admin(
+    admin_client: AsyncClient,
+    test_async_session: AsyncSession,
+    sample_party_setup: dict,
+    location_service: LocationService,
+):
+    """Test PUT /api/parties/:id as an admin (both contacts specified)."""
+    # Create an initial party
+    existing_party = PartyEntity(
+        party_datetime=get_valid_party_datetime(),
+        location_id=sample_party_setup["location_id"],
+        contact_one_id=1,
+        contact_two_email="test2@example.com",
+        contact_two_first_name="Jane",
+        contact_two_last_name="Smith",
+        contact_two_phone_number="0987654321",
+        contact_two_contact_preference=ContactPreference.text,
+    )
+    test_async_session.add(existing_party)
+    await test_async_session.commit()
+    await test_async_session.refresh(existing_party)
+
+    new_party_datetime = get_valid_party_datetime() + timedelta(days=2)
+    update_data = AdminCreatePartyDTO(
+        type="admin",
+        party_datetime=new_party_datetime,
+        place_id="test_place_id_123",
+        contact_one_email="test@example.com",
+        contact_two=Contact(
+            email="test2@example.com",
+            first_name="Jane",
+            last_name="Smith",
+            phone_number="0987654321",
+            contact_preference=ContactPreference.text,
+        ),
+    )
+
+    response = await admin_client.put(
+        f"/api/parties/{existing_party.id}", json=update_data.model_dump(mode="json")
+    )
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["id"] == existing_party.id
+    assert data["party_datetime"] == new_party_datetime.isoformat()
+    assert data["contact_one"]["id"] == 1
+    assert data["contact_two"]["email"] == "test2@example.com"
+
+
+@pytest.mark.asyncio
+async def test_update_party_not_found(
+    admin_client: AsyncClient,
+    test_async_session: AsyncSession,
+    location_service: LocationService,
+):
+    """Test PUT /api/parties/:id with non-existent party ID."""
+    party_datetime = get_valid_party_datetime()
+    update_data = AdminCreatePartyDTO(
+        type="admin",
+        party_datetime=party_datetime,
+        place_id="test_place_id_123",
+        contact_one_email="test@example.com",
+        contact_two=Contact(
+            email="test2@example.com",
+            first_name="Jane",
+            last_name="Smith",
+            phone_number="0987654321",
+            contact_preference=ContactPreference.text,
+        ),
+    )
+
+    response = await admin_client.put(
+        "/api/parties/999", json=update_data.model_dump(mode="json")
+    )
+    assert response.status_code == 404
+
+
+# Validation Error Tests
+
+
+@pytest.mark.asyncio
+async def test_create_party_date_too_soon(
+    student_client: AsyncClient,
+    test_async_session: AsyncSession,
+    sample_party_setup: dict,
+    location_service: LocationService,
+):
+    """Test POST /api/parties with party date less than 2 business days away."""
+    # Party tomorrow (only 1 business day away)
+    party_datetime = datetime.now() + timedelta(days=1)
+    party_data = StudentCreatePartyDTO(
+        type="student",
+        party_datetime=party_datetime,
+        place_id="test_place_id_123",
+        contact_two=Contact(
+            email="test2@example.com",
+            first_name="Jane",
+            last_name="Smith",
+            phone_number="0987654321",
+            contact_preference=ContactPreference.text,
+        ),
+    )
+
+    response = await student_client.post(
+        "/api/parties/", json=party_data.model_dump(mode="json")
+    )
+    assert response.status_code == 400
+    assert "business days" in response.json()["message"].lower()
+
+
+@pytest.mark.asyncio
+async def test_update_party_date_too_soon(
+    student_client: AsyncClient,
+    test_async_session: AsyncSession,
+    sample_party_setup: dict,
+    location_service: LocationService,
+):
+    """Test PUT /api/parties/:id with party date less than 2 business days away."""
+    # Create an initial party
+    existing_party = PartyEntity(
+        party_datetime=get_valid_party_datetime(),
+        location_id=sample_party_setup["location_id"],
+        contact_one_id=1,
+        contact_two_email="test2@example.com",
+        contact_two_first_name="Jane",
+        contact_two_last_name="Smith",
+        contact_two_phone_number="0987654321",
+        contact_two_contact_preference=ContactPreference.text,
+    )
+    test_async_session.add(existing_party)
+    await test_async_session.commit()
+    await test_async_session.refresh(existing_party)
+
+    # Try to update with party tomorrow
+    party_datetime = datetime.now() + timedelta(days=1)
+    update_data = StudentCreatePartyDTO(
+        type="student",
+        party_datetime=party_datetime,
+        place_id="test_place_id_123",
+        contact_two=Contact(
+            email="test2@example.com",
+            first_name="Jane",
+            last_name="Smith",
+            phone_number="0987654321",
+            contact_preference=ContactPreference.text,
+        ),
+    )
+
+    response = await student_client.put(
+        f"/api/parties/{existing_party.id}", json=update_data.model_dump(mode="json")
+    )
+    assert response.status_code == 400
+    assert "business days" in response.json()["message"].lower()
+
+
+@pytest.mark.asyncio
+async def test_create_party_student_no_party_smart(
+    student_client: AsyncClient,
+    test_async_session: AsyncSession,
+    location_service: LocationService,
+):
+    """Test POST /api/parties when student hasn't completed Party Smart."""
+    # Create student without last_registered (no Party Smart)
+    account = AccountEntity(
+        id=3,
+        email="nopartysmart@test.com",
+        first_name="Test",
+        last_name="User",
+        pid="306000001",
+        role=AccountRole.STUDENT,
+    )
+    student = StudentEntity(
+        contact_preference=ContactPreference.call,
+        phone_number="5555555555",
+        account_id=3,
+        last_registered=None,  # No Party Smart attendance
+    )
+    test_async_session.add_all([account, student])
+    await test_async_session.commit()
+
+    # Override authenticate_user to return the new student
+    async def override_authenticate_user():
+        return Account(
+            id=3,
+            email="nopartysmart@test.com",
+            # password field removed from Account model
+            first_name="Test",
+            last_name="User",
+            pid="300000001",
+            role=AccountRole.STUDENT,
+        )
+
+    app.dependency_overrides[authenticate_user] = override_authenticate_user
+
+    party_datetime = get_valid_party_datetime()
+    party_data = StudentCreatePartyDTO(
+        type="student",
+        party_datetime=party_datetime,
+        place_id="test_place_id_123",
+        contact_two=Contact(
+            email="test2@example.com",
+            first_name="Jane",
+            last_name="Smith",
+            phone_number="0987654321",
+            contact_preference=ContactPreference.text,
+        ),
+    )
+
+    response = await student_client.post(
+        "/api/parties/", json=party_data.model_dump(mode="json")
+    )
+    assert response.status_code == 400
+    assert "party smart" in response.json()["message"].lower()
+
+    # Clean up override
+    app.dependency_overrides.pop(authenticate_user, None)
+
+
+@pytest.mark.asyncio
+async def test_create_party_student_party_smart_expired(
+    student_client: AsyncClient,
+    test_async_session: AsyncSession,
+    location_service: LocationService,
+):
+    """Test POST /api/parties when student's Party Smart attendance is before the most recent August 1st."""
+    # Create student with expired last_registered (before the most recent August 1st)
+    # Calculate a date before the most recent August 1st
+    now = datetime.now()
+    current_year = now.year
+    august_first_this_year = datetime(current_year, 8, 1, 0, 0, 0)
+
+    # If we're before August 1st, use last year's August 1st - 1 day
+    # Otherwise, use this year's August 1st - 1 day
+    if now < august_first_this_year:
+        expired_date = datetime(current_year - 1, 7, 31, 23, 59, 59)
+    else:
+        expired_date = datetime(current_year, 7, 31, 23, 59, 59)
+
+    account = AccountEntity(
+        id=4,
+        email="expiredpartysmart@test.com",
+        first_name="Test",
+        last_name="User",
+        pid="306000001",
+        role=AccountRole.STUDENT,
+    )
+    student = StudentEntity(
+        contact_preference=ContactPreference.call,
+        phone_number="6666666666",
+        account_id=4,
+        last_registered=expired_date,
+    )
+    test_async_session.add_all([account, student])
+    await test_async_session.commit()
+
+    # Override authenticate_user to return the new student
+    async def override_authenticate_user():
+        return Account(
+            id=4,
+            email="expiredpartysmart@test.com",
+            # password field removed from Account model
+            first_name="Test",
+            last_name="User",
+            pid="300000001",
+            role=AccountRole.STUDENT,
+        )
+
+    app.dependency_overrides[authenticate_user] = override_authenticate_user
+
+    party_datetime = get_valid_party_datetime()
+    party_data = StudentCreatePartyDTO(
+        type="student",
+        party_datetime=party_datetime,
+        place_id="test_place_id_123",
+        contact_two=Contact(
+            email="test2@example.com",
+            first_name="Jane",
+            last_name="Smith",
+            phone_number="0987654321",
+            contact_preference=ContactPreference.text,
+        ),
+    )
+
+    response = await student_client.post(
+        "/api/parties/", json=party_data.model_dump(mode="json")
+    )
+    assert response.status_code == 400
+    assert "party smart" in response.json()["message"].lower()
+
+    # Clean up override
+    app.dependency_overrides.pop(authenticate_user, None)
+
+
+@pytest.mark.asyncio
+async def test_create_party_location_has_active_hold(
+    test_async_session: AsyncSession,
+    sample_party_setup: dict,
+    mock_location_service: AsyncMock,
+    student_client: AsyncClient,
+):
+    """Test POST /api/parties when location has an active hold."""
+
+    mock_location_service.assert_valid_location_hold.side_effect = (
+        LocationHoldActiveException(1, datetime.now() + timedelta(days=30))
+    )
+
+    party_datetime = get_valid_party_datetime()
+    party_data = StudentCreatePartyDTO(
+        type="student",
+        party_datetime=party_datetime,
+        place_id="test_place_id_1",  # Use the place_id from sample_party_setup location
+        contact_two=Contact(
+            email="test2@example.com",
+            first_name="Jane",
+            last_name="Smith",
+            phone_number="0987654321",
+            contact_preference=ContactPreference.text,
+        ),
+    )
+
+    response = await student_client.post(
+        "/api/parties/", json=party_data.model_dump(mode="json")
+    )
+    assert response.status_code == 400
+    assert "hold" in response.json()["message"].lower()
+
+
+@pytest.mark.asyncio
+async def test_create_party_location_expired_hold(
+    student_client: AsyncClient,
+    test_async_session: AsyncSession,
+    sample_party_setup: dict,
+    location_service: LocationService,
+):
+    """Test POST /api/parties when location has an expired hold (should succeed)."""
+    # Add an expired hold to the existing location from sample_party_setup
+
+    result = await test_async_session.execute(
+        select(LocationEntity).where(
+            LocationEntity.id == sample_party_setup["location_id"]
+        )
+    )
+    location = result.scalar_one()
+    location.hold_expiration = datetime.now() - timedelta(
+        days=1
+    )  # Hold expired yesterday
+    test_async_session.add(location)
+    await test_async_session.commit()
+
+    party_datetime = get_valid_party_datetime()
+    party_data = StudentCreatePartyDTO(
+        type="student",
+        party_datetime=party_datetime,
+        place_id="test_place_id_1",  # Use the place_id from sample_party_setup location
+        contact_two=Contact(
+            email="test2@example.com",
+            first_name="Jane",
+            last_name="Smith",
+            phone_number="0987654321",
+            contact_preference=ContactPreference.text,
+        ),
+    )
+
+    response = await student_client.post(
+        "/api/parties/", json=party_data.model_dump(mode="json")
+    )
+    assert response.status_code == 200  # Should succeed with expired hold
+
+
+@pytest.mark.asyncio
+async def test_create_party_student_using_admin_dto(
+    student_client: AsyncClient,
+    test_async_session: AsyncSession,
+    sample_party_setup: dict,
+    location_service: LocationService,
+):
+    """Test POST /api/parties when student tries to use admin DTO."""
+    party_datetime = get_valid_party_datetime()
+    party_data = AdminCreatePartyDTO(
+        type="admin",  # Student trying to use admin DTO
+        party_datetime=party_datetime,
+        place_id="test_place_id_123",
+        contact_one_email="test@example.com",
+        contact_two=Contact(
+            email="test2@example.com",
+            first_name="Jane",
+            last_name="Smith",
+            phone_number="0987654321",
+            contact_preference=ContactPreference.text,
+        ),
+    )
+
+    response = await student_client.post(
+        "/api/parties/", json=party_data.model_dump(mode="json")
+    )
+    assert response.status_code == 403
+    assert "admin" in response.json()["message"].lower()
+
+
+@pytest.mark.asyncio
+async def test_create_party_admin_using_student_dto(
+    admin_client: AsyncClient,
+    test_async_session: AsyncSession,
+    sample_party_setup: dict,
+    location_service: LocationService,
+):
+    """Test POST /api/parties when admin tries to use student DTO."""
+    party_datetime = get_valid_party_datetime()
+    party_data = StudentCreatePartyDTO(
+        type="student",  # Admin trying to use student DTO
+        party_datetime=party_datetime,
+        place_id="test_place_id_123",
+        contact_two=Contact(
+            email="test2@example.com",
+            first_name="Jane",
+            last_name="Smith",
+            phone_number="0987654321",
+            contact_preference=ContactPreference.text,
+        ),
+    )
+
+    response = await admin_client.post(
+        "/api/parties/", json=party_data.model_dump(mode="json")
+    )
+    assert response.status_code == 403
+    assert "student" in response.json()["message"].lower()

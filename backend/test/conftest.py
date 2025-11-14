@@ -1,3 +1,7 @@
+import os
+
+os.environ["GOOGLE_MAPS_API_KEY"] = "invalid_google_maps_api_key_for_tests"
+
 import pytest_asyncio
 import src.modules  # Ensure all modules are imported so their entities are registered # noqa: F401
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
