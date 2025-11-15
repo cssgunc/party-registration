@@ -25,6 +25,16 @@ import { useState } from "react";
 import { ColumnHeader } from "./ColumnHeader";
 import { FilterSidebar } from "./FilterSidebar";
 
+export type FilterType = "text" | "date" | "dateRange" | "time" | "select";
+
+declare module "@tanstack/react-table" {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    interface ColumnMeta<TData, TValue> {
+        filterType?: FilterType;
+        selectOptions?: string[];
+    }
+}
+
 export type TableProps<T> = {
     data: T[];
     columns: ColumnDef<T, unknown>[];
@@ -136,6 +146,14 @@ export function TableTemplate<T>({ data, columns, details }: TableProps<T>) {
                         column={activeFilterColumn.column}
                         columnName={activeFilterColumn.name}
                         onClose={() => setActiveFilterColumn(null)}
+                        filterType={
+                            activeFilterColumn.column.columnDef.meta
+                                ?.filterType || "text"
+                        }
+                        selectOptions={
+                            activeFilterColumn.column.columnDef.meta
+                                ?.selectOptions || []
+                        }
                     />
                 </div>
             )}

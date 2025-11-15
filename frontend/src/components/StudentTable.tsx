@@ -46,6 +46,10 @@ export const StudentTable = ({ data }: { data: Student[] }) => {
             accessorKey: "contactPreference",
             header: "Contact Preference",
             enableColumnFilter: true,
+            meta: {
+                filterType: "select",
+                selectOptions: ["call", "text"],
+            },
         },
         {
             accessorKey: "lastRegistered",
