@@ -2,38 +2,50 @@ import { Location } from "@/types/api/location";
 import { ColumnDef } from "@tanstack/react-table";
 import { TableTemplate } from "./TableTemplate";
 
-// import { InfoChip } from "../ui/InfoChip";
-// import { Checkbox } from "../ui/Checkbox";
-
 export const LocationTable = ({ data }: { data: Location[] }) => {
-
     const columns: ColumnDef<Location>[] = [
         {
             accessorKey: "formattedAddress",
-            header: "Address"
+            header: "Address",
         },
         {
             accessorKey: "warningCount",
-            header: "Warning Count"
+            header: "Warning Count",
         },
         {
             accessorKey: "citationCount",
-            header: "Citation Count"
+            header: "Citation Count",
         },
         {
             accessorKey: "holdExpirationDate",
             header: "Active Hold",
+            enableColumnFilter: true,
             cell: ({ row }) => {
-                const hold = row.getValue("holdExpirationDate") as string | null;
-                if (hold) {
-                    const formattedDate = new Date(hold).toLocaleDateString();
+                const holdDate = row.getValue(
+                    "holdExpirationDate"
+                ) as Date | null;
+                if (holdDate) {
+                    const formattedDate = new Date(
+                        holdDate
+                    ).toLocaleDateString();
                     return `until ${formattedDate}`;
                 }
-
                 return "no active hold";
-            }
+            },
+
+            filterFn: (row, columnId, filterValue) => {
+                const holdDate = row.getValue(columnId) as Date | null;
+                const displayText = holdDate
+                    ? `until ${new Date(holdDate).toLocaleDateString()}`
+                    : "no active hold";
+                return displayText
+                    .toLowerCase()
+                    .includes(String(filterValue).toLowerCase());
+            },
         },
     ];
 
-    return <TableTemplate data={data} columns={columns} details="Location table" />;
+    return (
+        <TableTemplate data={data} columns={columns} details="Location table" />
+    );
 };
