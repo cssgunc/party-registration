@@ -2,8 +2,9 @@ from datetime import datetime
 from typing import Self
 
 from sqlalchemy import DECIMAL, DateTime, Index, Integer, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.core.database import EntityBase
+from src.modules.complaint.complaint_entity import ComplaintEntity
 
 from .location_model import Location, LocationData
 
@@ -38,6 +39,14 @@ class LocationEntity(EntityBase):
     country: Mapped[str | None] = mapped_column(String(2))  # e.g. "US"
     zip_code: Mapped[str | None] = mapped_column(String(10))  # e.g. "27514"
 
+    # Relationships
+    complaints: Mapped[list["ComplaintEntity"]] = relationship(
+        "ComplaintEntity",
+        back_populates="location",
+        cascade="all, delete-orphan",
+        lazy="selectin",  # Use selectin loading to avoid N+1 queries
+    )
+
     __table_args__ = (Index("idx_lat_lng", "latitude", "longitude"),)
 
     def to_model(self) -> Location:
@@ -58,6 +67,7 @@ class LocationEntity(EntityBase):
             warning_count=self.warning_count,
             citation_count=self.citation_count,
             hold_expiration=self.hold_expiration,
+            complaints=[complaint.to_model() for complaint in self.complaints],
         )
 
     @classmethod

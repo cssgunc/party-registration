@@ -3,6 +3,7 @@ from typing import Self
 
 from pydantic import BaseModel
 from src.core.models import PaginatedResponse
+from src.modules.complaint.complaint_model import Complaint
 
 
 class AutocompleteInput(BaseModel):
@@ -66,6 +67,7 @@ class LocationData(AddressData):
 
 class Location(LocationData):
     id: int
+    complaints: list[Complaint] = []
 
 
 PaginatedLocationResponse = PaginatedResponse[Location]

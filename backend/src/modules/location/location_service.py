@@ -1,5 +1,4 @@
 import asyncio
-import json
 from datetime import datetime
 
 import googlemaps
@@ -238,8 +237,6 @@ class LocationService:
                 raise PlaceNotFoundException(place_id)
 
             place = place_result["result"]
-
-            print(json.dumps(place, indent=2, ensure_ascii=False))
 
             street_number = None
             street_name = None

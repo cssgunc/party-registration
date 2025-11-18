@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from src.modules.account.account_router import account_router
+from src.modules.complaint.complaint_router import complaint_router
 from src.modules.location.location_router import location_router
 from src.modules.party.party_router import party_router
 from src.modules.student.student_router import student_router
@@ -42,3 +43,4 @@ app.include_router(account_router)
 app.include_router(party_router)
 app.include_router(student_router)
 app.include_router(location_router)
+app.include_router(complaint_router)

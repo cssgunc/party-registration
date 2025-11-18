@@ -507,6 +507,56 @@ async def test_location_data_persistence(location_service_db: LocationService) -
     assert fetched.hold_expiration == datetime(2025, 6, 15, 12, 30, 0)
 
 
+@pytest.mark.asyncio
+async def test_location_complaints_field_defaults_to_empty_list(
+    location_service_db: LocationService,
+) -> None:
+    """Test that Location DTO complaints field defaults to empty list."""
+    data = LocationData(
+        google_place_id="ChIJ_complaints_test",
+        formatted_address="100 Complaint St, Chapel Hill, NC 27514, USA",
+        latitude=35.9132,
+        longitude=-79.0558,
+        warning_count=0,
+        citation_count=0,
+        hold_expiration=None,
+    )
+
+    created = await location_service_db.create_location(data)
+
+    # Verify complaints field exists and is empty list
+    assert hasattr(created, "complaints")
+    assert created.complaints == []
+    assert isinstance(created.complaints, list)
+
+
+@pytest.mark.asyncio
+async def test_location_serialization_includes_complaints(
+    location_service_db: LocationService,
+) -> None:
+    """Test that Location DTO properly serializes with complaints field."""
+    data = LocationData(
+        google_place_id="ChIJ_serialize_test",
+        formatted_address="200 Serialize Ave, Chapel Hill, NC 27514, USA",
+        latitude=35.9132,
+        longitude=-79.0558,
+        warning_count=0,
+        citation_count=0,
+        hold_expiration=None,
+    )
+
+    created = await location_service_db.create_location(data)
+
+    # Test model_dump includes complaints
+    serialized = created.model_dump()
+    assert "complaints" in serialized
+    assert serialized["complaints"] == []
+
+    # Test JSON serialization
+    json_str = created.model_dump_json()
+    assert "complaints" in json_str
+
+
 @patch("src.modules.location.location_service.places.places_autocomplete")
 @pytest.mark.asyncio
 async def test_autocomplete_address_success(
