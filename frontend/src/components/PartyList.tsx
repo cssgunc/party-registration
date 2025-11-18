@@ -10,7 +10,7 @@ interface PartyListProps {
 const PartyList = ({ parties }: PartyListProps) => {
   const [currentAddress, setCurrentAddress] = useState("");
   const defaultParties = generateMockParties();
-  parties = parties ? parties : defaultParties;
+  parties = parties ?? defaultParties;
 
   const query = currentAddress.trim().toLowerCase();
   const filteredParties =
