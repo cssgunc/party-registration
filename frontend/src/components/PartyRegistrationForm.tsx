@@ -46,6 +46,7 @@ const partyFormSchema = z.object({
       "Party must be at least 2 business days in the future"
     ),
   partyTime: z.string().min(1, "Party time is required"),
+  secondContactName: z.string().min(1, "Name is required"),
   phoneNumber: z
     .string()
     .min(1, "Phone number is required")
@@ -160,9 +161,8 @@ export default function PartyRegistrationForm({
                   <Button
                     id="party-date"
                     variant="outline"
-                    className={`w-full justify-start text-left font-normal ${
-                      !formData.partyDate && "text-muted-foreground"
-                    }`}
+                    className={`w-full justify-start text-left font-normal ${!formData.partyDate && "text-muted-foreground"
+                      }`}
                   >
                     {formData.partyDate ? (
                       format(formData.partyDate, "PPP")
@@ -206,8 +206,22 @@ export default function PartyRegistrationForm({
             </Field>
           </div>
 
+          <Field data-invalid={!!errors.secondContactName}>
+            <FieldLabel htmlFor="second-contact-name">Second Contact name</FieldLabel>
+            <Input
+              id="phone-number"
+              placeholder=""
+              value={formData.secondContactName}
+              onChange={(e) => updateField("secondContactName", e.target.value)}
+              aria-invalid={!!errors.secondContactName}
+            />
+            {errors.phoneNumber && (
+              <FieldError>{errors.phoneNumber}</FieldError>
+            )}
+          </Field>
+
           <Field data-invalid={!!errors.phoneNumber}>
-            <FieldLabel htmlFor="phone-number">Your Phone Number</FieldLabel>
+            <FieldLabel htmlFor="phone-number">Second Contact Phone Number</FieldLabel>
             <Input
               id="phone-number"
               placeholder="(123) 456-7890"
@@ -216,7 +230,7 @@ export default function PartyRegistrationForm({
               aria-invalid={!!errors.phoneNumber}
             />
             <FieldDescription>
-              We will use this to contact you about the party
+              We will use this to contact Contact two about the party
             </FieldDescription>
             {errors.phoneNumber && (
               <FieldError>{errors.phoneNumber}</FieldError>
@@ -225,7 +239,7 @@ export default function PartyRegistrationForm({
 
           <Field data-invalid={!!errors.contactPreference}>
             <FieldLabel htmlFor="contact-preference">
-              Contact Preference
+              Second Contact Contact Preference
             </FieldLabel>
             <Select
               value={formData.contactPreference}
@@ -241,7 +255,7 @@ export default function PartyRegistrationForm({
                 <SelectItem value="text">Text</SelectItem>
               </SelectContent>
             </Select>
-            <FieldDescription>How should we contact you?</FieldDescription>
+            <FieldDescription>How should we contact the second contact?</FieldDescription>
             {errors.contactPreference && (
               <FieldError>{errors.contactPreference}</FieldError>
             )}
