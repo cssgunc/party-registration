@@ -4,7 +4,8 @@ import { createContext, ReactNode, useContext, useState } from "react";
 type SidebarContextType = {
   isOpen: boolean;
   content: ReactNode | null;
-  openSidebar: (content: ReactNode) => void;
+  selectedKey: string | null;
+  openSidebar: (key: string, content: ReactNode) => void;
   closeSidebar: () => void;
 };
 interface SidebarProviderProps {
@@ -16,20 +17,23 @@ const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
 export function SidebarProvider({ children }: SidebarProviderProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [content, setContent] = useState<ReactNode | null>(null);
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
-  const openSidebar = (content: ReactNode) => {
+  const openSidebar = (key: string, content: ReactNode) => {
     setContent(content);
+    setSelectedKey(key);
     setIsOpen(true);
   };
 
   const closeSidebar = () => {
     setIsOpen(false);
     setContent(null);
+    setSelectedKey(null);
   };
 
   return (
     <SidebarContext.Provider
-      value={{ isOpen, content, openSidebar, closeSidebar }}
+      value={{ isOpen, content, selectedKey, openSidebar, closeSidebar }}
     >
       {children}
     </SidebarContext.Provider>

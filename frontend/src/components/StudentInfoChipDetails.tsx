@@ -5,60 +5,33 @@ import { GenericChipDetails } from "./GenericChipDetails";
 
 interface StudentInfoChipDetailsProps {
   data: Student;
-  onSave: (updated: Student) => void;
 }
 
-export function StudentInfoChipDetails({
-  data,
-  onSave,
-}: StudentInfoChipDetailsProps) {
+export function StudentInfoChipDetails({ data }: StudentInfoChipDetailsProps) {
   return (
     <GenericChipDetails<Student>
       data={data}
-      onSave={onSave}
-      renderForm={(d, setD) => (
+      title={"Info about the Student"}
+      description={"View information on the Student you just clicked on"}
+      renderView={(d) => (
         <div className="space-y-3">
           <div>
             <label className="block text-sm font-medium">First Name</label>
-            <input
-              className="border p-2 w-full rounded"
-              value={d.firstName}
-              onChange={(e) => setD({ ...d, firstName: e.target.value })}
-            />
+            <p className="p-2 border rounded">{d.firstName}</p>
           </div>
           <div>
             <label className="block text-sm font-medium">Last Name</label>
-            <input
-              className="border p-2 w-full rounded"
-              value={d.lastName}
-              onChange={(e) => setD({ ...d, lastName: e.target.value })}
-            />
+            <p className="p-2 border rounded">{d.lastName}</p>
           </div>
           <div>
             <label className="block text-sm font-medium">Phone Number</label>
-            <input
-              className="border p-2 w-full rounded"
-              value={d.phoneNumber}
-              onChange={(e) => setD({ ...d, phoneNumber: e.target.value })}
-            />
+            <p className="p-2 border rounded">{d.phoneNumber}</p>
           </div>
           <div>
             <label className="block text-sm font-medium">
               Contact Preference
             </label>
-            <select
-              className="border p-2 w-full rounded"
-              value={d.contactPreference}
-              onChange={(e) =>
-                setD({
-                  ...d,
-                  contactPreference: e.target.value as "call" | "text",
-                })
-              }
-            >
-              <option value="call">Call</option>
-              <option value="text">Text</option>
-            </select>
+            <p className="p-2 border rounded">{d.contactPreference}</p>
           </div>
         </div>
       )}

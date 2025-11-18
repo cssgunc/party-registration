@@ -5,62 +5,33 @@ import { GenericChipDetails } from "./GenericChipDetails";
 
 interface LocationInfoChipDetailsProps {
   data: Location;
-  onSave: (updated: Location) => void;
 }
 
-export function LocationInfoChipDetails({
-  data,
-  onSave,
-}: LocationInfoChipDetailsProps) {
+function LocationInfoChipDetails({ data }: LocationInfoChipDetailsProps) {
   return (
     <GenericChipDetails<Location>
       data={data}
-      onSave={onSave}
-      renderForm={(d, setD) => (
+      title={"Info about the Location"}
+      description={"View information on the Location you just clicked on"}
+      renderView={(d) => (
         <div className="space-y-3">
           <div>
             <label className="block text-sm font-medium">Address</label>
-            <input
-              className="border p-2 w-full rounded"
-              value={d.formattedAddress}
-              onChange={(e) => setD({ ...d, formattedAddress: e.target.value })}
-            />
+            <p className="p-2 border rounded">{d.formattedAddress}</p>
           </div>
-
           <div>
             <label className="block text-sm font-medium">Warning Count</label>
-            <input
-              type="number"
-              className="border p-2 w-full rounded"
-              value={d.warningCount}
-              onChange={(e) =>
-                setD({ ...d, warningCount: Number(e.target.value) })
-              }
-            />
+            <p className="p-2 border rounded">{d.warningCount}</p>
           </div>
           <div>
             <label className="block text-sm font-medium">Citation Count</label>
-            <input
-              type="number"
-              className="border p-2 w-full rounded"
-              value={d.citationCount}
-              onChange={(e) =>
-                setD({ ...d, citationCount: Number(e.target.value) })
-              }
-            />
+            <p className="p-2 border rounded">{d.citationCount}</p>
           </div>
           <div>
             <label className="block text-sm font-medium">Active Hold</label>
-            <select
-              className="border p-2 w-full rounded"
-              value={d.hasActiveHold.toString()}
-              onChange={(e) =>
-                setD({ ...d, hasActiveHold: e.target.value === "true" })
-              }
-            >
-              <option value="true">Yes</option>
-              <option value="false">No</option>
-            </select>
+            <p className="p-2 border rounded">
+              {d.hasActiveHold ? "Yes" : "No"}
+            </p>
           </div>
         </div>
       )}

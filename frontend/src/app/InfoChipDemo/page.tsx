@@ -1,103 +1,52 @@
 "use client";
 
-import { GenericChipDetails } from "@/components/GenericChipDetails";
 import { GenericInfoChip } from "@/components/GenericInfoChip";
 import LocationInfoChipDetails from "@/components/LocationInfoChipDetails";
 import { useSidebar } from "@/components/SidebarContext";
 import StudentInfoChipDetails from "@/components/StudentInfoChipDetails";
 import { Location } from "@/types/api/location";
 import { Student } from "@/types/api/student";
-import { Badge } from "lucide-react";
-import { useState } from "react";
 
 const Page = () => {
   const { openSidebar } = useSidebar();
-  const defaultStudent = getTestChipData().student;
-  const defaultLocation = getTestChipData().location;
-  const [exampleData, setExampleData] = useState({ name: "Mason", age: 22 });
-  const [studentData, setStudentData] = useState(defaultStudent);
-  const [locationData, setLocationData] = useState(defaultLocation);
+  const { student: defaultStudent, location: defaultLocation } =
+    getTestChipData();
 
   return (
     <div className="font-sans min-h-screen flex flex-col items-center justify-center p-8 sm:p-20 max-w-2xl mx-auto">
       <h1 className="text-3xl font-bold mb-4">Info Chip Demo Page</h1>
-      <h1 className="text-2xl font-bold mb-4">Test Sidebar</h1>
-      <Badge onClick={() => openSidebar(<div>Hello from Sidebar!</div>)}>
+
+      <h2 className="text-2xl font-bold mb-4">Test Sidebar</h2>
+      <button
+        className="bg-gray-200 px-3 py-1 rounded mb-6"
+        onClick={() =>
+          openSidebar("test-sidebar", <div>Hello from Sidebar!</div>)
+        }
+      >
         Open Sidebar
-      </Badge>
-      <h1 className="text-2xl font-bold mb-4">Example Info Chip</h1>
+      </button>
+
+      <h2 className="text-2xl font-bold mb-4">Student Info Chip</h2>
       <GenericInfoChip
-        data={{ name: "Mason", age: 22 }}
-        renderSidebar={(data, onSave) => (
-          <GenericChipDetails
-            data={data}
-            onSave={(updated) => {
-              setExampleData(updated);
-              onSave(updated);
-            }}
-            renderForm={(d, setD) => (
-              <input
-                className="border p-2 w-full"
-                value={d.name}
-                onChange={(e) => setD({ ...d, name: e.target.value })}
-              />
-            )}
-          />
-        )}
+        chipKey="student-1"
+        shortName={`${defaultStudent.firstName} ${defaultStudent.lastName}`}
+        sidebarContent={<StudentInfoChipDetails data={defaultStudent} />}
       />
-      <div className="mt-4 space-y-2">
-        <h2 className="font-semibold text-xl">Example Info</h2>
-        <p>Age: {exampleData.age}</p>
-        <p>Name: {exampleData.name}</p>
-      </div>
-      <h1 className="text-2xl font-bold mb-4">Student Info Chip</h1>
+
+      <h2 className="text-2xl font-bold mt-6 mb-4">Location Info Chip</h2>
       <GenericInfoChip
-        data={studentData}
-        renderSidebar={(data, onSave) => (
-          <StudentInfoChipDetails
-            data={data}
-            onSave={(updated) => {
-              setStudentData(updated);
-              onSave(updated);
-            }}
-          />
-        )}
+        chipKey="location-1"
+        shortName={defaultLocation.formattedAddress}
+        sidebarContent={<LocationInfoChipDetails data={defaultLocation} />}
       />
-      <div className="mt-4 space-y-2">
-        <h2 className="font-semibold text-xl">Student Info</h2>
-        <p>
-          Name: {studentData.firstName} {studentData.lastName}
-        </p>
-        <p>Phone: {studentData.phoneNumber}</p>
-        <p>Contact Pref: {studentData.contactPreference}</p>
-      </div>
-      <h1 className="text-2xl font-bold mb-4">Location Info Chip</h1>
-      <GenericInfoChip
-        data={locationData}
-        renderSidebar={(data, onSave) => (
-          <LocationInfoChipDetails
-            data={data}
-            onSave={(updated) => {
-              setLocationData(updated);
-              onSave(updated);
-            }}
-          />
-        )}
-      />
-      <div className="mt-4 space-y-2">
-        <h2 className="font-semibold text-xl">Location Info</h2>
-        <p>Address: {locationData.formattedAddress}</p>
-        <p>Active Hold: {locationData.hasActiveHold ? "Yes" : "No"}</p>
-        <p>Warnings: {locationData.warningCount}</p>
-        <p>Citations: {locationData.citationCount}</p>
-      </div>
     </div>
   );
 };
+
 export function getTestChipData() {
   const student: Student = {
     id: 1,
-    firstName: "Mason",
+    firstName: "Mr",
     lastName: "Beast",
     contactPreference: "text",
     email: "email@email.unc.edu",

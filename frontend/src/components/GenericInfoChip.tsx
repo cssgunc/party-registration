@@ -2,35 +2,34 @@
 
 import { useSidebar } from "@/components/SidebarContext";
 import { Badge } from "@/components/ui/badge";
-import { ReactNode, useState } from "react";
+import { ReactNode } from "react";
 
-interface GenericInfoChipProps<T> {
-  data: T;
-  renderSidebar: (data: T, onSave: (updated: T) => void) => ReactNode;
+interface GenericInfoChipProps {
+  chipKey: string;
+  shortName: string;
+  sidebarContent: ReactNode;
 }
 
-export function GenericInfoChip<T>({
-  data,
-  renderSidebar,
-}: GenericInfoChipProps<T>) {
-  const { openSidebar } = useSidebar();
-  const [currentData, setCurrentData] = useState<T>(data);
+export function GenericInfoChip({
+  chipKey,
+  shortName,
+  sidebarContent,
+}: GenericInfoChipProps) {
+  const { openSidebar, selectedKey } = useSidebar();
+  const isSelected = selectedKey === chipKey;
 
   const handleOpen = () => {
-    openSidebar(
-      renderSidebar(currentData, (updated: T) => {
-        setCurrentData(updated);
-      })
-    );
+    openSidebar(chipKey, sidebarContent);
   };
 
   return (
     <Badge
       onClick={handleOpen}
-      className="cursor-pointer hover:bg-blue-500 px-3 py-1"
+      className={`cursor-pointer px-3 py-1 ${
+        isSelected ? "bg-blue-500 text-white" : "bg-gray-200 text-black"
+      }`}
     >
-      {"Open Sidebar"}
-      {/* TODO: Replace with actual data description */}
+      {shortName}
     </Badge>
   );
 }
