@@ -6,12 +6,43 @@ This script resets the database for development mode, including:
 """
 
 import asyncio
+import json
+import re
+from datetime import datetime, timedelta
+from pathlib import Path
 
 import src.modules  # Ensure all modules are imported so their entities are registered # noqa: F401
 from sqlalchemy import create_engine, text
 from src.core.config import env
 from src.core.database import AsyncSessionLocal, EntityBase, server_url
 from src.core.database import engine as async_engine
+
+
+def parse_date(date_str: str | None) -> datetime | None:
+    """Parse a date string in ISO format or relative format (e.g., NOW-7d)."""
+    if not date_str or date_str == "null":
+        return None
+
+    if date_str.startswith("NOW"):
+        match = re.match(r"NOW([+-])(\d+)([dwmy])", date_str)
+        if match:
+            sign, amount, unit = match.groups()
+            amount = int(amount)
+            if sign == "-":
+                amount = -amount
+
+            if unit == "d":
+                return datetime.now() + timedelta(days=amount)
+            elif unit == "w":
+                return datetime.now() + timedelta(weeks=amount)
+            elif unit == "m":
+                return datetime.now() + timedelta(days=amount * 30)
+            elif unit == "y":
+                return datetime.now() + timedelta(days=amount * 365)
+
+        return datetime.now()
+
+    return datetime.fromisoformat(date_str)
 
 
 async def reset_dev():
@@ -34,37 +65,93 @@ async def reset_dev():
     print("Populating tables...")
     async with AsyncSessionLocal() as session:
         from src.modules.account.account_entity import AccountEntity, AccountRole
+        from src.modules.location.location_entity import LocationEntity
+        from src.modules.party.party_entity import PartyEntity
+        from src.modules.police.police_entity import PoliceEntity
         from src.modules.student.student_entity import StudentEntity
-        from src.modules.student.student_model import ContactPreference
+        from src.modules.student.student_model import ContactPreference, StudentData
 
-        student_account = AccountEntity(
-            email="student@example.com",
-            hashed_password="student",
-            role=AccountRole.STUDENT,
-        )
-        admin_account = AccountEntity(
-            email="admin@example.com",
-            hashed_password="admin",
-            role=AccountRole.ADMIN,
-        )
-        police_account = AccountEntity(
-            email="police@example.com",
-            hashed_password="police",
-            role=AccountRole.POLICE,
-        )
+        with open(
+            str(Path(__file__).parent.parent.parent / "frontend" / "shared" / "mock_data.json"), "r"
+        ) as f:
+            data = json.load(f)
 
-        session.add_all([student_account, admin_account, police_account])
+        police = PoliceEntity(
+            id=1,
+            email=data["police"]["email"],
+            hashed_password=data["police"]["hashed_password"],
+        )
+        session.add(police)
+
+        for account_data in data["accounts"]:
+            account = AccountEntity(
+                pid=account_data["pid"],
+                email=account_data["email"],
+                first_name=account_data["first_name"],
+                last_name=account_data["last_name"],
+                role=AccountRole(account_data["role"]),
+            )
+            session.add(account)
+
         await session.flush()
 
-        student = StudentEntity(
-            first_name="John",
-            last_name="Doe",
-            call_or_text_pref=ContactPreference.call,
-            phone_number="1234567890",
-            account_id=student_account.id,
-        )
+        for student_data in data["students"]:
+            account = AccountEntity(
+                pid=student_data["pid"],
+                email=student_data["email"],
+                first_name=student_data["first_name"],
+                last_name=student_data["last_name"],
+                role=AccountRole.STUDENT,
+            )
+            session.add(account)
+            await session.flush()
 
-        session.add(student)
+            student = StudentEntity.from_model(
+                StudentData(
+                    contact_preference=ContactPreference(
+                        student_data["contact_preference"]
+                    ),
+                    phone_number=student_data["phone_number"],
+                    last_registered=parse_date(student_data.get("last_registered")),
+                ),
+                account.id,
+            )
+            session.add(student)
+
+        for location_data in data["locations"]:
+            location = LocationEntity(
+                citation_count=location_data["citation_count"],
+                warning_count=location_data["warning_count"],
+                hold_expiration=parse_date(location_data.get("hold_expiration")),
+                formatted_address=location_data["formatted_address"],
+                google_place_id=location_data["google_place_id"],
+                street_number=location_data["street_number"],
+                street_name=location_data["street_name"],
+                unit=location_data.get("unit"),
+                city=location_data["city"],
+                state=location_data["state"],
+                country=location_data["country"],
+                zip_code=location_data["zip_code"],
+                latitude=location_data["latitude"],
+                longitude=location_data["longitude"],
+            )
+            session.add(location)
+
+        for party_data in data["parties"]:
+            party = PartyEntity(
+                party_datetime=parse_date(party_data["party_datetime"]),
+                location_id=party_data["location_id"],
+                contact_one_id=party_data["contact_one_id"],
+                contact_two_first_name=party_data["contact_two"]["first_name"],
+                contact_two_last_name=party_data["contact_two"]["last_name"],
+                contact_two_email=party_data["contact_two"]["email"],
+                contact_two_phone_number=party_data["contact_two"]["phone_number"],
+                contact_two_contact_preference=party_data["contact_two"][
+                    "contact_preference"
+                ],
+            )
+            session.add(party)
+
         await session.commit()
 
     print("Database successfully reset!")
