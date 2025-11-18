@@ -67,4 +67,12 @@ class StudentCreate(BaseModel):
     data: StudentDataWithNames
 
 
+class IsRegisteredUpdate(BaseModel):
+    """Request body for updating student registration status (staff/admin)."""
+
+    isRegistered: bool = Field(
+        ..., description="True to mark as registered, False to unmark"
+    )
+
+
 PaginatedStudentsResponse = PaginatedResponse[Student]

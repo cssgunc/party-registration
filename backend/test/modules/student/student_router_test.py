@@ -6,7 +6,11 @@ import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.core.authentication import authenticate_admin, authenticate_student
+from src.core.authentication import (
+    authenticate_admin,
+    authenticate_staff_or_admin,
+    authenticate_student,
+)
 from src.core.database import get_session
 from src.main import app
 from src.modules.account.account_entity import AccountEntity, AccountRole
@@ -1524,3 +1528,198 @@ async def test_get_me_parties_forbidden_police(
         assert res.status_code == 403
         response_data = res.json()
         assert "message" in response_data
+
+
+@pytest_asyncio.fixture()
+async def override_dependencies_staff(test_async_session: AsyncSession):
+    """Override dependencies to simulate staff authentication."""
+
+    async def _get_test_session():
+        yield test_async_session
+
+    async def _fake_staff():
+        return Account(
+            id=1,
+            email="staff@example.com",
+            first_name="Staff",
+            last_name="User",
+            pid="333333333",
+            role=AccountRole.STAFF,
+        )
+
+    app.dependency_overrides[get_session] = _get_test_session
+    app.dependency_overrides[authenticate_staff_or_admin] = _fake_staff
+    yield
+    app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_update_is_registered_mark_as_registered_as_staff(
+    override_dependencies_staff: Any, test_async_session: AsyncSession
+):
+    """Test marking a student as registered (staff authentication)."""
+    acc = AccountEntity(
+        email="teststudent@example.com",
+        first_name="Test",
+        last_name="Student",
+        pid="300000001",
+        role=AccountRole.STUDENT,
+    )
+    test_async_session.add(acc)
+    await test_async_session.commit()
+    await test_async_session.refresh(acc)
+
+    student = StudentEntity.from_model(
+        StudentData(
+            contact_preference=ContactPreference.text,
+            phone_number="5559998888",
+            last_registered=None,
+        ),
+        acc.id,
+    )
+    test_async_session.add(student)
+    await test_async_session.commit()
+
+    payload = {"isRegistered": True}
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        res = await client.patch(
+            f"/api/students/{acc.id}/is-registered", json=payload, headers=auth_headers()
+        )
+        assert res.status_code == 200
+        body = res.json()
+        assert body["id"] == acc.id
+        assert body["last_registered"] is not None
+
+
+@pytest.mark.asyncio
+async def test_update_is_registered_mark_as_not_registered_as_admin(
+    override_dependencies_admin: Any, test_async_session: AsyncSession
+):
+    """Test unmarking a student as registered (admin authentication)."""
+    acc = AccountEntity(
+        email="teststudent2@example.com",
+        first_name="Test",
+        last_name="Student",
+        pid="300000002",
+        role=AccountRole.STUDENT,
+    )
+    test_async_session.add(acc)
+    await test_async_session.commit()
+    await test_async_session.refresh(acc)
+
+    student = StudentEntity.from_model(
+        StudentData(
+            contact_preference=ContactPreference.call,
+            phone_number="5559997777",
+            last_registered=datetime.now(timezone.utc),
+        ),
+        acc.id,
+    )
+    test_async_session.add(student)
+    await test_async_session.commit()
+
+    payload = {"isRegistered": False}
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        res = await client.patch(
+            f"/api/students/{acc.id}/is-registered", json=payload, headers=auth_headers()
+        )
+        assert res.status_code == 200
+        body = res.json()
+        assert body["id"] == acc.id
+        assert body["last_registered"] is None
+
+
+@pytest.mark.asyncio
+async def test_update_is_registered_student_not_found(
+    override_dependencies_staff: Any
+):
+    """Test updating is_registered for non-existent student."""
+    payload = {"isRegistered": True}
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        res = await client.patch(
+            "/api/students/99999/is-registered", json=payload, headers=auth_headers()
+        )
+        assert res.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_update_is_registered_unauthenticated(
+    override_dependencies_no_auth: Any
+):
+    """Test updating is_registered without authentication."""
+    payload = {"isRegistered": True}
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        res = await client.patch("/api/students/1/is-registered", json=payload)
+        assert res.status_code in [401, 403]
+
+
+@pytest.mark.asyncio
+async def test_update_is_registered_toggle(
+    override_dependencies_staff: Any, test_async_session: AsyncSession
+):
+    """Test toggling is_registered from False to True and back."""
+    acc = AccountEntity(
+        email="teststudent3@example.com",
+        first_name="Toggle",
+        last_name="Student",
+        pid="300000003",
+        role=AccountRole.STUDENT,
+    )
+    test_async_session.add(acc)
+    await test_async_session.commit()
+    await test_async_session.refresh(acc)
+
+    student = StudentEntity.from_model(
+        StudentData(
+            contact_preference=ContactPreference.text,
+            phone_number="5559996666",
+            last_registered=None,
+        ),
+        acc.id,
+    )
+    test_async_session.add(student)
+    await test_async_session.commit()
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        # Mark as registered
+        res = await client.patch(
+            f"/api/students/{acc.id}/is-registered",
+            json={"isRegistered": True},
+            headers=auth_headers(),
+        )
+        assert res.status_code == 200
+        body = res.json()
+        assert body["last_registered"] is not None
+        first_registered_time = body["last_registered"]
+
+        # Unmark as registered
+        res = await client.patch(
+            f"/api/students/{acc.id}/is-registered",
+            json={"isRegistered": False},
+            headers=auth_headers(),
+        )
+        assert res.status_code == 200
+        body = res.json()
+        assert body["last_registered"] is None
+
+        # Mark as registered again
+        res = await client.patch(
+            f"/api/students/{acc.id}/is-registered",
+            json={"isRegistered": True},
+            headers=auth_headers(),
+        )
+        assert res.status_code == 200
+        body = res.json()
+        assert body["last_registered"] is not None
+        # Second registration time should be different (later)
+        assert body["last_registered"] != first_registered_time
