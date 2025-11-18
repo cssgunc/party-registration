@@ -183,6 +183,24 @@ class LocationService:
         await self.session.commit()
         return location
 
+    async def increment_warnings(self, location_id: int) -> Location:
+        """Increment the warning count for a location by 1."""
+        location_entity = await self._get_location_entity_by_id(location_id)
+        location_entity.warning_count += 1
+        self.session.add(location_entity)
+        await self.session.commit()
+        await self.session.refresh(location_entity)
+        return location_entity.to_model()
+
+    async def increment_citations(self, location_id: int) -> Location:
+        """Increment the citation count for a location by 1."""
+        location_entity = await self._get_location_entity_by_id(location_id)
+        location_entity.citation_count += 1
+        self.session.add(location_entity)
+        await self.session.commit()
+        await self.session.refresh(location_entity)
+        return location_entity.to_model()
+
     async def autocomplete_address(self, input_text: str) -> list[AutocompleteResult]:
         # Autocomplete an address using Google Maps Places API. Biased towards Chapel Hill, NC area
         try:
