@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from src.core.config import env
 from src.core.database import get_session
-from src.core.exceptions import ConflictException, NotFoundException
+from src.core.exceptions import BadRequestException, ConflictException, NotFoundException
 
 from ..location.location_entity import LocationEntity
 from ..student.student_entity import StudentEntity
@@ -96,6 +96,10 @@ class PartyService:
     async def get_parties_by_date_range(
         self, start_date: datetime, end_date: datetime
     ) -> List[Party]:
+        if start_date > end_date:
+            raise BadRequestException(
+                "Start date must be less than or equal to end date"
+            )
         result = await self.session.execute(
             select(PartyEntity).where(
                 PartyEntity.party_datetime >= start_date,
