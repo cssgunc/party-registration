@@ -22,10 +22,8 @@ export function LocationInfoChipDetails({
             <label className="block text-sm font-medium">Address</label>
             <input
               className="border p-2 w-full rounded"
-              value={d.formatted_address}
-              onChange={(e) =>
-                setD({ ...d, formatted_address: e.target.value })
-              }
+              value={d.formattedAddress}
+              onChange={(e) => setD({ ...d, formattedAddress: e.target.value })}
             />
           </div>
 
@@ -34,9 +32,9 @@ export function LocationInfoChipDetails({
             <input
               type="number"
               className="border p-2 w-full rounded"
-              value={d.warning_count}
+              value={d.warningCount}
               onChange={(e) =>
-                setD({ ...d, warning_count: Number(e.target.value) })
+                setD({ ...d, warningCount: Number(e.target.value) })
               }
             />
           </div>
@@ -45,9 +43,9 @@ export function LocationInfoChipDetails({
             <input
               type="number"
               className="border p-2 w-full rounded"
-              value={d.citation_count}
+              value={d.citationCount}
               onChange={(e) =>
-                setD({ ...d, citation_count: Number(e.target.value) })
+                setD({ ...d, citationCount: Number(e.target.value) })
               }
             />
           </div>
@@ -55,9 +53,9 @@ export function LocationInfoChipDetails({
             <label className="block text-sm font-medium">Active Hold</label>
             <select
               className="border p-2 w-full rounded"
-              value={d.has_active_hold.toString()}
+              value={d.hasActiveHold.toString()}
               onChange={(e) =>
-                setD({ ...d, has_active_hold: e.target.value === "true" })
+                setD({ ...d, hasActiveHold: e.target.value === "true" })
               }
             >
               <option value="true">Yes</option>

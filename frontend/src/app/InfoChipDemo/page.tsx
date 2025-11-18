@@ -69,7 +69,7 @@ const Page = () => {
           Name: {studentData.firstName} {studentData.lastName}
         </p>
         <p>Phone: {studentData.phoneNumber}</p>
-        <p>Contact Pref: {studentData.contactPrefrence}</p>
+        <p>Contact Pref: {studentData.contactPreference}</p>
       </div>
       <h1 className="text-2xl font-bold mb-4">Location Info Chip</h1>
       <GenericInfoChip
@@ -86,10 +86,10 @@ const Page = () => {
       />
       <div className="mt-4 space-y-2">
         <h2 className="font-semibold text-xl">Location Info</h2>
-        <p>Address: {locationData.formatted_address}</p>
-        <p>Active Hold: {locationData.has_active_hold ? "Yes" : "No"}</p>
-        <p>Warnings: {locationData.warning_count}</p>
-        <p>Citations: {locationData.citation_count}</p>
+        <p>Address: {locationData.formattedAddress}</p>
+        <p>Active Hold: {locationData.hasActiveHold ? "Yes" : "No"}</p>
+        <p>Warnings: {locationData.warningCount}</p>
+        <p>Citations: {locationData.citationCount}</p>
       </div>
     </div>
   );
@@ -97,34 +97,35 @@ const Page = () => {
 export function getTestChipData() {
   const student: Student = {
     id: 1,
-    accountId: 101,
     firstName: "Mason",
     lastName: "Beast",
-    fullName: "Mason Beast",
-    contactPrefrence: "text",
-    registerDate: new Date("2025-01-01"),
+    contactPreference: "text",
+    email: "email@email.unc.edu",
+    pid: "123456789",
+    lastRegistered: new Date("2023-08-15"),
     phoneNumber: "555-1234",
   };
 
   const location: Location = {
     id: 1,
-    warning_count: 2,
-    citation_count: 1,
-    has_active_hold: true,
-    hold_expiration: new Date("2025-12-31"),
-    google_place_id: "abcd1234",
-    formatted_address: "123 Main St, Chapel Hill, NC",
+    warningCount: 2,
+    citationCount: 1,
+    hasActiveHold: true,
+    holdExpirationDate: new Date("2025-12-31"),
+    googlePlaceId: "abcd1234",
+    formattedAddress: "123 Main St, Chapel Hill, NC",
     latitude: 35.9132,
     longitude: -79.0558,
-    street_number: "123",
-    street_name: "Main St",
+    streetNumber: "123",
+    streetName: "Main St",
     unit: "Apt 4",
     city: "Chapel Hill",
     county: "Orange",
     state: "NC",
     country: "USA",
-    zip_code: "27514",
+    zipCode: "27514",
   };
+
   return { student, location };
 }
 

@@ -48,11 +48,11 @@ export function StudentInfoChipDetails({
             </label>
             <select
               className="border p-2 w-full rounded"
-              value={d.contactPrefrence}
+              value={d.contactPreference}
               onChange={(e) =>
                 setD({
                   ...d,
-                  contactPrefrence: e.target.value as "call" | "text",
+                  contactPreference: e.target.value as "call" | "text",
                 })
               }
             >
