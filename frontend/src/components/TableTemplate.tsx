@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import {
     Table,
     TableBody,
@@ -17,10 +18,18 @@ import {
     flexRender,
     getCoreRowModel,
     getFilteredRowModel,
+    getPaginationRowModel,
     getSortedRowModel,
+    PaginationState,
     SortingState,
     useReactTable,
 } from "@tanstack/react-table";
+import {
+    ChevronLeft,
+    ChevronRight,
+    ChevronsLeft,
+    ChevronsRight,
+} from "lucide-react";
 import { useState } from "react";
 import { ColumnHeader } from "./ColumnHeader";
 import { FilterSidebar } from "./FilterSidebar";
@@ -42,6 +51,10 @@ export type TableProps<T> = {
 };
 
 export function TableTemplate<T>({ data, columns, details }: TableProps<T>) {
+    const [pagination, setPagination] = useState<PaginationState>({
+        pageIndex: 0,
+        pageSize: 50,
+    });
     const [sorting, setSorting] = useState<SortingState>([]);
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
     const [activeFilterColumn, setActiveFilterColumn] = useState<{
@@ -55,10 +68,13 @@ export function TableTemplate<T>({ data, columns, details }: TableProps<T>) {
         state: {
             sorting,
             columnFilters,
+            pagination,
         },
         onSortingChange: setSorting,
         onColumnFiltersChange: setColumnFilters,
         getCoreRowModel: getCoreRowModel(),
+        getPaginationRowModel: getPaginationRowModel(),
+        onPaginationChange: setPagination,
         getSortedRowModel: getSortedRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
     });
@@ -136,6 +152,53 @@ export function TableTemplate<T>({ data, columns, details }: TableProps<T>) {
                 </TableBody>
             </Table>
 
+            {/* Pagination Controls */}
+            <div className="flex items-center justify-between px-2">
+                <div className="text-sm text-muted-foreground">
+                    Page {table.getState().pagination.pageIndex + 1} of{" "}
+                    {table.getPageCount()} (Total: {data.length} records)
+                </div>
+                <div className="flex items-center space-x-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => table.setPageIndex(0)}
+                        disabled={!table.getCanPreviousPage()}
+                        className="cursor-pointer"
+                    >
+                        <ChevronsLeft className="h-4 w-4" />
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => table.previousPage()}
+                        disabled={!table.getCanPreviousPage()}
+                        className="cursor-pointer"
+                    >
+                        <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => table.nextPage()}
+                        disabled={!table.getCanNextPage()}
+                        className="cursor-pointer"
+                    >
+                        <ChevronRight className="h-4 w-4" />
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                            table.setPageIndex(table.getPageCount() - 1)
+                        }
+                        disabled={!table.getCanNextPage()}
+                        className="cursor-pointer"
+                    >
+                        <ChevronsRight className="h-4 w-4" />
+                    </Button>
+                </div>
+            </div>
             {/* Mock Sidebar Section */}
             {activeFilterColumn && (
                 <div className="border-t pt-4">
