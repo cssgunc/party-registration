@@ -4,13 +4,11 @@ import { Party } from "@/types/api/party";
 import { useState } from "react";
 
 interface PartyListProps {
-  parties?: Party[];
+  parties: Party[];
 }
 
 const PartyList = ({ parties }: PartyListProps) => {
   const [currentAddress, setCurrentAddress] = useState("");
-  const defaultParties = generateMockParties();
-  parties = parties ? parties : defaultParties;
 
   const query = currentAddress.trim().toLowerCase();
   const filteredParties =
