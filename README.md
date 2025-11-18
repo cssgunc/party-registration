@@ -23,6 +23,8 @@ We aim to facilitate and better secure the party registration process at UNC.
 | Mason Mines      | Developer       |
 | Vidur Shah       | Developer       |
 | Shlok Bhutani    | Developer       |
+| Vasu Bansal      | Developer       |
+| Caleb Han        | Developer       |
 
 ## Tech Stack
 
@@ -83,16 +85,30 @@ Or you can do the actions manually. Then,
 - This should open the dev container with the same file directory mounted so any changes in the dev container will be seen in the local repo
 - The dev container is fully built once the file directory is populated and the post create script finished running
 
-## Starting the dev servers
+## Running The App
 
-Open a new terminal and run these commands to start the backend
+*If you haven't run in a day or more, run `python -m script.reset_dev` from the `/backend` directory to ensure all mock data is updated to be centered around today's date*
+
+### VSCode Debugger (Recommended)
+Navigate to the "Debug and Run" tab on the VSCode side bar.  
+
+At the top of the side bar, next to the green play button, select the desired module to run
+- **Backend**: Starts the FastAPI backend on http://localhost:8000
+- **Frontend**: Starts the Next.js frontend on http://localhost:3000 in a chrome debugger window
+- **Full Stack**: Starts both at once in separate terminals
+
+Then simply press the green play button
+
+### Manually
+
+**Backend**: Open a new terminal and run these commands
 
 ```
 cd backend/src
 fastapi dev
 ```
 
-Open another new terminal and run these commands to start the frontend
+**Frontend**: Open another new terminal and run these commands to start the frontend
 
 ```
 cd frontend
@@ -101,9 +117,17 @@ npm run dev
 
 Navigate to [http://localhost:3000]() to view the website
 
-## Running backend tests
+## Running Backend Tests
 
-The best way to run tests is by using the "Testing" window on the sidebar. This provides an intuitive GUI for running tests within the IDE.  
+### Manual Testing
+
+After running the backend, navigate to [http://localhost:3000/docs]()  
+Click on the "Authorize 🔓" button in the top right, and enter "admin", "student", or "police" as the mock token for the respective role  
+You can then make any requests using the provided GUI
+
+### Unit Tests
+
+The best way to run unit tests is by using the "Testing" window on the sidebar. This provides an intuitive GUI for running tests within the IDE.  
 You can also run all tests by opening a new terminal and simply running
 
 ```sh

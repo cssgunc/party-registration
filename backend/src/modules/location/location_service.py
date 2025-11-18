@@ -1,17 +1,24 @@
 import asyncio
+import json
+from datetime import datetime
 
 import googlemaps
 from fastapi import Depends
 from googlemaps import places
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.config import env
+from src.core.database import get_session
 from src.core.exceptions import (
     BadRequestException,
+    ConflictException,
     InternalServerException,
     NotFoundException,
 )
 
-from .location_model import AutocompleteResult, LocationData
-import json
+from .location_entity import LocationEntity
+from .location_model import AddressData, AutocompleteResult, Location, LocationData
 
 
 class GoogleMapsAPIException(InternalServerException):
@@ -29,14 +36,152 @@ class InvalidPlaceIdException(BadRequestException):
         super().__init__(f"Invalid place ID: {place_id}")
 
 
+class LocationNotFoundException(NotFoundException):
+    def __init__(
+        self, location_id: int | None = None, google_place_id: str | None = None
+    ):
+        if location_id is not None and google_place_id is not None:
+            raise ValueError("Provide either location_id or place_id, not both")
+        if location_id is not None:
+            super().__init__(f"Location with ID {location_id} not found")
+        elif google_place_id is not None:
+            super().__init__(
+                f"Location with Google Place ID {google_place_id} not found"
+            )
+
+
+class LocationConflictException(ConflictException):
+    def __init__(self, google_place_id: str):
+        super().__init__(
+            f"Location with Google Place ID {google_place_id} already exists"
+        )
+
+
+class LocationHoldActiveException(BadRequestException):
+    def __init__(self, location_id: int, hold_expiration: datetime):
+        super().__init__(
+            f"Location {location_id} has an active hold until {hold_expiration.isoformat()}"
+        )
+
+
 def get_gmaps_client() -> googlemaps.Client:
     # Dependency injection function for Google Maps client.
     return googlemaps.Client(key=env.GOOGLE_MAPS_API_KEY)
 
 
 class LocationService:
-    def __init__(self, gmaps_client: googlemaps.Client = Depends(get_gmaps_client)):
+    def __init__(
+        self,
+        gmaps_client: googlemaps.Client = Depends(get_gmaps_client),
+        session: AsyncSession = Depends(get_session),
+    ):
+        self.session = session
         self.gmaps_client = gmaps_client
+
+    async def _get_location_entity_by_id(self, location_id: int) -> LocationEntity:
+        result = await self.session.execute(
+            select(LocationEntity).where(LocationEntity.id == location_id)
+        )
+        location_entity = result.scalar_one_or_none()
+        if location_entity is None:
+            raise LocationNotFoundException(location_id)
+        return location_entity
+
+    async def _get_location_entity_by_place_id(
+        self, google_place_id: str
+    ) -> LocationEntity | None:
+        result = await self.session.execute(
+            select(LocationEntity).where(
+                LocationEntity.google_place_id == google_place_id
+            )
+        )
+        return result.scalar_one_or_none()
+
+    def assert_valid_location_hold(self, location: Location) -> None:
+        """Validate that location does not have an active hold."""
+        if (
+            location.hold_expiration is not None
+            and location.hold_expiration > datetime.now()
+        ):
+            raise LocationHoldActiveException(location.id, location.hold_expiration)
+
+    async def get_locations(self) -> list[Location]:
+        result = await self.session.execute(select(LocationEntity))
+        locations = result.scalars().all()
+        return [location.to_model() for location in locations]
+
+    async def get_location_by_id(self, location_id: int) -> Location:
+        location_entity = await self._get_location_entity_by_id(location_id)
+        return location_entity.to_model()
+
+    async def get_location_by_place_id(self, google_place_id: str) -> Location:
+        location_entity = await self._get_location_entity_by_place_id(google_place_id)
+        if location_entity is None:
+            raise LocationNotFoundException(google_place_id=google_place_id)
+        return location_entity.to_model()
+
+    async def assert_location_exists(self, location_id: int) -> None:
+        await self._get_location_entity_by_id(location_id)
+
+    async def create_location(self, data: LocationData) -> Location:
+        if await self._get_location_entity_by_place_id(data.google_place_id):
+            raise LocationConflictException(data.google_place_id)
+
+        new_location = LocationEntity.from_model(data)
+        try:
+            self.session.add(new_location)
+            await self.session.commit()
+        except IntegrityError:
+            # handle race condition where another session inserted the same google_place_id
+            raise LocationConflictException(data.google_place_id)
+        await self.session.refresh(new_location)
+        return new_location.to_model()
+
+    async def create_location_from_address(self, address_data: AddressData) -> Location:
+        location_data = LocationData.from_address(address_data)
+        return await self.create_location(location_data)
+
+    async def create_location_from_place_id(self, place_id: str) -> Location:
+        address_data = await self.get_place_details(place_id)
+        return await self.create_location_from_address(address_data)
+
+    async def get_or_create_location(self, place_id: str) -> Location:
+        """Get existing location by place_id, or create it if it doesn't exist."""
+        # Try to get existing location
+        try:
+            location = await self.get_location_by_place_id(place_id)
+            return location
+        except LocationNotFoundException:
+            location = await self.create_location_from_place_id(place_id)
+            return location
+
+    async def update_location(self, location_id: int, data: LocationData) -> Location:
+        location_entity = await self._get_location_entity_by_id(location_id)
+
+        if data.google_place_id != location_entity.google_place_id:
+            if await self._get_location_entity_by_place_id(data.google_place_id):
+                raise LocationConflictException(data.google_place_id)
+
+        for key, value in data.model_dump().items():
+            if key == "id":
+                continue
+            if hasattr(location_entity, key):
+                setattr(location_entity, key, value)
+
+        try:
+            self.session.add(location_entity)
+            await self.session.commit()
+        except IntegrityError:
+            raise LocationConflictException(data.google_place_id)
+        await self.session.refresh(location_entity)
+        return location_entity.to_model()
+
+    async def delete_location(self, location_id: int) -> Location:
+        location_entity = await self._get_location_entity_by_id(location_id)
+        location = location_entity.to_model()
+        await self.session.delete(location_entity)
+        await self.session.commit()
+        return location
 
     async def autocomplete_address(self, input_text: str) -> list[AutocompleteResult]:
         # Autocomplete an address using Google Maps Places API. Biased towards Chapel Hill, NC area
@@ -74,7 +219,7 @@ class LocationService:
         except Exception as e:
             raise GoogleMapsAPIException(f"Failed to autocomplete address: {str(e)}")
 
-    async def get_place_details(self, place_id: str) -> LocationData:
+    async def get_place_details(self, place_id: str) -> AddressData:
         """
         Get detailed location data for a Google Maps place ID
         Raises PlaceNotFoundException if the place cannot be found
@@ -129,7 +274,7 @@ class LocationService:
                     f"No geometry data found for place ID {place_id}"
                 )
 
-            return LocationData(
+            return AddressData(
                 google_place_id=place_id,
                 formatted_address=place.get("formatted_address", ""),
                 latitude=location.get("lat", 0.0),

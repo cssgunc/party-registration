@@ -1,24 +1,20 @@
 type Student = {
   id: number;
-  accountId: number;
+  pid: string;
+  email: string;
   firstName: string;
   lastName: string;
-  contactPrefrence: "call" | "text";
-  registerDate: Date | null;
   phoneNumber: string;
-
-  //client-side variables
-  fullName: string;
+  contactPreference: "call" | "text";
+  lastRegistered: Date | null;
 };
 
-type StudentData = {
-  id: number;
-  accountId: number;
+type Contact = {
+  email: string;
   firstName: string;
   lastName: string;
-  contactPrefrence: "call" | "text";
-  registerDate: Date | null;
   phoneNumber: string;
+  contactPreference: "call" | "text";
 };
 
-export type { Student, StudentData };
+export type { Student, Contact };

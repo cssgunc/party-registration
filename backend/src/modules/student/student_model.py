@@ -2,6 +2,7 @@ import enum
 from datetime import datetime
 
 from pydantic import BaseModel, EmailStr, Field
+from src.core.models import PaginatedResponse
 
 
 class ContactPreference(enum.Enum):
@@ -10,33 +11,40 @@ class ContactPreference(enum.Enum):
 
 
 class StudentData(BaseModel):
-    first_name: str = Field(min_length=1)
-    last_name: str = Field(min_length=1)
-    call_or_text_pref: ContactPreference
+    """Student data without names (names are stored in Account)."""
+
+    contact_preference: ContactPreference
     last_registered: datetime | None = None
     phone_number: str = Field(pattern=r"^\+?1?\d{9,15}$")
 
 
-class Student(StudentData):
+class StudentDataWithNames(StudentData):
+    """Student data including names for create/update operations."""
+
+    first_name: str = Field(min_length=1)
+    last_name: str = Field(min_length=1)
+    contact_preference: ContactPreference
+    last_registered: datetime | None = None
+    phone_number: str = Field(pattern=r"^\+?1?\d{9,15}$")
+
+
+class DbStudent(StudentData):
     account_id: int
 
     @property
     def id(self) -> int:
         return self.account_id
 
-    @property
-    def full_name(self) -> str:
-        return f"{self.first_name} {self.last_name}"
 
-
-class StudentDTO(BaseModel):
+class Student(BaseModel):
     """
     Admin-facing Student DTO combining student and account data.
 
     - id: account id (primary key)
     - pid: PID string
     - email: account email
-    - first_name, last_name, phone_number, last_registered from student
+    - first_name, last_name: from account
+    - phone_number, last_registered: from student
     """
 
     id: int
@@ -45,6 +53,7 @@ class StudentDTO(BaseModel):
     first_name: str
     last_name: str
     phone_number: str
+    contact_preference: ContactPreference
     last_registered: datetime | None = None
 
 
@@ -55,4 +64,7 @@ class StudentCreate(BaseModel):
     """
 
     account_id: int
-    data: StudentData
+    data: StudentDataWithNames
+
+
+PaginatedStudentsResponse = PaginatedResponse[Student]
