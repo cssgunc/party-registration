@@ -1,3 +1,4 @@
+import apiClient from "@/lib/network/apiClient";
 import { AxiosInstance } from "axios";
 
 /**
@@ -12,7 +13,7 @@ export interface AutocompleteResult {
  * Service class for location-related operations
  */
 export class LocationService {
-  constructor(private client: AxiosInstance) {}
+  constructor(private client: AxiosInstance = apiClient) {}
 
   /**
    * Fetches address autocomplete suggestions based on user input
