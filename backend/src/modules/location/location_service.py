@@ -18,13 +18,7 @@ from src.core.exceptions import (
 )
 
 from .location_entity import LocationEntity
-from .location_model import (
-    AddressData,
-    AutocompleteResult,
-    Location,
-    LocationData,
-    PaginatedLocationResponse,
-)
+from .location_model import AddressData, AutocompleteResult, Location, LocationData
 
 
 class GoogleMapsAPIException(InternalServerException):
@@ -112,48 +106,10 @@ class LocationService:
             raise LocationHoldActiveException(location.id, location.hold_expiration)
 
     async def get_locations(self) -> list[Location]:
-        """Original behavior: return ALL locations as a simple list."""
+        """Return all locations as a simple list."""
         result = await self.session.execute(select(LocationEntity))
         locations = result.scalars().all()
         return [location.to_model() for location in locations]
-
-    async def get_locations_paginated(
-        self, page: int | None = None, size: int | None = None
-    ) -> PaginatedLocationResponse:
-        """
-        New behavior for ticket #75:
-        - If page/size are NOT provided → return ALL locations in a single page.
-        - If page/size ARE provided → slice the list like student/party pagination.
-        """
-        locations = await self.get_locations()
-        total_records = len(locations)
-
-        # Default behavior: no page/size → everything in one shot
-        if page is None or size is None:
-            return PaginatedLocationResponse(
-                items=locations,
-                total_records=total_records,
-                page_number=1,
-                page_size=total_records,
-                total_pages=1,
-            )
-
-        if page < 1 or size < 1:
-            raise BadRequestException("page and size must be positive integers")
-
-        # Calculate pagination numbers
-        total_pages = max((total_records + size - 1) // size, 1)
-        start = (page - 1) * size
-        end = start + size
-        page_items = locations[start:end]
-
-        return PaginatedLocationResponse(
-            items=page_items,
-            total_records=total_records,
-            page_number=page,
-            page_size=size,
-            total_pages=total_pages,
-        )
 
     async def get_location_by_id(self, location_id: int) -> Location:
         location_entity = await self._get_location_entity_by_id(location_id)
@@ -178,6 +134,7 @@ class LocationService:
             await self.session.commit()
         except IntegrityError:
             # handle race condition where another session inserted the same google_place_id
+            await self.session.rollback()
             raise LocationConflictException(data.google_place_id)
         await self.session.refresh(new_location)
         return new_location.to_model()
@@ -193,9 +150,11 @@ class LocationService:
     async def get_or_create_location(self, place_id: str) -> Location:
         """Get existing location by place_id, or create it if it doesn't exist."""
         try:
-            return await self.get_location_by_place_id(place_id)
+            location = await self.get_location_by_place_id(place_id)
+            return location
         except LocationNotFoundException:
-            return await self.create_location_from_place_id(place_id)
+            location = await self.create_location_from_place_id(place_id)
+            return location
 
     async def update_location(self, location_id: int, data: LocationData) -> Location:
         location_entity = await self._get_location_entity_by_id(location_id)
@@ -214,6 +173,7 @@ class LocationService:
             self.session.add(location_entity)
             await self.session.commit()
         except IntegrityError:
+            await self.session.rollback()
             raise LocationConflictException(data.google_place_id)
         await self.session.refresh(location_entity)
         return location_entity.to_model()
@@ -226,7 +186,10 @@ class LocationService:
         return location
 
     async def autocomplete_address(self, input_text: str) -> list[AutocompleteResult]:
-        # Autocomplete an address using Google Maps Places API. Biased towards Chapel Hill, NC area
+        """
+        Autocomplete an address using Google Maps Places API.
+        Biased towards Chapel Hill, NC area.
+        """
         try:
             autocomplete_result = await asyncio.to_thread(
                 places.places_autocomplete,
@@ -238,17 +201,19 @@ class LocationService:
                 radius=50000,  # 50km radius around Chapel Hill
             )
 
-            suggestions = []
+            suggestions: list[AutocompleteResult] = []
             for prediction in autocomplete_result:
-                suggestion = AutocompleteResult(
-                    formatted_address=prediction["description"],
-                    place_id=prediction["place_id"],
+                suggestions.append(
+                    AutocompleteResult(
+                        formatted_address=prediction["description"],
+                        place_id=prediction["place_id"],
+                    )
                 )
-                suggestions.append(suggestion)
 
             return suggestions
 
         except GoogleMapsAPIException:
+            # Already wrapped appropriately upstream
             raise
         except googlemaps.exceptions.ApiError as e:
             raise GoogleMapsAPIException(f"API error ({e.status}): {str(e)}")
@@ -263,10 +228,12 @@ class LocationService:
 
     async def get_place_details(self, place_id: str) -> AddressData:
         """
-        Get detailed location data for a Google Maps place ID
-        Raises PlaceNotFoundException if the place cannot be found
-        Raises InvalidPlaceIdException if the place ID format is invalid
-        Raises GoogleMapsAPIException for other API errors
+        Get detailed location data for a Google Maps place ID.
+
+        Raises:
+        - PlaceNotFoundException if the place cannot be found
+        - InvalidPlaceIdException if the place ID format is invalid
+        - GoogleMapsAPIException for other API errors
         """
         try:
             place_result = await asyncio.to_thread(
@@ -281,32 +248,8 @@ class LocationService:
 
             place = place_result["result"]
 
+            # Debug logging if needed
             print(json.dumps(place, indent=2, ensure_ascii=False))
-
-            street_number = None
-            street_name = None
-            city = None
-            county = None
-            state = None
-            country = None
-            zip_code = None
-
-            for component in place.get("address_components", []):
-                types = component["types"]
-                if "street_number" in types:
-                    street_number = component["long_name"]
-                elif "route" in types:
-                    street_name = component["long_name"]
-                elif "locality" in types:
-                    city = component["long_name"]
-                elif "administrative_area_level_2" in types:
-                    county = component["long_name"]
-                elif "administrative_area_level_1" in types:
-                    state = component["short_name"]
-                elif "country" in types:
-                    country = component["short_name"]
-                elif "postal_code" in types:
-                    zip_code = component["long_name"]
 
             geometry = place.get("geometry", {})
             location = geometry.get("location", {})
@@ -316,39 +259,62 @@ class LocationService:
                     f"No geometry data found for place ID {place_id}"
                 )
 
+            components = {
+                "street_number": None,
+                "street_name": None,
+                "city": None,
+                "county": None,
+                "state": None,
+                "country": None,
+                "zip_code": None,
+            }
+
+            for comp in place.get("address_components", []):
+                types = comp["types"]
+                if "street_number" in types:
+                    components["street_number"] = comp["long_name"]
+                elif "route" in types:
+                    components["street_name"] = comp["long_name"]
+                elif "locality" in types:
+                    components["city"] = comp["long_name"]
+                elif "administrative_area_level_2" in types:
+                    components["county"] = comp["long_name"]
+                elif "administrative_area_level_1" in types:
+                    components["state"] = comp["short_name"]
+                elif "country" in types:
+                    components["country"] = comp["short_name"]
+                elif "postal_code" in types:
+                    components["zip_code"] = comp["long_name"]
+
             return AddressData(
                 google_place_id=place_id,
                 formatted_address=place.get("formatted_address", ""),
                 latitude=location.get("lat", 0.0),
                 longitude=location.get("lng", 0.0),
-                street_number=street_number,
-                street_name=street_name,
-                city=city,
-                county=county,
-                state=state,
-                country=country,
-                zip_code=zip_code,
+                **components,
             )
 
-        except (
-            PlaceNotFoundException,
-            InvalidPlaceIdException,
-            GoogleMapsAPIException,
-        ):
-            raise
+        # Google Maps API error statuses
         except googlemaps.exceptions.ApiError as e:
-            # Map Google Maps API error statuses to appropriate exceptions
             if e.status == "NOT_FOUND":
                 raise PlaceNotFoundException(place_id)
-            elif e.status == "INVALID_REQUEST":
+            if e.status == "INVALID_REQUEST":
                 raise InvalidPlaceIdException(place_id)
-            else:
-                raise GoogleMapsAPIException(f"API error ({e.status}): {str(e)}")
+            raise GoogleMapsAPIException(f"API error ({e.status}): {str(e)}")
+
         except googlemaps.exceptions.Timeout as e:
             raise GoogleMapsAPIException(f"Request timed out: {str(e)}")
+
         except googlemaps.exceptions.HTTPError as e:
             raise GoogleMapsAPIException(f"HTTP error: {str(e)}")
+
         except googlemaps.exceptions.TransportError as e:
             raise GoogleMapsAPIException(f"Transport error: {str(e)}")
+
+        # 🔴 IMPORTANT FIX: allow PlaceNotFoundException to bubble through
+        except PlaceNotFoundException:
+            raise
+
+        # Any other unexpected error
         except Exception as e:
             raise GoogleMapsAPIException(f"Failed to get place details: {str(e)}")
