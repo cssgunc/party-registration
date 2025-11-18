@@ -36,14 +36,29 @@ class AccountService:
             raise AccountNotFoundException(account_id)
         return account_entity
 
-    async def _get_account_entity_by_email(self, email: str) -> AccountEntity | None:
+    async def _get_account_entity_by_email(self, email: str) -> AccountEntity:
         result = await self.session.execute(
             select(AccountEntity).where(AccountEntity.email.ilike(email))
         )
-        return result.scalar_one_or_none()
+        account = result.scalar_one_or_none()
+        if account is None:
+            raise AccountByEmailNotFoundException(email)
+        return account
 
     async def get_accounts(self) -> list[Account]:
         result = await self.session.execute(select(AccountEntity))
+        accounts = result.scalars().all()
+        return [Account.from_entity(account) for account in accounts]
+
+    async def get_accounts_by_roles(
+        self, roles: list[AccountRole] | None = None
+    ) -> list[Account]:
+        if not roles:
+            return await self.get_accounts()
+
+        result = await self.session.execute(
+            select(AccountEntity).where(AccountEntity.role.in_(roles))
+        )
         accounts = result.scalars().all()
         return [Account.from_entity(account) for account in accounts]
 
@@ -53,13 +68,16 @@ class AccountService:
 
     async def get_account_by_email(self, email: str) -> Account:
         account_entity = await self._get_account_entity_by_email(email)
-        if account_entity is None:
-            raise AccountByEmailNotFoundException(email)
         return Account.from_entity(account_entity)
 
     async def create_account(self, data: AccountData) -> Account:
-        if await self._get_account_entity_by_email(data.email):
+        try:
+            await self._get_account_entity_by_email(data.email)
+            # If we get here, account exists
             raise AccountConflictException(data.email)
+        except AccountByEmailNotFoundException:
+            # Account doesn't exist, proceed with creation
+            pass
 
         new_account = AccountEntity(
             email=data.email,
@@ -81,8 +99,13 @@ class AccountService:
         account_entity = await self._get_account_entity_by_id(account_id)
 
         if data.email != account_entity.email:
-            if await self._get_account_entity_by_email(data.email):
+            try:
+                await self._get_account_entity_by_email(data.email)
+                # If we get here, account with this email exists
                 raise AccountConflictException(data.email)
+            except AccountByEmailNotFoundException:
+                # Email is available, proceed
+                pass
 
         # Update fields
         account_entity.email = data.email

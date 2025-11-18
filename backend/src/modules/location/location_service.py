@@ -1,5 +1,6 @@
 import asyncio
 import json
+from datetime import datetime
 
 import googlemaps
 from fastapi import Depends
@@ -56,6 +57,13 @@ class LocationConflictException(ConflictException):
         )
 
 
+class LocationHoldActiveException(BadRequestException):
+    def __init__(self, location_id: int, hold_expiration: datetime):
+        super().__init__(
+            f"Location {location_id} has an active hold until {hold_expiration.isoformat()}"
+        )
+
+
 def get_gmaps_client() -> googlemaps.Client:
     # Dependency injection function for Google Maps client.
     return googlemaps.Client(key=env.GOOGLE_MAPS_API_KEY)
@@ -89,6 +97,14 @@ class LocationService:
         )
         return result.scalar_one_or_none()
 
+    def assert_valid_location_hold(self, location: Location) -> None:
+        """Validate that location does not have an active hold."""
+        if (
+            location.hold_expiration is not None
+            and location.hold_expiration > datetime.now()
+        ):
+            raise LocationHoldActiveException(location.id, location.hold_expiration)
+
     async def get_locations(self) -> list[Location]:
         result = await self.session.execute(select(LocationEntity))
         locations = result.scalars().all()
@@ -104,6 +120,9 @@ class LocationService:
             raise LocationNotFoundException(google_place_id=google_place_id)
         return location_entity.to_model()
 
+    async def assert_location_exists(self, location_id: int) -> None:
+        await self._get_location_entity_by_id(location_id)
+
     async def create_location(self, data: LocationData) -> Location:
         if await self._get_location_entity_by_place_id(data.google_place_id):
             raise LocationConflictException(data.google_place_id)
@@ -117,6 +136,24 @@ class LocationService:
             raise LocationConflictException(data.google_place_id)
         await self.session.refresh(new_location)
         return new_location.to_model()
+
+    async def create_location_from_address(self, address_data: AddressData) -> Location:
+        location_data = LocationData.from_address(address_data)
+        return await self.create_location(location_data)
+
+    async def create_location_from_place_id(self, place_id: str) -> Location:
+        address_data = await self.get_place_details(place_id)
+        return await self.create_location_from_address(address_data)
+
+    async def get_or_create_location(self, place_id: str) -> Location:
+        """Get existing location by place_id, or create it if it doesn't exist."""
+        # Try to get existing location
+        try:
+            location = await self.get_location_by_place_id(place_id)
+            return location
+        except LocationNotFoundException:
+            location = await self.create_location_from_place_id(place_id)
+            return location
 
     async def update_location(self, location_id: int, data: LocationData) -> Location:
         location_entity = await self._get_location_entity_by_id(location_id)
