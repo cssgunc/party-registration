@@ -6,7 +6,6 @@ from src.core.models import PaginatedResponse
 
 
 class AddressData(BaseModel):
-    # Location data without OCSL-specific fields
     google_place_id: str
     formatted_address: str
     latitude: float
@@ -57,6 +56,7 @@ class Location(LocationData):
     id: int
 
 
+# PAGINATION RESPONSE FOR LOCATIONS
 PaginatedLocationResponse = PaginatedResponse[Location]
 
 
@@ -68,6 +68,5 @@ class LocationCreate(BaseModel):
 
 
 class AutocompleteResult(BaseModel):
-    # Result from Google Maps autocomplete
     formatted_address: str
     place_id: str

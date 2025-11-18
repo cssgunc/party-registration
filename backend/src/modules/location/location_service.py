@@ -18,7 +18,13 @@ from src.core.exceptions import (
 )
 
 from .location_entity import LocationEntity
-from .location_model import AddressData, AutocompleteResult, Location, LocationData
+from .location_model import (
+    AddressData,
+    AutocompleteResult,
+    Location,
+    LocationData,
+    PaginatedLocationResponse,
+)
 
 
 class GoogleMapsAPIException(InternalServerException):
@@ -106,9 +112,48 @@ class LocationService:
             raise LocationHoldActiveException(location.id, location.hold_expiration)
 
     async def get_locations(self) -> list[Location]:
+        """Original behavior: return ALL locations as a simple list."""
         result = await self.session.execute(select(LocationEntity))
         locations = result.scalars().all()
         return [location.to_model() for location in locations]
+
+    async def get_locations_paginated(
+        self, page: int | None = None, size: int | None = None
+    ) -> PaginatedLocationResponse:
+        """
+        New behavior for ticket #75:
+        - If page/size are NOT provided → return ALL locations in a single page.
+        - If page/size ARE provided → slice the list like student/party pagination.
+        """
+        locations = await self.get_locations()
+        total_records = len(locations)
+
+        # Default behavior: no page/size → everything in one shot
+        if page is None or size is None:
+            return PaginatedLocationResponse(
+                items=locations,
+                total_records=total_records,
+                page_number=1,
+                page_size=total_records,
+                total_pages=1,
+            )
+
+        if page < 1 or size < 1:
+            raise BadRequestException("page and size must be positive integers")
+
+        # Calculate pagination numbers
+        total_pages = max((total_records + size - 1) // size, 1)
+        start = (page - 1) * size
+        end = start + size
+        page_items = locations[start:end]
+
+        return PaginatedLocationResponse(
+            items=page_items,
+            total_records=total_records,
+            page_number=page,
+            page_size=size,
+            total_pages=total_pages,
+        )
 
     async def get_location_by_id(self, location_id: int) -> Location:
         location_entity = await self._get_location_entity_by_id(location_id)
@@ -147,13 +192,10 @@ class LocationService:
 
     async def get_or_create_location(self, place_id: str) -> Location:
         """Get existing location by place_id, or create it if it doesn't exist."""
-        # Try to get existing location
         try:
-            location = await self.get_location_by_place_id(place_id)
-            return location
+            return await self.get_location_by_place_id(place_id)
         except LocationNotFoundException:
-            location = await self.create_location_from_place_id(place_id)
-            return location
+            return await self.create_location_from_place_id(place_id)
 
     async def update_location(self, location_id: int, data: LocationData) -> Location:
         location_entity = await self._get_location_entity_by_id(location_id)

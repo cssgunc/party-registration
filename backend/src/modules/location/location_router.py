@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from src.core.authentication import authenticate_admin, authenticate_staff_or_admin
 from src.modules.location.location_model import (
     Location,
@@ -13,17 +13,18 @@ location_router = APIRouter(prefix="/locations", tags=["locations"])
 
 @location_router.get("/", response_model=PaginatedLocationResponse)
 async def get_locations(
+    page: int | None = Query(default=None, ge=1),
+    size: int | None = Query(default=None, ge=1),
     location_service: LocationService = Depends(),
     _=Depends(authenticate_staff_or_admin),
 ):
-    locations = await location_service.get_locations()
-    return PaginatedLocationResponse(
-        items=locations,
-        total_records=len(locations),
-        page_number=1,
-        page_size=len(locations),
-        total_pages=1,
-    )
+    """
+    GET /locations with pagination.
+
+    - If no `page` and `size` are provided → returns ALL locations in one page.
+    - If `page` and `size` are provided → returns the requested page.
+    """
+    return await location_service.get_locations_paginated(page=page, size=size)
 
 
 @location_router.get("/{location_id}", response_model=Location)
