@@ -1,14 +1,19 @@
 from datetime import datetime, timezone
 from typing import Any
+from unittest.mock import AsyncMock
 
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.core.authentication import authenticate_admin
+from src.core.authentication import authenticate_admin, authenticate_student
 from src.core.database import get_session
 from src.main import app
 from src.modules.account.account_entity import AccountEntity, AccountRole
+from src.modules.account.account_model import Account
+from src.modules.location.location_entity import LocationEntity
+from src.modules.location.location_service import LocationService
+from src.modules.party.party_entity import PartyEntity
 from src.modules.student.student_entity import StudentEntity
 from src.modules.student.student_model import (
     ContactPreference,
@@ -40,6 +45,10 @@ async def override_dependencies_no_auth(test_async_session: AsyncSession):
     async def _get_test_session():
         yield test_async_session
 
+    async def _location_service_override():
+        return LocationService(session=test_async_session, gmaps_client=AsyncMock())
+
+    app.dependency_overrides[LocationService] = _location_service_override
     app.dependency_overrides[get_session] = _get_test_session
     yield
     app.dependency_overrides.clear()
@@ -1036,8 +1045,6 @@ async def test_update_and_delete_student(
 
 @pytest_asyncio.fixture()
 async def override_dependencies_student(test_async_session: AsyncSession):
-    from src.modules.account.account_model import Account, AccountRole
-
     async def _get_test_session():
         yield test_async_session
 
@@ -1051,9 +1058,11 @@ async def override_dependencies_student(test_async_session: AsyncSession):
             role=AccountRole.STUDENT,
         )
 
-    app.dependency_overrides[get_session] = _get_test_session
-    from src.core.authentication import authenticate_student
+    def _location_service_override():
+        return LocationService(session=test_async_session, gmaps_client=AsyncMock())
 
+    app.dependency_overrides[LocationService] = _location_service_override
+    app.dependency_overrides[get_session] = _get_test_session
     app.dependency_overrides[authenticate_student] = _fake_student
     yield
     app.dependency_overrides.clear()
@@ -1064,7 +1073,6 @@ async def override_dependencies_admin_for_student_routes(
     test_async_session: AsyncSession,
 ):
     """Override dependencies to simulate admin trying to access student routes."""
-    from src.modules.account.account_model import Account, AccountRole
 
     async def _get_test_session():
         yield test_async_session
@@ -1079,6 +1087,10 @@ async def override_dependencies_admin_for_student_routes(
             role=AccountRole.ADMIN,
         )
 
+    async def _location_service_override():
+        return LocationService(session=test_async_session, gmaps_client=AsyncMock())
+
+    app.dependency_overrides[LocationService] = _location_service_override
     app.dependency_overrides[get_session] = _get_test_session
     from src.core.authentication import authenticate_user
 
@@ -1092,7 +1104,6 @@ async def override_dependencies_police_for_student_routes(
     test_async_session: AsyncSession,
 ):
     """Override dependencies to simulate staff trying to access student routes."""
-    from src.modules.account.account_model import Account, AccountRole
 
     async def _get_test_session():
         yield test_async_session
@@ -1107,6 +1118,10 @@ async def override_dependencies_police_for_student_routes(
             role=AccountRole.STAFF,
         )
 
+    async def _location_service_override():
+        return LocationService(session=test_async_session, gmaps_client=AsyncMock())
+
+    app.dependency_overrides[LocationService] = _location_service_override
     app.dependency_overrides[get_session] = _get_test_session
     from src.core.authentication import authenticate_user
 
@@ -1394,9 +1409,6 @@ async def test_get_me_parties_empty(
 async def test_get_me_parties_with_data(
     override_dependencies_student: Any, test_async_session: AsyncSession
 ):
-    from src.modules.location.location_entity import LocationEntity
-    from src.modules.party.party_entity import PartyEntity
-
     acc1 = AccountEntity(
         id=1,
         email="student1@example.com",
@@ -1446,13 +1458,21 @@ async def test_get_me_parties_with_data(
         party_datetime=datetime(2024, 12, 1, 20, 0, 0, tzinfo=timezone.utc),
         location_id=1,
         contact_one_id=1,
-        contact_two_id=2,
+        contact_two_email="student2@example.com",
+        contact_two_first_name="Student",
+        contact_two_last_name="Two",
+        contact_two_phone_number="5552222222",
+        contact_two_contact_preference=ContactPreference.call,
     )
     party2 = PartyEntity(
         party_datetime=datetime(2024, 12, 15, 21, 0, 0, tzinfo=timezone.utc),
         location_id=1,
         contact_one_id=2,
-        contact_two_id=1,
+        contact_two_email="student1@example.com",
+        contact_two_first_name="Student",
+        contact_two_last_name="One",
+        contact_two_phone_number="5551111111",
+        contact_two_contact_preference=ContactPreference.text,
     )
     test_async_session.add_all([party1, party2])
     await test_async_session.commit()
@@ -1463,10 +1483,10 @@ async def test_get_me_parties_with_data(
         res = await client.get("/api/students/me/parties", headers=auth_headers())
         assert res.status_code == 200
         parties = res.json()
-        assert len(parties) == 2
+        assert len(parties) == 1
         party_ids = [p["id"] for p in parties]
         assert party1.id in party_ids
-        assert party2.id in party_ids
+        assert party2.id not in party_ids
 
 
 @pytest.mark.asyncio
