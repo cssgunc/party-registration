@@ -17,4 +17,15 @@ type Contact = {
   contactPreference: "call" | "text";
 };
 
-export type { Student, Contact };
+/**
+ * Paginated response from the student list API
+ */
+type PaginatedStudentsResponse = {
+  items: Student[];
+  total_records: number;
+  page_size: number;
+  page_number: number;
+  total_pages: number;
+};
+
+export type { Contact, PaginatedStudentsResponse, Student };

@@ -12,6 +12,12 @@ import {
 } from "@/components/ui/table";
 
 import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
     Column,
     ColumnDef,
     ColumnFiltersState,
@@ -29,6 +35,9 @@ import {
     ChevronRight,
     ChevronsLeft,
     ChevronsRight,
+    MoreHorizontal,
+    Pencil,
+    Trash2,
 } from "lucide-react";
 import { useState } from "react";
 import { ColumnHeader } from "./ColumnHeader";
@@ -48,9 +57,13 @@ export type TableProps<T> = {
     data: T[];
     columns: ColumnDef<T, unknown>[];
     details: string;
+    onEdit?: (row: T) => void;
+    onDelete?: (row: T) => void;
+    isLoading?: boolean;
+    error?: Error | null;
 };
 
-export function TableTemplate<T>({ data, columns, details }: TableProps<T>) {
+export function TableTemplate<T>({ data, columns, details, onEdit, onDelete, isLoading, error }: TableProps<T>) {
     const [pagination, setPagination] = useState<PaginationState>({
         pageIndex: 0,
         pageSize: 50,
@@ -62,9 +75,45 @@ export function TableTemplate<T>({ data, columns, details }: TableProps<T>) {
         name: string;
     } | null>(null);
 
+    // Add actions column if handlers are provided
+    const columnsWithActions: ColumnDef<T, unknown>[] = (onEdit || onDelete) ? [
+        ...columns,
+        {
+            id: "actions",
+            header: "Actions",
+            cell: ({ row }) => (
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Open menu</span>
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        {onEdit && (
+                            <DropdownMenuItem onClick={() => onEdit(row.original)}>
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Edit
+                            </DropdownMenuItem>
+                        )}
+                        {onDelete && (
+                            <DropdownMenuItem 
+                                onClick={() => onDelete(row.original)}
+                                variant="destructive"
+                            >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                            </DropdownMenuItem>
+                        )}
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            ),
+        },
+    ] : columns;
+
     const table = useReactTable({
         data,
-        columns,
+        columns: columnsWithActions,
         state: {
             sorting,
             columnFilters,
@@ -81,7 +130,24 @@ export function TableTemplate<T>({ data, columns, details }: TableProps<T>) {
 
     return (
         <div className="space-y-4">
-            <Table>
+            {/* Loading State */}
+            {isLoading && (
+                <div className="text-center py-8 text-muted-foreground">
+                    Loading...
+                </div>
+            )}
+
+            {/* Error State */}
+            {error && (
+                <div className="text-center py-8 text-destructive">
+                    Error: {error.message}
+                </div>
+            )}
+
+            {/* Table */}
+            {!isLoading && !error && (
+                <>
+                    <Table>
                 <TableCaption>{details}</TableCaption>
                 <TableHeader>
                     {table.getHeaderGroups().map((headerGroup) => (
@@ -142,7 +208,7 @@ export function TableTemplate<T>({ data, columns, details }: TableProps<T>) {
                     ) : (
                         <TableRow>
                             <TableCell
-                                colSpan={columns.length}
+                                colSpan={columnsWithActions.length}
                                 className="h-24 text-center"
                             >
                                 No results.
@@ -219,6 +285,8 @@ export function TableTemplate<T>({ data, columns, details }: TableProps<T>) {
                         }
                     />
                 </div>
+            )}
+                </>
             )}
         </div>
     );

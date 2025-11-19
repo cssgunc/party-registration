@@ -25,8 +25,8 @@ const authOptions: NextAuthOptions = {
             id: "1",
             name: "Admin User",
             email: "admin@example.com",
-            accessToken: "fake-access-token-for-dev",
-            refreshToken: "fake-refresh-token-for-dev",
+            accessToken: "admin", // Backend mock auth expects "admin", "staff", or "student"
+            refreshToken: "admin",
           };
         }
         return null;
@@ -96,4 +96,4 @@ const authOptions: NextAuthOptions = {
 
 const handler = NextAuth(authOptions);
 
-export { handler as GET, handler as POST, authOptions };
+export { authOptions, handler as GET, handler as POST };

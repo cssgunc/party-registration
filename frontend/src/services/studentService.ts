@@ -1,0 +1,201 @@
+import apiClient from "@/lib/network/apiClient";
+import { Student } from "@/types/api/student";
+import { AxiosInstance } from "axios";
+
+/**
+ * Paginated response from the API
+ */
+export interface PaginatedStudentsResponse {
+  items: Student[];
+  total_records: number;
+  page_size: number;
+  page_number: number;
+  total_pages: number;
+}
+
+/**
+ * Student data for creating a new student
+ */
+export interface StudentCreatePayload {
+  account_id: number;
+  data: {
+    first_name: string;
+    last_name: string;
+    phone_number: string;
+    contact_preference: "call" | "text";
+    last_registered: string | null; // ISO date string
+  };
+}
+
+/**
+ * Student data for updating an existing student
+ */
+export interface StudentUpdatePayload {
+  first_name: string;
+  last_name: string;
+  phone_number: string;
+  contact_preference: "call" | "text";
+  last_registered: string | null; // ISO date string
+}
+
+/**
+ * Transform frontend Student to backend format
+ */
+function toBackendFormat(
+  data: Partial<Student>
+): Partial<StudentUpdatePayload> {
+  const payload: Partial<StudentUpdatePayload> = {};
+
+  if (data.firstName !== undefined) payload.first_name = data.firstName;
+  if (data.lastName !== undefined) payload.last_name = data.lastName;
+  if (data.phoneNumber !== undefined) payload.phone_number = data.phoneNumber;
+  if (data.contactPreference !== undefined)
+    payload.contact_preference = data.contactPreference;
+  if (data.lastRegistered !== undefined) {
+    payload.last_registered = data.lastRegistered
+      ? new Date(data.lastRegistered).toISOString()
+      : null;
+  }
+
+  return payload;
+}
+
+/**
+ * Backend student response format
+ */
+interface BackendStudent {
+  id: number;
+  pid: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone_number: string;
+  contact_preference: "call" | "text";
+  last_registered: string | null;
+}
+
+/**
+ * Transform backend Student to frontend format
+ */
+function toFrontendFormat(data: BackendStudent): Student {
+  return {
+    id: data.id,
+    pid: data.pid,
+    email: data.email,
+    firstName: data.first_name,
+    lastName: data.last_name,
+    phoneNumber: data.phone_number,
+    contactPreference: data.contact_preference,
+    lastRegistered: data.last_registered
+      ? new Date(data.last_registered)
+      : null,
+  };
+}
+
+/**
+ * Service class for student-related operations
+ */
+export class StudentService {
+  constructor(private client: AxiosInstance = apiClient) {}
+
+  /**
+   * Fetches a paginated list of students
+   */
+  async listStudents(
+    pageNumber?: number,
+    pageSize?: number
+  ): Promise<PaginatedStudentsResponse> {
+    try {
+      const params: Record<string, number> = {};
+      if (pageNumber !== undefined) params.page_number = pageNumber;
+      if (pageSize !== undefined) params.page_size = pageSize;
+
+      const response = await this.client.get<{
+        items: BackendStudent[];
+        total_records: number;
+        page_size: number;
+        page_number: number;
+        total_pages: number;
+      }>("/students", { params });
+
+      return {
+        items: response.data.items.map(toFrontendFormat),
+        total_records: response.data.total_records,
+        page_size: response.data.page_size,
+        page_number: response.data.page_number,
+        total_pages: response.data.total_pages,
+      };
+    } catch (error: unknown) {
+      console.error("Failed to fetch students:", error);
+      if (error && typeof error === "object" && "response" in error) {
+        const axiosError = error as {
+          response?: { data?: unknown; status?: number };
+        };
+        console.error("Error response:", axiosError.response?.data);
+        console.error("Error status:", axiosError.response?.status);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Fetches a single student by ID
+   */
+  async getStudent(id: number): Promise<Student> {
+    try {
+      const response = await this.client.get<BackendStudent>(`/students/${id}`);
+      return toFrontendFormat(response.data);
+    } catch (error) {
+      console.error(`Failed to fetch student ${id}:`, error);
+      throw new Error("Failed to fetch student");
+    }
+  }
+
+  /**
+   * Creates a new student
+   */
+  async createStudent(payload: StudentCreatePayload): Promise<Student> {
+    try {
+      const response = await this.client.post<BackendStudent>(
+        "/students",
+        payload
+      );
+      return toFrontendFormat(response.data);
+    } catch (error) {
+      console.error("Failed to create student:", error);
+      throw new Error("Failed to create student");
+    }
+  }
+
+  /**
+   * Updates an existing student
+   */
+  async updateStudent(id: number, data: Partial<Student>): Promise<Student> {
+    try {
+      const payload = toBackendFormat(data);
+      const response = await this.client.put<BackendStudent>(
+        `/students/${id}`,
+        payload
+      );
+      return toFrontendFormat(response.data);
+    } catch (error) {
+      console.error(`Failed to update student ${id}:`, error);
+      throw new Error("Failed to update student");
+    }
+  }
+
+  /**
+   * Deletes a student
+   */
+  async deleteStudent(id: number): Promise<Student> {
+    try {
+      const response = await this.client.delete<BackendStudent>(
+        `/students/${id}`
+      );
+      return toFrontendFormat(response.data);
+    } catch (error) {
+      console.error(`Failed to delete student ${id}:`, error);
+      throw new Error("Failed to delete student");
+    }
+  }
+}

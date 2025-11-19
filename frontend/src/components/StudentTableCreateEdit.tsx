@@ -31,7 +31,7 @@ export const StudentCreateEditValues = z.object({
     firstName: z.string().min(1, "First name is required"),
     lastName: z.string().min(1, "Second name is required"),
     phoneNumber: z.string().min(1, "Phone number is required"),
-    contactPreference: z.string(),
+    contactPreference: z.enum(["call", "text"]),
     lastRegistered: z.date().nullable(),
     pid: z.string().length(9, "Please input a valid PID")
 });
@@ -49,7 +49,7 @@ export default function StudentTableCreateEditForm({ onSubmit, editData }: Stude
         firstName: editData?.firstName ?? "",
         lastName: editData?.lastName ?? "",
         phoneNumber: editData?.phoneNumber ?? "",
-        contactPreference: editData?.contactPreference ?? "",
+        contactPreference: editData?.contactPreference ?? undefined,
         lastRegistered: editData?.lastRegistered ?? null
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
