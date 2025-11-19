@@ -114,33 +114,40 @@ export function TableTemplate<T>({
         ...columns,
         {
             id: "actions",
-            header: "Actions",
+            enableSorting: false,
+            enableColumnFilter: false,
             cell: ({ row }) => (
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Open menu</span>
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        {onEdit && (
-                            <DropdownMenuItem onClick={() => onEdit(row.original)}>
-                                <Pencil className="mr-2 h-4 w-4" />
-                                Edit
-                            </DropdownMenuItem>
-                        )}
-                        {onDelete && (
-                            <DropdownMenuItem
-                                onClick={() => handleDeleteClick(row.original)}
-                                variant="destructive"
+                <div className="flex justify-end">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0"
                             >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
-                            </DropdownMenuItem>
-                        )}
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Open menu</span>
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            {onEdit && (
+                                <DropdownMenuItem onClick={() => onEdit(row.original)}>
+                                    <Pencil className="mr-2 h-4 w-4" />
+                                    Edit
+                                </DropdownMenuItem>
+                            )}
+                            {onDelete && (
+                                <DropdownMenuItem
+                                    onClick={() => handleDeleteClick(row.original)}
+                                    variant="destructive"
+                                >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete
+                                </DropdownMenuItem>
+                            )}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
             ),
         },
     ] : columns;
@@ -200,32 +207,52 @@ export function TableTemplate<T>({
                     {table.getHeaderGroups().map((headerGroup) => (
                         <TableRow key={headerGroup.id}>
                             {headerGroup.headers.map((header) => (
-                                <TableHead key={header.id}>
-                                    {header.isPlaceholder ? null : (
-                                        <ColumnHeader
-                                            column={header.column}
-                                            title={
-                                                typeof header.column.columnDef
-                                                    .header === "string"
-                                                    ? header.column.columnDef
-                                                          .header
-                                                    : header.column.id
-                                            }
-                                            onFilterClick={() => {
-                                                setActiveFilterColumn({
-                                                    column: header.column,
-                                                    name:
+                                <TableHead
+                                    key={header.id}
+                                    className={
+                                        header.column.id === "actions"
+                                            ? "w-0 text-right"
+                                            : ""
+                                    }
+                                >
+                                    {header.isPlaceholder
+                                        ? null
+                                        : header.column.id === "actions"
+                                          ? null
+                                          : (
+                                                <ColumnHeader
+                                                    column={header.column}
+                                                    title={
                                                         typeof header.column
                                                             .columnDef
-                                                            .header === "string"
+                                                            .header ===
+                                                        "string"
                                                             ? header.column
                                                                   .columnDef
                                                                   .header
-                                                            : header.column.id,
-                                                });
-                                            }}
-                                        />
-                                    )}
+                                                            : header.column.id
+                                                    }
+                                                    onFilterClick={() => {
+                                                        setActiveFilterColumn({
+                                                            column:
+                                                                header.column,
+                                                            name:
+                                                                typeof header
+                                                                    .column
+                                                                    .columnDef
+                                                                    .header ===
+                                                                "string"
+                                                                    ? header
+                                                                          .column
+                                                                          .columnDef
+                                                                          .header
+                                                                    : header
+                                                                          .column
+                                                                          .id,
+                                                        });
+                                                    }}
+                                                />
+                                            )}
                                 </TableHead>
                             ))}
                         </TableRow>

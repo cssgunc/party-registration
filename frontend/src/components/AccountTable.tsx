@@ -7,7 +7,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
 import * as z from "zod";
 import AccountTableCreateEditForm, {
-    AccountCreateEditValues as AccountCreateEditSchema,
+  AccountCreateEditValues as AccountCreateEditSchema,
 } from "./AccountTableCreateEdit";
 import { TableTemplate } from "./TableTemplate";
 
@@ -25,13 +25,17 @@ export const AccountTable = () => {
 
   const accountsQuery = useQuery({
     queryKey: ["accounts"],
-    queryFn: () => accountService.listAccounts(),
+    queryFn: () => accountService.listAccounts(["admin", "staff"]),
     retry: 1,
   });
 
-  const accounts = (accountsQuery.data ?? []).slice().sort((a, b) =>
-    a.last_name.localeCompare(b.last_name) ||
-    a.first_name.localeCompare(b.first_name)
+  const accounts = (accountsQuery.data ?? [])
+  .filter((a) => a.role === "admin" || a.role === "staff")
+  .slice()
+  .sort(
+    (a, b) =>
+      a.last_name.localeCompare(b.last_name) ||
+      a.first_name.localeCompare(b.first_name),
   );
 
   const createMutation = useMutation({
