@@ -1,4 +1,4 @@
-import apiClient from "@/lib/network/apiClient";
+import getMockClient from "@/lib/network/mockClient";
 import { Student } from "@/types/api/student";
 import { AxiosInstance } from "axios";
 
@@ -41,23 +41,22 @@ export interface StudentUpdatePayload {
 /**
  * Transform frontend Student to backend format
  */
-function toBackendFormat(
-  data: Partial<Student>
-): Partial<StudentUpdatePayload> {
-  const payload: Partial<StudentUpdatePayload> = {};
-
-  if (data.firstName !== undefined) payload.first_name = data.firstName;
-  if (data.lastName !== undefined) payload.last_name = data.lastName;
-  if (data.phoneNumber !== undefined) payload.phone_number = data.phoneNumber;
-  if (data.contactPreference !== undefined)
-    payload.contact_preference = data.contactPreference;
-  if (data.lastRegistered !== undefined) {
-    payload.last_registered = data.lastRegistered
+function toBackendFormat(data: {
+  firstName: string;
+  lastName: string;
+  phoneNumber: string;
+  contactPreference: "call" | "text";
+  lastRegistered: Date | null;
+}): StudentUpdatePayload {
+  return {
+    first_name: data.firstName,
+    last_name: data.lastName,
+    phone_number: data.phoneNumber,
+    contact_preference: data.contactPreference,
+    last_registered: data.lastRegistered
       ? new Date(data.lastRegistered).toISOString()
-      : null;
-  }
-
-  return payload;
+      : null,
+  };
 }
 
 /**
@@ -96,7 +95,7 @@ function toFrontendFormat(data: BackendStudent): Student {
  * Service class for student-related operations
  */
 export class StudentService {
-  constructor(private client: AxiosInstance = apiClient) {}
+  constructor(private client: AxiosInstance = getMockClient("admin")) {}
 
   /**
    * Fetches a paginated list of students
@@ -170,7 +169,16 @@ export class StudentService {
   /**
    * Updates an existing student
    */
-  async updateStudent(id: number, data: Partial<Student>): Promise<Student> {
+  async updateStudent(
+    id: number,
+    data: {
+      firstName: string;
+      lastName: string;
+      phoneNumber: string;
+      contactPreference: "call" | "text";
+      lastRegistered: Date | null;
+    }
+  ): Promise<Student> {
     try {
       const payload = toBackendFormat(data);
       const response = await this.client.put<BackendStudent>(

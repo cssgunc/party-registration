@@ -37,10 +37,12 @@ import {
     ChevronsRight,
     MoreHorizontal,
     Pencil,
+    Plus,
     Trash2,
 } from "lucide-react";
 import { useState } from "react";
 import { ColumnHeader } from "./ColumnHeader";
+import { DeleteConfirmDialog } from "./DeleteConfirmDialog";
 import { FilterSidebar } from "./FilterSidebar";
 
 export type FilterType = "text" | "date" | "dateRange" | "time" | "select";
@@ -56,14 +58,30 @@ declare module "@tanstack/react-table" {
 export type TableProps<T> = {
     data: T[];
     columns: ColumnDef<T, unknown>[];
-    details: string;
+    resourceName?: string;
+    details?: string;
     onEdit?: (row: T) => void;
     onDelete?: (row: T) => void;
+    onCreateNew?: () => void;
     isLoading?: boolean;
     error?: Error | null;
+    getDeleteDescription?: (row: T) => string;
+    isDeleting?: boolean;
 };
 
-export function TableTemplate<T>({ data, columns, details, onEdit, onDelete, isLoading, error }: TableProps<T>) {
+export function TableTemplate<T>({
+    data,
+    columns,
+    resourceName = "Item",
+    details,
+    onEdit,
+    onDelete,
+    onCreateNew,
+    isLoading,
+    error,
+    getDeleteDescription,
+    isDeleting,
+}: TableProps<T>) {
     const [pagination, setPagination] = useState<PaginationState>({
         pageIndex: 0,
         pageSize: 50,
@@ -74,6 +92,22 @@ export function TableTemplate<T>({ data, columns, details, onEdit, onDelete, isL
         column: Column<T, unknown>;
         name: string;
     } | null>(null);
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [itemToDelete, setItemToDelete] = useState<T | null>(null);
+
+    const handleDeleteClick = (row: T) => {
+        setItemToDelete(row);
+        setDeleteDialogOpen(true);
+    };
+
+    const confirmDelete = () => {
+        if (itemToDelete && onDelete) {
+            onDelete(itemToDelete);
+        }
+    };
+
+    // Derive details from resourceName if not provided
+    const tableDetails = details || `${resourceName} table`;
 
     // Add actions column if handlers are provided
     const columnsWithActions: ColumnDef<T, unknown>[] = (onEdit || onDelete) ? [
@@ -97,8 +131,8 @@ export function TableTemplate<T>({ data, columns, details, onEdit, onDelete, isL
                             </DropdownMenuItem>
                         )}
                         {onDelete && (
-                            <DropdownMenuItem 
-                                onClick={() => onDelete(row.original)}
+                            <DropdownMenuItem
+                                onClick={() => handleDeleteClick(row.original)}
                                 variant="destructive"
                             >
                                 <Trash2 className="mr-2 h-4 w-4" />
@@ -130,6 +164,19 @@ export function TableTemplate<T>({ data, columns, details, onEdit, onDelete, isL
 
     return (
         <div className="space-y-4">
+            {/* Header with Create Button */}
+            {(resourceName || onCreateNew) && (
+                <div className="flex justify-between items-center">
+                    <h2 className="text-2xl font-bold">{resourceName}s</h2>
+                    {onCreateNew && (
+                        <Button onClick={onCreateNew}>
+                            <Plus className="mr-2 h-4 w-4" />
+                            New {resourceName}
+                        </Button>
+                    )}
+                </div>
+            )}
+
             {/* Loading State */}
             {isLoading && (
                 <div className="text-center py-8 text-muted-foreground">
@@ -148,7 +195,7 @@ export function TableTemplate<T>({ data, columns, details, onEdit, onDelete, isL
             {!isLoading && !error && (
                 <>
                     <Table>
-                <TableCaption>{details}</TableCaption>
+                        <TableCaption>{tableDetails}</TableCaption>
                 <TableHeader>
                     {table.getHeaderGroups().map((headerGroup) => (
                         <TableRow key={headerGroup.id}>
@@ -287,6 +334,25 @@ export function TableTemplate<T>({ data, columns, details, onEdit, onDelete, isL
                 </div>
             )}
                 </>
+            )}
+
+            {/* Delete Confirmation Dialog */}
+            {onDelete && (
+                <DeleteConfirmDialog
+                    open={deleteDialogOpen}
+                    onOpenChange={(open) => {
+                        setDeleteDialogOpen(open);
+                        if (!open) setItemToDelete(null);
+                    }}
+                    onConfirm={confirmDelete}
+                    title={`Delete ${resourceName}`}
+                    description={
+                        itemToDelete && getDeleteDescription
+                            ? getDeleteDescription(itemToDelete)
+                            : `Are you sure you want to delete this ${resourceName.toLowerCase()}? This action cannot be undone.`
+                    }
+                    isDeleting={isDeleting}
+                />
             )}
         </div>
     );

@@ -2,22 +2,20 @@
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { AccountService } from "@/services/accountService";
 import { StudentService } from "@/services/studentService";
 import { Student } from "@/types/api/student";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
-import { Plus } from "lucide-react";
 import { useState } from "react";
-import { DeleteConfirmDialog } from "./DeleteConfirmDialog";
 import StudentTableCreateEditForm from "./StudentTableCreateEdit";
 import { TableTemplate } from "./TableTemplate";
 
 const studentService = new StudentService();
+const accountService = new AccountService();
 
 export const StudentTable = () => {
     const queryClient = useQueryClient();
-    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-    const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [sidebarMode, setSidebarMode] = useState<"create" | "edit">("create");
     const [editingStudent, setEditingStudent] = useState<Student | null>(null);
@@ -31,8 +29,19 @@ export const StudentTable = () => {
 
     // Update student mutation (for checkbox and edit)
     const updateMutation = useMutation({
-        mutationFn: ({ id, data }: { id: number; data: Partial<Student> }) =>
-            studentService.updateStudent(id, data),
+        mutationFn: ({
+            id,
+            data,
+        }: {
+            id: number;
+            data: {
+                firstName: string;
+                lastName: string;
+                phoneNumber: string;
+                contactPreference: "call" | "text";
+                lastRegistered: Date | null;
+            };
+        }) => studentService.updateStudent(id, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["students"] });
             setSidebarOpen(false);
@@ -43,13 +52,68 @@ export const StudentTable = () => {
         },
     });
 
+    // Create account mutation
+    const createAccountMutation = useMutation({
+        mutationFn: (data: {
+            email: string;
+            firstName: string;
+            lastName: string;
+            pid: string;
+        }) =>
+            accountService.createAccount({
+                email: data.email,
+                first_name: data.firstName,
+                last_name: data.lastName,
+                pid: data.pid,
+                role: "student",
+            }),
+        onError: (error: Error) => {
+            console.error("Failed to create account:", error);
+        },
+    });
+
+    // Create student mutation
+    const createStudentMutation = useMutation({
+        mutationFn: ({
+            accountId,
+            data,
+        }: {
+            accountId: number;
+            data: {
+                firstName: string;
+                lastName: string;
+                phoneNumber: string;
+                contactPreference: "call" | "text";
+                lastRegistered: Date | null;
+            };
+        }) =>
+            studentService.createStudent({
+                account_id: accountId,
+                data: {
+                    first_name: data.firstName,
+                    last_name: data.lastName,
+                    phone_number: data.phoneNumber,
+                    contact_preference: data.contactPreference,
+                    last_registered: data.lastRegistered
+                        ? data.lastRegistered.toISOString()
+                        : null,
+                },
+            }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["students"] });
+            setSidebarOpen(false);
+            setEditingStudent(null);
+        },
+        onError: (error: Error) => {
+            console.error("Failed to create student:", error);
+        },
+    });
+
     // Delete student mutation
     const deleteMutation = useMutation({
         mutationFn: (id: number) => studentService.deleteStudent(id),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["students"] });
-            setDeleteDialogOpen(false);
-            setStudentToDelete(null);
         },
         onError: (error: Error) => {
             console.error("Failed to delete student:", error);
@@ -63,14 +127,7 @@ export const StudentTable = () => {
     };
 
     const handleDelete = (student: Student) => {
-        setStudentToDelete(student);
-        setDeleteDialogOpen(true);
-    };
-
-    const confirmDelete = () => {
-        if (studentToDelete) {
-            deleteMutation.mutate(studentToDelete.id);
-        }
+        deleteMutation.mutate(student.id);
     };
 
     const handleCreate = () => {
@@ -79,7 +136,7 @@ export const StudentTable = () => {
         setSidebarOpen(true);
     };
 
-    const handleFormSubmit = (data: {
+    const handleFormSubmit = async (data: {
         pid: string;
         firstName: string;
         lastName: string;
@@ -98,8 +155,31 @@ export const StudentTable = () => {
                     lastRegistered: data.lastRegistered,
                 },
             });
+        } else if (sidebarMode === "create") {
+            // First create account, then create student with that account_id
+            try {
+                const account = await createAccountMutation.mutateAsync({
+                    email: `${data.pid}@unc.edu`, // Generate email from PID
+                    firstName: data.firstName,
+                    lastName: data.lastName,
+                    pid: data.pid,
+                });
+
+                // Then create student with the new account ID
+                createStudentMutation.mutate({
+                    accountId: account.id,
+                    data: {
+                        firstName: data.firstName,
+                        lastName: data.lastName,
+                        phoneNumber: data.phoneNumber,
+                        contactPreference: data.contactPreference,
+                        lastRegistered: data.lastRegistered,
+                    },
+                });
+            } catch (error) {
+                console.error("Failed to create student:", error);
+            }
         }
-        // Note: Create functionality will need account_id, which requires additional work
     };
 
     const columns: ColumnDef<Student>[] = [
@@ -160,6 +240,10 @@ export const StudentTable = () => {
                             updateMutation.mutate({
                                 id: student.id,
                                 data: {
+                                    firstName: student.firstName,
+                                    lastName: student.lastName,
+                                    phoneNumber: student.phoneNumber,
+                                    contactPreference: student.contactPreference,
                                     lastRegistered: checked ? new Date() : null,
                                 },
                             });
@@ -173,24 +257,20 @@ export const StudentTable = () => {
 
     return (
         <div className="space-y-4">
-            {/* New Student Button */}
-            <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold">Students</h2>
-                <Button onClick={handleCreate}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    New Student
-                </Button>
-            </div>
-
             {/* Table */}
             <TableTemplate
                 data={studentsQuery.data?.items ?? []}
                 columns={columns}
-                details="Student table"
+                resourceName="Student"
                 onEdit={handleEdit}
                 onDelete={handleDelete}
+                onCreateNew={handleCreate}
                 isLoading={studentsQuery.isLoading}
                 error={studentsQuery.error}
+                getDeleteDescription={(student: Student) =>
+                    `Are you sure you want to delete ${student.firstName} ${student.lastName}? This action cannot be undone.`
+                }
+                isDeleting={deleteMutation.isPending}
             />
 
             {/* Sidebar for Create/Edit */}
@@ -225,16 +305,6 @@ export const StudentTable = () => {
                     />
                 </div>
             )}
-
-            {/* Delete Confirmation Dialog */}
-            <DeleteConfirmDialog
-                open={deleteDialogOpen}
-                onOpenChange={setDeleteDialogOpen}
-                onConfirm={confirmDelete}
-                title="Delete Student"
-                description={`Are you sure you want to delete ${studentToDelete?.firstName} ${studentToDelete?.lastName}? This action cannot be undone.`}
-                isDeleting={deleteMutation.isPending}
-            />
         </div>
     );
 };
