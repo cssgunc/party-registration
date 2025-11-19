@@ -25,8 +25,6 @@ const authOptions: NextAuthOptions = {
             id: "1",
             name: "Admin User",
             email: "admin@example.com",
-            accessToken: "admin", // Backend mock auth expects "admin", "staff", or "student"
-            refreshToken: "admin",
           };
         }
         return null;

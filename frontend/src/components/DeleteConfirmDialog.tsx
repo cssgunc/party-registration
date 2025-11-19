@@ -27,6 +27,11 @@ export function DeleteConfirmDialog({
     description = "Are you sure you want to delete this item? This action cannot be undone.",
     isDeleting = false,
 }: DeleteConfirmDialogProps) {
+    const handleConfirm = () => {
+        onConfirm();
+        onOpenChange(false);
+    };
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent>
@@ -44,7 +49,7 @@ export function DeleteConfirmDialog({
                     </Button>
                     <Button
                         variant="destructive"
-                        onClick={onConfirm}
+                        onClick={handleConfirm}
                         disabled={isDeleting}
                     >
                         {isDeleting ? "Deleting..." : "Delete"}

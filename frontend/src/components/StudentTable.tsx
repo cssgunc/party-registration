@@ -26,6 +26,11 @@ export const StudentTable = () => {
         queryFn: () => studentService.listStudents(),
         retry: 1, // Only retry once
     });
+    const students = (studentsQuery.data?.items ?? []).slice().sort(
+        (a, b) =>
+            a.lastName.localeCompare(b.lastName) ||
+            a.firstName.localeCompare(b.firstName)
+    );
 
     // Update student mutation (for checkbox and edit)
     const updateMutation = useMutation({
@@ -259,7 +264,7 @@ export const StudentTable = () => {
         <div className="space-y-4">
             {/* Table */}
             <TableTemplate
-                data={studentsQuery.data?.items ?? []}
+                data={students}
                 columns={columns}
                 resourceName="Student"
                 onEdit={handleEdit}
