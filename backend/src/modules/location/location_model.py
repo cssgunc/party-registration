@@ -5,6 +5,17 @@ from pydantic import BaseModel
 from src.core.models import PaginatedResponse
 
 
+class AutocompleteInput(BaseModel):
+    # Input for address autocomplete
+    address: str
+
+
+class AutocompleteResult(BaseModel):
+    # Result from Google Maps autocomplete
+    formatted_address: str
+    place_id: str
+
+
 class AddressData(BaseModel):
     # Location data without OCSL-specific fields
     google_place_id: str
@@ -65,9 +76,3 @@ class LocationCreate(BaseModel):
     warning_count: int = 0
     citation_count: int = 0
     hold_expiration: datetime | None = None
-
-
-class AutocompleteResult(BaseModel):
-    # Result from Google Maps autocomplete
-    formatted_address: str
-    place_id: str

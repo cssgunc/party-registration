@@ -36,6 +36,20 @@ def get_valid_party_datetime() -> datetime:
     return datetime.now() + timedelta(days=days_ahead)
 
 
+def get_party_from_setup(party_setup: dict, date: datetime) -> PartyEntity:
+    """Helper to create a PartyEntity from the party_setup fixture."""
+    return PartyEntity(
+        party_datetime=date,
+        location_id=party_setup["location_id"],
+        contact_one_id=party_setup["contact_one_id"],
+        contact_two_email="test2@example.com",
+        contact_two_first_name="Jane",
+        contact_two_last_name="Smith",
+        contact_two_phone_number="0987654321",
+        contact_two_contact_preference=ContactPreference.text,
+    )
+
+
 @pytest.fixture
 def mock_gmaps_client() -> MagicMock:
     """Create a mock Google Maps client"""
@@ -1028,6 +1042,236 @@ async def test_nearby_happy_path_integration(
 
 
 @pytest.mark.asyncio
+async def test_get_parties_csv_success(
+    client: AsyncClient,
+    test_async_session: AsyncSession,
+    sample_party_setup: dict,
+):
+    """Test valid date range returns CSV file."""
+    # Create parties with specific dates
+    party1 = get_party_from_setup(sample_party_setup, datetime(2024, 6, 15, 20, 30, 0))
+    party2 = get_party_from_setup(sample_party_setup, datetime(2024, 6, 20, 18, 0, 0))
+
+    test_async_session.add_all([party1, party2])
+    await test_async_session.commit()
+
+    response = await client.get(
+        "/api/parties/csv?start_date=2024-06-15&end_date=2024-06-20"
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "text/csv; charset=utf-8"
+    assert "attachment; filename=parties.csv" in response.headers["content-disposition"]
+
+    # Verify CSV content
+    csv_content = response.text
+    assert "Fully formatted address" in csv_content
+    assert "Date of Party" in csv_content
+
+
+@pytest.mark.asyncio
+async def test_get_parties_csv_invalid_date_format(client: AsyncClient):
+    """Test invalid date format returns 400."""
+    response = await client.get(
+        "/api/parties/csv?start_date=invalid-date&end_date=2024-06-20"
+    )
+
+    assert response.status_code == 400
+    data = response.json()
+    assert "Invalid date format" in data["message"]
+
+
+@pytest.mark.asyncio
+async def test_get_parties_csv_missing_start_date(client: AsyncClient):
+    """Test missing start_date returns 422."""
+    response = await client.get("/api/parties/csv?end_date=2024-06-20")
+
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_get_parties_csv_missing_end_date(client: AsyncClient):
+    """Test missing end_date returns 422."""
+    response = await client.get("/api/parties/csv?start_date=2024-06-15")
+
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_get_parties_csv_empty_result(
+    client: AsyncClient,
+    test_async_session: AsyncSession,
+    sample_party_setup: dict,
+):
+    """Test date range with no parties returns CSV with headers only."""
+    # Create party outside the date range
+    party = get_party_from_setup(sample_party_setup, datetime(2024, 7, 1, 20, 30, 0))
+    test_async_session.add(party)
+    await test_async_session.commit()
+
+    response = await client.get(
+        "/api/parties/csv?start_date=2024-06-15&end_date=2024-06-20"
+    )
+
+    assert response.status_code == 200
+    csv_content = response.text
+    lines = csv_content.strip().split("\n")
+    assert len(lines) == 1  # Only header row
+    assert "Fully formatted address" in csv_content
+
+
+@pytest.mark.asyncio
+async def test_get_parties_csv_response_headers(
+    client: AsyncClient,
+    test_async_session: AsyncSession,
+    sample_party_setup: dict,
+):
+    """Test CSV response headers are correct."""
+    party = get_party_from_setup(sample_party_setup, datetime(2024, 6, 15, 20, 30, 0))
+    test_async_session.add(party)
+    await test_async_session.commit()
+
+    response = await client.get(
+        "/api/parties/csv?start_date=2024-06-15&end_date=2024-06-15"
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "text/csv; charset=utf-8"
+    assert "attachment; filename=parties.csv" in response.headers["content-disposition"]
+
+
+@pytest.mark.asyncio
+async def test_get_parties_csv_date_range_filtering(
+    client: AsyncClient,
+    test_async_session: AsyncSession,
+    sample_party_setup: dict,
+):
+    """Test only parties in date range are included."""
+    # Create parties at different dates
+    party1 = get_party_from_setup(sample_party_setup, datetime(2024, 6, 15, 20, 30, 0))
+    party2 = get_party_from_setup(sample_party_setup, datetime(2024, 6, 18, 18, 0, 0))
+    party3 = get_party_from_setup(sample_party_setup, datetime(2024, 7, 1, 20, 30, 0))
+    test_async_session.add_all([party1, party2, party3])
+    await test_async_session.commit()
+
+    response = await client.get(
+        "/api/parties/csv?start_date=2024-06-15&end_date=2024-06-20"
+    )
+
+    assert response.status_code == 200
+    csv_content = response.text
+    lines = csv_content.strip().split("\n")
+    assert len(lines) == 3  # Header + 2 data rows (party1 and party2)
+    assert "2024-06-15" in csv_content
+    assert "2024-06-18" in csv_content
+    assert "2024-07-01" not in csv_content  # party3 should not be included
+
+
+@pytest.mark.asyncio
+async def test_get_parties_csv_end_date_includes_full_day(
+    client: AsyncClient,
+    test_async_session: AsyncSession,
+    sample_party_setup: dict,
+):
+    """Test end_date includes parties at end of day (23:59:59)."""
+    # Create party at end of day
+    party = get_party_from_setup(sample_party_setup, datetime(2024, 6, 20, 23, 59, 59))
+    test_async_session.add(party)
+    await test_async_session.commit()
+
+    response = await client.get(
+        "/api/parties/csv?start_date=2024-06-20&end_date=2024-06-20"
+    )
+
+    assert response.status_code == 200
+    csv_content = response.text
+    assert "2024-06-20" in csv_content
+    assert "23:59:59" in csv_content
+
+
+@pytest.mark.asyncio
+async def test_get_parties_csv_authentication_required(
+    unauthenticated_client: AsyncClient,
+):
+    """Test unauthenticated request returns 401."""
+    response = await unauthenticated_client.get(
+        "/api/parties/csv?start_date=2024-06-15&end_date=2024-06-20"
+    )
+
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_get_parties_csv_boundary_start_date(
+    client: AsyncClient,
+    test_async_session: AsyncSession,
+    sample_party_setup: dict,
+):
+    """Test party exactly at start_date is included."""
+    party = get_party_from_setup(
+        sample_party_setup, datetime(2024, 6, 15, 0, 0, 0)
+    )  # Start of day
+    test_async_session.add(party)
+    await test_async_session.commit()
+
+    response = await client.get(
+        "/api/parties/csv?start_date=2024-06-15&end_date=2024-06-15"
+    )
+
+    assert response.status_code == 200
+    csv_content = response.text
+    assert "2024-06-15" in csv_content
+
+
+@pytest.mark.asyncio
+async def test_get_parties_csv_boundary_end_date(
+    client: AsyncClient,
+    test_async_session: AsyncSession,
+    sample_party_setup: dict,
+):
+    """Test party exactly at end_date is included."""
+    party = get_party_from_setup(
+        sample_party_setup, datetime(2024, 6, 20, 23, 59, 59)
+    )  # End of day
+    test_async_session.add(party)
+    await test_async_session.commit()
+
+    response = await client.get(
+        "/api/parties/csv?start_date=2024-06-20&end_date=2024-06-20"
+    )
+
+    assert response.status_code == 200
+    csv_content = response.text
+    assert "2024-06-20" in csv_content
+
+
+@pytest.mark.asyncio
+async def test_get_parties_csv_multiple_parties_in_range(
+    client: AsyncClient,
+    test_async_session: AsyncSession,
+    sample_party_setup: dict,
+):
+    """Test multiple parties in range all included."""
+    # Create multiple parties within range
+    parties = []
+    for day in range(15, 21):  # June 15-20
+        party = get_party_from_setup(
+            sample_party_setup, datetime(2024, 6, day, 20, 0, 0)
+        )
+        parties.append(party)
+    test_async_session.add_all(parties)
+    await test_async_session.commit()
+
+    response = await client.get(
+        "/api/parties/csv?start_date=2024-06-15&end_date=2024-06-20"
+    )
+
+    assert response.status_code == 200
+    csv_content = response.text
+    lines = csv_content.strip().split("\n")
+    assert len(lines) == 7  # Header + 6 data rows (one for each day)
+
+
 async def test_create_party_as_student(
     student_client: AsyncClient,
     test_async_session: AsyncSession,
