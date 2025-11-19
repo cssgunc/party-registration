@@ -7,6 +7,26 @@ export interface AutocompleteResult {
   place_id: string;
 }
 
+export interface BackendLocation {
+  id: number;
+  citation_count: number;
+  warning_count: number;
+  hold_expiration: string | null;
+  has_active_hold: boolean;
+  google_place_id: string;
+  formatted_address: string;
+  latitude: number;
+  longitude: number;
+  street_number: string | null;
+  street_name: string | null;
+  unit: string | null;
+  city: string | null;
+  county: string | null;
+  state: string | null;
+  country: string | null;
+  zip_code: string | null;
+}
+
 export interface PaginatedLocationResponse {
   items: Location[];
   total_records: number;
@@ -23,6 +43,30 @@ export interface LocationCreatePayload {
 }
 
 const defaultClient = getMockClient("admin");
+
+function toFrontendLocation(raw: BackendLocation): Location {
+  return {
+    id: raw.id,
+    citationCount: raw.citation_count,
+    warningCount: raw.warning_count,
+    holdExpirationDate: raw.hold_expiration
+      ? new Date(raw.hold_expiration)
+      : null,
+    hasActiveHold: raw.has_active_hold,
+    googlePlaceId: raw.google_place_id,
+    formattedAddress: raw.formatted_address,
+    latitude: raw.latitude,
+    longitude: raw.longitude,
+    streetNumber: raw.street_number,
+    streetName: raw.street_name,
+    unit: raw.unit,
+    city: raw.city,
+    county: raw.county,
+    state: raw.state,
+    country: raw.country,
+    zipCode: raw.zip_code,
+  };
+}
 
 export class LocationService {
   constructor(private client: AxiosInstance = defaultClient) {}
@@ -47,57 +91,43 @@ export class LocationService {
   }
 
   async getLocations(): Promise<PaginatedLocationResponse> {
-    const response = await this.client.get<PaginatedLocationResponse>(
-      "/locations"
-    );
+    const response = await this.client.get<{
+      items: BackendLocation[];
+      total_records: number;
+      page_number: number;
+      page_size: number;
+      total_pages: number;
+    }>("/locations");
 
     return {
       ...response.data,
-      items: response.data.items.map((loc) => ({
-        ...loc,
-        holdExpirationDate: loc.holdExpirationDate
-          ? new Date(loc.holdExpirationDate)
-          : null,
-      })),
+      items: response.data.items.map(toFrontendLocation),
     };
   }
 
   async createLocation(payload: LocationCreatePayload): Promise<Location> {
-    const response = await this.client.post<Location>("/locations", payload);
-    const loc = response.data as Location;
-    return {
-      ...loc,
-      holdExpirationDate: loc.holdExpirationDate
-        ? new Date(loc.holdExpirationDate)
-        : null,
-    };
+    const response = await this.client.post<BackendLocation>(
+      "/locations",
+      payload
+    );
+    return toFrontendLocation(response.data);
   }
 
   async updateLocation(
     id: number,
     payload: LocationCreatePayload
   ): Promise<Location> {
-    const response = await this.client.put<Location>(
+    const response = await this.client.put<BackendLocation>(
       `/locations/${id}`,
       payload
     );
-    const loc = response.data as Location;
-    return {
-      ...loc,
-      holdExpirationDate: loc.holdExpirationDate
-        ? new Date(loc.holdExpirationDate)
-        : null,
-    };
+    return toFrontendLocation(response.data);
   }
 
   async deleteLocation(id: number): Promise<Location> {
-    const response = await this.client.delete<Location>(`/locations/${id}`);
-    const loc = response.data as Location;
-    return {
-      ...loc,
-      holdExpirationDate: loc.holdExpirationDate
-        ? new Date(loc.holdExpirationDate)
-        : null,
-    };
+    const response = await this.client.delete<BackendLocation>(
+      `/locations/${id}`
+    );
+    return toFrontendLocation(response.data);
   }
 }
