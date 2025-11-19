@@ -33,7 +33,7 @@ export default function RegistrationForm() {
     };
 
     return (
-        <div className="px-128 pb-8">
+        <div className="px-125 pb-8">
             <Header />
             <Link className="py-8" href="/StudentDashboard">
                 Back
