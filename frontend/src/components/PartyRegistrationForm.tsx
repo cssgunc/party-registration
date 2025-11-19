@@ -209,14 +209,14 @@ export default function PartyRegistrationForm({
           <Field data-invalid={!!errors.secondContactName}>
             <FieldLabel htmlFor="second-contact-name">Second Contact name</FieldLabel>
             <Input
-              id="phone-number"
+              id="second-contact-name"
               placeholder=""
               value={formData.secondContactName}
               onChange={(e) => updateField("secondContactName", e.target.value)}
               aria-invalid={!!errors.secondContactName}
             />
-            {errors.phoneNumber && (
-              <FieldError>{errors.phoneNumber}</FieldError>
+            {errors.secondContactName && (
+              <FieldError>{errors.secondContactName}</FieldError>
             )}
           </Field>
 
