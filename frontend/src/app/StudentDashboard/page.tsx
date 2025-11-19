@@ -1,17 +1,12 @@
-import OCSLLogo from "@/components/icons/OCSL_logo.svg";
-import pfp from "@/components/icons/pfp_temp.svg";
+import Header from "@/components/Header";
 import RegistrationTracker from "@/components/RegistrationTracker";
 import StatusComponent from "@/components/StatusComponent";
 import { PARTIES } from "@/lib/mockData";
-import Image from "next/image";
 import Link from "next/link";
 export default function StudentDashboard() {
     return (
         <div className="px-48 pb-12 flex flex-col gap-4 max-w-4xl mx-auto">
-            <div className="bg-[#6FB2DC] h-20 w-full flex justify-between items-center">
-                <Image src={OCSLLogo} alt="OCSL logo" className="pl-4 pt-7" />
-                <Image src={pfp} alt="pfp" className="pr-4 pt-6" width={60} height={60} />
-            </div>
+            <Header />
 
             <div className="flex justify-between items-center">
                 <div className="font-semibold text-2xl">Events</div>

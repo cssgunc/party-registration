@@ -1,4 +1,5 @@
 "use client";
+import Header from "@/components/Header";
 import Link from "next/link";
 import { useState } from "react";
 import * as z from "zod";
@@ -32,11 +33,12 @@ export default function RegistrationForm() {
     };
 
     return (
-        <div className="px-128 py-8">
-            <Link href="/StudentDashboard">
+        <div className="px-128 pb-8">
+            <Header />
+            <Link className="py-8" href="/StudentDashboard">
                 Back
             </Link>
-            <div className="font-bold pb-4">Off Campus Student Life Party Registration Form</div>
+            <div className="font-semibold py-3 text-2xl max-w-md">Off Campus Student Life Party Registration Form</div>
             <PartyRegistrationForm onSubmit={handleSubmit} />
         </div>
     );
