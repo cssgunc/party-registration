@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import googlemaps
@@ -33,7 +33,7 @@ from src.modules.student.student_model import ContactPreference
 def get_valid_party_datetime() -> datetime:
     """Get a datetime that is at least 3 business days from now."""
     days_ahead = 5  # Start with 5 calendar days to ensure 3 business days
-    return datetime.now() + timedelta(days=days_ahead)
+    return datetime.now(timezone.utc) + timedelta(days=days_ahead)
 
 
 def get_party_from_setup(party_setup: dict, date: datetime) -> PartyEntity:
@@ -231,16 +231,16 @@ async def sample_party_setup(test_async_session: AsyncSession):
 
     # Create students with last_registered date (Party Smart completed after most recent August 1st)
     # Calculate a valid date after the most recent August 1st
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     current_year = now.year
-    august_first_this_year = datetime(current_year, 8, 1, 0, 0, 0)
+    august_first_this_year = datetime(current_year, 8, 1, 0, 0, 0, tzinfo=timezone.utc)
 
     # If we're before August 1st, use last year's August 1st + 1 day
     # Otherwise, use this year's August 1st + 1 day
     if now < august_first_this_year:
-        valid_date = datetime(current_year - 1, 8, 2, 12, 0, 0)
+        valid_date = datetime(current_year - 1, 8, 2, 12, 0, 0, tzinfo=timezone.utc)
     else:
-        valid_date = datetime(current_year, 8, 2, 12, 0, 0)
+        valid_date = datetime(current_year, 8, 2, 12, 0, 0, tzinfo=timezone.utc)
 
     student_one = StudentEntity(
         contact_preference=ContactPreference.call,
@@ -282,7 +282,7 @@ async def test_get_parties_with_data(
     # Create 5 parties
     for i in range(5):
         party = PartyEntity(
-            party_datetime=datetime.now() + timedelta(days=i),
+            party_datetime=datetime.now(timezone.utc) + timedelta(days=i),
             location_id=sample_party_setup["location_id"],
             contact_one_id=sample_party_setup["contact_one_id"],
             contact_two_email="test2@example.com",
@@ -311,8 +311,8 @@ async def test_get_parties_validates_content(
 ):
     """Test GET /api/parties returns correct party content and structure."""
     # Create parties with specific data for validation
-    party_datetime_1 = datetime(2024, 6, 15, 20, 0, 0)
-    party_datetime_2 = datetime(2024, 7, 20, 21, 30, 0)
+    party_datetime_1 = datetime(2024, 6, 15, 20, 0, 0, tzinfo=timezone.utc)
+    party_datetime_2 = datetime(2024, 7, 20, 21, 30, 0, tzinfo=timezone.utc)
 
     party1 = PartyEntity(
         party_datetime=party_datetime_1,
@@ -373,10 +373,10 @@ async def test_get_parties_validates_content(
         assert isinstance(party["id"], int)
         assert party["id"] > 0
 
-    # Verify specific party datetimes
+    # Verify specific party datetimes (replace +00:00 with Z for comparison)
     party_datetimes = [p["party_datetime"] for p in parties]
-    assert party_datetime_1.isoformat() in party_datetimes
-    assert party_datetime_2.isoformat() in party_datetimes
+    assert party_datetime_1.isoformat().replace("+00:00", "Z") in party_datetimes
+    assert party_datetime_2.isoformat().replace("+00:00", "Z") in party_datetimes
 
 
 @pytest.mark.asyncio
@@ -388,7 +388,8 @@ async def test_get_parties_content_with_pagination(
     created_parties = []
     for i in range(10):
         party = PartyEntity(
-            party_datetime=datetime(2024, 1, 1, 10, 0, 0) + timedelta(days=i),
+            party_datetime=datetime(2024, 1, 1, 10, 0, 0, tzinfo=timezone.utc)
+            + timedelta(days=i),
             location_id=sample_party_setup["location_id"],
             contact_one_id=sample_party_setup["contact_one_id"],
             contact_two_email="test2@example.com",
@@ -442,7 +443,7 @@ async def test_get_parties_pagination(
     # Create 25 parties
     for i in range(25):
         party = PartyEntity(
-            party_datetime=datetime.now() + timedelta(days=i),
+            party_datetime=datetime.now(timezone.utc) + timedelta(days=i),
             location_id=sample_party_setup["location_id"],
             contact_one_id=sample_party_setup["contact_one_id"],
             contact_two_email="test2@example.com",
@@ -491,7 +492,7 @@ async def test_get_parties_pagination_beyond_available(
     # Create 5 parties
     for i in range(5):
         party = PartyEntity(
-            party_datetime=datetime.now() + timedelta(days=i),
+            party_datetime=datetime.now(timezone.utc) + timedelta(days=i),
             location_id=sample_party_setup["location_id"],
             contact_one_id=sample_party_setup["contact_one_id"],
             contact_two_email="test2@example.com",
@@ -521,7 +522,7 @@ async def test_get_parties_custom_page_size(
     # Create 10 parties
     for i in range(10):
         party = PartyEntity(
-            party_datetime=datetime.now() + timedelta(days=i),
+            party_datetime=datetime.now(timezone.utc) + timedelta(days=i),
             location_id=sample_party_setup["location_id"],
             contact_one_id=sample_party_setup["contact_one_id"],
             contact_two_email="test2@example.com",
@@ -568,7 +569,7 @@ async def test_get_party_by_id(
 ):
     """Test GET /api/parties/{party_id} successfully retrieves a party."""
     # Create a party
-    party_datetime = datetime.now() + timedelta(days=1)
+    party_datetime = datetime.now(timezone.utc) + timedelta(days=1)
     party = PartyEntity(
         party_datetime=party_datetime,
         location_id=sample_party_setup["location_id"],
@@ -608,7 +609,7 @@ async def test_delete_party(
     """Test DELETE /api/parties/{party_id} successfully deletes a party."""
     # Create a party
     party = PartyEntity(
-        party_datetime=datetime.now() + timedelta(days=1),
+        party_datetime=datetime.now(timezone.utc) + timedelta(days=1),
         location_id=sample_party_setup["location_id"],
         contact_one_id=sample_party_setup["contact_one_id"],
         contact_two_email="test2@example.com",
@@ -649,7 +650,7 @@ async def test_delete_party_removes_from_list(
     # Create 3 parties
     for i in range(3):
         party = PartyEntity(
-            party_datetime=datetime.now() + timedelta(days=i),
+            party_datetime=datetime.now(timezone.utc) + timedelta(days=i),
             location_id=sample_party_setup["location_id"],
             contact_one_id=sample_party_setup["contact_one_id"],
             contact_two_email="test2@example.com",
@@ -1049,8 +1050,12 @@ async def test_get_parties_csv_success(
 ):
     """Test valid date range returns CSV file."""
     # Create parties with specific dates
-    party1 = get_party_from_setup(sample_party_setup, datetime(2024, 6, 15, 20, 30, 0))
-    party2 = get_party_from_setup(sample_party_setup, datetime(2024, 6, 20, 18, 0, 0))
+    party1 = get_party_from_setup(
+        sample_party_setup, datetime(2024, 6, 15, 20, 30, 0, tzinfo=timezone.utc)
+    )
+    party2 = get_party_from_setup(
+        sample_party_setup, datetime(2024, 6, 20, 18, 0, 0, tzinfo=timezone.utc)
+    )
 
     test_async_session.add_all([party1, party2])
     await test_async_session.commit()
@@ -1127,7 +1132,9 @@ async def test_get_parties_csv_response_headers(
     sample_party_setup: dict,
 ):
     """Test CSV response headers are correct."""
-    party = get_party_from_setup(sample_party_setup, datetime(2024, 6, 15, 20, 30, 0))
+    party = get_party_from_setup(
+        sample_party_setup, datetime(2024, 6, 15, 20, 30, 0, tzinfo=timezone.utc)
+    )
     test_async_session.add(party)
     await test_async_session.commit()
 
@@ -1148,9 +1155,15 @@ async def test_get_parties_csv_date_range_filtering(
 ):
     """Test only parties in date range are included."""
     # Create parties at different dates
-    party1 = get_party_from_setup(sample_party_setup, datetime(2024, 6, 15, 20, 30, 0))
-    party2 = get_party_from_setup(sample_party_setup, datetime(2024, 6, 18, 18, 0, 0))
-    party3 = get_party_from_setup(sample_party_setup, datetime(2024, 7, 1, 20, 30, 0))
+    party1 = get_party_from_setup(
+        sample_party_setup, datetime(2024, 6, 15, 20, 30, 0, tzinfo=timezone.utc)
+    )
+    party2 = get_party_from_setup(
+        sample_party_setup, datetime(2024, 6, 18, 18, 0, 0, tzinfo=timezone.utc)
+    )
+    party3 = get_party_from_setup(
+        sample_party_setup, datetime(2024, 7, 1, 20, 30, 0, tzinfo=timezone.utc)
+    )
     test_async_session.add_all([party1, party2, party3])
     await test_async_session.commit()
 
@@ -1175,7 +1188,9 @@ async def test_get_parties_csv_end_date_includes_full_day(
 ):
     """Test end_date includes parties at end of day (23:59:59)."""
     # Create party at end of day
-    party = get_party_from_setup(sample_party_setup, datetime(2024, 6, 20, 23, 59, 59))
+    party = get_party_from_setup(
+        sample_party_setup, datetime(2024, 6, 20, 23, 59, 59, tzinfo=timezone.utc)
+    )
     test_async_session.add(party)
     await test_async_session.commit()
 
@@ -1209,7 +1224,7 @@ async def test_get_parties_csv_boundary_start_date(
 ):
     """Test party exactly at start_date is included."""
     party = get_party_from_setup(
-        sample_party_setup, datetime(2024, 6, 15, 0, 0, 0)
+        sample_party_setup, datetime(2024, 6, 15, 0, 0, 0, tzinfo=timezone.utc)
     )  # Start of day
     test_async_session.add(party)
     await test_async_session.commit()
@@ -1231,7 +1246,7 @@ async def test_get_parties_csv_boundary_end_date(
 ):
     """Test party exactly at end_date is included."""
     party = get_party_from_setup(
-        sample_party_setup, datetime(2024, 6, 20, 23, 59, 59)
+        sample_party_setup, datetime(2024, 6, 20, 23, 59, 59, tzinfo=timezone.utc)
     )  # End of day
     test_async_session.add(party)
     await test_async_session.commit()
@@ -1256,7 +1271,7 @@ async def test_get_parties_csv_multiple_parties_in_range(
     parties = []
     for day in range(15, 21):  # June 15-20
         party = get_party_from_setup(
-            sample_party_setup, datetime(2024, 6, day, 20, 0, 0)
+            sample_party_setup, datetime(2024, 6, day, 20, 0, 0, tzinfo=timezone.utc)
         )
         parties.append(party)
     test_async_session.add_all(parties)
@@ -1300,7 +1315,7 @@ async def test_create_party_as_student(
     assert response.status_code == 200, response.json()
 
     data = response.json()
-    assert data["party_datetime"] == party_datetime.isoformat()
+    assert data["party_datetime"] == party_datetime.isoformat().replace("+00:00", "Z")
     assert data["contact_one"]["id"] == 1  # Auto-filled from student account
     assert data["contact_two"]["email"] == "test2@example.com"
     assert "id" in data
@@ -1336,7 +1351,7 @@ async def test_create_party_as_admin(
     assert response.status_code == 200
 
     data = response.json()
-    assert data["party_datetime"] == party_datetime.isoformat()
+    assert data["party_datetime"] == party_datetime.isoformat().replace("+00:00", "Z")
     assert data["contact_one"]["id"] == 1
     assert data["contact_two"]["email"] == "test2@example.com"
     assert "id" in data
@@ -1387,7 +1402,9 @@ async def test_update_party_as_student(
 
     data = response.json()
     assert data["id"] == existing_party.id
-    assert data["party_datetime"] == new_party_datetime.isoformat()
+    assert data["party_datetime"] == new_party_datetime.isoformat().replace(
+        "+00:00", "Z"
+    )
     assert data["contact_one"]["id"] == 1  # Auto-filled from student account
     assert data["contact_two"]["email"] == "test2@example.com"
 
@@ -1437,7 +1454,9 @@ async def test_update_party_as_admin(
 
     data = response.json()
     assert data["id"] == existing_party.id
-    assert data["party_datetime"] == new_party_datetime.isoformat()
+    assert data["party_datetime"] == new_party_datetime.isoformat().replace(
+        "+00:00", "Z"
+    )
     assert data["contact_one"]["id"] == 1
     assert data["contact_two"]["email"] == "test2@example.com"
 
@@ -1482,7 +1501,7 @@ async def test_create_party_date_too_soon(
 ):
     """Test POST /api/parties with party date less than 2 business days away."""
     # Party tomorrow (only 1 business day away)
-    party_datetime = datetime.now() + timedelta(days=1)
+    party_datetime = datetime.now(timezone.utc) + timedelta(days=1)
     party_data = StudentCreatePartyDTO(
         type="student",
         party_datetime=party_datetime,
@@ -1527,7 +1546,7 @@ async def test_update_party_date_too_soon(
     await test_async_session.refresh(existing_party)
 
     # Try to update with party tomorrow
-    party_datetime = datetime.now() + timedelta(days=1)
+    party_datetime = datetime.now(timezone.utc) + timedelta(days=1)
     update_data = StudentCreatePartyDTO(
         type="student",
         party_datetime=party_datetime,
@@ -1620,16 +1639,18 @@ async def test_create_party_student_party_smart_expired(
     """Test POST /api/parties when student's Party Smart attendance is before the most recent August 1st."""
     # Create student with expired last_registered (before the most recent August 1st)
     # Calculate a date before the most recent August 1st
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     current_year = now.year
-    august_first_this_year = datetime(current_year, 8, 1, 0, 0, 0)
+    august_first_this_year = datetime(current_year, 8, 1, 0, 0, 0, tzinfo=timezone.utc)
 
     # If we're before August 1st, use last year's August 1st - 1 day
     # Otherwise, use this year's August 1st - 1 day
     if now < august_first_this_year:
-        expired_date = datetime(current_year - 1, 7, 31, 23, 59, 59)
+        expired_date = datetime(
+            current_year - 1, 7, 31, 23, 59, 59, tzinfo=timezone.utc
+        )
     else:
-        expired_date = datetime(current_year, 7, 31, 23, 59, 59)
+        expired_date = datetime(current_year, 7, 31, 23, 59, 59, tzinfo=timezone.utc)
 
     account = AccountEntity(
         id=4,
@@ -1696,7 +1717,7 @@ async def test_create_party_location_has_active_hold(
     """Test POST /api/parties when location has an active hold."""
 
     mock_location_service.assert_valid_location_hold.side_effect = (
-        LocationHoldActiveException(1, datetime.now() + timedelta(days=30))
+        LocationHoldActiveException(1, datetime.now(timezone.utc) + timedelta(days=30))
     )
 
     party_datetime = get_valid_party_datetime()
@@ -1736,7 +1757,7 @@ async def test_create_party_location_expired_hold(
         )
     )
     location = result.scalar_one()
-    location.hold_expiration = datetime.now() - timedelta(
+    location.hold_expiration = datetime.now(timezone.utc) - timedelta(
         days=1
     )  # Hold expired yesterday
     test_async_session.add(location)
