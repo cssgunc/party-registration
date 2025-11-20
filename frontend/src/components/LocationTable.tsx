@@ -53,11 +53,35 @@ export const LocationTable = () => {
 
     const deleteMutation = useMutation({
         mutationFn: (id: number) => locationService.deleteLocation(id),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["locations"] });
+        // Optimistically remove the location from the cache.
+        onMutate: async (id: number) => {
+            await queryClient.cancelQueries({ queryKey: ["locations"] });
+
+            const previous = queryClient.getQueryData<PaginatedLocationResponse>([
+                "locations",
+            ]);
+
+            queryClient.setQueryData<PaginatedLocationResponse | undefined>(
+                ["locations"],
+                (old) =>
+                    old
+                        ? {
+                              ...old,
+                              items: old.items.filter((l) => l.id !== id),
+                          }
+                        : old,
+            );
+
+            return { previous };
         },
-        onError: (error: Error) => {
+        onError: (error: Error, _vars, context) => {
             console.error("Failed to delete location:", error);
+            if (context?.previous) {
+                queryClient.setQueryData(["locations"], context.previous);
+            }
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ["locations"] });
         },
     });
 
@@ -79,18 +103,29 @@ export const LocationTable = () => {
 
     const handleFormSubmit = async (data: {
         address: string;
+        placeId: string;
         holdExpiration: Date | null;
         warningCount: number;
         citationCount: number;
     }) => {
+        let hold_expiration_str: string | null = null;
+        if (data.holdExpiration) {
+            // Format as local datetime without timezone (YYYY-MM-DDTHH:mm:ss)
+            const date = data.holdExpiration;
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hour = String(date.getHours()).padStart(2, '0');
+            const minute = String(date.getMinutes()).padStart(2, '0');
+            const second = String(date.getSeconds()).padStart(2, '0');
+            hold_expiration_str = `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+        }
+        
         const payload: LocationCreatePayload = {
-            // Placeholder: using address as google_place_id until autocomplete
-            google_place_id: data.address,
+            google_place_id: data.placeId,
             warning_count: data.warningCount,
             citation_count: data.citationCount,
-            hold_expiration: data.holdExpiration
-                ? data.holdExpiration.toISOString()
-                : null,
+            hold_expiration: hold_expiration_str,
         };
 
         if (sidebarMode === "edit" && editingLocation) {
@@ -179,6 +214,8 @@ export const LocationTable = () => {
                                 ? {
                                       address:
                                           editingLocation.formattedAddress || "",
+                                      placeId:
+                                          editingLocation.googlePlaceId || "",
                                       holdExpiration:
                                           editingLocation.holdExpirationDate || null,
                                       warningCount:

@@ -18,6 +18,7 @@ export const PartyTable = () => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [sidebarMode, setSidebarMode] = useState<"create" | "edit">("create");
     const [editingParty, setEditingParty] = useState<Party | null>(null);
+    const [submissionError, setSubmissionError] = useState<string | null>(null);
 
     const partiesQuery = useQuery({
         queryKey: ["parties"],
@@ -25,49 +26,161 @@ export const PartyTable = () => {
         retry: 1,
     });
 
-    const parties = (partiesQuery.data?.items ?? []).slice().sort(
-        (a, b) => new Date(b.datetime).getTime() - new Date(a.datetime).getTime()
-    );
+    const parties = partiesQuery.data?.items ?? [];
 
     const createMutation = useMutation({
         mutationFn: (payload: AdminPartyPayload) =>
             partyService.createParty(payload),
-        onSuccess: () => {
+        // Optimistically add the new party to the cache so the table updates
+        // immediately on create.
+        onMutate: async (payload: AdminPartyPayload) => {
+            await queryClient.cancelQueries({ queryKey: ["parties"] });
+
+            const previous = queryClient.getQueryData<{
+                items: Party[];
+                [key: string]: unknown;
+            } | Party[]>(["parties"]);
+
+            queryClient.setQueryData(["parties"], (old: unknown) => {
+                const optimisticParty: Party = {
+                    id: -Math.floor(Math.random() * 1_000_000),
+                    datetime: new Date(payload.party_datetime),
+                    rawDatetime: payload.party_datetime,
+                    // These shapes match what Party likely looks like; any
+                    // missing fields will be filled in by the server refresh.
+                    location: {
+                        formattedAddress: payload.place_id,
+                    } as Party["location"],
+                    contactOne: {
+                        email: payload.contact_one_email,
+                        firstName: "",
+                        lastName: "",
+                        phoneNumber: "",
+                        contactPreference: "call",
+                    },
+                    contactTwo: {
+                        email: payload.contact_two.email,
+                        firstName: payload.contact_two.first_name,
+                        lastName: payload.contact_two.last_name,
+                        phoneNumber: payload.contact_two.phone_number,
+                        contactPreference: payload.contact_two.contact_preference,
+                    },
+                } as Party;
+
+                if (
+                    old &&
+                    typeof old === "object" &&
+                    Array.isArray((old as { items?: Party[] }).items)
+                ) {
+                    const paginated = old as {
+                        items: Party[];
+                        [key: string]: unknown;
+                    };
+                    return {
+                        ...paginated,
+                        items: [optimisticParty, ...paginated.items],
+                    };
+                }
+
+                if (Array.isArray(old)) {
+                    return [optimisticParty, ...(old as Party[])];
+                }
+
+                return [optimisticParty];
+            });
+
+            return { previous };
+        },
+        onError: (error: Error, _vars, context) => {
+            console.error("Failed to create party:", error);
+            
+            // Check if it's a 404 error (student not found)
+            if ('response' in error && (error as { response?: { status?: number } }).response?.status === 404) {
+                setSubmissionError("Student not found. Please verify the first contact email belongs to a registered student.");
+            } else {
+                setSubmissionError(`Failed to create party: ${error.message}`);
+            }
+            
+            if (context?.previous) {
+                queryClient.setQueryData(["parties"], context.previous);
+            }
+        },
+        onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ["parties"] });
             setSidebarOpen(false);
             setEditingParty(null);
-        },
-        onError: (error: Error) => {
-            console.error("Failed to create party:", error);
         },
     });
 
     const updateMutation = useMutation({
         mutationFn: ({ id, payload }: { id: number; payload: AdminPartyPayload }) =>
             partyService.updateParty(id, payload),
-        onSuccess: () => {
+        onError: (error: Error) => {
+            console.error("Failed to update party:", error);
+            
+            // Check if it's a 404 error (student not found)
+            if ('response' in error && (error as { response?: { status?: number } }).response?.status === 404) {
+                setSubmissionError("Student not found. Please verify the first contact email belongs to a registered student.");
+            } else {
+                setSubmissionError(`Failed to update party: ${error.message}`);
+            }
+        },
+        onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ["parties"] });
             setSidebarOpen(false);
             setEditingParty(null);
         },
-        onError: (error: Error) => {
-            console.error("Failed to update party:", error);
-        },
-    });
-
-    const deleteMutation = useMutation({
+    });    const deleteMutation = useMutation({
         mutationFn: (id: number) => partyService.deleteParty(id),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["parties"] });
+        // Optimistically remove the party from the cache.
+        onMutate: async (id: number) => {
+            await queryClient.cancelQueries({ queryKey: ["parties"] });
+
+            const previous = queryClient.getQueryData<{
+                items: Party[];
+                [key: string]: unknown;
+            } | Party[]>(["parties"]);
+
+            queryClient.setQueryData(["parties"], (old: unknown) => {
+                if (
+                    old &&
+                    typeof old === "object" &&
+                    Array.isArray((old as { items?: Party[] }).items)
+                ) {
+                    const paginated = old as {
+                        items: Party[];
+                        [key: string]: unknown;
+                    };
+                    return {
+                        ...paginated,
+                        items: paginated.items.filter((p) => p.id !== id),
+                    };
+                }
+
+                if (Array.isArray(old)) {
+                    return (old as Party[]).filter((p) => p.id !== id);
+                }
+
+                return old;
+            });
+
+            return { previous };
         },
-        onError: (error: Error) => {
+        onError: (error: Error, _vars, context) => {
             console.error("Failed to delete party:", error);
+            if (context?.previous) {
+                queryClient.setQueryData(["parties"], context.previous);
+            }
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ["parties"] });
         },
     });
 
     const handleEdit = (party: Party) => {
         setEditingParty(party);
         setSidebarMode("edit");
+        setSubmissionError(null);
         setSidebarOpen(true);
     };
 
@@ -78,11 +191,13 @@ export const PartyTable = () => {
     const handleCreate = () => {
         setEditingParty(null);
         setSidebarMode("create");
+        setSubmissionError(null);
         setSidebarOpen(true);
     };
 
     const handleFormSubmit = async (data: {
         address: string;
+        placeId: string;
         partyDate: Date;
         partyTime: string;
         contactOneEmail: string;
@@ -92,15 +207,55 @@ export const PartyTable = () => {
         contactTwoPhoneNumber: string;
         contactTwoPreference: "call" | "text" | string;
     }) => {
-        const [hours, minutes] = data.partyTime.split(":").map(Number);
-        const datetime = new Date(data.partyDate);
-        datetime.setHours(hours ?? 0, minutes ?? 0, 0, 0);
+        // Check if we're editing and if date/time have changed
+        let party_datetime_str: string;
+        
+        if (sidebarMode === "edit" && editingParty) {
+            // Get original datetime components from the Date object
+            const originalDate = new Date(editingParty.datetime);
+            const originalDateStr = `${originalDate.getFullYear()}-${String(originalDate.getMonth() + 1).padStart(2, '0')}-${String(originalDate.getDate()).padStart(2, '0')}`;
+            const originalTimeStr = `${String(originalDate.getHours()).padStart(2, '0')}:${String(originalDate.getMinutes()).padStart(2, '0')}`;
+            
+            // Get new date components
+            const newDateStr = `${data.partyDate.getFullYear()}-${String(data.partyDate.getMonth() + 1).padStart(2, '0')}-${String(data.partyDate.getDate()).padStart(2, '0')}`;
+            
+            // If date and time haven't changed, use the original datetime string from backend
+            if (originalDateStr === newDateStr && originalTimeStr === data.partyTime) {
+                // Use the raw datetime string directly to avoid any timezone conversion
+                party_datetime_str = editingParty.rawDatetime;
+            } else {
+                // Date or time changed, reconstruct
+                const [hours, minutes] = data.partyTime.split(":").map(Number);
+                const datetime = new Date(data.partyDate);
+                datetime.setHours(hours ?? 0, minutes ?? 0, 0, 0);
+                
+                const year = datetime.getFullYear();
+                const month = String(datetime.getMonth() + 1).padStart(2, '0');
+                const day = String(datetime.getDate()).padStart(2, '0');
+                const hour = String(datetime.getHours()).padStart(2, '0');
+                const minute = String(datetime.getMinutes()).padStart(2, '0');
+                const second = String(datetime.getSeconds()).padStart(2, '0');
+                party_datetime_str = `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+            }
+        } else {
+            // Creating new party
+            const [hours, minutes] = data.partyTime.split(":").map(Number);
+            const datetime = new Date(data.partyDate);
+            datetime.setHours(hours ?? 0, minutes ?? 0, 0, 0);
+            
+            const year = datetime.getFullYear();
+            const month = String(datetime.getMonth() + 1).padStart(2, '0');
+            const day = String(datetime.getDate()).padStart(2, '0');
+            const hour = String(datetime.getHours()).padStart(2, '0');
+            const minute = String(datetime.getMinutes()).padStart(2, '0');
+            const second = String(datetime.getSeconds()).padStart(2, '0');
+            party_datetime_str = `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+        }
 
         const payload: AdminPartyPayload = {
             type: "admin",
-            // Placeholder place_id until address->place mapping is wired
-            place_id: data.address,
-            party_datetime: datetime.toISOString(),
+            place_id: data.placeId,
+            party_datetime: party_datetime_str,
             contact_one_email: data.contactOneEmail,
             contact_two: {
                 email: data.contactTwoEmail,
@@ -108,7 +263,7 @@ export const PartyTable = () => {
                 last_name: data.contactTwoLastName,
                 phone_number: data.contactTwoPhoneNumber,
                 contact_preference:
-                    (data.contactTwoPreference as "call" | "text") ?? "call",
+                (data.contactTwoPreference as "call" | "text") ?? "call",
             },
         };
 
@@ -287,6 +442,7 @@ export const PartyTable = () => {
                 data={parties}
                 columns={columns}
                 resourceName="Party"
+                initialSort={[{ id: "datetime", desc: true }]}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
                 onCreateNew={handleCreate}
@@ -316,11 +472,14 @@ export const PartyTable = () => {
                     </div>
                     <PartyTableCreateEditForm
                         onSubmit={handleFormSubmit}
+                        submissionError={submissionError}
                         editData={
                             editingParty
                                 ? {
                                       address: editingParty.location
                                           ?.formattedAddress || "",
+                                      placeId: editingParty.location
+                                          ?.googlePlaceId || "",
                                       partyDate: new Date(editingParty.datetime),
                                       partyTime: new Date(
                                           editingParty.datetime

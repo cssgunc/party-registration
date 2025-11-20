@@ -67,6 +67,7 @@ export type TableProps<T> = {
     error?: Error | null;
     getDeleteDescription?: (row: T) => string;
     isDeleting?: boolean;
+    initialSort?: SortingState;
 };
 
 export function TableTemplate<T>({
@@ -81,12 +82,13 @@ export function TableTemplate<T>({
     error,
     getDeleteDescription,
     isDeleting,
+    initialSort = [],
 }: TableProps<T>) {
     const [pagination, setPagination] = useState<PaginationState>({
         pageIndex: 0,
         pageSize: 50,
     });
-    const [sorting, setSorting] = useState<SortingState>([]);
+    const [sorting, setSorting] = useState<SortingState>(initialSort);
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
     const [activeFilterColumn, setActiveFilterColumn] = useState<{
         column: Column<T, unknown>;
@@ -174,13 +176,26 @@ export function TableTemplate<T>({
             {/* Header with Create Button */}
             {(resourceName || onCreateNew) && (
                 <div className="flex justify-between items-center">
-                    <h2 className="text-2xl font-bold">{resourceName}s</h2>
-                    {onCreateNew && (
-                        <Button onClick={onCreateNew}>
-                            <Plus className="mr-2 h-4 w-4" />
-                            New {resourceName}
-                        </Button>
-                    )}
+                    {(() => {
+                        const lower = resourceName.toLowerCase();
+                        const pluralResourceName =
+                            lower.endsWith("y") && !["a", "e", "i", "o", "u"].includes(lower.charAt(lower.length - 2))
+                                ? resourceName.slice(0, -1) + "ies"
+                                : resourceName + "s";
+
+                        return (
+                            <>
+                                <h2 className="text-2xl font-bold">{pluralResourceName}</h2>
+
+                                {onCreateNew && (
+                                    <Button onClick={onCreateNew}>
+                                        <Plus className="mr-2 h-4 w-4" />
+                                        New {resourceName}
+                                    </Button>
+                                )}
+                            </>
+                        );
+                    })()}
                 </div>
             )}
 

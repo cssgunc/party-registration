@@ -47,13 +47,74 @@ export const StudentTable = () => {
                 lastRegistered: Date | null;
             };
         }) => studentService.updateStudent(id, data),
-        onSuccess: () => {
+        // Optimistically update the student in the cache so things like the
+        // "Is Registered" checkbox feel instant.
+        onMutate: async ({ id, data }) => {
+            await queryClient.cancelQueries({ queryKey: ["students"] });
+
+            const previous = queryClient.getQueryData([
+                "students",
+            ]);
+
+            queryClient.setQueryData([
+                "students",
+            ], (old: unknown) => {
+                if (!old || typeof old !== "object") return old;
+
+                // Support both paginated and simple array shapes just in case.
+                const oldWithItems = old as { items?: Student[] };
+                if (Array.isArray(oldWithItems.items)) {
+                    const paginated = old as {
+                        items: Student[];
+                        [key: string]: unknown;
+                    };
+                    return {
+                        ...paginated,
+                        items: paginated.items.map((s) =>
+                            s.id === id
+                                ? {
+                                      ...s,
+                                      firstName: data.firstName,
+                                      lastName: data.lastName,
+                                      phoneNumber: data.phoneNumber,
+                                      contactPreference: data.contactPreference,
+                                      lastRegistered: data.lastRegistered,
+                                  }
+                                : s,
+                        ),
+                    };
+                }
+
+                if (Array.isArray(old)) {
+                    return (old as Student[]).map((s) =>
+                        s.id === id
+                            ? {
+                                  ...s,
+                                  firstName: data.firstName,
+                                  lastName: data.lastName,
+                                  phoneNumber: data.phoneNumber,
+                                  contactPreference: data.contactPreference,
+                                  lastRegistered: data.lastRegistered,
+                              }
+                            : s,
+                    );
+                }
+
+                return old;
+            });
+
+            return { previous };
+        },
+        onError: (error: Error, _vars, context) => {
+            console.error("Failed to update student:", error);
+            if (context?.previous) {
+                queryClient.setQueryData(["students"], context.previous);
+            }
+        },
+        onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ["students"] });
             setSidebarOpen(false);
             setEditingStudent(null);
-        },
-        onError: (error: Error) => {
-            console.error("Failed to update student:", error);
         },
     });
 
@@ -117,11 +178,48 @@ export const StudentTable = () => {
     // Delete student mutation
     const deleteMutation = useMutation({
         mutationFn: (id: number) => studentService.deleteStudent(id),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["students"] });
+        // Optimistically remove the student from the cache.
+        onMutate: async (id: number) => {
+            await queryClient.cancelQueries({ queryKey: ["students"] });
+
+            const previous = queryClient.getQueryData([
+                "students",
+            ]);
+
+            queryClient.setQueryData([
+                "students",
+            ], (old: unknown) => {
+                if (!old || typeof old !== "object") return old;
+
+                const oldWithItems = old as { items?: Student[] };
+                if (Array.isArray(oldWithItems.items)) {
+                    const paginated = old as {
+                        items: Student[];
+                        [key: string]: unknown;
+                    };
+                    return {
+                        ...paginated,
+                        items: paginated.items.filter((s) => s.id !== id),
+                    };
+                }
+
+                if (Array.isArray(old)) {
+                    return (old as Student[]).filter((s) => s.id !== id);
+                }
+
+                return old;
+            });
+
+            return { previous };
         },
-        onError: (error: Error) => {
+        onError: (error: Error, _vars, context) => {
             console.error("Failed to delete student:", error);
+            if (context?.previous) {
+                queryClient.setQueryData(["students"], context.previous);
+            }
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ["students"] });
         },
     });
 

@@ -75,6 +75,7 @@ function toFrontendParty(raw: BackendParty): Party {
   return {
     id: raw.id,
     datetime: new Date(raw.party_datetime),
+    rawDatetime: raw.party_datetime,
     location: {
       id: raw.location.id,
       citationCount: raw.location.citation_count,
@@ -128,18 +129,20 @@ export class PartyService {
   }
 
   async listParties(
-    pageNumber: number = 1,
-    pageSize: number = 50
+    pageNumber?: number,
+    pageSize?: number
   ): Promise<PaginatedPartiesResponse> {
+    const params: Record<string, number> = {};
+    if (pageNumber !== undefined) params.page_number = pageNumber;
+    if (pageSize !== undefined) params.page_size = pageSize;
+
     const response = await this.client.get<{
       items: BackendParty[];
       total_records: number;
       page_size: number;
       page_number: number;
       total_pages: number;
-    }>("/parties", {
-      params: { page_number: pageNumber, page_size: pageSize },
-    });
+    }>("/parties", { params });
 
     return {
       ...response.data,

@@ -78,11 +78,27 @@ export const AccountTable = () => {
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => accountService.deleteAccount(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["accounts"] });
+    // Optimistically remove the account from the cache.
+    onMutate: async (id: number) => {
+      await queryClient.cancelQueries({ queryKey: ["accounts"] });
+
+      const previous = queryClient.getQueryData<Account[]>(["accounts"]);
+
+      queryClient.setQueryData<Account[] | undefined>(
+        ["accounts"],
+        (old) => old?.filter((a) => a.id !== id),
+      );
+
+      return { previous };
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _vars, context) => {
       console.error("Failed to delete account:", error);
+      if (context?.previous) {
+        queryClient.setQueryData(["accounts"], context.previous);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["accounts"] });
     },
   });
 

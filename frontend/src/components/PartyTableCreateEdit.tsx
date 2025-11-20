@@ -1,5 +1,6 @@
 "use client";
 
+import AddressSearch from "@/components/AddressSearch";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -22,6 +23,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { AutocompleteResult, LocationService } from "@/services/locationService";
 import { addBusinessDays, format, isAfter, startOfDay } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { useState } from "react";
@@ -29,6 +31,7 @@ import * as z from "zod";
 
 export const PartyTableCreateEditSchema = z.object({
     address: z.string().min(1, "Address is required"),
+    placeId: z.string().min(1, "Please select an address from the search results"),
     partyDate: z.date({
         message: "Party date is required",
     }).refine(
@@ -51,12 +54,16 @@ type PartyCreateEditValues = z.infer<typeof PartyTableCreateEditSchema>;
 
 interface PartyRegistrationFormProps {
     onSubmit: (data: PartyCreateEditValues) => void | Promise<void>;
-    editData?: PartyCreateEditValues
+    editData?: PartyCreateEditValues;
+    submissionError?: string | null;
 }
 
-export default function PartyTableCreateEditForm({ onSubmit, editData }: PartyRegistrationFormProps) {
+export default function PartyTableCreateEditForm({ onSubmit, editData, submissionError }: PartyRegistrationFormProps) {
+    const locationService = new LocationService();
+    
     const [formData, setFormData] = useState<Partial<PartyCreateEditValues>>({
         address: editData?.address ?? "",
+        placeId: editData?.placeId ?? undefined,
         partyDate: editData?.partyDate ?? undefined,
         partyTime: editData?.partyTime ?? "",
         contactOneEmail: editData?.contactOneEmail ?? "",
@@ -94,6 +101,21 @@ export default function PartyTableCreateEditForm({ onSubmit, editData }: PartyRe
         }
     };
 
+    const handleAddressSelect = (address: AutocompleteResult | null) => {
+        setFormData(prev => ({
+            ...prev,
+            address: address?.formatted_address || "",
+            placeId: address?.place_id || undefined
+        }));
+        if (errors.address) {
+            setErrors(prev => {
+                const newErrors = { ...prev };
+                delete newErrors.address;
+                return newErrors;
+            });
+        }
+    };
+
     const updateField = <K extends keyof PartyCreateEditValues>(
         field: K,
         value: PartyCreateEditValues[K]
@@ -110,16 +132,22 @@ export default function PartyTableCreateEditForm({ onSubmit, editData }: PartyRe
 
     return (
         <form onSubmit={handleSubmit}>
+            {submissionError && (
+                <div className="mb-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive" role="alert">
+                    {submissionError}
+                </div>
+            )}
             <FieldGroup>
                 <FieldSet>
                     <Field data-invalid={!!errors.address}>
                         <FieldLabel htmlFor="party-address">Party Address</FieldLabel>
-                        <Input
-                            id="party-address"
-                            placeholder="123 Main St, Chapel Hill, NC"
+                        <AddressSearch
                             value={formData.address}
-                            onChange={(e) => updateField("address", e.target.value)}
-                            aria-invalid={!!errors.address}
+                            onSelect={handleAddressSelect}
+                            locationService={locationService}
+                            placeholder="Search for the party address..."
+                            className="w-full"
+                            error={errors.address}
                         />
                         {errors.address && <FieldError>{errors.address}</FieldError>}
                     </Field>

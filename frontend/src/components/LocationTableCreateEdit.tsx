@@ -1,5 +1,6 @@
 "use client";
 
+import AddressSearch from "@/components/AddressSearch";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -15,28 +16,33 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover";
+import { AutocompleteResult, LocationService } from "@/services/locationService";
 import { addBusinessDays, format, isAfter, startOfDay } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { useState } from "react";
 import * as z from "zod";
 
-export const LocationTableCreateEditSchema = z.object({
+export const LocationCreateEditSchema = z.object({
     address: z.string().min(1, "Address is required"),
+    placeId: z.string().min(1, "Please select an address from the search results"),
     holdExpiration: z.date().nullable(),
     warningCount: z.number(),
     citationCount: z.number(),
 });
 
-type LocationCreateEditValues = z.infer<typeof LocationTableCreateEditSchema>;
+type LocationCreateEditValues = z.infer<typeof LocationCreateEditSchema>;
 
 interface StudentRegistrationFormProps {
     onSubmit: (data: LocationCreateEditValues) => void | Promise<void>;
     editData?: LocationCreateEditValues
 }
 
-export default function LocationTableCreateEditForm({ onSubmit, editData = undefined }: StudentRegistrationFormProps) {
+export default function LocationTableCreateEditForm({ onSubmit, editData }: StudentRegistrationFormProps) {
+    const locationService = new LocationService();
+    
     const [formData, setFormData] = useState<Partial<LocationCreateEditValues>>({
         address: editData?.address ?? "",
+        placeId: editData?.placeId ?? undefined,
         holdExpiration: editData?.holdExpiration ?? null,
         warningCount: editData?.warningCount ?? 0,
         citationCount: editData?.citationCount ?? 0,
@@ -48,7 +54,7 @@ export default function LocationTableCreateEditForm({ onSubmit, editData = undef
         e.preventDefault();
         setErrors({});
 
-        const result = LocationTableCreateEditSchema.safeParse(formData);
+        const result = LocationCreateEditSchema.safeParse(formData);
 
         if (!result.success) {
             const fieldErrors: Record<string, string> = {};
@@ -66,6 +72,21 @@ export default function LocationTableCreateEditForm({ onSubmit, editData = undef
             await onSubmit(result.data);
         } finally {
             setIsSubmitting(false);
+        }
+    };
+
+    const handleAddressSelect = (address: AutocompleteResult | null) => {
+        setFormData(prev => ({
+            ...prev,
+            address: address?.formatted_address || "",
+            placeId: address?.place_id || undefined
+        }));
+        if (errors.address) {
+            setErrors(prev => {
+                const newErrors = { ...prev };
+                delete newErrors.address;
+                return newErrors;
+            });
         }
     };
 
@@ -89,12 +110,13 @@ export default function LocationTableCreateEditForm({ onSubmit, editData = undef
                 <FieldSet>
                     <Field data-invalid={!!errors.address}>
                         <FieldLabel htmlFor="party-address">Party Address</FieldLabel>
-                        <Input
-                            id="party-address"
-                            placeholder="123 Main St, Chapel Hill, NC"
+                        <AddressSearch
                             value={formData.address}
-                            onChange={(e) => updateField("address", e.target.value)}
-                            aria-invalid={!!errors.address}
+                            onSelect={handleAddressSelect}
+                            locationService={locationService}
+                            placeholder="Search for the location address..."
+                            className="w-full"
+                            error={errors.address}
                         />
                         {errors.address && <FieldError>{errors.address}</FieldError>}
                     </Field>
