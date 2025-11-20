@@ -19,9 +19,14 @@ function mapFormToStudentDTO(
   values: PartyFormValues,
   placeId: string
 ): StudentCreatePartyDTO {
-  const party_datetime = `${values.partyDate.toISOString().split("T")[0]}T${
-    values.partyTime
-  }:00`;
+  const date = values.partyDate; // Date object
+  const [hours, minutes] = values.partyTime.split(":");
+
+  // Set the time
+  date.setHours(Number(hours), Number(minutes), 0, 0);
+
+  // produce offset-aware ISO string
+  const party_datetime = date.toISOString();
 
   return {
     type: "student",

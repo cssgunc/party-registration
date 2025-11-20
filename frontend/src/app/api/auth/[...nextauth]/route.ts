@@ -22,7 +22,7 @@ const authOptions: NextAuthOptions = {
         // Replace this with the actual authentication logic once we know how ONYEN SSO works
         if (username === "admin" && password === "password") {
           return {
-            id: "1",
+            id: "3",
             name: "Admin User",
             email: "admin@example.com",
             accessToken: "fake-access-token-for-dev",
@@ -96,4 +96,4 @@ const authOptions: NextAuthOptions = {
 
 const handler = NextAuth(authOptions);
 
-export { handler as GET, handler as POST, authOptions };
+export { authOptions, handler as GET, handler as POST };
