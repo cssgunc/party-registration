@@ -30,7 +30,9 @@ function LocationInfoChipDetails({ data }: LocationInfoChipDetailsProps) {
           <div>
             <label className="block text-sm font-medium">Active Hold</label>
             <p className="p-2 border rounded">
-              {d.hasActiveHold ? "Yes" : "No"}
+              {d.hasActiveHold
+                ? "Active: Expires " + d.holdExpirationDate?.toDateString()
+                : "No"}
             </p>
           </div>
         </div>

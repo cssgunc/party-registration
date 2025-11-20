@@ -1,20 +1,31 @@
 "use client";
 import { useSidebar } from "@/components/SidebarContext";
+import { Sheet } from "lucide-react";
+import {
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "./ui/sheet";
 
-export function GenericSidebar() {
-  const { isOpen, content, closeSidebar } = useSidebar();
+function GenericSidebar() {
+  const { isOpen, title, description, content } = useSidebar();
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed top-0 right-0 w-96 h-full bg-white shadow-lg p-4 overflow-auto z-50">
-      <button
-        className="mb-4 px-3 py-1 bg-gray-200 rounded"
-        onClick={closeSidebar}
-      >
-        Close
-      </button>
-      {content}
-    </div>
+    <Sheet>
+      <SheetTrigger>{/* Add sheet trigger*/}</SheetTrigger>
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>{title}</SheetTitle>
+          <SheetDescription>{description}</SheetDescription>
+        </SheetHeader>
+        {content}
+      </SheetContent>
+    </Sheet>
   );
 }
+
+export default GenericSidebar;

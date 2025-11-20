@@ -20,7 +20,12 @@ const Page = () => {
       <button
         className="bg-gray-200 px-3 py-1 rounded mb-6"
         onClick={() =>
-          openSidebar("test-sidebar", <div>Hello from Sidebar!</div>)
+          openSidebar(
+            "test-sidebar",
+            "Example",
+            "Example Description",
+            <div>Hello from Sidebar!</div>
+          )
         }
       >
         Open Sidebar
@@ -30,12 +35,16 @@ const Page = () => {
       <GenericInfoChip
         chipKey="student-1"
         shortName={`${defaultStudent.firstName} ${defaultStudent.lastName}`}
+        title="Student Information"
+        description="Detailed information about the selected student"
         sidebarContent={<StudentInfoChipDetails data={defaultStudent} />}
       />
 
       <h2 className="text-2xl font-bold mt-6 mb-4">Location Info Chip</h2>
       <GenericInfoChip
         chipKey="location-1"
+        title="Location Information"
+        description="Detailed information about the selected location"
         shortName={defaultLocation.formattedAddress}
         sidebarContent={<LocationInfoChipDetails data={defaultLocation} />}
       />

@@ -33,6 +33,22 @@ export function StudentInfoChipDetails({ data }: StudentInfoChipDetailsProps) {
             </label>
             <p className="p-2 border rounded">{d.contactPreference}</p>
           </div>
+          <div>
+            <label className="block text-sm font-medium">PID</label>
+            <p className="p-2 border rounded">{d.pid}</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium">Email</label>
+            <p className="p-2 border rounded">{d.email}</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium">
+              Completed Party Smart
+            </label>
+            <p className="p-2 border rounded">
+              {d.lastRegistered != null ? "Yes" : "Not Registered"}
+            </p>
+          </div>
         </div>
       )}
     />

@@ -1,7 +1,6 @@
 "use client";
 
 import { ReactNode } from "react";
-import { BsLayoutSidebar } from "react-icons/bs";
 
 interface GenericChipDetailsProps<T> {
   data: T;
@@ -18,9 +17,6 @@ export function GenericChipDetails<T>({
 }: GenericChipDetailsProps<T>) {
   return (
     <div className="space-y-3">
-      <div>
-        <BsLayoutSidebar />
-      </div>
       <h1 className="text-lg font-bold">{title}</h1>
       <h2 className="text-lg">{description}</h2>
       {renderView(data)}
