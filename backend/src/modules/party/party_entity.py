@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Self
 
 from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, select
@@ -19,7 +19,9 @@ class PartyEntity(EntityBase):
     __tablename__ = "parties"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    party_datetime: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    party_datetime: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
     location_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("locations.id", ondelete="CASCADE"), nullable=False
     )
@@ -58,9 +60,14 @@ class PartyEntity(EntityBase):
 
     def to_model(self) -> Party:
         """Convert entity to model. Requires relationships to be eagerly loaded."""
+        # Ensure party_datetime is timezone-aware
+        party_dt = self.party_datetime
+        if party_dt.tzinfo is None:
+            party_dt = party_dt.replace(tzinfo=timezone.utc)
+
         return Party(
             id=self.id,
-            party_datetime=self.party_datetime,
+            party_datetime=party_dt,
             location=self.location.to_model(),
             contact_one=self.contact_one.to_dto(),
             contact_two=Contact(

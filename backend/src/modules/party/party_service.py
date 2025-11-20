@@ -427,7 +427,7 @@ class PartyService:
     async def get_parties_by_radius(
         self, latitude: float, longitude: float
     ) -> List[Party]:
-        current_time = datetime.now()
+        current_time = datetime.now(timezone.utc)
         start_time = current_time - timedelta(hours=6)
         end_time = current_time + timedelta(hours=12)
 

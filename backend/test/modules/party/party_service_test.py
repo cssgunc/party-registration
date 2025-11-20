@@ -1,5 +1,5 @@
 import csv
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock
 
 import pytest
@@ -97,7 +97,7 @@ async def sample_party_data(test_async_session: AsyncSession) -> PartyData:
     await test_async_session.commit()
 
     return PartyData(
-        party_datetime=datetime.now() + timedelta(days=1),
+        party_datetime=datetime.now(timezone.utc) + timedelta(days=1),
         location_id=1,
         contact_one_id=1,
         contact_two=Contact(
@@ -142,7 +142,7 @@ async def multiple_parties_in_db(
 
     for days_offset in [1, 2, 5]:
         party_entity = PartyEntity(
-            party_datetime=datetime.now() + timedelta(days=days_offset),
+            party_datetime=datetime.now(timezone.utc) + timedelta(days=days_offset),
             location_id=sample_party_data.location_id,
             contact_one_id=sample_party_data.contact_one_id,
             contact_two_email=sample_party_data.contact_two.email,
@@ -224,7 +224,7 @@ async def parties_with_radius_addresses(
     test_async_session.add(address1)
 
     party1 = PartyEntity(
-        party_datetime=datetime.now() + timedelta(hours=2),
+        party_datetime=datetime.now(timezone.utc) + timedelta(hours=2),
         location_id=1,
         contact_one_id=1,
         contact_two_email="test2@example.com",
@@ -246,7 +246,7 @@ async def parties_with_radius_addresses(
     test_async_session.add(address2)
 
     party2 = PartyEntity(
-        party_datetime=datetime.now() + timedelta(hours=4),
+        party_datetime=datetime.now(timezone.utc) + timedelta(hours=4),
         location_id=2,
         contact_one_id=3,
         contact_two_email="test4@example.com",
@@ -268,7 +268,7 @@ async def parties_with_radius_addresses(
     test_async_session.add(address3)
 
     party3 = PartyEntity(
-        party_datetime=datetime.now() + timedelta(hours=6),
+        party_datetime=datetime.now(timezone.utc) + timedelta(hours=6),
         location_id=3,
         contact_one_id=5,
         contact_two_email="test6@example.com",
@@ -441,7 +441,7 @@ async def test_get_parties(
 
     # Create multiple parties directly in the database
     party1 = PartyEntity(
-        party_datetime=datetime.now() + timedelta(days=1),
+        party_datetime=datetime.now(timezone.utc) + timedelta(days=1),
         location_id=1,
         contact_one_id=1,
         contact_two_email="test2@example.com",
@@ -451,7 +451,7 @@ async def test_get_parties(
         contact_two_contact_preference=ContactPreference.text,
     )
     party2 = PartyEntity(
-        party_datetime=datetime.now() + timedelta(days=2),
+        party_datetime=datetime.now(timezone.utc) + timedelta(days=2),
         location_id=2,
         contact_one_id=3,
         contact_two_email="test4@example.com",
@@ -641,7 +641,7 @@ async def test_get_parties_by_date_range_multiple_parties(
     await test_async_session.commit()
 
     # Create parties directly in the database at different dates
-    base_datetime = datetime.now() + timedelta(days=1)
+    base_datetime = datetime.now(timezone.utc) + timedelta(days=1)
     party1 = PartyEntity(
         party_datetime=base_datetime,
         location_id=1,
@@ -872,7 +872,7 @@ async def test_get_party_count(
     initial_count = await party_service.get_party_count()
 
     party = PartyEntity(
-        party_datetime=datetime.now() + timedelta(days=1),
+        party_datetime=datetime.now(timezone.utc) + timedelta(days=1),
         location_id=1,
         contact_one_id=1,
         contact_two_email="test2@example.com",
@@ -1001,7 +1001,7 @@ async def test_get_parties_by_radius_time_window_outside_past(
     await test_async_session.commit()
 
     party1 = PartyEntity(
-        party_datetime=datetime.now() - timedelta(hours=7),
+        party_datetime=datetime.now(timezone.utc) - timedelta(hours=7),
         location_id=1,
         contact_one_id=1,
         contact_two_email="test2@example.com",
@@ -1038,7 +1038,7 @@ async def test_get_parties_by_radius_time_window_outside_future(
     await test_async_session.commit()
 
     party1 = PartyEntity(
-        party_datetime=datetime.now() + timedelta(hours=13),
+        party_datetime=datetime.now(timezone.utc) + timedelta(hours=13),
         location_id=1,
         contact_one_id=1,
         contact_two_email="test2@example.com",
@@ -1113,7 +1113,7 @@ async def test_get_parties_by_radius_time_window_boundaries(
     await test_async_session.commit()
 
     party1 = PartyEntity(
-        party_datetime=datetime.now() - timedelta(hours=5, minutes=59),
+        party_datetime=datetime.now(timezone.utc) - timedelta(hours=5, minutes=59),
         location_id=1,
         contact_one_id=1,
         contact_two_email="test2@example.com",
@@ -1125,7 +1125,7 @@ async def test_get_parties_by_radius_time_window_boundaries(
     test_async_session.add(party1)
 
     party2 = PartyEntity(
-        party_datetime=datetime.now() + timedelta(hours=11, minutes=59),
+        party_datetime=datetime.now(timezone.utc) + timedelta(hours=11, minutes=59),
         location_id=2,
         contact_one_id=3,
         contact_two_email="test4@example.com",
@@ -1168,7 +1168,7 @@ async def test_get_parties_by_radius_missing_address_skipped(
     await test_async_session.commit()
 
     party1 = PartyEntity(
-        party_datetime=datetime.now() + timedelta(hours=2),
+        party_datetime=datetime.now(timezone.utc) + timedelta(hours=2),
         location_id=1,
         contact_one_id=1,
         contact_two_email="test2@example.com",
@@ -1182,7 +1182,7 @@ async def test_get_parties_by_radius_missing_address_skipped(
     await test_async_session.refresh(party1)
 
     invalid_party = PartyEntity(
-        party_datetime=datetime.now() + timedelta(hours=3),
+        party_datetime=datetime.now(timezone.utc) + timedelta(hours=3),
         location_id=999,
         contact_one_id=1,
         contact_two_email="test2@example.com",
@@ -1236,7 +1236,7 @@ async def parties_with_full_relationships(
 
     # Create parties
     party1 = PartyEntity(
-        party_datetime=datetime(2024, 6, 15, 20, 30, 0),
+        party_datetime=datetime(2024, 6, 15, 20, 30, 0, tzinfo=timezone.utc),
         location_id=1,
         contact_one_id=1,
         contact_two_email="contact2@example.com",
@@ -1246,7 +1246,7 @@ async def parties_with_full_relationships(
         contact_two_contact_preference=ContactPreference.text,
     )
     party2 = PartyEntity(
-        party_datetime=datetime(2024, 7, 20, 18, 0, 0),
+        party_datetime=datetime(2024, 7, 20, 18, 0, 0, tzinfo=timezone.utc),
         location_id=1,
         contact_one_id=1,
         contact_two_email="contact2@example.com",
@@ -1461,7 +1461,7 @@ async def test_export_parties_to_csv_special_characters(
     await test_async_session.commit()
 
     party = PartyEntity(
-        party_datetime=datetime(2024, 6, 15, 20, 30, 0),
+        party_datetime=datetime(2024, 6, 15, 20, 30, 0, tzinfo=timezone.utc),
         location_id=1,
         contact_one_id=1,
         contact_two_email="contact2@example.com",
