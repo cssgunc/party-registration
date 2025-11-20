@@ -1,6 +1,15 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+import { CalendarIcon } from "lucide-react";
 import { type DateRange } from "react-day-picker";
 
 interface DateRangeFilterProps {
@@ -30,15 +39,40 @@ export default function DateRangeFilter({
   };
 
   return (
-    <div className="flex flex-col gap-4">
-      <Calendar
-        mode="range"
-        defaultMonth={dateRange?.from}
-        selected={dateRange}
-        onSelect={handleSelect}
-        numberOfMonths={1}
-        className="rounded-md"
-      />
-    </div>
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          className={cn(
+            "w-full justify-start text-left font-normal",
+            !dateRange && "text-muted-foreground"
+          )}
+        >
+          <CalendarIcon />
+          {dateRange?.from ? (
+            dateRange.to ? (
+              <>
+                {format(dateRange.from, "MM/dd/yyyy")} -{" "}
+                {format(dateRange.to, "MM/dd/yyyy")}
+              </>
+            ) : (
+              format(dateRange.from, "MM/dd/yyyy")
+            )
+          ) : (
+            <span>Pick a date range</span>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="range"
+          defaultMonth={dateRange?.from}
+          selected={dateRange}
+          onSelect={handleSelect}
+          numberOfMonths={2}
+          className="rounded-md"
+        />
+      </PopoverContent>
+    </Popover>
   );
 }
