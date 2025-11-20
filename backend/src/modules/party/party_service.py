@@ -450,6 +450,57 @@ class PartyService:
 
         return [party.to_model() for party in parties_within_radius]
 
+    async def get_parties_by_radius_and_date_range(
+        self,
+        latitude: float,
+        longitude: float,
+        start_date: datetime,
+        end_date: datetime,
+    ) -> List[Party]:
+        """
+        Get parties within a radius of a location within a specified date range.
+
+        Args:
+            latitude: Latitude of the search center
+            longitude: Longitude of the search center
+            start_date: Start of the date range (inclusive)
+            end_date: End of the date range (inclusive)
+
+        Returns:
+            List of parties within the radius and date range
+        """
+        result = await self.session.execute(
+            select(PartyEntity)
+            .options(
+                selectinload(PartyEntity.location),
+                selectinload(PartyEntity.contact_one).selectinload(
+                    StudentEntity.account
+                ),
+            )
+            .where(
+                PartyEntity.party_datetime >= start_date,
+                PartyEntity.party_datetime <= end_date,
+            )
+        )
+        parties = result.scalars().all()
+
+        parties_within_radius = []
+        for party in parties:
+            if party.location is None:
+                continue
+
+            distance = self._calculate_haversine_distance(
+                latitude,
+                longitude,
+                float(party.location.latitude),
+                float(party.location.longitude),
+            )
+
+            if distance <= env.PARTY_SEARCH_RADIUS_MILES:
+                parties_within_radius.append(party)
+
+        return [party.to_model() for party in parties_within_radius]
+
     def _calculate_haversine_distance(
         self, lat1: float, lon1: float, lat2: float, lon2: float
     ) -> float:
