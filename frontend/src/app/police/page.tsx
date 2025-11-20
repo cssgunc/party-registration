@@ -23,13 +23,15 @@ export default function PolicePage() {
   const [startDate, setStartDate] = useState<Date | undefined>(today);
   const [endDate, setEndDate] = useState<Date | undefined>(today);
   const [showDateFilter, setShowDateFilter] = useState(false);
-  const [searchAddress, setSearchAddress] =
-    useState<AutocompleteResult | null>(null);
+  const [searchAddress, setSearchAddress] = useState<AutocompleteResult | null>(
+    null
+  );
 
   // Fetch place details when address is selected
   const { data: placeDetails } = useQuery({
     queryKey: ["place-details", searchAddress?.place_id],
-    queryFn: () => policeLocationService.getPlaceDetails(searchAddress!.place_id),
+    queryFn: () =>
+      policeLocationService.getPlaceDetails(searchAddress!.place_id),
     enabled: !!searchAddress?.place_id,
   });
 
@@ -45,10 +47,7 @@ export default function PolicePage() {
   });
 
   // Fetch nearby parties if address search is active
-  const {
-    data: nearbyParties,
-    isLoading: isLoadingNearby,
-  } = useQuery({
+  const { data: nearbyParties, isLoading: isLoadingNearby } = useQuery({
     queryKey: ["parties-nearby", searchAddress?.place_id, startDate, endDate],
     queryFn: () =>
       policeService.getPartiesNearby(
@@ -82,9 +81,13 @@ export default function PolicePage() {
               onClick={() => setShowDateFilter(!showDateFilter)}
               className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-800"
             >
-              <span>{startDate ? format(startDate, "MM/dd/yyyy") : "mm/dd/yyyy"}</span>
+              <span>
+                {startDate ? format(startDate, "MM/dd/yyyy") : "mm/dd/yyyy"}
+              </span>
               <span>and</span>
-              <span>{endDate ? format(endDate, "MM/dd/yyyy") : "mm/dd/yyyy"}</span>
+              <span>
+                {endDate ? format(endDate, "MM/dd/yyyy") : "mm/dd/yyyy"}
+              </span>
               {showDateFilter ? (
                 <ChevronUp className="w-4 h-4" />
               ) : (
@@ -106,7 +109,9 @@ export default function PolicePage() {
 
           {/* Party Search Section */}
           <div className="px-6 py-4 flex-1 flex flex-col overflow-hidden">
-            <h2 className="text-xl font-semibold mb-4 flex-shrink-0">Party Search</h2>
+            <h2 className="text-xl font-semibold mb-4 flex-shrink-0">
+              Party Search
+            </h2>
 
             {/* Address Search */}
             <div className="mb-6 flex-shrink-0">
