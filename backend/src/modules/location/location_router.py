@@ -1,17 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from src.core.authentication import (
     authenticate_admin,
+    authenticate_by_role,
     authenticate_staff_or_admin,
-    authenticate_user,
 )
 from src.modules.account.account_model import Account
 from src.modules.location.location_model import (
+    AddressData,
     Location,
     LocationCreate,
     LocationData,
     PaginatedLocationResponse,
 )
 from src.modules.location.location_service import LocationService
+from src.modules.police.police_model import PoliceAccount
 
 from .location_model import AutocompleteInput, AutocompleteResult
 
@@ -28,7 +30,9 @@ location_router = APIRouter(prefix="/api/locations", tags=["locations"])
 async def autocomplete_address(
     input_data: AutocompleteInput,
     location_service: LocationService = Depends(),
-    user: Account = Depends(authenticate_user),
+    user: Account | PoliceAccount = Depends(
+        authenticate_by_role("police", "student", "admin", "staff")
+    ),
 ) -> list[AutocompleteResult]:
     """
     Autocomplete address search endpoint.
@@ -47,6 +51,38 @@ async def autocomplete_address(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to fetch address suggestions. Please try again later.",
+        )
+
+
+@location_router.get(
+    "/place-details/{place_id}",
+    response_model=AddressData,
+    status_code=status.HTTP_200_OK,
+    summary="Get place details from Google Maps place ID",
+    description="Returns address details including coordinates for a given place ID.",
+)
+async def get_place_details(
+    place_id: str,
+    location_service: LocationService = Depends(),
+    user: Account | PoliceAccount = Depends(
+        authenticate_by_role("police", "student", "admin", "staff")
+    ),
+) -> AddressData:
+    """
+    Get place details endpoint.
+    """
+    try:
+        address_data = await location_service.get_place_details(place_id)
+        return address_data
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch place details. Please try again later.",
         )
 
 
