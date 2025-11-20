@@ -9,11 +9,12 @@ import {
   Pin,
   useMap,
 } from "@vis.gl/react-google-maps";
+import { format } from "date-fns";
 import { useCallback, useEffect, useState } from "react";
 interface PoiMarkersProps {
   pois: (Poi & { party?: Party })[];
   activePoiKey?: string;
-  onSelect?: (party: Party) => void; // 👈 new
+  onSelect?: (party: Party | null) => void;
 }
 type Poi = {
   key: string;
@@ -25,7 +26,7 @@ interface EmbeddedMapProps {
   parties: Party[];
   activeParty?: Party;
   center?: { lat: number; lng: number };
-  onSelect?: (party: Party) => void;
+  onSelect?: (party: Party | null) => void;
 }
 
 const EmbeddedMap = ({
@@ -58,7 +59,7 @@ const EmbeddedMap = ({
   const mapKey = center ? `${center.lat}-${center.lng}` : "default";
 
   return (
-    <div className="w-full h-[450px] overflow-hidden rounded-2xl shadow-md">
+    <div className="w-full h-full overflow-hidden rounded-2xl shadow-md">
       <APIProvider
         apiKey={API_KEY}
         onLoad={() => console.log("Maps API loaded.")}
@@ -85,12 +86,31 @@ const EmbeddedMap = ({
 const PoiMarkers = ({ pois, activePoiKey, onSelect }: PoiMarkersProps) => {
   const map = useMap();
   const [selectedPoi, setSelectedPoi] = useState<(typeof pois)[0] | null>(null);
+
+  const formatPhoneNumber = (phone: string): string => {
+    const cleaned = phone.replace(/\D/g, "");
+    if (cleaned.length === 10) {
+      return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(
+        6
+      )}`;
+    }
+    return phone;
+  };
+
+  const getShortAddress = (location: Party["location"]): string => {
+    const parts = [];
+    if (location.streetNumber) parts.push(location.streetNumber);
+    if (location.streetName) parts.push(location.streetName);
+    if (location.unit) parts.push(`Unit ${location.unit}`);
+    return parts.join(" ") || location.formattedAddress;
+  };
+
   useEffect(() => {
     if (!map || !activePoiKey) return;
 
     const target = pois.find((p) => p.key === activePoiKey);
     if (target) map.panTo(target.location);
-  }, [activePoiKey, map]);
+  }, [activePoiKey, map, pois]);
 
   const handleClick = useCallback(
     (poi: (typeof pois)[0]) => (ev: google.maps.MapMouseEvent) => {
@@ -104,6 +124,13 @@ const PoiMarkers = ({ pois, activePoiKey, onSelect }: PoiMarkersProps) => {
     },
     [map, onSelect]
   );
+
+  const handleClose = useCallback(() => {
+    setSelectedPoi(null);
+    if (onSelect) {
+      onSelect(null);
+    }
+  }, [onSelect]);
 
   return (
     <>
@@ -121,12 +148,41 @@ const PoiMarkers = ({ pois, activePoiKey, onSelect }: PoiMarkersProps) => {
           />
         </AdvancedMarker>
       ))}
-      {selectedPoi && (
+      {selectedPoi && selectedPoi.party && (
         <InfoWindow
           position={selectedPoi.location}
-          onCloseClick={() => setSelectedPoi(null)}
+          onCloseClick={handleClose}
+          headerContent={
+            <div className="font-semibold text-sm flex">
+              {getShortAddress(selectedPoi.party.location)}
+            </div>
+          }
         >
-          <div>{selectedPoi.key}</div>
+          <div className="space-y-1.5 text-sm">
+            <div className="text-gray-700">
+              {format(selectedPoi.party.datetime, "MMM d, yyyy")} at{" "}
+              {format(selectedPoi.party.datetime, "h:mm a")}
+            </div>
+            <div className="border-t pt-1.5">
+              <div>
+                {selectedPoi.party.contactOne.firstName}{" "}
+                {selectedPoi.party.contactOne.lastName}
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span>
+                  {formatPhoneNumber(selectedPoi.party.contactOne.phoneNumber)}
+                </span>
+                <span className="text-gray-600">
+                  {selectedPoi.party.contactOne.contactPreference
+                    .charAt(0)
+                    .toUpperCase() +
+                    selectedPoi.party.contactOne.contactPreference
+                      .slice(1)
+                      .toLowerCase()}
+                </span>
+              </div>
+            </div>
+          </div>
         </InfoWindow>
       )}
     </>

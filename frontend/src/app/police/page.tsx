@@ -11,10 +11,9 @@ import {
   LocationService,
 } from "@/services/locationService";
 import { Party } from "@/types/api/party";
-import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { format, startOfDay } from "date-fns";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { startOfDay } from "date-fns";
+import { useEffect, useMemo, useState } from "react";
 
 // Create police-authenticated location service (module-level to prevent recreation)
 const policeLocationService = new LocationService(getMockClient("police"));
@@ -23,7 +22,6 @@ export default function PolicePage() {
   const today = startOfDay(new Date());
   const [startDate, setStartDate] = useState<Date | undefined>(today);
   const [endDate, setEndDate] = useState<Date | undefined>(today);
-  const [showDateFilter, setShowDateFilter] = useState(false);
   const [searchAddress, setSearchAddress] = useState<AutocompleteResult | null>(
     null
   );
@@ -60,28 +58,28 @@ export default function PolicePage() {
     enabled: !!searchAddress?.place_id && !!startDate && !!endDate,
   });
 
-  // Use nearby parties if address search is active or if there is a selected party, otherwise use all parties
+  // Use nearby parties if address search is active, otherwise use all parties
   const filteredParties = useMemo(() => {
-    const base =
-      searchAddress && nearbyParties !== undefined
-        ? [...nearbyParties]
-        : [...allParties];
-
-    if (!activeParty) return base;
-
-    return [activeParty, ...base.filter((p) => p.id !== activeParty.id)];
-  }, [allParties, nearbyParties, searchAddress, activeParty]);
+    return searchAddress && nearbyParties !== undefined
+      ? nearbyParties
+      : allParties;
+  }, [allParties, nearbyParties, searchAddress]);
 
   // Handle party selection from the list
-  function handleActiveParty(party: Party): void {
-    setActiveParty(party);
+  function handleActiveParty(party: Party | null): void {
+    setActiveParty(party ?? undefined);
     console.log("Active party set to:", party);
   }
 
-  // Aurto Scroll to the Top when selected party is selected
+  // Scroll to the selected party when it changes
   useEffect(() => {
-    const el = document.querySelector("#party-list");
-    if (el) el.scrollTop = 0;
+    if (!activeParty) return;
+    const partyElement = document.querySelector(
+      `[data-party-id="${activeParty.id}"]`
+    );
+    if (partyElement) {
+      partyElement.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
   }, [activeParty]);
 
   return (
@@ -93,46 +91,24 @@ export default function PolicePage() {
         {/* Left Panel - Filters and Search */}
         <div className="w-1/3 border-r border-gray-200 flex flex-col overflow-hidden">
           {/* Filter Between Section */}
-          <div className="px-6 py-4 flex-shrink-0">
-            <h2 className="text-xl font-semibold mb-2">Filter Between</h2>
-            <button
-              onClick={() => setShowDateFilter(!showDateFilter)}
-              className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-800"
-            >
-              <span>
-                {startDate ? format(startDate, "MM/dd/yyyy") : "mm/dd/yyyy"}
-              </span>
-              <span>and</span>
-              <span>
-                {endDate ? format(endDate, "MM/dd/yyyy") : "mm/dd/yyyy"}
-              </span>
-              {showDateFilter ? (
-                <ChevronUp className="w-4 h-4" />
-              ) : (
-                <ChevronDown className="w-4 h-4" />
-              )}
-            </button>
-
-            {showDateFilter && (
-              <div className="mt-4">
-                <DateRangeFilter
-                  startDate={startDate}
-                  endDate={endDate}
-                  onStartDateChange={setStartDate}
-                  onEndDateChange={setEndDate}
-                />
-              </div>
-            )}
+          <div className="px-6 py-4 flex-shrink-0 border-b border-gray-200">
+            <h2 className="text-xl font-semibold mb-4">Filter Between</h2>
+            <DateRangeFilter
+              startDate={startDate}
+              endDate={endDate}
+              onStartDateChange={setStartDate}
+              onEndDateChange={setEndDate}
+            />
           </div>
 
           {/* Party Search Section */}
-          <div className="px-6 py-4 flex-1 flex flex-col overflow-hidden">
+          <div className="px-6 py-4 flex-shrink-0 border-b border-gray-200">
             <h2 className="text-xl font-semibold mb-4 flex-shrink-0">
-              Party Search
+              Proximity Search
             </h2>
 
             {/* Address Search */}
-            <div className="mb-6 flex-shrink-0">
+            <div className="flex-shrink-0">
               <AddressSearch
                 value={searchAddress?.formatted_address || ""}
                 onSelect={setSearchAddress}
@@ -145,6 +121,13 @@ export default function PolicePage() {
                 </p>
               )}
             </div>
+          </div>
+
+          {/* Party List Section */}
+          <div className="px-6 py-4 flex-1 flex flex-col overflow-hidden">
+            <h2 className="text-xl font-semibold mb-4 flex-shrink-0">
+              Party List
+            </h2>
 
             {/* Loading State */}
             {(isLoading || isLoadingNearby) && (
@@ -162,7 +145,7 @@ export default function PolicePage() {
 
             {/* Party List - Scrollable */}
             {!isLoading && !isLoadingNearby && (
-              <div className="flex-1 overflow-y-auto" id="party-list">
+              <div className="flex-1 min-h-0" id="party-list">
                 <PartyList
                   parties={filteredParties}
                   onSelect={(party) => handleActiveParty(party)}
@@ -176,7 +159,7 @@ export default function PolicePage() {
         {/* Right Panel - Map */}
         <div className="flex-1 px-6 py-4 flex flex-col overflow-hidden">
           <h2 className="text-xl font-semibold mb-4 flex-shrink-0">
-            {searchAddress ? "Showing Nearby Parties" : "Showing All Parties"}
+            {searchAddress ? "Showing Nearby Parties" : "Showing Parties"}
           </h2>
           <div className="flex-1 overflow-hidden">
             <EmbeddedMap
