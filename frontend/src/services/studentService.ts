@@ -1,7 +1,8 @@
 import getMockClient from "@/lib/network/mockClient";
-import { Party, PartyAPI } from "@/types/api/party";
+import { BackendParty, Party } from "@/types/api/party";
 import { Student } from "@/types/api/student";
 import { AxiosInstance } from "axios";
+import { toFrontendParty } from "./partyService";
 
 /**
  * Student data for API requests (matches backend StudentData model)
@@ -11,25 +12,6 @@ export interface StudentDataRequest {
   last_name: string;
   phone_number: string;
   contact_preference: "call" | "text";
-}
-
-/**
- * Transform API party data to frontend format
- */
-function transformPartyAPIToParty(apiParty: PartyAPI): Party {
-  return {
-    id: apiParty.id,
-    datetime: new Date(apiParty.party_datetime),
-    location: apiParty.location,
-    contactOne: apiParty.contact_one,
-    contactTwo: {
-      email: apiParty.contact_two.email,
-      firstName: apiParty.contact_two.first_name,
-      lastName: apiParty.contact_two.last_name,
-      phoneNumber: apiParty.contact_two.phone_number,
-      contactPreference: apiParty.contact_two.contact_preference,
-    },
-  };
 }
 
 /**
@@ -70,10 +52,12 @@ export class StudentService {
    * Get all parties for the current authenticated student
    */
   async getMyParties(): Promise<Party[]> {
-    const response = await this.client.get<PartyAPI[]>("/students/me/parties");
+    const response = await this.client.get<BackendParty[]>(
+      "/students/me/parties"
+    );
 
     // Transform API format to frontend format
-    const parties = response.data.map(transformPartyAPIToParty);
+    const parties = response.data.map(toFrontendParty);
 
     return parties;
   }
