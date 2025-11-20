@@ -1283,3 +1283,596 @@ async def test_get_parties_by_radius_and_date_range_basic(
     assert party2.id in party_ids
     assert party3.id not in party_ids
 
+<<<<<<< HEAD
+=======
+
+@pytest.mark.asyncio
+async def test_get_parties_by_radius_and_date_range_empty_results(
+    party_service: PartyService,
+    test_async_session: AsyncSession,
+):
+    """Test that empty list is returned when no parties match criteria"""
+    search_lat = 40.7128
+    search_lon = -74.0060
+
+    start_date = datetime.now() + timedelta(days=1)
+    end_date = datetime.now() + timedelta(days=2)
+
+    parties = await party_service.get_parties_by_radius_and_date_range(
+        search_lat, search_lon, start_date, end_date
+    )
+    assert len(parties) == 0
+
+
+@pytest.mark.asyncio
+async def test_get_parties_by_radius_and_date_range_outside_date_range_before(
+    party_service: PartyService,
+    test_async_session: AsyncSession,
+    basic_accounts_and_students: dict,
+):
+    """Test that parties before start_date are excluded even if within radius"""
+    search_lat = 40.7128
+    search_lon = -74.0060
+
+    address1 = LocationEntity(
+        id=1,
+        latitude=search_lat + 0.002,
+        longitude=search_lon,
+        google_place_id="test_place_date_before",
+        formatted_address="Test Address Date Before",
+    )
+    test_async_session.add(address1)
+    await test_async_session.commit()
+
+    # Party before the date range
+    party1 = PartyEntity(
+        party_datetime=datetime.now() - timedelta(hours=1),
+        location_id=1,
+        contact_one_id=1,
+        contact_two_email="test2@example.com",
+        contact_two_first_name="Jane",
+        contact_two_last_name="Smith",
+        contact_two_phone_number="0987654321",
+        contact_two_contact_preference=ContactPreference.text,
+    )
+    test_async_session.add(party1)
+    await test_async_session.commit()
+
+    start_date = datetime.now()
+    end_date = datetime.now() + timedelta(hours=5)
+
+    parties = await party_service.get_parties_by_radius_and_date_range(
+        search_lat, search_lon, start_date, end_date
+    )
+    assert len(parties) == 0
+
+
+@pytest.mark.asyncio
+async def test_get_parties_by_radius_and_date_range_outside_date_range_after(
+    party_service: PartyService,
+    test_async_session: AsyncSession,
+    basic_accounts_and_students: dict,
+):
+    """Test that parties after end_date are excluded even if within radius"""
+    search_lat = 40.7128
+    search_lon = -74.0060
+
+    address1 = LocationEntity(
+        id=1,
+        latitude=search_lat + 0.002,
+        longitude=search_lon,
+        google_place_id="test_place_date_after",
+        formatted_address="Test Address Date After",
+    )
+    test_async_session.add(address1)
+    await test_async_session.commit()
+
+    # Party after the date range
+    party1 = PartyEntity(
+        party_datetime=datetime.now() + timedelta(hours=6),
+        location_id=1,
+        contact_one_id=1,
+        contact_two_email="test2@example.com",
+        contact_two_first_name="Jane",
+        contact_two_last_name="Smith",
+        contact_two_phone_number="0987654321",
+        contact_two_contact_preference=ContactPreference.text,
+    )
+    test_async_session.add(party1)
+    await test_async_session.commit()
+
+    start_date = datetime.now()
+    end_date = datetime.now() + timedelta(hours=5)
+
+    parties = await party_service.get_parties_by_radius_and_date_range(
+        search_lat, search_lon, start_date, end_date
+    )
+    assert len(parties) == 0
+
+
+@pytest.mark.asyncio
+async def test_get_parties_by_radius_and_date_range_boundary_start_date(
+    party_service: PartyService,
+    test_async_session: AsyncSession,
+    basic_accounts_and_students: dict,
+):
+    """Test that party at start_date boundary is included (inclusive boundary)"""
+    search_lat = 40.7128
+    search_lon = -74.0060
+
+    address1 = LocationEntity(
+        id=1,
+        latitude=search_lat + 0.002,
+        longitude=search_lon,
+        google_place_id="test_place_boundary_start",
+        formatted_address="Test Address Boundary Start",
+    )
+    test_async_session.add(address1)
+    await test_async_session.commit()
+
+    start_date = datetime.now() + timedelta(hours=2)
+    party1 = PartyEntity(
+        party_datetime=start_date,
+        location_id=1,
+        contact_one_id=1,
+        contact_two_email="test2@example.com",
+        contact_two_first_name="Jane",
+        contact_two_last_name="Smith",
+        contact_two_phone_number="0987654321",
+        contact_two_contact_preference=ContactPreference.text,
+    )
+    test_async_session.add(party1)
+    await test_async_session.commit()
+
+    end_date = datetime.now() + timedelta(hours=5)
+
+    parties = await party_service.get_parties_by_radius_and_date_range(
+        search_lat, search_lon, start_date, end_date
+    )
+    assert len(parties) == 1
+    assert parties[0].id == party1.id
+
+
+@pytest.mark.asyncio
+async def test_get_parties_by_radius_and_date_range_boundary_end_date(
+    party_service: PartyService,
+    test_async_session: AsyncSession,
+    basic_accounts_and_students: dict,
+):
+    """Test that party at end_date boundary is included (inclusive boundary)"""
+    search_lat = 40.7128
+    search_lon = -74.0060
+
+    address1 = LocationEntity(
+        id=1,
+        latitude=search_lat + 0.002,
+        longitude=search_lon,
+        google_place_id="test_place_boundary_end",
+        formatted_address="Test Address Boundary End",
+    )
+    test_async_session.add(address1)
+    await test_async_session.commit()
+
+    start_date = datetime.now() + timedelta(hours=1)
+    end_date = datetime.now() + timedelta(hours=3)
+
+    party1 = PartyEntity(
+        party_datetime=end_date,
+        location_id=1,
+        contact_one_id=1,
+        contact_two_email="test2@example.com",
+        contact_two_first_name="Jane",
+        contact_two_last_name="Smith",
+        contact_two_phone_number="0987654321",
+        contact_two_contact_preference=ContactPreference.text,
+    )
+    test_async_session.add(party1)
+    await test_async_session.commit()
+
+    parties = await party_service.get_parties_by_radius_and_date_range(
+        search_lat, search_lon, start_date, end_date
+    )
+    assert len(parties) == 1
+    assert parties[0].id == party1.id
+
+
+@pytest.mark.asyncio
+async def test_get_parties_by_radius_and_date_range_partial_overlap(
+    party_service: PartyService,
+    test_async_session: AsyncSession,
+    basic_accounts_and_students: dict,
+):
+    """Test that date range partially overlapping with parties only includes those within range"""
+    search_lat = 40.7128
+    search_lon = -74.0060
+
+    address1 = LocationEntity(
+        id=1,
+        latitude=search_lat + 0.002,
+        longitude=search_lon,
+        google_place_id="test_place_partial",
+        formatted_address="Test Address Partial",
+    )
+    test_async_session.add(address1)
+    await test_async_session.commit()
+
+    # Create parties at different times
+    party1 = PartyEntity(
+        party_datetime=datetime.now() + timedelta(hours=1),
+        location_id=1,
+        contact_one_id=1,
+        contact_two_email="test2@example.com",
+        contact_two_first_name="Jane",
+        contact_two_last_name="Smith",
+        contact_two_phone_number="0987654321",
+        contact_two_contact_preference=ContactPreference.text,
+    )
+    party2 = PartyEntity(
+        party_datetime=datetime.now() + timedelta(hours=3),
+        location_id=1,
+        contact_one_id=2,
+        contact_two_email="test3@example.com",
+        contact_two_first_name="John",
+        contact_two_last_name="Doe",
+        contact_two_phone_number="1111111111",
+        contact_two_contact_preference=ContactPreference.call,
+    )
+    party3 = PartyEntity(
+        party_datetime=datetime.now() + timedelta(hours=5),
+        location_id=1,
+        contact_one_id=1,
+        contact_two_email="test4@example.com",
+        contact_two_first_name="Alice",
+        contact_two_last_name="Brown",
+        contact_two_phone_number="2222222222",
+        contact_two_contact_preference=ContactPreference.text,
+    )
+    test_async_session.add_all([party1, party2, party3])
+    await test_async_session.commit()
+
+    # Date range that includes party1 and party2, but not party3
+    start_date = datetime.now()
+    end_date = datetime.now() + timedelta(hours=4)
+
+    parties = await party_service.get_parties_by_radius_and_date_range(
+        search_lat, search_lon, start_date, end_date
+    )
+    assert len(parties) == 2
+    party_ids = [p.id for p in parties]
+    assert party1.id in party_ids
+    assert party2.id in party_ids
+    assert party3.id not in party_ids
+
+
+@pytest.mark.asyncio
+async def test_get_parties_by_radius_and_date_range_outside_radius(
+    party_service: PartyService,
+    test_async_session: AsyncSession,
+    four_accounts_and_students: dict,
+):
+    """Test that parties within date range but outside radius are excluded"""
+    search_lat = 40.7128
+    search_lon = -74.0060
+
+    # Address 1: within radius (~0.14 miles)
+    address1 = LocationEntity(
+        id=1,
+        latitude=search_lat + 0.002,
+        longitude=search_lon,
+        google_place_id="test_place_outside_radius_1",
+        formatted_address="Test Address Outside Radius 1",
+    )
+    # Address 2: within radius (~0.21 miles)
+    address2 = LocationEntity(
+        id=2,
+        latitude=search_lat + 0.003,
+        longitude=search_lon,
+        google_place_id="test_place_outside_radius_2",
+        formatted_address="Test Address Outside Radius 2",
+    )
+    # Address 3: outside radius (~0.28 miles)
+    address3 = LocationEntity(
+        id=3,
+        latitude=search_lat + 0.004,
+        longitude=search_lon,
+        google_place_id="test_place_outside_radius_3",
+        formatted_address="Test Address Outside Radius 3",
+    )
+    test_async_session.add_all([address1, address2, address3])
+    await test_async_session.commit()
+
+    base_time = datetime.now() + timedelta(hours=2)
+
+    party1 = PartyEntity(
+        party_datetime=base_time,
+        location_id=1,
+        contact_one_id=1,
+        contact_two_email="test2@example.com",
+        contact_two_first_name="Jane",
+        contact_two_last_name="Smith",
+        contact_two_phone_number="0987654321",
+        contact_two_contact_preference=ContactPreference.text,
+    )
+    party2 = PartyEntity(
+        party_datetime=base_time + timedelta(hours=1),
+        location_id=2,
+        contact_one_id=2,
+        contact_two_email="test3@example.com",
+        contact_two_first_name="John",
+        contact_two_last_name="Doe",
+        contact_two_phone_number="1111111111",
+        contact_two_contact_preference=ContactPreference.call,
+    )
+    party3 = PartyEntity(
+        party_datetime=base_time + timedelta(hours=1),
+        location_id=3,
+        contact_one_id=3,
+        contact_two_email="test4@example.com",
+        contact_two_first_name="Alice",
+        contact_two_last_name="Brown",
+        contact_two_phone_number="2222222222",
+        contact_two_contact_preference=ContactPreference.text,
+    )
+    test_async_session.add_all([party1, party2, party3])
+    await test_async_session.commit()
+
+    # Date range that includes all parties
+    start_date = base_time - timedelta(hours=1)
+    end_date = base_time + timedelta(hours=3)
+
+    parties = await party_service.get_parties_by_radius_and_date_range(
+        search_lat, search_lon, start_date, end_date
+    )
+
+    # Should only return party1 and party2 (within radius), not party3 (outside radius)
+    assert len(parties) == 2
+    party_ids = [p.id for p in parties]
+    assert party1.id in party_ids
+    assert party2.id in party_ids
+    assert party3.id not in party_ids
+
+
+@pytest.mark.asyncio
+async def test_get_parties_by_radius_and_date_range_at_radius_boundary(
+    party_service: PartyService,
+    test_async_session: AsyncSession,
+    basic_accounts_and_students: dict,
+):
+    """Test that party at or just within radius boundary is included"""
+    search_lat = 40.7128
+    search_lon = -74.0060
+
+    # Create address very close to the radius boundary (within 0.25 miles)
+    # 0.25 miles ≈ 0.0036 degrees latitude
+    address1 = LocationEntity(
+        id=1,
+        latitude=search_lat + 0.003,  # ~0.21 miles, well within 0.25 miles
+        longitude=search_lon,
+        google_place_id="test_place_radius_boundary",
+        formatted_address="Test Address Radius Boundary",
+    )
+    test_async_session.add(address1)
+    await test_async_session.commit()
+
+    party1 = PartyEntity(
+        party_datetime=datetime.now() + timedelta(hours=2),
+        location_id=1,
+        contact_one_id=1,
+        contact_two_email="test2@example.com",
+        contact_two_first_name="Jane",
+        contact_two_last_name="Smith",
+        contact_two_phone_number="0987654321",
+        contact_two_contact_preference=ContactPreference.text,
+    )
+    test_async_session.add(party1)
+    await test_async_session.commit()
+
+    start_date = datetime.now()
+    end_date = datetime.now() + timedelta(hours=5)
+
+    parties = await party_service.get_parties_by_radius_and_date_range(
+        search_lat, search_lon, start_date, end_date
+    )
+    assert len(parties) == 1
+    assert parties[0].id == party1.id
+
+
+@pytest.mark.asyncio
+async def test_get_parties_by_radius_and_date_range_combined_filtering(
+    party_service: PartyService,
+    test_async_session: AsyncSession,
+    four_accounts_and_students: dict,
+):
+    """Test multiple parties with various combinations of radius and date range filtering"""
+    search_lat = 40.7128
+    search_lon = -74.0060
+
+    # Address within radius
+    address1 = LocationEntity(
+        id=1,
+        latitude=search_lat + 0.002,  # ~0.14 miles, within radius
+        longitude=search_lon,
+        google_place_id="test_place_combined_1",
+        formatted_address="Test Address Combined 1",
+    )
+    # Address outside radius
+    address2 = LocationEntity(
+        id=2,
+        latitude=search_lat + 0.004,  # ~0.28 miles, outside radius
+        longitude=search_lon,
+        google_place_id="test_place_combined_2",
+        formatted_address="Test Address Combined 2",
+    )
+    test_async_session.add_all([address1, address2])
+    await test_async_session.commit()
+
+    base_time = datetime.now()
+
+    # Party 1: Within both radius AND date range (should be included)
+    party1 = PartyEntity(
+        party_datetime=base_time + timedelta(hours=2),
+        location_id=1,
+        contact_one_id=1,
+        contact_two_email="test2@example.com",
+        contact_two_first_name="Jane",
+        contact_two_last_name="Smith",
+        contact_two_phone_number="0987654321",
+        contact_two_contact_preference=ContactPreference.text,
+    )
+
+    # Party 2: Within radius but outside date range (should be excluded)
+    party2 = PartyEntity(
+        party_datetime=base_time + timedelta(hours=6),
+        location_id=1,
+        contact_one_id=2,
+        contact_two_email="test3@example.com",
+        contact_two_first_name="John",
+        contact_two_last_name="Doe",
+        contact_two_phone_number="1111111111",
+        contact_two_contact_preference=ContactPreference.call,
+    )
+
+    # Party 3: Within date range but outside radius (should be excluded)
+    party3 = PartyEntity(
+        party_datetime=base_time + timedelta(hours=2),
+        location_id=2,
+        contact_one_id=3,
+        contact_two_email="test4@example.com",
+        contact_two_first_name="Alice",
+        contact_two_last_name="Brown",
+        contact_two_phone_number="2222222222",
+        contact_two_contact_preference=ContactPreference.text,
+    )
+
+    # Party 4: Outside both radius AND date range (should be excluded)
+    party4 = PartyEntity(
+        party_datetime=base_time + timedelta(hours=6),
+        location_id=2,
+        contact_one_id=4,
+        contact_two_email="test5@example.com",
+        contact_two_first_name="Bob",
+        contact_two_last_name="White",
+        contact_two_phone_number="3333333333",
+        contact_two_contact_preference=ContactPreference.call,
+    )
+
+    test_async_session.add_all([party1, party2, party3, party4])
+    await test_async_session.commit()
+
+    start_date = base_time + timedelta(hours=1)
+    end_date = base_time + timedelta(hours=4)
+
+    parties = await party_service.get_parties_by_radius_and_date_range(
+        search_lat, search_lon, start_date, end_date
+    )
+
+    # Only party1 should be included
+    assert len(parties) == 1
+    assert parties[0].id == party1.id
+
+
+@pytest.mark.asyncio
+async def test_get_parties_by_radius_and_date_range_missing_location_skipped(
+    party_service: PartyService,
+    test_async_session: AsyncSession,
+    basic_accounts_and_students: dict,
+):
+    """Test that parties with missing/null location relationship are skipped gracefully"""
+    search_lat = 40.7128
+    search_lon = -74.0060
+
+    address1 = LocationEntity(
+        id=1,
+        latitude=search_lat + 0.002,
+        longitude=search_lon,
+        google_place_id="test_place_missing_location",
+        formatted_address="Test Address Missing Location",
+    )
+    test_async_session.add(address1)
+    await test_async_session.commit()
+
+    party1 = PartyEntity(
+        party_datetime=datetime.now() + timedelta(hours=2),
+        location_id=1,
+        contact_one_id=1,
+        contact_two_email="test2@example.com",
+        contact_two_first_name="Jane",
+        contact_two_last_name="Smith",
+        contact_two_phone_number="0987654321",
+        contact_two_contact_preference=ContactPreference.text,
+    )
+    test_async_session.add(party1)
+    await test_async_session.commit()
+    await test_async_session.refresh(party1)
+
+    # Create party with invalid location_id (bypassing service validation)
+    invalid_party = PartyEntity(
+        party_datetime=datetime.now() + timedelta(hours=3),
+        location_id=999,  # Invalid location_id
+        contact_one_id=1,
+        contact_two_email="test2@example.com",
+        contact_two_first_name="Jane",
+        contact_two_last_name="Smith",
+        contact_two_phone_number="0987654321",
+        contact_two_contact_preference=ContactPreference.text,
+    )
+    test_async_session.add(invalid_party)
+    await test_async_session.commit()
+
+    start_date = datetime.now()
+    end_date = datetime.now() + timedelta(hours=5)
+
+    parties = await party_service.get_parties_by_radius_and_date_range(
+        search_lat, search_lon, start_date, end_date
+    )
+    # Only party1 should be returned, invalid_party should be skipped
+    assert len(parties) == 1
+    assert parties[0].id == party1.id
+
+
+@pytest.mark.asyncio
+async def test_get_parties_by_radius_and_date_range_single_day_range(
+    party_service: PartyService,
+    test_async_session: AsyncSession,
+    basic_accounts_and_students: dict,
+):
+    """Test date range of a single day (start_date == end_date)"""
+    search_lat = 40.7128
+    search_lon = -74.0060
+
+    address1 = LocationEntity(
+        id=1,
+        latitude=search_lat + 0.002,
+        longitude=search_lon,
+        google_place_id="test_place_single_day",
+        formatted_address="Test Address Single Day",
+    )
+    test_async_session.add(address1)
+    await test_async_session.commit()
+
+    target_date = datetime.now() + timedelta(days=1)
+    target_date = target_date.replace(hour=12, minute=0, second=0, microsecond=0)
+
+    party1 = PartyEntity(
+        party_datetime=target_date,
+        location_id=1,
+        contact_one_id=1,
+        contact_two_email="test2@example.com",
+        contact_two_first_name="Jane",
+        contact_two_last_name="Smith",
+        contact_two_phone_number="0987654321",
+        contact_two_contact_preference=ContactPreference.text,
+    )
+    test_async_session.add(party1)
+    await test_async_session.commit()
+
+    # Single day range (start and end are the same)
+    start_date = target_date
+    end_date = target_date
+
+    parties = await party_service.get_parties_by_radius_and_date_range(
+        search_lat, search_lon, start_date, end_date
+    )
+    assert len(parties) == 1
+    assert parties[0].id == party1.id
+>>>>>>> cb1bf6a6e1fb661dcc2c6e036c0f5d2ab74862a9
