@@ -22,7 +22,7 @@ def complaint_service_db(test_async_session: AsyncSession) -> ComplaintService:
 def sample_complaint_create_data() -> ComplaintCreate:
     """Create sample complaint create data for testing."""
     return ComplaintCreate(
-        party_id=1,
+        location_id=1,
         complaint_datetime=datetime(2025, 11, 18, 20, 30, 0),
         description="Noise complaint",
     )
@@ -32,7 +32,7 @@ def sample_complaint_create_data() -> ComplaintCreate:
 def sample_complaint_create_data_2() -> ComplaintCreate:
     """Create another sample complaint create data for testing."""
     return ComplaintCreate(
-        party_id=1,
+        location_id=1,
         complaint_datetime=datetime(2025, 11, 19, 22, 0, 0),
         description="Noise complaint",
     )
@@ -132,7 +132,7 @@ async def test_create_complaint_with_empty_description(
 ) -> None:
     """Test creating a complaint with empty description (default)."""
     complaint_data = ComplaintCreate(
-        party_id=1,
+        location_id=test_location.id,
         complaint_datetime=datetime(2025, 11, 18, 20, 30, 0),
         description="",
     )
@@ -200,7 +200,7 @@ async def test_update_complaint(
 ) -> None:
     """Test updating a complaint."""
     update_data = ComplaintCreate(
-        party_id=1,
+        location_id=test_location.id,
         complaint_datetime=datetime(2025, 11, 20, 23, 0, 0),
         description="Updated complaint description",
     )
@@ -278,14 +278,14 @@ async def test_delete_complaint_verify_others_remain(
 
 
 @pytest.mark.asyncio
-async def test_create_complaint_from_party_dto(
+async def test_create_complaint_from_location_dto(
     complaint_service_db: ComplaintService, test_location: LocationEntity
 ) -> None:
-    """Test creating a complaint with party-style data (ComplaintCreate)."""
+    """Test creating a complaint with location data (ComplaintCreate)."""
     complaint_data = ComplaintCreate(
-        party_id=1,
+        location_id=test_location.id,
         complaint_datetime=datetime(2025, 11, 18, 20, 30, 0),
-        description="Party noise complaint",
+        description="Location noise complaint",
     )
 
     complaint = await complaint_service_db.create_complaint(
@@ -295,7 +295,7 @@ async def test_create_complaint_from_party_dto(
     assert complaint is not None
     assert complaint.id is not None
     assert complaint.location_id == test_location.id
-    assert complaint.description == "Party noise complaint"
+    assert complaint.description == "Location noise complaint"
 
 
 @pytest.mark.asyncio
@@ -304,7 +304,7 @@ async def test_complaint_data_persistence(
 ) -> None:
     """Test that all complaint data fields are properly persisted."""
     data = ComplaintCreate(
-        party_id=1,
+        location_id=test_location.id,
         complaint_datetime=datetime(2025, 12, 25, 14, 30, 45),
         description="Detailed description of the complaint issue",
     )

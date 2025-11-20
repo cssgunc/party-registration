@@ -3,18 +3,23 @@ from datetime import datetime
 from pydantic import BaseModel
 
 
-class Complaint(BaseModel):
-    """Output DTO for a complaint."""
+class ComplaintData(BaseModel):
+    """Data DTO for a complaint without id."""
 
-    id: int
     location_id: int
     complaint_datetime: datetime
     description: str = ""
 
 
-class ComplaintCreate(BaseModel):
-    """Input DTO for creating a complaint from a party."""
+class Complaint(ComplaintData):
+    """Output DTO for a complaint."""
 
-    party_id: int
+    id: int
+
+
+class ComplaintCreate(BaseModel):
+    """Input DTO for creating a complaint for a location."""
+
+    location_id: int
     complaint_datetime: datetime
     description: str = ""

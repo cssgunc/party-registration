@@ -52,13 +52,11 @@ class ComplaintService:
         self, location_id: int, data: ComplaintCreate
     ) -> Complaint:
         """Create a new complaint."""
-        complaint_data = Complaint(
-            id=0,  # Temporary id, will be set by database
+        new_complaint = ComplaintEntity(
             location_id=location_id,
             complaint_datetime=data.complaint_datetime,
             description=data.description,
         )
-        new_complaint = ComplaintEntity.from_model(complaint_data)
         try:
             self.session.add(new_complaint)
             await self.session.commit()

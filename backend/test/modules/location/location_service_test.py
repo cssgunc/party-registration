@@ -4,7 +4,9 @@ from unittest.mock import MagicMock, patch
 import googlemaps
 import pytest
 import pytest_asyncio
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from src.modules.complaint.complaint_entity import ComplaintEntity
 from src.modules.location.location_entity import LocationEntity
 from src.modules.location.location_model import (
     AddressData,
@@ -869,3 +871,175 @@ async def test_autocomplete_transport_error(
 
     with pytest.raises(GoogleMapsAPIException, match="Transport error"):
         await location_service.autocomplete_address("123 Main St")
+
+
+# Tests for locations with complaints
+
+
+@pytest.mark.asyncio
+async def test_get_location_with_complaints(
+    location_service_db: LocationService, test_location: Location
+) -> None:
+    """Test getting a location that has complaints includes the complaints."""
+    # Add complaints to the location
+    complaint1 = ComplaintEntity(
+        location_id=test_location.id,
+        complaint_datetime=datetime(2025, 11, 18, 20, 30, 0),
+        description="Noise complaint",
+    )
+    complaint2 = ComplaintEntity(
+        location_id=test_location.id,
+        complaint_datetime=datetime(2025, 11, 19, 22, 0, 0),
+        description="Parking complaint",
+    )
+
+    location_service_db.session.add(complaint1)
+    location_service_db.session.add(complaint2)
+    await location_service_db.session.commit()
+
+    # Fetch the location
+    fetched = await location_service_db.get_location_by_id(test_location.id)
+
+    # Verify complaints are included
+    assert len(fetched.complaints) == 2
+    assert fetched.complaints[0].description == "Noise complaint"
+    assert fetched.complaints[1].description == "Parking complaint"
+    assert all(c.location_id == test_location.id for c in fetched.complaints)
+
+
+@pytest.mark.asyncio
+async def test_delete_location_with_complaints_cascades(
+    location_service_db: LocationService, test_location: Location
+) -> None:
+    """Test that deleting a location also deletes its complaints (cascade delete)."""
+    # Add complaints to the location
+    complaint1 = ComplaintEntity(
+        location_id=test_location.id,
+        complaint_datetime=datetime(2025, 11, 18, 20, 30, 0),
+        description="Noise complaint",
+    )
+    complaint2 = ComplaintEntity(
+        location_id=test_location.id,
+        complaint_datetime=datetime(2025, 11, 19, 22, 0, 0),
+        description="Parking complaint",
+    )
+
+    location_service_db.session.add(complaint1)
+    location_service_db.session.add(complaint2)
+    await location_service_db.session.commit()
+    await location_service_db.session.refresh(complaint1)
+    await location_service_db.session.refresh(complaint2)
+
+    complaint1_id = complaint1.id
+    complaint2_id = complaint2.id
+
+    # Delete the location
+    deleted = await location_service_db.delete_location(test_location.id)
+
+    assert deleted.id == test_location.id
+
+    # Verify the location is deleted
+    with pytest.raises(LocationNotFoundException):
+        await location_service_db.get_location_by_id(test_location.id)
+
+    # Verify the complaints are also deleted (cascade delete)
+    result = await location_service_db.session.execute(
+        select(ComplaintEntity).where(ComplaintEntity.id == complaint1_id)
+    )
+    assert result.scalar_one_or_none() is None
+
+    result = await location_service_db.session.execute(
+        select(ComplaintEntity).where(ComplaintEntity.id == complaint2_id)
+    )
+    assert result.scalar_one_or_none() is None
+
+
+@pytest.mark.asyncio
+async def test_update_location_retains_complaints(
+    location_service_db: LocationService, test_location: Location
+) -> None:
+    """Test that updating a location retains its complaints."""
+    # Add complaints to the location
+    complaint = ComplaintEntity(
+        location_id=test_location.id,
+        complaint_datetime=datetime(2025, 11, 18, 20, 30, 0),
+        description="Noise complaint",
+    )
+
+    location_service_db.session.add(complaint)
+    await location_service_db.session.commit()
+
+    # Update the location
+    update_data = LocationData(
+        google_place_id="ChIJ123abc",
+        formatted_address="123 Main Street Updated, Chapel Hill, NC 27514, USA",
+        latitude=35.9132,
+        longitude=-79.0558,
+        street_number="123",
+        street_name="Main Street",
+        unit=None,
+        city="Chapel Hill",
+        county="Orange County",
+        state="NC",
+        country="US",
+        zip_code="27514",
+        warning_count=5,
+        citation_count=2,
+        hold_expiration=None,
+    )
+
+    updated = await location_service_db.update_location(test_location.id, update_data)
+
+    # Verify location was updated
+    assert (
+        updated.formatted_address
+        == "123 Main Street Updated, Chapel Hill, NC 27514, USA"
+    )
+    assert updated.warning_count == 5
+    assert updated.citation_count == 2
+
+    # Verify complaints are retained
+    assert len(updated.complaints) == 1
+    assert updated.complaints[0].description == "Noise complaint"
+
+
+@pytest.mark.asyncio
+async def test_get_locations_includes_complaints(
+    location_service_db: LocationService, test_locations_multiple: list[Location]
+) -> None:
+    """Test that getting all locations includes their complaints."""
+    location1 = test_locations_multiple[0]
+    location2 = test_locations_multiple[1]
+
+    # Add complaints to both locations
+    complaint1 = ComplaintEntity(
+        location_id=location1.id,
+        complaint_datetime=datetime(2025, 11, 18, 20, 30, 0),
+        description="Noise complaint for location 1",
+    )
+    complaint2 = ComplaintEntity(
+        location_id=location2.id,
+        complaint_datetime=datetime(2025, 11, 19, 22, 0, 0),
+        description="Parking complaint for location 2",
+    )
+
+    location_service_db.session.add(complaint1)
+    location_service_db.session.add(complaint2)
+    await location_service_db.session.commit()
+
+    # Fetch all locations
+    locations = await location_service_db.get_locations()
+
+    # Find the locations by id
+    loc1 = next((loc for loc in locations if loc.id == location1.id), None)
+    loc2 = next((loc for loc in locations if loc.id == location2.id), None)
+
+    assert loc1 is not None
+    assert loc2 is not None
+
+    # Verify complaints are included
+    assert len(loc1.complaints) == 1
+    assert loc1.complaints[0].description == "Noise complaint for location 1"
+
+    assert len(loc2.complaints) == 1
+    assert loc2.complaints[0].description == "Parking complaint for location 2"
