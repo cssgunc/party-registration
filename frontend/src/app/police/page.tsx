@@ -10,10 +10,11 @@ import {
   AutocompleteResult,
   LocationService,
 } from "@/services/locationService";
+import { Party } from "@/types/api/party";
 import { useQuery } from "@tanstack/react-query";
 import { format, startOfDay } from "date-fns";
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 // Create police-authenticated location service (module-level to prevent recreation)
 const policeLocationService = new LocationService(getMockClient("police"));
@@ -23,13 +24,16 @@ export default function PolicePage() {
   const [startDate, setStartDate] = useState<Date | undefined>(today);
   const [endDate, setEndDate] = useState<Date | undefined>(today);
   const [showDateFilter, setShowDateFilter] = useState(false);
-  const [searchAddress, setSearchAddress] =
-    useState<AutocompleteResult | null>(null);
+  const [searchAddress, setSearchAddress] = useState<AutocompleteResult | null>(
+    null
+  );
+  const [activeParty, setActiveParty] = useState<Party | undefined>();
 
   // Fetch place details when address is selected
   const { data: placeDetails } = useQuery({
     queryKey: ["place-details", searchAddress?.place_id],
-    queryFn: () => policeLocationService.getPlaceDetails(searchAddress!.place_id),
+    queryFn: () =>
+      policeLocationService.getPlaceDetails(searchAddress!.place_id),
     enabled: !!searchAddress?.place_id,
   });
 
@@ -45,10 +49,7 @@ export default function PolicePage() {
   });
 
   // Fetch nearby parties if address search is active
-  const {
-    data: nearbyParties,
-    isLoading: isLoadingNearby,
-  } = useQuery({
+  const { data: nearbyParties, isLoading: isLoadingNearby } = useQuery({
     queryKey: ["parties-nearby", searchAddress?.place_id, startDate, endDate],
     queryFn: () =>
       policeService.getPartiesNearby(
@@ -59,13 +60,29 @@ export default function PolicePage() {
     enabled: !!searchAddress?.place_id && !!startDate && !!endDate,
   });
 
-  // Use nearby parties if address search is active, otherwise use all parties
+  // Use nearby parties if address search is active or if there is a selected party, otherwise use all parties
   const filteredParties = useMemo(() => {
-    if (searchAddress && nearbyParties !== undefined) {
-      return nearbyParties;
-    }
-    return allParties;
-  }, [allParties, nearbyParties, searchAddress]);
+    const base =
+      searchAddress && nearbyParties !== undefined
+        ? [...nearbyParties]
+        : [...allParties];
+
+    if (!activeParty) return base;
+
+    return [activeParty, ...base.filter((p) => p.id !== activeParty.id)];
+  }, [allParties, nearbyParties, searchAddress, activeParty]);
+
+  // Handle party selection from the list
+  function handleActiveParty(party: Party): void {
+    setActiveParty(party);
+    console.log("Active party set to:", party);
+  }
+
+  // Aurto Scroll to the Top when selected party is selected
+  useEffect(() => {
+    const el = document.querySelector("#party-list");
+    if (el) el.scrollTop = 0;
+  }, [activeParty]);
 
   return (
     <div className="h-screen bg-white flex flex-col overflow-hidden">
@@ -82,9 +99,13 @@ export default function PolicePage() {
               onClick={() => setShowDateFilter(!showDateFilter)}
               className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-800"
             >
-              <span>{startDate ? format(startDate, "MM/dd/yyyy") : "mm/dd/yyyy"}</span>
+              <span>
+                {startDate ? format(startDate, "MM/dd/yyyy") : "mm/dd/yyyy"}
+              </span>
               <span>and</span>
-              <span>{endDate ? format(endDate, "MM/dd/yyyy") : "mm/dd/yyyy"}</span>
+              <span>
+                {endDate ? format(endDate, "MM/dd/yyyy") : "mm/dd/yyyy"}
+              </span>
               {showDateFilter ? (
                 <ChevronUp className="w-4 h-4" />
               ) : (
@@ -106,7 +127,9 @@ export default function PolicePage() {
 
           {/* Party Search Section */}
           <div className="px-6 py-4 flex-1 flex flex-col overflow-hidden">
-            <h2 className="text-xl font-semibold mb-4 flex-shrink-0">Party Search</h2>
+            <h2 className="text-xl font-semibold mb-4 flex-shrink-0">
+              Party Search
+            </h2>
 
             {/* Address Search */}
             <div className="mb-6 flex-shrink-0">
@@ -139,8 +162,12 @@ export default function PolicePage() {
 
             {/* Party List - Scrollable */}
             {!isLoading && !isLoadingNearby && (
-              <div className="flex-1 overflow-y-auto">
-                <PartyList parties={filteredParties} />
+              <div className="flex-1 overflow-y-auto" id="party-list">
+                <PartyList
+                  parties={filteredParties}
+                  onSelect={(party) => handleActiveParty(party)}
+                  activeParty={activeParty}
+                />
               </div>
             )}
           </div>
@@ -154,11 +181,13 @@ export default function PolicePage() {
           <div className="flex-1 overflow-hidden">
             <EmbeddedMap
               parties={filteredParties}
+              activeParty={activeParty}
               center={
                 placeDetails
                   ? { lat: placeDetails.latitude, lng: placeDetails.longitude }
                   : undefined
               }
+              onSelect={(party) => handleActiveParty(party)}
             />
           </div>
         </div>

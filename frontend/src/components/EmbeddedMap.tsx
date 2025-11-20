@@ -4,31 +4,35 @@ import { Party } from "@/types/api/party";
 import {
   AdvancedMarker,
   APIProvider,
-  InfoWindow,
   Map,
   Pin,
   useMap,
 } from "@vis.gl/react-google-maps";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+interface PoiMarkersProps {
+  pois: (Poi & { party?: Party })[];
+  activePoiKey?: string;
+  onSelect?: (party: Party) => void; // 👈 new
+}
+type Poi = {
+  key: string;
+  activePoiKey?: string;
+  location: google.maps.LatLngLiteral;
+};
 
 interface EmbeddedMapProps {
   parties: Party[];
   activeParty?: Party;
   center?: { lat: number; lng: number };
+  onSelect?: (party: Party) => void;
 }
-interface PoiMarkersProps {
-  pois: Poi[];
-  activePoiKey?: string;
-}
-type Poi = { key: string; location: google.maps.LatLngLiteral };
 
-const EmbeddedMap = ({ parties, activeParty, center }: EmbeddedMapProps) => {
-  const default_locations: Poi[] = [
-    { key: "polkPlace", location: { lat: 35.911232, lng: -79.050331 } },
-    { key: "davisLibrary", location: { lat: 35.910784, lng: -79.047729 } },
-    { key: "oldWell", location: { lat: 35.911473, lng: -79.050105 } },
-    { key: "kenanStadium", location: { lat: 35.906839, lng: -79.047793 } },
-  ];
+const EmbeddedMap = ({
+  parties,
+  activeParty,
+  center,
+  onSelect,
+}: EmbeddedMapProps) => {
   const locations =
     parties && parties.length > 0
       ? parties.map((party) => ({
@@ -37,25 +41,26 @@ const EmbeddedMap = ({ parties, activeParty, center }: EmbeddedMapProps) => {
             lat: party.location.latitude,
             lng: party.location.longitude,
           },
+          party,
         }))
-      : default_locations;
+      : [];
+
   const activePoiKey = activeParty ? activeParty.id.toString() : undefined;
-  const defaultZoom = center ? 17 : 14; // Zoom in more when searching
+  const defaultZoom = center ? 17 : 14;
   const mapCenter =
     center ||
     (parties && parties.length > 0
       ? locations[0].location
       : { lat: 35.911232, lng: -79.050331 });
+
   const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
-  
-  // Create a unique key based on center to force map remount when center changes
   const mapKey = center ? `${center.lat}-${center.lng}` : "default";
 
   return (
     <div className="w-full h-[450px] overflow-hidden rounded-2xl shadow-md">
       <APIProvider
         apiKey={API_KEY}
-        onLoad={() => console.log("Maps API has loaded.")}
+        onLoad={() => console.log("Maps API loaded.")}
       >
         <Map
           key={mapKey}
@@ -65,49 +70,60 @@ const EmbeddedMap = ({ parties, activeParty, center }: EmbeddedMapProps) => {
           gestureHandling="greedy"
           disableDefaultUI={false}
         >
-          <PoiMarkers pois={locations} activePoiKey={activePoiKey} />
+          <PoiMarkers
+            pois={locations}
+            activePoiKey={activePoiKey}
+            onSelect={onSelect}
+          />
         </Map>
       </APIProvider>
     </div>
   );
 };
-const PoiMarkers = ({ pois }: PoiMarkersProps) => {
+
+const PoiMarkers = ({ pois, activePoiKey, onSelect }: PoiMarkersProps) => {
   const map = useMap();
-  const [selectedPoi, setSelectedPoi] = useState<Poi | null>(null);
+  const [selectedPoi, setSelectedPoi] = useState<(typeof pois)[0] | null>(null);
+  useEffect(() => {
+    if (!map || !activePoiKey) return;
+
+    const target = pois.find((p) => p.key === activePoiKey);
+    if (target) map.panTo(target.location);
+  }, [activePoiKey, map]);
 
   const handleClick = useCallback(
-    (poi: Poi) => (ev: google.maps.MapMouseEvent) => {
+    (poi: (typeof pois)[0]) => (ev: google.maps.MapMouseEvent) => {
       if (!map || !ev.latLng) return;
       map.panTo(ev.latLng);
       setSelectedPoi(poi);
+
+      if (poi.party && onSelect) {
+        onSelect(poi.party);
+      }
     },
-    [map]
+    [map, onSelect]
   );
 
   return (
     <>
-      {pois.map((poi: Poi) => (
-        <AdvancedMarker
-          key={poi.key}
-          position={poi.location}
-          clickable={true}
-          onClick={handleClick(poi)}
-        >
-          <Pin
-            background={poi == selectedPoi ? "#4285F4" : "#EA4335"}
-            glyphColor={"#fff"}
-            borderColor={poi == selectedPoi ? "#1967D2" : "#B31412"}
-          />
-        </AdvancedMarker>
-      ))}
-      {selectedPoi && (
-        <InfoWindow
-          position={selectedPoi.location}
-          onCloseClick={() => setSelectedPoi(null)}
-        >
-          <div>{selectedPoi.key}</div>
-        </InfoWindow>
-      )}
+      {pois.map((poi) => {
+        const isActive = poi.key === activePoiKey;
+
+        return (
+          <AdvancedMarker
+            key={poi.key}
+            position={poi.location}
+            clickable
+            onClick={handleClick(poi)}
+          >
+            <Pin
+              background={isActive ? "#4285F4" : "#EA4335"}
+              glyphColor="#fff"
+              borderColor={isActive ? "#1967D2" : "#B31412"}
+            />
+          </AdvancedMarker>
+        );
+      })}
     </>
   );
 };
