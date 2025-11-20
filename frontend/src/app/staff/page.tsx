@@ -6,21 +6,23 @@ import { PartyTable } from "@/components/PartyTable";
 import { StudentTable } from "@/components/StudentTable";
 import TableList from "@/components/TableList";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LOCATIONS, PARTIES, STUDENTS } from "@/lib/mockData";
+import { Location } from "@/types/api/location";
+import { Party } from "@/types/api/party";
+import { Student } from "@/types/api/student";
 import { useState } from "react";
 
-// Mock data
-import { LOCATIONS, PARTIES, STUDENTS } from "@/lib/mockData";
-
 export default function StaffPage() {
-  // Full datasets
-  const [parties] = useState(PARTIES);
-  const [students] = useState(STUDENTS);
-  const [locations] = useState(LOCATIONS);
+  // Importing mock data sets
+  const [parties] = useState<Party[]>(PARTIES);
+  const [students] = useState<Student[]>(STUDENTS);
+  const [locations] = useState<Location[]>(LOCATIONS);
 
-  // Filtered datasets
-  const [filteredParties, setFilteredParties] = useState(PARTIES);
-  const [filteredStudents, setFilteredStudents] = useState(STUDENTS);
-  const [filteredLocations, setFilteredLocations] = useState(LOCATIONS);
+  // Saving filtered data sets
+  const [filteredParties, setFilteredParties] = useState<Party[]>(PARTIES);
+  const [filteredStudents, setFilteredStudents] = useState<Student[]>(STUDENTS);
+  const [filteredLocations, setFilteredLocations] =
+    useState<Location[]>(LOCATIONS);
 
   return (
     <div className="container mx-auto p-6">
