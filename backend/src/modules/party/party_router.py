@@ -163,6 +163,49 @@ async def get_parties_nearby(
     )
 
     return parties
+@party_router.get("/csv")
+async def get_parties_csv(
+    start_date: str = Query(..., description="Start date in YYYY-MM-DD format"),
+    end_date: str = Query(..., description="End date in YYYY-MM-DD format"),
+    party_service: PartyService = Depends(),
+    _=Depends(authenticate_admin),
+) -> Response:
+    """
+    Returns parties within the specified date range as a CSV file.
+
+    Query Parameters:
+    - start_date: Start date in YYYY-MM-DD format (required)
+    - end_date: End date in YYYY-MM-DD format (required)
+
+    Returns:
+    - CSV file stream with party data
+
+    Raises:
+    - 400: If date format is invalid
+    """
+    try:
+        start_datetime = datetime.strptime(start_date, "%Y-%m-%d")
+        end_datetime = datetime.strptime(end_date, "%Y-%m-%d")
+
+        end_datetime = end_datetime.replace(
+            hour=23, minute=59, second=59, microsecond=999999
+        )
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid date format. Use YYYY-MM-DD format for dates.",
+        )
+
+    parties = await party_service.get_parties_by_date_range(
+        start_datetime, end_datetime
+    )
+    csv_content = await party_service.export_parties_to_csv(parties)
+
+    return Response(
+        content=csv_content,
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=parties.csv"},
+    )
 
 
 @party_router.put("/{party_id}")
