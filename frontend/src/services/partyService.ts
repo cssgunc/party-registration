@@ -17,7 +17,7 @@ export class PartyService {
         }
       );
 
-      const blob = new Blob([response.data], { type: "text/csv" });
+    const blob = new Blob([response.data], { type: "text/csv" });
 
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");

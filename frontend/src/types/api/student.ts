@@ -17,15 +17,4 @@ type Contact = {
   contactPreference: "call" | "text";
 };
 
-/**
- * Student data for API requests (uses snake_case to match backend)
- */
-type StudentData = {
-  first_name?: string;
-  last_name?: string;
-  phone_number?: string;
-  contact_preference?: "call" | "text";
-  last_registered?: Date | null;
-};
-
-export type { Student, Contact, StudentData };
+export type { Contact, Student };

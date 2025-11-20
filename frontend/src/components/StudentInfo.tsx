@@ -18,8 +18,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import apiClient from "@/lib/network/apiClient";
-import StudentService from "@/services/studentService";
-import type { StudentData } from "@/types/api/student";
 import { useState } from "react";
 import * as z from "zod";
 
@@ -45,8 +43,6 @@ interface StudentInfoProps {
   id?: number;
   initialData?: Partial<StudentInfoValues>;
 }
-
-const studentService = new StudentService(apiClient);
 
 export default function StudentInfo({ id, initialData }: StudentInfoProps) {
   const [isEditing, setIsEditing] = useState(false);
@@ -82,15 +78,14 @@ export default function StudentInfo({ id, initialData }: StudentInfoProps) {
     try {
       if (id) {
         // Map form data to API format (camelCase to snake_case)
-        // The backend expects snake_case, but the frontend StudentData type uses camelCase
         const apiData = {
           first_name: result.data.firstName,
           last_name: result.data.lastName,
           phone_number: result.data.phoneNumber,
           contact_preference: result.data.contactPreference,
-        } as unknown as StudentData; // Use "as unknown" since apiData is missing some properties of StudentData (ex: pid)
+        };
 
-        await studentService.updateStudent(id, apiData);
+        await apiClient.put(`/students/${id}`, apiData);
 
         // Update formData with the submitted values to reflect in display
         setFormData(result.data);
