@@ -3,7 +3,6 @@
 import { Button } from "@/components/ui/button";
 import {
   Field,
-  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
@@ -17,9 +16,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import apiClient from "@/lib/network/apiClient";
-import { StudentService } from "@/lib/services/studentService";
-import { Student } from "@/types/api/student";
+import { useUpdateStudent } from "@/hooks/useStudent";
+import { StudentDataRequest } from "@/services/studentService";
+import { Pencil } from "lucide-react";
 import { useState } from "react";
 import * as z from "zod";
 
@@ -42,13 +41,11 @@ const studentInfoSchema = z.object({
 type StudentInfoValues = z.infer<typeof studentInfoSchema>;
 
 interface StudentInfoProps {
-  id?: number;
   initialData?: Partial<StudentInfoValues>;
 }
 
-const studentService = new StudentService(apiClient);
-
-export default function StudentInfo({ id, initialData }: StudentInfoProps) {
+export default function StudentInfo({ initialData }: StudentInfoProps) {
+  const updateStudentMutation = useUpdateStudent();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<Partial<StudentInfoValues>>({
     firstName: initialData?.firstName || "",
@@ -80,32 +77,45 @@ export default function StudentInfo({ id, initialData }: StudentInfoProps) {
     // Safely handle submission
     setIsSubmitting(true);
     try {
-      if (id) {
-        // Map form data to API format (camelCase to snake_case)
-        // The backend expects snake_case, but the frontend Student type uses camelCase
-        const apiData = {
-          first_name: result.data.firstName,
-          last_name: result.data.lastName,
-          phone_number: result.data.phoneNumber,
-          contact_preference: result.data.contactPreference,
-        } as unknown as Student; // Use "as unknown" since apiData is missing some properties of Student (ex: pid)
+      // Map form data to API format (camelCase to snake_case)
+      const apiData: StudentDataRequest = {
+        first_name: result.data.firstName,
+        last_name: result.data.lastName,
+        phone_number: result.data.phoneNumber,
+        contact_preference: result.data.contactPreference,
+      };
 
-        await studentService.updateStudent(id, apiData);
+      await updateStudentMutation.mutateAsync(apiData);
 
-        // Update formData with the submitted values to reflect in display
-        setFormData(result.data);
-      }
+      // Update formData with the submitted values to reflect in display
+      setFormData(result.data);
 
       setIsEditing(false);
     } catch (error) {
       // Handle API errors
       console.error("Failed to update student info:", error);
-      setErrors({
-        submit:
-          error instanceof Error
-            ? error.message
-            : "Failed to update student information",
-      });
+
+      // Check if it's an authentication error
+      if (error && typeof error === "object" && "response" in error) {
+        const axiosError = error as { response?: { status: number } };
+        if (axiosError.response?.status === 401) {
+          setErrors({
+            submit:
+              "Authentication required. Please log in to update your profile.",
+          });
+        } else {
+          setErrors({
+            submit: "Failed to update student information. Please try again.",
+          });
+        }
+      } else {
+        setErrors({
+          submit:
+            error instanceof Error
+              ? error.message
+              : "Failed to update student information",
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -126,18 +136,6 @@ export default function StudentInfo({ id, initialData }: StudentInfoProps) {
     }
   };
 
-  // Reset the form data to the initial data
-  const handleCancel = () => {
-    setFormData({
-      firstName: initialData?.firstName || "",
-      lastName: initialData?.lastName || "",
-      phoneNumber: initialData?.phoneNumber || "",
-      contactPreference: initialData?.contactPreference,
-    });
-    setErrors({});
-    setIsEditing(false);
-  };
-
   const displayData = {
     firstName: formData.firstName ?? initialData?.firstName ?? "",
     lastName: formData.lastName ?? initialData?.lastName ?? "",
@@ -148,120 +146,176 @@ export default function StudentInfo({ id, initialData }: StudentInfoProps) {
 
   if (!isEditing) {
     return (
-      <div>
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold mb-2">Student Information</h2>
-          <div className="space-y-2">
-            <div>
-              <span className="font-medium">Name: </span>
-              <span>
-                {displayData.firstName || "Not set"}{" "}
-                {displayData.lastName || ""}
-              </span>
+      <div className="bg-white rounded-lg">
+        <div className="flex justify-between items-center mb-6">
+          <div className="text-[32px] font-semibold text-[#09294E]">
+            Edit Profile Information
+          </div>
+          <button
+            onClick={() => setIsEditing(true)}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            aria-label="Edit profile"
+          >
+            <Pencil className="w-6 h-6 text-[#09294E]" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-x-12 gap-y-8">
+          <div>
+            <div className="text-[#09294E] font-semibold text-lg mb-2">
+              First Name
             </div>
-            <div>
-              <span className="font-medium">Phone Number: </span>
-              <span>{displayData.phoneNumber || "Not set"}</span>
+            <div className="text-gray-600 text-base border-b border-gray-300 pb-2">
+              {displayData.firstName || "Not set"}
             </div>
-            <div>
-              <span className="font-medium">Contact Preference: </span>
-              <span>{displayData.contactPreference || "Not set"}</span>
+          </div>
+
+          <div>
+            <div className="text-[#09294E] font-semibold text-lg mb-2">
+              Last Name
+            </div>
+            <div className="text-gray-600 text-base border-b border-gray-300 pb-2">
+              {displayData.lastName || "Not set"}
+            </div>
+          </div>
+
+          <div>
+            <div className="text-[#09294E] font-semibold text-lg mb-2">
+              Phone Number
+            </div>
+            <div className="text-gray-600 text-base border-b border-gray-300 pb-2">
+              {displayData.phoneNumber || "Not set"}
+            </div>
+          </div>
+
+          <div>
+            <div className="text-[#09294E] font-semibold text-lg mb-2">
+              Contact Method
+            </div>
+            <div className="text-gray-600 text-base border-b border-gray-300 pb-2">
+              {displayData.contactPreference
+                ? displayData.contactPreference.charAt(0).toUpperCase() +
+                  displayData.contactPreference.slice(1)
+                : "Not set"}
             </div>
           </div>
         </div>
-        <Button onClick={() => setIsEditing(true)} variant="outline">
-          Edit
-        </Button>
+
+        <div className="mt-8 flex justify-center">
+          <Button className="bg-[#09294E] text-white px-8 py-2 rounded-lg hover:bg-[#0a1f38]">
+            Log Out
+          </Button>
+        </div>
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit} className="bg-white rounded-lg">
       <FieldGroup>
         <FieldSet>
-          <Field data-invalid={!!errors.firstName}>
-            <FieldLabel htmlFor="first-name">First Name</FieldLabel>
-            <Input
-              id="first-name"
-              placeholder="John"
-              value={formData.firstName}
-              onChange={(e) => updateField("firstName", e.target.value)}
-              aria-invalid={!!errors.firstName}
-            />
-            {errors.firstName && <FieldError>{errors.firstName}</FieldError>}
-          </Field>
+          <div className="grid grid-cols-2 gap-x-12 gap-y-6">
+            <Field data-invalid={!!errors.firstName}>
+              <FieldLabel
+                htmlFor="first-name"
+                className="text-[#09294E] font-semibold text-lg"
+              >
+                First Name
+              </FieldLabel>
+              <Input
+                id="first-name"
+                placeholder="John"
+                value={formData.firstName}
+                onChange={(e) => updateField("firstName", e.target.value)}
+                aria-invalid={!!errors.firstName}
+                className="border-gray-300"
+              />
+              {errors.firstName && <FieldError>{errors.firstName}</FieldError>}
+            </Field>
 
-          <Field data-invalid={!!errors.lastName}>
-            <FieldLabel htmlFor="last-name">Last Name</FieldLabel>
-            <Input
-              id="last-name"
-              placeholder="Doe"
-              value={formData.lastName}
-              onChange={(e) => updateField("lastName", e.target.value)}
-              aria-invalid={!!errors.lastName}
-            />
-            {errors.lastName && <FieldError>{errors.lastName}</FieldError>}
-          </Field>
+            <Field data-invalid={!!errors.lastName}>
+              <FieldLabel
+                htmlFor="last-name"
+                className="text-[#09294E] font-semibold text-lg"
+              >
+                Last Name
+              </FieldLabel>
+              <Input
+                id="last-name"
+                placeholder="Doe"
+                value={formData.lastName}
+                onChange={(e) => updateField("lastName", e.target.value)}
+                aria-invalid={!!errors.lastName}
+                className="border-gray-300"
+              />
+              {errors.lastName && <FieldError>{errors.lastName}</FieldError>}
+            </Field>
 
-          <Field data-invalid={!!errors.phoneNumber}>
-            <FieldLabel htmlFor="phone-number">Phone Number</FieldLabel>
-            <Input
-              id="phone-number"
-              placeholder="(123) 456-7890"
-              value={formData.phoneNumber}
-              onChange={(e) => updateField("phoneNumber", e.target.value)}
-              aria-invalid={!!errors.phoneNumber}
-            />
-            <FieldDescription>We will use this to contact you</FieldDescription>
-            {errors.phoneNumber && (
-              <FieldError>{errors.phoneNumber}</FieldError>
-            )}
-          </Field>
+            <Field data-invalid={!!errors.phoneNumber}>
+              <FieldLabel
+                htmlFor="phone-number"
+                className="text-[#09294E] font-semibold text-lg"
+              >
+                Phone Number
+              </FieldLabel>
+              <Input
+                id="phone-number"
+                placeholder="123-456-7890"
+                value={formData.phoneNumber}
+                onChange={(e) => updateField("phoneNumber", e.target.value)}
+                aria-invalid={!!errors.phoneNumber}
+                className="border-gray-300"
+              />
+              {errors.phoneNumber && (
+                <FieldError>{errors.phoneNumber}</FieldError>
+              )}
+            </Field>
 
-          <Field data-invalid={!!errors.contactPreference}>
-            <FieldLabel htmlFor="contact-preference">
-              Contact Preference
-            </FieldLabel>
-            <Select
-              value={formData.contactPreference}
-              onValueChange={(value: "call" | "text") =>
-                updateField("contactPreference", value)
-              }
-            >
-              <SelectTrigger id="contact-preference">
-                <SelectValue placeholder="Select your preference" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="call">Call</SelectItem>
-                <SelectItem value="text">Text</SelectItem>
-              </SelectContent>
-            </Select>
-            <FieldDescription>How should we contact you?</FieldDescription>
-            {errors.contactPreference && (
-              <FieldError>{errors.contactPreference}</FieldError>
-            )}
-          </Field>
+            <Field data-invalid={!!errors.contactPreference}>
+              <FieldLabel
+                htmlFor="contact-preference"
+                className="text-[#09294E] font-semibold text-lg"
+              >
+                Contact Method
+              </FieldLabel>
+              <Select
+                value={formData.contactPreference}
+                onValueChange={(value: "call" | "text") =>
+                  updateField("contactPreference", value)
+                }
+              >
+                <SelectTrigger
+                  id="contact-preference"
+                  className="border-gray-300"
+                >
+                  <SelectValue placeholder="Select your preference" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="call">Call</SelectItem>
+                  <SelectItem value="text">Text</SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.contactPreference && (
+                <FieldError>{errors.contactPreference}</FieldError>
+              )}
+            </Field>
+          </div>
 
           {errors.submit && (
-            <Field>
-              <FieldError>{errors.submit}</FieldError>
-            </Field>
+            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <FieldError className="text-red-600">{errors.submit}</FieldError>
+            </div>
           )}
 
-          <Field orientation="horizontal">
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Submitting..." : "Submit"}
-            </Button>
+          <div className="mt-8 flex justify-center gap-4">
             <Button
-              type="button"
-              variant="outline"
-              onClick={handleCancel}
+              type="submit"
               disabled={isSubmitting}
+              className="bg-[#09294E] text-white px-8 py-2 rounded-lg hover:bg-[#0a1f38]"
             >
-              Cancel
+              {isSubmitting ? "Saving..." : "Save"}
             </Button>
-          </Field>
+          </div>
         </FieldSet>
       </FieldGroup>
     </form>

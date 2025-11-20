@@ -1,6 +1,20 @@
 import type { Location } from "./location";
-import type { Contact, Student } from "./student";
+import type { Contact, ContactAPI, Student } from "./student";
 
+/**
+ * Party data from the API
+ */
+type PartyAPI = {
+  id: number;
+  party_datetime: string; // ISO format
+  location: Location;
+  contact_one: Student;
+  contact_two: ContactAPI;
+};
+
+/**
+ * Party data for frontend use (with camelCase and Date objects)
+ */
 type Party = {
   id: number;
   datetime: Date;
@@ -9,4 +23,14 @@ type Party = {
   contactTwo: Contact;
 };
 
-export type { Party };
+/**
+ * DTO for creating a party as a student
+ */
+type StudentCreatePartyDTO = {
+  type: "student";
+  party_datetime: string; // ISO format
+  place_id: string;
+  contact_two: ContactAPI;
+};
+
+export type { Party, PartyAPI, StudentCreatePartyDTO };

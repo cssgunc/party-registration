@@ -1,14 +1,13 @@
-from datetime import datetime
 from typing import Annotated, Literal, Union
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import AwareDatetime, BaseModel, EmailStr, Field
 from src.core.models import PaginatedResponse
 from src.modules.location.location_model import Location
 from src.modules.student.student_model import ContactPreference, Student
 
 
 class PartyData(BaseModel):
-    party_datetime: datetime = Field(..., description="Date and time of the party")
+    party_datetime: AwareDatetime = Field(..., description="Date and time of the party")
     location_id: int = Field(
         ..., description="ID of the location where the party is held"
     )
@@ -34,7 +33,7 @@ class Contact(BaseModel):
 
 class Party(BaseModel):
     id: int
-    party_datetime: datetime = Field(..., description="Date and time of the party")
+    party_datetime: AwareDatetime = Field(..., description="Date and time of the party")
     location: Location = Field(..., description="Location where the party is held")
     contact_one: Student = Field(..., description="First contact student")
     contact_two: Contact = Field(
@@ -49,7 +48,7 @@ class StudentCreatePartyDTO(BaseModel):
     type: Literal["student"] = Field(
         "student", description="Request type discriminator"
     )
-    party_datetime: datetime = Field(..., description="Date and time of the party")
+    party_datetime: AwareDatetime = Field(..., description="Date and time of the party")
     place_id: str = Field(..., description="Google Maps place ID of the location")
     contact_two: Contact = Field(
         ..., description="Contact information for the second contact"
@@ -61,7 +60,7 @@ class AdminCreatePartyDTO(BaseModel):
     Both contacts must be explicitly specified."""
 
     type: Literal["admin"] = Field("admin", description="Request type discriminator")
-    party_datetime: datetime = Field(..., description="Date and time of the party")
+    party_datetime: AwareDatetime = Field(..., description="Date and time of the party")
     place_id: str = Field(..., description="Google Maps place ID of the location")
     contact_one_email: EmailStr = Field(
         ..., description="Email address of the first contact student"

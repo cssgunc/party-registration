@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock
 
 import pytest
@@ -152,7 +152,7 @@ def sample_location_2() -> Location:
         zip_code="27701",
         warning_count=1,
         citation_count=2,
-        hold_expiration=datetime(2025, 12, 31, 23, 59, 59),
+        hold_expiration=datetime(2025, 12, 31, 23, 59, 59, tzinfo=timezone.utc),
     )
 
 
@@ -307,7 +307,7 @@ async def test_create_location_with_warnings_and_citations(
         **sample_address_data.model_dump(),
         warning_count=3,
         citation_count=2,
-        hold_expiration=datetime(2026, 1, 1, 0, 0, 0),
+        hold_expiration=datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
     )
     mock_location_service.create_location.return_value = location_with_warnings
 
@@ -315,7 +315,7 @@ async def test_create_location_with_warnings_and_citations(
         "google_place_id": "ChIJ123abc",
         "warning_count": 3,
         "citation_count": 2,
-        "hold_expiration": "2026-01-01T00:00:00",
+        "hold_expiration": "2026-01-01T00:00:00Z",
     }
 
     response = await client.post("/locations/", json=request_data)
@@ -324,7 +324,7 @@ async def test_create_location_with_warnings_and_citations(
     data = response.json()
     assert data["warning_count"] == 3
     assert data["citation_count"] == 2
-    assert data["hold_expiration"] == "2026-01-01T00:00:00"
+    assert data["hold_expiration"] == "2026-01-01T00:00:00Z"
 
 
 @pytest.mark.asyncio
@@ -431,7 +431,7 @@ async def test_update_location_success_same_place_id(
         ),
         warning_count=5,
         citation_count=3,
-        hold_expiration=datetime(2026, 6, 15, 0, 0, 0),
+        hold_expiration=datetime(2026, 6, 15, 0, 0, 0, tzinfo=timezone.utc),
     )
     mock_location_service.update_location.return_value = updated_location
 
@@ -439,7 +439,7 @@ async def test_update_location_success_same_place_id(
         "google_place_id": "ChIJ123abc",  # Same place_id
         "warning_count": 5,
         "citation_count": 3,
-        "hold_expiration": "2026-06-15T00:00:00",
+        "hold_expiration": "2026-06-15T00:00:00Z",
     }
 
     response = await client.put("/locations/1", json=request_data)
@@ -450,7 +450,7 @@ async def test_update_location_success_same_place_id(
     assert data["google_place_id"] == "ChIJ123abc"
     assert data["warning_count"] == 5
     assert data["citation_count"] == 3
-    assert data["hold_expiration"] == "2026-06-15T00:00:00"
+    assert data["hold_expiration"] == "2026-06-15T00:00:00Z"
 
     mock_location_service.get_location_by_id.assert_called_once_with(1)
     mock_location_service.update_location.assert_called_once()
