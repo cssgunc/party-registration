@@ -9,4 +9,11 @@ type Party = {
   contactTwo: Contact;
 };
 
-export type { Party };
+type StudentCreatePartyDTO = {
+  type: "student";
+  party_datetime: string; // ISO format
+  place_id: string;
+  contact_two: Contact;
+};
+
+export type { Party, StudentCreatePartyDTO };

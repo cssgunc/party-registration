@@ -11,10 +11,10 @@ type Student = {
 
 type Contact = {
   email: string;
-  firstName: string;
-  lastName: string;
-  phoneNumber: string;
-  contactPreference: "call" | "text";
+  first_name: string;
+  last_name: string;
+  phone_number: string;
+  contact_preference: "call" | "text";
 };
 
-export type { Student, Contact };
+export type { Contact, Student };
