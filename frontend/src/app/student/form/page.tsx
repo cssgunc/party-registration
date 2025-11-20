@@ -1,32 +1,31 @@
 "use client";
 import Header from "@/components/Header";
+import PartyRegistrationForm, { PartyFormValues } from "@/components/PartyRegistrationForm";
+import { useCreateParty } from "@/hooks/useParty";
 import getMockClient from "@/lib/network/mockClient";
 import { LocationService } from "@/services/locationService";
-import { PartyService } from "@/services/partyService";
 import Link from "next/link";
-import { useState } from "react";
-import PartyRegistrationForm, { PartyFormValues } from "../../components/PartyRegistrationForm";
+import { useRouter } from "next/navigation";
 
 export default function RegistrationForm() {
-    const [data, setData] = useState<PartyFormValues | null>(null);
-    const partyService = new PartyService(getMockClient("student"));
-
+    const createPartyMutation = useCreateParty();
+    const router = useRouter();
 
     const handleSubmit = async (values: PartyFormValues, placeId: string) => {
         try {
-            const result = await partyService.createStudentParty(values, placeId);
-            console.log("Created party:", result);
-            setData(values);
+            await createPartyMutation.mutateAsync({ values, placeId });
             alert("Party created successfully!");
+            router.push("/student");
         } catch (err) {
             console.error(err);
             alert("Failed to create party");
         }
     };
+
     return (
         <div className="px-125 pb-8">
             <Header />
-            <Link className="py-8" href="/StudentDashboard">
+            <Link className="py-8" href="/student">
                 Back
             </Link>
             <div className="font-semibold py-3 text-2xl max-w-md">Off Campus Student Life Party Registration Form</div>

@@ -16,8 +16,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import apiClient from "@/lib/network/apiClient";
-import StudentService, { StudentDataRequest } from "@/services/studentService";
+import { useUpdateStudent } from "@/hooks/useStudent";
+import { StudentDataRequest } from "@/services/studentService";
 import { Pencil } from "lucide-react";
 import { useState } from "react";
 import * as z from "zod";
@@ -44,9 +44,8 @@ interface StudentInfoProps {
   initialData?: Partial<StudentInfoValues>;
 }
 
-const studentService = new StudentService(apiClient);
-
 export default function StudentInfo({ initialData }: StudentInfoProps) {
+  const updateStudentMutation = useUpdateStudent();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<Partial<StudentInfoValues>>({
     firstName: initialData?.firstName || "",
@@ -86,7 +85,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
         contact_preference: result.data.contactPreference,
       };
 
-      await studentService.updateStudent(0, apiData); // ID is not used, backend uses /students/me
+      await updateStudentMutation.mutateAsync(apiData);
 
       // Update formData with the submitted values to reflect in display
       setFormData(result.data);

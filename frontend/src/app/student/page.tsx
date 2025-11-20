@@ -11,7 +11,7 @@ export default function StudentDashboard() {
             <div className="flex justify-between items-center">
                 <div className="font-semibold text-2xl">Events</div>
 
-                <Link href="/RegistrationForm">
+                <Link href="/student/form">
                     <button className="px-4 py-2 rounded-lg bg-[#09294E] text-white">
                         Registration Form
                     </button>
