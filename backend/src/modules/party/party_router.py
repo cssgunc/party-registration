@@ -152,6 +152,10 @@ async def get_parties_nearby(
     except ValueError as e:
         raise BadRequestException(f"Invalid date format. Expected YYYY-MM-DD: {str(e)}")
 
+    # Validate that start_date is not greater than end_date
+    if start_datetime > end_datetime:
+        raise BadRequestException("Start date must be less than or equal to end date")
+
     # Get location coordinates from place ID
     location_data = await location_service.get_place_details(place_id)
 
@@ -197,6 +201,13 @@ async def get_parties_csv(
         raise HTTPException(
             status_code=400,
             detail="Invalid date format. Use YYYY-MM-DD format for dates.",
+        )
+
+    # Validate that start_date is not greater than end_date
+    if start_datetime > end_datetime:
+        raise HTTPException(
+            status_code=400,
+            detail="Start date must be less than or equal to end date",
         )
 
     parties = await party_service.get_parties_by_date_range(

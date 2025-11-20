@@ -1197,6 +1197,7 @@ async def test_get_parties_by_radius_missing_address_skipped(
     assert len(parties) == 1
     assert parties[0].id == party1.id
 
+
 @pytest.mark.asyncio
 async def test_get_parties_by_radius_and_date_range_basic(
     party_service: PartyService,
@@ -1283,8 +1284,6 @@ async def test_get_parties_by_radius_and_date_range_basic(
     assert party2.id in party_ids
     assert party3.id not in party_ids
 
-<<<<<<< HEAD
-=======
 
 @pytest.mark.asyncio
 async def test_get_parties_by_radius_and_date_range_empty_results(
@@ -1875,4 +1874,3 @@ async def test_get_parties_by_radius_and_date_range_single_day_range(
     )
     assert len(parties) == 1
     assert parties[0].id == party1.id
->>>>>>> cb1bf6a6e1fb661dcc2c6e036c0f5d2ab74862a9
