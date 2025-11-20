@@ -1,11 +1,11 @@
 "use client";
 
-import { format } from "date-fns";
 import { Download } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import getMockClient from "@/lib/network/mockClient";
+import PartyService from "@/services/partyService";
 
 interface PartyCsvExportButtonProps {
   startDate: Date | undefined;
@@ -29,34 +29,8 @@ export default function PartyCsvExportButton({
     setError(null);
 
     try {
-      const mockClient = getMockClient("admin");
-      
-      // Format dates to YYYY-MM-DD format
-      const formattedStartDate = format(startDate, "yyyy-MM-dd");
-      const formattedEndDate = format(endDate, "yyyy-MM-dd");
-
-      // Make GET request to CSV endpoint
-      const response = await mockClient.get(
-        `/parties/csv?start_date=${formattedStartDate}&end_date=${formattedEndDate}`,
-        {
-          responseType: "blob",
-        }
-      );
-
-      // Create blob from response
-      const blob = new Blob([response.data], { type: "text/csv" });
-      
-      // Create download link and trigger download
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `parties_${formattedStartDate}_to_${formattedEndDate}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      
-      // Clean up
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      const partyService = new PartyService(getMockClient("admin"));
+      await partyService.downloadPartiesCsv(startDate, endDate);
     } catch (err) {
       console.error("Failed to download CSV:", err);
       setError("Failed to download CSV. Please try again.");
