@@ -1,6 +1,6 @@
 import { Location } from "@/types/api/location";
 import { Party } from "@/types/api/party";
-import { Contact, Student } from "@/types/api/student";
+import { Student } from "@/types/api/student";
 import getMockClient from "./mockClient";
 
 const policeClient = getMockClient("police");
@@ -43,9 +43,17 @@ interface BackendLocation {
 interface BackendParty {
   id: number;
   party_datetime: string;
+  location_id: number;
+  contact_one_id: number;
+  contact_two_id: number;
+}
+
+interface BackendPartyExpanded {
+  id: number;
+  party_datetime: string;
   location: BackendLocation;
   contact_one: BackendStudent;
-  contact_two: BackendContact;
+  contact_two: BackendStudent;
 }
 
 interface PaginatedResponse<T> {
@@ -57,14 +65,6 @@ interface PaginatedResponse<T> {
 }
 
 // Mapper functions
-const mapBackendContact = (backendContact: BackendContact): Contact => ({
-  email: backendContact.email,
-  firstName: backendContact.first_name,
-  lastName: backendContact.last_name,
-  phoneNumber: backendContact.phone_number,
-  contactPreference: backendContact.contact_preference,
-});
-
 const mapBackendStudent = (backendStudent: BackendStudent): Student => ({
   id: backendStudent.id,
   pid: backendStudent.pid,
@@ -100,13 +100,74 @@ const mapBackendLocation = (backendLocation: BackendLocation): Location => ({
   zipCode: backendLocation.zip_code,
 });
 
-const mapBackendParty = (backendParty: BackendParty): Party => ({
-  id: backendParty.id,
-  datetime: new Date(backendParty.party_datetime),
-  location: mapBackendLocation(backendParty.location),
-  contactOne: mapBackendStudent(backendParty.contact_one),
-  contactTwo: mapBackendContact(backendParty.contact_two),
-});
+const mapBackendParty = (
+  backendParty: BackendParty | BackendPartyExpanded
+): Party => {
+  // Check if the party has expanded nested objects or just IDs
+  const hasExpandedData =
+    typeof (backendParty as BackendPartyExpanded).location === "object";
+
+  if (hasExpandedData) {
+    const expanded = backendParty as BackendPartyExpanded;
+    return {
+      id: expanded.id,
+      datetime: new Date(expanded.party_datetime),
+      location: mapBackendLocation(expanded.location),
+      contactOne: mapBackendStudent(expanded.contact_one),
+      contactTwo: mapBackendStudent(expanded.contact_two),
+    };
+  } else {
+    // Backend only returned IDs - we need to create placeholder objects
+    // This shouldn't happen in production, but handle gracefully
+    const simple = backendParty as BackendParty;
+    console.warn(
+      "Backend returned Party with IDs only, not expanded objects:",
+      simple
+    );
+
+    // Create minimal placeholder objects
+    return {
+      id: simple.id,
+      datetime: new Date(simple.party_datetime),
+      location: {
+        id: simple.location_id,
+        citationCount: 0,
+        warningCount: 0,
+        holdExpirationDate: null,
+        hasActiveHold: false,
+        googlePlaceId: "",
+        formattedAddress: `Location ID: ${simple.location_id}`,
+        latitude: 0,
+        longitude: 0,
+        streetNumber: null,
+        streetName: null,
+        unit: null,
+        city: null,
+        county: null,
+        state: null,
+        country: null,
+        zipCode: null,
+      },
+      contactOne: {
+        id: simple.contact_one_id,
+        pid: "",
+        email: "",
+        firstName: "Contact",
+        lastName: `${simple.contact_one_id}`,
+        phoneNumber: "",
+        contactPreference: "text",
+        lastRegistered: null,
+      },
+      contactTwo: {
+        email: "",
+        firstName: "Contact",
+        lastName: `${simple.contact_two_id}`,
+        phoneNumber: "",
+        contactPreference: "text",
+      },
+    };
+  }
+};
 
 // Service functions
 export const policeService = {
@@ -124,44 +185,34 @@ export const policeService = {
       params.end_date = endDate.toISOString();
     }
 
-    const response = await policeClient.get<PaginatedResponse<BackendParty>>(
-      "/parties",
-      {
-        params,
-      }
-    );
-
-    console.log("Backend response:", response.data);
+    const response = await policeClient.get<
+      PaginatedResponse<BackendParty | BackendPartyExpanded>
+    >("/parties", {
+      params,
+    });
 
     // Extract items from paginated response
     const parties = response.data.items || [];
 
     // Filter out any null/undefined items and map
-    return parties
-      .filter((party) => party != null)
-      .map((party) => {
-        try {
-          return mapBackendParty(party);
-        } catch (error) {
-          console.error("Error mapping party:", party, error);
-          throw error;
-        }
-      });
+    return parties.filter((party) => party != null).map(mapBackendParty);
   },
-
   /**
-   * Get parties near a specific location within a radius
+   * Get parties near a specific location within 0.5 mile radius
    */
   async getPartiesNearby(
     placeId: string,
     startDate: Date,
     endDate: Date
   ): Promise<Party[]> {
+    // Backend expects YYYY-MM-DD format
+    const formatDate = (date: Date) => date.toISOString().split("T")[0];
+
     const response = await policeClient.get<BackendParty[]>("/parties/nearby", {
       params: {
         place_id: placeId,
-        start_date: startDate.toISOString(),
-        end_date: endDate.toISOString(),
+        start_date: formatDate(startDate),
+        end_date: formatDate(endDate),
       },
     });
 

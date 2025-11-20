@@ -1,96 +1,166 @@
 "use client";
 
+import AddressSearch from "@/components/AddressSearch";
 import DateRangeFilter from "@/components/DateRangeFilter";
 import EmbeddedMap from "@/components/EmbeddedMap";
 import PartyList from "@/components/PartyList";
-import { PARTIES } from "@/lib/mockData";
-import { startOfDay } from "date-fns";
+import getMockClient from "@/lib/network/mockClient";
+import { policeService } from "@/lib/network/policeService";
+import {
+  AutocompleteResult,
+  LocationService,
+} from "@/services/locationService";
+import { useQuery } from "@tanstack/react-query";
+import { format, startOfDay } from "date-fns";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { useMemo, useState } from "react";
+
+// Create police-authenticated location service (module-level to prevent recreation)
+const policeLocationService = new LocationService(getMockClient("police"));
 
 export default function PolicePage() {
   const today = startOfDay(new Date());
   const [startDate, setStartDate] = useState<Date | undefined>(today);
   const [endDate, setEndDate] = useState<Date | undefined>(today);
+  const [showDateFilter, setShowDateFilter] = useState(false);
+  const [searchAddress, setSearchAddress] =
+    useState<AutocompleteResult | null>(null);
+
+  // Fetch place details when address is selected
+  const { data: placeDetails } = useQuery({
+    queryKey: ["place-details", searchAddress?.place_id],
+    queryFn: () => policeLocationService.getPlaceDetails(searchAddress!.place_id),
+    enabled: !!searchAddress?.place_id,
+  });
 
   // Fetch parties using Tanstack Query
-  // TODO: Uncomment when backend Party model includes nested objects
-  // const {
-  //   data: parties = [],
-  //   isLoading,
-  //   error,
-  // } = useQuery({
-  //   queryKey: ["parties", startDate, endDate],
-  //   queryFn: () => policeService.getParties(startDate, endDate),
-  //   enabled: !!startDate && !!endDate,
-  // });
+  const {
+    data: allParties = [],
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["parties", startDate, endDate],
+    queryFn: () => policeService.getParties(startDate, endDate),
+    enabled: !!startDate && !!endDate,
+  });
 
-  // Temporary: Use mock data until backend is updated
-  const allParties = PARTIES;
-  const isLoading = false;
-  const error = null;
+  // Fetch nearby parties if address search is active
+  const {
+    data: nearbyParties,
+    isLoading: isLoadingNearby,
+  } = useQuery({
+    queryKey: ["parties-nearby", searchAddress?.place_id, startDate, endDate],
+    queryFn: () =>
+      policeService.getPartiesNearby(
+        searchAddress!.place_id,
+        startDate!,
+        endDate!
+      ),
+    enabled: !!searchAddress?.place_id && !!startDate && !!endDate,
+  });
 
-  // Filter parties by date range on the client side
+  // Use nearby parties if address search is active, otherwise use all parties
   const filteredParties = useMemo(() => {
-    if (!startDate || !endDate) return allParties;
-
-    return allParties.filter((party) => {
-      const partyDate = startOfDay(party.datetime);
-      return partyDate >= startOfDay(startDate) && partyDate <= startOfDay(endDate);
-    });
-  }, [allParties, startDate, endDate]);
+    if (searchAddress && nearbyParties !== undefined) {
+      return nearbyParties;
+    }
+    return allParties;
+  }, [allParties, nearbyParties, searchAddress]);
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Police View</h1>
-      </div>
+    <div className="min-h-screen bg-white">
+      {/* Navbar */}
+      <div className="w-full bg-[#6FB2DC] h-16"></div>
 
-      <div className="bg-white p-6 rounded-lg shadow">
-        <h2 className="text-xl font-semibold mb-4">Date Range Filter</h2>
-        <DateRangeFilter
-          startDate={startDate}
-          endDate={endDate}
-          onStartDateChange={setStartDate}
-          onEndDateChange={setEndDate}
-        />
-      </div>
+      <div className="flex">
+        {/* Left Panel - Filters and Search */}
+        <div className="w-1/3 border-r border-gray-200">
+          {/* Filter Between Section */}
+          <div className="px-6 py-4">
+            <h2 className="text-xl font-semibold mb-2">Filter Between</h2>
+            <button
+              onClick={() => setShowDateFilter(!showDateFilter)}
+              className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-800"
+            >
+              <span>{startDate ? format(startDate, "MM/dd/yyyy") : "mm/dd/yyyy"}</span>
+              <span>and</span>
+              <span>{endDate ? format(endDate, "MM/dd/yyyy") : "mm/dd/yyyy"}</span>
+              {showDateFilter ? (
+                <ChevronUp className="w-4 h-4" />
+              ) : (
+                <ChevronDown className="w-4 h-4" />
+              )}
+            </button>
 
-      {/* TODO: Add Address Search when merged */}
-      <div className="bg-white p-6 rounded-lg shadow">
-        <h2 className="text-xl font-semibold mb-4">Address Search</h2>
-        <input
-          type="text"
-          placeholder="Address search (coming soon)"
-          className="w-full p-2 border rounded"
-          disabled
-        />
-      </div>
-
-      {isLoading && (
-        <div className="text-center py-8">
-          <p>Loading parties...</p>
-        </div>
-      )}
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded">
-          <p>Error loading parties</p>
-        </div>
-      )}
-
-      {!isLoading && !error && (
-        <>
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h2 className="text-xl font-semibold mb-4">Party List</h2>
-            <PartyList parties={filteredParties} />
+            {showDateFilter && (
+              <div className="mt-4">
+                <DateRangeFilter
+                  startDate={startDate}
+                  endDate={endDate}
+                  onStartDateChange={setStartDate}
+                  onEndDateChange={setEndDate}
+                />
+              </div>
+            )}
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h2 className="text-xl font-semibold mb-4">Map View</h2>
-            <EmbeddedMap parties={filteredParties} />
+          {/* Party Search Section */}
+          <div className="px-6 py-4">
+            <h2 className="text-xl font-semibold mb-4">Party Search</h2>
+
+            {/* Address Search */}
+            <div className="mb-6">
+              <AddressSearch
+                value={searchAddress?.formatted_address || ""}
+                onSelect={setSearchAddress}
+                placeholder="Enter Address..."
+                locationService={policeLocationService}
+              />
+              {searchAddress && (
+                <p className="mt-2 text-sm text-gray-600">
+                  Searching within 0.5 miles
+                </p>
+              )}
+            </div>
+
+            {/* Loading State */}
+            {(isLoading || isLoadingNearby) && (
+              <div className="text-center py-8">
+                <p className="text-gray-600">Loading parties...</p>
+              </div>
+            )}
+
+            {/* Error State */}
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg mb-4">
+                <p>Error loading parties</p>
+              </div>
+            )}
+
+            {/* Party List - Scrollable */}
+            {!isLoading && !isLoadingNearby && (
+              <div className="max-h-[calc(100vh-400px)] overflow-y-auto">
+                <PartyList parties={filteredParties} />
+              </div>
+            )}
           </div>
-        </>
-      )}
+        </div>
+
+        {/* Right Panel - Map */}
+        <div className="flex-1 px-6 py-4">
+          <h2 className="text-xl font-semibold mb-4">
+            {searchAddress ? "Showing Nearby Parties" : "Showing All Parties"}
+          </h2>
+          <EmbeddedMap
+            parties={filteredParties}
+            center={
+              placeDetails
+                ? { lat: placeDetails.latitude, lng: placeDetails.longitude }
+                : undefined
+            }
+          />
+        </div>
+      </div>
     </div>
   );
 }

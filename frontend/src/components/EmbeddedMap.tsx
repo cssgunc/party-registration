@@ -14,6 +14,7 @@ import { useCallback, useState } from "react";
 interface EmbeddedMapProps {
   parties: Party[];
   activeParty?: Party;
+  center?: { lat: number; lng: number };
 }
 interface PoiMarkersProps {
   pois: Poi[];
@@ -21,7 +22,7 @@ interface PoiMarkersProps {
 }
 type Poi = { key: string; location: google.maps.LatLngLiteral };
 
-const EmbeddedMap = ({ parties, activeParty }: EmbeddedMapProps) => {
+const EmbeddedMap = ({ parties, activeParty, center }: EmbeddedMapProps) => {
   const default_locations: Poi[] = [
     { key: "polkPlace", location: { lat: 35.911232, lng: -79.050331 } },
     { key: "davisLibrary", location: { lat: 35.910784, lng: -79.047729 } },
@@ -39,12 +40,17 @@ const EmbeddedMap = ({ parties, activeParty }: EmbeddedMapProps) => {
         }))
       : default_locations;
   const activePoiKey = activeParty ? activeParty.id.toString() : undefined;
-  const defaultZoom = 13;
-  const defaultCenter =
-    parties && parties.length > 0
+  const defaultZoom = center ? 17 : 14; // Zoom in more when searching
+  const mapCenter =
+    center ||
+    (parties && parties.length > 0
       ? locations[0].location
-      : { lat: 35.911232, lng: -79.050331 };
+      : { lat: 35.911232, lng: -79.050331 });
   const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+  
+  // Create a unique key based on center to force map remount when center changes
+  const mapKey = center ? `${center.lat}-${center.lng}` : "default";
+
   return (
     <div className="w-full h-[450px] overflow-hidden rounded-2xl shadow-md">
       <APIProvider
@@ -52,9 +58,12 @@ const EmbeddedMap = ({ parties, activeParty }: EmbeddedMapProps) => {
         onLoad={() => console.log("Maps API has loaded.")}
       >
         <Map
+          key={mapKey}
           defaultZoom={defaultZoom}
-          defaultCenter={defaultCenter}
+          defaultCenter={mapCenter}
           mapId={process.env.NEXT_PUBLIC_GOOGLE_MAP_ID!}
+          gestureHandling="greedy"
+          disableDefaultUI={false}
         >
           <PoiMarkers pois={locations} activePoiKey={activePoiKey} />
         </Map>
