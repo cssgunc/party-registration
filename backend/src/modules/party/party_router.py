@@ -5,11 +5,13 @@ from fastapi.responses import Response
 from src.core.authentication import (
     authenticate_admin,
     authenticate_by_role,
+    authenticate_police_or_admin,
     authenticate_staff_or_admin,
     authenticate_user,
 )
-from src.core.exceptions import ForbiddenException
+from src.core.exceptions import BadRequestException, ForbiddenException
 from src.modules.account.account_model import Account, AccountRole
+from src.modules.location.location_service import LocationService
 
 from .party_model import (
     AdminCreatePartyDTO,
@@ -115,6 +117,59 @@ async def list_parties(
     )
 
 
+@party_router.get("/nearby")
+async def get_parties_nearby(
+    place_id: str = Query(..., description="Google Maps place ID"),
+    start_date: str = Query(..., description="Start date (YYYY-MM-DD format)"),
+    end_date: str = Query(..., description="End date (YYYY-MM-DD format)"),
+    party_service: PartyService = Depends(),
+    location_service: LocationService = Depends(),
+    _=Depends(authenticate_police_or_admin),
+) -> list[Party]:
+    """
+    Returns parties within a radius of a location specified by Google Maps place ID,
+    filtered by date range.
+
+    Query Parameters:
+    - place_id: Google Maps place ID from autocomplete selection
+    - start_date: Start date for the search range (YYYY-MM-DD format)
+    - end_date: End date for the search range (YYYY-MM-DD format)
+
+    Returns:
+    - List of parties within the search radius and date range
+
+    Raises:
+    - 400: If place ID is invalid or dates are in wrong format
+    - 404: If place ID is not found
+    - 403: If user is not a police officer or admin
+    """
+    # Parse date strings to datetime objects
+    try:
+        start_datetime = datetime.strptime(start_date, "%Y-%m-%d")
+        end_datetime = datetime.strptime(end_date, "%Y-%m-%d")
+        # Set end_datetime to end of day (23:59:59)
+        end_datetime = end_datetime.replace(hour=23, minute=59, second=59)
+    except ValueError as e:
+        raise BadRequestException(f"Invalid date format. Expected YYYY-MM-DD: {str(e)}")
+
+    # Validate that start_date is not greater than end_date
+    if start_datetime > end_datetime:
+        raise BadRequestException("Start date must be less than or equal to end date")
+
+    # Get location coordinates from place ID
+    location_data = await location_service.get_place_details(place_id)
+
+    # Perform proximity search with date range
+    parties = await party_service.get_parties_by_radius_and_date_range(
+        latitude=location_data.latitude,
+        longitude=location_data.longitude,
+        start_date=start_datetime,
+        end_date=end_datetime,
+    )
+
+    return parties
+
+
 @party_router.get("/csv")
 async def get_parties_csv(
     start_date: str = Query(..., description="Start date in YYYY-MM-DD format"),
@@ -146,6 +201,13 @@ async def get_parties_csv(
         raise HTTPException(
             status_code=400,
             detail="Invalid date format. Use YYYY-MM-DD format for dates.",
+        )
+
+    # Validate that start_date is not greater than end_date
+    if start_datetime > end_datetime:
+        raise HTTPException(
+            status_code=400,
+            detail="Start date must be less than or equal to end date",
         )
 
     parties = await party_service.get_parties_by_date_range(
