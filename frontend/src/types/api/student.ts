@@ -13,7 +13,7 @@ type Student = {
  * Contact information (API format with snake_case)
  * This is what the backend returns and expects
  */
-type ContactAPI = {
+type BackendContact = {
   email: string;
   first_name: string;
   last_name: string;
@@ -44,4 +44,4 @@ type PaginatedStudentsResponse = {
   total_pages: number;
 };
 
-export type { Contact, PaginatedStudentsResponse, Student, ContactAPI };
+export type { BackendContact, Contact, PaginatedStudentsResponse, Student };

@@ -1,5 +1,5 @@
 import getMockClient from "@/lib/network/mockClient";
-import { Location } from "@/types/api/location";
+import { BackendLocation, Location } from "@/types/api/location";
 import { AxiosInstance } from "axios";
 
 export interface AutocompleteResult {
@@ -25,26 +25,6 @@ export interface PlaceDetails {
   zipCode: string | null;
 }
 
-export interface BackendLocation {
-  id: number;
-  citation_count: number;
-  warning_count: number;
-  hold_expiration: string | null;
-  has_active_hold: boolean;
-  google_place_id: string;
-  formatted_address: string;
-  latitude: number;
-  longitude: number;
-  street_number: string | null;
-  street_name: string | null;
-  unit: string | null;
-  city: string | null;
-  county: string | null;
-  state: string | null;
-  country: string | null;
-  zip_code: string | null;
-}
-
 export interface PaginatedLocationResponse {
   items: Location[];
   total_records: number;
@@ -62,7 +42,7 @@ export interface LocationCreatePayload {
 
 const defaultClient = getMockClient("admin");
 
-function toFrontendLocation(raw: BackendLocation): Location {
+export function toFrontendLocation(raw: BackendLocation): Location {
   return {
     id: raw.id,
     citationCount: raw.citation_count,
