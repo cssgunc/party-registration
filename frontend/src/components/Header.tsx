@@ -25,7 +25,7 @@ export default function Header() {
                     <PopoverContent className="w-60">
                         <div className="grid gap-4">
                             <div className="space-y-2">
-                                <Link href="/student-info-test">
+                                <Link href="/student/profile">
                                     <div className="flex flex-row gap-2">
                                         <Image src={user} alt="user" />
                                         <h4 className="leading-none font-small">Edit Profile Information</h4>

@@ -9,7 +9,11 @@ type Student = {
   lastRegistered: Date | null;
 };
 
-type Contact = {
+/**
+ * Contact information (API format with snake_case)
+ * This is what the backend returns and expects
+ */
+type ContactAPI = {
   email: string;
   first_name: string;
   last_name: string;
@@ -17,4 +21,16 @@ type Contact = {
   contact_preference: "call" | "text";
 };
 
-export type { Contact, Student };
+/**
+ * Contact information (Frontend format with camelCase)
+ * This is what the frontend components use
+ */
+type Contact = {
+  email: string;
+  firstName: string;
+  lastName: string;
+  phoneNumber: string;
+  contactPreference: "call" | "text";
+};
+
+export type { Contact, ContactAPI, Student };

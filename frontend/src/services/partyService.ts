@@ -1,18 +1,40 @@
 import { PartyFormValues } from "@/components/PartyRegistrationForm";
 import apiClient from "@/lib/network/apiClient";
-import { StudentCreatePartyDTO } from "@/types/api/party";
+import { Party, PartyAPI, StudentCreatePartyDTO } from "@/types/api/party";
 import { AxiosInstance } from "axios";
 
 export class PartyService {
   constructor(private client: AxiosInstance = apiClient) {}
 
-  async createStudentParty(values: PartyFormValues, placeId: string) {
+  async createStudentParty(
+    values: PartyFormValues,
+    placeId: string
+  ): Promise<Party> {
     const dto = mapFormToStudentDTO(values, placeId);
 
-    const response = await this.client.post("/parties", dto);
+    const response = await this.client.post<PartyAPI>("/parties", dto);
 
-    return response.data;
+    return transformPartyAPIToParty(response.data);
   }
+}
+
+/**
+ * Transform API party data to frontend format
+ */
+function transformPartyAPIToParty(apiParty: PartyAPI): Party {
+  return {
+    id: apiParty.id,
+    datetime: new Date(apiParty.party_datetime),
+    location: apiParty.location,
+    contactOne: apiParty.contact_one,
+    contactTwo: {
+      email: apiParty.contact_two.email,
+      firstName: apiParty.contact_two.first_name,
+      lastName: apiParty.contact_two.last_name,
+      phoneNumber: apiParty.contact_two.phone_number,
+      contactPreference: apiParty.contact_two.contact_preference,
+    },
+  };
 }
 
 function mapFormToStudentDTO(
@@ -34,10 +56,10 @@ function mapFormToStudentDTO(
     place_id: placeId,
     contact_two: {
       email: values.contactTwoEmail,
-      first_name: values.secondContactFirstName, // FIXED
-      last_name: values.secondContactLastName, // FIXED
-      phone_number: values.phoneNumber, // FIXED
-      contact_preference: values.contactPreference, // FIXED
+      first_name: values.secondContactFirstName,
+      last_name: values.secondContactLastName,
+      phone_number: values.phoneNumber,
+      contact_preference: values.contactPreference,
     },
   };
 }

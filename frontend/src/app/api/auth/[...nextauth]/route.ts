@@ -22,10 +22,19 @@ const authOptions: NextAuthOptions = {
         // Replace this with the actual authentication logic once we know how ONYEN SSO works
         if (username === "admin" && password === "password") {
           return {
-            id: "3",
+            id: "2",
             name: "Admin User",
             email: "admin@example.com",
-            accessToken: "fake-access-token-for-dev",
+            accessToken: "admin",
+            refreshToken: "fake-refresh-token-for-dev",
+          };
+        }
+        if (username === "student" && password === "password") {
+          return {
+            id: "1",
+            name: "Student User",
+            email: "student@example.com",
+            accessToken: "student",
             refreshToken: "fake-refresh-token-for-dev",
           };
         }
