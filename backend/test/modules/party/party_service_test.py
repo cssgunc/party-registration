@@ -1283,4 +1283,3 @@ async def test_get_parties_by_radius_and_date_range_basic(
     assert party2.id in party_ids
     assert party3.id not in party_ids
 
-
