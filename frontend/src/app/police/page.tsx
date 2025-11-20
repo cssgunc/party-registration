@@ -68,15 +68,15 @@ export default function PolicePage() {
   }, [allParties, nearbyParties, searchAddress]);
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="h-screen bg-white flex flex-col overflow-hidden">
       {/* Navbar */}
-      <div className="w-full bg-[#6FB2DC] h-16"></div>
+      <div className="w-full bg-[#6FB2DC] h-16 flex-shrink-0"></div>
 
-      <div className="flex">
+      <div className="flex flex-1 overflow-hidden">
         {/* Left Panel - Filters and Search */}
-        <div className="w-1/3 border-r border-gray-200">
+        <div className="w-1/3 border-r border-gray-200 flex flex-col overflow-hidden">
           {/* Filter Between Section */}
-          <div className="px-6 py-4">
+          <div className="px-6 py-4 flex-shrink-0">
             <h2 className="text-xl font-semibold mb-2">Filter Between</h2>
             <button
               onClick={() => setShowDateFilter(!showDateFilter)}
@@ -105,11 +105,11 @@ export default function PolicePage() {
           </div>
 
           {/* Party Search Section */}
-          <div className="px-6 py-4">
-            <h2 className="text-xl font-semibold mb-4">Party Search</h2>
+          <div className="px-6 py-4 flex-1 flex flex-col overflow-hidden">
+            <h2 className="text-xl font-semibold mb-4 flex-shrink-0">Party Search</h2>
 
             {/* Address Search */}
-            <div className="mb-6">
+            <div className="mb-6 flex-shrink-0">
               <AddressSearch
                 value={searchAddress?.formatted_address || ""}
                 onSelect={setSearchAddress}
@@ -139,7 +139,7 @@ export default function PolicePage() {
 
             {/* Party List - Scrollable */}
             {!isLoading && !isLoadingNearby && (
-              <div className="max-h-[calc(100vh-400px)] overflow-y-auto">
+              <div className="flex-1 overflow-y-auto">
                 <PartyList parties={filteredParties} />
               </div>
             )}
@@ -147,18 +147,20 @@ export default function PolicePage() {
         </div>
 
         {/* Right Panel - Map */}
-        <div className="flex-1 px-6 py-4">
-          <h2 className="text-xl font-semibold mb-4">
+        <div className="flex-1 px-6 py-4 flex flex-col overflow-hidden">
+          <h2 className="text-xl font-semibold mb-4 flex-shrink-0">
             {searchAddress ? "Showing Nearby Parties" : "Showing All Parties"}
           </h2>
-          <EmbeddedMap
-            parties={filteredParties}
-            center={
-              placeDetails
-                ? { lat: placeDetails.latitude, lng: placeDetails.longitude }
-                : undefined
-            }
-          />
+          <div className="flex-1 overflow-hidden">
+            <EmbeddedMap
+              parties={filteredParties}
+              center={
+                placeDetails
+                  ? { lat: placeDetails.latitude, lng: placeDetails.longitude }
+                  : undefined
+              }
+            />
+          </div>
         </div>
       </div>
     </div>
