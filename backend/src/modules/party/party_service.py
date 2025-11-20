@@ -1,7 +1,7 @@
 import csv
 import io
 import math
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List
 
 from fastapi import Depends
@@ -79,10 +79,20 @@ class PartyService:
 
     def _calculate_business_days_ahead(self, target_date: datetime) -> int:
         """Calculate the number of business days between now and target date."""
-        current_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-        target_date_only = target_date.replace(
+        # Ensure both datetimes are timezone-aware (use UTC)
+        current_date = datetime.now(timezone.utc).replace(
             hour=0, minute=0, second=0, microsecond=0
         )
+
+        # If target_date is naive, make it UTC-aware; otherwise keep its timezone
+        if target_date.tzinfo is None:
+            target_date_only = target_date.replace(
+                hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc
+            )
+        else:
+            target_date_only = target_date.replace(
+                hour=0, minute=0, second=0, microsecond=0
+            )
 
         business_days = 0
         current = current_date
@@ -105,21 +115,24 @@ class PartyService:
         """Validate that student has completed Party Smart after the most recent August 1st."""
         student = await self.student_service.get_student_by_id(student_id)
 
-        # Check if last_registered is null
         if student.last_registered is None:
             raise PartySmartNotCompletedException(student_id)
 
         # Calculate the most recent August 1st
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         current_year = now.year
 
-        # August 1st of the current year
-        august_first_this_year = datetime(current_year, 8, 1, 0, 0, 0)
+        # August 1st of the current year (UTC)
+        august_first_this_year = datetime(
+            current_year, 8, 1, 0, 0, 0, tzinfo=timezone.utc
+        )
 
         # If today is before August 1st, use last year's August 1st
         # Otherwise, use this year's August 1st
         if now < august_first_this_year:
-            most_recent_august_first = datetime(current_year - 1, 8, 1, 0, 0, 0)
+            most_recent_august_first = datetime(
+                current_year - 1, 8, 1, 0, 0, 0, tzinfo=timezone.utc
+            )
         else:
             most_recent_august_first = august_first_this_year
 
@@ -414,7 +427,7 @@ class PartyService:
     async def get_parties_by_radius(
         self, latitude: float, longitude: float
     ) -> List[Party]:
-        current_time = datetime.now()
+        current_time = datetime.now(timezone.utc)
         start_time = current_time - timedelta(hours=6)
         end_time = current_time + timedelta(hours=12)
 

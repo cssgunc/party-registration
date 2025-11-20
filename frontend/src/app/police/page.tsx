@@ -11,10 +11,10 @@ import {
   LocationService,
 } from "@/services/locationService";
 import { Party } from "@/types/api/party";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format, startOfDay } from "date-fns";
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
 
 // Create police-authenticated location service (module-level to prevent recreation)
 const policeLocationService = new LocationService(getMockClient("police"));

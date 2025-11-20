@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Self
 
 from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String
@@ -37,15 +37,25 @@ class StudentEntity(EntityBase):
         )
 
     def to_model(self) -> "DbStudent":
+        # Ensure last_registered is timezone-aware if present
+        last_reg = self.last_registered
+        if last_reg is not None and last_reg.tzinfo is None:
+            last_reg = last_reg.replace(tzinfo=timezone.utc)
+
         return DbStudent(
             account_id=self.account_id,
             contact_preference=self.contact_preference,
-            last_registered=self.last_registered,
+            last_registered=last_reg,
             phone_number=self.phone_number,
         )
 
     def to_dto(self) -> "Student":
         """Convert entity to DTO using the account relationship."""
+        # Ensure last_registered is timezone-aware if present
+        last_reg = self.last_registered
+        if last_reg is not None and last_reg.tzinfo is None:
+            last_reg = last_reg.replace(tzinfo=timezone.utc)
+
         return Student(
             id=self.account_id,
             pid=self.account.pid,
@@ -54,5 +64,5 @@ class StudentEntity(EntityBase):
             last_name=self.account.last_name,
             phone_number=self.phone_number,
             contact_preference=self.contact_preference,
-            last_registered=self.last_registered,
+            last_registered=last_reg,
         )

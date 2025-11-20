@@ -4,6 +4,7 @@ import { Party } from "@/types/api/party";
 import {
   AdvancedMarker,
   APIProvider,
+  InfoWindow,
   Map,
   Pin,
   useMap,
@@ -106,24 +107,28 @@ const PoiMarkers = ({ pois, activePoiKey, onSelect }: PoiMarkersProps) => {
 
   return (
     <>
-      {pois.map((poi) => {
-        const isActive = poi.key === activePoiKey;
-
-        return (
-          <AdvancedMarker
-            key={poi.key}
-            position={poi.location}
-            clickable
-            onClick={handleClick(poi)}
-          >
-            <Pin
-              background={isActive ? "#4285F4" : "#EA4335"}
-              glyphColor="#fff"
-              borderColor={isActive ? "#1967D2" : "#B31412"}
-            />
-          </AdvancedMarker>
-        );
-      })}
+      {pois.map((poi: Poi) => (
+        <AdvancedMarker
+          key={poi.key}
+          position={poi.location}
+          clickable={true}
+          onClick={handleClick(poi)}
+        >
+          <Pin
+            background={poi == selectedPoi ? "#4285F4" : "#EA4335"}
+            glyphColor={"#fff"}
+            borderColor={poi == selectedPoi ? "#1967D2" : "#B31412"}
+          />
+        </AdvancedMarker>
+      ))}
+      {selectedPoi && (
+        <InfoWindow
+          position={selectedPoi.location}
+          onCloseClick={() => setSelectedPoi(null)}
+        >
+          <div>{selectedPoi.key}</div>
+        </InfoWindow>
+      )}
     </>
   );
 };
