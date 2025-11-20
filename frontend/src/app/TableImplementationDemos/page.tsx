@@ -1,5 +1,5 @@
 "use client";
-import PartyList from "@/components/PartyList";
+import TableList from "@/components/PartyList";
 import { PARTIES } from "@/lib/mockData";
 import { useState } from "react";
 
@@ -8,10 +8,10 @@ export default function Home() {
   return (
     <div className="p-8 px-24">
       <div>
-        <PartyList
+        <TableList
           parties={filteredParties}
           setFilteredParties={setFilteredParties}
-        ></PartyList>
+        ></TableList>
       </div>
       {/* <PartyTable data={PARTIES} />
 
