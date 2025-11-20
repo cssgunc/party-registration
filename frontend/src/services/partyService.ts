@@ -1,6 +1,53 @@
+import { PartyFormValues } from "@/components/PartyRegistrationForm";
 import getMockClient from "@/lib/network/mockClient";
-import { Party } from "@/types/api/party";
+import { BackendParty, Party, StudentCreatePartyDTO } from "@/types/api/party";
 import { AxiosInstance } from "axios";
+
+/**
+ * Transform API party data to frontend format
+ */
+function transformPartyAPIToParty(apiParty: BackendParty): Party {
+  return {
+    id: apiParty.id,
+    datetime: new Date(apiParty.party_datetime),
+    location: apiParty.location,
+    contactOne: apiParty.contact_one,
+    contactTwo: {
+      email: apiParty.contact_two.email,
+      firstName: apiParty.contact_two.first_name,
+      lastName: apiParty.contact_two.last_name,
+      phoneNumber: apiParty.contact_two.phone_number,
+      contactPreference: apiParty.contact_two.contact_preference,
+    },
+  };
+}
+
+function mapFormToStudentDTO(
+  values: PartyFormValues,
+  placeId: string
+): StudentCreatePartyDTO {
+  const date = values.partyDate; // Date object
+  const [hours, minutes] = values.partyTime.split(":");
+
+  // Set the time
+  date.setHours(Number(hours), Number(minutes), 0, 0);
+
+  // produce offset-aware ISO string
+  const party_datetime = date.toISOString();
+
+  return {
+    type: "student",
+    party_datetime,
+    place_id: placeId,
+    contact_two: {
+      email: values.contactTwoEmail,
+      first_name: values.secondContactFirstName,
+      last_name: values.secondContactLastName,
+      phone_number: values.phoneNumber,
+      contact_preference: values.contactPreference,
+    },
+  };
+}
 
 interface BackendContact {
   email: string;
@@ -8,41 +55,6 @@ interface BackendContact {
   last_name: string;
   phone_number: string;
   contact_preference: "call" | "text";
-}
-
-interface BackendParty {
-  id: number;
-  party_datetime: string;
-  location: {
-    id: number;
-    citation_count: number;
-    warning_count: number;
-    hold_expiration: string | null;
-    has_active_hold: boolean;
-    google_place_id: string;
-    formatted_address: string;
-    latitude: number;
-    longitude: number;
-    street_number: string | null;
-    street_name: string | null;
-    unit: string | null;
-    city: string | null;
-    county: string | null;
-    state: string | null;
-    country: string | null;
-    zip_code: string | null;
-  };
-  contact_one: {
-    id: number;
-    email: string;
-    first_name: string;
-    last_name: string;
-    phone_number: string;
-    contact_preference: "call" | "text";
-    last_registered: string | null;
-    pid: string;
-  };
-  contact_two: BackendContact;
 }
 
 export interface PaginatedPartiesResponse {
@@ -75,7 +87,6 @@ function toFrontendParty(raw: BackendParty): Party {
   return {
     id: raw.id,
     datetime: new Date(raw.party_datetime),
-    rawDatetime: raw.party_datetime,
     location: {
       id: raw.location.id,
       citationCount: raw.location.citation_count,
@@ -126,6 +137,17 @@ export class PartyService {
 
   constructor(client: AxiosInstance = defaultClient) {
     this.client = client;
+  }
+
+  async createStudentParty(
+    values: PartyFormValues,
+    placeId: string
+  ): Promise<Party> {
+    const dto = mapFormToStudentDTO(values, placeId);
+
+    const response = await this.client.post<BackendParty>("/parties", dto);
+
+    return transformPartyAPIToParty(response.data);
   }
 
   async listParties(

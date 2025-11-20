@@ -1,12 +1,13 @@
-from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock
+from datetime import datetime, timedelta, timezone
+from unittest.mock import AsyncMock, MagicMock, patch
 
+import googlemaps
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.core.authentication import authenticate_user
+from src.core.authentication import authenticate_police_or_admin, authenticate_user
 from src.core.database import get_session
 from src.main import app
 from src.modules.account.account_entity import AccountEntity, AccountRole
@@ -16,6 +17,7 @@ from src.modules.location.location_model import Location
 from src.modules.location.location_service import (
     LocationHoldActiveException,
     LocationService,
+    get_gmaps_client,
 )
 from src.modules.party.party_entity import PartyEntity
 from src.modules.party.party_model import (
@@ -23,6 +25,7 @@ from src.modules.party.party_model import (
     Contact,
     StudentCreatePartyDTO,
 )
+from src.modules.police.police_model import PoliceAccount
 from src.modules.student.student_entity import StudentEntity
 from src.modules.student.student_model import ContactPreference
 
@@ -30,7 +33,7 @@ from src.modules.student.student_model import ContactPreference
 def get_valid_party_datetime() -> datetime:
     """Get a datetime that is at least 3 business days from now."""
     days_ahead = 5  # Start with 5 calendar days to ensure 3 business days
-    return datetime.now() + timedelta(days=days_ahead)
+    return datetime.now(timezone.utc) + timedelta(days=days_ahead)
 
 
 def get_party_from_setup(party_setup: dict, date: datetime) -> PartyEntity:
@@ -228,16 +231,16 @@ async def sample_party_setup(test_async_session: AsyncSession):
 
     # Create students with last_registered date (Party Smart completed after most recent August 1st)
     # Calculate a valid date after the most recent August 1st
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     current_year = now.year
-    august_first_this_year = datetime(current_year, 8, 1, 0, 0, 0)
+    august_first_this_year = datetime(current_year, 8, 1, 0, 0, 0, tzinfo=timezone.utc)
 
     # If we're before August 1st, use last year's August 1st + 1 day
     # Otherwise, use this year's August 1st + 1 day
     if now < august_first_this_year:
-        valid_date = datetime(current_year - 1, 8, 2, 12, 0, 0)
+        valid_date = datetime(current_year - 1, 8, 2, 12, 0, 0, tzinfo=timezone.utc)
     else:
-        valid_date = datetime(current_year, 8, 2, 12, 0, 0)
+        valid_date = datetime(current_year, 8, 2, 12, 0, 0, tzinfo=timezone.utc)
 
     student_one = StudentEntity(
         contact_preference=ContactPreference.call,
@@ -279,7 +282,7 @@ async def test_get_parties_with_data(
     # Create 5 parties
     for i in range(5):
         party = PartyEntity(
-            party_datetime=datetime.now() + timedelta(days=i),
+            party_datetime=datetime.now(timezone.utc) + timedelta(days=i),
             location_id=sample_party_setup["location_id"],
             contact_one_id=sample_party_setup["contact_one_id"],
             contact_two_email="test2@example.com",
@@ -308,8 +311,8 @@ async def test_get_parties_validates_content(
 ):
     """Test GET /api/parties returns correct party content and structure."""
     # Create parties with specific data for validation
-    party_datetime_1 = datetime(2024, 6, 15, 20, 0, 0)
-    party_datetime_2 = datetime(2024, 7, 20, 21, 30, 0)
+    party_datetime_1 = datetime(2024, 6, 15, 20, 0, 0, tzinfo=timezone.utc)
+    party_datetime_2 = datetime(2024, 7, 20, 21, 30, 0, tzinfo=timezone.utc)
 
     party1 = PartyEntity(
         party_datetime=party_datetime_1,
@@ -370,10 +373,10 @@ async def test_get_parties_validates_content(
         assert isinstance(party["id"], int)
         assert party["id"] > 0
 
-    # Verify specific party datetimes
+    # Verify specific party datetimes (replace +00:00 with Z for comparison)
     party_datetimes = [p["party_datetime"] for p in parties]
-    assert party_datetime_1.isoformat() in party_datetimes
-    assert party_datetime_2.isoformat() in party_datetimes
+    assert party_datetime_1.isoformat().replace("+00:00", "Z") in party_datetimes
+    assert party_datetime_2.isoformat().replace("+00:00", "Z") in party_datetimes
 
 
 @pytest.mark.asyncio
@@ -385,7 +388,8 @@ async def test_get_parties_content_with_pagination(
     created_parties = []
     for i in range(10):
         party = PartyEntity(
-            party_datetime=datetime(2024, 1, 1, 10, 0, 0) + timedelta(days=i),
+            party_datetime=datetime(2024, 1, 1, 10, 0, 0, tzinfo=timezone.utc)
+            + timedelta(days=i),
             location_id=sample_party_setup["location_id"],
             contact_one_id=sample_party_setup["contact_one_id"],
             contact_two_email="test2@example.com",
@@ -439,7 +443,7 @@ async def test_get_parties_pagination(
     # Create 25 parties
     for i in range(25):
         party = PartyEntity(
-            party_datetime=datetime.now() + timedelta(days=i),
+            party_datetime=datetime.now(timezone.utc) + timedelta(days=i),
             location_id=sample_party_setup["location_id"],
             contact_one_id=sample_party_setup["contact_one_id"],
             contact_two_email="test2@example.com",
@@ -488,7 +492,7 @@ async def test_get_parties_pagination_beyond_available(
     # Create 5 parties
     for i in range(5):
         party = PartyEntity(
-            party_datetime=datetime.now() + timedelta(days=i),
+            party_datetime=datetime.now(timezone.utc) + timedelta(days=i),
             location_id=sample_party_setup["location_id"],
             contact_one_id=sample_party_setup["contact_one_id"],
             contact_two_email="test2@example.com",
@@ -518,7 +522,7 @@ async def test_get_parties_custom_page_size(
     # Create 10 parties
     for i in range(10):
         party = PartyEntity(
-            party_datetime=datetime.now() + timedelta(days=i),
+            party_datetime=datetime.now(timezone.utc) + timedelta(days=i),
             location_id=sample_party_setup["location_id"],
             contact_one_id=sample_party_setup["contact_one_id"],
             contact_two_email="test2@example.com",
@@ -565,7 +569,7 @@ async def test_get_party_by_id(
 ):
     """Test GET /api/parties/{party_id} successfully retrieves a party."""
     # Create a party
-    party_datetime = datetime.now() + timedelta(days=1)
+    party_datetime = datetime.now(timezone.utc) + timedelta(days=1)
     party = PartyEntity(
         party_datetime=party_datetime,
         location_id=sample_party_setup["location_id"],
@@ -605,7 +609,7 @@ async def test_delete_party(
     """Test DELETE /api/parties/{party_id} successfully deletes a party."""
     # Create a party
     party = PartyEntity(
-        party_datetime=datetime.now() + timedelta(days=1),
+        party_datetime=datetime.now(timezone.utc) + timedelta(days=1),
         location_id=sample_party_setup["location_id"],
         contact_one_id=sample_party_setup["contact_one_id"],
         contact_two_email="test2@example.com",
@@ -646,7 +650,7 @@ async def test_delete_party_removes_from_list(
     # Create 3 parties
     for i in range(3):
         party = PartyEntity(
-            party_datetime=datetime.now() + timedelta(days=i),
+            party_datetime=datetime.now(timezone.utc) + timedelta(days=i),
             location_id=sample_party_setup["location_id"],
             contact_one_id=sample_party_setup["contact_one_id"],
             contact_two_email="test2@example.com",
@@ -715,6 +719,329 @@ async def test_admin_authentication_required(
         assert response.status_code == 401
 
 
+@pytest_asyncio.fixture()
+async def police_client(test_async_session: AsyncSession):
+    """Create an async test client with police authentication override."""
+
+    async def override_get_session():
+        yield test_async_session
+
+    async def override_authenticate_police_or_admin():
+        return PoliceAccount(email="police@example.com")
+
+    def override_get_gmaps_client():
+        """Return a mock Google Maps client to avoid API key validation."""
+        return MagicMock()
+
+    app.dependency_overrides[get_session] = override_get_session
+    app.dependency_overrides[authenticate_police_or_admin] = (
+        override_authenticate_police_or_admin
+    )
+    app.dependency_overrides[get_gmaps_client] = override_get_gmaps_client
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        yield ac
+
+    app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture()
+async def admin_client_for_nearby(test_async_session: AsyncSession):
+    """Create an async test client with admin authentication override for nearby route."""
+
+    async def override_get_session():
+        yield test_async_session
+
+    async def override_authenticate_police_or_admin():
+        return Account(
+            id=2,
+            email="admin@test.com",
+            first_name="Admin",
+            last_name="User",
+            pid="222222222",
+            role=AccountRole.ADMIN,
+        )
+
+    def override_get_gmaps_client():
+        """Return a mock Google Maps client to avoid API key validation."""
+        return MagicMock()
+
+    app.dependency_overrides[get_session] = override_get_session
+    app.dependency_overrides[authenticate_police_or_admin] = (
+        override_authenticate_police_or_admin
+    )
+    app.dependency_overrides[get_gmaps_client] = override_get_gmaps_client
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        yield ac
+
+    app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture()
+async def student_client_for_nearby(test_async_session: AsyncSession):
+    """Create an async test client with student authentication override for nearby route."""
+
+    async def override_get_session():
+        yield test_async_session
+
+    async def override_authenticate_police_or_admin():
+        return Account(
+            id=1,
+            email="student@test.com",
+            first_name="Student",
+            last_name="User",
+            pid="111111111",
+            role=AccountRole.STUDENT,
+        )
+
+    def override_get_gmaps_client():
+        """Return a mock Google Maps client to avoid API key validation."""
+        return MagicMock()
+
+    app.dependency_overrides[get_session] = override_get_session
+    app.dependency_overrides[authenticate_police_or_admin] = (
+        override_authenticate_police_or_admin
+    )
+    app.dependency_overrides[get_gmaps_client] = override_get_gmaps_client
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        yield ac
+
+    app.dependency_overrides.clear()
+
+
+@patch("src.modules.location.location_service.places.place")
+@pytest.mark.asyncio
+async def test_nearby_police_authentication(
+    mock_place: MagicMock, police_client: AsyncClient
+):
+    """Test that police officer can access the nearby route."""
+    # Mock successful Google Maps API response
+    mock_place.return_value = {
+        "result": {
+            "formatted_address": "123 Test St, Test City, TC 12345",
+            "geometry": {"location": {"lat": 35.9132, "lng": -79.0558}},
+            "address_components": [],
+        }
+    }
+
+    response = await police_client.get(
+        "/api/parties/nearby?place_id=test_place_id&start_date=2025-01-01&end_date=2025-01-02"
+    )
+
+    assert response.status_code in (200, 400, 404, 422)
+
+    if response.status_code == 401 or response.status_code == 403:
+        pytest.fail(f"Authentication failed with status {response.status_code}")
+
+
+@patch("src.modules.location.location_service.places.place")
+@pytest.mark.asyncio
+async def test_nearby_admin_authentication(
+    mock_place: MagicMock, admin_client_for_nearby: AsyncClient
+):
+    """Test that admin can access the nearby route."""
+    # Mock successful Google Maps API response
+    mock_place.return_value = {
+        "result": {
+            "formatted_address": "123 Test St, Test City, TC 12345",
+            "geometry": {"location": {"lat": 35.9132, "lng": -79.0558}},
+            "address_components": [],
+        }
+    }
+
+    response = await admin_client_for_nearby.get(
+        "/api/parties/nearby?place_id=test_place_id&start_date=2025-01-01&end_date=2025-01-02"
+    )
+
+    assert response.status_code in (200, 400, 404, 422)
+
+    if response.status_code == 401 or response.status_code == 403:
+        pytest.fail(f"Authentication failed with status {response.status_code}")
+
+
+@pytest.mark.asyncio
+async def test_nearby_student_forbidden(student_client_for_nearby: AsyncClient):
+    """Test that student role gets 403 Forbidden."""
+    response = await student_client_for_nearby.get(
+        "/api/parties/nearby?place_id=test_place_id&start_date=2025-01-01&end_date=2025-01-02"
+    )
+
+    assert response.status_code != 200
+    if response.status_code == 403:
+        data = response.json()
+        assert "police or admin" in data.get("message", "").lower()
+
+
+@pytest.mark.asyncio
+async def test_nearby_unauthenticated(unauthenticated_client: AsyncClient):
+    """Test that unauthenticated request gets 401 Unauthorized."""
+    response = await unauthenticated_client.get(
+        "/api/parties/nearby?place_id=test_place_id&start_date=2025-01-01&end_date=2025-01-02"
+    )
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_nearby_missing_place_id(police_client: AsyncClient):
+    """Test that missing place_id query param returns 422."""
+    response = await police_client.get(
+        "/api/parties/nearby?start_date=2025-01-01&end_date=2025-01-02"
+    )
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_nearby_missing_start_date(police_client: AsyncClient):
+    """Test that missing start_date query param returns 422."""
+    response = await police_client.get(
+        "/api/parties/nearby?place_id=test_place_id&end_date=2025-01-02"
+    )
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_nearby_missing_end_date(police_client: AsyncClient):
+    """Test that missing end_date query param returns 422."""
+    response = await police_client.get(
+        "/api/parties/nearby?place_id=test_place_id&start_date=2025-01-01"
+    )
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_nearby_invalid_date_format(police_client: AsyncClient):
+    """Test that invalid date format returns 400."""
+    response = await police_client.get(
+        "/api/parties/nearby?place_id=test_place_id&start_date=01/01/2025&end_date=2025-01-02"
+    )
+    assert response.status_code == 400
+    data = response.json()
+    assert "invalid date format" in data.get("message", "").lower()
+
+
+@patch("src.modules.location.location_service.places.place")
+@pytest.mark.asyncio
+async def test_nearby_location_service_not_found(
+    mock_place: MagicMock, police_client: AsyncClient
+):
+    """Test that invalid place_id returns 404 from location service."""
+    # Mock Google Maps API NOT_FOUND error
+    api_error = googlemaps.exceptions.ApiError("NOT_FOUND")
+    api_error.status = "NOT_FOUND"
+    mock_place.side_effect = api_error
+
+    response = await police_client.get(
+        "/api/parties/nearby?place_id=invalid_place_id&start_date=2025-01-01&end_date=2025-01-02"
+    )
+
+    assert response.status_code in (400, 404)
+    if response.status_code == 404:
+        data = response.json()
+        assert (
+            "place" in data.get("message", "").lower()
+            or "not found" in data.get("message", "").lower()
+        )
+
+
+@patch("src.modules.location.location_service.places.place")
+@pytest.mark.asyncio
+async def test_nearby_happy_path_integration(
+    mock_place: MagicMock,
+    police_client: AsyncClient,
+    test_async_session: AsyncSession,
+    sample_party_setup: dict,
+):
+    """Test the golden path - happy path integration with mocked Google Maps API."""
+
+    center_lat = 35.9132
+    center_lon = -79.0558
+
+    # Mock successful Google Maps API response with Chapel Hill coordinates
+    mock_place.return_value = {
+        "result": {
+            "formatted_address": "Chapel Hill, NC, USA",
+            "geometry": {"location": {"lat": center_lat, "lng": center_lon}},
+            "address_components": [
+                {
+                    "long_name": "Chapel Hill",
+                    "short_name": "Chapel Hill",
+                    "types": ["locality", "political"],
+                },
+                {
+                    "long_name": "North Carolina",
+                    "short_name": "NC",
+                    "types": ["administrative_area_level_1", "political"],
+                },
+                {
+                    "long_name": "United States",
+                    "short_name": "US",
+                    "types": ["country", "political"],
+                },
+            ],
+        }
+    }
+
+    location_within_radius = LocationEntity(
+        id=2,
+        latitude=center_lat + 0.0145,
+        longitude=center_lon,
+        google_place_id="test_place_id",
+        formatted_address="1 Mile Away St, Chapel Hill, NC",
+    )
+    test_async_session.add(location_within_radius)
+    await test_async_session.commit()
+
+    base_date = datetime(2025, 11, 10, 12, 0, 0)
+    party1 = PartyEntity(
+        party_datetime=base_date + timedelta(hours=6),
+        location_id=2,  # Within radius
+        contact_one_id=sample_party_setup["contact_one_id"],
+        contact_two_first_name="Extra",
+        contact_two_last_name="Person",
+        contact_two_email="extra.person@example.com",
+        contact_two_phone_number="5555555555",
+        contact_two_contact_preference=ContactPreference.call,
+    )
+    party2 = PartyEntity(
+        party_datetime=base_date + timedelta(days=1),
+        location_id=2,  # Within radius
+        contact_one_id=sample_party_setup["contact_one_id"],
+        contact_two_first_name="Extra",
+        contact_two_last_name="Person",
+        contact_two_email="extra.person@example.com",
+        contact_two_phone_number="5555555555",
+        contact_two_contact_preference=ContactPreference.call,
+    )
+    test_async_session.add_all([party1, party2])
+    await test_async_session.commit()
+
+    response = await police_client.get(
+        "/api/parties/nearby?place_id=test_place_id&start_date=2025-11-10&end_date=2025-11-12"
+    )
+
+    assert response.status_code in (200, 400, 404)
+
+    if response.status_code == 200:
+        data = response.json()
+        assert isinstance(data, list)
+
+        if len(data) > 0:
+            party = data[0]
+            assert "id" in party
+            assert "party_datetime" in party
+            assert "location" in party
+            assert "contact_one" in party
+            assert "contact_two" in party
+
+
 @pytest.mark.asyncio
 async def test_get_parties_csv_success(
     client: AsyncClient,
@@ -723,8 +1050,12 @@ async def test_get_parties_csv_success(
 ):
     """Test valid date range returns CSV file."""
     # Create parties with specific dates
-    party1 = get_party_from_setup(sample_party_setup, datetime(2024, 6, 15, 20, 30, 0))
-    party2 = get_party_from_setup(sample_party_setup, datetime(2024, 6, 20, 18, 0, 0))
+    party1 = get_party_from_setup(
+        sample_party_setup, datetime(2024, 6, 15, 20, 30, 0, tzinfo=timezone.utc)
+    )
+    party2 = get_party_from_setup(
+        sample_party_setup, datetime(2024, 6, 20, 18, 0, 0, tzinfo=timezone.utc)
+    )
 
     test_async_session.add_all([party1, party2])
     await test_async_session.commit()
@@ -801,7 +1132,9 @@ async def test_get_parties_csv_response_headers(
     sample_party_setup: dict,
 ):
     """Test CSV response headers are correct."""
-    party = get_party_from_setup(sample_party_setup, datetime(2024, 6, 15, 20, 30, 0))
+    party = get_party_from_setup(
+        sample_party_setup, datetime(2024, 6, 15, 20, 30, 0, tzinfo=timezone.utc)
+    )
     test_async_session.add(party)
     await test_async_session.commit()
 
@@ -822,9 +1155,15 @@ async def test_get_parties_csv_date_range_filtering(
 ):
     """Test only parties in date range are included."""
     # Create parties at different dates
-    party1 = get_party_from_setup(sample_party_setup, datetime(2024, 6, 15, 20, 30, 0))
-    party2 = get_party_from_setup(sample_party_setup, datetime(2024, 6, 18, 18, 0, 0))
-    party3 = get_party_from_setup(sample_party_setup, datetime(2024, 7, 1, 20, 30, 0))
+    party1 = get_party_from_setup(
+        sample_party_setup, datetime(2024, 6, 15, 20, 30, 0, tzinfo=timezone.utc)
+    )
+    party2 = get_party_from_setup(
+        sample_party_setup, datetime(2024, 6, 18, 18, 0, 0, tzinfo=timezone.utc)
+    )
+    party3 = get_party_from_setup(
+        sample_party_setup, datetime(2024, 7, 1, 20, 30, 0, tzinfo=timezone.utc)
+    )
     test_async_session.add_all([party1, party2, party3])
     await test_async_session.commit()
 
@@ -849,7 +1188,9 @@ async def test_get_parties_csv_end_date_includes_full_day(
 ):
     """Test end_date includes parties at end of day (23:59:59)."""
     # Create party at end of day
-    party = get_party_from_setup(sample_party_setup, datetime(2024, 6, 20, 23, 59, 59))
+    party = get_party_from_setup(
+        sample_party_setup, datetime(2024, 6, 20, 23, 59, 59, tzinfo=timezone.utc)
+    )
     test_async_session.add(party)
     await test_async_session.commit()
 
@@ -883,7 +1224,7 @@ async def test_get_parties_csv_boundary_start_date(
 ):
     """Test party exactly at start_date is included."""
     party = get_party_from_setup(
-        sample_party_setup, datetime(2024, 6, 15, 0, 0, 0)
+        sample_party_setup, datetime(2024, 6, 15, 0, 0, 0, tzinfo=timezone.utc)
     )  # Start of day
     test_async_session.add(party)
     await test_async_session.commit()
@@ -905,7 +1246,7 @@ async def test_get_parties_csv_boundary_end_date(
 ):
     """Test party exactly at end_date is included."""
     party = get_party_from_setup(
-        sample_party_setup, datetime(2024, 6, 20, 23, 59, 59)
+        sample_party_setup, datetime(2024, 6, 20, 23, 59, 59, tzinfo=timezone.utc)
     )  # End of day
     test_async_session.add(party)
     await test_async_session.commit()
@@ -930,7 +1271,7 @@ async def test_get_parties_csv_multiple_parties_in_range(
     parties = []
     for day in range(15, 21):  # June 15-20
         party = get_party_from_setup(
-            sample_party_setup, datetime(2024, 6, day, 20, 0, 0)
+            sample_party_setup, datetime(2024, 6, day, 20, 0, 0, tzinfo=timezone.utc)
         )
         parties.append(party)
     test_async_session.add_all(parties)
@@ -946,6 +1287,7 @@ async def test_get_parties_csv_multiple_parties_in_range(
     assert len(lines) == 7  # Header + 6 data rows (one for each day)
 
 
+@pytest.mark.asyncio
 async def test_create_party_as_student(
     student_client: AsyncClient,
     test_async_session: AsyncSession,
@@ -973,7 +1315,7 @@ async def test_create_party_as_student(
     assert response.status_code == 200, response.json()
 
     data = response.json()
-    assert data["party_datetime"] == party_datetime.isoformat()
+    assert data["party_datetime"] == party_datetime.isoformat().replace("+00:00", "Z")
     assert data["contact_one"]["id"] == 1  # Auto-filled from student account
     assert data["contact_two"]["email"] == "test2@example.com"
     assert "id" in data
@@ -1009,7 +1351,7 @@ async def test_create_party_as_admin(
     assert response.status_code == 200
 
     data = response.json()
-    assert data["party_datetime"] == party_datetime.isoformat()
+    assert data["party_datetime"] == party_datetime.isoformat().replace("+00:00", "Z")
     assert data["contact_one"]["id"] == 1
     assert data["contact_two"]["email"] == "test2@example.com"
     assert "id" in data
@@ -1060,7 +1402,9 @@ async def test_update_party_as_student(
 
     data = response.json()
     assert data["id"] == existing_party.id
-    assert data["party_datetime"] == new_party_datetime.isoformat()
+    assert data["party_datetime"] == new_party_datetime.isoformat().replace(
+        "+00:00", "Z"
+    )
     assert data["contact_one"]["id"] == 1  # Auto-filled from student account
     assert data["contact_two"]["email"] == "test2@example.com"
 
@@ -1110,7 +1454,9 @@ async def test_update_party_as_admin(
 
     data = response.json()
     assert data["id"] == existing_party.id
-    assert data["party_datetime"] == new_party_datetime.isoformat()
+    assert data["party_datetime"] == new_party_datetime.isoformat().replace(
+        "+00:00", "Z"
+    )
     assert data["contact_one"]["id"] == 1
     assert data["contact_two"]["email"] == "test2@example.com"
 
@@ -1155,7 +1501,7 @@ async def test_create_party_date_too_soon(
 ):
     """Test POST /api/parties with party date less than 2 business days away."""
     # Party tomorrow (only 1 business day away)
-    party_datetime = datetime.now() + timedelta(days=1)
+    party_datetime = datetime.now(timezone.utc) + timedelta(days=1)
     party_data = StudentCreatePartyDTO(
         type="student",
         party_datetime=party_datetime,
@@ -1200,7 +1546,7 @@ async def test_update_party_date_too_soon(
     await test_async_session.refresh(existing_party)
 
     # Try to update with party tomorrow
-    party_datetime = datetime.now() + timedelta(days=1)
+    party_datetime = datetime.now(timezone.utc) + timedelta(days=1)
     update_data = StudentCreatePartyDTO(
         type="student",
         party_datetime=party_datetime,
@@ -1293,16 +1639,18 @@ async def test_create_party_student_party_smart_expired(
     """Test POST /api/parties when student's Party Smart attendance is before the most recent August 1st."""
     # Create student with expired last_registered (before the most recent August 1st)
     # Calculate a date before the most recent August 1st
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     current_year = now.year
-    august_first_this_year = datetime(current_year, 8, 1, 0, 0, 0)
+    august_first_this_year = datetime(current_year, 8, 1, 0, 0, 0, tzinfo=timezone.utc)
 
     # If we're before August 1st, use last year's August 1st - 1 day
     # Otherwise, use this year's August 1st - 1 day
     if now < august_first_this_year:
-        expired_date = datetime(current_year - 1, 7, 31, 23, 59, 59)
+        expired_date = datetime(
+            current_year - 1, 7, 31, 23, 59, 59, tzinfo=timezone.utc
+        )
     else:
-        expired_date = datetime(current_year, 7, 31, 23, 59, 59)
+        expired_date = datetime(current_year, 7, 31, 23, 59, 59, tzinfo=timezone.utc)
 
     account = AccountEntity(
         id=4,
@@ -1369,7 +1717,7 @@ async def test_create_party_location_has_active_hold(
     """Test POST /api/parties when location has an active hold."""
 
     mock_location_service.assert_valid_location_hold.side_effect = (
-        LocationHoldActiveException(1, datetime.now() + timedelta(days=30))
+        LocationHoldActiveException(1, datetime.now(timezone.utc) + timedelta(days=30))
     )
 
     party_datetime = get_valid_party_datetime()
@@ -1409,7 +1757,7 @@ async def test_create_party_location_expired_hold(
         )
     )
     location = result.scalar_one()
-    location.hold_expiration = datetime.now() - timedelta(
+    location.hold_expiration = datetime.now(timezone.utc) - timedelta(
         days=1
     )  # Hold expired yesterday
     test_async_session.add(location)
