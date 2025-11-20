@@ -213,10 +213,11 @@ async def parties_with_radius_addresses(
     search_lat = 40.7128
     search_lon = -74.0060
 
-    # Address 1: ~2.4 km away (within radius)
+    # Address 1: ~0.2 miles away (within 0.25 mile radius)
+    # At latitude 40.7128, 1 degree ≈ 111 km, so 0.25 miles ≈ 0.0036 degrees
     address1 = LocationEntity(
         id=1,
-        latitude=search_lat + 0.0217,
+        latitude=search_lat + 0.002,
         longitude=search_lon,
         google_place_id="test_place_radius_1",
         formatted_address="Test Address 1",
@@ -235,10 +236,10 @@ async def parties_with_radius_addresses(
     )
     test_async_session.add(party1)
 
-    # Address 2: ~4 km away (within radius)
+    # Address 2: ~0.15 miles away (within 0.25 mile radius)
     address2 = LocationEntity(
         id=2,
-        latitude=search_lat - 0.0362,
+        latitude=search_lat - 0.0015,
         longitude=search_lon,
         google_place_id="test_place_radius_2",
         formatted_address="Test Address 2",
@@ -257,10 +258,10 @@ async def parties_with_radius_addresses(
     )
     test_async_session.add(party2)
 
-    # Address 3: ~6.4 km away (outside radius)
+    # Address 3: ~0.5 miles away (outside 0.25 mile radius)
     address3 = LocationEntity(
         id=3,
-        latitude=search_lat + 0.0580,
+        latitude=search_lat + 0.005,
         longitude=search_lon,
         google_place_id="test_place_radius_3",
         formatted_address="Test Address 3",
@@ -1097,14 +1098,14 @@ async def test_get_parties_by_radius_time_window_boundaries(
 
     address1 = LocationEntity(
         id=1,
-        latitude=search_lat + 0.01,
+        latitude=search_lat + 0.002,
         longitude=search_lon,
         google_place_id="test_place_boundary_1",
         formatted_address="Test Address Boundary 1",
     )
     address2 = LocationEntity(
         id=2,
-        latitude=search_lat + 0.01,
+        latitude=search_lat + 0.002,
         longitude=search_lon,
         google_place_id="test_place_boundary_2",
         formatted_address="Test Address Boundary 2",
@@ -1159,7 +1160,7 @@ async def test_get_parties_by_radius_missing_address_skipped(
 
     address1 = LocationEntity(
         id=1,
-        latitude=search_lat + 0.01,
+        latitude=search_lat + 0.002,
         longitude=search_lon,
         google_place_id="test_place_missing",
         formatted_address="Test Address Missing",

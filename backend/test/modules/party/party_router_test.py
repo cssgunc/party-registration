@@ -1272,6 +1272,7 @@ async def test_get_parties_csv_multiple_parties_in_range(
     assert len(lines) == 7  # Header + 6 data rows (one for each day)
 
 
+@pytest.mark.asyncio
 async def test_create_party_as_student(
     student_client: AsyncClient,
     test_async_session: AsyncSession,
