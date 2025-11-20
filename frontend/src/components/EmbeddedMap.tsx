@@ -47,7 +47,7 @@ const EmbeddedMap = ({ parties, activeParty, center }: EmbeddedMapProps) => {
       ? locations[0].location
       : { lat: 35.911232, lng: -79.050331 });
   const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
-  
+
   // Create a unique key based on center to force map remount when center changes
   const mapKey = center ? `${center.lat}-${center.lng}` : "default";
 
