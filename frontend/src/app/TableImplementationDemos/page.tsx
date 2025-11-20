@@ -1,21 +1,23 @@
 "use client";
 import PartyList from "@/components/PartyList";
-import { LOCATIONS, PARTIES, STUDENTS } from "@/lib/mockData";
-import { LocationTable } from "../../components/LocationTable";
-import { PartyTable } from "../../components/PartyTable";
-import { StudentTable } from "../../components/StudentTable";
+import { PARTIES } from "@/lib/mockData";
+import { useState } from "react";
 
 export default function Home() {
+  const [filteredParties, setFilteredParties] = useState(PARTIES);
   return (
     <div className="p-8 px-24">
       <div>
-        <PartyList parties={PARTIES}></PartyList>
+        <PartyList
+          parties={filteredParties}
+          setFilteredParties={setFilteredParties}
+        ></PartyList>
       </div>
-      <PartyTable data={PARTIES} />
+      {/* <PartyTable data={PARTIES} />
 
       <StudentTable data={STUDENTS} />
 
-      <LocationTable data={LOCATIONS} />
+      <LocationTable data={LOCATIONS} /> */}
     </div>
   );
 }
