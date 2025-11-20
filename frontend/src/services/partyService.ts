@@ -63,7 +63,7 @@ export interface PaginatedPartiesResponse {
  * Payload for creating or updating a party from the admin UI.
  * This mirrors the AdminCreatePartyDTO shape on the backend.
  */
-export interface AdminPartyPayload {
+export interface BackendAdminPartyPayload {
   type: "admin";
   party_datetime: string; // ISO string
   place_id: string;
@@ -74,6 +74,38 @@ export interface AdminPartyPayload {
     last_name: string;
     phone_number: string;
     contact_preference: "call" | "text";
+  };
+}
+
+export interface AdminPartyPayload {
+  type: "admin";
+  partyDatetime: Date;
+  placeId: string;
+  contactOneEmail: string;
+  contactTwo: {
+    email: string;
+    firstName: string;
+    lastName: string;
+    phoneNumber: string;
+    contactPreference: "call" | "text";
+  };
+}
+
+function toBackendPayload(
+  payload: AdminPartyPayload
+): BackendAdminPartyPayload {
+  return {
+    type: "admin",
+    party_datetime: payload.partyDatetime.toISOString(),
+    place_id: payload.placeId,
+    contact_one_email: payload.contactOneEmail,
+    contact_two: {
+      email: payload.contactTwo.email,
+      first_name: payload.contactTwo.firstName,
+      last_name: payload.contactTwo.lastName,
+      phone_number: payload.contactTwo.phoneNumber,
+      contact_preference: payload.contactTwo.contactPreference,
+    },
   };
 }
 
@@ -125,14 +157,19 @@ export class PartyService {
   }
 
   async createParty(payload: AdminPartyPayload): Promise<Party> {
-    const response = await this.client.post<BackendParty>("/parties", payload);
+    const backendPayload = toBackendPayload(payload);
+    const response = await this.client.post<BackendParty>("/parties", backendPayload);
     return toFrontendParty(response.data);
   }
 
-  async updateParty(id: number, payload: AdminPartyPayload): Promise<Party> {
+  async updateParty(
+    id: number,
+    payload: AdminPartyPayload
+  ): Promise<Party> {
+    const backendPayload = toBackendPayload(payload);
     const response = await this.client.put<BackendParty>(
       `/parties/${id}`,
-      payload
+      backendPayload
     );
     return toFrontendParty(response.data);
   }

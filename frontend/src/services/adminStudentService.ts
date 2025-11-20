@@ -48,25 +48,12 @@ function toBackendFormat(data: {
   contactPreference: "call" | "text";
   lastRegistered: Date | null;
 }): StudentUpdatePayload {
-  let last_registered_str: string | null = null;
-  if (data.lastRegistered) {
-    // Format as local datetime without timezone (YYYY-MM-DDTHH:mm:ss)
-    const date = data.lastRegistered;
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    const hour = String(date.getHours()).padStart(2, "0");
-    const minute = String(date.getMinutes()).padStart(2, "0");
-    const second = String(date.getSeconds()).padStart(2, "0");
-    last_registered_str = `${year}-${month}-${day}T${hour}:${minute}:${second}`;
-  }
-
   return {
     first_name: data.firstName,
     last_name: data.lastName,
     phone_number: data.phoneNumber,
     contact_preference: data.contactPreference,
-    last_registered: last_registered_str,
+    last_registered: data.lastRegistered?.toISOString() || null,
   };
 }
 

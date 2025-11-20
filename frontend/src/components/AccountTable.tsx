@@ -1,6 +1,5 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { AccountService } from "@/services/accountService";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
@@ -10,8 +9,10 @@ import AccountTableCreateEditForm, {
   AccountCreateEditValues as AccountCreateEditSchema,
 } from "./AccountTableCreateEdit";
 import { TableTemplate } from "./TableTemplate";
+import { useSidebar } from "./SidebarContext";
 
 import type { Account, AccountRole } from "@/services/accountService";
+import { isAxiosError } from "axios";
 
 type AccountCreateEditValues = z.infer<typeof AccountCreateEditSchema>;
 
@@ -19,9 +20,10 @@ const accountService = new AccountService();
 
 export const AccountTable = () => {
   const queryClient = useQueryClient();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { openSidebar, closeSidebar } = useSidebar();
   const [sidebarMode, setSidebarMode] = useState<"create" | "edit">("create");
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
 
   const accountsQuery = useQuery({
     queryKey: ["accounts"],
@@ -30,13 +32,13 @@ export const AccountTable = () => {
   });
 
   const accounts = (accountsQuery.data ?? [])
-  .filter((a) => a.role === "admin" || a.role === "staff")
-  .slice()
-  .sort(
-    (a, b) =>
-      a.last_name.localeCompare(b.last_name) ||
-      a.first_name.localeCompare(b.first_name),
-  );
+    .filter((a) => a.role === "admin" || a.role === "staff")
+    .slice()
+    .sort(
+      (a, b) =>
+        a.last_name.localeCompare(b.last_name) ||
+        a.first_name.localeCompare(b.first_name)
+    );
 
   const createMutation = useMutation({
     mutationFn: (data: AccountCreateEditValues) =>
@@ -47,13 +49,18 @@ export const AccountTable = () => {
         pid: data.pid,
         role: data.role as AccountRole,
       }),
+    onError: (error: Error) => {
+      if (isAxiosError(error) && error.response) {
+        setSubmissionError(`${error.response.data.message}`);
+      } else {
+        setSubmissionError(`Failed to create account: ${error.message}`);
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["accounts"] });
       setSidebarOpen(false);
       setEditingAccount(null);
-    },
-    onError: (error: Error) => {
-      console.error("Failed to create account:", error);
+      setSubmissionError(null);
     },
   });
 
@@ -66,13 +73,15 @@ export const AccountTable = () => {
         pid: data.pid,
         role: data.role as AccountRole,
       }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["accounts"] });
-      setSidebarOpen(false);
-      setEditingAccount(null);
-    },
     onError: (error: Error) => {
       console.error("Failed to update account:", error);
+      setSubmissionError(`Failed to update account: ${error.message}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["accounts"] });
+      closeSidebar();
+      setEditingAccount(null);
+      setSubmissionError(null);
     },
   });
 
@@ -84,9 +93,8 @@ export const AccountTable = () => {
 
       const previous = queryClient.getQueryData<Account[]>(["accounts"]);
 
-      queryClient.setQueryData<Account[] | undefined>(
-        ["accounts"],
-        (old) => old?.filter((a) => a.id !== id),
+      queryClient.setQueryData<Account[] | undefined>(["accounts"], (old) =>
+        old?.filter((a) => a.id !== id)
       );
 
       return { previous };
@@ -105,7 +113,24 @@ export const AccountTable = () => {
   const handleEdit = (account: Account) => {
     setEditingAccount(account);
     setSidebarMode("edit");
-    setSidebarOpen(true);
+    setSubmissionError(null);
+    openSidebar(
+      `edit-account-${account.id}`,
+      "Edit Account",
+      "Update account information",
+      <AccountTableCreateEditForm
+        title="Edit Account"
+        onSubmit={handleFormSubmit}
+        submissionError={submissionError}
+        editData={{
+          email: account.email,
+          firstName: account.first_name,
+          lastName: account.last_name,
+          role: account.role,
+          pid: account.pid ?? "",
+        }}
+      />
+    );
   };
 
   const handleDelete = (account: Account) => {
@@ -115,7 +140,17 @@ export const AccountTable = () => {
   const handleCreate = () => {
     setEditingAccount(null);
     setSidebarMode("create");
-    setSidebarOpen(true);
+    setSubmissionError(null);
+    openSidebar(
+      "create-account",
+      "New Account",
+      "Add a new account to the system",
+      <AccountTableCreateEditForm
+        title="New Account"
+        onSubmit={handleFormSubmit}
+        submissionError={submissionError}
+      />
+    );
   };
 
   const handleFormSubmit = async (data: AccountCreateEditValues) => {
@@ -165,37 +200,6 @@ export const AccountTable = () => {
         }
         isDeleting={deleteMutation.isPending}
       />
-
-      {sidebarOpen && (
-        <div className="fixed right-0 top-0 h-full w-96 bg-white shadow-lg p-6 overflow-y-auto z-50">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold">
-              {sidebarMode === "create" ? "New Account" : "Edit Account"}
-            </h3>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setSidebarOpen(false)}
-            >
-              Close
-            </Button>
-          </div>
-          <AccountTableCreateEditForm
-            onSubmit={handleFormSubmit}
-            editData={
-              editingAccount
-                ? {
-                    email: editingAccount.email,
-                    firstName: editingAccount.first_name,
-                    lastName: editingAccount.last_name,
-                    role: editingAccount.role,
-                    pid: editingAccount.pid ?? "",
-                  }
-                : undefined
-            }
-          />
-        </div>
-      )}
     </div>
   );
-}
+};

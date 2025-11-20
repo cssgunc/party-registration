@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { useSidebar } from "@/components/SidebarContext";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AccountService } from "@/services/accountService";
 import { AdminStudentService } from "@/services/adminStudentService";
@@ -16,9 +16,10 @@ const accountService = new AccountService();
 
 export const StudentTable = () => {
   const queryClient = useQueryClient();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { openSidebar, closeSidebar } = useSidebar();
   const [sidebarMode, setSidebarMode] = useState<"create" | "edit">("create");
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
 
   // Fetch students
   const studentsQuery = useQuery({
@@ -105,14 +106,16 @@ export const StudentTable = () => {
     },
     onError: (error: Error, _vars, context) => {
       console.error("Failed to update student:", error);
+      setSubmissionError(`Failed to update student: ${error.message}`);
       if (context?.previous) {
         queryClient.setQueryData(["students"], context.previous);
       }
     },
-    onSettled: () => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["students"] });
-      setSidebarOpen(false);
+      closeSidebar();
       setEditingStudent(null);
+      setSubmissionError(null);
     },
   });
 
@@ -133,6 +136,7 @@ export const StudentTable = () => {
       }),
     onError: (error: Error) => {
       console.error("Failed to create account:", error);
+      setSubmissionError(`Failed to create account: ${error.message}`);
     },
   });
 
@@ -163,13 +167,15 @@ export const StudentTable = () => {
             : null,
         },
       }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["students"] });
-      setSidebarOpen(false);
-      setEditingStudent(null);
-    },
     onError: (error: Error) => {
       console.error("Failed to create student:", error);
+      setSubmissionError(`Failed to create student: ${error.message}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["students"] });
+      closeSidebar();
+      setEditingStudent(null);
+      setSubmissionError(null);
     },
   });
 
@@ -220,7 +226,18 @@ export const StudentTable = () => {
   const handleEdit = (student: Student) => {
     setEditingStudent(student);
     setSidebarMode("edit");
-    setSidebarOpen(true);
+    setSubmissionError(null);
+    openSidebar(
+      `edit-student-${student.id}`,
+      "Edit Student",
+      "Update student information",
+      <StudentTableCreateEditForm
+        title="Edit Student"
+        onSubmit={handleFormSubmit}
+        submissionError={submissionError}
+        editData={student}
+      />
+    );
   };
 
   const handleDelete = (student: Student) => {
@@ -230,13 +247,24 @@ export const StudentTable = () => {
   const handleCreate = () => {
     setEditingStudent(null);
     setSidebarMode("create");
-    setSidebarOpen(true);
+    setSubmissionError(null);
+    openSidebar(
+      "create-student",
+      "New Student",
+      "Add a new student to the system",
+      <StudentTableCreateEditForm
+        title="New Student"
+        onSubmit={handleFormSubmit}
+        submissionError={submissionError}
+      />
+    );
   };
 
   const handleFormSubmit = async (data: {
     pid: string;
     firstName: string;
     lastName: string;
+    email: string;
     phoneNumber: string;
     contactPreference: "call" | "text";
     lastRegistered: Date | null;
@@ -256,7 +284,7 @@ export const StudentTable = () => {
       // First create account, then create student with that account_id
       try {
         const account = await createAccountMutation.mutateAsync({
-          email: `${data.pid}@unc.edu`, // Generate email from PID
+          email: data.email,
           firstName: data.firstName,
           lastName: data.lastName,
           pid: data.pid,
@@ -322,6 +350,11 @@ export const StudentTable = () => {
         filterType: "select",
         selectOptions: ["call", "text"],
       },
+      cell: ({ row }) => {
+        const preference =
+          row.getValue<Student["contactPreference"]>("contactPreference");
+        return preference === "call" ? "Call" : "Text";
+      },
     },
     {
       accessorKey: "lastRegistered",
@@ -369,39 +402,6 @@ export const StudentTable = () => {
         }
         isDeleting={deleteMutation.isPending}
       />
-
-      {/* Sidebar for Create/Edit */}
-      {sidebarOpen && (
-        <div className="fixed right-0 top-0 h-full w-96 bg-white shadow-lg p-6 overflow-y-auto z-50">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold">
-              {sidebarMode === "create" ? "New Student" : "Edit Student"}
-            </h3>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setSidebarOpen(false)}
-            >
-              ✕
-            </Button>
-          </div>
-          <StudentTableCreateEditForm
-            onSubmit={handleFormSubmit}
-            editData={
-              editingStudent
-                ? {
-                    pid: editingStudent.pid,
-                    firstName: editingStudent.firstName,
-                    lastName: editingStudent.lastName,
-                    phoneNumber: editingStudent.phoneNumber,
-                    contactPreference: editingStudent.contactPreference,
-                    lastRegistered: editingStudent.lastRegistered,
-                  }
-                : undefined
-            }
-          />
-        </div>
-      )}
     </div>
   );
 };

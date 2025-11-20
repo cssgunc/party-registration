@@ -1,233 +1,238 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { LocationCreatePayload, LocationService, PaginatedLocationResponse } from "@/services/locationService";
+import {
+  LocationCreatePayload,
+  LocationService,
+  PaginatedLocationResponse,
+} from "@/services/locationService";
 import { Location } from "@/types/api/location";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
 import LocationTableCreateEditForm from "./LocationTableCreateEdit";
 import { TableTemplate } from "./TableTemplate";
+import { useSidebar } from "./SidebarContext";
 
 const locationService = new LocationService();
 
 export const LocationTable = () => {
-    const queryClient = useQueryClient();
-    const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [sidebarMode, setSidebarMode] = useState<"create" | "edit">("create");
-    const [editingLocation, setEditingLocation] = useState<Location | null>(null);
+  const queryClient = useQueryClient();
+  const { openSidebar, closeSidebar } = useSidebar();
+  const [sidebarMode, setSidebarMode] = useState<"create" | "edit">("create");
+  const [editingLocation, setEditingLocation] = useState<Location | null>(null);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
 
-    const locationsQuery = useQuery<PaginatedLocationResponse>({
-        queryKey: ["locations"],
-        queryFn: () => locationService.getLocations(),
-        retry: 1,
-    });
+  const locationsQuery = useQuery<PaginatedLocationResponse>({
+    queryKey: ["locations"],
+    queryFn: () => locationService.getLocations(),
+    retry: 1,
+  });
 
-    const locations = (locationsQuery.data?.items ?? []).slice().sort((a, b) => (a.formattedAddress || "").localeCompare(b.formattedAddress || ""));
-
-    const createMutation = useMutation({
-        mutationFn: (payload: LocationCreatePayload) =>
-            locationService.createLocation(payload),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["locations"] });
-            setSidebarOpen(false);
-            setEditingLocation(null);
-        },
-        onError: (error: Error) => {
-            console.error("Failed to create location:", error);
-        },
-    });
-
-    const updateMutation = useMutation({
-        mutationFn: ({ id, payload }: { id: number; payload: LocationCreatePayload }) =>
-            locationService.updateLocation(id, payload),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["locations"] });
-            setSidebarOpen(false);
-            setEditingLocation(null);
-        },
-        onError: (error: Error) => {
-            console.error("Failed to update location:", error);
-        },
-    });
-
-    const deleteMutation = useMutation({
-        mutationFn: (id: number) => locationService.deleteLocation(id),
-        // Optimistically remove the location from the cache.
-        onMutate: async (id: number) => {
-            await queryClient.cancelQueries({ queryKey: ["locations"] });
-
-            const previous = queryClient.getQueryData<PaginatedLocationResponse>([
-                "locations",
-            ]);
-
-            queryClient.setQueryData<PaginatedLocationResponse | undefined>(
-                ["locations"],
-                (old) =>
-                    old
-                        ? {
-                              ...old,
-                              items: old.items.filter((l) => l.id !== id),
-                          }
-                        : old,
-            );
-
-            return { previous };
-        },
-        onError: (error: Error, _vars, context) => {
-            console.error("Failed to delete location:", error);
-            if (context?.previous) {
-                queryClient.setQueryData(["locations"], context.previous);
-            }
-        },
-        onSettled: () => {
-            queryClient.invalidateQueries({ queryKey: ["locations"] });
-        },
-    });
-
-    const handleEdit = (location: Location) => {
-        setEditingLocation(location);
-        setSidebarMode("edit");
-        setSidebarOpen(true);
-    };
-
-    const handleDelete = (location: Location) => {
-        deleteMutation.mutate(location.id);
-    };
-
-    const handleCreate = () => {
-        setEditingLocation(null);
-        setSidebarMode("create");
-        setSidebarOpen(true);
-    };
-
-    const handleFormSubmit = async (data: {
-        address: string;
-        placeId: string;
-        holdExpiration: Date | null;
-        warningCount: number;
-        citationCount: number;
-    }) => {
-        let hold_expiration_str: string | null = null;
-        if (data.holdExpiration) {
-            // Format as local datetime without timezone (YYYY-MM-DDTHH:mm:ss)
-            const date = data.holdExpiration;
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            const hour = String(date.getHours()).padStart(2, '0');
-            const minute = String(date.getMinutes()).padStart(2, '0');
-            const second = String(date.getSeconds()).padStart(2, '0');
-            hold_expiration_str = `${year}-${month}-${day}T${hour}:${minute}:${second}`;
-        }
-        
-        const payload: LocationCreatePayload = {
-            google_place_id: data.placeId,
-            warning_count: data.warningCount,
-            citation_count: data.citationCount,
-            hold_expiration: hold_expiration_str,
-        };
-
-        if (sidebarMode === "edit" && editingLocation) {
-            updateMutation.mutate({ id: editingLocation.id, payload });
-        } else {
-            createMutation.mutate(payload);
-        }
-    };
-    const columns: ColumnDef<Location>[] = [
-        {
-            accessorKey: "formattedAddress",
-            header: "Address",
-        },
-        {
-            accessorKey: "warningCount",
-            header: "Warning Count",
-        },
-        {
-            accessorKey: "citationCount",
-            header: "Citation Count",
-        },
-        {
-            accessorKey: "holdExpirationDate",
-            header: "Active Hold",
-            enableColumnFilter: true,
-            cell: ({ row }) => {
-                const holdDate = row.getValue(
-                    "holdExpirationDate"
-                ) as Date | null;
-                if (holdDate) {
-                    const formattedDate = new Date(
-                        holdDate
-                    ).toLocaleDateString();
-                    return `until ${formattedDate}`;
-                }
-                return "no active hold";
-            },
-
-            filterFn: (row, columnId, filterValue) => {
-                const holdDate = row.getValue(columnId) as Date | null;
-                const displayText = holdDate
-                    ? `until ${new Date(holdDate).toLocaleDateString()}`
-                    : "no active hold";
-                return displayText
-                    .toLowerCase()
-                    .includes(String(filterValue).toLowerCase());
-            },
-        },
-    ];
-
-    return (
-        <div className="space-y-4">
-            <TableTemplate
-                data={locations}
-                columns={columns}
-                resourceName="Location"
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-                onCreateNew={handleCreate}
-                isLoading={locationsQuery.isLoading}
-                error={locationsQuery.error as Error | null}
-                getDeleteDescription={(location: Location) =>
-                    `Are you sure you want to delete location ${location.formattedAddress}? This action cannot be undone.`
-                }
-                isDeleting={deleteMutation.isPending}
-            />
-
-            {sidebarOpen && (
-                <div className="fixed right-0 top-0 h-full w-96 bg-white shadow-lg p-6 overflow-y-auto z-50">
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-semibold">
-                            {sidebarMode === "create" ? "New Location" : "Edit Location"}
-                        </h3>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setSidebarOpen(false)}
-                        >
-                            Close
-                        </Button>
-                    </div>
-                    <LocationTableCreateEditForm
-                        onSubmit={handleFormSubmit}
-                        editData={
-                            editingLocation
-                                ? {
-                                      address:
-                                          editingLocation.formattedAddress || "",
-                                      placeId:
-                                          editingLocation.googlePlaceId || "",
-                                      holdExpiration:
-                                          editingLocation.holdExpirationDate || null,
-                                      warningCount:
-                                          editingLocation.warningCount ?? 0,
-                                      citationCount:
-                                          editingLocation.citationCount ?? 0,
-                                  }
-                                : undefined
-                        }
-                    />
-                </div>
-            )}
-        </div>
+  const locations = (locationsQuery.data?.items ?? [])
+    .slice()
+    .sort((a, b) =>
+      (a.formattedAddress || "").localeCompare(b.formattedAddress || "")
     );
+
+  const createMutation = useMutation({
+    mutationFn: (payload: LocationCreatePayload) =>
+      locationService.createLocation(payload),
+    onError: (error: Error) => {
+      console.error("Failed to create location:", error);
+      setSubmissionError(`Failed to create location: ${error.message}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["locations"] });
+      closeSidebar();
+      setEditingLocation(null);
+      setSubmissionError(null);
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: number;
+      payload: LocationCreatePayload;
+    }) => locationService.updateLocation(id, payload),
+    onError: (error: Error) => {
+      console.error("Failed to update location:", error);
+      setSubmissionError(`Failed to update location: ${error.message}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["locations"] });
+      closeSidebar();
+      setEditingLocation(null);
+      setSubmissionError(null);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => locationService.deleteLocation(id),
+    // Optimistically remove the location from the cache.
+    onMutate: async (id: number) => {
+      await queryClient.cancelQueries({ queryKey: ["locations"] });
+
+      const previous = queryClient.getQueryData<PaginatedLocationResponse>([
+        "locations",
+      ]);
+
+      queryClient.setQueryData<PaginatedLocationResponse | undefined>(
+        ["locations"],
+        (old) =>
+          old
+            ? {
+                ...old,
+                items: old.items.filter((l) => l.id !== id),
+              }
+            : old
+      );
+
+      return { previous };
+    },
+    onError: (error: Error, _vars, context) => {
+      console.error("Failed to delete location:", error);
+      if (context?.previous) {
+        queryClient.setQueryData(["locations"], context.previous);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["locations"] });
+    },
+  });
+
+  const handleEdit = (location: Location) => {
+    setEditingLocation(location);
+    setSidebarMode("edit");
+    setSubmissionError(null);
+    openSidebar(
+      `edit-location-${location.id}`,
+      "Edit Location",
+      "Update location information",
+      <LocationTableCreateEditForm
+        title="Edit Location"
+        onSubmit={handleFormSubmit}
+        submissionError={submissionError}
+        editData={{
+          address: location.formattedAddress || "",
+          placeId: location.googlePlaceId || "",
+          holdExpiration: location.holdExpirationDate || null,
+          warningCount: location.warningCount ?? 0,
+          citationCount: location.citationCount ?? 0,
+        }}
+      />
+    );
+  };
+
+  const handleDelete = (location: Location) => {
+    deleteMutation.mutate(location.id);
+  };
+
+  const handleCreate = () => {
+    setEditingLocation(null);
+    setSidebarMode("create");
+    setSubmissionError(null);
+    openSidebar(
+      "create-location",
+      "New Location",
+      "Add a new location to the system",
+      <LocationTableCreateEditForm
+        title="New Location"
+        onSubmit={handleFormSubmit}
+        submissionError={submissionError}
+      />
+    );
+  };
+
+  const handleFormSubmit = async (data: {
+    address: string;
+    placeId: string;
+    holdExpiration: Date | null;
+    warningCount: number;
+    citationCount: number;
+  }) => {
+    let hold_expiration_str: string | null = null;
+    if (data.holdExpiration) {
+      // Format as local datetime without timezone (YYYY-MM-DDTHH:mm:ss)
+      const date = data.holdExpiration;
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      const hour = String(date.getHours()).padStart(2, "0");
+      const minute = String(date.getMinutes()).padStart(2, "0");
+      const second = String(date.getSeconds()).padStart(2, "0");
+      hold_expiration_str = `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+    }
+
+    const payload: LocationCreatePayload = {
+      google_place_id: data.placeId,
+      warning_count: data.warningCount,
+      citation_count: data.citationCount,
+      hold_expiration: hold_expiration_str,
+    };
+
+    if (sidebarMode === "edit" && editingLocation) {
+      updateMutation.mutate({ id: editingLocation.id, payload });
+    } else {
+      createMutation.mutate(payload);
+    }
+  };
+  const columns: ColumnDef<Location>[] = [
+    {
+      accessorKey: "formattedAddress",
+      header: "Address",
+    },
+    {
+      accessorKey: "warningCount",
+      header: "Warning Count",
+    },
+    {
+      accessorKey: "citationCount",
+      header: "Citation Count",
+    },
+    {
+      accessorKey: "holdExpirationDate",
+      header: "Active Hold",
+      enableColumnFilter: true,
+      cell: ({ row }) => {
+        const holdDate = row.getValue("holdExpirationDate") as Date | null;
+        if (holdDate) {
+          const formattedDate = new Date(holdDate).toLocaleDateString();
+          return `until ${formattedDate}`;
+        }
+        return "no active hold";
+      },
+
+      filterFn: (row, columnId, filterValue) => {
+        const holdDate = row.getValue(columnId) as Date | null;
+        const displayText = holdDate
+          ? `until ${new Date(holdDate).toLocaleDateString()}`
+          : "no active hold";
+        return displayText
+          .toLowerCase()
+          .includes(String(filterValue).toLowerCase());
+      },
+    },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <TableTemplate
+        data={locations}
+        columns={columns}
+        resourceName="Location"
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        onCreateNew={handleCreate}
+        isLoading={locationsQuery.isLoading}
+        error={locationsQuery.error as Error | null}
+        getDeleteDescription={(location: Location) =>
+          `Are you sure you want to delete location ${location.formattedAddress}? This action cannot be undone.`
+        }
+        isDeleting={deleteMutation.isPending}
+      />
+    </div>
+  );
 };
