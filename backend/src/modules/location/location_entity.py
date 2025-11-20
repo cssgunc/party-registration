@@ -16,7 +16,7 @@ class LocationEntity(EntityBase):
     # OCSL Data
     warning_count: Mapped[int] = mapped_column(Integer, default=0)
     citation_count: Mapped[int] = mapped_column(Integer, default=0)
-    hold_expiration: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    hold_expiration: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Google Maps Data
     google_place_id: Mapped[str] = mapped_column(

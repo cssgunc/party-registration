@@ -19,7 +19,7 @@ class PartyEntity(EntityBase):
     __tablename__ = "parties"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    party_datetime: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    party_datetime: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     location_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("locations.id", ondelete="CASCADE"), nullable=False
     )

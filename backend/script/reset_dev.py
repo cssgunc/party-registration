@@ -8,7 +8,7 @@ This script resets the database for development mode, including:
 import asyncio
 import json
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import src.modules  # Ensure all modules are imported so their entities are registered # noqa: F401
@@ -29,6 +29,8 @@ def parse_date(date_str: str | None) -> datetime | None:
     if not date_str or date_str == "null":
         return None
 
+    now = datetime.now(timezone.utc)
+
     if date_str.startswith("NOW"):
         match = re.match(r"NOW([+-])(\d+)([hdwmy])", date_str)
         if match:
@@ -38,19 +40,23 @@ def parse_date(date_str: str | None) -> datetime | None:
                 amount = -amount
 
             if unit == "h":
-                return datetime.now() + timedelta(hours=amount)
+                return now + timedelta(hours=amount)
             elif unit == "d":
-                return datetime.now() + timedelta(days=amount)
+                return now + timedelta(days=amount)
             elif unit == "w":
-                return datetime.now() + timedelta(weeks=amount)
+                return now + timedelta(weeks=amount)
             elif unit == "m":
-                return datetime.now() + timedelta(days=amount * 30)
+                return now + timedelta(days=amount * 30)
             elif unit == "y":
-                return datetime.now() + timedelta(days=amount * 365)
+                return now + timedelta(days=amount * 365)
 
-        return datetime.now()
+        return now
 
-    return datetime.fromisoformat(date_str)
+    # Parse ISO format string and ensure it's timezone-aware
+    dt = datetime.fromisoformat(date_str)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
 
 
 async def reset_dev():

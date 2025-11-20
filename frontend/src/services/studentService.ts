@@ -1,4 +1,4 @@
-import apiClient from "@/lib/network/apiClient";
+import getMockClient from "@/lib/network/mockClient";
 import { Party, PartyAPI } from "@/types/api/party";
 import { Student } from "@/types/api/student";
 import { AxiosInstance } from "axios";
@@ -36,7 +36,7 @@ function transformPartyAPIToParty(apiParty: PartyAPI): Party {
  * Service class for student-related operations
  */
 export class StudentService {
-  constructor(private client: AxiosInstance = apiClient) {}
+  constructor(private client: AxiosInstance = getMockClient("student")) {}
 
   /**
    * Get the current authenticated student's information

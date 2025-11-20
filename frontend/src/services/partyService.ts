@@ -1,10 +1,10 @@
 import { PartyFormValues } from "@/components/PartyRegistrationForm";
-import apiClient from "@/lib/network/apiClient";
+import getMockClient from "@/lib/network/mockClient";
 import { Party, PartyAPI, StudentCreatePartyDTO } from "@/types/api/party";
 import { AxiosInstance } from "axios";
 
 export class PartyService {
-  constructor(private client: AxiosInstance = apiClient) {}
+  constructor(private client: AxiosInstance = getMockClient("student")) {}
 
   async createStudentParty(
     values: PartyFormValues,
