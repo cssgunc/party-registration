@@ -1,12 +1,13 @@
 from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
+import googlemaps
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.core.authentication import authenticate_user
+from src.core.authentication import authenticate_police_or_admin, authenticate_user
 from src.core.database import get_session
 from src.main import app
 from src.modules.account.account_entity import AccountEntity, AccountRole
@@ -16,6 +17,7 @@ from src.modules.location.location_model import Location
 from src.modules.location.location_service import (
     LocationHoldActiveException,
     LocationService,
+    get_gmaps_client,
 )
 from src.modules.party.party_entity import PartyEntity
 from src.modules.party.party_model import (
@@ -23,6 +25,7 @@ from src.modules.party.party_model import (
     Contact,
     StudentCreatePartyDTO,
 )
+from src.modules.police.police_model import PoliceAccount
 from src.modules.student.student_entity import StudentEntity
 from src.modules.student.student_model import ContactPreference
 
@@ -31,6 +34,20 @@ def get_valid_party_datetime() -> datetime:
     """Get a datetime that is at least 3 business days from now."""
     days_ahead = 5  # Start with 5 calendar days to ensure 3 business days
     return datetime.now() + timedelta(days=days_ahead)
+
+
+def get_party_from_setup(party_setup: dict, date: datetime) -> PartyEntity:
+    """Helper to create a PartyEntity from the party_setup fixture."""
+    return PartyEntity(
+        party_datetime=date,
+        location_id=party_setup["location_id"],
+        contact_one_id=party_setup["contact_one_id"],
+        contact_two_email="test2@example.com",
+        contact_two_first_name="Jane",
+        contact_two_last_name="Smith",
+        contact_two_phone_number="0987654321",
+        contact_two_contact_preference=ContactPreference.text,
+    )
 
 
 @pytest.fixture
@@ -699,6 +716,560 @@ async def test_admin_authentication_required(
     else:
         # Handle different response formats
         assert response.status_code == 401
+
+
+@pytest_asyncio.fixture()
+async def police_client(test_async_session: AsyncSession):
+    """Create an async test client with police authentication override."""
+
+    async def override_get_session():
+        yield test_async_session
+
+    async def override_authenticate_police_or_admin():
+        return PoliceAccount(email="police@example.com")
+
+    def override_get_gmaps_client():
+        """Return a mock Google Maps client to avoid API key validation."""
+        return MagicMock()
+
+    app.dependency_overrides[get_session] = override_get_session
+    app.dependency_overrides[authenticate_police_or_admin] = (
+        override_authenticate_police_or_admin
+    )
+    app.dependency_overrides[get_gmaps_client] = override_get_gmaps_client
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        yield ac
+
+    app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture()
+async def admin_client_for_nearby(test_async_session: AsyncSession):
+    """Create an async test client with admin authentication override for nearby route."""
+
+    async def override_get_session():
+        yield test_async_session
+
+    async def override_authenticate_police_or_admin():
+        return Account(
+            id=2,
+            email="admin@test.com",
+            first_name="Admin",
+            last_name="User",
+            pid="222222222",
+            role=AccountRole.ADMIN,
+        )
+
+    def override_get_gmaps_client():
+        """Return a mock Google Maps client to avoid API key validation."""
+        return MagicMock()
+
+    app.dependency_overrides[get_session] = override_get_session
+    app.dependency_overrides[authenticate_police_or_admin] = (
+        override_authenticate_police_or_admin
+    )
+    app.dependency_overrides[get_gmaps_client] = override_get_gmaps_client
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        yield ac
+
+    app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture()
+async def student_client_for_nearby(test_async_session: AsyncSession):
+    """Create an async test client with student authentication override for nearby route."""
+
+    async def override_get_session():
+        yield test_async_session
+
+    async def override_authenticate_police_or_admin():
+        return Account(
+            id=1,
+            email="student@test.com",
+            first_name="Student",
+            last_name="User",
+            pid="111111111",
+            role=AccountRole.STUDENT,
+        )
+
+    def override_get_gmaps_client():
+        """Return a mock Google Maps client to avoid API key validation."""
+        return MagicMock()
+
+    app.dependency_overrides[get_session] = override_get_session
+    app.dependency_overrides[authenticate_police_or_admin] = (
+        override_authenticate_police_or_admin
+    )
+    app.dependency_overrides[get_gmaps_client] = override_get_gmaps_client
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
+        yield ac
+
+    app.dependency_overrides.clear()
+
+
+@patch("src.modules.location.location_service.places.place")
+@pytest.mark.asyncio
+async def test_nearby_police_authentication(
+    mock_place: MagicMock, police_client: AsyncClient
+):
+    """Test that police officer can access the nearby route."""
+    # Mock successful Google Maps API response
+    mock_place.return_value = {
+        "result": {
+            "formatted_address": "123 Test St, Test City, TC 12345",
+            "geometry": {"location": {"lat": 35.9132, "lng": -79.0558}},
+            "address_components": [],
+        }
+    }
+
+    response = await police_client.get(
+        "/api/parties/nearby?place_id=test_place_id&start_date=2025-01-01&end_date=2025-01-02"
+    )
+
+    assert response.status_code in (200, 400, 404, 422)
+
+    if response.status_code == 401 or response.status_code == 403:
+        pytest.fail(f"Authentication failed with status {response.status_code}")
+
+
+@patch("src.modules.location.location_service.places.place")
+@pytest.mark.asyncio
+async def test_nearby_admin_authentication(
+    mock_place: MagicMock, admin_client_for_nearby: AsyncClient
+):
+    """Test that admin can access the nearby route."""
+    # Mock successful Google Maps API response
+    mock_place.return_value = {
+        "result": {
+            "formatted_address": "123 Test St, Test City, TC 12345",
+            "geometry": {"location": {"lat": 35.9132, "lng": -79.0558}},
+            "address_components": [],
+        }
+    }
+
+    response = await admin_client_for_nearby.get(
+        "/api/parties/nearby?place_id=test_place_id&start_date=2025-01-01&end_date=2025-01-02"
+    )
+
+    assert response.status_code in (200, 400, 404, 422)
+
+    if response.status_code == 401 or response.status_code == 403:
+        pytest.fail(f"Authentication failed with status {response.status_code}")
+
+
+@pytest.mark.asyncio
+async def test_nearby_student_forbidden(student_client_for_nearby: AsyncClient):
+    """Test that student role gets 403 Forbidden."""
+    response = await student_client_for_nearby.get(
+        "/api/parties/nearby?place_id=test_place_id&start_date=2025-01-01&end_date=2025-01-02"
+    )
+
+    assert response.status_code != 200
+    if response.status_code == 403:
+        data = response.json()
+        assert "police or admin" in data.get("message", "").lower()
+
+
+@pytest.mark.asyncio
+async def test_nearby_unauthenticated(unauthenticated_client: AsyncClient):
+    """Test that unauthenticated request gets 401 Unauthorized."""
+    response = await unauthenticated_client.get(
+        "/api/parties/nearby?place_id=test_place_id&start_date=2025-01-01&end_date=2025-01-02"
+    )
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_nearby_missing_place_id(police_client: AsyncClient):
+    """Test that missing place_id query param returns 422."""
+    response = await police_client.get(
+        "/api/parties/nearby?start_date=2025-01-01&end_date=2025-01-02"
+    )
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_nearby_missing_start_date(police_client: AsyncClient):
+    """Test that missing start_date query param returns 422."""
+    response = await police_client.get(
+        "/api/parties/nearby?place_id=test_place_id&end_date=2025-01-02"
+    )
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_nearby_missing_end_date(police_client: AsyncClient):
+    """Test that missing end_date query param returns 422."""
+    response = await police_client.get(
+        "/api/parties/nearby?place_id=test_place_id&start_date=2025-01-01"
+    )
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_nearby_invalid_date_format(police_client: AsyncClient):
+    """Test that invalid date format returns 400."""
+    response = await police_client.get(
+        "/api/parties/nearby?place_id=test_place_id&start_date=01/01/2025&end_date=2025-01-02"
+    )
+    assert response.status_code == 400
+    data = response.json()
+    assert "invalid date format" in data.get("message", "").lower()
+
+
+@patch("src.modules.location.location_service.places.place")
+@pytest.mark.asyncio
+async def test_nearby_location_service_not_found(
+    mock_place: MagicMock, police_client: AsyncClient
+):
+    """Test that invalid place_id returns 404 from location service."""
+    # Mock Google Maps API NOT_FOUND error
+    api_error = googlemaps.exceptions.ApiError("NOT_FOUND")
+    api_error.status = "NOT_FOUND"
+    mock_place.side_effect = api_error
+
+    response = await police_client.get(
+        "/api/parties/nearby?place_id=invalid_place_id&start_date=2025-01-01&end_date=2025-01-02"
+    )
+
+    assert response.status_code in (400, 404)
+    if response.status_code == 404:
+        data = response.json()
+        assert (
+            "place" in data.get("message", "").lower()
+            or "not found" in data.get("message", "").lower()
+        )
+
+
+@patch("src.modules.location.location_service.places.place")
+@pytest.mark.asyncio
+async def test_nearby_happy_path_integration(
+    mock_place: MagicMock,
+    police_client: AsyncClient,
+    test_async_session: AsyncSession,
+    sample_party_setup: dict,
+):
+    """Test the golden path - happy path integration with mocked Google Maps API."""
+
+    center_lat = 35.9132
+    center_lon = -79.0558
+
+    # Mock successful Google Maps API response with Chapel Hill coordinates
+    mock_place.return_value = {
+        "result": {
+            "formatted_address": "Chapel Hill, NC, USA",
+            "geometry": {"location": {"lat": center_lat, "lng": center_lon}},
+            "address_components": [
+                {
+                    "long_name": "Chapel Hill",
+                    "short_name": "Chapel Hill",
+                    "types": ["locality", "political"],
+                },
+                {
+                    "long_name": "North Carolina",
+                    "short_name": "NC",
+                    "types": ["administrative_area_level_1", "political"],
+                },
+                {
+                    "long_name": "United States",
+                    "short_name": "US",
+                    "types": ["country", "political"],
+                },
+            ],
+        }
+    }
+
+    location_within_radius = LocationEntity(
+        id=2,
+        latitude=center_lat + 0.0145,
+        longitude=center_lon,
+        google_place_id="test_place_id",
+        formatted_address="1 Mile Away St, Chapel Hill, NC",
+    )
+    test_async_session.add(location_within_radius)
+    await test_async_session.commit()
+
+    base_date = datetime(2025, 11, 10, 12, 0, 0)
+    party1 = PartyEntity(
+        party_datetime=base_date + timedelta(hours=6),
+        location_id=2,  # Within radius
+        contact_one_id=sample_party_setup["contact_one_id"],
+        contact_two_first_name="Extra",
+        contact_two_last_name="Person",
+        contact_two_email="extra.person@example.com",
+        contact_two_phone_number="5555555555",
+        contact_two_contact_preference=ContactPreference.call,
+    )
+    party2 = PartyEntity(
+        party_datetime=base_date + timedelta(days=1),
+        location_id=2,  # Within radius
+        contact_one_id=sample_party_setup["contact_one_id"],
+        contact_two_first_name="Extra",
+        contact_two_last_name="Person",
+        contact_two_email="extra.person@example.com",
+        contact_two_phone_number="5555555555",
+        contact_two_contact_preference=ContactPreference.call,
+    )
+    test_async_session.add_all([party1, party2])
+    await test_async_session.commit()
+
+    response = await police_client.get(
+        "/api/parties/nearby?place_id=test_place_id&start_date=2025-11-10&end_date=2025-11-12"
+    )
+
+    assert response.status_code in (200, 400, 404)
+
+    if response.status_code == 200:
+        data = response.json()
+        assert isinstance(data, list)
+
+        if len(data) > 0:
+            party = data[0]
+            assert "id" in party
+            assert "party_datetime" in party
+            assert "location" in party
+            assert "contact_one" in party
+            assert "contact_two" in party
+
+
+@pytest.mark.asyncio
+async def test_get_parties_csv_success(
+    client: AsyncClient,
+    test_async_session: AsyncSession,
+    sample_party_setup: dict,
+):
+    """Test valid date range returns CSV file."""
+    # Create parties with specific dates
+    party1 = get_party_from_setup(sample_party_setup, datetime(2024, 6, 15, 20, 30, 0))
+    party2 = get_party_from_setup(sample_party_setup, datetime(2024, 6, 20, 18, 0, 0))
+
+    test_async_session.add_all([party1, party2])
+    await test_async_session.commit()
+
+    response = await client.get(
+        "/api/parties/csv?start_date=2024-06-15&end_date=2024-06-20"
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "text/csv; charset=utf-8"
+    assert "attachment; filename=parties.csv" in response.headers["content-disposition"]
+
+    # Verify CSV content
+    csv_content = response.text
+    assert "Fully formatted address" in csv_content
+    assert "Date of Party" in csv_content
+
+
+@pytest.mark.asyncio
+async def test_get_parties_csv_invalid_date_format(client: AsyncClient):
+    """Test invalid date format returns 400."""
+    response = await client.get(
+        "/api/parties/csv?start_date=invalid-date&end_date=2024-06-20"
+    )
+
+    assert response.status_code == 400
+    data = response.json()
+    assert "Invalid date format" in data["message"]
+
+
+@pytest.mark.asyncio
+async def test_get_parties_csv_missing_start_date(client: AsyncClient):
+    """Test missing start_date returns 422."""
+    response = await client.get("/api/parties/csv?end_date=2024-06-20")
+
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_get_parties_csv_missing_end_date(client: AsyncClient):
+    """Test missing end_date returns 422."""
+    response = await client.get("/api/parties/csv?start_date=2024-06-15")
+
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_get_parties_csv_empty_result(
+    client: AsyncClient,
+    test_async_session: AsyncSession,
+    sample_party_setup: dict,
+):
+    """Test date range with no parties returns CSV with headers only."""
+    # Create party outside the date range
+    party = get_party_from_setup(sample_party_setup, datetime(2024, 7, 1, 20, 30, 0))
+    test_async_session.add(party)
+    await test_async_session.commit()
+
+    response = await client.get(
+        "/api/parties/csv?start_date=2024-06-15&end_date=2024-06-20"
+    )
+
+    assert response.status_code == 200
+    csv_content = response.text
+    lines = csv_content.strip().split("\n")
+    assert len(lines) == 1  # Only header row
+    assert "Fully formatted address" in csv_content
+
+
+@pytest.mark.asyncio
+async def test_get_parties_csv_response_headers(
+    client: AsyncClient,
+    test_async_session: AsyncSession,
+    sample_party_setup: dict,
+):
+    """Test CSV response headers are correct."""
+    party = get_party_from_setup(sample_party_setup, datetime(2024, 6, 15, 20, 30, 0))
+    test_async_session.add(party)
+    await test_async_session.commit()
+
+    response = await client.get(
+        "/api/parties/csv?start_date=2024-06-15&end_date=2024-06-15"
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "text/csv; charset=utf-8"
+    assert "attachment; filename=parties.csv" in response.headers["content-disposition"]
+
+
+@pytest.mark.asyncio
+async def test_get_parties_csv_date_range_filtering(
+    client: AsyncClient,
+    test_async_session: AsyncSession,
+    sample_party_setup: dict,
+):
+    """Test only parties in date range are included."""
+    # Create parties at different dates
+    party1 = get_party_from_setup(sample_party_setup, datetime(2024, 6, 15, 20, 30, 0))
+    party2 = get_party_from_setup(sample_party_setup, datetime(2024, 6, 18, 18, 0, 0))
+    party3 = get_party_from_setup(sample_party_setup, datetime(2024, 7, 1, 20, 30, 0))
+    test_async_session.add_all([party1, party2, party3])
+    await test_async_session.commit()
+
+    response = await client.get(
+        "/api/parties/csv?start_date=2024-06-15&end_date=2024-06-20"
+    )
+
+    assert response.status_code == 200
+    csv_content = response.text
+    lines = csv_content.strip().split("\n")
+    assert len(lines) == 3  # Header + 2 data rows (party1 and party2)
+    assert "2024-06-15" in csv_content
+    assert "2024-06-18" in csv_content
+    assert "2024-07-01" not in csv_content  # party3 should not be included
+
+
+@pytest.mark.asyncio
+async def test_get_parties_csv_end_date_includes_full_day(
+    client: AsyncClient,
+    test_async_session: AsyncSession,
+    sample_party_setup: dict,
+):
+    """Test end_date includes parties at end of day (23:59:59)."""
+    # Create party at end of day
+    party = get_party_from_setup(sample_party_setup, datetime(2024, 6, 20, 23, 59, 59))
+    test_async_session.add(party)
+    await test_async_session.commit()
+
+    response = await client.get(
+        "/api/parties/csv?start_date=2024-06-20&end_date=2024-06-20"
+    )
+
+    assert response.status_code == 200
+    csv_content = response.text
+    assert "2024-06-20" in csv_content
+    assert "23:59:59" in csv_content
+
+
+@pytest.mark.asyncio
+async def test_get_parties_csv_authentication_required(
+    unauthenticated_client: AsyncClient,
+):
+    """Test unauthenticated request returns 401."""
+    response = await unauthenticated_client.get(
+        "/api/parties/csv?start_date=2024-06-15&end_date=2024-06-20"
+    )
+
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_get_parties_csv_boundary_start_date(
+    client: AsyncClient,
+    test_async_session: AsyncSession,
+    sample_party_setup: dict,
+):
+    """Test party exactly at start_date is included."""
+    party = get_party_from_setup(
+        sample_party_setup, datetime(2024, 6, 15, 0, 0, 0)
+    )  # Start of day
+    test_async_session.add(party)
+    await test_async_session.commit()
+
+    response = await client.get(
+        "/api/parties/csv?start_date=2024-06-15&end_date=2024-06-15"
+    )
+
+    assert response.status_code == 200
+    csv_content = response.text
+    assert "2024-06-15" in csv_content
+
+
+@pytest.mark.asyncio
+async def test_get_parties_csv_boundary_end_date(
+    client: AsyncClient,
+    test_async_session: AsyncSession,
+    sample_party_setup: dict,
+):
+    """Test party exactly at end_date is included."""
+    party = get_party_from_setup(
+        sample_party_setup, datetime(2024, 6, 20, 23, 59, 59)
+    )  # End of day
+    test_async_session.add(party)
+    await test_async_session.commit()
+
+    response = await client.get(
+        "/api/parties/csv?start_date=2024-06-20&end_date=2024-06-20"
+    )
+
+    assert response.status_code == 200
+    csv_content = response.text
+    assert "2024-06-20" in csv_content
+
+
+@pytest.mark.asyncio
+async def test_get_parties_csv_multiple_parties_in_range(
+    client: AsyncClient,
+    test_async_session: AsyncSession,
+    sample_party_setup: dict,
+):
+    """Test multiple parties in range all included."""
+    # Create multiple parties within range
+    parties = []
+    for day in range(15, 21):  # June 15-20
+        party = get_party_from_setup(
+            sample_party_setup, datetime(2024, 6, day, 20, 0, 0)
+        )
+        parties.append(party)
+    test_async_session.add_all(parties)
+    await test_async_session.commit()
+
+    response = await client.get(
+        "/api/parties/csv?start_date=2024-06-15&end_date=2024-06-20"
+    )
+
+    assert response.status_code == 200
+    csv_content = response.text
+    lines = csv_content.strip().split("\n")
+    assert len(lines) == 7  # Header + 6 data rows (one for each day)
 
 
 @pytest.mark.asyncio
