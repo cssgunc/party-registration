@@ -9,26 +9,32 @@ import {
   Pin,
   useMap,
 } from "@vis.gl/react-google-maps";
-import { useCallback, useState } from "react";
+import { format } from "date-fns";
+import { useCallback, useEffect, useState } from "react";
+interface PoiMarkersProps {
+  pois: (Poi & { party?: Party })[];
+  activePoiKey?: string;
+  onSelect?: (party: Party | null) => void;
+}
+type Poi = {
+  key: string;
+  activePoiKey?: string;
+  location: google.maps.LatLngLiteral;
+};
 
 interface EmbeddedMapProps {
   parties: Party[];
   activeParty?: Party;
   center?: { lat: number; lng: number };
+  onSelect?: (party: Party | null) => void;
 }
-interface PoiMarkersProps {
-  pois: Poi[];
-  activePoiKey?: string;
-}
-type Poi = { key: string; location: google.maps.LatLngLiteral };
 
-const EmbeddedMap = ({ parties, activeParty, center }: EmbeddedMapProps) => {
-  const default_locations: Poi[] = [
-    { key: "polkPlace", location: { lat: 35.911232, lng: -79.050331 } },
-    { key: "davisLibrary", location: { lat: 35.910784, lng: -79.047729 } },
-    { key: "oldWell", location: { lat: 35.911473, lng: -79.050105 } },
-    { key: "kenanStadium", location: { lat: 35.906839, lng: -79.047793 } },
-  ];
+const EmbeddedMap = ({
+  parties,
+  activeParty,
+  center,
+  onSelect,
+}: EmbeddedMapProps) => {
   const locations =
     parties && parties.length > 0
       ? parties.map((party) => ({
@@ -37,25 +43,26 @@ const EmbeddedMap = ({ parties, activeParty, center }: EmbeddedMapProps) => {
             lat: party.location.latitude,
             lng: party.location.longitude,
           },
+          party,
         }))
-      : default_locations;
+      : [];
+
   const activePoiKey = activeParty ? activeParty.id.toString() : undefined;
-  const defaultZoom = center ? 17 : 14; // Zoom in more when searching
+  const defaultZoom = center ? 17 : 14;
   const mapCenter =
     center ||
     (parties && parties.length > 0
       ? locations[0].location
       : { lat: 35.911232, lng: -79.050331 });
+
   const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
-  
-  // Create a unique key based on center to force map remount when center changes
   const mapKey = center ? `${center.lat}-${center.lng}` : "default";
 
   return (
-    <div className="w-full h-[450px] overflow-hidden rounded-2xl shadow-md">
+    <div className="w-full h-full overflow-hidden rounded-2xl shadow-md">
       <APIProvider
         apiKey={API_KEY}
-        onLoad={() => console.log("Maps API has loaded.")}
+        onLoad={() => console.log("Maps API loaded.")}
       >
         <Map
           key={mapKey}
@@ -65,24 +72,65 @@ const EmbeddedMap = ({ parties, activeParty, center }: EmbeddedMapProps) => {
           gestureHandling="greedy"
           disableDefaultUI={false}
         >
-          <PoiMarkers pois={locations} activePoiKey={activePoiKey} />
+          <PoiMarkers
+            pois={locations}
+            activePoiKey={activePoiKey}
+            onSelect={onSelect}
+          />
         </Map>
       </APIProvider>
     </div>
   );
 };
-const PoiMarkers = ({ pois }: PoiMarkersProps) => {
+
+const PoiMarkers = ({ pois, activePoiKey, onSelect }: PoiMarkersProps) => {
   const map = useMap();
-  const [selectedPoi, setSelectedPoi] = useState<Poi | null>(null);
+  const [selectedPoi, setSelectedPoi] = useState<(typeof pois)[0] | null>(null);
+
+  const formatPhoneNumber = (phone: string): string => {
+    const cleaned = phone.replace(/\D/g, "");
+    if (cleaned.length === 10) {
+      return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(
+        6
+      )}`;
+    }
+    return phone;
+  };
+
+  const getShortAddress = (location: Party["location"]): string => {
+    const parts = [];
+    if (location.streetNumber) parts.push(location.streetNumber);
+    if (location.streetName) parts.push(location.streetName);
+    if (location.unit) parts.push(`Unit ${location.unit}`);
+    return parts.join(" ") || location.formattedAddress;
+  };
+
+  useEffect(() => {
+    if (!map || !activePoiKey) return;
+
+    const target = pois.find((p) => p.key === activePoiKey);
+    if (target) map.panTo(target.location);
+  }, [activePoiKey, map, pois]);
 
   const handleClick = useCallback(
-    (poi: Poi) => (ev: google.maps.MapMouseEvent) => {
+    (poi: (typeof pois)[0]) => (ev: google.maps.MapMouseEvent) => {
       if (!map || !ev.latLng) return;
       map.panTo(ev.latLng);
       setSelectedPoi(poi);
+
+      if (poi.party && onSelect) {
+        onSelect(poi.party);
+      }
     },
-    [map]
+    [map, onSelect]
   );
+
+  const handleClose = useCallback(() => {
+    setSelectedPoi(null);
+    if (onSelect) {
+      onSelect(null);
+    }
+  }, [onSelect]);
 
   return (
     <>
@@ -100,12 +148,41 @@ const PoiMarkers = ({ pois }: PoiMarkersProps) => {
           />
         </AdvancedMarker>
       ))}
-      {selectedPoi && (
+      {selectedPoi && selectedPoi.party && (
         <InfoWindow
           position={selectedPoi.location}
-          onCloseClick={() => setSelectedPoi(null)}
+          onCloseClick={handleClose}
+          headerContent={
+            <div className="font-semibold text-sm flex">
+              {getShortAddress(selectedPoi.party.location)}
+            </div>
+          }
         >
-          <div>{selectedPoi.key}</div>
+          <div className="space-y-1.5 text-sm">
+            <div className="text-gray-700">
+              {format(selectedPoi.party.datetime, "MMM d, yyyy")} at{" "}
+              {format(selectedPoi.party.datetime, "h:mm a")}
+            </div>
+            <div className="border-t pt-1.5">
+              <div>
+                {selectedPoi.party.contactOne.firstName}{" "}
+                {selectedPoi.party.contactOne.lastName}
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span>
+                  {formatPhoneNumber(selectedPoi.party.contactOne.phoneNumber)}
+                </span>
+                <span className="text-gray-600">
+                  {selectedPoi.party.contactOne.contactPreference
+                    .charAt(0)
+                    .toUpperCase() +
+                    selectedPoi.party.contactOne.contactPreference
+                      .slice(1)
+                      .toLowerCase()}
+                </span>
+              </div>
+            </div>
+          </div>
         </InfoWindow>
       )}
     </>
