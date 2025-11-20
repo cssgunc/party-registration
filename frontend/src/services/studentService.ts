@@ -55,7 +55,7 @@ export class StudentService {
   /**
    * Update the current authenticated student's information
    */
-  async updateStudent(id: number, data: StudentDataRequest): Promise<Student> {
+  async updateMe(data: StudentDataRequest): Promise<Student> {
     const response = await this.client.put<Student>("/students/me", data);
 
     // Convert date string to Date object if present

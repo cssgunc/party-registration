@@ -1,9 +1,15 @@
+"use client";
+
 import Header from "@/components/Header";
 import RegistrationTracker from "@/components/RegistrationTracker";
 import StatusComponent from "@/components/StatusComponent";
-import { PARTIES } from "@/lib/mockData";
+import { useCurrentStudent, useMyParties } from "@/hooks/useStudent";
 import Link from "next/link";
+
 export default function StudentDashboard() {
+    const { data: student } = useCurrentStudent();
+    const { data: parties } = useMyParties();
+
     return (
         <div className="px-48 pb-12 flex flex-col gap-4 max-w-4xl mx-auto">
             <Header />
@@ -18,9 +24,9 @@ export default function StudentDashboard() {
                 </Link>
             </div>
 
-            <RegistrationTracker parties={PARTIES.filter(party => party.contactOne.id === 4)} />
+            <RegistrationTracker parties={parties || []} />
             <div className="text-[24px] font-semibold">Party Smart Course </div>
-            <StatusComponent completion_date={null} expiration_date={null} />
+            <StatusComponent completion_date={student?.lastRegistered?.toISOString() || null} expiration_date={null} />
         </div>
 
     );

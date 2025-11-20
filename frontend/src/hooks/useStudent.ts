@@ -22,8 +22,7 @@ export function useUpdateStudent() {
   const queryClient = useQueryClient();
 
   return useMutation<Student, Error, StudentDataRequest>({
-    mutationFn: (data: StudentDataRequest) =>
-      studentService.updateStudent(0, data), // ID not used, backend uses /students/me
+    mutationFn: (data: StudentDataRequest) => studentService.updateMe(data),
     onSuccess: (updatedStudent) => {
       // Invalidate and refetch student data
       queryClient.setQueryData(["student", "me"], updatedStudent);
