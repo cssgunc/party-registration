@@ -7,9 +7,10 @@ import { AxiosInstance } from "axios";
 export type AccountRole = "student" | "admin" | "staff";
 
 /**
- * Account data for creating an account
+ * Backend account response format
  */
-export interface AccountCreatePayload {
+export interface BackendAccount {
+  id: number;
   email: string;
   first_name: string;
   last_name: string;
@@ -18,15 +19,66 @@ export interface AccountCreatePayload {
 }
 
 /**
- * Account response from backend
+ * Backend account creation payload format
  */
-export interface Account {
-  id: number;
+export interface BackendAccountPayload {
   email: string;
   first_name: string;
   last_name: string;
   pid: string;
   role: AccountRole;
+}
+
+/**
+ * Frontend account format
+ */
+export interface Account {
+  id: number;
+  email: string;
+  firstName: string;
+  lastName: string;
+  pid: string;
+  role: AccountRole;
+}
+
+/**
+ * Frontend account creation payload
+ */
+export interface AccountCreatePayload {
+  email: string;
+  firstName: string;
+  lastName: string;
+  pid: string;
+  role: AccountRole;
+}
+
+/**
+ * Transform backend Account to frontend format
+ */
+export function toFrontendAccount(data: BackendAccount): Account {
+  return {
+    id: data.id,
+    email: data.email,
+    firstName: data.first_name,
+    lastName: data.last_name,
+    pid: data.pid,
+    role: data.role,
+  };
+}
+
+/**
+ * Transform frontend Account payload to backend format
+ */
+export function toBackendAccountPayload(
+  data: AccountCreatePayload
+): BackendAccountPayload {
+  return {
+    email: data.email,
+    first_name: data.firstName,
+    last_name: data.lastName,
+    pid: data.pid,
+    role: data.role,
+  };
 }
 
 /**
@@ -40,8 +92,11 @@ export class AccountService {
    */
   async createAccount(payload: AccountCreatePayload): Promise<Account> {
     try {
-      const response = await this.client.post<Account>("/accounts", payload);
-      return response.data;
+      const response = await this.client.post<BackendAccount>(
+        "/accounts",
+        toBackendAccountPayload(payload)
+      );
+      return toFrontendAccount(response.data);
     } catch (error) {
       console.error("Failed to create account:", error);
       throw new Error("Failed to create account");
@@ -54,10 +109,10 @@ export class AccountService {
   async listAccounts(roles?: AccountRole[]): Promise<Account[]> {
     try {
       const params = roles ? { role: roles } : {};
-      const response = await this.client.get<Account[]>("/accounts", {
+      const response = await this.client.get<BackendAccount[]>("/accounts", {
         params,
       });
-      return response.data;
+      return response.data.map(toFrontendAccount);
     } catch (error) {
       console.error("Failed to fetch accounts:", error);
       throw new Error("Failed to fetch accounts");
@@ -72,8 +127,11 @@ export class AccountService {
     data: AccountCreatePayload
   ): Promise<Account> {
     try {
-      const response = await this.client.put<Account>(`/accounts/${id}`, data);
-      return response.data;
+      const response = await this.client.put<BackendAccount>(
+        `/accounts/${id}`,
+        toBackendAccountPayload(data)
+      );
+      return toFrontendAccount(response.data);
     } catch (error) {
       console.error(`Failed to update account ${id}:`, error);
       throw new Error("Failed to update account");
@@ -85,8 +143,10 @@ export class AccountService {
    */
   async deleteAccount(id: number): Promise<Account> {
     try {
-      const response = await this.client.delete<Account>(`/accounts/${id}`);
-      return response.data;
+      const response = await this.client.delete<BackendAccount>(
+        `/accounts/${id}`
+      );
+      return toFrontendAccount(response.data);
     } catch (error) {
       console.error(`Failed to delete account ${id}:`, error);
       throw new Error("Failed to delete account");

@@ -30,10 +30,7 @@ import * as z from "zod";
 export const StudentCreateEditValues = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Second name is required"),
-  email: z
-    .string()
-    .email("Please enter a valid email")
-    .min(1, "Email is required"),
+  email: z.email("Please enter a valid email").min(1, "Email is required"),
   phoneNumber: z.string().min(1, "Phone number is required"),
   contactPreference: z.enum(["call", "text"]),
   lastRegistered: z.date().nullable(),

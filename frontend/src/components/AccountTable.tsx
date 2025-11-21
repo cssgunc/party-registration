@@ -36,16 +36,16 @@ export const AccountTable = () => {
     .slice()
     .sort(
       (a, b) =>
-        a.last_name.localeCompare(b.last_name) ||
-        a.first_name.localeCompare(b.first_name)
+        a.lastName.localeCompare(b.lastName) ||
+        a.firstName.localeCompare(b.firstName)
     );
 
   const createMutation = useMutation({
     mutationFn: (data: AccountCreateEditValues) =>
       accountService.createAccount({
         email: data.email,
-        first_name: data.firstName,
-        last_name: data.lastName,
+        firstName: data.firstName,
+        lastName: data.lastName,
         pid: data.pid,
         role: data.role as AccountRole,
       }),
@@ -68,8 +68,8 @@ export const AccountTable = () => {
     mutationFn: ({ id, data }: { id: number; data: AccountCreateEditValues }) =>
       accountService.updateAccount(id, {
         email: data.email,
-        first_name: data.firstName,
-        last_name: data.lastName,
+        firstName: data.firstName,
+        lastName: data.lastName,
         pid: data.pid,
         role: data.role as AccountRole,
       }),
@@ -124,8 +124,8 @@ export const AccountTable = () => {
         submissionError={submissionError}
         editData={{
           email: account.email,
-          firstName: account.first_name,
-          lastName: account.last_name,
+          firstName: account.firstName,
+          lastName: account.lastName,
           role: account.role,
           pid: account.pid ?? "",
         }}
@@ -168,12 +168,12 @@ export const AccountTable = () => {
       enableColumnFilter: true,
     },
     {
-      accessorKey: "first_name",
+      accessorKey: "firstName",
       header: "First Name",
       enableColumnFilter: true,
     },
     {
-      accessorKey: "last_name",
+      accessorKey: "lastName",
       header: "Last Name",
       enableColumnFilter: true,
     },

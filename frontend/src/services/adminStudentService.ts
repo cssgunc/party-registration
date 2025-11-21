@@ -169,13 +169,7 @@ export class AdminStudentService {
    */
   async updateStudent(
     id: number,
-    data: {
-      firstName: string;
-      lastName: string;
-      phoneNumber: string;
-      contactPreference: "call" | "text";
-      lastRegistered: Date | null;
-    }
+    data: Omit<Student, "id" | "email" | "pid">
   ): Promise<Student> {
     try {
       const payload = toBackendFormat(data);

@@ -4,10 +4,10 @@ import { useSidebar } from "@/components/SidebarContext";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AccountService } from "@/services/accountService";
 import { AdminStudentService } from "@/services/adminStudentService";
-import { Student } from "@/types/api/student";
+import { PaginatedStudentsResponse, Student } from "@/types/api/student";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import StudentTableCreateEditForm from "./StudentTableCreateEdit";
 import { TableTemplate } from "./TableTemplate";
 
@@ -17,7 +17,6 @@ const accountService = new AccountService();
 export const StudentTable = () => {
   const queryClient = useQueryClient();
   const { openSidebar, closeSidebar } = useSidebar();
-  const [sidebarMode, setSidebarMode] = useState<"create" | "edit">("create");
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
 
@@ -27,13 +26,18 @@ export const StudentTable = () => {
     queryFn: () => studentService.listStudents(),
     retry: 1, // Only retry once
   });
-  const students = (studentsQuery.data?.items ?? [])
-    .slice()
-    .sort(
-      (a, b) =>
-        a.lastName.localeCompare(b.lastName) ||
-        a.firstName.localeCompare(b.firstName)
-    );
+
+  const students = useMemo(
+    () =>
+      (studentsQuery.data?.items ?? [])
+        .slice()
+        .sort(
+          (a, b) =>
+            a.lastName.localeCompare(b.lastName) ||
+            a.firstName.localeCompare(b.firstName)
+        ),
+    [studentsQuery.data?.items]
+  );
 
   // Update student mutation (for checkbox and edit)
   const updateMutation = useMutation({
@@ -42,65 +46,27 @@ export const StudentTable = () => {
       data,
     }: {
       id: number;
-      data: {
-        firstName: string;
-        lastName: string;
-        phoneNumber: string;
-        contactPreference: "call" | "text";
-        lastRegistered: Date | null;
-      };
+      data: Omit<Student, "id" | "email" | "pid">;
     }) => studentService.updateStudent(id, data),
     // Optimistically update the student in the cache so things like the
     // "Is Registered" checkbox feel instant.
     onMutate: async ({ id, data }) => {
       await queryClient.cancelQueries({ queryKey: ["students"] });
 
-      const previous = queryClient.getQueryData(["students"]);
+      const previous = queryClient.getQueryData<PaginatedStudentsResponse>([
+        "students",
+      ]);
 
-      queryClient.setQueryData(["students"], (old: unknown) => {
-        if (!old || typeof old !== "object") return old;
-
-        // Support both paginated and simple array shapes just in case.
-        const oldWithItems = old as { items?: Student[] };
-        if (Array.isArray(oldWithItems.items)) {
-          const paginated = old as {
-            items: Student[];
-            [key: string]: unknown;
-          };
-          return {
-            ...paginated,
-            items: paginated.items.map((s) =>
-              s.id === id
-                ? {
-                    ...s,
-                    firstName: data.firstName,
-                    lastName: data.lastName,
-                    phoneNumber: data.phoneNumber,
-                    contactPreference: data.contactPreference,
-                    lastRegistered: data.lastRegistered,
-                  }
-                : s
+      queryClient.setQueryData<PaginatedStudentsResponse>(
+        ["students"],
+        (old) =>
+          old && {
+            ...old,
+            items: old.items.map((student) =>
+              student.id === id ? { ...student, ...data } : student
             ),
-          };
-        }
-
-        if (Array.isArray(old)) {
-          return (old as Student[]).map((s) =>
-            s.id === id
-              ? {
-                  ...s,
-                  firstName: data.firstName,
-                  lastName: data.lastName,
-                  phoneNumber: data.phoneNumber,
-                  contactPreference: data.contactPreference,
-                  lastRegistered: data.lastRegistered,
-                }
-              : s
-          );
-        }
-
-        return old;
-      });
+          }
+      );
 
       return { previous };
     },
@@ -119,44 +85,16 @@ export const StudentTable = () => {
     },
   });
 
-  // Create account mutation
-  const createAccountMutation = useMutation({
-    mutationFn: (data: {
-      email: string;
-      firstName: string;
-      lastName: string;
-      pid: string;
-    }) =>
-      accountService.createAccount({
-        email: data.email,
-        first_name: data.firstName,
-        last_name: data.lastName,
-        pid: data.pid,
-        role: "student",
-      }),
-    onError: (error: Error) => {
-      console.error("Failed to create account:", error);
-      setSubmissionError(`Failed to create account: ${error.message}`);
-    },
-  });
-
   // Create student mutation
   const createStudentMutation = useMutation({
-    mutationFn: ({
-      accountId,
-      data,
-    }: {
-      accountId: number;
-      data: {
-        firstName: string;
-        lastName: string;
-        phoneNumber: string;
-        contactPreference: "call" | "text";
-        lastRegistered: Date | null;
-      };
-    }) =>
+    mutationFn: async ({ data }: { data: Omit<Student, "id"> }) => {
+      const account = await accountService.createAccount({
+        role: "student",
+        ...data,
+      });
+
       studentService.createStudent({
-        account_id: accountId,
+        account_id: account.id,
         data: {
           first_name: data.firstName,
           last_name: data.lastName,
@@ -166,7 +104,8 @@ export const StudentTable = () => {
             ? data.lastRegistered.toISOString()
             : null,
         },
-      }),
+      });
+    },
     onError: (error: Error) => {
       console.error("Failed to create student:", error);
       setSubmissionError(`Failed to create student: ${error.message}`);
@@ -225,7 +164,7 @@ export const StudentTable = () => {
 
   const handleEdit = (student: Student) => {
     setEditingStudent(student);
-    setSidebarMode("edit");
+
     setSubmissionError(null);
     openSidebar(
       `edit-student-${student.id}`,
@@ -233,7 +172,13 @@ export const StudentTable = () => {
       "Update student information",
       <StudentTableCreateEditForm
         title="Edit Student"
-        onSubmit={handleFormSubmit}
+        onSubmit={async (data) => {
+          if (!editingStudent) return;
+          await updateMutation.mutateAsync({
+            id: editingStudent.id,
+            data,
+          });
+        }}
         submissionError={submissionError}
         editData={student}
       />
@@ -246,7 +191,7 @@ export const StudentTable = () => {
 
   const handleCreate = () => {
     setEditingStudent(null);
-    setSidebarMode("create");
+
     setSubmissionError(null);
     openSidebar(
       "create-student",
@@ -254,57 +199,12 @@ export const StudentTable = () => {
       "Add a new student to the system",
       <StudentTableCreateEditForm
         title="New Student"
-        onSubmit={handleFormSubmit}
+        onSubmit={async (data) => {
+          await createStudentMutation.mutateAsync({ data });
+        }}
         submissionError={submissionError}
       />
     );
-  };
-
-  const handleFormSubmit = async (data: {
-    pid: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    phoneNumber: string;
-    contactPreference: "call" | "text";
-    lastRegistered: Date | null;
-  }) => {
-    if (sidebarMode === "edit" && editingStudent) {
-      updateMutation.mutate({
-        id: editingStudent.id,
-        data: {
-          firstName: data.firstName,
-          lastName: data.lastName,
-          phoneNumber: data.phoneNumber,
-          contactPreference: data.contactPreference,
-          lastRegistered: data.lastRegistered,
-        },
-      });
-    } else if (sidebarMode === "create") {
-      // First create account, then create student with that account_id
-      try {
-        const account = await createAccountMutation.mutateAsync({
-          email: data.email,
-          firstName: data.firstName,
-          lastName: data.lastName,
-          pid: data.pid,
-        });
-
-        // Then create student with the new account ID
-        createStudentMutation.mutate({
-          accountId: account.id,
-          data: {
-            firstName: data.firstName,
-            lastName: data.lastName,
-            phoneNumber: data.phoneNumber,
-            contactPreference: data.contactPreference,
-            lastRegistered: data.lastRegistered,
-          },
-        });
-      } catch (error) {
-        console.error("Failed to create student:", error);
-      }
-    }
   };
 
   const columns: ColumnDef<Student>[] = [
@@ -370,10 +270,7 @@ export const StudentTable = () => {
               updateMutation.mutate({
                 id: student.id,
                 data: {
-                  firstName: student.firstName,
-                  lastName: student.lastName,
-                  phoneNumber: student.phoneNumber,
-                  contactPreference: student.contactPreference,
+                  ...student,
                   lastRegistered: checked ? new Date() : null,
                 },
               });
