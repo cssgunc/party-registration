@@ -9,6 +9,22 @@ type Student = {
   lastRegistered: Date | null;
 };
 
+/**
+ * Contact information (API format with snake_case)
+ * This is what the backend returns and expects
+ */
+type BackendContact = {
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone_number: string;
+  contact_preference: "call" | "text";
+};
+
+/**
+ * Contact information (Frontend format with camelCase)
+ * This is what the frontend components use
+ */
 type Contact = {
   email: string;
   firstName: string;
@@ -17,4 +33,15 @@ type Contact = {
   contactPreference: "call" | "text";
 };
 
-export type { Contact, Student };
+/**
+ * Paginated response from the student list API
+ */
+type PaginatedStudentsResponse = {
+  items: Student[];
+  total_records: number;
+  page_size: number;
+  page_number: number;
+  total_pages: number;
+};
+
+export type { BackendContact, Contact, PaginatedStudentsResponse, Student };

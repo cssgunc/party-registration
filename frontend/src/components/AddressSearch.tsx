@@ -6,13 +6,20 @@ import {
   CommandEmpty,
   CommandGroup,
   CommandItem,
-  CommandList
+  CommandList,
 } from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { AutocompleteResult, LocationService } from "@/services/locationService";
-import { CheckIcon, Loader2Icon, XIcon } from "lucide-react";
+import {
+  AutocompleteResult,
+  LocationService,
+} from "@/services/locationService";
+import { CheckIcon, Loader2Icon, MapPinIcon, XIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 interface AddressSearchProps {
@@ -42,10 +49,11 @@ export default function AddressSearch({
   const [searchTerm, setSearchTerm] = useState("");
   const [suggestions, setSuggestions] = useState<AutocompleteResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedAddress, setSelectedAddress] = useState<AutocompleteResult | null>(null);
+  const [selectedAddress, setSelectedAddress] =
+    useState<AutocompleteResult | null>(null);
   const [internalError, setInternalError] = useState<string | null>(null);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
-  
+
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const commandRef = useRef<HTMLDivElement>(null);
@@ -58,7 +66,7 @@ export default function AddressSearch({
   useEffect(() => {
     if (value && value !== selectedAddress?.formatted_address) {
       // If there's an external value, try to find matching suggestion
-      const match = suggestions.find(s => s.formatted_address === value);
+      const match = suggestions.find((s) => s.formatted_address === value);
       if (match) {
         setSelectedAddress(match);
       }
@@ -72,7 +80,7 @@ export default function AddressSearch({
   useEffect(() => {
     const fetchSuggestions = async (input: string) => {
       const trimmedInput = input.trim();
-      
+
       if (trimmedInput.length < 3) {
         setSuggestions([]);
         return;
@@ -86,7 +94,9 @@ export default function AddressSearch({
         setSuggestions(results);
       } catch (err) {
         console.error("Error fetching address suggestions:", err);
-        setInternalError("Failed to fetch address suggestions. Please try again.");
+        setInternalError(
+          "Failed to fetch address suggestions. Please try again."
+        );
         setSuggestions([]);
       } finally {
         setIsLoading(false);
@@ -112,14 +122,14 @@ export default function AddressSearch({
    * Handle address selection from dropdown
    */
   const handleSelect = (currentValue: string) => {
-    const suggestion = suggestions.find(s => s.place_id === currentValue);
-    
+    const suggestion = suggestions.find((s) => s.place_id === currentValue);
+
     if (suggestion) {
       setSelectedAddress(suggestion);
       setSearchTerm(suggestion.formatted_address);
       onSelect(suggestion);
     }
-    
+
     setOpen(false);
     setInternalError(null);
   };
@@ -142,7 +152,7 @@ export default function AddressSearch({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     setSearchTerm(newValue);
-    
+
     // Open popover when user starts typing
     if (newValue.length >= 3) {
       setOpen(true);
@@ -163,17 +173,17 @@ export default function AddressSearch({
    */
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!open || suggestions.length === 0) return;
-    
+
     switch (e.key) {
       case "ArrowDown":
         e.preventDefault();
-        setHighlightedIndex((prev) => 
+        setHighlightedIndex((prev) =>
           prev < suggestions.length - 1 ? prev + 1 : 0
         );
         break;
       case "ArrowUp":
         e.preventDefault();
-        setHighlightedIndex((prev) => 
+        setHighlightedIndex((prev) =>
           prev > 0 ? prev - 1 : suggestions.length - 1
         );
         break;
@@ -208,10 +218,7 @@ export default function AddressSearch({
               onKeyDown={handleKeyDown}
               placeholder={placeholder}
               disabled={disabled}
-              className={cn(
-                "pr-16",
-                displayError && "border-destructive"
-              )}
+              className={cn("pr-16", displayError && "border-destructive")}
               aria-label="Address search input"
               aria-describedby={displayError ? "address-error" : undefined}
               aria-invalid={!!displayError}
@@ -220,8 +227,8 @@ export default function AddressSearch({
             />
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
               {isLoading && (
-                <Loader2Icon 
-                  className="h-4 w-4 animate-spin text-muted-foreground" 
+                <Loader2Icon
+                  className="h-4 w-4 animate-spin text-muted-foreground"
                   aria-label="Loading suggestions"
                 />
               )}
@@ -241,16 +248,12 @@ export default function AddressSearch({
             </div>
           </div>
         </PopoverTrigger>
-        <PopoverContent 
-          className="w-[var(--radix-popover-trigger-width)] p-0" 
+        <PopoverContent
+          className="w-[var(--radix-popover-trigger-width)] p-0"
           align="start"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
-          <Command 
-            shouldFilter={false} 
-            ref={commandRef}
-            loop
-          >
+          <Command shouldFilter={false} ref={commandRef} loop>
             <CommandList id="address-suggestions">
               {isLoading && (
                 <div className="flex items-center justify-center py-6">
@@ -258,16 +261,26 @@ export default function AddressSearch({
                 </div>
               )}
               {displayError && !isLoading && (
-                <div className="px-3 py-2 text-sm text-destructive" role="alert">
+                <div
+                  className="px-3 py-2 text-sm text-destructive"
+                  role="alert"
+                >
                   {displayError}
                 </div>
               )}
               {!displayError && !isLoading && searchTerm.trim().length < 3 && (
-                <CommandEmpty>Type at least 3 characters to search.</CommandEmpty>
+                <CommandEmpty>
+                  Type at least 3 characters to search.
+                </CommandEmpty>
               )}
-              {!displayError && !isLoading && searchTerm.trim().length >= 3 && suggestions.length === 0 && (
-                <CommandEmpty>No addresses found. Try a different search.</CommandEmpty>
-              )}
+              {!displayError &&
+                !isLoading &&
+                searchTerm.trim().length >= 3 &&
+                suggestions.length === 0 && (
+                  <CommandEmpty>
+                    No addresses found. Try a different search.
+                  </CommandEmpty>
+                )}
               {!isLoading && suggestions.length > 0 && (
                 <CommandGroup>
                   {suggestions.map((suggestion, index) => (
@@ -281,17 +294,18 @@ export default function AddressSearch({
                       )}
                       onMouseEnter={() => setHighlightedIndex(index)}
                     >
+                      <MapPinIcon className="mr-2 h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      <span className="line-clamp-2 text-sm flex-1">
+                        {suggestion.formatted_address}
+                      </span>
                       <CheckIcon
                         className={cn(
-                          "mr-2 h-4 w-4",
+                          "ml-2 h-4 w-4 flex-shrink-0",
                           selectedAddress?.place_id === suggestion.place_id
                             ? "opacity-100"
                             : "opacity-0"
                         )}
                       />
-                      <span className="line-clamp-2 text-sm">
-                        {suggestion.formatted_address}
-                      </span>
                     </CommandItem>
                   ))}
                 </CommandGroup>
@@ -306,7 +320,7 @@ export default function AddressSearch({
           {displayError}
         </p>
       )}
-      
+
       {selectedAddress && (
         <div className="mt-2 p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-md">
           <p className="text-sm font-medium text-green-900 dark:text-green-100">

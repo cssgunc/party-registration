@@ -1,4 +1,5 @@
 import pytest
+import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.modules.account.account_model import AccountData, AccountRole
 from src.modules.account.account_service import (
@@ -14,7 +15,7 @@ def account_service(test_async_session: AsyncSession) -> AccountService:
     return AccountService(session=test_async_session)
 
 
-@pytest.fixture()
+@pytest_asyncio.fixture()
 async def accounts_by_roles_fixture(account_service: AccountService) -> None:
     await account_service.create_account(
         AccountData(

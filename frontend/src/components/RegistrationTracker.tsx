@@ -6,11 +6,15 @@ import { Party } from "@/types/api/party";
 import { useMemo, useState } from "react";
 
 interface RegistrationTrackerProps {
-  parties: Party[];
+  data: Party[] | undefined;
+  isPending?: boolean;
+  error?: Error | null;
 }
 
 export default function RegistrationTracker({
-  parties,
+  data: parties = [],
+  isPending = false,
+  error = null,
 }: RegistrationTrackerProps) {
   const [activeTab, setActiveTab] = useState<"active" | "past">("active");
 
@@ -112,6 +116,35 @@ export default function RegistrationTracker({
       </CardContent>
     </Card>
   );
+
+  if (error) {
+    return (
+      <div className="w-full max-w-4xl mx-auto">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center text-destructive py-8">
+              <p className="font-semibold mb-2">Error loading registrations</p>
+              <p className="text-sm">{error.message}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (isPending) {
+    return (
+      <div className="w-full max-w-4xl mx-auto">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center text-muted-foreground py-8">
+              <p>Loading registrations...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-4xl mx-auto">
