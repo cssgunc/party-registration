@@ -2,6 +2,7 @@ import { PartyFormValues } from "@/components/PartyRegistrationForm";
 import getMockClient from "@/lib/network/mockClient";
 import { BackendParty, Party, StudentCreatePartyDTO } from "@/types/api/party";
 import { AxiosInstance } from "axios";
+import { format } from "date-fns";
 import { toFrontendStudent } from "./adminStudentService";
 import { toFrontendLocation } from "./locationService";
 
@@ -158,14 +159,14 @@ export class PartyService {
 
   async createParty(payload: AdminPartyPayload): Promise<Party> {
     const backendPayload = toBackendPayload(payload);
-    const response = await this.client.post<BackendParty>("/parties", backendPayload);
+    const response = await this.client.post<BackendParty>(
+      "/parties",
+      backendPayload
+    );
     return toFrontendParty(response.data);
   }
 
-  async updateParty(
-    id: number,
-    payload: AdminPartyPayload
-  ): Promise<Party> {
+  async updateParty(id: number, payload: AdminPartyPayload): Promise<Party> {
     const backendPayload = toBackendPayload(payload);
     const response = await this.client.put<BackendParty>(
       `/parties/${id}`,
@@ -177,5 +178,34 @@ export class PartyService {
   async deleteParty(id: number): Promise<Party> {
     const response = await this.client.delete<BackendParty>(`/parties/${id}`);
     return toFrontendParty(response.data);
+  }
+
+  async downloadPartiesCsv(startDate: Date, endDate: Date): Promise<void> {
+    try {
+      const formattedStartDate = format(startDate, "yyyy-MM-dd");
+      const formattedEndDate = format(endDate, "yyyy-MM-dd");
+
+      const response = await this.client.get(
+        `/parties/csv?start_date=${formattedStartDate}&end_date=${formattedEndDate}`,
+        {
+          responseType: "blob",
+        }
+      );
+
+      const blob = new Blob([response.data], { type: "text/csv" });
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `parties_${formattedStartDate}_to_${formattedEndDate}.csv`;
+      document.body.appendChild(link);
+      link.click();
+
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Failed to download parties CSV:", error);
+      throw new Error("Failed to download CSV. Please try again.");
+    }
   }
 }
