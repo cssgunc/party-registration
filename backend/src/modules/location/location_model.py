@@ -1,8 +1,18 @@
-from datetime import datetime
 from typing import Self
 
-from pydantic import BaseModel
+from pydantic import AwareDatetime, BaseModel
 from src.core.models import PaginatedResponse
+
+
+class AutocompleteInput(BaseModel):
+    # Input for address autocomplete
+    address: str
+
+
+class AutocompleteResult(BaseModel):
+    # Result from Google Maps autocomplete
+    formatted_address: str
+    place_id: str
 
 
 class AddressData(BaseModel):
@@ -23,7 +33,7 @@ class AddressData(BaseModel):
 class LocationData(AddressData):
     warning_count: int = 0
     citation_count: int = 0
-    hold_expiration: datetime | None = None
+    hold_expiration: AwareDatetime | None = None
 
     @classmethod
     def from_address(
@@ -31,7 +41,7 @@ class LocationData(AddressData):
         address: AddressData,
         warning_count: int = 0,
         citation_count: int = 0,
-        hold_expiration: datetime | None = None,
+        hold_expiration: AwareDatetime | None = None,
     ) -> Self:
         return cls(
             google_place_id=address.google_place_id,
@@ -64,9 +74,4 @@ class LocationCreate(BaseModel):
     google_place_id: str
     warning_count: int = 0
     citation_count: int = 0
-    hold_expiration: datetime | None = None
-
-
-class AutocompleteResult(BaseModel):
-    formatted_address: str
-    place_id: str
+    hold_expiration: AwareDatetime | None = None

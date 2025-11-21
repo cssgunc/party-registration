@@ -1,14 +1,89 @@
-from fastapi import APIRouter, Depends, Query
-from src.core.authentication import authenticate_admin, authenticate_staff_or_admin
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from src.core.authentication import (
+    authenticate_admin,
+    authenticate_by_role,
+    authenticate_staff_or_admin,
+)
+from src.modules.account.account_model import Account
 from src.modules.location.location_model import (
+    AddressData,
     Location,
     LocationCreate,
     LocationData,
     PaginatedLocationResponse,
 )
 from src.modules.location.location_service import LocationService
+from src.modules.police.police_model import PoliceAccount
 
-location_router = APIRouter(prefix="/locations", tags=["locations"])
+from .location_model import AutocompleteInput, AutocompleteResult
+
+location_router = APIRouter(prefix="/api/locations", tags=["locations"])
+
+
+@location_router.post(
+    "/autocomplete",
+    response_model=list[AutocompleteResult],
+    status_code=status.HTTP_200_OK,
+    summary="Autocomplete address search",
+    description="Returns address suggestions based on user input using Google Maps Places API.",
+)
+async def autocomplete_address(
+    input_data: AutocompleteInput,
+    location_service: LocationService = Depends(),
+    user: Account | PoliceAccount = Depends(
+        authenticate_by_role("police", "student", "admin", "staff")
+    ),
+) -> list[AutocompleteResult]:
+    """
+    Autocomplete address search endpoint.
+    """
+    try:
+        results = await location_service.autocomplete_address(input_data.address)
+        return results
+    except ValueError as e:
+        # Handle validation errors from service
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    except Exception:
+        # Log error in production
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch address suggestions. Please try again later.",
+        )
+
+
+@location_router.get(
+    "/place-details/{place_id}",
+    response_model=AddressData,
+    status_code=status.HTTP_200_OK,
+    summary="Get place details from Google Maps place ID",
+    description="Returns address details including coordinates for a given place ID.",
+)
+async def get_place_details(
+    place_id: str,
+    location_service: LocationService = Depends(),
+    user: Account | PoliceAccount = Depends(
+        authenticate_by_role("police", "student", "admin", "staff")
+    ),
+) -> AddressData:
+    """
+    Get place details endpoint.
+    """
+    try:
+        address_data = await location_service.get_place_details(place_id)
+        return address_data
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch place details. Please try again later.",
+        )
 
 
 @location_router.get("/", response_model=PaginatedLocationResponse)

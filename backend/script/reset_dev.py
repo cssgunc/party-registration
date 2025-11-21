@@ -8,7 +8,7 @@ This script resets the database for development mode, including:
 import asyncio
 import json
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import src.modules  # Ensure all modules are imported so their entities are registered # noqa: F401
@@ -16,33 +16,47 @@ from sqlalchemy import create_engine, text
 from src.core.config import env
 from src.core.database import AsyncSessionLocal, EntityBase, server_url
 from src.core.database import engine as async_engine
+from src.modules.account.account_entity import AccountEntity, AccountRole
+from src.modules.location.location_entity import LocationEntity
+from src.modules.party.party_entity import PartyEntity
+from src.modules.police.police_entity import PoliceEntity
+from src.modules.student.student_entity import StudentEntity
+from src.modules.student.student_model import ContactPreference, StudentData
 
 
 def parse_date(date_str: str | None) -> datetime | None:
-    """Parse a date string in ISO format or relative format (e.g., NOW-7d)."""
+    """Parse a date string in ISO format or relative format (e.g., NOW-7d, NOW+3h)."""
     if not date_str or date_str == "null":
         return None
 
+    now = datetime.now(timezone.utc)
+
     if date_str.startswith("NOW"):
-        match = re.match(r"NOW([+-])(\d+)([dwmy])", date_str)
+        match = re.match(r"NOW([+-])(\d+)([hdwmy])", date_str)
         if match:
             sign, amount, unit = match.groups()
             amount = int(amount)
             if sign == "-":
                 amount = -amount
 
-            if unit == "d":
-                return datetime.now() + timedelta(days=amount)
+            if unit == "h":
+                return now + timedelta(hours=amount)
+            elif unit == "d":
+                return now + timedelta(days=amount)
             elif unit == "w":
-                return datetime.now() + timedelta(weeks=amount)
+                return now + timedelta(weeks=amount)
             elif unit == "m":
-                return datetime.now() + timedelta(days=amount * 30)
+                return now + timedelta(days=amount * 30)
             elif unit == "y":
-                return datetime.now() + timedelta(days=amount * 365)
+                return now + timedelta(days=amount * 365)
 
-        return datetime.now()
+        return now
 
-    return datetime.fromisoformat(date_str)
+    # Parse ISO format string and ensure it's timezone-aware
+    dt = datetime.fromisoformat(date_str)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
 
 
 async def reset_dev():
@@ -64,15 +78,14 @@ async def reset_dev():
 
     print("Populating tables...")
     async with AsyncSessionLocal() as session:
-        from src.modules.account.account_entity import AccountEntity, AccountRole
-        from src.modules.location.location_entity import LocationEntity
-        from src.modules.party.party_entity import PartyEntity
-        from src.modules.police.police_entity import PoliceEntity
-        from src.modules.student.student_entity import StudentEntity
-        from src.modules.student.student_model import ContactPreference, StudentData
-
         with open(
-            str(Path(__file__).parent.parent.parent / "frontend" / "shared" / "mock_data.json"), "r"
+            str(
+                Path(__file__).parent.parent.parent
+                / "frontend"
+                / "shared"
+                / "mock_data.json"
+            ),
+            "r",
         ) as f:
             data = json.load(f)
 

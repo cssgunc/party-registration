@@ -5,6 +5,7 @@ import { CalendarIcon } from "lucide-react";
 import { useState } from "react";
 import * as z from "zod";
 
+import AddressSearch from "@/components/AddressSearch";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -28,17 +29,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AutocompleteResult,
+  LocationService,
+} from "@/services/locationService";
 
 const partyFormSchema = z.object({
   address: z.string().min(1, "Address is required"),
-  partyDate: z.date({
-    message: "Party date is required",
-  }).refine(
-    (date) => isAfter(startOfDay(date), addBusinessDays(startOfDay(new Date()), 1)),
-    "Party must be at least 2 business days in the future"
-  ),
+  partyDate: z
+    .date({
+      message: "Party date is required",
+    })
+    .refine(
+      (date) =>
+        isAfter(startOfDay(date), addBusinessDays(startOfDay(new Date()), 1)),
+      "Party must be at least 2 business days in the future"
+    ),
   partyTime: z.string().min(1, "Party time is required"),
-  phoneNumber: z.string()
+  secondContactFirstName: z.string().min(1, "First name is required"),
+  secondContactLastName: z.string().min(1, "Last name is required"),
+  phoneNumber: z
+    .string()
     .min(1, "Phone number is required")
     .refine(
       (val) => val.replace(/\D/g, "").length >= 10,
@@ -47,17 +58,24 @@ const partyFormSchema = z.object({
   contactPreference: z.enum(["call", "text"], {
     message: "Please select a contact preference",
   }),
-  contactTwoEmail: z.email({ pattern: z.regexes.html5Email })
-    .min(1, "Contact email is required")
+  contactTwoEmail: z
+    .email({ pattern: z.regexes.html5Email })
+    .min(1, "Contact email is required"),
 });
 
 type PartyFormValues = z.infer<typeof partyFormSchema>;
 
+export type { PartyFormValues };
+
 interface PartyRegistrationFormProps {
-  onSubmit: (data: PartyFormValues) => void | Promise<void>;
+  onSubmit: (data: PartyFormValues, placeId: string) => void | Promise<void>;
+  locationService?: LocationService;
 }
 
-export default function PartyRegistrationForm({ onSubmit }: PartyRegistrationFormProps) {
+export default function PartyRegistrationForm({
+  onSubmit,
+  locationService = new LocationService(),
+}: PartyRegistrationFormProps) {
   const [formData, setFormData] = useState<Partial<PartyFormValues>>({
     address: "",
     partyDate: undefined,
@@ -66,6 +84,9 @@ export default function PartyRegistrationForm({ onSubmit }: PartyRegistrationFor
     contactPreference: undefined,
     contactTwoEmail: "",
   });
+
+  const [placeId, setPlaceId] = useState<string>(""); // ⭐ NEW
+
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -74,7 +95,7 @@ export default function PartyRegistrationForm({ onSubmit }: PartyRegistrationFor
     setErrors({});
 
     const result = partyFormSchema.safeParse(formData);
-    
+
     if (!result.success) {
       const fieldErrors: Record<string, string> = {};
       result.error.issues.forEach((issue) => {
@@ -86,9 +107,17 @@ export default function PartyRegistrationForm({ onSubmit }: PartyRegistrationFor
       return;
     }
 
+    if (!placeId) {
+      setErrors((prev) => ({
+        ...prev,
+        address: "Please select an address from the dropdown",
+      }));
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      await onSubmit(result.data);
+      await onSubmit(result.data, placeId); // ⭐ now sends placeId too
     } finally {
       setIsSubmitting(false);
     }
@@ -98,14 +127,18 @@ export default function PartyRegistrationForm({ onSubmit }: PartyRegistrationFor
     field: K,
     value: PartyFormValues[K]
   ) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
-        return newErrors;
-      });
+      const newErrors = { ...errors };
+      delete newErrors[field];
+      setErrors(newErrors);
     }
+  };
+
+  /** ⭐ AddressSearch now sets BOTH address + placeId */
+  const handleAddressSelect = (address: AutocompleteResult | null) => {
+    updateField("address", address?.formatted_address || "");
+    setPlaceId(address?.place_id || ""); // ⭐ new required field
   };
 
   return (
@@ -114,15 +147,17 @@ export default function PartyRegistrationForm({ onSubmit }: PartyRegistrationFor
         <FieldSet>
           <Field data-invalid={!!errors.address}>
             <FieldLabel htmlFor="party-address">Party Address</FieldLabel>
-            <Input
-              id="party-address"
-              placeholder="123 Main St, Chapel Hill, NC"
+            <AddressSearch
               value={formData.address}
-              onChange={(e) => updateField("address", e.target.value)}
-              aria-invalid={!!errors.address}
+              onSelect={handleAddressSelect}
+              locationService={locationService}
+              placeholder="Search for the party address..."
+              className="w-full"
+              error={errors.address}
             />
             <FieldDescription>
-              Enter the address where the party will be held
+              Search and select the address where the party will be held. The
+              address will be locked after selection.
             </FieldDescription>
             {errors.address && <FieldError>{errors.address}</FieldError>}
           </Field>
@@ -135,9 +170,8 @@ export default function PartyRegistrationForm({ onSubmit }: PartyRegistrationFor
                   <Button
                     id="party-date"
                     variant="outline"
-                    className={`w-full justify-start text-left font-normal ${
-                      !formData.partyDate && "text-muted-foreground"
-                    }`}
+                    className={`w-full justify-start text-left font-normal ${!formData.partyDate && "text-muted-foreground"
+                      }`}
                   >
                     {formData.partyDate ? (
                       format(formData.partyDate, "PPP")
@@ -153,7 +187,10 @@ export default function PartyRegistrationForm({ onSubmit }: PartyRegistrationFor
                     selected={formData.partyDate}
                     onSelect={(date) => updateField("partyDate", date as Date)}
                     disabled={(date) =>
-                      !isAfter(startOfDay(date), addBusinessDays(startOfDay(new Date()), 1))
+                      !isAfter(
+                        startOfDay(date),
+                        addBusinessDays(startOfDay(new Date()), 1)
+                      )
                     }
                   />
                 </PopoverContent>
@@ -177,9 +214,38 @@ export default function PartyRegistrationForm({ onSubmit }: PartyRegistrationFor
               {errors.partyTime && <FieldError>{errors.partyTime}</FieldError>}
             </Field>
           </div>
+          <div className="font-semibold text-lg">Second Contact Information</div>
+          <div className="flex flex-row gap-6">
+            <Field data-invalid={!!errors.secondContactFirstName}>
+              <FieldLabel htmlFor="second-contact-first-name">First Name</FieldLabel>
+              <Input
+                id="second-contact-first-name"
+                placeholder=""
+                value={formData.secondContactFirstName}
+                onChange={(e) => updateField("secondContactFirstName", e.target.value)}
+                aria-invalid={!!errors.secondFirstContactName}
+              />
+              {errors.secondContactFirstName && (
+                <FieldError>{errors.secondContactFirstName}</FieldError>
+              )}
+            </Field>
 
+            <Field data-invalid={!!errors.secondContactLastName}>
+              <FieldLabel htmlFor="second-contact-last-name">Last Name</FieldLabel>
+              <Input
+                id="second-contact-last-name"
+                placeholder=""
+                value={formData.secondContactLastName}
+                onChange={(e) => updateField("secondContactLastName", e.target.value)}
+                aria-invalid={!!errors.secondContactLastName}
+              />
+              {errors.secondContactLastName && (
+                <FieldError>{errors.secondContactLastName}</FieldError>
+              )}
+            </Field>
+          </div>
           <Field data-invalid={!!errors.phoneNumber}>
-            <FieldLabel htmlFor="phone-number">Your Phone Number</FieldLabel>
+            <FieldLabel htmlFor="phone-number">Phone Number</FieldLabel>
             <Input
               id="phone-number"
               placeholder="(123) 456-7890"
@@ -188,16 +254,22 @@ export default function PartyRegistrationForm({ onSubmit }: PartyRegistrationFor
               aria-invalid={!!errors.phoneNumber}
             />
             <FieldDescription>
-              We will use this to contact you about the party
+              We will use this to contact Contact two about the party
             </FieldDescription>
-            {errors.phoneNumber && <FieldError>{errors.phoneNumber}</FieldError>}
+            {errors.phoneNumber && (
+              <FieldError>{errors.phoneNumber}</FieldError>
+            )}
           </Field>
 
           <Field data-invalid={!!errors.contactPreference}>
-            <FieldLabel htmlFor="contact-preference">Contact Preference</FieldLabel>
+            <FieldLabel htmlFor="contact-preference">
+              Contact Preference
+            </FieldLabel>
             <Select
               value={formData.contactPreference}
-              onValueChange={(value) => updateField("contactPreference", value as "call" | "text")}
+              onValueChange={(value) =>
+                updateField("contactPreference", value as "call" | "text")
+              }
             >
               <SelectTrigger id="contact-preference">
                 <SelectValue placeholder="Select your preference" />
@@ -207,12 +279,16 @@ export default function PartyRegistrationForm({ onSubmit }: PartyRegistrationFor
                 <SelectItem value="text">Text</SelectItem>
               </SelectContent>
             </Select>
-            <FieldDescription>How should we contact you?</FieldDescription>
-            {errors.contactPreference && <FieldError>{errors.contactPreference}</FieldError>}
+            <FieldDescription>How should we contact the second contact?</FieldDescription>
+            {errors.contactPreference && (
+              <FieldError>{errors.contactPreference}</FieldError>
+            )}
           </Field>
 
           <Field data-invalid={!!errors.contactTwoEmail}>
-            <FieldLabel htmlFor="contact-email">Second Contact Email</FieldLabel>
+            <FieldLabel htmlFor="contact-email">
+              Contact Email
+            </FieldLabel>
             <Input
               id="contact-email"
               type="email"
@@ -224,7 +300,9 @@ export default function PartyRegistrationForm({ onSubmit }: PartyRegistrationFor
             <FieldDescription>
               Email address of the second contact person
             </FieldDescription>
-            {errors.contactTwoEmail && <FieldError>{errors.contactTwoEmail}</FieldError>}
+            {errors.contactTwoEmail && (
+              <FieldError>{errors.contactTwoEmail}</FieldError>
+            )}
           </Field>
 
           <Field orientation="horizontal">

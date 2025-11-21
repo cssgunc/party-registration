@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 import googlemaps
@@ -82,7 +82,7 @@ def sample_location_data_2() -> LocationData:
         zip_code="27701",
         warning_count=1,
         citation_count=2,
-        hold_expiration=datetime(2025, 12, 31, 23, 59, 59),
+        hold_expiration=datetime(2025, 12, 31, 23, 59, 59, tzinfo=timezone.utc),
     )
 
 
@@ -130,7 +130,7 @@ async def test_location_2(test_async_session: AsyncSession) -> Location:
         zip_code="27701",
         warning_count=1,
         citation_count=2,
-        hold_expiration=datetime(2025, 12, 31, 23, 59, 59),
+        hold_expiration=datetime(2025, 12, 31, 23, 59, 59, tzinfo=timezone.utc),
     )
     test_async_session.add(location_entity)
     await test_async_session.commit()
@@ -172,7 +172,7 @@ async def test_locations_multiple(test_async_session: AsyncSession) -> list[Loca
             zip_code="27701",
             warning_count=1,
             citation_count=2,
-            hold_expiration=datetime(2025, 12, 31, 23, 59, 59),
+            hold_expiration=datetime(2025, 12, 31, 23, 59, 59, tzinfo=timezone.utc),
         ),
     ]
 
@@ -227,7 +227,9 @@ async def test_create_location_with_full_data(
     assert location.unit == "Apt 2B"
     assert location.warning_count == 1
     assert location.citation_count == 2
-    assert location.hold_expiration == datetime(2025, 12, 31, 23, 59, 59)
+    assert location.hold_expiration == datetime(
+        2025, 12, 31, 23, 59, 59, tzinfo=timezone.utc
+    )
 
 
 @pytest.mark.asyncio
@@ -331,7 +333,9 @@ async def test_update_location(
         zip_code="27514",
         warning_count=3,  # increased warnings
         citation_count=1,  # added citation
-        hold_expiration=datetime(2026, 1, 1, 0, 0, 0),  # added hold
+        hold_expiration=datetime(
+            2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc
+        ),  # added hold
     )
 
     updated = await location_service_db.update_location(test_location.id, update_data)
@@ -341,7 +345,7 @@ async def test_update_location(
     assert updated.unit == "Suite 100"
     assert updated.warning_count == 3
     assert updated.citation_count == 1
-    assert updated.hold_expiration == datetime(2026, 1, 1, 0, 0, 0)
+    assert updated.hold_expiration == datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
 
 
 @pytest.mark.asyncio
@@ -483,7 +487,7 @@ async def test_location_data_persistence(location_service_db: LocationService) -
         zip_code="27601",
         warning_count=10,
         citation_count=5,
-        hold_expiration=datetime(2025, 6, 15, 12, 30, 0),
+        hold_expiration=datetime(2025, 6, 15, 12, 30, 0, tzinfo=timezone.utc),
     )
 
     created = await location_service_db.create_location(data)
@@ -504,7 +508,9 @@ async def test_location_data_persistence(location_service_db: LocationService) -
     assert fetched.zip_code == "27601"
     assert fetched.warning_count == 10
     assert fetched.citation_count == 5
-    assert fetched.hold_expiration == datetime(2025, 6, 15, 12, 30, 0)
+    assert fetched.hold_expiration == datetime(
+        2025, 6, 15, 12, 30, 0, tzinfo=timezone.utc
+    )
 
 
 @patch("src.modules.location.location_service.places.places_autocomplete")
