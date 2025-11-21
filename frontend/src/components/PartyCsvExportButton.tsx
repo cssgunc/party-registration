@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import getMockClient from "@/lib/network/mockClient";
-import PartyService from "@/services/partyService";
+import { PartyService } from "@/services/partyService";
 
 interface PartyCsvExportButtonProps {
   startDate: Date | undefined;
@@ -59,4 +59,3 @@ export default function PartyCsvExportButton({
     </div>
   );
 }
-

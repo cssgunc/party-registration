@@ -8,8 +8,8 @@ import * as z from "zod";
 import AccountTableCreateEditForm, {
   AccountCreateEditValues as AccountCreateEditSchema,
 } from "./AccountTableCreateEdit";
-import { TableTemplate } from "./TableTemplate";
 import { useSidebar } from "./SidebarContext";
+import { TableTemplate } from "./TableTemplate";
 
 import type { Account, AccountRole } from "@/services/accountService";
 import { isAxiosError } from "axios";
@@ -58,7 +58,7 @@ export const AccountTable = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["accounts"] });
-      setSidebarOpen(false);
+      closeSidebar();
       setEditingAccount(null);
       setSubmissionError(null);
     },

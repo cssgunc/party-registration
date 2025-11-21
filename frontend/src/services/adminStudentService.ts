@@ -60,7 +60,7 @@ function toBackendFormat(data: {
 /**
  * Backend student response format
  */
-interface BackendStudent {
+export interface BackendStudent {
   id: number;
   pid: string;
   email: string;
