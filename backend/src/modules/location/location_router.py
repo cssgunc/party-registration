@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from src.core.authentication import (
     authenticate_admin,
     authenticate_by_role,
@@ -88,16 +88,37 @@ async def get_place_details(
 
 @location_router.get("/", response_model=PaginatedLocationResponse)
 async def get_locations(
+    page: int | None = Query(default=None, ge=1),
+    size: int | None = Query(default=None, ge=1),
     location_service: LocationService = Depends(),
     _=Depends(authenticate_staff_or_admin),
 ):
     locations = await location_service.get_locations()
+
+    total = len(locations)
+
+    # default — return everything
+    if page is None or size is None:
+        return PaginatedLocationResponse(
+            items=locations,
+            total_records=total,
+            page_number=1,
+            page_size=total,
+            total_pages=1,
+        )
+
+    start = (page - 1) * size
+    end = start + size
+    sliced = locations[start:end]
+
+    total_pages = (total + size - 1) // size if total > 0 else 1
+
     return PaginatedLocationResponse(
-        items=locations,
-        total_records=len(locations),
-        page_number=1,
-        page_size=len(locations),
-        total_pages=1,
+        items=sliced,
+        total_records=total,
+        page_number=page,
+        page_size=size,
+        total_pages=total_pages,
     )
 
 
@@ -136,7 +157,6 @@ async def update_location(
 ):
     location = await location_service.get_location_by_id(location_id)
 
-    # If place_id changed, fetch new address data; otherwise use existing location
     if location.google_place_id != data.google_place_id:
         address_data = await location_service.get_place_details(data.google_place_id)
         location_data = LocationData.from_address(

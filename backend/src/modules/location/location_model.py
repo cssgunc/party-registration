@@ -16,7 +16,6 @@ class AutocompleteResult(BaseModel):
 
 
 class AddressData(BaseModel):
-    # Location data without OCSL-specific fields
     google_place_id: str
     formatted_address: str
     latitude: float
@@ -67,6 +66,7 @@ class Location(LocationData):
     id: int
 
 
+# PAGINATION RESPONSE FOR LOCATIONS
 PaginatedLocationResponse = PaginatedResponse[Location]
 
 
