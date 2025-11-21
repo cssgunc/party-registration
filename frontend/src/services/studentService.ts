@@ -2,6 +2,7 @@ import getMockClient from "@/lib/network/mockClient";
 import { BackendParty, Party } from "@/types/api/party";
 import { Student } from "@/types/api/student";
 import { AxiosInstance } from "axios";
+import { BackendStudent, toFrontendStudent } from "./adminStudentService";
 import { toFrontendParty } from "./partyService";
 
 /**
@@ -24,14 +25,8 @@ export class StudentService {
    * Get the current authenticated student's information
    */
   async getCurrentStudent(): Promise<Student> {
-    const response = await this.client.get<Student>("/students/me");
-
-    // Convert date string to Date object if present
-    if (response.data.lastRegistered) {
-      response.data.lastRegistered = new Date(response.data.lastRegistered);
-    }
-
-    return response.data;
+    const response = await this.client.get<BackendStudent>("/students/me");
+    return toFrontendStudent(response.data);
   }
 
   /**

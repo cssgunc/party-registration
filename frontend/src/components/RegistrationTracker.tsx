@@ -1,8 +1,8 @@
 "use client";
 
-import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Party } from "@/types/api/party";
+import { format } from "date-fns";
 import { useMemo, useState } from "react";
 
 interface RegistrationTrackerProps {
@@ -10,6 +10,17 @@ interface RegistrationTrackerProps {
   isPending?: boolean;
   error?: Error | null;
 }
+
+const formatPhoneNumber = (phone: string | undefined): string => {
+  if (!phone) return "";
+  const cleaned = phone.replace(/\D/g, "");
+  if (cleaned.length === 10) {
+    return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(
+      6
+    )}`;
+  }
+  return phone;
+};
 
 export default function RegistrationTracker({
   data: parties = [],
@@ -46,108 +57,82 @@ export default function RegistrationTracker({
     return { activeParties: active, pastParties: past };
   }, [parties]);
 
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString("en-US", {
-      month: "2-digit",
-      day: "2-digit",
-      year: "numeric",
-    });
-  };
-
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
-  };
-
   const PartyCard = ({ party }: { party: Party }) => (
-    <Card className="mb-4">
-      <CardContent className="pt-6">
-        <div className="space-y-2">
-          <div className="font-semibold text-lg">
-            {formatDate(party.datetime)}
+    <div className="px-4 py-4 border-b border-gray-100 last:border-b-0">
+      <div className="space-y-2">
+        {/* Address and Date/Time */}
+        <div>
+          <div className="font-semibold">{party.location.formattedAddress}</div>
+          <div className="text-sm text-gray-600">
+            {format(party.datetime, "PPP")} at {format(party.datetime, "p")}
           </div>
-          <div className="text-sm text-muted-foreground">
-            {formatTime(party.datetime)}
-          </div>
-          <div className="text-sm text-muted-foreground">
-            {party.location.formattedAddress}
-          </div>
-          <div className="text-sm">
-            <div className="font-medium mt-3 mb-1">Contacts:</div>
+        </div>
 
-            <div className="mt-2">
-              <div className="font-medium">
+        {/* Contacts Side by Side */}
+        <div className="mt-3 grid grid-cols-2 gap-4">
+          {/* Contact One */}
+          <div>
+            <div className="text-sm font-medium text-gray-700">Contact 1:</div>
+            <div className="text-sm ml-3">
+              <div>
                 {party.contactOne.firstName} {party.contactOne.lastName}
               </div>
-              <div className="text-muted-foreground">
-                {party.contactOne.email}
-              </div>
-              <div className="text-muted-foreground">
-                {party.contactOne.phoneNumber}
-              </div>
-              <div className="text-muted-foreground">
-                {party.contactOne.contactPreference === "call"
-                  ? "Call"
-                  : "Text"}
+              <div>{formatPhoneNumber(party.contactOne.phoneNumber)}</div>
+              <div className="text-gray-600">
+                Prefers:{" "}
+                {party.contactOne.contactPreference
+                  ? party.contactOne.contactPreference.charAt(0).toUpperCase() +
+                    party.contactOne.contactPreference.slice(1).toLowerCase()
+                  : "N/A"}
               </div>
             </div>
+          </div>
 
-            <div className="mt-3">
-              <div className="font-medium">
+          {/* Contact Two */}
+          <div>
+            <div className="text-sm font-medium text-gray-700">Contact 2:</div>
+            <div className="text-sm ml-3">
+              <div>
                 {party.contactTwo.firstName} {party.contactTwo.lastName}
               </div>
-              <div className="text-muted-foreground">
-                {party.contactTwo.email}
-              </div>
-              <div className="text-muted-foreground">
-                {party.contactTwo.phoneNumber}
-              </div>
-              <div className="text-muted-foreground">
-                {party.contactTwo.contactPreference === "call"
-                  ? "Call"
-                  : "Text"}
+              <div>{formatPhoneNumber(party.contactTwo.phoneNumber)}</div>
+              <div className="text-gray-600">
+                Prefers:{" "}
+                {party.contactTwo.contactPreference
+                  ? party.contactTwo.contactPreference.charAt(0).toUpperCase() +
+                    party.contactTwo.contactPreference.slice(1).toLowerCase()
+                  : "N/A"}
               </div>
             </div>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 
   if (error) {
     return (
-      <div className="w-full max-w-4xl mx-auto">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center text-destructive py-8">
-              <p className="font-semibold mb-2">Error loading registrations</p>
-              <p className="text-sm">{error.message}</p>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="w-full bg-white border border-gray-200 rounded-md p-4">
+        <div className="text-center text-red-600 py-8">
+          <p className="font-semibold mb-2">Error loading registrations</p>
+          <p className="text-sm">{error.message}</p>
+        </div>
       </div>
     );
   }
 
   if (isPending) {
     return (
-      <div className="w-full max-w-4xl mx-auto">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center text-muted-foreground py-8">
-              <p>Loading registrations...</p>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="w-full bg-white border border-gray-200 rounded-md p-4">
+        <div className="text-center text-gray-600 py-8">
+          <p>Loading registrations...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto">
+    <div className="w-full">
       <Tabs
         value={activeTab}
         onValueChange={(value) => setActiveTab(value as "active" | "past")}
@@ -162,9 +147,9 @@ export default function RegistrationTracker({
         </TabsList>
 
         <TabsContent value="active" className="mt-4">
-          <div className="max-h-[600px] overflow-y-auto pr-2">
+          <div className="w-full bg-white border border-gray-200 rounded-md max-h-[600px] overflow-y-auto">
             {activeParties.length === 0 ? (
-              <div className="text-center text-muted-foreground py-8">
+              <div className="text-center text-gray-400 py-8">
                 No active registrations
               </div>
             ) : (
@@ -176,9 +161,9 @@ export default function RegistrationTracker({
         </TabsContent>
 
         <TabsContent value="past" className="mt-4">
-          <div className="max-h-[600px] overflow-y-auto pr-2">
+          <div className="w-full bg-white border border-gray-200 rounded-md max-h-[600px] overflow-y-auto">
             {pastParties.length === 0 ? (
-              <div className="text-center text-muted-foreground py-8">
+              <div className="text-center text-gray-400 py-8">
                 No past registrations
               </div>
             ) : (

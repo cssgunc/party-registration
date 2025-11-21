@@ -123,9 +123,10 @@ export class PartyService {
     values: PartyFormValues,
     placeId: string
   ): Promise<Party> {
+    const myClient = getMockClient("student");
     const dto = mapFormToStudentDTO(values, placeId);
 
-    const response = await this.client.post<BackendParty>("/parties", dto);
+    const response = await myClient.post<BackendParty>("/parties", dto);
 
     return toFrontendParty(response.data);
   }
