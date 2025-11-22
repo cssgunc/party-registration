@@ -1,8 +1,11 @@
 from datetime import datetime
 from typing import Self
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from src.core.models import PaginatedResponse
+
+# Maximum allowed value for warning/citation counts to prevent overflow
+MAX_COUNT = 999999
 
 
 class AutocompleteInput(BaseModel):
@@ -33,8 +36,8 @@ class AddressData(BaseModel):
 
 
 class LocationData(AddressData):
-    warning_count: int = 0
-    citation_count: int = 0
+    warning_count: int = Field(default=0, ge=0, le=MAX_COUNT)
+    citation_count: int = Field(default=0, ge=0, le=MAX_COUNT)
     hold_expiration: datetime | None = None
 
     @classmethod
@@ -73,6 +76,6 @@ PaginatedLocationResponse = PaginatedResponse[Location]
 
 class LocationCreate(BaseModel):
     google_place_id: str
-    warning_count: int = 0
-    citation_count: int = 0
+    warning_count: int = Field(default=0, ge=0, le=MAX_COUNT)
+    citation_count: int = Field(default=0, ge=0, le=MAX_COUNT)
     hold_expiration: datetime | None = None

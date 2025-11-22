@@ -18,7 +18,13 @@ from src.core.exceptions import (
 )
 
 from .location_entity import LocationEntity
-from .location_model import AddressData, AutocompleteResult, Location, LocationData
+from .location_model import (
+    AddressData,
+    AutocompleteResult,
+    Location,
+    LocationData,
+    MAX_COUNT,
+)
 
 
 class GoogleMapsAPIException(InternalServerException):
@@ -61,6 +67,13 @@ class LocationHoldActiveException(BadRequestException):
     def __init__(self, location_id: int, hold_expiration: datetime):
         super().__init__(
             f"Location {location_id} has an active hold until {hold_expiration.isoformat()}"
+        )
+
+
+class CountLimitExceededException(BadRequestException):
+    def __init__(self, location_id: int, count_type: str):
+        super().__init__(
+            f"Cannot increment {count_type} for location {location_id}: maximum count of {MAX_COUNT} reached"
         )
 
 
@@ -186,6 +199,8 @@ class LocationService:
     async def increment_warnings(self, location_id: int) -> Location:
         """Increment the warning count for a location by 1."""
         location_entity = await self._get_location_entity_by_id(location_id)
+        if location_entity.warning_count >= MAX_COUNT:
+            raise CountLimitExceededException(location_id, "warning_count")
         location_entity.warning_count += 1
         self.session.add(location_entity)
         await self.session.commit()
@@ -195,6 +210,8 @@ class LocationService:
     async def increment_citations(self, location_id: int) -> Location:
         """Increment the citation count for a location by 1."""
         location_entity = await self._get_location_entity_by_id(location_id)
+        if location_entity.citation_count >= MAX_COUNT:
+            raise CountLimitExceededException(location_id, "citation_count")
         location_entity.citation_count += 1
         self.session.add(location_entity)
         await self.session.commit()

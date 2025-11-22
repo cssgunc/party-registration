@@ -9,6 +9,7 @@ from src.main import app
 from src.modules.account.account_model import Account, AccountRole
 from src.modules.location.location_model import Location
 from src.modules.location.location_service import (
+    CountLimitExceededException,
     LocationNotFoundException,
     LocationService,
 )
@@ -67,6 +68,40 @@ async def override_dependencies_no_auth(mock_location_service: AsyncMock):
     def _get_mock_location_service():
         return mock_location_service
 
+    app.dependency_overrides[LocationService] = _get_mock_location_service
+    yield
+    app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture
+async def override_dependencies_staff(mock_location_service: AsyncMock):
+    """Override dependencies with staff authentication"""
+    from src.core.exceptions import ForbiddenException
+
+    async def _fake_staff():
+        raise ForbiddenException("Staff not authorized for this action")
+
+    def _get_mock_location_service():
+        return mock_location_service
+
+    app.dependency_overrides[authenticate_police_or_admin] = _fake_staff
+    app.dependency_overrides[LocationService] = _get_mock_location_service
+    yield
+    app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture
+async def override_dependencies_student(mock_location_service: AsyncMock):
+    """Override dependencies with student authentication"""
+    from src.core.exceptions import ForbiddenException
+
+    async def _fake_student():
+        raise ForbiddenException("Student not authorized for this action")
+
+    def _get_mock_location_service():
+        return mock_location_service
+
+    app.dependency_overrides[authenticate_police_or_admin] = _fake_student
     app.dependency_overrides[LocationService] = _get_mock_location_service
     yield
     app.dependency_overrides.clear()
@@ -165,6 +200,24 @@ async def test_increment_warnings_location_not_found(
 
 
 @pytest.mark.asyncio
+async def test_increment_citations_location_not_found(
+    override_dependencies_police: Any, mock_location_service: AsyncMock
+):
+    """Test incrementing citations for non-existent location returns 404"""
+    mock_location_service.increment_citations.side_effect = LocationNotFoundException(
+        location_id=999
+    )
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        response = await client.post("/api/police/locations/999/citations")
+
+        assert response.status_code == 404
+        mock_location_service.increment_citations.assert_called_once_with(999)
+
+
+@pytest.mark.asyncio
 async def test_increment_warnings_unauthenticated(override_dependencies_no_auth: Any):
     """Test incrementing warnings without authentication returns 401"""
     async with AsyncClient(
@@ -182,3 +235,87 @@ async def test_increment_citations_unauthenticated(override_dependencies_no_auth
     ) as client:
         response = await client.post("/api/police/locations/1/citations")
         assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_increment_warnings_as_staff_forbidden(override_dependencies_staff: Any):
+    """Test incrementing warnings as staff returns 403"""
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        response = await client.post("/api/police/locations/1/warnings")
+        assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_increment_citations_as_staff_forbidden(override_dependencies_staff: Any):
+    """Test incrementing citations as staff returns 403"""
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        response = await client.post("/api/police/locations/1/citations")
+        assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_increment_warnings_as_student_forbidden(
+    override_dependencies_student: Any,
+):
+    """Test incrementing warnings as student returns 403"""
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        response = await client.post("/api/police/locations/1/warnings")
+        assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_increment_citations_as_student_forbidden(
+    override_dependencies_student: Any,
+):
+    """Test incrementing citations as student returns 403"""
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        response = await client.post("/api/police/locations/1/citations")
+        assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_increment_warnings_at_max_count(
+    override_dependencies_police: Any, mock_location_service: AsyncMock
+):
+    """Test incrementing warnings when at max count returns 400"""
+    mock_location_service.increment_warnings.side_effect = CountLimitExceededException(
+        location_id=1, count_type="warning_count"
+    )
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        response = await client.post("/api/police/locations/1/warnings")
+
+        assert response.status_code == 400
+        data = response.json()
+        assert "maximum count" in data["message"].lower()
+        mock_location_service.increment_warnings.assert_called_once_with(1)
+
+
+@pytest.mark.asyncio
+async def test_increment_citations_at_max_count(
+    override_dependencies_admin: Any, mock_location_service: AsyncMock
+):
+    """Test incrementing citations when at max count returns 400"""
+    mock_location_service.increment_citations.side_effect = CountLimitExceededException(
+        location_id=2, count_type="citation_count"
+    )
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        response = await client.post("/api/police/locations/2/citations")
+
+        assert response.status_code == 400
+        data = response.json()
+        assert "maximum count" in data["message"].lower()
+        mock_location_service.increment_citations.assert_called_once_with(2)
