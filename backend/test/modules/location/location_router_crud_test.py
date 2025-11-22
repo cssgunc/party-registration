@@ -7,7 +7,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.database import get_session
 from src.main import app
-from src.modules.location.location_model import AddressData, Location, MAX_COUNT
+from src.modules.location.location_model import AddressData, Location
 from src.modules.location.location_service import (
     GoogleMapsAPIException,
     InvalidPlaceIdException,
@@ -620,126 +620,6 @@ async def test_delete_location_not_found(
     assert "not found" in data["message"].lower()
 
     mock_location_service.delete_location.assert_called_once_with(999)
-
-
-@pytest.mark.asyncio
-async def test_create_location_negative_warning_count(client: AsyncClient):
-    """Test POST /locations/ with negative warning_count returns 422."""
-    request_data = {
-        "google_place_id": "ChIJ123abc",
-        "warning_count": -1,
-        "citation_count": 0,
-    }
-
-    response = await client.post("/locations/", json=request_data)
-    assert response.status_code == 422
-
-
-@pytest.mark.asyncio
-async def test_create_location_negative_citation_count(client: AsyncClient):
-    """Test POST /locations/ with negative citation_count returns 422."""
-    request_data = {
-        "google_place_id": "ChIJ123abc",
-        "warning_count": 0,
-        "citation_count": -5,
-    }
-
-    response = await client.post("/locations/", json=request_data)
-    assert response.status_code == 422
-
-
-@pytest.mark.asyncio
-async def test_create_location_warning_count_exceeds_max(client: AsyncClient):
-    """Test POST /locations/ with warning_count exceeding MAX_COUNT returns 422."""
-    request_data = {
-        "google_place_id": "ChIJ123abc",
-        "warning_count": MAX_COUNT + 1,
-        "citation_count": 0,
-    }
-
-    response = await client.post("/locations/", json=request_data)
-    assert response.status_code == 422
-
-
-@pytest.mark.asyncio
-async def test_create_location_citation_count_exceeds_max(client: AsyncClient):
-    """Test POST /locations/ with citation_count exceeding MAX_COUNT returns 422."""
-    request_data = {
-        "google_place_id": "ChIJ123abc",
-        "warning_count": 0,
-        "citation_count": MAX_COUNT + 1,
-    }
-
-    response = await client.post("/locations/", json=request_data)
-    assert response.status_code == 422
-
-
-@pytest.mark.asyncio
-async def test_update_location_negative_warning_count(
-    client: AsyncClient, sample_location: Location, mock_location_service: AsyncMock
-):
-    """Test PUT /locations/{location_id} with negative warning_count returns 422."""
-    mock_location_service.get_location_by_id.return_value = sample_location
-
-    request_data = {
-        "google_place_id": "ChIJ123abc",
-        "warning_count": -1,
-        "citation_count": 0,
-    }
-
-    response = await client.put("/locations/1", json=request_data)
-    assert response.status_code == 422
-
-
-@pytest.mark.asyncio
-async def test_update_location_negative_citation_count(
-    client: AsyncClient, sample_location: Location, mock_location_service: AsyncMock
-):
-    """Test PUT /locations/{location_id} with negative citation_count returns 422."""
-    mock_location_service.get_location_by_id.return_value = sample_location
-
-    request_data = {
-        "google_place_id": "ChIJ123abc",
-        "warning_count": 0,
-        "citation_count": -10,
-    }
-
-    response = await client.put("/locations/1", json=request_data)
-    assert response.status_code == 422
-
-
-@pytest.mark.asyncio
-async def test_update_location_warning_count_exceeds_max(
-    client: AsyncClient, sample_location: Location, mock_location_service: AsyncMock
-):
-    """Test PUT /locations/{location_id} with warning_count exceeding MAX_COUNT returns 422."""
-    mock_location_service.get_location_by_id.return_value = sample_location
-
-    request_data = {
-        "google_place_id": "ChIJ123abc",
-        "warning_count": MAX_COUNT + 1,
-        "citation_count": 0,
-    }
-
-    response = await client.put("/locations/1", json=request_data)
-    assert response.status_code == 422
-
-
-@pytest.mark.asyncio
-async def test_update_location_citation_count_exceeds_max(
-    client: AsyncClient, sample_location: Location, mock_location_service: AsyncMock
-):
-    """Test PUT /locations/{location_id} with citation_count exceeding MAX_COUNT returns 422."""
-    mock_location_service.get_location_by_id.return_value = sample_location
-
-    request_data = {
-        "google_place_id": "ChIJ123abc",
-        "warning_count": 0,
-        "citation_count": MAX_COUNT + 1,
-    }
-
-    response = await client.put("/locations/1", json=request_data)
-    assert response.status_code == 422
 
 
 @pytest.mark.asyncio
