@@ -1,5 +1,7 @@
+import csv
+import io
 import math
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List
 
 from fastapi import Depends
@@ -77,10 +79,20 @@ class PartyService:
 
     def _calculate_business_days_ahead(self, target_date: datetime) -> int:
         """Calculate the number of business days between now and target date."""
-        current_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-        target_date_only = target_date.replace(
+        # Ensure both datetimes are timezone-aware (use UTC)
+        current_date = datetime.now(timezone.utc).replace(
             hour=0, minute=0, second=0, microsecond=0
         )
+
+        # If target_date is naive, make it UTC-aware; otherwise keep its timezone
+        if target_date.tzinfo is None:
+            target_date_only = target_date.replace(
+                hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc
+            )
+        else:
+            target_date_only = target_date.replace(
+                hour=0, minute=0, second=0, microsecond=0
+            )
 
         business_days = 0
         current = current_date
@@ -103,21 +115,24 @@ class PartyService:
         """Validate that student has completed Party Smart after the most recent August 1st."""
         student = await self.student_service.get_student_by_id(student_id)
 
-        # Check if last_registered is null
         if student.last_registered is None:
             raise PartySmartNotCompletedException(student_id)
 
         # Calculate the most recent August 1st
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         current_year = now.year
 
-        # August 1st of the current year
-        august_first_this_year = datetime(current_year, 8, 1, 0, 0, 0)
+        # August 1st of the current year (UTC)
+        august_first_this_year = datetime(
+            current_year, 8, 1, 0, 0, 0, tzinfo=timezone.utc
+        )
 
         # If today is before August 1st, use last year's August 1st
         # Otherwise, use this year's August 1st
         if now < august_first_this_year:
-            most_recent_august_first = datetime(current_year - 1, 8, 1, 0, 0, 0)
+            most_recent_august_first = datetime(
+                current_year - 1, 8, 1, 0, 0, 0, tzinfo=timezone.utc
+            )
         else:
             most_recent_august_first = august_first_this_year
 
@@ -290,9 +305,7 @@ class PartyService:
         location = await self._validate_and_get_location(dto.place_id)
 
         # Get contact_one by email
-        contact_one = await self._get_student_by_email(
-            dto.contact_one_email
-        )
+        contact_one = await self._get_student_by_email(dto.contact_one_email)
 
         # Create party data with contact_two information directly
         party_data = PartyData(
@@ -414,7 +427,7 @@ class PartyService:
     async def get_parties_by_radius(
         self, latitude: float, longitude: float
     ) -> List[Party]:
-        current_time = datetime.now()
+        current_time = datetime.now(timezone.utc)
         start_time = current_time - timedelta(hours=6)
         end_time = current_time + timedelta(hours=12)
 
@@ -429,6 +442,57 @@ class PartyService:
             .where(
                 PartyEntity.party_datetime >= start_time,
                 PartyEntity.party_datetime <= end_time,
+            )
+        )
+        parties = result.scalars().all()
+
+        parties_within_radius = []
+        for party in parties:
+            if party.location is None:
+                continue
+
+            distance = self._calculate_haversine_distance(
+                latitude,
+                longitude,
+                float(party.location.latitude),
+                float(party.location.longitude),
+            )
+
+            if distance <= env.PARTY_SEARCH_RADIUS_MILES:
+                parties_within_radius.append(party)
+
+        return [party.to_model() for party in parties_within_radius]
+
+    async def get_parties_by_radius_and_date_range(
+        self,
+        latitude: float,
+        longitude: float,
+        start_date: datetime,
+        end_date: datetime,
+    ) -> List[Party]:
+        """
+        Get parties within a radius of a location within a specified date range.
+
+        Args:
+            latitude: Latitude of the search center
+            longitude: Longitude of the search center
+            start_date: Start of the date range (inclusive)
+            end_date: End of the date range (inclusive)
+
+        Returns:
+            List of parties within the radius and date range
+        """
+        result = await self.session.execute(
+            select(PartyEntity)
+            .options(
+                selectinload(PartyEntity.location),
+                selectinload(PartyEntity.contact_one).selectinload(
+                    StudentEntity.account
+                ),
+            )
+            .where(
+                PartyEntity.party_datetime >= start_date,
+                PartyEntity.party_datetime <= end_date,
             )
         )
         parties = result.scalars().all()
@@ -465,3 +529,136 @@ class PartyService:
 
         r = 3959
         return c * r
+
+    async def export_parties_to_csv(self, parties: List[Party]) -> str:
+        """
+        Export a list of parties to CSV format.
+
+        Args:
+            parties: List of Party models to export
+
+        Returns:
+            CSV content as a string
+        """
+        if not parties:
+            output = io.StringIO()
+            writer = csv.writer(output)
+            writer.writerow(
+                [
+                    "Fully formatted address",
+                    "Date of Party",
+                    "Time of Party",
+                    "Contact One Full Name",
+                    "Contact One Email",
+                    "Contact One Phone Number",
+                    "Contact One Contact Preference",
+                    "Contact Two Full Name",
+                    "Contact Two Email",
+                    "Contact Two Phone Number",
+                    "Contact Two Contact Preference",
+                ]
+            )
+            return output.getvalue()
+
+        party_ids = [party.id for party in parties]
+
+        result = await self.session.execute(
+            select(PartyEntity)
+            .options(
+                selectinload(PartyEntity.location),
+                selectinload(PartyEntity.contact_one).selectinload(
+                    StudentEntity.account
+                ),
+            )
+            .where(PartyEntity.id.in_(party_ids))
+        )
+        party_entities = result.scalars().all()
+
+        party_entity_map = {party.id: party for party in party_entities}
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+
+        writer.writerow(
+            [
+                "Fully formatted address",
+                "Date of Party",
+                "Time of Party",
+                "Contact One Full Name",
+                "Contact One Email",
+                "Contact One Phone Number",
+                "Contact One Contact Preference",
+                "Contact Two Full Name",
+                "Contact Two Email",
+                "Contact Two Phone Number",
+                "Contact Two Contact Preference",
+            ]
+        )
+
+        for party in parties:
+            party_entity = party_entity_map.get(party.id)
+            if party_entity is None:
+                continue
+
+            # Format address
+            formatted_address = ""
+            if party_entity.location:
+                formatted_address = party_entity.location.formatted_address or ""
+
+            # Format date and time
+            party_date = (
+                party.party_datetime.strftime("%Y-%m-%d")
+                if party.party_datetime
+                else ""
+            )
+            party_time = (
+                party.party_datetime.strftime("%H:%M:%S")
+                if party.party_datetime
+                else ""
+            )
+
+            contact_one_full_name = ""
+            contact_one_email = ""
+            contact_one_phone = ""
+            contact_one_preference = ""
+            if party_entity.contact_one:
+                contact_one_full_name = f"{party_entity.contact_one.account.first_name} {party_entity.contact_one.account.last_name}"
+                contact_one_phone = party_entity.contact_one.phone_number or ""
+                contact_one_preference = (
+                    party_entity.contact_one.contact_preference.value
+                    if party_entity.contact_one.contact_preference
+                    else ""
+                )
+                if party_entity.contact_one.account:
+                    contact_one_email = party_entity.contact_one.account.email or ""
+
+            contact_two_full_name = ""
+            contact_two_email = ""
+            contact_two_phone = ""
+            contact_two_preference = ""
+            contact_two_full_name = f"{party_entity.contact_two_first_name} {party_entity.contact_two_last_name}"
+            contact_two_phone = party_entity.contact_two_phone_number or ""
+            contact_two_preference = (
+                party_entity.contact_two_contact_preference.value
+                if party_entity.contact_two_contact_preference
+                else ""
+            )
+            contact_two_email = party_entity.contact_two_email or ""
+
+            writer.writerow(
+                [
+                    formatted_address,
+                    party_date,
+                    party_time,
+                    contact_one_full_name,
+                    contact_one_email,
+                    contact_one_phone,
+                    contact_one_preference,
+                    contact_two_full_name,
+                    contact_two_email,
+                    contact_two_phone,
+                    contact_two_preference,
+                ]
+            )
+
+        return output.getvalue()
