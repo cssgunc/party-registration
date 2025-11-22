@@ -418,3 +418,74 @@ async def test_update_student_with_non_student_role(
     )
     with pytest.raises(InvalidAccountRoleException):
         await student_service.update_student(test_account.id, update_data)
+
+
+@pytest.mark.asyncio
+async def test_update_is_registered_true(
+    student_service: StudentService,
+    test_async_session: AsyncSession,
+    test_account: AccountEntity,
+):
+    """Test that update_is_registered sets last_registered to current datetime when True."""
+    data = StudentDataWithNames(
+        first_name="John",
+        last_name="Doe",
+        contact_preference=ContactPreference.text,
+        phone_number="5551234567",
+    )
+    entity = StudentEntity.from_model(data, test_account.id)
+    test_async_session.add(entity)
+    await test_async_session.commit()
+    await test_async_session.refresh(entity)
+
+    # Verify initially no last_registered
+    assert entity.last_registered is None
+
+    # Update to registered
+    before_update = datetime.now(timezone.utc)
+    updated = await student_service.update_is_registered(test_account.id, is_registered=True)
+    after_update = datetime.now(timezone.utc)
+
+    # Verify last_registered is set to approximately current time
+    assert updated.last_registered is not None
+    assert before_update <= updated.last_registered <= after_update
+
+
+@pytest.mark.asyncio
+async def test_update_is_registered_false(
+    student_service: StudentService,
+    test_async_session: AsyncSession,
+    test_account: AccountEntity,
+):
+    """Test that update_is_registered sets last_registered to None when False."""
+    # Create student with a last_registered value
+    last_reg = datetime(2024, 1, 15, 10, 30, 0, tzinfo=timezone.utc)
+    data = StudentDataWithNames(
+        first_name="John",
+        last_name="Doe",
+        contact_preference=ContactPreference.text,
+        phone_number="5551234567",
+        last_registered=last_reg,
+    )
+    entity = StudentEntity.from_model(data, test_account.id)
+    test_async_session.add(entity)
+    await test_async_session.commit()
+    await test_async_session.refresh(entity)
+
+    # Verify initially has last_registered (database may strip timezone)
+    assert entity.last_registered is not None
+
+    # Update to not registered
+    updated = await student_service.update_is_registered(test_account.id, is_registered=False)
+
+    # Verify last_registered is now None
+    assert updated.last_registered is None
+
+
+@pytest.mark.asyncio
+async def test_update_is_registered_student_not_found(
+    student_service: StudentService,
+):
+    """Test that update_is_registered raises StudentNotFoundException for nonexistent student."""
+    with pytest.raises(StudentNotFoundException):
+        await student_service.update_is_registered(99999, is_registered=True)
