@@ -70,7 +70,7 @@ class StudentCreate(BaseModel):
 class IsRegisteredUpdate(BaseModel):
     """Request body for updating student registration status (staff/admin)."""
 
-    isRegistered: bool = Field(
+    is_registered: bool = Field(
         ..., description="True to mark as registered, False to unmark"
     )
 

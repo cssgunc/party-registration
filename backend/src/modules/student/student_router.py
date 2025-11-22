@@ -159,4 +159,4 @@ async def update_is_registered(
     Update the registration status (attendance) for a student.
     Staff can use this to mark students as present/absent.
     """
-    return await student_service.update_is_registered(student_id, data.isRegistered)
+    return await student_service.update_is_registered(student_id, data.is_registered)

@@ -1580,7 +1580,7 @@ async def test_update_is_registered_mark_as_registered_as_staff(
     test_async_session.add(student)
     await test_async_session.commit()
 
-    payload = {"isRegistered": True}
+    payload = {"is_registered": True}
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
@@ -1620,7 +1620,7 @@ async def test_update_is_registered_mark_as_not_registered_as_admin(
     test_async_session.add(student)
     await test_async_session.commit()
 
-    payload = {"isRegistered": False}
+    payload = {"is_registered": False}
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
@@ -1638,7 +1638,7 @@ async def test_update_is_registered_student_not_found(
     override_dependencies_staff: Any
 ):
     """Test updating is_registered for non-existent student."""
-    payload = {"isRegistered": True}
+    payload = {"is_registered": True}
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
@@ -1653,7 +1653,7 @@ async def test_update_is_registered_unauthenticated(
     override_dependencies_no_auth: Any
 ):
     """Test updating is_registered without authentication."""
-    payload = {"isRegistered": True}
+    payload = {"is_registered": True}
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
@@ -1694,7 +1694,7 @@ async def test_update_is_registered_toggle(
         # Mark as registered
         res = await client.patch(
             f"/api/students/{acc.id}/is-registered",
-            json={"isRegistered": True},
+            json={"is_registered": True},
             headers=auth_headers(),
         )
         assert res.status_code == 200
@@ -1705,7 +1705,7 @@ async def test_update_is_registered_toggle(
         # Unmark as registered
         res = await client.patch(
             f"/api/students/{acc.id}/is-registered",
-            json={"isRegistered": False},
+            json={"is_registered": False},
             headers=auth_headers(),
         )
         assert res.status_code == 200
@@ -1715,7 +1715,7 @@ async def test_update_is_registered_toggle(
         # Mark as registered again
         res = await client.patch(
             f"/api/students/{acc.id}/is-registered",
-            json={"isRegistered": True},
+            json={"is_registered": True},
             headers=auth_headers(),
         )
         assert res.status_code == 200
