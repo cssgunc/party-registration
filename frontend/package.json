@@ -18,8 +18,9 @@
     "@radix-ui/react-separator": "^1.1.7",
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/react-tabs": "^1.1.13",
-    "@tanstack/react-query": "^5.90.7",
+    "@tanstack/react-query": "^5.90.10",
     "@tanstack/react-table": "^8.21.3",
+    "@vis.gl/react-google-maps": "^1.6.1",
     "axios": "^1.12.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -32,7 +33,10 @@
     "react-day-picker": "^9.11.1",
     "react-dom": "19.1.0",
     "react-hook-form": "^7.65.0",
+    "react-icons": "^5.5.0",
+    "shadcn": "^3.5.0",
     "tailwind-merge": "^3.3.1",
+    "validator": "^13.15.23",
     "zod": "^4.1.12"
   },
   "devDependencies": {

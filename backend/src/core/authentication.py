@@ -25,9 +25,9 @@ bearer_scheme = HTTPBearer401()
 def mock_authenticate(role: AccountRole) -> Account | None:
     """Mock authentication function. Replace with real authentication logic."""
     role_to_id = {
-        AccountRole.STUDENT: 1,
-        AccountRole.ADMIN: 2,
-        AccountRole.STAFF: 3,
+        AccountRole.ADMIN: 1,
+        AccountRole.STAFF: 2,
+        AccountRole.STUDENT: 3,
     }
     role_to_pid = {
         AccountRole.STUDENT: "111111111",

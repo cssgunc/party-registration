@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Self
 
 from sqlalchemy import DECIMAL, DateTime, Index, Integer, String
@@ -18,7 +18,9 @@ class LocationEntity(EntityBase):
     # OCSL Data
     warning_count: Mapped[int] = mapped_column(Integer, default=0)
     citation_count: Mapped[int] = mapped_column(Integer, default=0)
-    hold_expiration: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    hold_expiration: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # Google Maps Data
     google_place_id: Mapped[str] = mapped_column(
@@ -55,6 +57,10 @@ class LocationEntity(EntityBase):
         # This prevents issues when LocationEntity is created without loading relationships
         insp = inspect(self)
         complaints_loaded = "complaints" not in insp.unloaded
+        
+        hold_exp = self.hold_expiration
+        if hold_exp is not None and hold_exp.tzinfo is None:
+            hold_exp = hold_exp.replace(tzinfo=timezone.utc)
 
         return Location(
             id=self.id,
@@ -72,7 +78,7 @@ class LocationEntity(EntityBase):
             zip_code=self.zip_code,
             warning_count=self.warning_count,
             citation_count=self.citation_count,
-            hold_expiration=self.hold_expiration,
+            hold_expiration=hold_exp,
             complaints=[complaint.to_model() for complaint in self.complaints]
             if complaints_loaded
             else [],

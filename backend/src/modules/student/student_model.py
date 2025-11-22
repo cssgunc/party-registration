@@ -1,7 +1,6 @@
 import enum
-from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import AwareDatetime, BaseModel, EmailStr, Field
 from src.core.models import PaginatedResponse
 
 
@@ -14,7 +13,7 @@ class StudentData(BaseModel):
     """Student data without names (names are stored in Account)."""
 
     contact_preference: ContactPreference
-    last_registered: datetime | None = None
+    last_registered: AwareDatetime | None = None
     phone_number: str = Field(pattern=r"^\+?1?\d{9,15}$")
 
 
@@ -24,7 +23,7 @@ class StudentDataWithNames(StudentData):
     first_name: str = Field(min_length=1)
     last_name: str = Field(min_length=1)
     contact_preference: ContactPreference
-    last_registered: datetime | None = None
+    last_registered: AwareDatetime | None = None
     phone_number: str = Field(pattern=r"^\+?1?\d{9,15}$")
 
 
@@ -54,7 +53,7 @@ class Student(BaseModel):
     last_name: str
     phone_number: str
     contact_preference: ContactPreference
-    last_registered: datetime | None = None
+    last_registered: AwareDatetime | None = None
 
 
 class StudentCreate(BaseModel):
