@@ -3,20 +3,16 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.database import get_session
-from src.core.exceptions import ConflictException, NotFoundException
+from src.core.exceptions import NotFoundException
+from src.modules.location.location_service import LocationNotFoundException
 
 from .complaint_entity import ComplaintEntity
-from .complaint_model import Complaint, ComplaintCreate
+from .complaint_model import Complaint, ComplaintData
 
 
 class ComplaintNotFoundException(NotFoundException):
     def __init__(self, complaint_id: int):
         super().__init__(f"Complaint with ID {complaint_id} not found")
-
-
-class ComplaintConflictException(ConflictException):
-    def __init__(self, message: str):
-        super().__init__(message)
 
 
 class ComplaintService:
@@ -49,7 +45,7 @@ class ComplaintService:
         return complaint_entity.to_model()
 
     async def create_complaint(
-        self, location_id: int, data: ComplaintCreate
+        self, location_id: int, data: ComplaintData
     ) -> Complaint:
         """Create a new complaint."""
         new_complaint = ComplaintEntity(
@@ -61,12 +57,15 @@ class ComplaintService:
             self.session.add(new_complaint)
             await self.session.commit()
         except IntegrityError as e:
-            raise ComplaintConflictException(f"Failed to create complaint: {str(e)}")
+            # Foreign key constraint violation indicates location doesn't exist
+            if "locations" in str(e).lower() or "foreign key" in str(e).lower():
+                raise LocationNotFoundException(location_id)
+            raise
         await self.session.refresh(new_complaint)
         return new_complaint.to_model()
 
     async def update_complaint(
-        self, complaint_id: int, location_id: int, data: ComplaintCreate
+        self, complaint_id: int, location_id: int, data: ComplaintData
     ) -> Complaint:
         """Update an existing complaint."""
         complaint_entity = await self._get_complaint_entity_by_id(complaint_id)
@@ -79,7 +78,10 @@ class ComplaintService:
             self.session.add(complaint_entity)
             await self.session.commit()
         except IntegrityError as e:
-            raise ComplaintConflictException(f"Failed to update complaint: {str(e)}")
+            # Foreign key constraint violation indicates location doesn't exist
+            if "locations" in str(e).lower() or "foreign key" in str(e).lower():
+                raise LocationNotFoundException(location_id)
+            raise
         await self.session.refresh(complaint_entity)
         return complaint_entity.to_model()
 

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, status
 from src.core.authentication import authenticate_admin, authenticate_staff_or_admin
 from src.modules.account.account_model import Account
 
-from .complaint_model import Complaint, ComplaintCreate
+from .complaint_model import Complaint, ComplaintData
 from .complaint_service import ComplaintService
 
 complaint_router = APIRouter(prefix="/api/locations", tags=["complaints"])
@@ -33,7 +33,7 @@ async def get_complaints_by_location(
 )
 async def create_complaint(
     location_id: int,
-    complaint_data: ComplaintCreate,
+    complaint_data: ComplaintData,
     complaint_service: ComplaintService = Depends(),
     _: Account = Depends(authenticate_admin),
 ) -> Complaint:
@@ -51,7 +51,7 @@ async def create_complaint(
 async def update_complaint(
     location_id: int,
     complaint_id: int,
-    complaint_data: ComplaintCreate,
+    complaint_data: ComplaintData,
     complaint_service: ComplaintService = Depends(),
     _: Account = Depends(authenticate_admin),
 ) -> Complaint:
