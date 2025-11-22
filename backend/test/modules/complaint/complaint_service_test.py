@@ -4,7 +4,7 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.modules.complaint.complaint_entity import ComplaintEntity
-from src.modules.complaint.complaint_model import Complaint, ComplaintCreate
+from src.modules.complaint.complaint_model import Complaint, ComplaintData
 from src.modules.complaint.complaint_service import (
     ComplaintNotFoundException,
     ComplaintService,
@@ -19,9 +19,9 @@ def complaint_service_db(test_async_session: AsyncSession) -> ComplaintService:
 
 
 @pytest.fixture
-def sample_complaint_create_data() -> ComplaintCreate:
+def sample_complaint_create_data() -> ComplaintData:
     """Create sample complaint create data for testing."""
-    return ComplaintCreate(
+    return ComplaintData(
         location_id=1,
         complaint_datetime=datetime(2025, 11, 18, 20, 30, 0),
         description="Noise complaint",
@@ -29,9 +29,9 @@ def sample_complaint_create_data() -> ComplaintCreate:
 
 
 @pytest.fixture
-def sample_complaint_create_data_2() -> ComplaintCreate:
+def sample_complaint_create_data_2() -> ComplaintData:
     """Create another sample complaint create data for testing."""
-    return ComplaintCreate(
+    return ComplaintData(
         location_id=1,
         complaint_datetime=datetime(2025, 11, 19, 22, 0, 0),
         description="Noise complaint",
@@ -112,7 +112,7 @@ async def test_complaints_multiple(
 async def test_create_complaint(
     complaint_service_db: ComplaintService,
     test_location: LocationEntity,
-    sample_complaint_create_data: ComplaintCreate,
+    sample_complaint_create_data: ComplaintData,
 ) -> None:
     """Test creating a new complaint."""
     complaint = await complaint_service_db.create_complaint(
@@ -131,7 +131,7 @@ async def test_create_complaint_with_empty_description(
     complaint_service_db: ComplaintService, test_location: LocationEntity
 ) -> None:
     """Test creating a complaint with empty description (default)."""
-    complaint_data = ComplaintCreate(
+    complaint_data = ComplaintData(
         location_id=test_location.id,
         complaint_datetime=datetime(2025, 11, 18, 20, 30, 0),
         description="",
@@ -199,7 +199,7 @@ async def test_update_complaint(
     test_complaint: Complaint,
 ) -> None:
     """Test updating a complaint."""
-    update_data = ComplaintCreate(
+    update_data = ComplaintData(
         location_id=test_location.id,
         complaint_datetime=datetime(2025, 11, 20, 23, 0, 0),
         description="Updated complaint description",
@@ -218,7 +218,7 @@ async def test_update_complaint(
 @pytest.mark.asyncio
 async def test_update_complaint_not_found(
     complaint_service_db: ComplaintService,
-    sample_complaint_create_data: ComplaintCreate,
+    sample_complaint_create_data: ComplaintData,
 ) -> None:
     """Test updating a non-existent complaint raises not found exception."""
     with pytest.raises(
@@ -281,8 +281,8 @@ async def test_delete_complaint_verify_others_remain(
 async def test_create_complaint_from_location_dto(
     complaint_service_db: ComplaintService, test_location: LocationEntity
 ) -> None:
-    """Test creating a complaint with location data (ComplaintCreate)."""
-    complaint_data = ComplaintCreate(
+    """Test creating a complaint with location data (ComplaintData)."""
+    complaint_data = ComplaintData(
         location_id=test_location.id,
         complaint_datetime=datetime(2025, 11, 18, 20, 30, 0),
         description="Location noise complaint",
@@ -303,7 +303,7 @@ async def test_complaint_data_persistence(
     complaint_service_db: ComplaintService, test_location: LocationEntity
 ) -> None:
     """Test that all complaint data fields are properly persisted."""
-    data = ComplaintCreate(
+    data = ComplaintData(
         location_id=test_location.id,
         complaint_datetime=datetime(2025, 12, 25, 14, 30, 45),
         description="Detailed description of the complaint issue",
