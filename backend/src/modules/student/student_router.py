@@ -9,6 +9,7 @@ from src.modules.party.party_model import Party
 from src.modules.party.party_service import PartyService
 
 from .student_model import (
+    IsRegisteredUpdate,
     PaginatedStudentsResponse,
     Student,
     StudentCreate,
@@ -145,3 +146,17 @@ async def delete_student(
     _=Depends(authenticate_admin),
 ) -> Student:
     return await student_service.delete_student(student_id)
+
+
+@student_router.patch("/{student_id}/is-registered")
+async def update_is_registered(
+    student_id: int,
+    data: IsRegisteredUpdate,
+    student_service: StudentService = Depends(),
+    _=Depends(authenticate_staff_or_admin),
+) -> Student:
+    """
+    Update the registration status (attendance) for a student.
+    Staff can use this to mark students as present/absent.
+    """
+    return await student_service.update_is_registered(student_id, data.is_registered)
