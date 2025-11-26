@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from fastapi import Depends
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -191,3 +193,21 @@ class StudentService:
         await self.session.delete(student_entity)
         await self.session.commit()
         return student_dto
+
+    async def update_is_registered(self, account_id: int, is_registered: bool) -> Student:
+        """
+        Update the registration status of a student.
+        If is_registered is True, sets last_registered to current datetime.
+        If is_registered is False, sets last_registered to None.
+        """
+        student_entity = await self._get_student_entity_by_account_id(account_id)
+
+        if is_registered:
+            student_entity.last_registered = datetime.now(timezone.utc)
+        else:
+            student_entity.last_registered = None
+
+        self.session.add(student_entity)
+        await self.session.commit()
+        await self.session.refresh(student_entity, ["account"])
+        return student_entity.to_dto()

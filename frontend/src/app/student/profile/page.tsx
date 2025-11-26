@@ -9,36 +9,43 @@ export default function StudentProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="px-48 pb-12 flex flex-col gap-4 max-w-4xl mx-auto">
+      <div>
         <Header />
-        <div className="text-center py-8">Loading...</div>
+        <div className="px-48 pb-12 flex flex-col gap-4 max-w-4xl mx-auto">
+          <div className="text-center py-8">Loading...</div>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="px-48 pb-12 flex flex-col gap-4 max-w-4xl mx-auto">
+      <div>
         <Header />
-        <div className="text-center py-8 text-red-600">Error loading student data</div>
+        <div className="px-48 pb-12 flex flex-col gap-4 max-w-4xl mx-auto">
+          <div className="text-center py-8 text-red-600">
+            Error loading student data
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="px-48 pb-12 flex flex-col gap-4 max-w-4xl mx-auto">
+    <div>
       <Header />
-
-      {student && (
-        <StudentInfo
-          initialData={{
-            firstName: student.firstName,
-            lastName: student.lastName,
-            phoneNumber: student.phoneNumber,
-            contactPreference: student.contactPreference,
-          }}
-        />
-      )}
+      <div className="px-48 pb-12 flex flex-col gap-4 max-w-4xl mx-auto">
+        {student && (
+          <StudentInfo
+            initialData={{
+              firstName: student.firstName,
+              lastName: student.lastName,
+              phoneNumber: student.phoneNumber,
+              contactPreference: student.contactPreference,
+            }}
+          />
+        )}
+      </div>
     </div>
   );
 }
