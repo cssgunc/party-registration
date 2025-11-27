@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+
 import {
   Table,
   TableBody,
@@ -96,6 +97,7 @@ export function TableTemplate<T>({
   } | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<T | null>(null);
+  const [globalFilter, setGlobalFilter] = useState<string>("");
 
   const handleDeleteClick = (row: T) => {
     setItemToDelete(row);
@@ -160,10 +162,14 @@ export function TableTemplate<T>({
       sorting,
       columnFilters,
       pagination,
+      globalFilter,
     },
+
+    globalFilterFn: "includesString",
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
+    onGlobalFilterChange: setGlobalFilter,
     getPaginationRowModel: getPaginationRowModel(),
     onPaginationChange: setPagination,
     getSortedRowModel: getSortedRowModel(),
@@ -217,6 +223,16 @@ export function TableTemplate<T>({
       {!isLoading && !error && (
         <>
           <div className="rounded-md border">
+            <div className="mb-2">
+              <input
+                type="text"
+                value={globalFilter}
+                onChange={(e) => setGlobalFilter(e.target.value)}
+                placeholder="Search all columns..."
+                className="w-full p-2 border rounded"
+              />
+            </div>
+
             <Table>
               <TableCaption>{tableDetails}</TableCaption>
               <TableHeader>
