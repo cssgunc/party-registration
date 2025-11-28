@@ -28,6 +28,7 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   PaginationState,
+  Row,
   SortingState,
   useReactTable,
 } from "@tanstack/react-table";
@@ -71,7 +72,7 @@ export type TableProps<T> = {
   initialSort?: SortingState;
 };
 
-export function TableTemplate<T>({
+export function TableTemplate<T extends object>({
   data,
   columns,
   resourceName = "Item",
@@ -155,6 +156,53 @@ export function TableTemplate<T>({
         ]
       : columns;
 
+  function flattenValues<T extends object>(obj: T): string {
+    const result: string[] = [];
+
+    const walk = (val: unknown): void => {
+      if (val == null) return;
+
+      if (
+        typeof val === "string" ||
+        typeof val === "number" ||
+        typeof val === "boolean"
+      ) {
+        result.push(String(val));
+        return;
+      }
+
+      if (val instanceof Date) {
+        result.push(val.toISOString());
+        return;
+      }
+
+      if (Array.isArray(val)) {
+        val.forEach((child) => walk(child));
+        return;
+      }
+
+      if (typeof val === "object") {
+        Object.values(val).forEach((child) => walk(child));
+        return;
+      }
+    };
+
+    walk(obj);
+    return result.join(" ").toLowerCase();
+  }
+
+  const customFilterFn = <T extends object>(
+    row: Row<T>,
+    _columnId: string,
+    filterValue: string
+  ): boolean => {
+    console.log("GLOBAL FILTER HIT:", { row: row.original, filterValue });
+
+    if (!filterValue) return true;
+
+    return flattenValues(row.original).includes(filterValue.toLowerCase());
+  };
+
   const table = useReactTable({
     data,
     columns: columnsWithActions,
@@ -164,8 +212,7 @@ export function TableTemplate<T>({
       pagination,
       globalFilter,
     },
-
-    globalFilterFn: "includesString",
+    globalFilterFn: customFilterFn,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
