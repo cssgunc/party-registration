@@ -8,16 +8,16 @@ import {
 import { Party } from "@/types/api/party";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
-import { isWithinInterval, startOfDay } from "date-fns";
+import { format, isWithinInterval, startOfDay } from "date-fns";
 import { useState } from "react";
 import { DateRange } from "react-day-picker";
 import ContactInfoChipDetails from "./ContactInfoChipDetails";
 import { GenericInfoChip } from "./GenericInfoChip";
 import LocationInfoChipDetails from "./LocationInfoChipDetails";
 import PartyTableCreateEditForm from "./PartyTableCreateEdit";
+import { useSidebar } from "./SidebarContext";
 import StudentInfoChipDetails from "./StudentInfoChipDetails";
 import { TableTemplate } from "./TableTemplate";
-import { useSidebar } from "./SidebarContext";
 
 const partyService = new PartyService();
 
@@ -245,14 +245,15 @@ export const PartyTable = () => {
   };
   const columns: ColumnDef<Party>[] = [
     {
-      accessorKey: "location",
+      id: "location",
+      accessorFn: (row) => row.location.formattedAddress,
       header: "Address",
       enableColumnFilter: true,
       meta: {
         filterType: "text",
       },
       cell: ({ row }) => {
-        const location = row.getValue<Party["location"]>("location");
+        const location = row.original.location;
         if (!location) {
           return "—";
         }
@@ -267,11 +268,8 @@ export const PartyTable = () => {
         );
       },
 
-      filterFn: (row, columnId, filterValue) => {
-        const location = row.getValue(columnId) as {
-          streetNumber: string | null;
-          streetName: string | null;
-        };
+      filterFn: (row, _columnId, filterValue) => {
+        const location = row.original.location;
         const addressString = `${location.streetNumber || ""} ${
           location.streetName || ""
         }`
@@ -281,23 +279,24 @@ export const PartyTable = () => {
       },
     },
     {
-      accessorKey: "datetime",
+      id: "datetime",
+      accessorFn: (row) => format(row.datetime, "MM-dd-yyyy"),
       header: "Date",
       enableColumnFilter: true,
       meta: {
         filterType: "dateRange",
       },
       cell: ({ row }) => {
-        const datetime = row.getValue("datetime") as Date;
+        const datetime = row.original.datetime;
         const date = new Date(datetime);
         return date.toLocaleDateString();
       },
 
-      filterFn: (row, columnId, filterValue) => {
+      filterFn: (row, _columnId, filterValue) => {
         if (!filterValue) return true;
 
         const dateRange = filterValue as DateRange;
-        const datetime = row.getValue(columnId) as Date;
+        const datetime = row.original.datetime;
         const date = startOfDay(new Date(datetime));
 
         // If only 'from' date is selected
@@ -317,14 +316,15 @@ export const PartyTable = () => {
       },
     },
     {
-      accessorKey: "time",
+      id: "time",
+      accessorFn: (row) => format(row.datetime, "HH:mm"),
       header: "Time",
       enableColumnFilter: true,
       meta: {
         filterType: "time",
       },
       cell: ({ row }) => {
-        const datetime = row.getValue("datetime") as Date;
+        const datetime = row.original.datetime;
         const date = new Date(datetime);
         return date.toLocaleTimeString([], {
           hour: "2-digit",
@@ -332,10 +332,10 @@ export const PartyTable = () => {
         });
       },
 
-      filterFn: (row, columnId, filterValue) => {
+      filterFn: (row, _columnId, filterValue) => {
         if (!filterValue) return true;
 
-        const datetime = row.original.datetime as Date;
+        const datetime = row.original.datetime;
         const date = new Date(datetime);
 
         // Get hours and minutes from the time input (e.g., "14:30")
@@ -350,14 +350,16 @@ export const PartyTable = () => {
       },
     },
     {
-      accessorKey: "contactOne",
+      id: "contactOne",
+      accessorFn: (row) =>
+        `${row.contactOne.firstName} ${row.contactOne.lastName}`,
       header: "Contact One",
       enableColumnFilter: true,
       meta: {
         filterType: "text",
       },
       cell: ({ row }) => {
-        const contact = row.getValue<Party["contactOne"]>("contactOne");
+        const contact = row.original.contactOne;
         return contact ? (
           <GenericInfoChip
             chipKey={`party-${row.original.id}-contact-one`}
@@ -371,25 +373,24 @@ export const PartyTable = () => {
         );
       },
 
-      filterFn: (row, columnId, filterValue) => {
-        const contact = row.getValue(columnId) as {
-          firstName: string;
-          lastName: string;
-        };
+      filterFn: (row, _columnId, filterValue) => {
+        const contact = row.original.contactOne;
         const fullName =
           `${contact.firstName} ${contact.lastName}`.toLowerCase();
         return fullName.includes(String(filterValue).toLowerCase());
       },
     },
     {
-      accessorKey: "contactTwo",
+      id: "contactTwo",
+      accessorFn: (row) =>
+        `${row.contactTwo.firstName} ${row.contactTwo.lastName}`,
       header: "Contact Two",
       enableColumnFilter: true,
       meta: {
         filterType: "text",
       },
       cell: ({ row }) => {
-        const contact = row.getValue<Party["contactTwo"]>("contactTwo");
+        const contact = row.original.contactTwo;
         const partyId = row.original.id;
         if (!contact) return "—";
         return (
@@ -403,11 +404,8 @@ export const PartyTable = () => {
         );
       },
 
-      filterFn: (row, columnId, filterValue) => {
-        const contact = row.getValue(columnId) as {
-          firstName: string;
-          lastName: string;
-        };
+      filterFn: (row, _columnId, filterValue) => {
+        const contact = row.original.contactTwo;
         const fullName =
           `${contact.firstName} ${contact.lastName}`.toLowerCase();
         return fullName.includes(String(filterValue).toLowerCase());

@@ -196,11 +196,12 @@ export function TableTemplate<T extends object>({
     _columnId: string,
     filterValue: string
   ): boolean => {
-    console.log("GLOBAL FILTER HIT:", { row: row.original, filterValue });
-
     if (!filterValue) return true;
 
-    return flattenValues(row.original).includes(filterValue.toLowerCase());
+    const flattened = flattenValues(row.original);
+    const matches = flattened.includes(filterValue.toLowerCase());
+
+    return matches;
   };
 
   const table = useReactTable({
