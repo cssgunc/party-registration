@@ -1,3 +1,5 @@
+"use client";
+
 import { Party } from "@/types/api/party";
 import { format } from "date-fns";
 

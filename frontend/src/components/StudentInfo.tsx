@@ -94,14 +94,13 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
     } catch (error) {
       // Handle API errors
       console.error("Failed to update student info:", error);
-
+      
       // Check if it's an authentication error
-      if (error && typeof error === "object" && "response" in error) {
+      if (error && typeof error === 'object' && 'response' in error) {
         const axiosError = error as { response?: { status: number } };
         if (axiosError.response?.status === 401) {
           setErrors({
-            submit:
-              "Authentication required. Please log in to update your profile.",
+            submit: "Authentication required. Please log in to update your profile.",
           });
         } else {
           setErrors({
@@ -159,7 +158,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
             <Pencil className="w-6 h-6 text-[#09294E]" />
           </button>
         </div>
-
+        
         <div className="grid grid-cols-2 gap-x-12 gap-y-8">
           <div>
             <div className="text-[#09294E] font-semibold text-lg mb-2">
@@ -193,16 +192,17 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
               Contact Method
             </div>
             <div className="text-gray-600 text-base border-b border-gray-300 pb-2">
-              {displayData.contactPreference
-                ? displayData.contactPreference.charAt(0).toUpperCase() +
-                  displayData.contactPreference.slice(1)
+              {displayData.contactPreference 
+                ? displayData.contactPreference.charAt(0).toUpperCase() + displayData.contactPreference.slice(1)
                 : "Not set"}
             </div>
           </div>
         </div>
 
         <div className="mt-8 flex justify-center">
-          <Button className="bg-[#09294E] text-white px-8 py-2 rounded-lg hover:bg-[#0a1f38]">
+          <Button 
+            className="bg-[#09294E] text-white px-8 py-2 rounded-lg hover:bg-[#0a1f38]"
+          >
             Log Out
           </Button>
         </div>
@@ -216,10 +216,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
         <FieldSet>
           <div className="grid grid-cols-2 gap-x-12 gap-y-6">
             <Field data-invalid={!!errors.firstName}>
-              <FieldLabel
-                htmlFor="first-name"
-                className="text-[#09294E] font-semibold text-lg"
-              >
+              <FieldLabel htmlFor="first-name" className="text-[#09294E] font-semibold text-lg">
                 First Name
               </FieldLabel>
               <Input
@@ -234,10 +231,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
             </Field>
 
             <Field data-invalid={!!errors.lastName}>
-              <FieldLabel
-                htmlFor="last-name"
-                className="text-[#09294E] font-semibold text-lg"
-              >
+              <FieldLabel htmlFor="last-name" className="text-[#09294E] font-semibold text-lg">
                 Last Name
               </FieldLabel>
               <Input
@@ -252,10 +246,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
             </Field>
 
             <Field data-invalid={!!errors.phoneNumber}>
-              <FieldLabel
-                htmlFor="phone-number"
-                className="text-[#09294E] font-semibold text-lg"
-              >
+              <FieldLabel htmlFor="phone-number" className="text-[#09294E] font-semibold text-lg">
                 Phone Number
               </FieldLabel>
               <Input
@@ -272,10 +263,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
             </Field>
 
             <Field data-invalid={!!errors.contactPreference}>
-              <FieldLabel
-                htmlFor="contact-preference"
-                className="text-[#09294E] font-semibold text-lg"
-              >
+              <FieldLabel htmlFor="contact-preference" className="text-[#09294E] font-semibold text-lg">
                 Contact Method
               </FieldLabel>
               <Select
@@ -284,10 +272,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
                   updateField("contactPreference", value)
                 }
               >
-                <SelectTrigger
-                  id="contact-preference"
-                  className="border-gray-300"
-                >
+                <SelectTrigger id="contact-preference" className="border-gray-300">
                   <SelectValue placeholder="Select your preference" />
                 </SelectTrigger>
                 <SelectContent>
@@ -308,8 +293,8 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
           )}
 
           <div className="mt-8 flex justify-center gap-4">
-            <Button
-              type="submit"
+            <Button 
+              type="submit" 
               disabled={isSubmitting}
               className="bg-[#09294E] text-white px-8 py-2 rounded-lg hover:bg-[#0a1f38]"
             >
