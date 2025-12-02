@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+
 import {
   Table,
   TableBody,
@@ -27,6 +28,7 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   PaginationState,
+  Row,
   SortingState,
   useReactTable,
 } from "@tanstack/react-table";
@@ -70,7 +72,7 @@ export type TableProps<T> = {
   initialSort?: SortingState;
 };
 
-export function TableTemplate<T>({
+export function TableTemplate<T extends object>({
   data,
   columns,
   resourceName = "Item",
@@ -96,6 +98,7 @@ export function TableTemplate<T>({
   } | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<T | null>(null);
+  const [globalFilter, setGlobalFilter] = useState<string>("");
 
   const handleDeleteClick = (row: T) => {
     setItemToDelete(row);
@@ -153,6 +156,54 @@ export function TableTemplate<T>({
         ]
       : columns;
 
+  function flattenValues<T extends object>(obj: T): string {
+    const result: string[] = [];
+
+    const walk = (val: unknown): void => {
+      if (val == null) return;
+
+      if (
+        typeof val === "string" ||
+        typeof val === "number" ||
+        typeof val === "boolean"
+      ) {
+        result.push(String(val));
+        return;
+      }
+
+      if (val instanceof Date) {
+        result.push(val.toISOString());
+        return;
+      }
+
+      if (Array.isArray(val)) {
+        val.forEach((child) => walk(child));
+        return;
+      }
+
+      if (typeof val === "object") {
+        Object.values(val).forEach((child) => walk(child));
+        return;
+      }
+    };
+
+    walk(obj);
+    return result.join(" ").toLowerCase();
+  }
+
+  const customFilterFn = <T extends object>(
+    row: Row<T>,
+    _columnId: string,
+    filterValue: string
+  ): boolean => {
+    if (!filterValue) return true;
+
+    const flattened = flattenValues(row.original);
+    const matches = flattened.includes(filterValue.toLowerCase());
+
+    return matches;
+  };
+
   const table = useReactTable({
     data,
     columns: columnsWithActions,
@@ -160,10 +211,13 @@ export function TableTemplate<T>({
       sorting,
       columnFilters,
       pagination,
+      globalFilter,
     },
+    globalFilterFn: customFilterFn,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
+    onGlobalFilterChange: setGlobalFilter,
     getPaginationRowModel: getPaginationRowModel(),
     onPaginationChange: setPagination,
     getSortedRowModel: getSortedRowModel(),
@@ -217,6 +271,16 @@ export function TableTemplate<T>({
       {!isLoading && !error && (
         <>
           <div className="rounded-md border">
+            <div className="mb-2">
+              <input
+                type="text"
+                value={globalFilter}
+                onChange={(e) => setGlobalFilter(e.target.value)}
+                placeholder="Search all columns..."
+                className="w-full p-2 border rounded"
+              />
+            </div>
+
             <Table>
               <TableCaption>{tableDetails}</TableCaption>
               <TableHeader>
