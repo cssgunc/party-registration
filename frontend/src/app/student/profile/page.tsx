@@ -1,8 +1,8 @@
 "use client";
 
-import Header from "@/components/Header";
-import StudentInfo from "@/components/StudentInfo";
-import { useCurrentStudent } from "@/hooks/useStudent";
+import Header from "@/app/student/_components/Header";
+import StudentInfo from "@/app/student/_components/StudentInfo";
+import { useCurrentStudent } from "@/lib/api/student/student.queries";
 
 export default function StudentProfilePage() {
   const { data: student, isLoading, error } = useCurrentStudent();

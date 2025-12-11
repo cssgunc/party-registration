@@ -1,10 +1,13 @@
 "use client";
 
-import Header from "@/components/Header";
-import RegistrationTracker from "@/components/RegistrationTracker";
-import StatusComponent from "@/components/StatusComponent";
+import Header from "@/app/student/_components/Header";
+import RegistrationTracker from "@/app/student/_components/RegistrationTracker";
+import StatusComponent from "@/app/student/_components/StatusComponent";
 import { Button } from "@/components/ui/button";
-import { useCurrentStudent, useMyParties } from "@/hooks/useStudent";
+import {
+  useCurrentStudent,
+  useMyParties,
+} from "@/lib/api/student/student.queries";
 import Link from "next/link";
 
 export default function StudentDashboard() {
