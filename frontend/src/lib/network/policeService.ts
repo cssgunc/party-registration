@@ -1,6 +1,6 @@
-import { Location } from "@/types/api/location";
-import { Party } from "@/types/api/party";
-import { Student } from "@/types/api/student";
+import { Location } from "@/lib/api/location/location.types";
+import { Party } from "@/lib/api/party/party.types";
+import { Student } from "@/lib/api/student/student.types";
 import getMockClient from "./mockClient";
 
 const policeClient = getMockClient("police");

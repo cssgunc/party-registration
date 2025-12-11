@@ -14,11 +14,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
 import {
   AutocompleteResult,
   LocationService,
-} from "@/services/locationService";
+} from "@/lib/api/location/location.service";
+import { cn } from "@/lib/utils";
 import { CheckIcon, Loader2Icon, MapPinIcon, XIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 

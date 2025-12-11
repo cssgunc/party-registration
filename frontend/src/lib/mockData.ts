@@ -1,8 +1,8 @@
 import mockData from "@/../shared/mock_data.json";
-import type { Account, PoliceAccount } from "@/types/api/account";
-import type { Location } from "@/types/api/location";
-import type { Party } from "@/types/api/party";
-import type { Contact, Student } from "@/types/api/student";
+import type { Account, PoliceAccount } from "@/lib/api/account/account.types";
+import type { Location } from "@/lib/api/location/location.types";
+import type { Party } from "@/lib/api/party/party.types";
+import type { Contact, Student } from "@/lib/api/student/student.types";
 
 /**
  * Parses relative date strings like "NOW+7d", "NOW-30d", "NOW+4h", or "NOW-2h" into Date objects

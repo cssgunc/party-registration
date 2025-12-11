@@ -1,16 +1,16 @@
 "use client";
 
+import DateRangeFilter from "@/app/police/_components/DateRangeFilter";
+import EmbeddedMap from "@/app/police/_components/EmbeddedMap";
+import PartyList from "@/app/police/_components/PartyList";
 import AddressSearch from "@/components/AddressSearch";
-import DateRangeFilter from "@/components/DateRangeFilter";
-import EmbeddedMap from "@/components/EmbeddedMap";
-import PartyList from "@/components/PartyList";
-import getMockClient from "@/lib/network/mockClient";
-import { policeService } from "@/lib/network/policeService";
 import {
   AutocompleteResult,
   LocationService,
-} from "@/services/locationService";
-import { Party } from "@/types/api/party";
+} from "@/lib/api/location/location.service";
+import { Party } from "@/lib/api/party/party.types";
+import getMockClient from "@/lib/network/mockClient";
+import { policeService } from "@/lib/network/policeService";
 import { useQuery } from "@tanstack/react-query";
 import { startOfDay } from "date-fns";
 import { useEffect, useMemo, useState } from "react";

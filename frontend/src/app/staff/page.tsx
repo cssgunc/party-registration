@@ -1,7 +1,7 @@
-import { AccountTable } from "@/components/AccountTable";
-import { LocationTable } from "@/components/LocationTable";
-import { PartyTable } from "@/components/PartyTable";
-import { StudentTable } from "@/components/StudentTable";
+import { AccountTable } from "@/app/staff/_components/account/AccountTable";
+import { LocationTable } from "@/app/staff/_components/location/LocationTable";
+import { PartyTable } from "@/app/staff/_components/party/PartyTable";
+import { StudentTable } from "@/app/staff/_components/student/StudentTable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function StaffPage() {
