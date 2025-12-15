@@ -25,6 +25,7 @@ RUN apt-get update \
         tzdata \
         wget \
         zsh \
+        net-tools \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Node.js 22 from https://github.com/nodesource

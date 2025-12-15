@@ -4,7 +4,7 @@
   "service": "app",
   "remoteUser": "vscode",
   "forwardPorts": [5432, 5050],
-  "postCreateCommand": "cd .devcontainer && chmod +x ./post_create.sh && ./post_create.sh",
+  "postCreateCommand": "cd .devcontainer && ./post_create.sh",
   "customizations": {
     "vscode": {
       "extensions": [
@@ -24,21 +24,58 @@
       ],
       "settings": {
         "terminal.integrated.defaultProfile.linux": "zsh",
+        "files.autoSave": "afterDelay",
+        "files.trimTrailingWhitespace": true,
+        "files.insertFinalNewline": true,
+        "files.trimFinalNewlines": true,
         "editor.formatOnSave": true,
         "editor.formatOnSaveMode": "file",
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true,
+        "editor.detectIndentation": false,
+        "eslint.enable": true,
+        "eslint.validate": [
+          "javascript",
+          "javascriptreact",
+          "typescript",
+          "typescriptreact"
+        ],
+        "eslint.format.enable": false,
         "editor.codeActionsOnSave": {
           "source.fixAll": "explicit",
           "source.organizeImports": "explicit"
         },
-        "python.defaultInterpreterPath": "/usr/local/bin/python",
-        "[python]": {
-          "editor.defaultFormatter": "charliermarsh.ruff"
-        },
+        "files.eol": "\n",
+        "typescript.tsdk": "frontend/node_modules/typescript/lib",
+        "typescript.enablePromptUseWorkspaceTsdk": true,
+        "javascript.updateImportsOnFileMove.enabled": "always",
+        "typescript.updateImportsOnFileMove.enabled": "always",
+        "typescript.preferences.importModuleSpecifier": "shortest",
+        "javascript.preferences.importModuleSpecifier": "shortest",
+        "typescript.preferences.quoteStyle": "double",
+        "javascript.preferences.quoteStyle": "double",
         "[typescript]": {
           "editor.defaultFormatter": "esbenp.prettier-vscode"
         },
         "[javascript]": {
           "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "[typescriptreact]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "[javascriptreact]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "[json]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "[jsonc]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff",
+          "editor.tabSize": 4
         },
         "python.analysis.extraPaths": ["backend"],
         "python.testing.pytestEnabled": true,
@@ -48,7 +85,12 @@
           "reportGeneralTypeIssues": "error",
           "reportDeprecated": "error",
           "reportImportCycles": "error"
-        }
+        },
+        "python.analysis.typeCheckingMode": "basic",
+        "python.analysis.autoImportCompletions": true,
+        "ruff.enable": true,
+        "ruff.organizeImports": true,
+        "ruff.fixAll": true
       }
     }
   }
