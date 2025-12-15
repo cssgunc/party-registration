@@ -13,7 +13,7 @@ services:
     env_file:
       - ../backend/.env
     volumes:
-      - party-reg-postgres:/var/lib/postgresql/data
+      - party-reg-postgres:/var/lib/postgresql
 
 volumes:
   party-reg-postgres:
