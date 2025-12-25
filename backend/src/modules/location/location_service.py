@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 
 import googlemaps
 from fastapi import Depends
@@ -17,13 +17,7 @@ from src.core.exceptions import (
 )
 
 from .location_entity import LocationEntity
-from .location_model import (
-    AddressData,
-    AutocompleteResult,
-    Location,
-    LocationData,
-    MAX_COUNT,
-)
+from .location_model import MAX_COUNT, AddressData, AutocompleteResult, Location, LocationData
 
 
 class GoogleMapsAPIException(InternalServerException):
@@ -42,24 +36,18 @@ class InvalidPlaceIdException(BadRequestException):
 
 
 class LocationNotFoundException(NotFoundException):
-    def __init__(
-        self, location_id: int | None = None, google_place_id: str | None = None
-    ):
+    def __init__(self, location_id: int | None = None, google_place_id: str | None = None):
         if location_id is not None and google_place_id is not None:
             raise ValueError("Provide either location_id or place_id, not both")
         if location_id is not None:
             super().__init__(f"Location with ID {location_id} not found")
         elif google_place_id is not None:
-            super().__init__(
-                f"Location with Google Place ID {google_place_id} not found"
-            )
+            super().__init__(f"Location with Google Place ID {google_place_id} not found")
 
 
 class LocationConflictException(ConflictException):
     def __init__(self, google_place_id: str):
-        super().__init__(
-            f"Location with Google Place ID {google_place_id} already exists"
-        )
+        super().__init__(f"Location with Google Place ID {google_place_id} already exists")
 
 
 class LocationHoldActiveException(BadRequestException):
@@ -99,22 +87,15 @@ class LocationService:
             raise LocationNotFoundException(location_id)
         return location_entity
 
-    async def _get_location_entity_by_place_id(
-        self, google_place_id: str
-    ) -> LocationEntity | None:
+    async def _get_location_entity_by_place_id(self, google_place_id: str) -> LocationEntity | None:
         result = await self.session.execute(
-            select(LocationEntity).where(
-                LocationEntity.google_place_id == google_place_id
-            )
+            select(LocationEntity).where(LocationEntity.google_place_id == google_place_id)
         )
         return result.scalar_one_or_none()
 
     def assert_valid_location_hold(self, location: Location) -> None:
         """Validate that location does not have an active hold."""
-        if (
-            location.hold_expiration is not None
-            and location.hold_expiration > datetime.now()
-        ):
+        if location.hold_expiration is not None and location.hold_expiration > datetime.now(timezone.utc):
             raise LocationHoldActiveException(location.id, location.hold_expiration)
 
     async def get_locations(self) -> list[Location]:
@@ -234,7 +215,7 @@ class LocationService:
             for prediction in autocomplete_result:
                 suggestion = AutocompleteResult(
                     formatted_address=prediction["description"],
-                    place_id=prediction["place_id"],
+                    google_place_id=prediction["place_id"],
                 )
                 suggestions.append(suggestion)
 
@@ -275,6 +256,7 @@ class LocationService:
 
             street_number = None
             street_name = None
+            unit = None
             city = None
             county = None
             state = None
@@ -287,6 +269,8 @@ class LocationService:
                     street_number = component["long_name"]
                 elif "route" in types:
                     street_name = component["long_name"]
+                elif "subpremise" in types:
+                    unit = component["long_name"]
                 elif "locality" in types:
                     city = component["long_name"]
                 elif "administrative_area_level_2" in types:
@@ -302,9 +286,7 @@ class LocationService:
             location = geometry.get("location", {})
 
             if not location:
-                raise GoogleMapsAPIException(
-                    f"No geometry data found for place ID {place_id}"
-                )
+                raise GoogleMapsAPIException(f"No geometry data found for place ID {place_id}")
 
             return AddressData(
                 google_place_id=place_id,
@@ -313,6 +295,7 @@ class LocationService:
                 longitude=location.get("lng", 0.0),
                 street_number=street_number,
                 street_name=street_name,
+                unit=unit,
                 city=city,
                 county=county,
                 state=state,

@@ -3,44 +3,44 @@ from typing import Self
 
 from sqlalchemy import DECIMAL, DateTime, Index, Integer, String
 from sqlalchemy.inspection import inspect
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column, relationship
 from src.core.database import EntityBase
 from src.modules.complaint.complaint_entity import ComplaintEntity
 
 from .location_model import Location, LocationData
 
 
-class LocationEntity(EntityBase):
+class LocationEntity(MappedAsDataclass, EntityBase):
     __tablename__ = "locations"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, init=False)
 
-    # OCSL Data
-    warning_count: Mapped[int] = mapped_column(Integer, default=0)
-    citation_count: Mapped[int] = mapped_column(Integer, default=0)
-    hold_expiration: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-
-    # Google Maps Data
+    # Google Maps Data (required fields first)
     google_place_id: Mapped[str] = mapped_column(
         String(255), unique=True, nullable=False, index=True
     )
     formatted_address: Mapped[str] = mapped_column(String(500), nullable=False)
 
-    # Geography
+    # Geography (required fields)
     latitude: Mapped[float] = mapped_column(DECIMAL(10, 8), nullable=False)
     longitude: Mapped[float] = mapped_column(DECIMAL(11, 8), nullable=False)
 
+    # OCSL Data (fields with defaults)
+    warning_count: Mapped[int] = mapped_column(Integer, default=0)
+    citation_count: Mapped[int] = mapped_column(Integer, default=0)
+    hold_expiration: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, default=None
+    )
+
     # Address Components
-    street_number: Mapped[str | None] = mapped_column(String(20))  # e.g. "123"
-    street_name: Mapped[str | None] = mapped_column(String(255))  # e.g. "Main St"
-    unit: Mapped[str | None] = mapped_column(String(50))  # e.g. "Apt 4B"
-    city: Mapped[str | None] = mapped_column(String(100))  # e.g. "Chapel Hill"
-    county: Mapped[str | None] = mapped_column(String(100))  # e.g. "Orange County"
-    state: Mapped[str | None] = mapped_column(String(50))  # e.g. "NC"
-    country: Mapped[str | None] = mapped_column(String(2))  # e.g. "US"
-    zip_code: Mapped[str | None] = mapped_column(String(10))  # e.g. "27514"
+    street_number: Mapped[str | None] = mapped_column(String(20), default=None)  # e.g. "123"
+    street_name: Mapped[str | None] = mapped_column(String(255), default=None)  # e.g. "Main St"
+    unit: Mapped[str | None] = mapped_column(String(50), default=None)  # e.g. "Apt 4B"
+    city: Mapped[str | None] = mapped_column(String(100), default=None)  # e.g. "Chapel Hill"
+    county: Mapped[str | None] = mapped_column(String(100), default=None)  # e.g. "Orange County"
+    state: Mapped[str | None] = mapped_column(String(50), default=None)  # e.g. "NC"
+    country: Mapped[str | None] = mapped_column(String(2), default=None)  # e.g. "US"
+    zip_code: Mapped[str | None] = mapped_column(String(10), default=None)  # e.g. "27514"
 
     # Relationships
     complaints: Mapped[list["ComplaintEntity"]] = relationship(
@@ -48,6 +48,7 @@ class LocationEntity(EntityBase):
         back_populates="location",
         cascade="all, delete-orphan",
         lazy="selectin",  # Use selectin loading to avoid N+1 queries
+        init=False,
     )
 
     __table_args__ = (Index("idx_lat_lng", "latitude", "longitude"),)
@@ -57,7 +58,7 @@ class LocationEntity(EntityBase):
         # This prevents issues when LocationEntity is created without loading relationships
         insp = inspect(self)
         complaints_loaded = "complaints" not in insp.unloaded
-        
+
         hold_exp = self.hold_expiration
         if hold_exp is not None and hold_exp.tzinfo is None:
             hold_exp = hold_exp.replace(tzinfo=timezone.utc)

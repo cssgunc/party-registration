@@ -25,7 +25,7 @@ from .party_service import PartyService
 party_router = APIRouter(prefix="/api/parties", tags=["parties"])
 
 
-@party_router.post("/")
+@party_router.post("/", status_code=201)
 async def create_party(
     party_data: CreatePartyDTO,
     party_service: PartyService = Depends(),

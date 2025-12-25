@@ -1,7 +1,7 @@
 #!/bin/bash
 
 cd ../frontend
-npm ci --verbose
+npm i --verbose
 
 cd ../backend
 python -m script.create_db

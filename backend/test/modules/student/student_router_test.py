@@ -1,1725 +1,515 @@
 from datetime import datetime, timezone
-from typing import Any
-from unittest.mock import AsyncMock
 
 import pytest
 import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
-from src.core.authentication import (
-    authenticate_admin,
-    authenticate_staff_or_admin,
-    authenticate_student,
-)
-from src.core.database import get_session
-from src.main import app
-from src.modules.account.account_entity import AccountEntity, AccountRole
-from src.modules.account.account_model import Account
-from src.modules.location.location_entity import LocationEntity
-from src.modules.location.location_service import LocationService
-from src.modules.party.party_entity import PartyEntity
+from httpx import AsyncClient
+from src.modules.account.account_entity import AccountRole
+from src.modules.party.party_model import Party
 from src.modules.student.student_entity import StudentEntity
-from src.modules.student.student_model import (
-    ContactPreference,
-    StudentData,
-    StudentDataWithNames,
+from src.modules.student.student_model import ContactPreference, Student, StudentData
+from src.modules.student.student_service import (
+    AccountNotFoundException,
+    InvalidAccountRoleException,
+    StudentAlreadyExistsException,
+    StudentConflictException,
+    StudentNotFoundException,
+)
+from test.modules.account.account_utils import AccountTestUtils
+from test.modules.party.party_utils import PartyTestUtils
+from test.modules.student.student_utils import StudentTestUtils
+from test.utils.http.assertions import (
+    assert_res_failure,
+    assert_res_paginated,
+    assert_res_success,
+    assert_res_validation_error,
+)
+from test.utils.http.test_templates import generate_auth_required_tests
+
+test_student_authentication = generate_auth_required_tests(
+    ({"admin", "staff"}, "GET", "/api/students/", None),
+    ({"admin", "staff"}, "GET", "/api/students/12345", None),
+    ({"admin"}, "POST", "/api/students/", StudentTestUtils.get_sample_create_data()),
+    ({"admin"}, "PUT", "/api/students/12345", StudentTestUtils.get_sample_data()),
+    ({"admin"}, "DELETE", "/api/students/12345", None),
+    ({"admin", "staff"}, "PATCH", "/api/students/12345/is-registered", {"is_registered": True}),
+    ({"student"}, "GET", "/api/students/me", None),
+    ({"student"}, "PUT", "/api/students/me", StudentTestUtils.get_sample_data()),
+    ({"student"}, "GET", "/api/students/me/parties", None),
 )
 
 
-@pytest_asyncio.fixture()
-async def override_dependencies_admin(test_async_session: AsyncSession):
-    """Override dependencies to simulate admin authentication."""
+class TestStudentListRouter:
+    """Tests for GET /api/students/ endpoint."""
 
-    async def _get_test_session():
-        yield test_async_session
+    admin_client: AsyncClient
+    student_utils: StudentTestUtils
 
-    async def _fake_admin():
-        return {"sub": "test-admin", "role": "admin"}
+    @pytest.fixture(autouse=True)
+    def _setup(self, student_utils: StudentTestUtils, admin_client: AsyncClient):
+        self.student_utils = student_utils
+        self.admin_client = admin_client
 
-    app.dependency_overrides[get_session] = _get_test_session
-    app.dependency_overrides[authenticate_admin] = _fake_admin
-    yield
-    app.dependency_overrides.clear()
-
-
-@pytest_asyncio.fixture()
-async def override_dependencies_no_auth(test_async_session: AsyncSession):
-    """Override dependencies without authentication."""
-
-    async def _get_test_session():
-        yield test_async_session
-
-    async def _location_service_override():
-        return LocationService(session=test_async_session, gmaps_client=AsyncMock())
-
-    app.dependency_overrides[LocationService] = _location_service_override
-    app.dependency_overrides[get_session] = _get_test_session
-    yield
-    app.dependency_overrides.clear()
-
-
-def auth_headers():
-    return {"Authorization": "Bearer admin"}
-
-
-@pytest.mark.asyncio
-async def test_list_students_empty(override_dependencies_admin: Any):
-    """Test listing students when database is empty."""
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.get("/api/students/", headers=auth_headers())
-        assert res.status_code == 200
-        body = res.json()
-        assert body["items"] == []
-        assert body["total_records"] == 0
-        assert body["page_number"] == 1
-        assert body["page_size"] == 0
-        assert body["total_pages"] == 0
-
-
-@pytest.mark.asyncio
-async def test_list_students_with_data(
-    override_dependencies_admin: Any, test_async_session: AsyncSession
-):
-    """Test listing students when multiple students exist."""
-    from sqlalchemy import select
-
-    for i in range(3):
-        acc = AccountEntity(
-            email=f"student{i}@example.com",
-            first_name="Test",
-            last_name="User",
-            pid=f"11111111{i}",
-            role=AccountRole.STUDENT,
+    @pytest.mark.asyncio
+    async def test_list_students_empty(self):
+        """Test listing students when database is empty."""
+        response = await self.admin_client.get("/api/students/")
+        paginated = assert_res_paginated(
+            response,
+            Student,
+            total_records=0,
+            page_number=1,
+            page_size=0,
         )
-        test_async_session.add(acc)
-    await test_async_session.commit()
-
-    result = await test_async_session.execute(
-        select(AccountEntity).order_by(AccountEntity.id)
-    )
-    accounts = result.scalars().all()
-
-    for idx, acc in enumerate(accounts):
-        student = StudentEntity.from_model(
-            StudentDataWithNames(
-                first_name=f"Student{idx}",
-                last_name=f"Test{idx}",
-                contact_preference=ContactPreference.text,
-                phone_number=f"555000{idx}{idx}{idx}{idx}",
-            ),
-            acc.id,
-        )
-        test_async_session.add(student)
-    await test_async_session.commit()
-
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.get("/api/students/", headers=auth_headers())
-        assert res.status_code == 200
-        body = res.json()
-        assert len(body["items"]) == 3
-        assert body["total_records"] == 3
-        assert body["page_number"] == 1
-        assert body["page_size"] == 3
-        assert body["total_pages"] == 1
-
-
-@pytest.mark.asyncio
-async def test_list_students_pagination_custom_page_size(
-    override_dependencies_admin: Any, test_async_session: AsyncSession
-):
-    from sqlalchemy import select
-
-    for i in range(25):
-        acc = AccountEntity(
-            email=f"pagesize{i}@example.com",
-            first_name=f"PageSize{i}",
-            last_name=f"Test{i}",
-            pid=f"22222{i:04d}",
-            role=AccountRole.STUDENT,
-        )
-        test_async_session.add(acc)
-    await test_async_session.commit()
-
-    result = await test_async_session.execute(
-        select(AccountEntity).order_by(AccountEntity.id)
-    )
-    accounts = result.scalars().all()
-
-    for idx, acc in enumerate(accounts):
-        student = StudentEntity.from_model(
-            StudentData(
-                contact_preference=ContactPreference.text,
-                phone_number=f"555222{idx:04d}",
-            ),
-            acc.id,
-        )
-        test_async_session.add(student)
-    await test_async_session.commit()
-
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.get(
-            "/api/students/",
-            params={"page_number": 1, "page_size": 5},
-            headers=auth_headers(),
-        )
-        assert res.status_code == 200
-        body = res.json()
-        assert len(body["items"]) == 5
-        assert body["total_records"] == 25
-        assert body["page_number"] == 1
-        assert body["page_size"] == 5
-        assert body["total_pages"] == 5
-
-
-@pytest.mark.asyncio
-async def test_list_students_pagination_second_page(
-    override_dependencies_admin: Any, test_async_session: AsyncSession
-):
-    from sqlalchemy import select
-
-    for i in range(15):
-        acc = AccountEntity(
-            email=f"page2{i}@example.com",
-            first_name=f"Page2{i}",
-            last_name=f"Test{i}",
-            pid=f"33333{i:04d}",
-            role=AccountRole.STUDENT,
-        )
-        test_async_session.add(acc)
-    await test_async_session.commit()
-
-    result = await test_async_session.execute(
-        select(AccountEntity).order_by(AccountEntity.id)
-    )
-    accounts = result.scalars().all()
-
-    for idx, acc in enumerate(accounts):
-        student = StudentEntity.from_model(
-            StudentData(
-                contact_preference=ContactPreference.text,
-                phone_number=f"555333{idx:04d}",
-            ),
-            acc.id,
-        )
-        test_async_session.add(student)
-    await test_async_session.commit()
-
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.get(
-            "/api/students/",
-            params={"page_number": 2, "page_size": 10},
-            headers=auth_headers(),
-        )
-        assert res.status_code == 200
-        body = res.json()
-        assert len(body["items"]) == 5
-        assert body["total_records"] == 15
-        assert body["page_number"] == 2
-        assert body["page_size"] == 10
-        assert body["total_pages"] == 2
-
-
-@pytest.mark.asyncio
-async def test_list_students_pagination_last_page(
-    override_dependencies_admin: Any, test_async_session: AsyncSession
-):
-    from sqlalchemy import select
-
-    for i in range(23):
-        acc = AccountEntity(
-            email=f"lastpage{i}@example.com",
-            first_name=f"LastPage{i}",
-            last_name=f"Test{i}",
-            pid=f"44444{i:04d}",
-            role=AccountRole.STUDENT,
-        )
-        test_async_session.add(acc)
-    await test_async_session.commit()
-
-    result = await test_async_session.execute(
-        select(AccountEntity).order_by(AccountEntity.id)
-    )
-    accounts = result.scalars().all()
-
-    for idx, acc in enumerate(accounts):
-        student = StudentEntity.from_model(
-            StudentData(
-                contact_preference=ContactPreference.text,
-                phone_number=f"555444{idx:04d}",
-            ),
-            acc.id,
-        )
-        test_async_session.add(student)
-    await test_async_session.commit()
-
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.get(
-            "/api/students/",
-            params={"page_number": 3, "page_size": 10},
-            headers=auth_headers(),
-        )
-        assert res.status_code == 200
-        body = res.json()
-        assert len(body["items"]) == 3
-        assert body["total_records"] == 23
-        assert body["page_number"] == 3
-        assert body["page_size"] == 10
-        assert body["total_pages"] == 3
-
-
-@pytest.mark.asyncio
-async def test_list_students_pagination_page_beyond_total(
-    override_dependencies_admin: Any, test_async_session: AsyncSession
-):
-    from sqlalchemy import select
-
-    for i in range(5):
-        acc = AccountEntity(
-            email=f"beyond{i}@example.com",
-            first_name=f"Beyond{i}",
-            last_name=f"Test{i}",
-            pid=f"55555500{i}",
-            role=AccountRole.STUDENT,
-        )
-        test_async_session.add(acc)
-    await test_async_session.commit()
-
-    result = await test_async_session.execute(
-        select(AccountEntity).order_by(AccountEntity.id)
-    )
-    accounts = result.scalars().all()
-
-    for idx, acc in enumerate(accounts):
-        student = StudentEntity.from_model(
-            StudentData(
-                contact_preference=ContactPreference.text,
-                phone_number=f"555555{idx:04d}",
-            ),
-            acc.id,
-        )
-        test_async_session.add(student)
-    await test_async_session.commit()
-
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.get(
-            "/api/students/",
-            params={"page_number": 10, "page_size": 10},
-            headers=auth_headers(),
-        )
-        assert res.status_code == 200
-        body = res.json()
-        assert len(body["items"]) == 0
-        assert body["total_records"] == 5
-        assert body["page_number"] == 10
-        assert body["page_size"] == 10
-        assert body["total_pages"] == 1
-
-
-@pytest.mark.asyncio
-async def test_list_students_pagination_max_page_size(
-    override_dependencies_admin: Any, test_async_session: AsyncSession
-):
-    from sqlalchemy import select
-
-    for i in range(100):
-        acc = AccountEntity(
-            email=f"maxsize{i}@example.com",
-            first_name=f"MaxSize{i}",
-            last_name=f"Test{i}",
-            pid=f"66666{i:04d}",
-            role=AccountRole.STUDENT,
-        )
-        test_async_session.add(acc)
-    await test_async_session.commit()
-
-    result = await test_async_session.execute(
-        select(AccountEntity).order_by(AccountEntity.id)
-    )
-    accounts = result.scalars().all()
-
-    for idx, acc in enumerate(accounts):
-        student = StudentEntity.from_model(
-            StudentData(
-                contact_preference=ContactPreference.text,
-                phone_number=f"555666{idx:04d}",
-            ),
-            acc.id,
-        )
-        test_async_session.add(student)
-    await test_async_session.commit()
-
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.get(
-            "/api/students/",
-            params={"page_number": 1, "page_size": 100},
-            headers=auth_headers(),
-        )
-        assert res.status_code == 200
-        body = res.json()
-        assert len(body["items"]) == 100
-        assert body["total_records"] == 100
-        assert body["page_number"] == 1
-        assert body["page_size"] == 100
-        assert body["total_pages"] == 1
-
-
-@pytest.mark.asyncio
-async def test_list_students_pagination_invalid_page(
-    override_dependencies_admin: Any,
-):
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.get(
-            "/api/students/", params={"page_number": 0}, headers=auth_headers()
-        )
-        assert res.status_code == 422
-
-
-@pytest.mark.asyncio
-async def test_list_students_pagination_invalid_page_size_too_small(
-    override_dependencies_admin: Any,
-):
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.get(
-            "/api/students/", params={"page_size": 0}, headers=auth_headers()
-        )
-        assert res.status_code == 422
-
-
-@pytest.mark.asyncio
-async def test_list_students_pagination_invalid_page_size_too_large(
-    override_dependencies_admin: Any,
-):
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.get(
-            "/api/students/", params={"page_size": 101}, headers=auth_headers()
-        )
-        assert res.status_code == 422
-
-
-@pytest.mark.asyncio
-async def test_create_student_success(
-    override_dependencies_admin: Any, test_async_session: AsyncSession
-):
-    """Test successfully creating a student."""
-    acc = AccountEntity(
-        email="newstudent@example.com",
-        first_name="Test",
-        last_name="User",
-        pid="777777777",
-        role=AccountRole.STUDENT,
-    )
-    test_async_session.add(acc)
-    await test_async_session.commit()
-    await test_async_session.refresh(acc)
-
-    payload = {
-        "account_id": acc.id,
-        "data": {
-            "first_name": "Rita",
-            "last_name": "Lee",
-            "contact_preference": "text",
-            "phone_number": "5555555555",
-            "last_registered": None,
-        },
-    }
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.post("/api/students/", json=payload, headers=auth_headers())
-        assert res.status_code == 201
-        body = res.json()
-        assert body["id"] == acc.id
-        assert body["email"] == acc.email
-        assert body["first_name"] == "Rita"
-        assert body["last_name"] == "Lee"
-        assert body["phone_number"] == "5555555555"
-
-
-@pytest.mark.asyncio
-async def test_create_student_with_datetime(
-    override_dependencies_admin: Any, test_async_session: AsyncSession
-):
-    """Test creating a student with last_registered datetime."""
-    acc = AccountEntity(
-        email="datetime@example.com",
-        first_name="Test",
-        last_name="User",
-        pid="888888888",
-        role=AccountRole.STUDENT,
-    )
-    test_async_session.add(acc)
-    await test_async_session.commit()
-    await test_async_session.refresh(acc)
-
-    dt = datetime(2024, 3, 15, 10, 30, 0, tzinfo=timezone.utc)
-    payload = {
-        "account_id": acc.id,
-        "data": {
-            "first_name": "John",
-            "last_name": "Date",
-            "contact_preference": "call",
-            "phone_number": "5551234567",
-            "last_registered": dt.isoformat(),
-        },
-    }
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.post("/api/students/", json=payload, headers=auth_headers())
-        assert res.status_code == 201
-        body = res.json()
-        assert body["last_registered"] is not None
-
-
-@pytest.mark.asyncio
-async def test_create_student_nonexistent_account(override_dependencies_admin: Any):
-    """Test creating a student with non-existent account ID."""
-    payload = {
-        "account_id": 99999,
-        "data": {
-            "first_name": "Test",
-            "last_name": "User",
-            "contact_preference": "text",
-            "phone_number": "5551112222",
-        },
-    }
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.post("/api/students/", json=payload, headers=auth_headers())
-        assert res.status_code == 404
-
-
-@pytest.mark.asyncio
-async def test_create_student_wrong_role(
-    override_dependencies_admin: Any, test_async_session: AsyncSession
-):
-    """Test creating a student with account that has non-student role."""
-    admin_acc = AccountEntity(
-        email="admin@example.com",
-        first_name="Test",
-        last_name="User",
-        pid="999999999",
-        role=AccountRole.ADMIN,
-    )
-    test_async_session.add(admin_acc)
-    await test_async_session.commit()
-    await test_async_session.refresh(admin_acc)
-
-    payload = {
-        "account_id": admin_acc.id,
-        "data": {
-            "first_name": "Test",
-            "last_name": "User",
-            "contact_preference": "text",
-            "phone_number": "5553334444",
-        },
-    }
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.post("/api/students/", json=payload, headers=auth_headers())
-        assert res.status_code == 400
-
-
-@pytest.mark.asyncio
-async def test_create_student_duplicate_account(
-    override_dependencies_admin: Any, test_async_session: AsyncSession
-):
-    """Test creating a student when account already has a student record."""
-    acc = AccountEntity(
-        email="duplicate@example.com",
-        first_name="Test",
-        last_name="User",
-        pid="100000001",
-        role=AccountRole.STUDENT,
-    )
-    test_async_session.add(acc)
-    await test_async_session.commit()
-    await test_async_session.refresh(acc)
-
-    student1 = StudentEntity.from_model(
-        StudentDataWithNames(
-            first_name="First",
-            last_name="Student",
-            contact_preference=ContactPreference.text,
-            phone_number="5555555555",
-        ),
-        acc.id,
-    )
-    test_async_session.add(student1)
-    await test_async_session.commit()
-
-    payload = {
-        "account_id": acc.id,
-        "data": {
-            "first_name": "Second",
-            "last_name": "Student",
-            "contact_preference": "call",
-            "phone_number": "5556666666",
-        },
-    }
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.post("/api/students/", json=payload, headers=auth_headers())
-        assert res.status_code == 409
-
-
-@pytest.mark.asyncio
-async def test_create_student_duplicate_phone(
-    override_dependencies_admin: Any, test_async_session: AsyncSession
-):
-    """Test creating students with duplicate phone numbers."""
-    acc1 = AccountEntity(
-        email="phone1@example.com",
-        first_name="Test",
-        last_name="User",
-        pid="100000002",
-        role=AccountRole.STUDENT,
-    )
-    acc2 = AccountEntity(
-        email="phone2@example.com",
-        first_name="Test",
-        last_name="User",
-        pid="100000003",
-        role=AccountRole.STUDENT,
-    )
-    test_async_session.add_all([acc1, acc2])
-    await test_async_session.commit()
-    await test_async_session.refresh(acc1)
-    await test_async_session.refresh(acc2)
-
-    student1 = StudentEntity.from_model(
-        StudentDataWithNames(
-            first_name="First",
-            last_name="Student",
-            contact_preference=ContactPreference.text,
-            phone_number="5557777777",
-        ),
-        acc1.id,
-    )
-    test_async_session.add(student1)
-    await test_async_session.commit()
-
-    payload = {
-        "account_id": acc2.id,
-        "data": {
-            "first_name": "Second",
-            "last_name": "Student",
-            "contact_preference": "call",
-            "phone_number": "5557777777",
-        },
-    }
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.post("/api/students/", json=payload, headers=auth_headers())
-        assert res.status_code == 409
-
-
-@pytest.mark.asyncio
-async def test_get_student_success(
-    override_dependencies_admin: Any, test_async_session: AsyncSession
-):
-    """Test successfully getting a student by ID."""
-    acc = AccountEntity(
-        email="getstudent@example.com",
-        first_name="Get",
-        last_name="Student",
-        pid="100000004",
-        role=AccountRole.STUDENT,
-    )
-    test_async_session.add(acc)
-    await test_async_session.commit()
-    await test_async_session.refresh(acc)
-
-    student = StudentEntity.from_model(
-        StudentData(
-            contact_preference=ContactPreference.text,
-            phone_number="5558888888",
-        ),
-        acc.id,
-    )
-    test_async_session.add(student)
-    await test_async_session.commit()
-
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.get(f"/api/students/{acc.id}", headers=auth_headers())
-        assert res.status_code == 200
-        body = res.json()
-        assert body["id"] == acc.id
-        assert body["first_name"] == "Get"
-        assert body["last_name"] == "Student"
-        assert body["phone_number"] == "5558888888"
-
-
-@pytest.mark.asyncio
-async def test_get_student_not_found(override_dependencies_admin: Any):
-    """Test getting a non-existent student."""
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.get("/api/students/99999", headers=auth_headers())
-        assert res.status_code == 404
-
-
-@pytest.mark.asyncio
-async def test_update_student_success(
-    override_dependencies_admin: Any, test_async_session: AsyncSession
-):
-    """Test successfully updating a student."""
-    acc = AccountEntity(
-        email="updatestudent@example.com",
-        first_name="Test",
-        last_name="User",
-        pid="100000005",
-        role=AccountRole.STUDENT,
-    )
-    test_async_session.add(acc)
-    await test_async_session.commit()
-    await test_async_session.refresh(acc)
-
-    student = StudentEntity.from_model(
-        StudentDataWithNames(
-            first_name="Old",
-            last_name="Name",
-            contact_preference=ContactPreference.text,
-            phone_number="5559999999",
-        ),
-        acc.id,
-    )
-    test_async_session.add(student)
-    await test_async_session.commit()
-
-    update_payload = {
-        "first_name": "New",
-        "last_name": "Name",
-        "contact_preference": "call",
-        "phone_number": "5550000000",
-        "last_registered": None,
-    }
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.put(
-            f"/api/students/{acc.id}", json=update_payload, headers=auth_headers()
-        )
-        assert res.status_code == 200
-        body = res.json()
-        assert body["first_name"] == "New"
-        assert body["phone_number"] == "5550000000"
-
-
-@pytest.mark.asyncio
-async def test_update_student_not_found(override_dependencies_admin: Any):
-    """Test updating a non-existent student."""
-    update_payload = {
-        "first_name": "Test",
-        "last_name": "User",
-        "contact_preference": "text",
-        "phone_number": "5551112222",
-    }
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.put(
-            "/api/students/99999", json=update_payload, headers=auth_headers()
-        )
-        assert res.status_code == 404
-
-
-@pytest.mark.asyncio
-async def test_update_student_phone_conflict(
-    override_dependencies_admin: Any, test_async_session: AsyncSession
-):
-    """Test updating student with phone number that already exists."""
-    acc1 = AccountEntity(
-        email="update1@example.com",
-        first_name="Test",
-        last_name="User",
-        pid="100000006",
-        role=AccountRole.STUDENT,
-    )
-    acc2 = AccountEntity(
-        email="update2@example.com",
-        first_name="Test",
-        last_name="User",
-        pid="100000007",
-        role=AccountRole.STUDENT,
-    )
-    test_async_session.add_all([acc1, acc2])
-    await test_async_session.commit()
-    await test_async_session.refresh(acc1)
-    await test_async_session.refresh(acc2)
-
-    student1 = StudentEntity.from_model(
-        StudentDataWithNames(
-            first_name="Student",
-            last_name="One",
-            contact_preference=ContactPreference.text,
-            phone_number="5551111111",
-        ),
-        acc1.id,
-    )
-    student2 = StudentEntity.from_model(
-        StudentDataWithNames(
-            first_name="Student",
-            last_name="Two",
-            contact_preference=ContactPreference.text,
-            phone_number="5552222222",
-        ),
-        acc2.id,
-    )
-    test_async_session.add_all([student1, student2])
-    await test_async_session.commit()
-
-    update_payload = {
-        "first_name": "Student",
-        "last_name": "Two",
-        "contact_preference": "text",
-        "phone_number": "5551111111",
-    }
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.put(
-            f"/api/students/{acc2.id}", json=update_payload, headers=auth_headers()
-        )
-        assert res.status_code == 409
-
-
-@pytest.mark.asyncio
-async def test_delete_student_success(
-    override_dependencies_admin: Any, test_async_session: AsyncSession
-):
-    """Test successfully deleting a student."""
-    acc = AccountEntity(
-        email="deletestudent@example.com",
-        first_name="Test",
-        last_name="User",
-        pid="100000008",
-        role=AccountRole.STUDENT,
-    )
-    test_async_session.add(acc)
-    await test_async_session.commit()
-    await test_async_session.refresh(acc)
-
-    student = StudentEntity.from_model(
-        StudentDataWithNames(
-            first_name="Delete",
-            last_name="Me",
-            contact_preference=ContactPreference.text,
-            phone_number="5553333333",
-        ),
-        acc.id,
-    )
-    test_async_session.add(student)
-    await test_async_session.commit()
-
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.delete(f"/api/students/{acc.id}", headers=auth_headers())
-        assert res.status_code == 200
-
-        res2 = await client.get(f"/api/students/{acc.id}", headers=auth_headers())
-        assert res2.status_code == 404
-
-
-@pytest.mark.asyncio
-async def test_delete_student_not_found(override_dependencies_admin: Any):
-    """Test deleting a non-existent student."""
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.delete("/api/students/99999", headers=auth_headers())
-        assert res.status_code == 404
-
-
-@pytest.mark.parametrize(
-    "method,path,body",
-    [
-        ("GET", "/api/students/", None),
-        ("GET", "/api/students/1", None),
-        (
-            "POST",
-            "/api/students/",
-            {
-                "account_id": 1,
-                "data": {
-                    "first_name": "Test",
-                    "last_name": "User",
-                    "contact_preference": "text",
-                    "phone_number": "5551234567",
-                },
-            },
-        ),
-        (
-            "PUT",
-            "/api/students/1",
-            {
-                "first_name": "Test",
-                "last_name": "User",
-                "contact_preference": "text",
-                "phone_number": "5551234567",
-            },
-        ),
-        ("DELETE", "/api/students/1", None),
-    ],
-)
-@pytest.mark.asyncio
-async def test_routes_require_authentication(
-    method: str, path: str, body: dict | None, override_dependencies_no_auth: Any
-):
-    """Test that all student routes require admin authentication."""
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        if method == "GET":
-            res = await client.get(path)
-        elif method == "POST":
-            res = await client.post(path, json=body)
-        elif method == "PUT":
-            res = await client.put(path, json=body)
-        else:
-            res = await client.delete(path)
-
-        assert res.status_code in [401, 403]
-
-
-@pytest.mark.asyncio
-async def test_list_students_pagination_default(
-    override_dependencies_admin: Any, test_async_session: AsyncSession
-):
-    from sqlalchemy import select
-
-    for i in range(15):
-        acc = AccountEntity(
-            email=f"pagestudent{i}@example.com",
-            first_name=f"PageStudent{i}",
-            last_name=f"Test{i}",
-            pid=f"10000{i:04d}",
-            role=AccountRole.STUDENT,
-        )
-        test_async_session.add(acc)
-    await test_async_session.commit()
-
-    result = await test_async_session.execute(
-        select(AccountEntity).order_by(AccountEntity.id)
-    )
-    accounts = result.scalars().all()
-
-    for idx, acc in enumerate(accounts):
-        student = StudentEntity.from_model(
-            StudentData(
-                contact_preference=ContactPreference.text,
-                phone_number=f"555111{idx:04d}",
-            ),
-            acc.id,
-        )
-        test_async_session.add(student)
-    await test_async_session.commit()
-
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.get("/api/students/", headers=auth_headers())
-        assert res.status_code == 200
-        body = res.json()
-        assert len(body["items"]) == 15
-        assert body["total_records"] == 15
-        assert body["page_number"] == 1
-        assert body["page_size"] == 15
-        assert body["total_pages"] == 1
-
-
-@pytest.mark.asyncio
-async def test_create_and_get_student(
-    override_dependencies_admin: Any, test_async_session: AsyncSession
-):
-    acc = AccountEntity(
-        email="router1@example.com",
-        first_name="Test",
-        last_name="User",
-        pid="100000009",
-        role=AccountRole.STUDENT,
-    )
-    test_async_session.add(acc)
-    await test_async_session.commit()
-    await test_async_session.refresh(acc)
-
-    payload = {
-        "account_id": acc.id,
-        "data": {
-            "first_name": "Rita",
-            "last_name": "Lee",
-            "contact_preference": "text",
-            "phone_number": "5555555555",
-            "last_registered": None,
-        },
-    }
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.post("/api/students/", json=payload, headers=auth_headers())
-        assert res.status_code == 201, res.text
-        body = res.json()
-        assert body["id"] == acc.id
-        assert body["email"] == acc.email
-        assert body["first_name"] == "Rita"
-
-        res2 = await client.get(f"/api/students/{acc.id}", headers=auth_headers())
-        assert res2.status_code == 200
-        body2 = res2.json()
-        assert body2["id"] == acc.id
-        assert body2["phone_number"] == "5555555555"
-
-
-@pytest.mark.asyncio
-async def test_update_and_delete_student(
-    override_dependencies_admin: Any, test_async_session: AsyncSession
-):
-    acc = AccountEntity(
-        email="router2@example.com",
-        first_name="Test",
-        last_name="User",
-        pid="100000010",
-        role=AccountRole.STUDENT,
-    )
-    test_async_session.add(acc)
-    await test_async_session.commit()
-    await test_async_session.refresh(acc)
-
-    student = StudentEntity.from_model(
-        StudentDataWithNames(
-            first_name="John",
-            last_name="Doe",
-            contact_preference=ContactPreference.text,
-            phone_number="1111111111",
-        ),
-        acc.id,
-    )
-    test_async_session.add(student)
-    await test_async_session.commit()
-
-    update_payload = {
-        "first_name": "Jane",
-        "last_name": "Doe",
-        "contact_preference": "call",
-        "phone_number": "9999990000",
-        "last_registered": None,
-    }
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.put(
-            f"/api/students/{acc.id}", json=update_payload, headers=auth_headers()
-        )
-        assert res.status_code == 200, res.text
-        assert res.json()["first_name"] == "Jane"
-
-        res2 = await client.delete(f"/api/students/{acc.id}", headers=auth_headers())
-        assert res2.status_code == 200
-        res3 = await client.get(f"/api/students/{acc.id}", headers=auth_headers())
-        assert res3.status_code == 404
-
-
-@pytest_asyncio.fixture()
-async def override_dependencies_student(test_async_session: AsyncSession):
-    async def _get_test_session():
-        yield test_async_session
-
-    async def _fake_student():
-        return Account(
-            id=1,
-            email="student@example.com",
-            first_name="Test",
-            last_name="Student",
-            pid="111111111",
-            role=AccountRole.STUDENT,
+        assert paginated.items == []
+
+    @pytest.mark.asyncio
+    async def test_list_students_with_data(self):
+        """Test listing students when multiple students exist."""
+        students = await self.student_utils.create_many(i=3)
+
+        response = await self.admin_client.get("/api/students/")
+        paginated = assert_res_paginated(
+            response,
+            Student,
+            total_records=3,
+            page_number=1,
+            page_size=3,
         )
 
-    def _location_service_override():
-        return LocationService(session=test_async_session, gmaps_client=AsyncMock())
+        # Verify student data
+        data_by_id = {student.id: student for student in paginated.items}
+        for entity in students:
+            assert entity.account_id in data_by_id
+            self.student_utils.assert_matches(entity, data_by_id[entity.account_id])
 
-    app.dependency_overrides[LocationService] = _location_service_override
-    app.dependency_overrides[get_session] = _get_test_session
-    app.dependency_overrides[authenticate_student] = _fake_student
-    yield
-    app.dependency_overrides.clear()
+    @pytest.mark.parametrize(
+        "total_students, page_number, page_size, expected_items",
+        [
+            (15, None, None, 15),  # Default pagination (no params)
+            (25, 1, 5, 5),  # Custom page size - first page
+            (15, 2, 10, 5),  # Second page with items
+            (23, 3, 10, 3),  # Last page with partial results
+            (5, 10, 10, 0),  # Page beyond total (empty results)
+            (100, 1, 100, 100),  # Maximum page size
+        ],
+    )
+    @pytest.mark.asyncio
+    async def test_list_students_pagination(
+        self,
+        total_students: int,
+        page_number: int | None,
+        page_size: int | None,
+        expected_items: int,
+    ):
+        """Test various pagination scenarios."""
+        await self.student_utils.create_many(i=total_students)
+
+        # Build params dict, excluding None values
+        params = {}
+        if page_number is not None:
+            params["page_number"] = page_number
+        if page_size is not None:
+            params["page_size"] = page_size
+
+        response = await self.admin_client.get("/api/students/", params=params or None)
+
+        # For default pagination (no params), expect page_size to equal total_records
+        expected_page_number = page_number if page_number is not None else 1
+        expected_page_size = page_size if page_size is not None else total_students
+
+        paginated = assert_res_paginated(
+            response,
+            Student,
+            total_records=total_students,
+            page_number=expected_page_number,
+            page_size=expected_page_size,
+        )
+        assert len(paginated.items) == expected_items
+
+    @pytest.mark.parametrize(
+        "invalid_params",
+        [
+            {"page_number": 0},
+            {"page_number": -1},
+            {"page_size": 0},
+            {"page_size": -1},
+            {"page_size": 101},
+            {"page_number": 0, "page_size": 50},
+            {"page_number": 2, "page_size": -5},
+        ],
+    )
+    @pytest.mark.asyncio
+    async def test_list_students_pagination_invalid_params(self, invalid_params: dict):
+        """Test that invalid params return 422."""
+        response = await self.admin_client.get("/api/students/", params=invalid_params)
+        assert_res_validation_error(response)
 
 
-@pytest_asyncio.fixture()
-async def override_dependencies_admin_for_student_routes(
-    test_async_session: AsyncSession,
-):
-    """Override dependencies to simulate admin trying to access student routes."""
+class TestStudentCRUDRouter:
+    """Tests for CRUD operations on /api/students/ endpoints."""
 
-    async def _get_test_session():
-        yield test_async_session
+    admin_client: AsyncClient
+    student_utils: StudentTestUtils
 
-    async def _fake_admin_user():
-        return Account(
-            id=2,
-            email="admin@example.com",
-            first_name="Admin",
-            last_name="User",
-            pid="222222222",
-            role=AccountRole.ADMIN,
+    @pytest.fixture(autouse=True)
+    def _setup(self, student_utils: StudentTestUtils, admin_client: AsyncClient):
+        self.student_utils = student_utils
+        self.admin_client = admin_client
+
+    @pytest.mark.asyncio
+    async def test_create_student_success(self):
+        """Test successfully creating a student."""
+        payload = await self.student_utils.next_student_create()
+
+        response = await self.admin_client.post(
+            "/api/students/", json=payload.model_dump(mode="json")
+        )
+        data = assert_res_success(response, Student, status=201)
+
+        self.student_utils.assert_matches(payload.data, data)
+        assert data.id == payload.account_id
+
+    @pytest.mark.asyncio
+    async def test_create_student_with_datetime(self):
+        """Test creating a student with last_registered datetime."""
+        dt = datetime(2024, 3, 15, 10, 30, 0, tzinfo=timezone.utc)
+        payload = await self.student_utils.next_student_create(last_registered=dt)
+
+        response = await self.admin_client.post(
+            "/api/students/", json=payload.model_dump(mode="json")
+        )
+        data = assert_res_success(response, Student, status=201)
+
+        self.student_utils.assert_matches(payload.data, data)
+        assert data.last_registered is not None
+
+    @pytest.mark.asyncio
+    async def test_create_student_nonexistent_account(self):
+        """Test creating a student with non-existent account ID."""
+        payload = await self.student_utils.next_student_create(account_id=999)
+
+        response = await self.admin_client.post(
+            "/api/students/", json=payload.model_dump(mode="json")
+        )
+        assert_res_failure(response, AccountNotFoundException(999))
+
+    @pytest.mark.asyncio
+    async def test_create_student_wrong_role(self):
+        """Test creating a student with account that has non-student role."""
+        account = await self.student_utils.account_utils.create_one(role=AccountRole.ADMIN.value)
+        payload = await self.student_utils.next_student_create(account_id=account.id)
+
+        response = await self.admin_client.post(
+            "/api/students/", json=payload.model_dump(mode="json")
+        )
+        assert_res_failure(response, InvalidAccountRoleException(account.id, AccountRole.ADMIN))
+
+    @pytest.mark.asyncio
+    async def test_create_student_duplicate_account(self):
+        """Test creating a student when account already has a student record."""
+        student = await self.student_utils.create_one()
+        payload = await self.student_utils.next_student_create(account_id=student.account_id)
+
+        response = await self.admin_client.post(
+            "/api/students/", json=payload.model_dump(mode="json")
+        )
+        assert_res_failure(response, StudentAlreadyExistsException(student.account_id))
+
+    @pytest.mark.asyncio
+    async def test_create_student_duplicate_phone(self):
+        """Test creating students with duplicate phone numbers."""
+        student = await self.student_utils.create_one()
+        payload = await self.student_utils.next_student_create(phone_number=student.phone_number)
+
+        response = await self.admin_client.post(
+            "/api/students/", json=payload.model_dump(mode="json")
+        )
+        assert_res_failure(response, StudentConflictException(student.phone_number))
+
+    @pytest.mark.asyncio
+    async def test_get_student_success(self):
+        """Test successfully getting a student by ID."""
+        student = await self.student_utils.create_one()
+
+        response = await self.admin_client.get(f"/api/students/{student.account_id}")
+        data = assert_res_success(response, Student)
+
+        self.student_utils.assert_matches(student, data)
+
+    @pytest.mark.asyncio
+    async def test_get_student_not_found(self):
+        """Test getting a non-existent student."""
+        response = await self.admin_client.get("/api/students/999")
+        assert_res_failure(response, StudentNotFoundException(999))
+
+    @pytest.mark.asyncio
+    async def test_update_student_success(self):
+        """Test successfully updating a student."""
+        student = await self.student_utils.create_one()
+        updated_data = await self.student_utils.next_data_with_names()
+
+        response = await self.admin_client.put(
+            f"/api/students/{student.account_id}",
+            json=updated_data.model_dump(mode="json"),
+        )
+        data = assert_res_success(response, Student)
+
+        self.student_utils.assert_matches(updated_data, data)
+        assert data.id == student.account_id
+
+    @pytest.mark.asyncio
+    async def test_update_student_not_found(self):
+        """Test updating a non-existent student."""
+        updated_data = await self.student_utils.next_data_with_names()
+
+        response = await self.admin_client.put(
+            "/api/students/99999",
+            json=updated_data.model_dump(mode="json"),
+        )
+        assert_res_failure(response, StudentNotFoundException(99999))
+
+    @pytest.mark.asyncio
+    async def test_update_student_phone_conflict(self):
+        """Test updating student with phone number that already exists."""
+        students = await self.student_utils.create_many(i=2)
+        updated_data = await self.student_utils.next_data_with_names(
+            phone_number=students[0].phone_number
         )
 
-    async def _location_service_override():
-        return LocationService(session=test_async_session, gmaps_client=AsyncMock())
-
-    app.dependency_overrides[LocationService] = _location_service_override
-    app.dependency_overrides[get_session] = _get_test_session
-    from src.core.authentication import authenticate_user
-
-    app.dependency_overrides[authenticate_user] = _fake_admin_user
-    yield
-    app.dependency_overrides.clear()
-
-
-@pytest_asyncio.fixture()
-async def override_dependencies_police_for_student_routes(
-    test_async_session: AsyncSession,
-):
-    """Override dependencies to simulate staff trying to access student routes."""
-
-    async def _get_test_session():
-        yield test_async_session
-
-    async def _fake_staff_user():
-        return Account(
-            id=3,
-            email="staff@example.com",
-            first_name="Staff",
-            last_name="User",
-            pid="333333333",
-            role=AccountRole.STAFF,
+        response = await self.admin_client.put(
+            f"/api/students/{students[1].account_id}",
+            json=updated_data.model_dump(mode="json"),
         )
+        assert_res_failure(response, StudentConflictException(students[0].phone_number))
 
-    async def _location_service_override():
-        return LocationService(session=test_async_session, gmaps_client=AsyncMock())
+    @pytest.mark.asyncio
+    async def test_delete_student_success(self):
+        """Test successfully deleting a student."""
+        student = await self.student_utils.create_one()
 
-    app.dependency_overrides[LocationService] = _location_service_override
-    app.dependency_overrides[get_session] = _get_test_session
-    from src.core.authentication import authenticate_user
+        response = await self.admin_client.delete(f"/api/students/{student.account_id}")
+        data = assert_res_success(response, Student)
 
-    app.dependency_overrides[authenticate_user] = _fake_staff_user
-    yield
-    app.dependency_overrides.clear()
+        self.student_utils.assert_matches(student, data)
 
+        # Verify deletion
+        get_response = await self.admin_client.get(f"/api/students/{student.account_id}")
+        assert_res_failure(get_response, StudentNotFoundException(student.account_id))
 
-@pytest.mark.asyncio
-async def test_get_me_success(
-    override_dependencies_student: Any, test_async_session: AsyncSession
-):
-    acc = AccountEntity(
-        id=1,
-        email="student@example.com",
-        first_name="Current",
-        last_name="User",
-        pid="200000001",
-        role=AccountRole.STUDENT,
-    )
-    test_async_session.add(acc)
-    await test_async_session.commit()
-
-    student = StudentEntity.from_model(
-        StudentData(
-            contact_preference=ContactPreference.text,
-            phone_number="5551234567",
-        ),
-        acc.id,
-    )
-    test_async_session.add(student)
-    await test_async_session.commit()
-
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.get("/api/students/me", headers=auth_headers())
-        assert res.status_code == 200
-        body = res.json()
-        assert body["id"] == 1
-        assert body["first_name"] == "Current"
-        assert body["last_name"] == "User"
-        assert body["phone_number"] == "5551234567"
-        assert body["contact_preference"] == "text"
+    @pytest.mark.asyncio
+    async def test_delete_student_not_found(self):
+        """Test deleting a non-existent student."""
+        response = await self.admin_client.delete("/api/students/99999")
+        assert_res_failure(response, StudentNotFoundException(99999))
 
 
-@pytest.mark.asyncio
-async def test_get_me_not_found(override_dependencies_student: Any):
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.get("/api/students/me", headers=auth_headers())
-        assert res.status_code == 404
+class TestStudentRegistrationRouter:
+    """Tests for PATCH /api/students/{id}/is-registered endpoint."""
 
+    staff_client: AsyncClient
+    admin_client: AsyncClient
+    student_utils: StudentTestUtils
 
-@pytest.mark.asyncio
-async def test_get_me_unauthenticated(override_dependencies_no_auth: Any):
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.get("/api/students/me")
-        assert res.status_code in [401, 403]
+    @pytest.fixture(autouse=True)
+    def _setup(
+        self,
+        student_utils: StudentTestUtils,
+        staff_client: AsyncClient,
+        admin_client: AsyncClient,
+    ):
+        self.student_utils = student_utils
+        self.staff_client = staff_client
+        self.admin_client = admin_client
 
+    @pytest.mark.asyncio
+    async def test_update_is_registered_mark_as_registered_as_staff(self):
+        """Test marking a student as registered (staff authentication)."""
+        student = await self.student_utils.create_one(last_registered=None)
 
-@pytest.mark.asyncio
-async def test_get_me_forbidden_admin(
-    override_dependencies_admin_for_student_routes: Any,
-):
-    """Test that admin users cannot access GET /api/students/me endpoint."""
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.get("/api/students/me", headers=auth_headers())
-        assert res.status_code == 403
-        response_data = res.json()
-        assert "message" in response_data
-
-
-@pytest.mark.asyncio
-async def test_get_me_forbidden_police(
-    override_dependencies_police_for_student_routes: Any,
-):
-    """Test that police users cannot access GET /api/students/me endpoint."""
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.get("/api/students/me", headers=auth_headers())
-        assert res.status_code == 403
-        response_data = res.json()
-        assert "message" in response_data
-
-
-@pytest.mark.asyncio
-async def test_update_me_success(
-    override_dependencies_student: Any, test_async_session: AsyncSession
-):
-    acc = AccountEntity(
-        id=1,
-        email="student@example.com",
-        first_name="Old",
-        last_name="Name",
-        pid="200000002",
-        role=AccountRole.STUDENT,
-    )
-    test_async_session.add(acc)
-    await test_async_session.commit()
-
-    student = StudentEntity.from_model(
-        StudentData(
-            contact_preference=ContactPreference.text,
-            phone_number="5551111111",
-        ),
-        acc.id,
-    )
-    test_async_session.add(student)
-    await test_async_session.commit()
-
-    update_payload = {
-        "contact_preference": "call",
-        "phone_number": "5552222222",
-        "last_registered": None,
-    }
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.put(
-            "/api/students/me", json=update_payload, headers=auth_headers()
+        payload = {"is_registered": True}
+        response = await self.staff_client.patch(
+            f"/api/students/{student.account_id}/is-registered",
+            json=payload,
         )
-        assert res.status_code == 200
-        body = res.json()
-        assert (
-            body["first_name"] == "Old"
-        )  # Account names don't change via /me endpoint
-        assert body["last_name"] == "Name"
-        assert body["phone_number"] == "5552222222"
-        assert body["contact_preference"] == "call"
+        data = assert_res_success(response, Student)
 
+        assert data.id == student.account_id
+        assert data.last_registered is not None
 
-@pytest.mark.asyncio
-async def test_update_me_phone_conflict(
-    override_dependencies_student: Any, test_async_session: AsyncSession
-):
-    acc1 = AccountEntity(
-        id=1,
-        email="student1@example.com",
-        first_name="Student",
-        last_name="One",
-        pid="200000003",
-        role=AccountRole.STUDENT,
-    )
-    acc2 = AccountEntity(
-        id=2,
-        email="student2@example.com",
-        first_name="Student",
-        last_name="Two",
-        pid="200000004",
-        role=AccountRole.STUDENT,
-    )
-    test_async_session.add_all([acc1, acc2])
-    await test_async_session.commit()
+    @pytest.mark.asyncio
+    async def test_update_is_registered_mark_as_not_registered_as_admin(self):
+        """Test unmarking a student as registered (admin authentication)."""
+        student = await self.student_utils.create_one(last_registered=datetime.now(timezone.utc))
 
-    student1 = StudentEntity.from_model(
-        StudentData(
-            contact_preference=ContactPreference.text,
-            phone_number="5551111111",
-        ),
-        acc1.id,
-    )
-    student2 = StudentEntity.from_model(
-        StudentData(
-            contact_preference=ContactPreference.text,
-            phone_number="5552222222",
-        ),
-        acc2.id,
-    )
-    test_async_session.add_all([student1, student2])
-    await test_async_session.commit()
-
-    update_payload = {
-        "contact_preference": "text",
-        "phone_number": "5552222222",
-    }
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.put(
-            "/api/students/me", json=update_payload, headers=auth_headers()
+        payload = {"is_registered": False}
+        response = await self.admin_client.patch(
+            f"/api/students/{student.account_id}/is-registered",
+            json=payload,
         )
-        assert res.status_code == 409
+        data = assert_res_success(response, Student)
 
+        assert data.id == student.account_id
+        assert data.last_registered is None
 
-@pytest.mark.asyncio
-async def test_update_me_unauthenticated(override_dependencies_no_auth: Any):
-    update_payload = {
-        "first_name": "Test",
-        "last_name": "User",
-        "contact_preference": "text",
-        "phone_number": "5551112222",
-    }
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.put("/api/students/me", json=update_payload)
-        assert res.status_code in [401, 403]
+    @pytest.mark.asyncio
+    async def test_update_is_registered_student_not_found(self):
+        """Test updating is_registered for non-existent student."""
+        payload = {"is_registered": True}
+        response = await self.staff_client.patch("/api/students/999/is-registered", json=payload)
+        assert_res_failure(response, StudentNotFoundException(999))
 
+    @pytest.mark.asyncio
+    async def test_update_is_registered_toggle(self):
+        """Test toggling is_registered from False to True and back."""
+        student = await self.student_utils.create_one(last_registered=None)
 
-@pytest.mark.asyncio
-async def test_update_me_forbidden_admin(
-    override_dependencies_admin_for_student_routes: Any,
-):
-    """Test that admin users cannot access PUT /api/students/me endpoint."""
-    update_payload = {
-        "first_name": "Test",
-        "last_name": "User",
-        "contact_preference": "text",
-        "phone_number": "5551112222",
-    }
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.put(
-            "/api/students/me", json=update_payload, headers=auth_headers()
-        )
-        assert res.status_code == 403
-        response_data = res.json()
-        assert "message" in response_data
-
-
-@pytest.mark.asyncio
-async def test_update_me_forbidden_police(
-    override_dependencies_police_for_student_routes: Any,
-):
-    """Test that police users cannot access PUT /api/students/me endpoint."""
-    update_payload = {
-        "first_name": "Test",
-        "last_name": "User",
-        "contact_preference": "text",
-        "phone_number": "5551112222",
-    }
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.put(
-            "/api/students/me", json=update_payload, headers=auth_headers()
-        )
-        assert res.status_code == 403
-        response_data = res.json()
-        assert "message" in response_data
-
-
-@pytest.mark.asyncio
-async def test_get_me_parties_empty(
-    override_dependencies_student: Any, test_async_session: AsyncSession
-):
-    acc = AccountEntity(
-        id=1,
-        email="student@example.com",
-        first_name="Student",
-        last_name="NoParties",
-        pid="200000005",
-        role=AccountRole.STUDENT,
-    )
-    test_async_session.add(acc)
-    await test_async_session.commit()
-
-    student = StudentEntity.from_model(
-        StudentData(
-            contact_preference=ContactPreference.text,
-            phone_number="5551234567",
-        ),
-        acc.id,
-    )
-    test_async_session.add(student)
-    await test_async_session.commit()
-
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.get("/api/students/me/parties", headers=auth_headers())
-        assert res.status_code == 200
-        assert res.json() == []
-
-
-@pytest.mark.asyncio
-async def test_get_me_parties_with_data(
-    override_dependencies_student: Any, test_async_session: AsyncSession
-):
-    acc1 = AccountEntity(
-        id=1,
-        email="student1@example.com",
-        first_name="Student",
-        last_name="One",
-        pid="200000006",
-        role=AccountRole.STUDENT,
-    )
-    acc2 = AccountEntity(
-        id=2,
-        email="student2@example.com",
-        first_name="Student",
-        last_name="Two",
-        pid="200000007",
-        role=AccountRole.STUDENT,
-    )
-    test_async_session.add_all([acc1, acc2])
-    await test_async_session.commit()
-
-    student1 = StudentEntity.from_model(
-        StudentData(
-            contact_preference=ContactPreference.text,
-            phone_number="5551111111",
-        ),
-        acc1.id,
-    )
-    student2 = StudentEntity.from_model(
-        StudentData(
-            contact_preference=ContactPreference.call,
-            phone_number="5552222222",
-        ),
-        acc2.id,
-    )
-    test_async_session.add_all([student1, student2])
-
-    location = LocationEntity(
-        id=1,
-        latitude=40.7128,
-        longitude=-74.0060,
-        google_place_id="test_place_1",
-        formatted_address="Test Address 1",
-    )
-    test_async_session.add(location)
-    await test_async_session.commit()
-
-    party1 = PartyEntity(
-        party_datetime=datetime(2024, 12, 1, 20, 0, 0, tzinfo=timezone.utc),
-        location_id=1,
-        contact_one_id=1,
-        contact_two_email="student2@example.com",
-        contact_two_first_name="Student",
-        contact_two_last_name="Two",
-        contact_two_phone_number="5552222222",
-        contact_two_contact_preference=ContactPreference.call,
-    )
-    party2 = PartyEntity(
-        party_datetime=datetime(2024, 12, 15, 21, 0, 0, tzinfo=timezone.utc),
-        location_id=1,
-        contact_one_id=2,
-        contact_two_email="student1@example.com",
-        contact_two_first_name="Student",
-        contact_two_last_name="One",
-        contact_two_phone_number="5551111111",
-        contact_two_contact_preference=ContactPreference.text,
-    )
-    test_async_session.add_all([party1, party2])
-    await test_async_session.commit()
-
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.get("/api/students/me/parties", headers=auth_headers())
-        assert res.status_code == 200
-        parties = res.json()
-        assert len(parties) == 1
-        party_ids = [p["id"] for p in parties]
-        assert party1.id in party_ids
-        assert party2.id not in party_ids
-
-
-@pytest.mark.asyncio
-async def test_get_me_parties_unauthenticated(override_dependencies_no_auth: Any):
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.get("/api/students/me/parties")
-        assert res.status_code in [401, 403]
-
-
-@pytest.mark.asyncio
-async def test_get_me_parties_forbidden_admin(
-    override_dependencies_admin_for_student_routes: Any,
-):
-    """Test that admin users cannot access GET /api/students/me/parties endpoint."""
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.get("/api/students/me/parties", headers=auth_headers())
-        assert res.status_code == 403
-        response_data = res.json()
-        assert "message" in response_data
-
-
-@pytest.mark.asyncio
-async def test_get_me_parties_forbidden_police(
-    override_dependencies_police_for_student_routes: Any,
-):
-    """Test that police users cannot access GET /api/students/me/parties endpoint."""
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.get("/api/students/me/parties", headers=auth_headers())
-        assert res.status_code == 403
-        response_data = res.json()
-        assert "message" in response_data
-
-
-@pytest_asyncio.fixture()
-async def override_dependencies_staff(test_async_session: AsyncSession):
-    """Override dependencies to simulate staff authentication."""
-
-    async def _get_test_session():
-        yield test_async_session
-
-    async def _fake_staff():
-        return Account(
-            id=1,
-            email="staff@example.com",
-            first_name="Staff",
-            last_name="User",
-            pid="333333333",
-            role=AccountRole.STAFF,
-        )
-
-    app.dependency_overrides[get_session] = _get_test_session
-    app.dependency_overrides[authenticate_staff_or_admin] = _fake_staff
-    yield
-    app.dependency_overrides.clear()
-
-
-@pytest.mark.asyncio
-async def test_update_is_registered_mark_as_registered_as_staff(
-    override_dependencies_staff: Any, test_async_session: AsyncSession
-):
-    """Test marking a student as registered (staff authentication)."""
-    acc = AccountEntity(
-        email="teststudent@example.com",
-        first_name="Test",
-        last_name="Student",
-        pid="300000001",
-        role=AccountRole.STUDENT,
-    )
-    test_async_session.add(acc)
-    await test_async_session.commit()
-    await test_async_session.refresh(acc)
-
-    student = StudentEntity.from_model(
-        StudentData(
-            contact_preference=ContactPreference.text,
-            phone_number="5559998888",
-            last_registered=None,
-        ),
-        acc.id,
-    )
-    test_async_session.add(student)
-    await test_async_session.commit()
-
-    payload = {"is_registered": True}
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.patch(
-            f"/api/students/{acc.id}/is-registered", json=payload, headers=auth_headers()
-        )
-        assert res.status_code == 200
-        body = res.json()
-        assert body["id"] == acc.id
-        assert body["last_registered"] is not None
-
-
-@pytest.mark.asyncio
-async def test_update_is_registered_mark_as_not_registered_as_admin(
-    override_dependencies_admin: Any, test_async_session: AsyncSession
-):
-    """Test unmarking a student as registered (admin authentication)."""
-    acc = AccountEntity(
-        email="teststudent2@example.com",
-        first_name="Test",
-        last_name="Student",
-        pid="300000002",
-        role=AccountRole.STUDENT,
-    )
-    test_async_session.add(acc)
-    await test_async_session.commit()
-    await test_async_session.refresh(acc)
-
-    student = StudentEntity.from_model(
-        StudentData(
-            contact_preference=ContactPreference.call,
-            phone_number="5559997777",
-            last_registered=datetime.now(timezone.utc),
-        ),
-        acc.id,
-    )
-    test_async_session.add(student)
-    await test_async_session.commit()
-
-    payload = {"is_registered": False}
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.patch(
-            f"/api/students/{acc.id}/is-registered", json=payload, headers=auth_headers()
-        )
-        assert res.status_code == 200
-        body = res.json()
-        assert body["id"] == acc.id
-        assert body["last_registered"] is None
-
-
-@pytest.mark.asyncio
-async def test_update_is_registered_student_not_found(
-    override_dependencies_staff: Any
-):
-    """Test updating is_registered for non-existent student."""
-    payload = {"is_registered": True}
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.patch(
-            "/api/students/99999/is-registered", json=payload, headers=auth_headers()
-        )
-        assert res.status_code == 404
-
-
-@pytest.mark.asyncio
-async def test_update_is_registered_unauthenticated(
-    override_dependencies_no_auth: Any
-):
-    """Test updating is_registered without authentication."""
-    payload = {"is_registered": True}
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        res = await client.patch("/api/students/1/is-registered", json=payload)
-        assert res.status_code in [401, 403]
-
-
-@pytest.mark.asyncio
-async def test_update_is_registered_toggle(
-    override_dependencies_staff: Any, test_async_session: AsyncSession
-):
-    """Test toggling is_registered from False to True and back."""
-    acc = AccountEntity(
-        email="teststudent3@example.com",
-        first_name="Toggle",
-        last_name="Student",
-        pid="300000003",
-        role=AccountRole.STUDENT,
-    )
-    test_async_session.add(acc)
-    await test_async_session.commit()
-    await test_async_session.refresh(acc)
-
-    student = StudentEntity.from_model(
-        StudentData(
-            contact_preference=ContactPreference.text,
-            phone_number="5559996666",
-            last_registered=None,
-        ),
-        acc.id,
-    )
-    test_async_session.add(student)
-    await test_async_session.commit()
-
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
         # Mark as registered
-        res = await client.patch(
-            f"/api/students/{acc.id}/is-registered",
+        response = await self.staff_client.patch(
+            f"/api/students/{student.account_id}/is-registered",
             json={"is_registered": True},
-            headers=auth_headers(),
         )
-        assert res.status_code == 200
-        body = res.json()
-        assert body["last_registered"] is not None
-        first_registered_time = body["last_registered"]
+        data = assert_res_success(response, Student)
+        assert data.last_registered is not None
+        first_registered_time = data.last_registered
 
         # Unmark as registered
-        res = await client.patch(
-            f"/api/students/{acc.id}/is-registered",
+        response = await self.staff_client.patch(
+            f"/api/students/{student.account_id}/is-registered",
             json={"is_registered": False},
-            headers=auth_headers(),
         )
-        assert res.status_code == 200
-        body = res.json()
-        assert body["last_registered"] is None
+        data = assert_res_success(response, Student)
+        assert data.last_registered is None
 
         # Mark as registered again
-        res = await client.patch(
-            f"/api/students/{acc.id}/is-registered",
+        response = await self.staff_client.patch(
+            f"/api/students/{student.account_id}/is-registered",
             json={"is_registered": True},
-            headers=auth_headers(),
         )
-        assert res.status_code == 200
-        body = res.json()
-        assert body["last_registered"] is not None
-        # Second registration time should be different (later)
-        assert body["last_registered"] != first_registered_time
+        data = assert_res_success(response, Student)
+        assert data.last_registered is not None
+        assert data.last_registered != first_registered_time
+
+
+class TestStudentMeRouter:
+    """Tests for /api/students/me endpoints (student-only routes)."""
+
+    student_client: AsyncClient
+    student_utils: StudentTestUtils
+    account_utils: AccountTestUtils
+    party_utils: PartyTestUtils
+
+    @pytest_asyncio.fixture
+    async def current_student(self) -> StudentEntity:
+        """Create a student for the current authenticated user.
+
+        Note: student_client authenticates as user with id=3 (from mock_authenticate in authentication.py)
+        so we need to ensure the account has id=3.
+        """
+        # The student_client from conftest uses id=3 for students in mock_authenticate
+        # We need to create dummy accounts for IDs 1 and 2 first
+        await self.account_utils.create_one(role=AccountRole.ADMIN.value)
+        await self.account_utils.create_one(role=AccountRole.STAFF.value)
+
+        account = await self.account_utils.create_one(role=AccountRole.STUDENT.value)
+
+        # Verify we got ID 3
+        assert account.id == 3, f"Expected account.id=3, got {account.id}"
+
+        student = await self.student_utils.create_one(account_id=account.id)
+        return student
+
+    @pytest.fixture(autouse=True)
+    def _setup(
+        self,
+        student_utils: StudentTestUtils,
+        account_utils: AccountTestUtils,
+        party_utils: PartyTestUtils,
+        student_client: AsyncClient,
+    ):
+        self.student_utils = student_utils
+        self.account_utils = account_utils
+        self.party_utils = party_utils
+        self.student_client = student_client
+
+    @pytest.mark.asyncio
+    async def test_get_me_success(self, current_student: StudentEntity):
+        """Test getting current student's own information."""
+        response = await self.student_client.get("/api/students/me")
+        data = assert_res_success(response, Student)
+
+        self.student_utils.assert_matches(current_student, data)
+
+    @pytest.mark.asyncio
+    async def test_get_me_not_found(self):
+        """Test get me when student record doesn't exist (but account with id=3 does)."""
+        # Create dummy accounts for IDs 1 and 2 to ensure next account gets ID 3
+        await self.account_utils.create_one(role=AccountRole.ADMIN.value)
+        await self.account_utils.create_one(role=AccountRole.STAFF.value)
+
+        # Create account with ID 3 but no student record
+        await self.account_utils.create_one(role=AccountRole.STUDENT.value)
+        response = await self.student_client.get("/api/students/me")
+        assert_res_failure(response, StudentNotFoundException(3))
+
+    @pytest.mark.asyncio
+    async def test_update_me_success(self, current_student: StudentEntity):
+        """Test updating current student's own information."""
+        updated_data = await self.student_utils.next_data()
+
+        response = await self.student_client.put(
+            "/api/students/me",
+            json=updated_data.model_dump(mode="json"),
+        )
+        data = assert_res_success(response, Student)
+
+        self.student_utils.assert_matches(updated_data, data)
+        # Names should not change via /me endpoint (only StudentData, not StudentDataWithNames)
+        assert data.id == current_student.account_id
+
+    @pytest.mark.asyncio
+    async def test_update_me_phone_conflict(self, current_student: StudentEntity):
+        """Test updating me with phone number that already exists."""
+        other_student = await self.student_utils.create_one()
+        updated_data = StudentData(
+            contact_preference=ContactPreference.text,
+            phone_number=other_student.phone_number,
+        )
+
+        response = await self.student_client.put(
+            "/api/students/me",
+            json=updated_data.model_dump(mode="json"),
+        )
+        assert_res_failure(response, StudentConflictException(other_student.phone_number))
+
+    @pytest.mark.asyncio
+    async def test_get_me_parties_empty(self, current_student: StudentEntity):
+        """Test getting parties when student has no parties."""
+        response = await self.student_client.get("/api/students/me/parties")
+        assert response.status_code == 200
+        data = response.json()
+        assert data == []
+
+    @pytest.mark.asyncio
+    async def test_get_me_parties_with_data(self, current_student: StudentEntity):
+        """Test getting parties when student has parties."""
+        # Create another student
+        other_student = await self.student_utils.create_one()
+
+        # Create a party where current_student is contact_one
+        party1 = await self.party_utils.create_one(
+            party_datetime=datetime(2024, 12, 1, 20, 0, 0, tzinfo=timezone.utc),
+            contact_one_id=current_student.account_id,
+        )
+
+        # Create a party where other_student is contact_one (should not be returned)
+        party2 = await self.party_utils.create_one(
+            party_datetime=datetime(2024, 12, 15, 21, 0, 0, tzinfo=timezone.utc),
+            contact_one_id=other_student.account_id,
+        )
+
+        response = await self.student_client.get("/api/students/me/parties")
+
+        parties = assert_res_success(response, list[Party])
+        assert len(parties) == 1
+        assert party2.id not in [p.id for p in parties]
+        self.party_utils.assert_matches(parties[0], party1)

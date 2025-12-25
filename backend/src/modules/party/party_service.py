@@ -11,11 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from src.core.config import env
 from src.core.database import get_session
-from src.core.exceptions import (
-    BadRequestException,
-    ConflictException,
-    NotFoundException,
-)
+from src.core.exceptions import BadRequestException, ConflictException, NotFoundException
 from src.modules.location.location_model import Location
 from src.modules.student.student_service import StudentNotFoundException, StudentService
 
@@ -67,9 +63,7 @@ class PartyService:
             .where(PartyEntity.id == party_id)
             .options(
                 selectinload(PartyEntity.location),
-                selectinload(PartyEntity.contact_one).selectinload(
-                    StudentEntity.account
-                ),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
             )
         )
         party_entity = result.scalar_one_or_none()
@@ -80,9 +74,7 @@ class PartyService:
     def _calculate_business_days_ahead(self, target_date: datetime) -> int:
         """Calculate the number of business days between now and target date."""
         # Ensure both datetimes are timezone-aware (use UTC)
-        current_date = datetime.now(timezone.utc).replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
+        current_date = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
 
         # If target_date is naive, make it UTC-aware; otherwise keep its timezone
         if target_date.tzinfo is None:
@@ -90,9 +82,7 @@ class PartyService:
                 hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc
             )
         else:
-            target_date_only = target_date.replace(
-                hour=0, minute=0, second=0, microsecond=0
-            )
+            target_date_only = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
 
         business_days = 0
         current = current_date
@@ -123,9 +113,7 @@ class PartyService:
         current_year = now.year
 
         # August 1st of the current year (UTC)
-        august_first_this_year = datetime(
-            current_year, 8, 1, 0, 0, 0, tzinfo=timezone.utc
-        )
+        august_first_this_year = datetime(current_year, 8, 1, 0, 0, 0, tzinfo=timezone.utc)
 
         # If today is before August 1st, use last year's August 1st
         # Otherwise, use this year's August 1st
@@ -178,9 +166,7 @@ class PartyService:
             .offset(skip)
             .options(
                 selectinload(PartyEntity.location),
-                selectinload(PartyEntity.contact_one).selectinload(
-                    StudentEntity.account
-                ),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
             )
         )
         if limit is not None:
@@ -199,9 +185,7 @@ class PartyService:
             .where(PartyEntity.location_id == location_id)
             .options(
                 selectinload(PartyEntity.location),
-                selectinload(PartyEntity.contact_one).selectinload(
-                    StudentEntity.account
-                ),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
             )
         )
         parties = result.scalars().all()
@@ -213,9 +197,7 @@ class PartyService:
             .where(PartyEntity.contact_one_id == student_id)
             .options(
                 selectinload(PartyEntity.location),
-                selectinload(PartyEntity.contact_one).selectinload(
-                    StudentEntity.account
-                ),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
             )
         )
         parties = result.scalars().all()
@@ -232,9 +214,7 @@ class PartyService:
             )
             .options(
                 selectinload(PartyEntity.location),
-                selectinload(PartyEntity.contact_one).selectinload(
-                    StudentEntity.account
-                ),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
             )
         )
         parties = result.scalars().all()
@@ -266,6 +246,8 @@ class PartyService:
             if hasattr(party_entity, key):
                 setattr(party_entity, key, value)
 
+        party_entity.set_contact_two(data.contact_two)
+
         try:
             self.session.add(party_entity)
             await self.session.commit()
@@ -278,12 +260,10 @@ class PartyService:
     ) -> Party:
         """Create a party registration from a student. contact_one is auto-filled."""
         # Validate student party prerequisites (date and Party Smart)
-        await self._validate_student_party_prerequisites(
-            student_account_id, dto.party_datetime
-        )
+        await self._validate_student_party_prerequisites(student_account_id, dto.party_datetime)
 
         # Get/create location and validate no hold
-        location = await self._validate_and_get_location(dto.place_id)
+        location = await self._validate_and_get_location(dto.google_place_id)
 
         # Create party data with contact_two information directly
         party_data = PartyData(
@@ -302,7 +282,7 @@ class PartyService:
     async def create_party_from_admin_dto(self, dto: AdminCreatePartyDTO) -> Party:
         """Create a party registration from an admin. Both contacts must be specified."""
         # Get/create location and validate no hold
-        location = await self._validate_and_get_location(dto.place_id)
+        location = await self._validate_and_get_location(dto.google_place_id)
 
         # Get contact_one by email
         contact_one = await self._get_student_by_email(dto.contact_one_email)
@@ -329,12 +309,10 @@ class PartyService:
         party_entity = await self._get_party_entity_by_id(party_id)
 
         # Validate student party prerequisites (date and Party Smart)
-        await self._validate_student_party_prerequisites(
-            student_account_id, dto.party_datetime
-        )
+        await self._validate_student_party_prerequisites(student_account_id, dto.party_datetime)
 
         # Get/create location and validate no hold
-        location = await self._validate_and_get_location(dto.place_id)
+        location = await self._validate_and_get_location(dto.google_place_id)
 
         # Validate contact_one (student) exists
         await self.student_service.assert_student_exists(student_account_id)
@@ -353,15 +331,13 @@ class PartyService:
         await self.session.commit()
         return await party_entity.load_model(self.session)
 
-    async def update_party_from_admin_dto(
-        self, party_id: int, dto: AdminCreatePartyDTO
-    ) -> Party:
+    async def update_party_from_admin_dto(self, party_id: int, dto: AdminCreatePartyDTO) -> Party:
         """Update a party registration from an admin. Both contacts must be specified."""
         # Get existing party
         party_entity = await self._get_party_entity_by_id(party_id)
 
         # Get/create location and validate no hold
-        location = await self._validate_and_get_location(dto.place_id)
+        location = await self._validate_and_get_location(dto.google_place_id)
 
         # Get contact_one by email
         contact_one_student = await self._get_student_by_email(dto.contact_one_email)
@@ -389,9 +365,7 @@ class PartyService:
         return party
 
     async def party_exists(self, party_id: int) -> bool:
-        result = await self.session.execute(
-            select(PartyEntity).where(PartyEntity.id == party_id)
-        )
+        result = await self.session.execute(select(PartyEntity).where(PartyEntity.id == party_id))
         return result.scalar_one_or_none() is not None
 
     async def get_party_count(self) -> int:
@@ -403,9 +377,7 @@ class PartyService:
         self, student_id: int, target_date: datetime
     ) -> List[Party]:
         start_of_day = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
-        end_of_day = target_date.replace(
-            hour=23, minute=59, second=59, microsecond=999999
-        )
+        end_of_day = target_date.replace(hour=23, minute=59, second=59, microsecond=999999)
 
         result = await self.session.execute(
             select(PartyEntity)
@@ -416,17 +388,13 @@ class PartyService:
             )
             .options(
                 selectinload(PartyEntity.location),
-                selectinload(PartyEntity.contact_one).selectinload(
-                    StudentEntity.account
-                ),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
             )
         )
         parties = result.scalars().all()
         return [party.to_model() for party in parties]
 
-    async def get_parties_by_radius(
-        self, latitude: float, longitude: float
-    ) -> List[Party]:
+    async def get_parties_by_radius(self, latitude: float, longitude: float) -> List[Party]:
         current_time = datetime.now(timezone.utc)
         start_time = current_time - timedelta(hours=6)
         end_time = current_time + timedelta(hours=12)
@@ -435,9 +403,7 @@ class PartyService:
             select(PartyEntity)
             .options(
                 selectinload(PartyEntity.location),
-                selectinload(PartyEntity.contact_one).selectinload(
-                    StudentEntity.account
-                ),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
             )
             .where(
                 PartyEntity.party_datetime >= start_time,
@@ -486,9 +452,7 @@ class PartyService:
             select(PartyEntity)
             .options(
                 selectinload(PartyEntity.location),
-                selectinload(PartyEntity.contact_one).selectinload(
-                    StudentEntity.account
-                ),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
             )
             .where(
                 PartyEntity.party_datetime >= start_date,
@@ -521,10 +485,7 @@ class PartyService:
 
         dlat = lat2 - lat1
         dlon = lon2 - lon1
-        a = (
-            math.sin(dlat / 2) ** 2
-            + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
-        )
+        a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
         c = 2 * math.asin(math.sqrt(a))
 
         r = 3959
@@ -566,9 +527,7 @@ class PartyService:
             select(PartyEntity)
             .options(
                 selectinload(PartyEntity.location),
-                selectinload(PartyEntity.contact_one).selectinload(
-                    StudentEntity.account
-                ),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
             )
             .where(PartyEntity.id.in_(party_ids))
         )
@@ -606,16 +565,8 @@ class PartyService:
                 formatted_address = party_entity.location.formatted_address or ""
 
             # Format date and time
-            party_date = (
-                party.party_datetime.strftime("%Y-%m-%d")
-                if party.party_datetime
-                else ""
-            )
-            party_time = (
-                party.party_datetime.strftime("%H:%M:%S")
-                if party.party_datetime
-                else ""
-            )
+            party_date = party.party_datetime.strftime("%Y-%m-%d") if party.party_datetime else ""
+            party_time = party.party_datetime.strftime("%H:%M:%S") if party.party_datetime else ""
 
             contact_one_full_name = ""
             contact_one_email = ""
@@ -636,7 +587,9 @@ class PartyService:
             contact_two_email = ""
             contact_two_phone = ""
             contact_two_preference = ""
-            contact_two_full_name = f"{party_entity.contact_two_first_name} {party_entity.contact_two_last_name}"
+            contact_two_full_name = (
+                f"{party_entity.contact_two_first_name} {party_entity.contact_two_last_name}"
+            )
             contact_two_phone = party_entity.contact_two_phone_number or ""
             contact_two_preference = (
                 party_entity.contact_two_contact_preference.value

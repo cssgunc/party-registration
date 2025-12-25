@@ -48,11 +48,9 @@ class AccountService:
     async def get_accounts(self) -> list[Account]:
         result = await self.session.execute(select(AccountEntity))
         accounts = result.scalars().all()
-        return [Account.from_entity(account) for account in accounts]
+        return [account.to_model() for account in accounts]
 
-    async def get_accounts_by_roles(
-        self, roles: list[AccountRole] | None = None
-    ) -> list[Account]:
+    async def get_accounts_by_roles(self, roles: list[AccountRole] | None = None) -> list[Account]:
         if not roles:
             return await self.get_accounts()
 
@@ -60,15 +58,15 @@ class AccountService:
             select(AccountEntity).where(AccountEntity.role.in_(roles))
         )
         accounts = result.scalars().all()
-        return [Account.from_entity(account) for account in accounts]
+        return [account.to_model() for account in accounts]
 
     async def get_account_by_id(self, account_id: int) -> Account:
         account_entity = await self._get_account_entity_by_id(account_id)
-        return Account.from_entity(account_entity)
+        return account_entity.to_model()
 
     async def get_account_by_email(self, email: str) -> Account:
         account_entity = await self._get_account_entity_by_email(email)
-        return Account.from_entity(account_entity)
+        return account_entity.to_model()
 
     async def create_account(self, data: AccountData) -> Account:
         try:
@@ -93,7 +91,7 @@ class AccountService:
             # handle race condition where another session inserted the same email
             raise AccountConflictException(data.email)
         await self.session.refresh(new_account)
-        return Account.from_entity(new_account)
+        return new_account.to_model()
 
     async def update_account(self, account_id: int, data: AccountData) -> Account:
         account_entity = await self._get_account_entity_by_id(account_id)
@@ -120,11 +118,11 @@ class AccountService:
         except IntegrityError:
             raise AccountConflictException(data.email)
         await self.session.refresh(account_entity)
-        return Account.from_entity(account_entity)
+        return account_entity.to_model()
 
     async def delete_account(self, account_id: int) -> Account:
         account_entity = await self._get_account_entity_by_id(account_id)
-        account = Account.from_entity(account_entity)
+        account = account_entity.to_model()
         await self.session.delete(account_entity)
         await self.session.commit()
         return account

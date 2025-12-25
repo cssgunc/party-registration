@@ -1,4 +1,6 @@
-from typing import AsyncGenerator
+from abc import abstractmethod
+from typing import AsyncGenerator, Self
+from pydantic import BaseModel
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
@@ -37,8 +39,15 @@ AsyncSessionLocal = async_sessionmaker(
 )
 
 
-class EntityBase(DeclarativeBase):
-    pass
+class EntityBase[DataModel: BaseModel, DtoModel: BaseModel](DeclarativeBase):
+    @classmethod
+    @abstractmethod
+    def from_model(cls, data: DataModel) -> Self:
+        ...
+
+    @abstractmethod
+    def to_model(self) -> DtoModel:
+        ...
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:

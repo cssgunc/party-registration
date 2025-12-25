@@ -1,10 +1,12 @@
 from typing import Literal
 
-from fastapi import Depends, HTTPException, Request, status
+from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from src.core.exceptions import CredentialsException, ForbiddenException
 from src.modules.account.account_model import Account, AccountRole
 from src.modules.police.police_model import PoliceAccount
+
+StringRole = Literal["student", "admin", "staff", "police"]
 
 
 class HTTPBearer401(HTTPBearer):
@@ -12,11 +14,7 @@ class HTTPBearer401(HTTPBearer):
         try:
             return await super().__call__(request)
         except Exception:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Not authenticated",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
+            raise CredentialsException()
 
 
 bearer_scheme = HTTPBearer401()
@@ -69,7 +67,7 @@ async def authenticate_user(
     return user
 
 
-def authenticate_by_role(*roles: Literal["police", "student", "admin", "staff"]):
+def authenticate_by_role(*roles: StringRole):
     """
     Middleware factory to ensure the authenticated user has one of the specified roles.
     """
@@ -79,8 +77,12 @@ def authenticate_by_role(*roles: Literal["police", "student", "admin", "staff"])
     ) -> Account | PoliceAccount:
         token = authorization.credentials.lower()
 
-        if "police" in roles and token == "police":
-            return PoliceAccount(email="police@example.com")
+        # Check if police token and police is allowed
+        if token == "police":
+            if "police" in roles:
+                return PoliceAccount(email="police@example.com")
+            else:
+                raise ForbiddenException(detail="Insufficient privileges")
 
         role_map = {
             "student": AccountRole.STUDENT,
@@ -116,9 +118,7 @@ async def authenticate_staff_or_admin(
 
 
 async def authenticate_student_or_admin(
-    account: Account | PoliceAccount = Depends(
-        authenticate_by_role("student", "admin")
-    ),
+    account: Account | PoliceAccount = Depends(authenticate_by_role("student", "admin")),
 ) -> Account:
     if not isinstance(account, Account):
         raise ForbiddenException(detail="Insufficient privileges")

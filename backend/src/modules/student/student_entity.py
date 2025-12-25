@@ -1,8 +1,9 @@
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Self
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column, relationship, selectinload
 from src.core.database import EntityBase
 
 from .student_model import ContactPreference, DbStudent, Student, StudentData
@@ -11,21 +12,19 @@ if TYPE_CHECKING:
     from src.modules.account.account_entity import AccountEntity
 
 
-class StudentEntity(EntityBase):
+class StudentEntity(MappedAsDataclass, EntityBase):
     __tablename__ = "students"
 
     account_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("accounts.id"), primary_key=True, index=True
+        Integer, ForeignKey("accounts.id"), primary_key=True, autoincrement=False, index=True
     )
     contact_preference: Mapped[ContactPreference] = mapped_column(
         Enum(ContactPreference), nullable=False
     )
-    last_registered: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    last_registered: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     phone_number: Mapped[str] = mapped_column(String, nullable=False, unique=True)
 
-    account: Mapped["AccountEntity"] = relationship("AccountEntity")
+    account: Mapped["AccountEntity"] = relationship("AccountEntity", init=False)
 
     @classmethod
     def from_model(cls, data: "StudentData", account_id: int) -> Self:
@@ -66,3 +65,16 @@ class StudentEntity(EntityBase):
             contact_preference=self.contact_preference,
             last_registered=last_reg,
         )
+
+    async def load_dto(self, session: AsyncSession) -> Student:
+        """
+        Load student with account relationship from database and convert to DTO.
+        Should be used to get the DTO only if the account relationship hasn't been loaded yet.
+        """
+        result = await session.execute(
+            select(self.__class__)
+            .where(self.__class__.account_id == self.account_id)
+            .options(selectinload(self.__class__.account))
+        )
+        student_entity = result.scalar_one()
+        return student_entity.to_dto()

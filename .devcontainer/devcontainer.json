@@ -90,7 +90,8 @@
         "python.analysis.autoImportCompletions": true,
         "ruff.enable": true,
         "ruff.organizeImports": true,
-        "ruff.fixAll": true
+        "ruff.fixAll": true,
+        "ruff.lineLength": 100
       }
     }
   }

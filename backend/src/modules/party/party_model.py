@@ -8,13 +8,9 @@ from src.modules.student.student_model import ContactPreference, Student
 
 class PartyData(BaseModel):
     party_datetime: AwareDatetime = Field(..., description="Date and time of the party")
-    location_id: int = Field(
-        ..., description="ID of the location where the party is held"
-    )
+    location_id: int = Field(..., description="ID of the location where the party is held")
     contact_one_id: int = Field(..., description="ID of the first contact student")
-    contact_two: "Contact" = Field(
-        ..., description="Contact information for the second contact"
-    )
+    contact_two: "Contact" = Field(..., description="Contact information for the second contact")
 
 
 class Contact(BaseModel):
@@ -36,23 +32,17 @@ class Party(BaseModel):
     party_datetime: AwareDatetime = Field(..., description="Date and time of the party")
     location: Location = Field(..., description="Location where the party is held")
     contact_one: Student = Field(..., description="First contact student")
-    contact_two: Contact = Field(
-        ..., description="Contact information for the second contact"
-    )
+    contact_two: Contact = Field(..., description="Contact information for the second contact")
 
 
 class StudentCreatePartyDTO(BaseModel):
     """DTO for students creating a party registration.
     contact_one will be automatically set from the authenticated student."""
 
-    type: Literal["student"] = Field(
-        "student", description="Request type discriminator"
-    )
+    type: Literal["student"] = Field("student", description="Request type discriminator")
     party_datetime: AwareDatetime = Field(..., description="Date and time of the party")
-    place_id: str = Field(..., description="Google Maps place ID of the location")
-    contact_two: Contact = Field(
-        ..., description="Contact information for the second contact"
-    )
+    google_place_id: str = Field(..., description="Google Maps place ID of the location")
+    contact_two: Contact = Field(..., description="Contact information for the second contact")
 
 
 class AdminCreatePartyDTO(BaseModel):
@@ -61,13 +51,11 @@ class AdminCreatePartyDTO(BaseModel):
 
     type: Literal["admin"] = Field("admin", description="Request type discriminator")
     party_datetime: AwareDatetime = Field(..., description="Date and time of the party")
-    place_id: str = Field(..., description="Google Maps place ID of the location")
+    google_place_id: str = Field(..., description="Google Maps place ID of the location")
     contact_one_email: EmailStr = Field(
         ..., description="Email address of the first contact student"
     )
-    contact_two: Contact = Field(
-        ..., description="Contact information for the second contact"
-    )
+    contact_two: Contact = Field(..., description="Contact information for the second contact")
 
 
 # Discriminated union for party creation/update requests
