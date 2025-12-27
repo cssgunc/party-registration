@@ -11,7 +11,9 @@ class EntityProtocl[DtoModel: BaseModel](Protocol):
     """Protocol for entities with model translation methods for automatic conversions"""
 
     @classmethod
-    def from_model(cls, data: Any, /, *args: Any, **kwargs: Any) -> Self: ...
+    def from_model(cls, data: Any, /, *args: Any, **kwargs: Any) -> Self:
+        # Extra args to allow for entities with required fields not in the model
+        ...
 
     def to_model(self) -> DtoModel: ...
 

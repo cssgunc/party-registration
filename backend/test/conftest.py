@@ -56,6 +56,8 @@ CreateClientCallable = Callable[[StringRole | None], AsyncGenerator[AsyncClient,
 async def create_test_client(
     test_session: AsyncSession,
 ) -> CreateClientCallable:
+    """Fixture to create test HTTP clients with different authentication roles."""
+
     async def _create_test_client(role: StringRole | None):
         async def override_get_session():
             yield test_session
@@ -136,14 +138,12 @@ def mock_gmaps() -> MagicMock:
 
 @pytest.fixture()
 def mock_place():
-    """Mock for Google Maps places.place API."""
     with patch("src.modules.location.location_service.places.place") as mock:
         yield mock
 
 
 @pytest.fixture()
 def mock_autocomplete():
-    """Mock for Google Maps places.places_autocomplete API."""
     with patch("src.modules.location.location_service.places.places_autocomplete") as mock:
         yield mock
 

@@ -1,3 +1,5 @@
+"""Utility functions for asserting HTTP responses in tests."""
+
 from typing import Any, Optional, TypeVar, get_args, get_origin, overload
 
 from fastapi import HTTPException
@@ -26,6 +28,19 @@ def assert_res_success(
     *,
     status: Optional[int] = 200,
 ) -> T | list[T]:
+    """
+    Assert that a response is a successful response. Validates and converts to the expected model type.
+
+    Args:
+        res: The HTTP response to check
+        ExpectedModel: The expected Pydantic model type (or list of model type) of the response data
+        status: Optional expected HTTP status code (default 200)
+
+    Returns:
+        The response data converted to the expected model type
+        e.g. `assert_res_success(res, User)` returns `User`
+             `assert_res_success(res, [User])` returns `list[User]`
+    """
     if status is not None:
         assert res.status_code == status, (
             f"Expected status {status}, got {res.status_code}. Response: {res.text}"
@@ -44,14 +59,17 @@ def assert_res_success(
     assert data is not None, "Expected response data but got None"
 
     model_origin = get_origin(ExpectedModel)
+
+    # List model case
     if model_origin is list:
         assert isinstance(data, list), f"Expected list response but got {type(data).__name__}"
 
+        # Get the model type inside the list
         args = get_args(ExpectedModel)
         assert args is not None, "Expected type args for list model but got None"
         assert len(args) > 0, "Expected at least one type arg for list model but got empty args"
-
         inner_model = args[0]
+
         inner_fields = set(inner_model.model_fields.keys())
         for item in data:
             extra = set(item.keys()) - inner_fields
@@ -69,6 +87,16 @@ def assert_res_success(
 
 
 def assert_res_failure(res: Response, expected_error: HTTPException) -> dict[str, Any]:
+    """
+    Assert that a response is a failure response matching the expected HTTPException.
+
+    Args:
+        res: The HTTP response to check
+        expected_error: The expected HTTPException instance representing the error
+
+    Returns:
+        The response data dict containing the error details
+    """
     assert res.status_code == expected_error.status_code, (
         f"Expected status {expected_error.status_code}, got {res.status_code}. Response: {res.text}"
     )

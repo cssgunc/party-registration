@@ -10,6 +10,19 @@ all_roles: set[StringRole] = {"admin", "staff", "student", "police"}
 
 
 def generate_auth_required_tests(*params: tuple[set[StringRole], str, str, dict | None]):
+    """Generate authentication and authorization tests for HTTP endpoints.
+
+    Ensures that allowed roles can access the endpoint, disallowed roles are forbidden,
+    and unauthenticated requests are unauthorized.
+
+    Args:
+        params: A variable number of tuples, each containing:
+            - allowed_roles (set[StringRole]): Roles allowed to access the endpoint.
+            - method (str): The HTTP method (e.g., "GET", "POST").
+            - path (str): The endpoint path (e.g., "/api/resource").
+            - body (dict | None): The request body for methods like POST or PUT.
+    """
+
     @pytest.mark.parametrize("allowed_roles, method, path, body", params)
     @pytest.mark.asyncio
     async def test_authentication(
