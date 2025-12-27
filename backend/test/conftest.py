@@ -1,14 +1,19 @@
 import os
+
+os.environ["GOOGLE_MAPS_API_KEY"] = "invalid_google_maps_api_key_for_tests"
+
 from typing import Any, AsyncGenerator, Callable
 from unittest.mock import MagicMock, patch
 
 import bcrypt
 import googlemaps
+import pytest
 import pytest_asyncio
+import src.modules  # Ensure all modules are imported so their entities are registered # noqa: F401
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from src.core.authentication import StringRole
-from src.core.database import get_session
+from src.core.database import EntityBase, get_session
 from src.main import app
 from src.modules.account.account_service import AccountService
 from src.modules.complaint.complaint_service import ComplaintService
@@ -23,13 +28,6 @@ from test.modules.location.location_utils import GmapsMockUtils, LocationTestUti
 from test.modules.party.party_utils import PartyTestUtils
 from test.modules.police.police_utils import PoliceTestUtils
 from test.modules.student.student_utils import StudentTestUtils
-
-os.environ["GOOGLE_MAPS_API_KEY"] = "invalid_google_maps_api_key_for_tests"
-
-import pytest
-import src.modules  # Ensure all modules are imported so their entities are registered # noqa: F401
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from src.core.database import EntityBase
 
 DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
@@ -131,9 +129,11 @@ def student_service(test_session: AsyncSession):
     return StudentService(session=test_session)
 
 
-@pytest.fixture()
-def mock_gmaps() -> MagicMock:
-    return MagicMock(spec=googlemaps.Client)
+@pytest.fixture(autouse=True)
+def mock_gmaps():
+    mock = MagicMock(spec=googlemaps.Client)
+    with patch("googlemaps.Client", return_value=mock):
+        yield mock
 
 
 @pytest.fixture()
