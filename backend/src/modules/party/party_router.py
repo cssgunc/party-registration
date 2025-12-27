@@ -1,6 +1,6 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import Response
 from src.core.authentication import (
     authenticate_admin,
@@ -9,7 +9,7 @@ from src.core.authentication import (
     authenticate_staff_or_admin,
     authenticate_user,
 )
-from src.core.exceptions import BadRequestException, ForbiddenException
+from src.core.exceptions import BadRequestException, ForbiddenException, UnprocessableEntityException
 from src.modules.account.account_model import Account, AccountRole
 from src.modules.location.location_service import LocationService
 
@@ -52,9 +52,7 @@ async def create_party(
         return await party_service.create_party_from_student_dto(party_data, user.id)
     elif isinstance(party_data, AdminCreatePartyDTO):
         if user.role != AccountRole.ADMIN:
-            raise ForbiddenException(
-                detail="Only admins can use the admin party creation endpoint"
-            )
+            raise ForbiddenException(detail="Only admins can use the admin party creation endpoint")
         return await party_service.create_party_from_admin_dto(party_data)
     else:
         raise ForbiddenException(detail="Invalid request type")
@@ -63,9 +61,7 @@ async def create_party(
 @party_router.get("/")
 async def list_parties(
     page_number: int = Query(1, ge=1, description="Page number (1-indexed)"),
-    page_size: int | None = Query(
-        None, ge=1, le=100, description="Items per page (default: all)"
-    ),
+    page_size: int | None = Query(None, ge=1, le=100, description="Items per page (default: all)"),
     party_service: PartyService = Depends(),
     _=Depends(authenticate_by_role("admin", "staff", "police")),
 ) -> PaginatedPartiesResponse:
@@ -104,9 +100,7 @@ async def list_parties(
     parties = await party_service.get_parties(skip=skip, limit=page_size)
 
     # Calculate total pages (ceiling division)
-    total_pages = (
-        (total_records + page_size - 1) // page_size if total_records > 0 else 0
-    )
+    total_pages = (total_records + page_size - 1) // page_size if total_records > 0 else 0
 
     return PaginatedPartiesResponse(
         items=parties,
@@ -120,8 +114,8 @@ async def list_parties(
 @party_router.get("/nearby")
 async def get_parties_nearby(
     place_id: str = Query(..., description="Google Maps place ID"),
-    start_date: str = Query(..., description="Start date (YYYY-MM-DD format)"),
-    end_date: str = Query(..., description="End date (YYYY-MM-DD format)"),
+    start_date: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$", description="Start date (YYYY-MM-DD format)"),
+    end_date: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$", description="End date (YYYY-MM-DD format)"),
     party_service: PartyService = Depends(),
     location_service: LocationService = Depends(),
     _=Depends(authenticate_police_or_admin),
@@ -145,12 +139,12 @@ async def get_parties_nearby(
     """
     # Parse date strings to datetime objects
     try:
-        start_datetime = datetime.strptime(start_date, "%Y-%m-%d")
-        end_datetime = datetime.strptime(end_date, "%Y-%m-%d")
+        start_datetime = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        end_datetime = datetime.strptime(end_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
         # Set end_datetime to end of day (23:59:59)
         end_datetime = end_datetime.replace(hour=23, minute=59, second=59)
     except ValueError as e:
-        raise BadRequestException(f"Invalid date format. Expected YYYY-MM-DD: {str(e)}")
+        raise UnprocessableEntityException(f"Invalid date format. Expected YYYY-MM-DD: {str(e)}")
 
     # Validate that start_date is not greater than end_date
     if start_datetime > end_datetime:
@@ -172,8 +166,8 @@ async def get_parties_nearby(
 
 @party_router.get("/csv")
 async def get_parties_csv(
-    start_date: str = Query(..., description="Start date in YYYY-MM-DD format"),
-    end_date: str = Query(..., description="End date in YYYY-MM-DD format"),
+    start_date: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$", description="Start date in YYYY-MM-DD format"),
+    end_date: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$", description="End date in YYYY-MM-DD format"),
     party_service: PartyService = Depends(),
     _=Depends(authenticate_admin),
 ) -> Response:
@@ -194,25 +188,15 @@ async def get_parties_csv(
         start_datetime = datetime.strptime(start_date, "%Y-%m-%d")
         end_datetime = datetime.strptime(end_date, "%Y-%m-%d")
 
-        end_datetime = end_datetime.replace(
-            hour=23, minute=59, second=59, microsecond=999999
-        )
+        end_datetime = end_datetime.replace(hour=23, minute=59, second=59, microsecond=999999)
     except ValueError:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid date format. Use YYYY-MM-DD format for dates.",
-        )
+        raise UnprocessableEntityException("Invalid date format. Use YYYY-MM-DD format for dates.")
 
     # Validate that start_date is not greater than end_date
     if start_datetime > end_datetime:
-        raise HTTPException(
-            status_code=400,
-            detail="Start date must be less than or equal to end date",
-        )
+        raise BadRequestException("Start date must be less than or equal to end date")
 
-    parties = await party_service.get_parties_by_date_range(
-        start_datetime, end_datetime
-    )
+    parties = await party_service.get_parties_by_date_range(start_datetime, end_datetime)
     csv_content = await party_service.export_parties_to_csv(parties)
 
     return Response(
@@ -247,14 +231,10 @@ async def update_party(
             raise ForbiddenException(
                 detail="Only students can use the student party update endpoint"
             )
-        return await party_service.update_party_from_student_dto(
-            party_id, party_data, user.id
-        )
+        return await party_service.update_party_from_student_dto(party_id, party_data, user.id)
     elif isinstance(party_data, AdminCreatePartyDTO):
         if user.role != AccountRole.ADMIN:
-            raise ForbiddenException(
-                detail="Only admins can use the admin party update endpoint"
-            )
+            raise ForbiddenException(detail="Only admins can use the admin party update endpoint")
         return await party_service.update_party_from_admin_dto(party_id, party_data)
     else:
         raise ForbiddenException(detail="Invalid request type")

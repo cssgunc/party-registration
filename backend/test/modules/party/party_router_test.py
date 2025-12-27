@@ -390,31 +390,22 @@ class TestPartyNearbyRouter:
         assert data[0].id == party_valid.id
 
     @pytest.mark.asyncio
-    async def test_get_parties_nearby_validation_errors(self):
+    @pytest.mark.parametrize(
+        "params",
+        [
+            {"start_date": "2024-01-01", "end_date": "2024-01-02"},  # missing place_id
+            {"place_id": "ChIJtest123", "end_date": "2024-01-02"},  # missing start_date
+            {"place_id": "ChIJtest123", "start_date": "2024-01-01"},  # missing end_date
+            {"place_id": "ChIJtest123", "start_date": "01-01-2024", "end_date": "2024-01-02"},  # MM-DD-YYYY
+            {"place_id": "ChIJtest123", "start_date": "2024-01-01", "end_date": "01/02/2024"},  # MM/DD/YYYY
+            {"place_id": "ChIJtest123", "start_date": "2024/01/01", "end_date": "2024-01-02"},  # slashes
+            {"place_id": "ChIJtest123", "start_date": "2024-1-1", "end_date": "2024-01-02"},  # no leading zeros
+            {"place_id": "ChIJtest123", "start_date": "2024-01-01", "end_date": "24-01-02"},  # 2-digit year
+            {"place_id": "ChIJtest123", "start_date": "not-a-date", "end_date": "2024-01-02"},  # invalid string
+        ],
+    )
+    async def test_get_parties_nearby_validation_errors(self, params: dict[str, str]):
         """Test validation errors for nearby search."""
-        now = datetime.now(timezone.utc)
-
-        # Missing place_id
-        params = {
-            "start_date": now.strftime("%Y-%m-%d"),
-            "end_date": (now + timedelta(days=1)).strftime("%Y-%m-%d"),
-        }
-        response = await self.admin_client.get("/api/parties/nearby", params=params)
-        assert_res_validation_error(response)
-
-        # Missing start_date
-        params = {
-            "place_id": "ChIJtest123",
-            "end_date": (now + timedelta(days=1)).strftime("%Y-%m-%d"),
-        }
-        response = await self.admin_client.get("/api/parties/nearby", params=params)
-        assert_res_validation_error(response)
-
-        # Missing end_date
-        params = {
-            "place_id": "ChIJtest123",
-            "start_date": now.strftime("%Y-%m-%d"),
-        }
         response = await self.admin_client.get("/api/parties/nearby", params=params)
         assert_res_validation_error(response)
 
@@ -470,3 +461,22 @@ class TestPartyCSVRouter:
         # Verify party IDs are in CSV
         for party in parties:
             assert str(party.id) in csv_content
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "params",
+        [
+            {"end_date": "2024-01-02"},  # missing start_date
+            {"start_date": "2024-01-01"},  # missing end_date
+            {"start_date": "01-01-2024", "end_date": "2024-01-02"},  # MM-DD-YYYY
+            {"start_date": "2024-01-01", "end_date": "01/02/2024"},  # MM/DD/YYYY
+            {"start_date": "2024/01/01", "end_date": "2024-01-02"},  # slashes
+            {"start_date": "2024-1-1", "end_date": "2024-01-02"},  # no leading zeros
+            {"start_date": "2024-01-01", "end_date": "24-01-02"},  # 2-digit year
+            {"start_date": "not-a-date", "end_date": "2024-01-02"},  # invalid string
+        ],
+    )
+    async def test_get_parties_csv_validation_errors(self, params: dict[str, str]):
+        """Test validation errors for CSV export."""
+        response = await self.admin_client.get("/api/parties/csv", params=params)
+        assert_res_validation_error(response)
