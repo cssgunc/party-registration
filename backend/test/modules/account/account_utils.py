@@ -6,7 +6,7 @@ from src.modules.account.account_model import Account, AccountData
 from test.utils.resource_test_utils import ResourceTestUtils
 
 
-class AccountDict(TypedDict, total=False):
+class AccountOverrides(TypedDict, total=False):
     email: str
     first_name: str
     last_name: str
@@ -44,26 +44,28 @@ class AccountTestUtils(
 
     @override
     def get_or_default(
-        self, overrides: AccountDict | None = None, fields: set[str] | None = None
+        self, overrides: AccountOverrides | None = None, fields: set[str] | None = None
     ) -> dict:
         return super().get_or_default(overrides, fields)
 
     @override
-    async def next_dict(self, **overrides: Unpack[AccountDict]) -> dict:
+    async def next_dict(self, **overrides: Unpack[AccountOverrides]) -> dict:
         return await super().next_dict(**overrides)
 
     @override
-    async def next_data(self, **overrides: Unpack[AccountDict]) -> AccountData:
+    async def next_data(self, **overrides: Unpack[AccountOverrides]) -> AccountData:
         return await super().next_data(**overrides)
 
     @override
-    async def next_entity(self, **overrides: Unpack[AccountDict]) -> AccountEntity:
+    async def next_entity(self, **overrides: Unpack[AccountOverrides]) -> AccountEntity:
         return await super().next_entity(**overrides)
 
     @override
-    async def create_many(self, *, i: int, **overrides: Unpack[AccountDict]) -> list[AccountEntity]:
+    async def create_many(
+        self, *, i: int, **overrides: Unpack[AccountOverrides]
+    ) -> list[AccountEntity]:
         return await super().create_many(i=i, **overrides)
 
     @override
-    async def create_one(self, **overrides: Unpack[AccountDict]) -> AccountEntity:
+    async def create_one(self, **overrides: Unpack[AccountOverrides]) -> AccountEntity:
         return await super().create_one(**overrides)
