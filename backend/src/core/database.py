@@ -1,7 +1,7 @@
 from abc import abstractmethod
-from typing import AsyncGenerator, Self
-from pydantic import BaseModel
+from typing import Any, AsyncGenerator, Self
 
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
@@ -42,12 +42,10 @@ AsyncSessionLocal = async_sessionmaker(
 class EntityBase[DataModel: BaseModel, DtoModel: BaseModel](DeclarativeBase):
     @classmethod
     @abstractmethod
-    def from_model(cls, data: DataModel) -> Self:
-        ...
+    def from_model(cls, data: DataModel, /, *args: Any, **kwargs: Any) -> Self: ...
 
     @abstractmethod
-    def to_model(self) -> DtoModel:
-        ...
+    def to_model(self) -> DtoModel: ...
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
