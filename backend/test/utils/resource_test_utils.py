@@ -34,10 +34,14 @@ class ResourceTestUtils[
         delegating directly to the base class if not changing default behavior.
 
     Type Parameters:
-        ResourceEntity: The SQLAlchemy entity class that implements EntityProtocl.
-        ResourceData: The Pydantic model representing the resource's data object used to create entities.
-        OtherModels: Additional Pydantic models that may be used in assertions,
-            represented by a union if multiple models are applicable. Primarily used for typing in the assert_matches method.
+    - ResourceEntity: The SQLAlchemy entity class that implements EntityBase.
+        - Note: the default implementation expects `from_model`
+        and `to_model` methods to be present. However, these methods are not required in the type definition to allow for flexibility,
+        expecting a subclass to override `next_entity` and/or `entity_to_dict` as needed if these methods are not present.
+    - ResourceData: The Pydantic model representing the resource's data object used to create entities.
+    - OtherModels: Additional Pydantic models that may be used in assertions
+        - Represented by a union if multiple models are applicable.
+        - Primarily used for typing in the assert_matches method.
 
     Attributes:
         session (AsyncSession): The SQLAlchemy async database session.
@@ -163,7 +167,13 @@ class ResourceTestUtils[
             **overrides: Fields to override in the generated entity.
         """
         data = await self.next_data(**overrides)
-        return self._ResourceEntity.from_model(data)
+        if not hasattr(self._ResourceEntity, "from_model") or not callable(
+            getattr(self._ResourceEntity, "from_model")
+        ):
+            raise AttributeError(
+                f"{self._ResourceEntity.__name__} must implement a 'from_model' classmethod"
+            )
+        return self._ResourceEntity.from_model(data)  # type: ignore
 
     async def create_many(self, *, i: int, **overrides: Any) -> list[ResourceEntity]:
         """Create multiple resource entities in the database, applying any overrides to every entity.
@@ -196,7 +206,13 @@ class ResourceTestUtils[
 
     def entity_to_dict(self, entity: ResourceEntity) -> dict:
         """Convert a resource entity to a dict via its model representation."""
-        return entity.to_model().model_dump()
+        if not hasattr(self._ResourceEntity, "to_model") or not callable(
+            getattr(self._ResourceEntity, "to_model")
+        ):
+            raise AttributeError(
+                f"{self._ResourceEntity.__name__} must implement a 'to_model' method"
+            )
+        return entity.to_model().model_dump()  # type: ignore
 
     def assert_matches(
         self,
