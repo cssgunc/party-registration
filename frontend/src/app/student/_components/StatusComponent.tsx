@@ -5,13 +5,13 @@ import { isAfter, isBefore, startOfDay } from "date-fns";
 import Image from "next/image";
 
 type CompletionCardProps = {
-  lastRegistered: Date | null | undefined;
+  last_registered: Date | null | undefined;
   isPending?: boolean;
   error?: Error | null;
 };
 
 export default function StatusComponent({
-  lastRegistered = null,
+  last_registered = null,
   isPending = false,
   error = null,
 }: CompletionCardProps) {
@@ -49,8 +49,8 @@ export default function StatusComponent({
     : augustFirst;
 
   const isCompleted =
-    lastRegistered !== null &&
-    isAfter(startOfDay(lastRegistered), startOfDay(mostRecentAugust1));
+    last_registered !== null &&
+    isAfter(startOfDay(last_registered), startOfDay(mostRecentAugust1));
 
   return (
     <Card className="p-4 rounded-2xl shadow-sm w-full bg-white">
@@ -61,7 +61,7 @@ export default function StatusComponent({
               <Image src={checkIcon} alt="check icon" />
               <span>
                 Completed on{" "}
-                <strong>{lastRegistered?.toLocaleDateString()}</strong>
+                <strong>{last_registered?.toLocaleDateString()}</strong>
               </span>
             </div>
 

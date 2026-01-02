@@ -1,85 +1,38 @@
-import { BackendLocation, Location } from "@/lib/api/location/location.types";
 import getMockClient from "@/lib/network/mockClient";
+import { PaginatedResponse } from "@/lib/shared";
 import { AxiosInstance } from "axios";
+import {
+  AddressData,
+  AutocompleteInput,
+  AutocompleteResult,
+  convertLocation,
+  LocationCreate,
+  LocationDto,
+  LocationDtoBackend,
+} from "./location.types";
 
-export interface AutocompleteResult {
-  formatted_address: string;
-  place_id: string;
-}
-
-/**
- * Place details with coordinates
- */
-export interface PlaceDetails {
-  googlePlaceId: string;
-  formattedAddress: string;
-  latitude: number;
-  longitude: number;
-  streetNumber: string | null;
-  streetName: string | null;
-  unit: string | null;
-  city: string | null;
-  county: string | null;
-  state: string | null;
-  country: string | null;
-  zipCode: string | null;
-}
-
-export interface PaginatedLocationResponse {
-  items: Location[];
-  total_records: number;
-  page_number: number;
-  page_size: number;
-  total_pages: number;
-}
-
-export interface LocationCreatePayload {
-  google_place_id: string;
-  warning_count: number;
-  citation_count: number;
-  hold_expiration: string | null; // ISO date string or null
-}
-
-const defaultClient = getMockClient("admin");
-
-export function toFrontendLocation(raw: BackendLocation): Location {
-  return {
-    id: raw.id,
-    citationCount: raw.citation_count,
-    warningCount: raw.warning_count,
-    holdExpirationDate: raw.hold_expiration
-      ? new Date(raw.hold_expiration)
-      : null,
-    hasActiveHold: raw.has_active_hold,
-    googlePlaceId: raw.google_place_id,
-    formattedAddress: raw.formatted_address,
-    latitude: raw.latitude,
-    longitude: raw.longitude,
-    streetNumber: raw.street_number,
-    streetName: raw.street_name,
-    unit: raw.unit,
-    city: raw.city,
-    county: raw.county,
-    state: raw.state,
-    country: raw.country,
-    zipCode: raw.zip_code,
-  };
-}
+export const hasActiveHold = (holdExpiration: Date | null): boolean => {
+  if (!holdExpiration) return false;
+  const now = new Date();
+  return holdExpiration > now;
+};
 
 export class LocationService {
-  constructor(private client: AxiosInstance = defaultClient) {}
+  constructor(private client: AxiosInstance = getMockClient("admin")) {}
 
+  /**
+   * Autocomplete address search (POST /api/locations/autocomplete)
+   */
   async autocompleteAddress(inputText: string): Promise<AutocompleteResult[]> {
     if (!inputText || inputText.trim().length < 3) {
       return [];
     }
 
     try {
+      const input: AutocompleteInput = { address: inputText.trim() };
       const response = await this.client.post<AutocompleteResult[]>(
         "/locations/autocomplete",
-        {
-          address: inputText.trim(),
-        }
+        input
       );
       return response.data;
     } catch (error) {
@@ -89,84 +42,85 @@ export class LocationService {
   }
 
   /**
-   * Fetches place details including coordinates for a given place ID
+   * Get place details (GET /api/locations/place-details/{place_id})
    */
-  async getPlaceDetails(placeId: string): Promise<PlaceDetails> {
+  async getPlaceDetails(placeId: string): Promise<AddressData> {
     try {
-      const response = await this.client.get<{
-        google_place_id: string;
-        formatted_address: string;
-        latitude: number;
-        longitude: number;
-        street_number: string | null;
-        street_name: string | null;
-        unit: string | null;
-        city: string | null;
-        county: string | null;
-        state: string | null;
-        country: string | null;
-        zip_code: string | null;
-      }>(`/locations/place-details/${placeId}`);
-
-      // Map snake_case to camelCase
-      return {
-        googlePlaceId: response.data.google_place_id,
-        formattedAddress: response.data.formatted_address,
-        latitude: response.data.latitude,
-        longitude: response.data.longitude,
-        streetNumber: response.data.street_number,
-        streetName: response.data.street_name,
-        unit: response.data.unit,
-        city: response.data.city,
-        county: response.data.county,
-        state: response.data.state,
-        country: response.data.country,
-        zipCode: response.data.zip_code,
-      };
+      const response = await this.client.get<AddressData>(
+        `/locations/place-details/${placeId}`
+      );
+      return response.data;
     } catch (error) {
       console.error("Failed to fetch place details:", error);
       throw new Error("Failed to fetch place details");
     }
   }
 
-  async getLocations(): Promise<PaginatedLocationResponse> {
-    const response = await this.client.get<{
-      items: BackendLocation[];
-      total_records: number;
-      page_number: number;
-      page_size: number;
-      total_pages: number;
-    }>("/locations");
-
-    return {
-      ...response.data,
-      items: response.data.items.map(toFrontendLocation),
-    };
+  /**
+   * Get locations (GET /api/locations)
+   */
+  async getLocations(): Promise<PaginatedResponse<LocationDto>> {
+    try {
+      const response = await this.client.get<
+        PaginatedResponse<LocationDtoBackend>
+      >("/locations");
+      return {
+        ...response.data,
+        items: response.data.items.map(convertLocation),
+      };
+    } catch (error) {
+      console.error("Failed to fetch locations:", error);
+      throw new Error("Failed to fetch locations");
+    }
   }
 
-  async createLocation(payload: LocationCreatePayload): Promise<Location> {
-    const response = await this.client.post<BackendLocation>(
-      "/locations",
-      payload
-    );
-    return toFrontendLocation(response.data);
+  /**
+   * Create location (POST /api/locations)
+   */
+  async createLocation(payload: LocationCreate): Promise<LocationDto> {
+    try {
+      const response = await this.client.post<LocationDtoBackend>(
+        "/locations",
+        payload
+      );
+      return convertLocation(response.data);
+    } catch (error) {
+      console.error("Failed to create location:", error);
+      throw new Error("Failed to create location");
+    }
   }
 
+  /**
+   * Update location (PUT /api/locations/{location_id})
+   */
   async updateLocation(
     id: number,
-    payload: LocationCreatePayload
-  ): Promise<Location> {
-    const response = await this.client.put<BackendLocation>(
-      `/locations/${id}`,
-      payload
-    );
-    return toFrontendLocation(response.data);
+    payload: LocationCreate
+  ): Promise<LocationDto> {
+    try {
+      const response = await this.client.put<LocationDtoBackend>(
+        `/locations/${id}`,
+        payload
+      );
+      return convertLocation(response.data);
+    } catch (error) {
+      console.error(`Failed to update location ${id}:`, error);
+      throw new Error("Failed to update location");
+    }
   }
 
-  async deleteLocation(id: number): Promise<Location> {
-    const response = await this.client.delete<BackendLocation>(
-      `/locations/${id}`
-    );
-    return toFrontendLocation(response.data);
+  /**
+   * Delete location (DELETE /api/locations/{location_id})
+   */
+  async deleteLocation(id: number): Promise<LocationDto> {
+    try {
+      const response = await this.client.delete<LocationDtoBackend>(
+        `/locations/${id}`
+      );
+      return convertLocation(response.data);
+    } catch (error) {
+      console.error(`Failed to delete location ${id}:`, error);
+      throw new Error("Failed to delete location");
+    }
   }
 }

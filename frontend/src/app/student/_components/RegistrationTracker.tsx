@@ -1,12 +1,12 @@
 "use client";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Party } from "@/lib/api/party/party.types";
+import { PartyDto } from "@/lib/api/party/party.types";
 import { format } from "date-fns";
 import { useMemo, useState } from "react";
 
 interface RegistrationTrackerProps {
-  data: Party[] | undefined;
+  data: PartyDto[] | undefined;
   isPending?: boolean;
   error?: Error | null;
 }
@@ -31,11 +31,11 @@ export default function RegistrationTracker({
 
   const { activeParties, pastParties } = useMemo(() => {
     const now = new Date();
-    const active: Party[] = [];
-    const past: Party[] = [];
+    const active: PartyDto[] = [];
+    const past: PartyDto[] = [];
 
     parties.forEach((party) => {
-      const partyDate = new Date(party.datetime);
+      const partyDate = new Date(party.party_datetime);
       const twelveHoursAfterParty = new Date(
         partyDate.getTime() + 12 * 60 * 60 * 1000
       );
@@ -48,23 +48,30 @@ export default function RegistrationTracker({
     });
 
     active.sort(
-      (a, b) => new Date(b.datetime).getTime() - new Date(a.datetime).getTime()
+      (a, b) =>
+        new Date(b.party_datetime).getTime() -
+        new Date(a.party_datetime).getTime()
     );
     past.sort(
-      (a, b) => new Date(b.datetime).getTime() - new Date(a.datetime).getTime()
+      (a, b) =>
+        new Date(b.party_datetime).getTime() -
+        new Date(a.party_datetime).getTime()
     );
 
     return { activeParties: active, pastParties: past };
   }, [parties]);
 
-  const PartyCard = ({ party }: { party: Party }) => (
+  const PartyCard = ({ party }: { party: PartyDto }) => (
     <div className="px-4 py-4 border-b border-gray-100 last:border-b-0">
       <div className="space-y-2">
         {/* Address and Date/Time */}
         <div>
-          <div className="font-semibold">{party.location.formattedAddress}</div>
+          <div className="font-semibold">
+            {party.location.formatted_address}
+          </div>
           <div className="text-sm text-gray-600">
-            {format(party.datetime, "PPP")} at {format(party.datetime, "p")}
+            {format(party.party_datetime, "PPP")} at{" "}
+            {format(party.party_datetime, "p")}
           </div>
         </div>
 
@@ -75,14 +82,16 @@ export default function RegistrationTracker({
             <div className="text-sm font-medium text-gray-700">Contact 1:</div>
             <div className="text-sm ml-3">
               <div>
-                {party.contactOne.firstName} {party.contactOne.lastName}
+                {party.contact_one.first_name} {party.contact_one.last_name}
               </div>
-              <div>{formatPhoneNumber(party.contactOne.phoneNumber)}</div>
+              <div>{formatPhoneNumber(party.contact_one.phone_number)}</div>
               <div className="text-gray-600">
                 Prefers:{" "}
-                {party.contactOne.contactPreference
-                  ? party.contactOne.contactPreference.charAt(0).toUpperCase() +
-                    party.contactOne.contactPreference.slice(1).toLowerCase()
+                {party.contact_one.contact_preference
+                  ? party.contact_one.contact_preference
+                      .charAt(0)
+                      .toUpperCase() +
+                    party.contact_one.contact_preference.slice(1).toLowerCase()
                   : "N/A"}
               </div>
             </div>
@@ -93,14 +102,16 @@ export default function RegistrationTracker({
             <div className="text-sm font-medium text-gray-700">Contact 2:</div>
             <div className="text-sm ml-3">
               <div>
-                {party.contactTwo.firstName} {party.contactTwo.lastName}
+                {party.contact_two.first_name} {party.contact_two.last_name}
               </div>
-              <div>{formatPhoneNumber(party.contactTwo.phoneNumber)}</div>
+              <div>{formatPhoneNumber(party.contact_two.phone_number)}</div>
               <div className="text-gray-600">
                 Prefers:{" "}
-                {party.contactTwo.contactPreference
-                  ? party.contactTwo.contactPreference.charAt(0).toUpperCase() +
-                    party.contactTwo.contactPreference.slice(1).toLowerCase()
+                {party.contact_two.contact_preference
+                  ? party.contact_two.contact_preference
+                      .charAt(0)
+                      .toUpperCase() +
+                    party.contact_two.contact_preference.slice(1).toLowerCase()
                   : "N/A"}
               </div>
             </div>

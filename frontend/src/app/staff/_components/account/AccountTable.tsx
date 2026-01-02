@@ -7,14 +7,12 @@ import { useState } from "react";
 import * as z from "zod";
 import { useSidebar } from "../shared/sidebar/SidebarContext";
 import { TableTemplate } from "../shared/table/TableTemplate";
-import AccountTableCreateEditForm, {
-  AccountCreateEditValues as AccountCreateEditSchema,
-} from "./AccountTableCreateEdit";
+import AccountTableForm, { accountTableFormSchema } from "./AccountTableForm";
 
-import type { Account, AccountRole } from "@/lib/api/account/account.service";
+import type { AccountDto, AccountRole } from "@/lib/api/account/account.types";
 import { isAxiosError } from "axios";
 
-type AccountCreateEditValues = z.infer<typeof AccountCreateEditSchema>;
+type AccountTableFormValues = z.infer<typeof accountTableFormSchema>;
 
 const accountService = new AccountService();
 
@@ -22,7 +20,7 @@ export const AccountTable = () => {
   const queryClient = useQueryClient();
   const { openSidebar, closeSidebar } = useSidebar();
   const [sidebarMode, setSidebarMode] = useState<"create" | "edit">("create");
-  const [editingAccount, setEditingAccount] = useState<Account | null>(null);
+  const [editingAccount, setEditingAccount] = useState<AccountDto | null>(null);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
 
   const accountsQuery = useQuery({
@@ -36,16 +34,16 @@ export const AccountTable = () => {
     .slice()
     .sort(
       (a, b) =>
-        a.lastName.localeCompare(b.lastName) ||
-        a.firstName.localeCompare(b.firstName)
+        a.last_name.localeCompare(b.last_name) ||
+        a.first_name.localeCompare(b.first_name)
     );
 
   const createMutation = useMutation({
-    mutationFn: (data: AccountCreateEditValues) =>
+    mutationFn: (data: AccountTableFormValues) =>
       accountService.createAccount({
         email: data.email,
-        firstName: data.firstName,
-        lastName: data.lastName,
+        first_name: data.first_name,
+        last_name: data.last_name,
         pid: data.pid,
         role: data.role as AccountRole,
       }),
@@ -65,11 +63,11 @@ export const AccountTable = () => {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: AccountCreateEditValues }) =>
+    mutationFn: ({ id, data }: { id: number; data: AccountTableFormValues }) =>
       accountService.updateAccount(id, {
         email: data.email,
-        firstName: data.firstName,
-        lastName: data.lastName,
+        first_name: data.first_name,
+        last_name: data.last_name,
         pid: data.pid,
         role: data.role as AccountRole,
       }),
@@ -91,9 +89,9 @@ export const AccountTable = () => {
     onMutate: async (id: number) => {
       await queryClient.cancelQueries({ queryKey: ["accounts"] });
 
-      const previous = queryClient.getQueryData<Account[]>(["accounts"]);
+      const previous = queryClient.getQueryData<AccountDto[]>(["accounts"]);
 
-      queryClient.setQueryData<Account[] | undefined>(["accounts"], (old) =>
+      queryClient.setQueryData<AccountDto[] | undefined>(["accounts"], (old) =>
         old?.filter((a) => a.id !== id)
       );
 
@@ -110,7 +108,7 @@ export const AccountTable = () => {
     },
   });
 
-  const handleEdit = (account: Account) => {
+  const handleEdit = (account: AccountDto) => {
     setEditingAccount(account);
     setSidebarMode("edit");
     setSubmissionError(null);
@@ -118,14 +116,14 @@ export const AccountTable = () => {
       `edit-account-${account.id}`,
       "Edit Account",
       "Update account information",
-      <AccountTableCreateEditForm
+      <AccountTableForm
         title="Edit Account"
         onSubmit={handleFormSubmit}
         submissionError={submissionError}
         editData={{
           email: account.email,
-          firstName: account.firstName,
-          lastName: account.lastName,
+          first_name: account.first_name,
+          last_name: account.last_name,
           role: account.role,
           pid: account.pid ?? "",
         }}
@@ -133,7 +131,7 @@ export const AccountTable = () => {
     );
   };
 
-  const handleDelete = (account: Account) => {
+  const handleDelete = (account: AccountDto) => {
     deleteMutation.mutate(account.id);
   };
 
@@ -145,7 +143,7 @@ export const AccountTable = () => {
       "create-account",
       "New Account",
       "Add a new account to the system",
-      <AccountTableCreateEditForm
+      <AccountTableForm
         title="New Account"
         onSubmit={handleFormSubmit}
         submissionError={submissionError}
@@ -153,7 +151,7 @@ export const AccountTable = () => {
     );
   };
 
-  const handleFormSubmit = async (data: AccountCreateEditValues) => {
+  const handleFormSubmit = async (data: AccountTableFormValues) => {
     if (sidebarMode === "edit" && editingAccount) {
       updateMutation.mutate({ id: editingAccount.id, data });
     } else if (sidebarMode === "create") {
@@ -161,19 +159,19 @@ export const AccountTable = () => {
     }
   };
 
-  const columns: ColumnDef<Account>[] = [
+  const columns: ColumnDef<AccountDto>[] = [
     {
       accessorKey: "email",
       header: "Email",
       enableColumnFilter: true,
     },
     {
-      accessorKey: "firstName",
+      accessorKey: "first_name",
       header: "First Name",
       enableColumnFilter: true,
     },
     {
-      accessorKey: "lastName",
+      accessorKey: "last_name",
       header: "Last Name",
       enableColumnFilter: true,
     },
@@ -195,7 +193,7 @@ export const AccountTable = () => {
         onCreateNew={handleCreate}
         isLoading={accountsQuery.isLoading}
         error={accountsQuery.error as Error | null}
-        getDeleteDescription={(account: Account) =>
+        getDeleteDescription={(account: AccountDto) =>
           `Are you sure you want to delete account ${account.email}? This action cannot be undone.`
         }
         isDeleting={deleteMutation.isPending}

@@ -16,48 +16,46 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  AutocompleteResult,
-  LocationService,
-} from "@/lib/api/location/location.service";
+import { LocationService } from "@/lib/api/location/location.service";
+import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { addBusinessDays, format, isAfter, startOfDay } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { useState } from "react";
 import * as z from "zod";
 
-export const LocationCreateEditSchema = z.object({
+export const locationTableFormSchema = z.object({
   address: z.string().min(1, "Address is required"),
   placeId: z
     .string()
     .min(1, "Please select an address from the search results"),
   holdExpiration: z.date().nullable(),
-  warningCount: z.number(),
-  citationCount: z.number(),
+  warning_count: z.number(),
+  citation_count: z.number(),
 });
 
-type LocationCreateEditValues = z.infer<typeof LocationCreateEditSchema>;
+type LocationTableFormValues = z.infer<typeof locationTableFormSchema>;
 
-interface StudentRegistrationFormProps {
-  onSubmit: (data: LocationCreateEditValues) => void | Promise<void>;
-  editData?: LocationCreateEditValues;
+interface LocationTableFormProps {
+  onSubmit: (data: LocationTableFormValues) => void | Promise<void>;
+  editData?: LocationTableFormValues;
   submissionError?: string | null;
   title?: string;
 }
 
-export default function LocationTableCreateEditForm({
+export default function LocationTableForm({
   onSubmit,
   editData,
   submissionError,
   title,
-}: StudentRegistrationFormProps) {
+}: LocationTableFormProps) {
   const locationService = new LocationService();
 
-  const [formData, setFormData] = useState<Partial<LocationCreateEditValues>>({
+  const [formData, setFormData] = useState<Partial<LocationTableFormValues>>({
     address: editData?.address ?? "",
     placeId: editData?.placeId ?? undefined,
     holdExpiration: editData?.holdExpiration ?? null,
-    warningCount: editData?.warningCount ?? 0,
-    citationCount: editData?.citationCount ?? 0,
+    warning_count: editData?.warning_count ?? 0,
+    citation_count: editData?.citation_count ?? 0,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -66,7 +64,7 @@ export default function LocationTableCreateEditForm({
     e.preventDefault();
     setErrors({});
 
-    const result = LocationCreateEditSchema.safeParse(formData);
+    const result = locationTableFormSchema.safeParse(formData);
 
     if (!result.success) {
       const fieldErrors: Record<string, string> = {};
@@ -91,7 +89,7 @@ export default function LocationTableCreateEditForm({
     setFormData((prev) => ({
       ...prev,
       address: address?.formatted_address || "",
-      placeId: address?.place_id || undefined,
+      placeId: address?.google_place_id || undefined,
     }));
     if (errors.address) {
       setErrors((prev) => {
@@ -102,9 +100,9 @@ export default function LocationTableCreateEditForm({
     }
   };
 
-  const updateField = <K extends keyof LocationCreateEditValues>(
+  const updateField = <K extends keyof LocationTableFormValues>(
     field: K,
-    value: LocationCreateEditValues[K]
+    value: LocationTableFormValues[K]
   ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
@@ -182,37 +180,37 @@ export default function LocationTableCreateEditForm({
             )}
           </Field>
 
-          <Field data-invalid={!!errors.warningCount}>
+          <Field data-invalid={!!errors.warning_count}>
             <FieldLabel htmlFor="warning-count">Warning count</FieldLabel>
             <Input
-              value={formData.warningCount}
+              value={formData.warning_count}
               onChange={(e) =>
-                updateField("warningCount", Number(e.target.value))
+                updateField("warning_count", Number(e.target.value))
               }
               id="warning-count"
               type="number"
               min={0}
               step={1}
             />
-            {errors.warningCount && (
-              <FieldError>{errors.warningCount}</FieldError>
+            {errors.warning_count && (
+              <FieldError>{errors.warning_count}</FieldError>
             )}
           </Field>
 
-          <Field data-invalid={!!errors.citationCount}>
+          <Field data-invalid={!!errors.citation_count}>
             <FieldLabel htmlFor="citation-count">Citation count</FieldLabel>
             <Input
-              value={formData.citationCount}
+              value={formData.citation_count}
               onChange={(e) =>
-                updateField("citationCount", Number(e.target.value))
+                updateField("citation_count", Number(e.target.value))
               }
               id="warning-count"
               type="number"
               min={0}
               step={1}
             />
-            {errors.citationCount && (
-              <FieldError>{errors.citationCount}</FieldError>
+            {errors.citation_count && (
+              <FieldError>{errors.citation_count}</FieldError>
             )}
           </Field>
 

@@ -1,22 +1,20 @@
 "use client";
 
-import DateRangeFilter from "@/app/police/_components/DateRangeFilter";
+import DateRangeFilter from "@/components/DateRangeFilter";
 import EmbeddedMap from "@/app/police/_components/EmbeddedMap";
 import PartyList from "@/app/police/_components/PartyList";
 import AddressSearch from "@/components/AddressSearch";
-import {
-  AutocompleteResult,
-  LocationService,
-} from "@/lib/api/location/location.service";
-import { Party } from "@/lib/api/party/party.types";
+import { LocationService } from "@/lib/api/location/location.service";
+import { AutocompleteResult } from "@/lib/api/location/location.types";
+import { PartyService } from "@/lib/api/party/party.service";
+import { PartyDto } from "@/lib/api/party/party.types";
 import getMockClient from "@/lib/network/mockClient";
-import { policeService } from "@/lib/network/policeService";
 import { useQuery } from "@tanstack/react-query";
 import { startOfDay } from "date-fns";
 import { useEffect, useMemo, useState } from "react";
 
-// Create police-authenticated location service (module-level to prevent recreation)
 const policeLocationService = new LocationService(getMockClient("police"));
+const partyService = new PartyService(getMockClient("police"));
 
 export default function PolicePage() {
   const today = startOfDay(new Date());
@@ -25,14 +23,14 @@ export default function PolicePage() {
   const [searchAddress, setSearchAddress] = useState<AutocompleteResult | null>(
     null
   );
-  const [activeParty, setActiveParty] = useState<Party | undefined>();
+  const [activeParty, setActiveParty] = useState<PartyDto | undefined>();
 
   // Fetch place details when address is selected
   const { data: placeDetails } = useQuery({
-    queryKey: ["place-details", searchAddress?.place_id],
+    queryKey: ["place-details", searchAddress?.google_place_id],
     queryFn: () =>
-      policeLocationService.getPlaceDetails(searchAddress!.place_id),
-    enabled: !!searchAddress?.place_id,
+      policeLocationService.getPlaceDetails(searchAddress!.google_place_id),
+    enabled: !!searchAddress?.google_place_id,
   });
 
   // Fetch parties using Tanstack Query
@@ -41,21 +39,29 @@ export default function PolicePage() {
     isLoading,
     error,
   } = useQuery({
-    queryKey: ["parties", startDate, endDate],
-    queryFn: () => policeService.getParties(startDate, endDate),
+    queryKey: ["parties"],
+    queryFn: async () => {
+      const page = await partyService.listParties();
+      return page.items;
+    }, // TODO: add date filtering
     enabled: !!startDate && !!endDate,
   });
 
   // Fetch nearby parties if address search is active
   const { data: nearbyParties, isLoading: isLoadingNearby } = useQuery({
-    queryKey: ["parties-nearby", searchAddress?.place_id, startDate, endDate],
+    queryKey: [
+      "parties-nearby",
+      searchAddress?.google_place_id,
+      startDate,
+      endDate,
+    ],
     queryFn: () =>
-      policeService.getPartiesNearby(
-        searchAddress!.place_id,
+      partyService.getPartiesNearby(
+        searchAddress!.google_place_id,
         startDate!,
         endDate!
       ),
-    enabled: !!searchAddress?.place_id && !!startDate && !!endDate,
+    enabled: !!searchAddress?.google_place_id && !!startDate && !!endDate,
   });
 
   // Use nearby parties if address search is active, otherwise use all parties
@@ -66,7 +72,7 @@ export default function PolicePage() {
   }, [allParties, nearbyParties, searchAddress]);
 
   // Handle party selection from the list
-  function handleActiveParty(party: Party | null): void {
+  function handleActiveParty(party: PartyDto | null): void {
     setActiveParty(party ?? undefined);
     console.log("Active party set to:", party);
   }
@@ -101,7 +107,7 @@ export default function PolicePage() {
             />
           </div>
 
-          {/* Party Search Section */}
+          {/* Dto Search Section */}
           <div className="px-6 py-4 flex-shrink-0 border-b border-gray-200">
             <h2 className="text-xl font-semibold mb-4 flex-shrink-0">
               Proximity Search

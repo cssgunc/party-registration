@@ -27,39 +27,39 @@ import { CalendarIcon } from "lucide-react";
 import { useState } from "react";
 import * as z from "zod";
 
-export const StudentCreateEditValues = z.object({
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Second name is required"),
+export const studentTableFormSchema = z.object({
+  first_name: z.string().min(1, "First name is required"),
+  last_name: z.string().min(1, "Second name is required"),
   email: z.email("Please enter a valid email").min(1, "Email is required"),
-  phoneNumber: z.string().min(1, "Phone number is required"),
-  contactPreference: z.enum(["call", "text"]),
-  lastRegistered: z.date().nullable(),
+  phone_number: z.string().min(1, "Phone number is required"),
+  contact_preference: z.enum(["call", "text"]),
+  last_registered: z.date().nullable(),
   pid: z.string().length(9, "Please input a valid PID"),
 });
 
-type StudentCreateEditValues = z.infer<typeof StudentCreateEditValues>;
+type StudentTableFormValues = z.infer<typeof studentTableFormSchema>;
 
-interface StudentRegistrationFormProps {
-  onSubmit: (data: StudentCreateEditValues) => void | Promise<void>;
-  editData?: StudentCreateEditValues;
+interface StudentTableFormProps {
+  onSubmit: (data: StudentTableFormValues) => void | Promise<void>;
+  editData?: StudentTableFormValues;
   submissionError?: string | null;
   title?: string;
 }
 
-export default function StudentTableCreateEditForm({
+export default function StudentTableForm({
   onSubmit,
   editData,
   submissionError,
   title,
-}: StudentRegistrationFormProps) {
-  const [formData, setFormData] = useState<Partial<StudentCreateEditValues>>({
+}: StudentTableFormProps) {
+  const [formData, setFormData] = useState<Partial<StudentTableFormValues>>({
     pid: editData?.pid ?? "",
-    firstName: editData?.firstName ?? "",
-    lastName: editData?.lastName ?? "",
+    first_name: editData?.first_name ?? "",
+    last_name: editData?.last_name ?? "",
     email: editData?.email ?? "",
-    phoneNumber: editData?.phoneNumber ?? "",
-    contactPreference: editData?.contactPreference ?? undefined,
-    lastRegistered: editData?.lastRegistered ?? null,
+    phone_number: editData?.phone_number ?? "",
+    contact_preference: editData?.contact_preference ?? undefined,
+    last_registered: editData?.last_registered ?? null,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -68,7 +68,7 @@ export default function StudentTableCreateEditForm({
     e.preventDefault();
     setErrors({});
 
-    const result = StudentCreateEditValues.safeParse(formData);
+    const result = studentTableFormSchema.safeParse(formData);
 
     if (!result.success) {
       const fieldErrors: Record<string, string> = {};
@@ -89,9 +89,9 @@ export default function StudentTableCreateEditForm({
     }
   };
 
-  const updateField = <K extends keyof StudentCreateEditValues>(
+  const updateField = <K extends keyof StudentTableFormValues>(
     field: K,
-    value: StudentCreateEditValues[K]
+    value: StudentTableFormValues[K]
   ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
@@ -127,28 +127,28 @@ export default function StudentTableCreateEditForm({
             />
             {errors.pid && <FieldError>{errors.pid}</FieldError>}
           </Field>
-          <Field data-invalid={!!errors.firstName}>
+          <Field data-invalid={!!errors.first_name}>
             <FieldLabel htmlFor="first-name">First name</FieldLabel>
             <Input
               id="first-name"
               placeholder="John"
-              value={formData.firstName}
-              onChange={(e) => updateField("firstName", e.target.value)}
-              aria-invalid={!!errors.firstName}
+              value={formData.first_name}
+              onChange={(e) => updateField("first_name", e.target.value)}
+              aria-invalid={!!errors.first_name}
             />
-            {errors.firstName && <FieldError>{errors.firstName}</FieldError>}
+            {errors.first_name && <FieldError>{errors.first_name}</FieldError>}
           </Field>
 
-          <Field data-invalid={!!errors.lastName}>
+          <Field data-invalid={!!errors.last_name}>
             <FieldLabel htmlFor="last-name">Last name</FieldLabel>
             <Input
               id="last-name"
               placeholder="Doe"
-              value={formData.lastName}
-              onChange={(e) => updateField("lastName", e.target.value)}
-              aria-invalid={!!errors.lastName}
+              value={formData.last_name}
+              onChange={(e) => updateField("last_name", e.target.value)}
+              aria-invalid={!!errors.last_name}
             />
-            {errors.lastName && <FieldError>{errors.lastName}</FieldError>}
+            {errors.last_name && <FieldError>{errors.last_name}</FieldError>}
           </Field>
 
           <Field data-invalid={!!errors.email}>
@@ -164,21 +164,21 @@ export default function StudentTableCreateEditForm({
             {errors.email && <FieldError>{errors.email}</FieldError>}
           </Field>
 
-          <Field data-invalid={!!errors.phoneNumber}>
+          <Field data-invalid={!!errors.phone_number}>
             <FieldLabel htmlFor="phone-number">Phone Number</FieldLabel>
             <Input
               id="phone-number"
               placeholder="(123) 456-7890"
-              value={formData.phoneNumber}
-              onChange={(e) => updateField("phoneNumber", e.target.value)}
-              aria-invalid={!!errors.phoneNumber}
+              value={formData.phone_number}
+              onChange={(e) => updateField("phone_number", e.target.value)}
+              aria-invalid={!!errors.phone_number}
             />
-            {errors.phoneNumber && (
-              <FieldError>{errors.phoneNumber}</FieldError>
+            {errors.phone_number && (
+              <FieldError>{errors.phone_number}</FieldError>
             )}
           </Field>
 
-          <Field data-invalid={!!errors.lastRegistered}>
+          <Field data-invalid={!!errors.last_registered}>
             <FieldLabel htmlFor="party-date">Last registered</FieldLabel>
             <Popover>
               <PopoverTrigger asChild>
@@ -186,11 +186,11 @@ export default function StudentTableCreateEditForm({
                   id="party-date"
                   variant="outline"
                   className={`w-full justify-start text-left font-normal ${
-                    !formData.lastRegistered && "text-muted-foreground"
+                    !formData.last_registered && "text-muted-foreground"
                   }`}
                 >
-                  {formData.lastRegistered ? (
-                    format(formData.lastRegistered, "PPP")
+                  {formData.last_registered ? (
+                    format(formData.last_registered, "PPP")
                   ) : (
                     <span>Pick a date</span>
                   )}
@@ -200,9 +200,9 @@ export default function StudentTableCreateEditForm({
               <PopoverContent className="w-auto p-0" align="start">
                 <Calendar
                   mode="single"
-                  selected={formData.lastRegistered || undefined}
+                  selected={formData.last_registered || undefined}
                   onSelect={(date) =>
-                    updateField("lastRegistered", date ?? null)
+                    updateField("last_registered", date ?? null)
                   }
                   disabled={(date) =>
                     isAfter(
@@ -213,19 +213,19 @@ export default function StudentTableCreateEditForm({
                 />
               </PopoverContent>
             </Popover>
-            {errors.lastRegistered && (
-              <FieldError>{errors.lastRegistered}</FieldError>
+            {errors.last_registered && (
+              <FieldError>{errors.last_registered}</FieldError>
             )}
           </Field>
 
-          <Field data-invalid={!!errors.contactPreference}>
+          <Field data-invalid={!!errors.contact_preference}>
             <FieldLabel htmlFor="contact-preference">
               Contact Preference
             </FieldLabel>
             <Select
-              value={formData.contactPreference}
+              value={formData.contact_preference}
               onValueChange={(value) =>
-                updateField("contactPreference", value as "call" | "text")
+                updateField("contact_preference", value as "call" | "text")
               }
             >
               <SelectTrigger id="contact-two-preference">
@@ -236,8 +236,8 @@ export default function StudentTableCreateEditForm({
                 <SelectItem value="text">Text</SelectItem>
               </SelectContent>
             </Select>
-            {errors.contactPreference && (
-              <FieldError>{errors.contactPreference}</FieldError>
+            {errors.contact_preference && (
+              <FieldError>{errors.contact_preference}</FieldError>
             )}
           </Field>
 

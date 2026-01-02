@@ -1,47 +1,81 @@
-type Student = {
-  id: number;
-  pid: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  phoneNumber: string;
-  contactPreference: "call" | "text";
-  lastRegistered: Date | null;
+/**
+ * Contact preference enum matching backend
+ */
+type ContactPreference = "call" | "text";
+
+/**
+ * Student data without names
+ */
+type StudentData = {
+  contact_preference: ContactPreference;
+  last_registered: Date | null;
+  phone_number: string;
 };
 
 /**
- * Contact information (API format with snake_case)
- * This is what the backend returns and expects
+ * Student data including names
  */
-type BackendContact = {
+type StudentDataWithNames = StudentData & {
+  first_name: string;
+  last_name: string;
+};
+
+/**
+ * Student DTO
+ */
+type StudentDto = {
+  id: number;
+  pid: string;
   email: string;
   first_name: string;
   last_name: string;
   phone_number: string;
-  contact_preference: "call" | "text";
+  contact_preference: ContactPreference;
+  last_registered: Date | null;
 };
 
 /**
- * Contact information (Frontend format with camelCase)
- * This is what the frontend components use
+ * Student DTO (backend response format with string dates)
  */
-type Contact = {
-  email: string;
-  firstName: string;
-  lastName: string;
-  phoneNumber: string;
-  contactPreference: "call" | "text";
+type StudentDtoBackend = Omit<StudentDto, "last_registered"> & {
+  last_registered: string | null;
 };
 
 /**
- * Paginated response from the student list API
+ * Convert student from backend format (string dates) to frontend format (Date objects)
  */
-type PaginatedStudentsResponse = {
-  items: Student[];
-  total_records: number;
-  page_size: number;
-  page_number: number;
-  total_pages: number;
+function convertStudent(backend: StudentDtoBackend): StudentDto {
+  return {
+    ...backend,
+    last_registered: backend.last_registered
+      ? new Date(backend.last_registered)
+      : null,
+  };
+}
+
+/**
+ * Request body for creating a student (admin)
+ */
+type StudentCreate = {
+  account_id: number;
+  data: StudentDataWithNames;
 };
 
-export type { BackendContact, Contact, PaginatedStudentsResponse, Student };
+/**
+ * Request body for updating student registration status
+ */
+type IsRegisteredUpdate = {
+  is_registered: boolean;
+};
+
+export type {
+  ContactPreference,
+  IsRegisteredUpdate,
+  StudentCreate,
+  StudentData,
+  StudentDataWithNames,
+  StudentDto,
+  StudentDtoBackend,
+};
+
+export { convertStudent };
