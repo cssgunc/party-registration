@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Self
 from sqlalchemy import DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column, relationship
 from src.core.database import EntityBase
-from src.modules.complaint.complaint_model import Complaint, ComplaintData
+from src.modules.complaint.complaint_model import ComplaintData, ComplaintDto
 
 if TYPE_CHECKING:
     from src.modules.location.location_entity import LocationEntity
@@ -26,16 +26,16 @@ class ComplaintEntity(MappedAsDataclass, EntityBase):
     )
 
     @classmethod
-    def from_model(cls, data: ComplaintData) -> Self:
+    def from_data(cls, data: ComplaintData) -> Self:
         return cls(
             location_id=data.location_id,
             complaint_datetime=data.complaint_datetime,
             description=data.description,
         )
 
-    def to_model(self) -> Complaint:
+    def to_dto(self) -> ComplaintDto:
         """Convert entity to model."""
-        return Complaint(
+        return ComplaintDto(
             id=self.id,
             location_id=self.location_id,
             complaint_datetime=self.complaint_datetime,

@@ -3,7 +3,7 @@ from typing import Any, TypedDict, Unpack, override
 import bcrypt
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.modules.police.police_entity import PoliceEntity
-from src.modules.police.police_model import PoliceAccount, PoliceAccountUpdate
+from src.modules.police.police_model import PoliceAccountDto, PoliceAccountUpdate
 from test.utils.resource_test_utils import ResourceTestUtils
 
 
@@ -21,7 +21,7 @@ class PoliceTestUtils(
     ResourceTestUtils[
         PoliceEntity,
         PoliceAccountUpdate,
-        PoliceAccount,
+        PoliceAccountDto,
     ]
 ):
     TEST_PASSWORD = "testpassword123"
@@ -67,8 +67,8 @@ class PoliceTestUtils(
     @override
     def assert_matches(
         self,
-        resource1: PoliceEntity | PoliceAccountUpdate | PoliceAccount | None,
-        resource2: PoliceEntity | PoliceAccountUpdate | PoliceAccount | None,
+        resource1: PoliceEntity | PoliceAccountUpdate | PoliceAccountDto | None,
+        resource2: PoliceEntity | PoliceAccountUpdate | PoliceAccountDto | None,
     ) -> None:
         """Assert that two police resources match."""
         assert resource1 is not None, "First resource is None"

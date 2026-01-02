@@ -3,7 +3,7 @@ from typing import Any, TypedDict, Unpack, override
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.modules.complaint.complaint_entity import ComplaintEntity
-from src.modules.complaint.complaint_model import Complaint, ComplaintData
+from src.modules.complaint.complaint_model import ComplaintData, ComplaintDto
 from test.modules.location.location_utils import LocationTestUtils
 from test.utils.resource_test_utils import ResourceTestUtils
 
@@ -18,7 +18,7 @@ class ComplaintTestUtils(
     ResourceTestUtils[
         ComplaintEntity,
         ComplaintData,
-        Complaint,
+        ComplaintDto,
     ]
 ):
     def __init__(self, session: AsyncSession, location_utils: LocationTestUtils):

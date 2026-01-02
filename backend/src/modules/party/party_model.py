@@ -2,18 +2,18 @@ from typing import Annotated, Literal, Union
 
 from pydantic import AwareDatetime, BaseModel, EmailStr, Field
 from src.core.models import PaginatedResponse
-from src.modules.location.location_model import Location
-from src.modules.student.student_model import ContactPreference, Student
+from src.modules.location.location_model import LocationDto
+from src.modules.student.student_model import ContactPreference, StudentDto
 
 
 class PartyData(BaseModel):
     party_datetime: AwareDatetime = Field(..., description="Date and time of the party")
     location_id: int = Field(..., description="ID of the location where the party is held")
     contact_one_id: int = Field(..., description="ID of the first contact student")
-    contact_two: "Contact" = Field(..., description="Contact information for the second contact")
+    contact_two: "ContactDto" = Field(..., description="Contact information for the second contact")
 
 
-class Contact(BaseModel):
+class ContactDto(BaseModel):
     """DTO for contact information (contact_two in party registration)."""
 
     email: EmailStr = Field(..., description="Email address of the contact")
@@ -27,25 +27,25 @@ class Contact(BaseModel):
     )
 
 
-class Party(BaseModel):
+class PartyDto(BaseModel):
     id: int
     party_datetime: AwareDatetime = Field(..., description="Date and time of the party")
-    location: Location = Field(..., description="Location where the party is held")
-    contact_one: Student = Field(..., description="First contact student")
-    contact_two: Contact = Field(..., description="Contact information for the second contact")
+    location: LocationDto = Field(..., description="Location where the party is held")
+    contact_one: StudentDto = Field(..., description="First contact student")
+    contact_two: ContactDto = Field(..., description="Contact information for the second contact")
 
 
-class StudentCreatePartyDTO(BaseModel):
+class StudentCreatePartyDto(BaseModel):
     """DTO for students creating a party registration.
     contact_one will be automatically set from the authenticated student."""
 
     type: Literal["student"] = Field("student", description="Request type discriminator")
     party_datetime: AwareDatetime = Field(..., description="Date and time of the party")
     google_place_id: str = Field(..., description="Google Maps place ID of the location")
-    contact_two: Contact = Field(..., description="Contact information for the second contact")
+    contact_two: ContactDto = Field(..., description="Contact information for the second contact")
 
 
-class AdminCreatePartyDTO(BaseModel):
+class AdminCreatePartyDto(BaseModel):
     """DTO for admins creating or updating a party registration.
     Both contacts must be explicitly specified."""
 
@@ -55,13 +55,13 @@ class AdminCreatePartyDTO(BaseModel):
     contact_one_email: EmailStr = Field(
         ..., description="Email address of the first contact student"
     )
-    contact_two: Contact = Field(..., description="Contact information for the second contact")
+    contact_two: ContactDto = Field(..., description="Contact information for the second contact")
 
 
 # Discriminated union for party creation/update requests
-CreatePartyDTO = Annotated[
-    Union[StudentCreatePartyDTO, AdminCreatePartyDTO], Field(discriminator="type")
+CreatePartyDto = Annotated[
+    Union[StudentCreatePartyDto, AdminCreatePartyDto], Field(discriminator="type")
 ]
 
 
-PaginatedPartiesResponse = PaginatedResponse[Party]
+PaginatedPartiesResponse = PaginatedResponse[PartyDto]

@@ -9,16 +9,20 @@ from src.core.authentication import (
     authenticate_staff_or_admin,
     authenticate_user,
 )
-from src.core.exceptions import BadRequestException, ForbiddenException, UnprocessableEntityException
-from src.modules.account.account_model import Account, AccountRole
+from src.core.exceptions import (
+    BadRequestException,
+    ForbiddenException,
+    UnprocessableEntityException,
+)
+from src.modules.account.account_model import AccountDto, AccountRole
 from src.modules.location.location_service import LocationService
 
 from .party_model import (
-    AdminCreatePartyDTO,
-    CreatePartyDTO,
+    AdminCreatePartyDto,
+    CreatePartyDto,
     PaginatedPartiesResponse,
-    Party,
-    StudentCreatePartyDTO,
+    PartyDto,
+    StudentCreatePartyDto,
 )
 from .party_service import PartyService
 
@@ -27,10 +31,10 @@ party_router = APIRouter(prefix="/api/parties", tags=["parties"])
 
 @party_router.post("/", status_code=201)
 async def create_party(
-    party_data: CreatePartyDTO,
+    party_data: CreatePartyDto,
     party_service: PartyService = Depends(),
-    user: Account = Depends(authenticate_user),
-) -> Party:
+    user: AccountDto = Depends(authenticate_user),
+) -> PartyDto:
     """
     Create a new party registration.
 
@@ -44,13 +48,13 @@ async def create_party(
     If contact_two's email doesn't exist in the system, a new student account will be created.
     """
     # Validate that the DTO type matches the user's role
-    if isinstance(party_data, StudentCreatePartyDTO):
+    if isinstance(party_data, StudentCreatePartyDto):
         if user.role != AccountRole.STUDENT:
             raise ForbiddenException(
                 detail="Only students can use the student party creation endpoint"
             )
         return await party_service.create_party_from_student_dto(party_data, user.id)
-    elif isinstance(party_data, AdminCreatePartyDTO):
+    elif isinstance(party_data, AdminCreatePartyDto):
         if user.role != AccountRole.ADMIN:
             raise ForbiddenException(detail="Only admins can use the admin party creation endpoint")
         return await party_service.create_party_from_admin_dto(party_data)
@@ -114,12 +118,16 @@ async def list_parties(
 @party_router.get("/nearby")
 async def get_parties_nearby(
     place_id: str = Query(..., description="Google Maps place ID"),
-    start_date: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$", description="Start date (YYYY-MM-DD format)"),
-    end_date: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$", description="End date (YYYY-MM-DD format)"),
+    start_date: str = Query(
+        ..., pattern=r"^\d{4}-\d{2}-\d{2}$", description="Start date (YYYY-MM-DD format)"
+    ),
+    end_date: str = Query(
+        ..., pattern=r"^\d{4}-\d{2}-\d{2}$", description="End date (YYYY-MM-DD format)"
+    ),
     party_service: PartyService = Depends(),
     location_service: LocationService = Depends(),
     _=Depends(authenticate_police_or_admin),
-) -> list[Party]:
+) -> list[PartyDto]:
     """
     Returns parties within a radius of a location specified by Google Maps place ID,
     filtered by date range.
@@ -166,8 +174,12 @@ async def get_parties_nearby(
 
 @party_router.get("/csv")
 async def get_parties_csv(
-    start_date: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$", description="Start date in YYYY-MM-DD format"),
-    end_date: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$", description="End date in YYYY-MM-DD format"),
+    start_date: str = Query(
+        ..., pattern=r"^\d{4}-\d{2}-\d{2}$", description="Start date in YYYY-MM-DD format"
+    ),
+    end_date: str = Query(
+        ..., pattern=r"^\d{4}-\d{2}-\d{2}$", description="End date in YYYY-MM-DD format"
+    ),
     party_service: PartyService = Depends(),
     _=Depends(authenticate_admin),
 ) -> Response:
@@ -209,10 +221,10 @@ async def get_parties_csv(
 @party_router.put("/{party_id}")
 async def update_party(
     party_id: int,
-    party_data: CreatePartyDTO,
+    party_data: CreatePartyDto,
     party_service: PartyService = Depends(),
-    user: Account = Depends(authenticate_user),
-) -> Party:
+    user: AccountDto = Depends(authenticate_user),
+) -> PartyDto:
     """
     Update an existing party registration.
 
@@ -226,13 +238,13 @@ async def update_party(
     If contact_two's email doesn't exist in the system, a new student account will be created.
     """
     # Validate that the DTO type matches the user's role
-    if isinstance(party_data, StudentCreatePartyDTO):
+    if isinstance(party_data, StudentCreatePartyDto):
         if user.role != AccountRole.STUDENT:
             raise ForbiddenException(
                 detail="Only students can use the student party update endpoint"
             )
         return await party_service.update_party_from_student_dto(party_id, party_data, user.id)
-    elif isinstance(party_data, AdminCreatePartyDTO):
+    elif isinstance(party_data, AdminCreatePartyDto):
         if user.role != AccountRole.ADMIN:
             raise ForbiddenException(detail="Only admins can use the admin party update endpoint")
         return await party_service.update_party_from_admin_dto(party_id, party_data)
@@ -245,7 +257,7 @@ async def get_party(
     party_id: int,
     party_service: PartyService = Depends(),
     _=Depends(authenticate_staff_or_admin),
-) -> Party:
+) -> PartyDto:
     """
     Returns a party registration by ID.
 
@@ -266,7 +278,7 @@ async def delete_party(
     party_id: int,
     party_service: PartyService = Depends(),
     _=Depends(authenticate_admin),
-) -> Party:
+) -> PartyDto:
     """
     Deletes a party registration by ID.
 

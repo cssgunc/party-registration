@@ -7,10 +7,10 @@ from src.modules.student.student_entity import StudentEntity
 from src.modules.student.student_model import (
     ContactPreference,
     DbStudent,
-    Student,
     StudentCreate,
     StudentData,
     StudentDataWithNames,
+    StudentDto,
 )
 from test.modules.account.account_utils import AccountTestUtils
 from test.utils.resource_test_utils import ResourceTestUtils
@@ -31,7 +31,7 @@ class StudentTestUtils(
     ResourceTestUtils[
         StudentEntity,
         StudentData,
-        Student | StudentDataWithNames | DbStudent,
+        StudentDto | StudentDataWithNames | DbStudent,
     ]
 ):
     def __init__(self, session: AsyncSession, account_utils: AccountTestUtils):
@@ -67,7 +67,9 @@ class StudentTestUtils(
         self.count += 1
         return data
 
-    async def next_data_with_names(self, **overrides: Unpack[StudentOverrides]) -> StudentDataWithNames:
+    async def next_data_with_names(
+        self, **overrides: Unpack[StudentOverrides]
+    ) -> StudentDataWithNames:
         student_data = await self.next_dict(**overrides)
         return StudentDataWithNames(
             **self.get_or_default(overrides, {"first_name", "last_name"}),
@@ -87,7 +89,7 @@ class StudentTestUtils(
     @override
     async def next_entity(self, **overrides: Unpack[StudentOverrides]) -> StudentEntity:
         student_create = await self.next_student_create(**overrides)
-        return StudentEntity.from_model(student_create.data, student_create.account_id)
+        return StudentEntity.from_data(student_create.data, student_create.account_id)
 
     # ================================ Typing Overrides ================================
 
@@ -102,7 +104,9 @@ class StudentTestUtils(
         return await super().next_data(**overrides)
 
     @override
-    async def create_many(self, *, i: int, **overrides: Unpack[StudentOverrides]) -> list[StudentEntity]:
+    async def create_many(
+        self, *, i: int, **overrides: Unpack[StudentOverrides]
+    ) -> list[StudentEntity]:
         return await super().create_many(i=i, **overrides)
 
     @override

@@ -9,8 +9,8 @@ from src.modules.location.location_entity import LocationEntity
 from src.modules.location.location_model import (
     AddressData,
     AutocompleteResult,
-    Location,
     LocationData,
+    LocationDto,
 )
 from test.utils.resource_test_utils import ResourceTestUtils
 
@@ -37,7 +37,7 @@ class LocationTestUtils(
     ResourceTestUtils[
         LocationEntity,
         LocationData,
-        Location | AddressData | AutocompleteResult,
+        LocationDto | AddressData | AutocompleteResult,
     ]
 ):
     def __init__(self, session: AsyncSession):
@@ -129,13 +129,13 @@ class LocationTestUtils(
         self,
         resource1: LocationEntity
         | LocationData
-        | Location
+        | LocationDto
         | AddressData
         | AutocompleteResult
         | None,
         resource2: LocationEntity
         | LocationData
-        | Location
+        | LocationDto
         | AddressData
         | AutocompleteResult
         | None,

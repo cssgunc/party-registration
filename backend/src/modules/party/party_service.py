@@ -12,14 +12,14 @@ from sqlalchemy.orm import selectinload
 from src.core.config import env
 from src.core.database import get_session
 from src.core.exceptions import BadRequestException, ConflictException, NotFoundException
-from src.modules.location.location_model import Location
+from src.modules.location.location_model import LocationDto
 from src.modules.student.student_service import StudentNotFoundException, StudentService
 
 from ..account.account_service import AccountByEmailNotFoundException, AccountService
 from ..location.location_service import LocationService
 from ..student.student_entity import StudentEntity
 from .party_entity import PartyEntity
-from .party_model import AdminCreatePartyDTO, Party, PartyData, StudentCreatePartyDTO
+from .party_model import AdminCreatePartyDto, PartyData, PartyDto, StudentCreatePartyDto
 
 
 class PartyNotFoundException(NotFoundException):
@@ -128,7 +128,7 @@ class PartyService:
         if student.last_registered < most_recent_august_first:
             raise PartySmartNotCompletedException(student_id)
 
-    async def _validate_and_get_location(self, place_id: str) -> Location:
+    async def _validate_and_get_location(self, place_id: str) -> LocationDto:
         """Get or create location and validate it has no active hold."""
         location = await self.location_service.get_or_create_location(place_id)
         self.location_service.assert_valid_location_hold(location)
@@ -160,7 +160,7 @@ class PartyService:
             raise StudentNotFoundException(account.id)
         return student
 
-    async def get_parties(self, skip: int = 0, limit: int | None = None) -> List[Party]:
+    async def get_parties(self, skip: int = 0, limit: int | None = None) -> List[PartyDto]:
         query = (
             select(PartyEntity)
             .offset(skip)
@@ -173,13 +173,13 @@ class PartyService:
             query = query.limit(limit)
         result = await self.session.execute(query)
         parties = result.scalars().all()
-        return [party.to_model() for party in parties]
+        return [party.to_dto() for party in parties]
 
-    async def get_party_by_id(self, party_id: int) -> Party:
+    async def get_party_by_id(self, party_id: int) -> PartyDto:
         party_entity = await self._get_party_entity_by_id(party_id)
-        return party_entity.to_model()
+        return party_entity.to_dto()
 
-    async def get_parties_by_location(self, location_id: int) -> List[Party]:
+    async def get_parties_by_location(self, location_id: int) -> List[PartyDto]:
         result = await self.session.execute(
             select(PartyEntity)
             .where(PartyEntity.location_id == location_id)
@@ -189,9 +189,9 @@ class PartyService:
             )
         )
         parties = result.scalars().all()
-        return [party.to_model() for party in parties]
+        return [party.to_dto() for party in parties]
 
-    async def get_parties_by_contact(self, student_id: int) -> List[Party]:
+    async def get_parties_by_contact(self, student_id: int) -> List[PartyDto]:
         result = await self.session.execute(
             select(PartyEntity)
             .where(PartyEntity.contact_one_id == student_id)
@@ -201,11 +201,11 @@ class PartyService:
             )
         )
         parties = result.scalars().all()
-        return [party.to_model() for party in parties]
+        return [party.to_dto() for party in parties]
 
     async def get_parties_by_date_range(
         self, start_date: datetime, end_date: datetime
-    ) -> List[Party]:
+    ) -> List[PartyDto]:
         result = await self.session.execute(
             select(PartyEntity)
             .where(
@@ -218,22 +218,22 @@ class PartyService:
             )
         )
         parties = result.scalars().all()
-        return [party.to_model() for party in parties]
+        return [party.to_dto() for party in parties]
 
-    async def create_party(self, data: PartyData) -> Party:
+    async def create_party(self, data: PartyData) -> PartyDto:
         # Validate that referenced resources exist
         await self.location_service.assert_location_exists(data.location_id)
         await self.student_service.assert_student_exists(data.contact_one_id)
 
-        new_party = PartyEntity.from_model(data)
+        new_party = PartyEntity.from_data(data)
         try:
             self.session.add(new_party)
             await self.session.commit()
         except IntegrityError as e:
             raise PartyConflictException(f"Failed to create party: {str(e)}")
-        return await new_party.load_model(self.session)
+        return await new_party.load_dto(self.session)
 
-    async def update_party(self, party_id: int, data: PartyData) -> Party:
+    async def update_party(self, party_id: int, data: PartyData) -> PartyDto:
         party_entity = await self._get_party_entity_by_id(party_id)
 
         # Validate that referenced resources exist
@@ -253,11 +253,11 @@ class PartyService:
             await self.session.commit()
         except IntegrityError as e:
             raise PartyConflictException(f"Failed to update party: {str(e)}")
-        return await party_entity.load_model(self.session)
+        return await party_entity.load_dto(self.session)
 
     async def create_party_from_student_dto(
-        self, dto: StudentCreatePartyDTO, student_account_id: int
-    ) -> Party:
+        self, dto: StudentCreatePartyDto, student_account_id: int
+    ) -> PartyDto:
         """Create a party registration from a student. contact_one is auto-filled."""
         # Validate student party prerequisites (date and Party Smart)
         await self._validate_student_party_prerequisites(student_account_id, dto.party_datetime)
@@ -274,12 +274,12 @@ class PartyService:
         )
 
         # Create party
-        new_party = PartyEntity.from_model(party_data)
+        new_party = PartyEntity.from_data(party_data)
         self.session.add(new_party)
         await self.session.commit()
-        return await new_party.load_model(self.session)
+        return await new_party.load_dto(self.session)
 
-    async def create_party_from_admin_dto(self, dto: AdminCreatePartyDTO) -> Party:
+    async def create_party_from_admin_dto(self, dto: AdminCreatePartyDto) -> PartyDto:
         """Create a party registration from an admin. Both contacts must be specified."""
         # Get/create location and validate no hold
         location = await self._validate_and_get_location(dto.google_place_id)
@@ -296,14 +296,14 @@ class PartyService:
         )
 
         # Create party
-        new_party = PartyEntity.from_model(party_data)
+        new_party = PartyEntity.from_data(party_data)
         self.session.add(new_party)
         await self.session.commit()
-        return await new_party.load_model(self.session)
+        return await new_party.load_dto(self.session)
 
     async def update_party_from_student_dto(
-        self, party_id: int, dto: StudentCreatePartyDTO, student_account_id: int
-    ) -> Party:
+        self, party_id: int, dto: StudentCreatePartyDto, student_account_id: int
+    ) -> PartyDto:
         """Update a party registration from a student. contact_one is auto-filled."""
         # Get existing party
         party_entity = await self._get_party_entity_by_id(party_id)
@@ -329,9 +329,11 @@ class PartyService:
 
         self.session.add(party_entity)
         await self.session.commit()
-        return await party_entity.load_model(self.session)
+        return await party_entity.load_dto(self.session)
 
-    async def update_party_from_admin_dto(self, party_id: int, dto: AdminCreatePartyDTO) -> Party:
+    async def update_party_from_admin_dto(
+        self, party_id: int, dto: AdminCreatePartyDto
+    ) -> PartyDto:
         """Update a party registration from an admin. Both contacts must be specified."""
         # Get existing party
         party_entity = await self._get_party_entity_by_id(party_id)
@@ -355,11 +357,11 @@ class PartyService:
 
         self.session.add(party_entity)
         await self.session.commit()
-        return await party_entity.load_model(self.session)
+        return await party_entity.load_dto(self.session)
 
-    async def delete_party(self, party_id: int) -> Party:
+    async def delete_party(self, party_id: int) -> PartyDto:
         party_entity = await self._get_party_entity_by_id(party_id)
-        party = party_entity.to_model()
+        party = party_entity.to_dto()
         await self.session.delete(party_entity)
         await self.session.commit()
         return party
@@ -375,7 +377,7 @@ class PartyService:
 
     async def get_parties_by_student_and_date(
         self, student_id: int, target_date: datetime
-    ) -> List[Party]:
+    ) -> List[PartyDto]:
         start_of_day = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
         end_of_day = target_date.replace(hour=23, minute=59, second=59, microsecond=999999)
 
@@ -392,9 +394,9 @@ class PartyService:
             )
         )
         parties = result.scalars().all()
-        return [party.to_model() for party in parties]
+        return [party.to_dto() for party in parties]
 
-    async def get_parties_by_radius(self, latitude: float, longitude: float) -> List[Party]:
+    async def get_parties_by_radius(self, latitude: float, longitude: float) -> List[PartyDto]:
         current_time = datetime.now(timezone.utc)
         start_time = current_time - timedelta(hours=6)
         end_time = current_time + timedelta(hours=12)
@@ -412,7 +414,7 @@ class PartyService:
         )
         parties = result.scalars().all()
 
-        parties_within_radius = []
+        parties_within_radius: list[PartyEntity] = []
         for party in parties:
             if party.location is None:
                 continue
@@ -427,7 +429,7 @@ class PartyService:
             if distance <= env.PARTY_SEARCH_RADIUS_MILES:
                 parties_within_radius.append(party)
 
-        return [party.to_model() for party in parties_within_radius]
+        return [party.to_dto() for party in parties_within_radius]
 
     async def get_parties_by_radius_and_date_range(
         self,
@@ -435,7 +437,7 @@ class PartyService:
         longitude: float,
         start_date: datetime,
         end_date: datetime,
-    ) -> List[Party]:
+    ) -> List[PartyDto]:
         """
         Get parties within a radius of a location within a specified date range.
 
@@ -461,7 +463,7 @@ class PartyService:
         )
         parties = result.scalars().all()
 
-        parties_within_radius = []
+        parties_within_radius: list[PartyEntity] = []
         for party in parties:
             if party.location is None:
                 continue
@@ -476,7 +478,7 @@ class PartyService:
             if distance <= env.PARTY_SEARCH_RADIUS_MILES:
                 parties_within_radius.append(party)
 
-        return [party.to_model() for party in parties_within_radius]
+        return [party.to_dto() for party in parties_within_radius]
 
     def _calculate_haversine_distance(
         self, lat1: float, lon1: float, lat2: float, lon2: float
@@ -491,7 +493,7 @@ class PartyService:
         r = 3959
         return c * r
 
-    async def export_parties_to_csv(self, parties: List[Party]) -> str:
+    async def export_parties_to_csv(self, parties: List[PartyDto]) -> str:
         """
         Export a list of parties to CSV format.
 

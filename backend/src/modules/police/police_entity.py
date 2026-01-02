@@ -4,7 +4,7 @@ from sqlalchemy import CheckConstraint, Integer, String
 from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column
 from src.core.bcrypt_utils import hash_password
 from src.core.database import EntityBase
-from src.modules.police.police_model import PoliceAccount, PoliceAccountUpdate
+from src.modules.police.police_model import PoliceAccountDto, PoliceAccountUpdate
 
 
 class PoliceEntity(MappedAsDataclass, EntityBase):
@@ -21,11 +21,11 @@ class PoliceEntity(MappedAsDataclass, EntityBase):
     hashed_password: Mapped[str] = mapped_column(String, nullable=False)
 
     @classmethod
-    def from_model(cls, data: PoliceAccountUpdate) -> Self:
+    def from_data(cls, data: PoliceAccountUpdate) -> Self:
         """Create a PoliceEntity from a PoliceAccountUpdate model."""
         hashed_password = hash_password(data.password)
         return cls(email=data.email, hashed_password=hashed_password)
 
-    def to_model(self) -> PoliceAccount:
+    def to_dto(self) -> PoliceAccountDto:
         """Convert the entity to a PoliceAccount model."""
-        return PoliceAccount(email=self.email)
+        return PoliceAccountDto(email=self.email)

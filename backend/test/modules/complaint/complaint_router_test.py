@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 
 import pytest
 from httpx import AsyncClient
-from src.modules.complaint.complaint_model import Complaint
+from src.modules.complaint.complaint_model import ComplaintDto
 from src.modules.complaint.complaint_service import ComplaintNotFoundException
 from test.modules.complaint.complaint_utils import ComplaintTestUtils
 from test.modules.location.location_utils import LocationTestUtils
@@ -56,7 +56,7 @@ class TestComplaintRouter:
         complaints = await self.complaint_utils.create_many(i=2, location_id=location.id)
 
         response = await self.admin_client.get(f"/api/locations/{location.id}/complaints")
-        data = assert_res_success(response, list[Complaint])
+        data = assert_res_success(response, list[ComplaintDto])
 
         assert len(data) == 2
         data_by_id = {complaint.id: complaint for complaint in data}
@@ -70,7 +70,7 @@ class TestComplaintRouter:
         location = await self.location_utils.create_one()
 
         response = await self.admin_client.get(f"/api/locations/{location.id}/complaints")
-        data = assert_res_success(response, list[Complaint])
+        data = assert_res_success(response, list[ComplaintDto])
 
         assert data == []
 
@@ -84,7 +84,7 @@ class TestComplaintRouter:
             f"/api/locations/{location.id}/complaints",
             json=complaint_data.model_dump(mode="json"),
         )
-        data = assert_res_success(response, Complaint, status=201)
+        data = assert_res_success(response, ComplaintDto, status=201)
 
         self.complaint_utils.assert_matches(complaint_data, data)
 
@@ -100,7 +100,7 @@ class TestComplaintRouter:
             f"/api/locations/{location.id}/complaints",
             json=complaint_data.model_dump(mode="json"),
         )
-        data = assert_res_success(response, Complaint, status=201)
+        data = assert_res_success(response, ComplaintDto, status=201)
 
         assert data.description == ""
 
@@ -133,7 +133,7 @@ class TestComplaintRouter:
             f"/api/locations/{complaint.location_id}/complaints/{complaint.id}",
             json=update_data.model_dump(mode="json"),
         )
-        data = assert_res_success(response, Complaint)
+        data = assert_res_success(response, ComplaintDto)
 
         assert data.id == complaint.id
         self.complaint_utils.assert_matches(update_data, data)
@@ -175,7 +175,7 @@ class TestComplaintRouter:
         response = await self.admin_client.delete(
             f"/api/locations/{complaint.location_id}/complaints/{complaint.id}"
         )
-        data = assert_res_success(response, Complaint)
+        data = assert_res_success(response, ComplaintDto)
 
         self.complaint_utils.assert_matches(complaint, data)
 

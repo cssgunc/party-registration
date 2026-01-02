@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.database import get_session
 from src.core.exceptions import ConflictException, NotFoundException
 from src.modules.account.account_entity import AccountEntity, AccountRole
-from src.modules.account.account_model import Account, AccountData
+from src.modules.account.account_model import AccountData, AccountDto
 
 
 class AccountNotFoundException(NotFoundException):
@@ -45,12 +45,14 @@ class AccountService:
             raise AccountByEmailNotFoundException(email)
         return account
 
-    async def get_accounts(self) -> list[Account]:
+    async def get_accounts(self) -> list[AccountDto]:
         result = await self.session.execute(select(AccountEntity))
         accounts = result.scalars().all()
-        return [account.to_model() for account in accounts]
+        return [account.to_dto() for account in accounts]
 
-    async def get_accounts_by_roles(self, roles: list[AccountRole] | None = None) -> list[Account]:
+    async def get_accounts_by_roles(
+        self, roles: list[AccountRole] | None = None
+    ) -> list[AccountDto]:
         if not roles:
             return await self.get_accounts()
 
@@ -58,17 +60,17 @@ class AccountService:
             select(AccountEntity).where(AccountEntity.role.in_(roles))
         )
         accounts = result.scalars().all()
-        return [account.to_model() for account in accounts]
+        return [account.to_dto() for account in accounts]
 
-    async def get_account_by_id(self, account_id: int) -> Account:
+    async def get_account_by_id(self, account_id: int) -> AccountDto:
         account_entity = await self._get_account_entity_by_id(account_id)
-        return account_entity.to_model()
+        return account_entity.to_dto()
 
-    async def get_account_by_email(self, email: str) -> Account:
+    async def get_account_by_email(self, email: str) -> AccountDto:
         account_entity = await self._get_account_entity_by_email(email)
-        return account_entity.to_model()
+        return account_entity.to_dto()
 
-    async def create_account(self, data: AccountData) -> Account:
+    async def create_account(self, data: AccountData) -> AccountDto:
         try:
             await self._get_account_entity_by_email(data.email)
             # If we get here, account exists
@@ -91,9 +93,9 @@ class AccountService:
             # handle race condition where another session inserted the same email
             raise AccountConflictException(data.email)
         await self.session.refresh(new_account)
-        return new_account.to_model()
+        return new_account.to_dto()
 
-    async def update_account(self, account_id: int, data: AccountData) -> Account:
+    async def update_account(self, account_id: int, data: AccountData) -> AccountDto:
         account_entity = await self._get_account_entity_by_id(account_id)
 
         if data.email != account_entity.email:
@@ -118,11 +120,11 @@ class AccountService:
         except IntegrityError:
             raise AccountConflictException(data.email)
         await self.session.refresh(account_entity)
-        return account_entity.to_model()
+        return account_entity.to_dto()
 
-    async def delete_account(self, account_id: int) -> Account:
+    async def delete_account(self, account_id: int) -> AccountDto:
         account_entity = await self._get_account_entity_by_id(account_id)
-        account = account_entity.to_model()
+        account = account_entity.to_dto()
         await self.session.delete(account_entity)
         await self.session.commit()
         return account

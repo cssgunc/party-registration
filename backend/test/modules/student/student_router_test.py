@@ -4,9 +4,9 @@ import pytest
 import pytest_asyncio
 from httpx import AsyncClient
 from src.modules.account.account_entity import AccountRole
-from src.modules.party.party_model import Party
+from src.modules.party.party_model import PartyDto
 from src.modules.student.student_entity import StudentEntity
-from src.modules.student.student_model import ContactPreference, Student, StudentData
+from src.modules.student.student_model import ContactPreference, StudentData, StudentDto
 from src.modules.student.student_service import (
     AccountNotFoundException,
     InvalidAccountRoleException,
@@ -55,7 +55,7 @@ class TestStudentListRouter:
         response = await self.admin_client.get("/api/students/")
         paginated = assert_res_paginated(
             response,
-            Student,
+            StudentDto,
             total_records=0,
             page_number=1,
             page_size=0,
@@ -70,7 +70,7 @@ class TestStudentListRouter:
         response = await self.admin_client.get("/api/students/")
         paginated = assert_res_paginated(
             response,
-            Student,
+            StudentDto,
             total_records=3,
             page_number=1,
             page_size=3,
@@ -119,7 +119,7 @@ class TestStudentListRouter:
 
         paginated = assert_res_paginated(
             response,
-            Student,
+            StudentDto,
             total_records=total_students,
             page_number=expected_page_number,
             page_size=expected_page_size,
@@ -164,7 +164,7 @@ class TestStudentCRUDRouter:
         response = await self.admin_client.post(
             "/api/students/", json=payload.model_dump(mode="json")
         )
-        data = assert_res_success(response, Student, status=201)
+        data = assert_res_success(response, StudentDto, status=201)
 
         self.student_utils.assert_matches(payload.data, data)
         assert data.id == payload.account_id
@@ -178,7 +178,7 @@ class TestStudentCRUDRouter:
         response = await self.admin_client.post(
             "/api/students/", json=payload.model_dump(mode="json")
         )
-        data = assert_res_success(response, Student, status=201)
+        data = assert_res_success(response, StudentDto, status=201)
 
         self.student_utils.assert_matches(payload.data, data)
         assert data.last_registered is not None
@@ -232,7 +232,7 @@ class TestStudentCRUDRouter:
         student = await self.student_utils.create_one()
 
         response = await self.admin_client.get(f"/api/students/{student.account_id}")
-        data = assert_res_success(response, Student)
+        data = assert_res_success(response, StudentDto)
 
         self.student_utils.assert_matches(student, data)
 
@@ -252,7 +252,7 @@ class TestStudentCRUDRouter:
             f"/api/students/{student.account_id}",
             json=updated_data.model_dump(mode="json"),
         )
-        data = assert_res_success(response, Student)
+        data = assert_res_success(response, StudentDto)
 
         self.student_utils.assert_matches(updated_data, data)
         assert data.id == student.account_id
@@ -288,7 +288,7 @@ class TestStudentCRUDRouter:
         student = await self.student_utils.create_one()
 
         response = await self.admin_client.delete(f"/api/students/{student.account_id}")
-        data = assert_res_success(response, Student)
+        data = assert_res_success(response, StudentDto)
 
         self.student_utils.assert_matches(student, data)
 
@@ -331,7 +331,7 @@ class TestStudentRegistrationRouter:
             f"/api/students/{student.account_id}/is-registered",
             json=payload,
         )
-        data = assert_res_success(response, Student)
+        data = assert_res_success(response, StudentDto)
 
         assert data.id == student.account_id
         assert data.last_registered is not None
@@ -346,7 +346,7 @@ class TestStudentRegistrationRouter:
             f"/api/students/{student.account_id}/is-registered",
             json=payload,
         )
-        data = assert_res_success(response, Student)
+        data = assert_res_success(response, StudentDto)
 
         assert data.id == student.account_id
         assert data.last_registered is None
@@ -368,7 +368,7 @@ class TestStudentRegistrationRouter:
             f"/api/students/{student.account_id}/is-registered",
             json={"is_registered": True},
         )
-        data = assert_res_success(response, Student)
+        data = assert_res_success(response, StudentDto)
         assert data.last_registered is not None
         first_registered_time = data.last_registered
 
@@ -377,7 +377,7 @@ class TestStudentRegistrationRouter:
             f"/api/students/{student.account_id}/is-registered",
             json={"is_registered": False},
         )
-        data = assert_res_success(response, Student)
+        data = assert_res_success(response, StudentDto)
         assert data.last_registered is None
 
         # Mark as registered again
@@ -385,7 +385,7 @@ class TestStudentRegistrationRouter:
             f"/api/students/{student.account_id}/is-registered",
             json={"is_registered": True},
         )
-        data = assert_res_success(response, Student)
+        data = assert_res_success(response, StudentDto)
         assert data.last_registered is not None
         assert data.last_registered != first_registered_time
 
@@ -435,7 +435,7 @@ class TestStudentMeRouter:
     async def test_get_me_success(self, current_student: StudentEntity):
         """Test getting current student's own information."""
         response = await self.student_client.get("/api/students/me")
-        data = assert_res_success(response, Student)
+        data = assert_res_success(response, StudentDto)
 
         self.student_utils.assert_matches(current_student, data)
 
@@ -460,7 +460,7 @@ class TestStudentMeRouter:
             "/api/students/me",
             json=updated_data.model_dump(mode="json"),
         )
-        data = assert_res_success(response, Student)
+        data = assert_res_success(response, StudentDto)
 
         self.student_utils.assert_matches(updated_data, data)
         # Names should not change via /me endpoint (only StudentData, not StudentDataWithNames)
@@ -471,7 +471,7 @@ class TestStudentMeRouter:
         """Test updating me with phone number that already exists."""
         other_student = await self.student_utils.create_one()
         updated_data = StudentData(
-            contact_preference=ContactPreference.text,
+            contact_preference=ContactPreference.TEXT,
             phone_number=other_student.phone_number,
         )
 
@@ -509,7 +509,7 @@ class TestStudentMeRouter:
 
         response = await self.student_client.get("/api/students/me/parties")
 
-        parties = assert_res_success(response, list[Party])
+        parties = assert_res_success(response, list[PartyDto])
         assert len(parties) == 1
         assert party2.id not in [p.id for p in parties]
         self.party_utils.assert_matches(parties[0], party1)

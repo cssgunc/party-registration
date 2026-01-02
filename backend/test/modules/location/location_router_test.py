@@ -4,7 +4,7 @@ import pytest_asyncio
 from httpx import AsyncClient
 from src.core.exceptions import InternalServerException
 from src.modules.location.location_entity import LocationEntity
-from src.modules.location.location_model import AutocompleteResult, Location
+from src.modules.location.location_model import AutocompleteResult, LocationDto
 from src.modules.location.location_service import (
     LocationConflictException,
     LocationNotFoundException,
@@ -58,7 +58,7 @@ class TestLocationListRouter:
         response = await self.staff_client.get("/api/locations/")
 
         paginated = assert_res_paginated(
-            response, Location, total_records=0, page_size=0, total_pages=1
+            response, LocationDto, total_records=0, page_size=0, total_pages=1
         )
         assert paginated.items == []
 
@@ -68,7 +68,7 @@ class TestLocationListRouter:
         response = await self.staff_client.get("/api/locations/")
 
         paginated = assert_res_paginated(
-            response, Location, total_records=3, page_size=3, total_pages=1
+            response, LocationDto, total_records=3, page_size=3, total_pages=1
         )
         assert len(paginated.items) == 3
 
@@ -105,7 +105,7 @@ class TestLocationCRUDRouter:
         location = await self.location_utils.create_one()
 
         response = await self.staff_client.get(f"/api/locations/{location.id}")
-        data = assert_res_success(response, Location)
+        data = assert_res_success(response, LocationDto)
 
         self.location_utils.assert_matches(location, data)
 
@@ -128,7 +128,7 @@ class TestLocationCRUDRouter:
         )
 
         response = await self.admin_client.post("/api/locations/", json=request_data)
-        data = assert_res_success(response, Location, status=201)
+        data = assert_res_success(response, LocationDto, status=201)
 
         self.location_utils.assert_matches(location_data, data)
 
@@ -145,7 +145,7 @@ class TestLocationCRUDRouter:
         )
 
         response = await self.admin_client.post("/api/locations/", json=request_data)
-        data = assert_res_success(response, Location, status=201)
+        data = assert_res_success(response, LocationDto, status=201)
 
         self.location_utils.assert_matches(location_data, data)
 
@@ -183,7 +183,7 @@ class TestLocationCRUDRouter:
         )
 
         response = await self.admin_client.put(f"/api/locations/{location.id}", json=request_data)
-        data = assert_res_success(response, Location)
+        data = assert_res_success(response, LocationDto)
 
         assert data.id == location.id
         # When place_id unchanged, address data stays the same, only counts/expiration update
@@ -231,7 +231,7 @@ class TestLocationCRUDRouter:
         location = await self.location_utils.create_one()
 
         response = await self.admin_client.delete(f"/api/locations/{location.id}")
-        data = assert_res_success(response, Location)
+        data = assert_res_success(response, LocationDto)
 
         self.location_utils.assert_matches(location, data)
 

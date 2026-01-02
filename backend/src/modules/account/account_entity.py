@@ -3,7 +3,7 @@ from typing import Self
 from sqlalchemy import CheckConstraint, Enum, Integer, String
 from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column
 from src.core.database import EntityBase
-from src.modules.account.account_model import Account, AccountData, AccountRole
+from src.modules.account.account_model import AccountData, AccountDto, AccountRole
 
 
 class AccountEntity(MappedAsDataclass, EntityBase):
@@ -24,7 +24,7 @@ class AccountEntity(MappedAsDataclass, EntityBase):
     role: Mapped[AccountRole] = mapped_column(Enum(AccountRole), nullable=False)
 
     @classmethod
-    def from_model(cls, data: "AccountData") -> Self:
+    def from_data(cls, data: "AccountData") -> Self:
         return cls(
             email=data.email,
             first_name=data.first_name,
@@ -33,8 +33,8 @@ class AccountEntity(MappedAsDataclass, EntityBase):
             role=AccountRole(data.role),
         )
 
-    def to_model(self) -> "Account":
-        return Account(
+    def to_dto(self) -> "AccountDto":
+        return AccountDto(
             id=self.id,
             email=self.email,
             first_name=self.first_name,

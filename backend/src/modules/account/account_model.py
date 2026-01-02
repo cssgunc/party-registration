@@ -19,7 +19,7 @@ class AccountData(BaseModel):
     role: AccountRole
 
 
-class Account(BaseModel):
+class AccountDto(BaseModel):
     """DTO for Account responses."""
 
     id: int
