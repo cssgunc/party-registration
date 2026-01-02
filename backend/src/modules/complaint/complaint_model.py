@@ -11,7 +11,7 @@ class ComplaintData(BaseModel):
     description: str = ""
 
 
-class Complaint(ComplaintData):
+class ComplaintDto(ComplaintData):
     """Output DTO for a complaint."""
 
     id: int

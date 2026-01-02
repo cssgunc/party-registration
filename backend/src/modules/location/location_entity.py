@@ -7,7 +7,7 @@ from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column, relationshi
 from src.core.database import EntityBase
 from src.modules.complaint.complaint_entity import ComplaintEntity
 
-from .location_model import Location, LocationData
+from .location_model import LocationData, LocationDto
 
 
 class LocationEntity(MappedAsDataclass, EntityBase):
@@ -53,7 +53,7 @@ class LocationEntity(MappedAsDataclass, EntityBase):
 
     __table_args__ = (Index("idx_lat_lng", "latitude", "longitude"),)
 
-    def to_model(self) -> Location:
+    def to_dto(self) -> LocationDto:
         # Check if complaints relationship is loaded to avoid lazy loading in tests
         # This prevents issues when LocationEntity is created without loading relationships
         insp = inspect(self)
@@ -63,7 +63,7 @@ class LocationEntity(MappedAsDataclass, EntityBase):
         if hold_exp is not None and hold_exp.tzinfo is None:
             hold_exp = hold_exp.replace(tzinfo=timezone.utc)
 
-        return Location(
+        return LocationDto(
             id=self.id,
             google_place_id=self.google_place_id,
             formatted_address=self.formatted_address,
@@ -80,13 +80,13 @@ class LocationEntity(MappedAsDataclass, EntityBase):
             warning_count=self.warning_count,
             citation_count=self.citation_count,
             hold_expiration=hold_exp,
-            complaints=[complaint.to_model() for complaint in self.complaints]
+            complaints=[complaint.to_dto() for complaint in self.complaints]
             if complaints_loaded
             else [],
         )
 
     @classmethod
-    def from_model(cls, data: LocationData) -> Self:
+    def from_data(cls, data: LocationData) -> Self:
         return cls(
             google_place_id=data.google_place_id,
             formatted_address=data.formatted_address,

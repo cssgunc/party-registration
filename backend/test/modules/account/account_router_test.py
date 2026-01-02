@@ -2,10 +2,10 @@ import pytest
 import pytest_asyncio
 from httpx import AsyncClient
 from src.modules.account.account_entity import AccountEntity, AccountRole
-from src.modules.account.account_model import Account
+from src.modules.account.account_model import AccountDto
 from src.modules.account.account_service import AccountConflictException, AccountNotFoundException
 from src.modules.police.police_entity import PoliceEntity
-from src.modules.police.police_model import PoliceAccount
+from src.modules.police.police_model import PoliceAccountDto
 from src.modules.police.police_service import PoliceNotFoundException
 from test.modules.account.account_utils import AccountTestUtils
 from test.modules.police.police_utils import PoliceTestUtils
@@ -58,7 +58,7 @@ class TestAccountRouter:
         accounts_two_per_role: list[AccountEntity],
     ):
         response = await self.admin_client.get("/api/accounts")
-        data = assert_res_success(response, list[Account])
+        data = assert_res_success(response, list[AccountDto])
 
         data_by_id = {account.id: account for account in data}
 
@@ -83,7 +83,7 @@ class TestAccountRouter:
         query_string = "&".join(f"role={role.value}" for role in roles)
         response = await self.admin_client.get(f"/api/accounts?{query_string}")
 
-        data = assert_res_success(response, list[Account])
+        data = assert_res_success(response, list[AccountDto])
 
         filtered_fixture = [a for a in accounts_two_per_role if a.role in roles]
         assert len(data) == len(filtered_fixture)
@@ -100,7 +100,7 @@ class TestAccountRouter:
         response = await self.admin_client.post(
             "/api/accounts", json=new_account.model_dump(mode="json")
         )
-        data = assert_res_success(response, Account)
+        data = assert_res_success(response, AccountDto)
         self.account_utils.assert_matches(new_account, data)
 
     @pytest.mark.asyncio
@@ -137,7 +137,7 @@ class TestAccountRouter:
             f"/api/accounts/{account_to_update.id}",
             json=updated_data.model_dump(mode="json"),
         )
-        data = assert_res_success(response, Account)
+        data = assert_res_success(response, AccountDto)
         self.account_utils.assert_matches(updated_data, data)
         assert data.id == account_to_update.id
 
@@ -145,13 +145,13 @@ class TestAccountRouter:
     async def test_update_account_change_email(self, accounts_two_per_role: list[AccountEntity]):
         """Test changing an account's email successfully."""
         account_to_update = accounts_two_per_role[0]
-        updated_data = account_to_update.to_model()
+        updated_data = account_to_update.to_dto()
         updated_data.email = "newemail@example.com"
         response = await self.admin_client.put(
             f"/api/accounts/{account_to_update.id}",
             json=updated_data.model_dump(mode="json", exclude={"id"}),
         )
-        response_data = assert_res_success(response, Account)
+        response_data = assert_res_success(response, AccountDto)
         self.account_utils.assert_matches(updated_data, response_data)
 
     @pytest.mark.asyncio
@@ -197,7 +197,7 @@ class TestAccountRouter:
         account_to_delete = accounts_two_per_role[0]
         response = await self.admin_client.delete(f"/api/accounts/{account_to_delete.id}")
 
-        data = assert_res_success(response, Account)
+        data = assert_res_success(response, AccountDto)
         self.account_utils.assert_matches(account_to_delete, data)
         assert data.id == account_to_delete.id
 
@@ -216,7 +216,7 @@ class TestAccountRouter:
     ):
         """Test getting police credentials"""
         response = await self.admin_client.get("/api/accounts/police")
-        data = assert_res_success(response, PoliceAccount)
+        data = assert_res_success(response, PoliceAccountDto)
         police_utils.assert_matches(sample_police, data)
 
     @pytest.mark.asyncio
@@ -234,7 +234,7 @@ class TestAccountRouter:
         response = await self.admin_client.put(
             "/api/accounts/police", json=updated_data.model_dump(mode="json")
         )
-        data = assert_res_success(response, PoliceAccount)
+        data = assert_res_success(response, PoliceAccountDto)
         police_utils.assert_matches(updated_data, data)
 
     @pytest.mark.asyncio
@@ -258,7 +258,7 @@ class TestAccountRouter:
             "/api/accounts/police", json=updated_data.model_dump(mode="json")
         )
 
-        assert_res_success(response, PoliceAccount)
+        assert_res_success(response, PoliceAccountDto)
         updated_police = await police_utils.get_police()
         police_utils.assert_matches(updated_data, updated_police)
 

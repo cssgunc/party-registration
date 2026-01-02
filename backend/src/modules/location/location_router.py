@@ -4,16 +4,16 @@ from src.core.authentication import (
     authenticate_by_role,
     authenticate_staff_or_admin,
 )
-from src.modules.account.account_model import Account
+from src.modules.account.account_model import AccountDto
 from src.modules.location.location_model import (
     AddressData,
-    Location,
     LocationCreate,
     LocationData,
+    LocationDto,
     PaginatedLocationResponse,
 )
 from src.modules.location.location_service import LocationService
-from src.modules.police.police_model import PoliceAccount
+from src.modules.police.police_model import PoliceAccountDto
 
 from .location_model import AutocompleteInput, AutocompleteResult
 
@@ -30,7 +30,7 @@ location_router = APIRouter(prefix="/api/locations", tags=["locations"])
 async def autocomplete_address(
     input_data: AutocompleteInput,
     location_service: LocationService = Depends(),
-    user: Account | PoliceAccount = Depends(
+    user: AccountDto | PoliceAccountDto = Depends(
         authenticate_by_role("police", "student", "admin", "staff")
     ),
 ) -> list[AutocompleteResult]:
@@ -64,7 +64,7 @@ async def autocomplete_address(
 async def get_place_details(
     place_id: str,
     location_service: LocationService = Depends(),
-    user: Account | PoliceAccount = Depends(
+    user: AccountDto | PoliceAccountDto = Depends(
         authenticate_by_role("police", "student", "admin", "staff")
     ),
 ) -> AddressData:
@@ -101,7 +101,7 @@ async def get_locations(
     )
 
 
-@location_router.get("/{location_id}", response_model=Location)
+@location_router.get("/{location_id}", response_model=LocationDto)
 async def get_location(
     location_id: int,
     location_service: LocationService = Depends(),
@@ -110,7 +110,7 @@ async def get_location(
     return await location_service.get_location_by_id(location_id)
 
 
-@location_router.post("/", status_code=201, response_model=Location)
+@location_router.post("/", status_code=201, response_model=LocationDto)
 async def create_location(
     data: LocationCreate,
     location_service: LocationService = Depends(),
@@ -127,7 +127,7 @@ async def create_location(
     )
 
 
-@location_router.put("/{location_id}", response_model=Location)
+@location_router.put("/{location_id}", response_model=LocationDto)
 async def update_location(
     location_id: int,
     data: LocationCreate,
@@ -147,9 +147,7 @@ async def update_location(
         )
     else:
         location_data = LocationData(
-            **location.model_dump(
-                exclude={"warning_count", "citation_count", "hold_expiration"}
-            ),
+            **location.model_dump(exclude={"warning_count", "citation_count", "hold_expiration"}),
             warning_count=data.warning_count,
             citation_count=data.citation_count,
             hold_expiration=data.hold_expiration,
@@ -158,7 +156,7 @@ async def update_location(
     return await location_service.update_location(location_id, location_data)
 
 
-@location_router.delete("/{location_id}", response_model=Location)
+@location_router.delete("/{location_id}", response_model=LocationDto)
 async def delete_location(
     location_id: int,
     location_service: LocationService = Depends(),

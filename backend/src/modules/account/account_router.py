@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, Query
 from src.core.authentication import authenticate_admin
-from src.modules.account.account_model import Account, AccountData, AccountRole
+from src.modules.account.account_model import AccountData, AccountDto, AccountRole
 from src.modules.account.account_service import AccountService
-from src.modules.police.police_model import PoliceAccount, PoliceAccountUpdate
+from src.modules.police.police_model import PoliceAccountDto, PoliceAccountUpdate
 from src.modules.police.police_service import PoliceService
 
 account_router = APIRouter(prefix="/api/accounts", tags=["accounts"])
@@ -12,9 +12,9 @@ account_router = APIRouter(prefix="/api/accounts", tags=["accounts"])
 async def get_police_credentials(
     police_service: PoliceService = Depends(),
     _=Depends(authenticate_admin),
-) -> PoliceAccount:
+) -> PoliceAccountDto:
     police_entity = await police_service.get_police()
-    return PoliceAccount(email=police_entity.email)
+    return PoliceAccountDto(email=police_entity.email)
 
 
 @account_router.put("/police")
@@ -22,9 +22,9 @@ async def update_police_credentials(
     data: PoliceAccountUpdate,
     police_service: PoliceService = Depends(),
     _=Depends(authenticate_admin),
-) -> PoliceAccount:
+) -> PoliceAccountDto:
     police_entity = await police_service.update_police(data.email, data.password)
-    return PoliceAccount(email=police_entity.email)
+    return PoliceAccountDto(email=police_entity.email)
 
 
 @account_router.get("")
@@ -34,7 +34,7 @@ async def list_accounts(
     ),
     account_service: AccountService = Depends(),
     _=Depends(authenticate_admin),
-) -> list[Account]:
+) -> list[AccountDto]:
     return await account_service.get_accounts_by_roles(role)
 
 
@@ -43,7 +43,7 @@ async def create_account(
     data: AccountData,
     account_service: AccountService = Depends(),
     _=Depends(authenticate_admin),
-) -> Account:
+) -> AccountDto:
     return await account_service.create_account(data)
 
 
@@ -53,7 +53,7 @@ async def update_account(
     data: AccountData,
     account_service: AccountService = Depends(),
     _=Depends(authenticate_admin),
-) -> Account:
+) -> AccountDto:
     return await account_service.update_account(account_id, data)
 
 
@@ -62,5 +62,5 @@ async def delete_account(
     account_id: int,
     account_service: AccountService = Depends(),
     _=Depends(authenticate_admin),
-) -> Account:
+) -> AccountDto:
     return await account_service.delete_account(account_id)

@@ -17,7 +17,7 @@ from src.core.exceptions import (
 )
 
 from .location_entity import LocationEntity
-from .location_model import MAX_COUNT, AddressData, AutocompleteResult, Location, LocationData
+from .location_model import MAX_COUNT, AddressData, AutocompleteResult, LocationData, LocationDto
 
 
 class GoogleMapsAPIException(InternalServerException):
@@ -93,34 +93,36 @@ class LocationService:
         )
         return result.scalar_one_or_none()
 
-    def assert_valid_location_hold(self, location: Location) -> None:
+    def assert_valid_location_hold(self, location: LocationDto) -> None:
         """Validate that location does not have an active hold."""
-        if location.hold_expiration is not None and location.hold_expiration > datetime.now(timezone.utc):
+        if location.hold_expiration is not None and location.hold_expiration > datetime.now(
+            timezone.utc
+        ):
             raise LocationHoldActiveException(location.id, location.hold_expiration)
 
-    async def get_locations(self) -> list[Location]:
+    async def get_locations(self) -> list[LocationDto]:
         result = await self.session.execute(select(LocationEntity))
         locations = result.scalars().all()
-        return [location.to_model() for location in locations]
+        return [location.to_dto() for location in locations]
 
-    async def get_location_by_id(self, location_id: int) -> Location:
+    async def get_location_by_id(self, location_id: int) -> LocationDto:
         location_entity = await self._get_location_entity_by_id(location_id)
-        return location_entity.to_model()
+        return location_entity.to_dto()
 
-    async def get_location_by_place_id(self, google_place_id: str) -> Location:
+    async def get_location_by_place_id(self, google_place_id: str) -> LocationDto:
         location_entity = await self._get_location_entity_by_place_id(google_place_id)
         if location_entity is None:
             raise LocationNotFoundException(google_place_id=google_place_id)
-        return location_entity.to_model()
+        return location_entity.to_dto()
 
     async def assert_location_exists(self, location_id: int) -> None:
         await self._get_location_entity_by_id(location_id)
 
-    async def create_location(self, data: LocationData) -> Location:
+    async def create_location(self, data: LocationData) -> LocationDto:
         if await self._get_location_entity_by_place_id(data.google_place_id):
             raise LocationConflictException(data.google_place_id)
 
-        new_location = LocationEntity.from_model(data)
+        new_location = LocationEntity.from_data(data)
         try:
             self.session.add(new_location)
             await self.session.commit()
@@ -128,17 +130,17 @@ class LocationService:
             # handle race condition where another session inserted the same google_place_id
             raise LocationConflictException(data.google_place_id)
         await self.session.refresh(new_location)
-        return new_location.to_model()
+        return new_location.to_dto()
 
-    async def create_location_from_address(self, address_data: AddressData) -> Location:
+    async def create_location_from_address(self, address_data: AddressData) -> LocationDto:
         location_data = LocationData.from_address(address_data)
         return await self.create_location(location_data)
 
-    async def create_location_from_place_id(self, place_id: str) -> Location:
+    async def create_location_from_place_id(self, place_id: str) -> LocationDto:
         address_data = await self.get_place_details(place_id)
         return await self.create_location_from_address(address_data)
 
-    async def get_or_create_location(self, place_id: str) -> Location:
+    async def get_or_create_location(self, place_id: str) -> LocationDto:
         """Get existing location by place_id, or create it if it doesn't exist."""
         # Try to get existing location
         try:
@@ -148,7 +150,7 @@ class LocationService:
             location = await self.create_location_from_place_id(place_id)
             return location
 
-    async def update_location(self, location_id: int, data: LocationData) -> Location:
+    async def update_location(self, location_id: int, data: LocationData) -> LocationDto:
         location_entity = await self._get_location_entity_by_id(location_id)
 
         if data.google_place_id != location_entity.google_place_id:
@@ -167,16 +169,16 @@ class LocationService:
         except IntegrityError:
             raise LocationConflictException(data.google_place_id)
         await self.session.refresh(location_entity)
-        return location_entity.to_model()
+        return location_entity.to_dto()
 
-    async def delete_location(self, location_id: int) -> Location:
+    async def delete_location(self, location_id: int) -> LocationDto:
         location_entity = await self._get_location_entity_by_id(location_id)
-        location = location_entity.to_model()
+        location = location_entity.to_dto()
         await self.session.delete(location_entity)
         await self.session.commit()
         return location
 
-    async def increment_warnings(self, location_id: int) -> Location:
+    async def increment_warnings(self, location_id: int) -> LocationDto:
         """Increment the warning count for a location by 1."""
         location_entity = await self._get_location_entity_by_id(location_id)
         if location_entity.warning_count >= MAX_COUNT:
@@ -185,9 +187,9 @@ class LocationService:
         self.session.add(location_entity)
         await self.session.commit()
         await self.session.refresh(location_entity)
-        return location_entity.to_model()
+        return location_entity.to_dto()
 
-    async def increment_citations(self, location_id: int) -> Location:
+    async def increment_citations(self, location_id: int) -> LocationDto:
         """Increment the citation count for a location by 1."""
         location_entity = await self._get_location_entity_by_id(location_id)
         if location_entity.citation_count >= MAX_COUNT:
@@ -196,7 +198,7 @@ class LocationService:
         self.session.add(location_entity)
         await self.session.commit()
         await self.session.refresh(location_entity)
-        return location_entity.to_model()
+        return location_entity.to_dto()
 
     async def autocomplete_address(self, input_text: str) -> list[AutocompleteResult]:
         # Autocomplete an address using Google Maps Places API. Biased towards Chapel Hill, NC area
