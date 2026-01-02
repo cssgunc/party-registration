@@ -37,12 +37,7 @@ export default function StudentProfilePage() {
       <div className="px-48 pb-12 flex flex-col gap-4 max-w-4xl mx-auto">
         {student && (
           <StudentInfo
-            initialData={{
-              firstName: student.firstName,
-              lastName: student.lastName,
-              phoneNumber: student.phoneNumber,
-              contactPreference: student.contactPreference,
-            }}
+            initialData={student}
           />
         )}
       </div>

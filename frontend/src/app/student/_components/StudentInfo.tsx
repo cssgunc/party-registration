@@ -17,22 +17,22 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useUpdateStudent } from "@/lib/api/student/student.queries";
-import { StudentDataRequest } from "@/lib/api/student/student.service";
+import { StudentDto } from "@/lib/api/student/student.types";
 import { Pencil } from "lucide-react";
 import { useState } from "react";
 import * as z from "zod";
 
 const studentInfoSchema = z.object({
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Last name is required"),
-  phoneNumber: z
+  first_name: z.string().min(1, "First name is required"),
+  last_name: z.string().min(1, "Last name is required"),
+  phone_number: z
     .string()
     .min(1, "Phone number is required")
     .refine(
       (val) => val.replace(/\D/g, "").length >= 10,
       "Phone number must be at least 10 digits"
     ), // Ensures phone number is at least 10 digits regardless of format (ex: (123) 456-7890 or 1234567890)
-  contactPreference: z.enum(["call", "text"], {
+  contact_preference: z.enum(["call", "text"], {
     message: "Please select a contact preference",
   }),
 });
@@ -41,18 +41,13 @@ const studentInfoSchema = z.object({
 type StudentInfoValues = z.infer<typeof studentInfoSchema>;
 
 interface StudentInfoProps {
-  initialData?: Partial<StudentInfoValues>;
+  initialData: StudentDto;
 }
 
 export default function StudentInfo({ initialData }: StudentInfoProps) {
   const updateStudentMutation = useUpdateStudent();
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState<Partial<StudentInfoValues>>({
-    firstName: initialData?.firstName || "",
-    lastName: initialData?.lastName || "",
-    phoneNumber: initialData?.phoneNumber || "",
-    contactPreference: initialData?.contactPreference,
-  });
+  const [formData, setFormData] = useState<StudentInfoValues>(initialData);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -77,15 +72,11 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
     // Safely handle submission
     setIsSubmitting(true);
     try {
-      // Map form data to API format (camelCase to snake_case)
-      const apiData: StudentDataRequest = {
-        first_name: result.data.firstName,
-        last_name: result.data.lastName,
-        phone_number: result.data.phoneNumber,
-        contact_preference: result.data.contactPreference,
-      };
-
-      await updateStudentMutation.mutateAsync(apiData);
+      await updateStudentMutation.mutateAsync({
+        phone_number: result.data.phone_number,
+        contact_preference: result.data.contact_preference,
+        last_registered: initialData.last_registered,
+      });
 
       // Update formData with the submitted values to reflect in display
       setFormData(result.data);
@@ -137,11 +128,13 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
   };
 
   const displayData = {
-    firstName: formData.firstName ?? initialData?.firstName ?? "",
-    lastName: formData.lastName ?? initialData?.lastName ?? "",
-    phoneNumber: formData.phoneNumber ?? initialData?.phoneNumber ?? "",
-    contactPreference:
-      formData.contactPreference ?? initialData?.contactPreference ?? undefined,
+    first_name: formData.first_name ?? initialData?.first_name ?? "",
+    last_name: formData.last_name ?? initialData?.last_name ?? "",
+    phone_number: formData.phone_number ?? initialData?.phone_number ?? "",
+    contact_preference:
+      formData.contact_preference ??
+      initialData?.contact_preference ??
+      undefined,
   };
 
   if (!isEditing) {
@@ -166,7 +159,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
               First Name
             </div>
             <div className="text-gray-600 text-base border-b border-gray-300 pb-2">
-              {displayData.firstName || "Not set"}
+              {displayData.first_name}
             </div>
           </div>
 
@@ -175,7 +168,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
               Last Name
             </div>
             <div className="text-gray-600 text-base border-b border-gray-300 pb-2">
-              {displayData.lastName || "Not set"}
+              {displayData.last_name}
             </div>
           </div>
 
@@ -184,7 +177,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
               Phone Number
             </div>
             <div className="text-gray-600 text-base border-b border-gray-300 pb-2">
-              {displayData.phoneNumber || "Not set"}
+              {displayData.phone_number}
             </div>
           </div>
 
@@ -193,9 +186,9 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
               Contact Method
             </div>
             <div className="text-gray-600 text-base border-b border-gray-300 pb-2">
-              {displayData.contactPreference
-                ? displayData.contactPreference.charAt(0).toUpperCase() +
-                  displayData.contactPreference.slice(1)
+              {displayData.contact_preference
+                ? displayData.contact_preference.charAt(0).toUpperCase() +
+                  displayData.contact_preference.slice(1)
                 : "Not set"}
             </div>
           </div>
@@ -215,7 +208,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
       <FieldGroup>
         <FieldSet>
           <div className="grid grid-cols-2 gap-x-12 gap-y-6">
-            <Field data-invalid={!!errors.firstName}>
+            <Field data-invalid={!!errors.first_name}>
               <FieldLabel
                 htmlFor="first-name"
                 className="text-[#09294E] font-semibold text-lg"
@@ -225,15 +218,17 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
               <Input
                 id="first-name"
                 placeholder="John"
-                value={formData.firstName}
-                onChange={(e) => updateField("firstName", e.target.value)}
-                aria-invalid={!!errors.firstName}
+                value={formData.first_name}
+                onChange={(e) => updateField("first_name", e.target.value)}
+                aria-invalid={!!errors.first_name}
                 className="border-gray-300"
               />
-              {errors.firstName && <FieldError>{errors.firstName}</FieldError>}
+              {errors.first_name && (
+                <FieldError>{errors.first_name}</FieldError>
+              )}
             </Field>
 
-            <Field data-invalid={!!errors.lastName}>
+            <Field data-invalid={!!errors.last_name}>
               <FieldLabel
                 htmlFor="last-name"
                 className="text-[#09294E] font-semibold text-lg"
@@ -243,15 +238,15 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
               <Input
                 id="last-name"
                 placeholder="Doe"
-                value={formData.lastName}
-                onChange={(e) => updateField("lastName", e.target.value)}
-                aria-invalid={!!errors.lastName}
+                value={formData.last_name}
+                onChange={(e) => updateField("last_name", e.target.value)}
+                aria-invalid={!!errors.last_name}
                 className="border-gray-300"
               />
-              {errors.lastName && <FieldError>{errors.lastName}</FieldError>}
+              {errors.last_name && <FieldError>{errors.last_name}</FieldError>}
             </Field>
 
-            <Field data-invalid={!!errors.phoneNumber}>
+            <Field data-invalid={!!errors.phone_number}>
               <FieldLabel
                 htmlFor="phone-number"
                 className="text-[#09294E] font-semibold text-lg"
@@ -261,17 +256,17 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
               <Input
                 id="phone-number"
                 placeholder="123-456-7890"
-                value={formData.phoneNumber}
-                onChange={(e) => updateField("phoneNumber", e.target.value)}
-                aria-invalid={!!errors.phoneNumber}
+                value={formData.phone_number}
+                onChange={(e) => updateField("phone_number", e.target.value)}
+                aria-invalid={!!errors.phone_number}
                 className="border-gray-300"
               />
-              {errors.phoneNumber && (
-                <FieldError>{errors.phoneNumber}</FieldError>
+              {errors.phone_number && (
+                <FieldError>{errors.phone_number}</FieldError>
               )}
             </Field>
 
-            <Field data-invalid={!!errors.contactPreference}>
+            <Field data-invalid={!!errors.contact_preference}>
               <FieldLabel
                 htmlFor="contact-preference"
                 className="text-[#09294E] font-semibold text-lg"
@@ -279,9 +274,9 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
                 Contact Method
               </FieldLabel>
               <Select
-                value={formData.contactPreference}
+                value={formData.contact_preference}
                 onValueChange={(value: "call" | "text") =>
-                  updateField("contactPreference", value)
+                  updateField("contact_preference", value)
                 }
               >
                 <SelectTrigger
@@ -295,8 +290,8 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
                   <SelectItem value="text">Text</SelectItem>
                 </SelectContent>
               </Select>
-              {errors.contactPreference && (
-                <FieldError>{errors.contactPreference}</FieldError>
+              {errors.contact_preference && (
+                <FieldError>{errors.contact_preference}</FieldError>
               )}
             </Field>
           </div>

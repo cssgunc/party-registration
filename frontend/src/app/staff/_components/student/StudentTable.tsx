@@ -4,15 +4,13 @@ import { useSidebar } from "@/app/staff/_components/shared/sidebar/SidebarContex
 import { Checkbox } from "@/components/ui/checkbox";
 import { AccountService } from "@/lib/api/account/account.service";
 import { AdminStudentService } from "@/lib/api/student/admin-student.service";
-import {
-  PaginatedStudentsResponse,
-  Student,
-} from "@/lib/api/student/student.types";
+import { StudentDto } from "@/lib/api/student/student.types";
+import { PaginatedResponse } from "@/lib/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 import { TableTemplate } from "../shared/table/TableTemplate";
-import StudentTableCreateEditForm from "./StudentTableCreateEdit";
+import StudentTableForm from "./StudentTableForm";
 
 const studentService = new AdminStudentService();
 const accountService = new AccountService();
@@ -20,7 +18,7 @@ const accountService = new AccountService();
 export const StudentTable = () => {
   const queryClient = useQueryClient();
   const { openSidebar, closeSidebar } = useSidebar();
-  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [editingStudent, setEditingStudent] = useState<StudentDto | null>(null);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
 
   // Fetch students
@@ -36,8 +34,8 @@ export const StudentTable = () => {
         .slice()
         .sort(
           (a, b) =>
-            a.lastName.localeCompare(b.lastName) ||
-            a.firstName.localeCompare(b.firstName)
+            a.last_name.localeCompare(b.last_name) ||
+            a.first_name.localeCompare(b.first_name)
         ),
     [studentsQuery.data?.items]
   );
@@ -49,18 +47,18 @@ export const StudentTable = () => {
       data,
     }: {
       id: number;
-      data: Omit<Student, "id" | "email" | "pid">;
+      data: Omit<StudentDto, "id" | "email" | "pid">;
     }) => studentService.updateStudent(id, data),
     // Optimistically update the student in the cache so things like the
     // "Is Registered" checkbox feel instant.
     onMutate: async ({ id, data }) => {
       await queryClient.cancelQueries({ queryKey: ["students"] });
 
-      const previous = queryClient.getQueryData<PaginatedStudentsResponse>([
+      const previous = queryClient.getQueryData<PaginatedResponse<StudentDto>>([
         "students",
       ]);
 
-      queryClient.setQueryData<PaginatedStudentsResponse>(
+      queryClient.setQueryData<PaginatedResponse<StudentDto>>(
         ["students"],
         (old) =>
           old && {
@@ -90,7 +88,7 @@ export const StudentTable = () => {
 
   // Create student mutation
   const createStudentMutation = useMutation({
-    mutationFn: async ({ data }: { data: Omit<Student, "id"> }) => {
+    mutationFn: async ({ data }: { data: Omit<StudentDto, "id"> }) => {
       const account = await accountService.createAccount({
         role: "student",
         ...data,
@@ -98,15 +96,7 @@ export const StudentTable = () => {
 
       studentService.createStudent({
         account_id: account.id,
-        data: {
-          first_name: data.firstName,
-          last_name: data.lastName,
-          phone_number: data.phoneNumber,
-          contact_preference: data.contactPreference,
-          last_registered: data.lastRegistered
-            ? data.lastRegistered.toISOString()
-            : null,
-        },
+        data,
       });
     },
     onError: (error: Error) => {
@@ -133,10 +123,10 @@ export const StudentTable = () => {
       queryClient.setQueryData(["students"], (old: unknown) => {
         if (!old || typeof old !== "object") return old;
 
-        const oldWithItems = old as { items?: Student[] };
+        const oldWithItems = old as { items?: StudentDto[] };
         if (Array.isArray(oldWithItems.items)) {
           const paginated = old as {
-            items: Student[];
+            items: StudentDto[];
             [key: string]: unknown;
           };
           return {
@@ -146,7 +136,7 @@ export const StudentTable = () => {
         }
 
         if (Array.isArray(old)) {
-          return (old as Student[]).filter((s) => s.id !== id);
+          return (old as StudentDto[]).filter((s) => s.id !== id);
         }
 
         return old;
@@ -165,7 +155,7 @@ export const StudentTable = () => {
     },
   });
 
-  const handleEdit = (student: Student) => {
+  const handleEdit = (student: StudentDto) => {
     setEditingStudent(student);
 
     setSubmissionError(null);
@@ -173,7 +163,7 @@ export const StudentTable = () => {
       `edit-student-${student.id}`,
       "Edit Student",
       "Update student information",
-      <StudentTableCreateEditForm
+      <StudentTableForm
         title="Edit Student"
         onSubmit={async (data) => {
           if (!editingStudent) return;
@@ -188,7 +178,7 @@ export const StudentTable = () => {
     );
   };
 
-  const handleDelete = (student: Student) => {
+  const handleDelete = (student: StudentDto) => {
     deleteMutation.mutate(student.id);
   };
 
@@ -200,7 +190,7 @@ export const StudentTable = () => {
       "create-student",
       "New Student",
       "Add a new student to the system",
-      <StudentTableCreateEditForm
+      <StudentTableForm
         title="New Student"
         onSubmit={async (data) => {
           await createStudentMutation.mutateAsync({ data });
@@ -210,19 +200,19 @@ export const StudentTable = () => {
     );
   };
 
-  const columns: ColumnDef<Student>[] = [
+  const columns: ColumnDef<StudentDto>[] = [
     {
       accessorKey: "pid",
       header: "PID",
       enableColumnFilter: true,
     },
     {
-      accessorKey: "firstName",
+      accessorKey: "first_name",
       header: "First Name",
       enableColumnFilter: true,
     },
     {
-      accessorKey: "lastName",
+      accessorKey: "last_name",
       header: "Last Name",
       enableColumnFilter: true,
     },
@@ -232,11 +222,11 @@ export const StudentTable = () => {
       enableColumnFilter: true,
     },
     {
-      accessorKey: "phoneNumber",
+      accessorKey: "phone_number",
       header: "Phone Number",
       enableColumnFilter: true,
       cell: ({ row }) => {
-        const number = row.getValue("phoneNumber") as string;
+        const number = row.getValue("phone_number") as string;
         return number
           ? `(${number.slice(0, 3)}) ${number.slice(3, 6)}-${number.slice(
               6,
@@ -246,7 +236,7 @@ export const StudentTable = () => {
       },
     },
     {
-      accessorKey: "contactPreference",
+      accessorKey: "contact_preference",
       header: "Contact Preference",
       enableColumnFilter: true,
       meta: {
@@ -255,17 +245,17 @@ export const StudentTable = () => {
       },
       cell: ({ row }) => {
         const preference =
-          row.getValue<Student["contactPreference"]>("contactPreference");
+          row.getValue<StudentDto["contact_preference"]>("contact_preference");
         return preference === "call" ? "Call" : "Text";
       },
     },
     {
-      accessorKey: "lastRegistered",
+      accessorKey: "last_registered",
       header: "Is Registered",
       enableColumnFilter: false,
       cell: ({ row }) => {
         const student = row.original;
-        const isRegistered = !!student.lastRegistered;
+        const isRegistered = !!student.last_registered;
         return (
           <Checkbox
             checked={isRegistered}
@@ -274,7 +264,7 @@ export const StudentTable = () => {
                 id: student.id,
                 data: {
                   ...student,
-                  lastRegistered: checked ? new Date() : null,
+                  last_registered: checked ? new Date() : null,
                 },
               });
             }}
@@ -297,8 +287,8 @@ export const StudentTable = () => {
         onCreateNew={handleCreate}
         isLoading={studentsQuery.isLoading}
         error={studentsQuery.error}
-        getDeleteDescription={(student: Student) =>
-          `Are you sure you want to delete ${student.firstName} ${student.lastName}? This action cannot be undone.`
+        getDeleteDescription={(student: StudentDto) =>
+          `Are you sure you want to delete ${student.first_name} ${student.last_name}? This action cannot be undone.`
         }
         isDeleting={deleteMutation.isPending}
       />

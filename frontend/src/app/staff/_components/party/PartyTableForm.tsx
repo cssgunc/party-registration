@@ -23,17 +23,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  AutocompleteResult,
-  LocationService,
-} from "@/lib/api/location/location.service";
-import { Party } from "@/lib/api/party/party.types";
+import { LocationService } from "@/lib/api/location/location.service";
+import { AutocompleteResult } from "@/lib/api/location/location.types";
+import { PartyDto } from "@/lib/api/party/party.types";
 import { addBusinessDays, format, isAfter, startOfDay } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { useState } from "react";
 import * as z from "zod";
 
-export const PartyTableCreateEditSchema = z.object({
+export const partyTableFormSchema = z.object({
   address: z.string().min(1, "Address is required"),
   placeId: z
     .string()
@@ -60,34 +58,34 @@ export const PartyTableCreateEditSchema = z.object({
   contactTwoPreference: z.string(),
 });
 
-type PartyCreateEditValues = z.infer<typeof PartyTableCreateEditSchema>;
+type PartyTableFormValues = z.infer<typeof partyTableFormSchema>;
 
-interface PartyRegistrationFormProps {
-  onSubmit: (data: PartyCreateEditValues) => void | Promise<void>;
-  editData?: Party;
+interface PartyTableFormProps {
+  onSubmit: (data: PartyTableFormValues) => void | Promise<void>;
+  editData?: PartyDto;
   submissionError?: string | null;
   title?: string;
 }
 
-export default function PartyTableCreateEditForm({
+export default function PartyTableForm({
   onSubmit,
   editData,
   submissionError,
   title,
-}: PartyRegistrationFormProps) {
+}: PartyTableFormProps) {
   const locationService = new LocationService();
 
-  const [formData, setFormData] = useState<Partial<PartyCreateEditValues>>({
-    address: editData?.location.formattedAddress ?? "",
-    placeId: editData?.location.googlePlaceId ?? undefined,
-    partyDate: editData?.datetime ?? undefined,
-    partyTime: editData?.datetime.toISOString().slice(11, 16) ?? "",
-    contactOneEmail: editData?.contactOne.email ?? "",
-    contactTwoEmail: editData?.contactTwo.email ?? "",
-    contactTwoFirstName: editData?.contactTwo.firstName ?? "",
-    contactTwoLastName: editData?.contactTwo.lastName ?? "",
-    contactTwoPhoneNumber: editData?.contactTwo.phoneNumber ?? "",
-    contactTwoPreference: editData?.contactTwo.contactPreference ?? "",
+  const [formData, setFormData] = useState<Partial<PartyTableFormValues>>({
+    address: editData?.location.formatted_address ?? "",
+    placeId: editData?.location.google_place_id ?? undefined,
+    partyDate: editData?.party_datetime ?? undefined,
+    partyTime: editData?.party_datetime.toISOString().slice(11, 16) ?? "",
+    contactOneEmail: editData?.contact_one.email ?? "",
+    contactTwoEmail: editData?.contact_two.email ?? "",
+    contactTwoFirstName: editData?.contact_two.first_name ?? "",
+    contactTwoLastName: editData?.contact_two.last_name ?? "",
+    contactTwoPhoneNumber: editData?.contact_two.phone_number ?? "",
+    contactTwoPreference: editData?.contact_two.contact_preference ?? "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -96,7 +94,7 @@ export default function PartyTableCreateEditForm({
     e.preventDefault();
     setErrors({});
 
-    const result = PartyTableCreateEditSchema.safeParse(formData);
+    const result = partyTableFormSchema.safeParse(formData);
 
     if (!result.success) {
       const fieldErrors: Record<string, string> = {};
@@ -121,7 +119,7 @@ export default function PartyTableCreateEditForm({
     setFormData((prev) => ({
       ...prev,
       address: address?.formatted_address || "",
-      placeId: address?.place_id || undefined,
+      placeId: address?.google_place_id || undefined,
     }));
     if (errors.address) {
       setErrors((prev) => {
@@ -132,9 +130,9 @@ export default function PartyTableCreateEditForm({
     }
   };
 
-  const updateField = <K extends keyof PartyCreateEditValues>(
+  const updateField = <K extends keyof PartyTableFormValues>(
     field: K,
-    value: PartyCreateEditValues[K]
+    value: PartyTableFormValues[K]
   ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {

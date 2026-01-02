@@ -1,8 +1,9 @@
 import mockData from "@/../shared/mock_data.json";
-import type { Account, PoliceAccount } from "@/lib/api/account/account.types";
-import type { Location } from "@/lib/api/location/location.types";
-import type { Party } from "@/lib/api/party/party.types";
-import type { Contact, Student } from "@/lib/api/student/student.types";
+import type { AccountDto } from "@/lib/api/account/account.types";
+import { LocationDto } from "./api/location/location.types";
+import { ContactDto, PartyDto } from "./api/party/party.types";
+import { PoliceAccountDto } from "./api/police/police.types";
+import { StudentDto } from "./api/student/student.types";
 
 /**
  * Parses relative date strings like "NOW+7d", "NOW-30d", "NOW+4h", or "NOW-2h" into Date objects
@@ -37,64 +38,64 @@ function parseRelativeDate(dateStr: string | null): Date | null {
 }
 
 // Parse Police Account
-export const POLICE_ACCOUNT: PoliceAccount = {
+export const POLICE_ACCOUNT: PoliceAccountDto = {
   email: mockData.police.email,
 };
 
 // Parse Accounts
-export const ACCOUNTS: Account[] = mockData.accounts.map((acc) => ({
+export const ACCOUNTS: AccountDto[] = mockData.accounts.map((acc) => ({
   id: acc.id,
   email: acc.email,
   pid: acc.pid,
-  firstName: acc.first_name,
-  lastName: acc.last_name,
+  first_name: acc.first_name,
+  last_name: acc.last_name,
   role: acc.role as "staff" | "admin" | "student",
 }));
 
 // Parse Students
-export const STUDENTS: Student[] = mockData.students.map((student) => ({
+export const STUDENTS: StudentDto[] = mockData.students.map((student) => ({
   id: student.id,
   pid: student.pid,
   email: student.email,
-  firstName: student.first_name,
-  lastName: student.last_name,
-  phoneNumber: student.phone_number,
-  contactPreference: student.contact_preference as "call" | "text",
-  lastRegistered: student.last_registered
+  first_name: student.first_name,
+  last_name: student.last_name,
+  phone_number: student.phone_number,
+  contact_preference: student.contact_preference as "call" | "text",
+  last_registered: student.last_registered
     ? parseRelativeDate(student.last_registered)
     : null,
 }));
 
 // Parse Locations
-export const LOCATIONS: Location[] = mockData.locations.map((loc) => ({
+export const LOCATIONS: LocationDto[] = mockData.locations.map((loc) => ({
   id: loc.id,
-  citationCount: loc.citation_count,
-  warningCount: loc.warning_count,
-  holdExpirationDate: parseRelativeDate(loc.hold_expiration),
-  hasActiveHold: !!loc.hold_expiration,
-  googlePlaceId: loc.google_place_id,
-  formattedAddress: loc.formatted_address,
+  citation_count: loc.citation_count,
+  warning_count: loc.warning_count,
+  hold_expiration: parseRelativeDate(loc.hold_expiration),
+  google_place_id: loc.google_place_id,
+  formatted_address: loc.formatted_address,
   latitude: loc.latitude,
   longitude: loc.longitude,
-  streetNumber: loc.street_number,
-  streetName: loc.street_name,
+  street_number: loc.street_number,
+  street_name: loc.street_name,
   unit: loc.unit,
   city: loc.city,
   county: loc.county,
   state: loc.state,
   country: loc.country,
-  zipCode: loc.zip_code,
+  zip_code: loc.zip_code,
+  complaints: [],
 }));
 
 // Helper to find student by ID
-function findStudentById(id: number): Student {
+function findStudentById(id: number): StudentDto {
   const student = STUDENTS.find((s) => s.id === id);
   if (!student) throw new Error(`Student with id ${id} not found`);
   return student;
 }
 
 // Helper to find location by ID
-function findLocationById(id: number): Location {
+function findLocationById(id: number): LocationDto {
   const location = LOCATIONS.find((l) => l.id === id);
   if (!location) throw new Error(`Location with id ${id} not found`);
   return location;
@@ -103,21 +104,21 @@ function findLocationById(id: number): Location {
 // Parse contact two objects
 function parseContactTwo(
   contactData: (typeof mockData)["parties"][0]["contact_two"]
-): Contact {
+): ContactDto {
   return {
     email: contactData.email,
-    firstName: contactData.first_name,
-    lastName: contactData.last_name,
-    phoneNumber: contactData.phone_number,
-    contactPreference: contactData.contact_preference as "call" | "text",
+    first_name: contactData.first_name,
+    last_name: contactData.last_name,
+    phone_number: contactData.phone_number,
+    contact_preference: contactData.contact_preference as "call" | "text",
   };
 }
 
 // Parse Parties
-export const PARTIES: Party[] = mockData.parties.map((party) => ({
+export const PARTIES: PartyDto[] = mockData.parties.map((party) => ({
   id: party.id,
-  datetime: parseRelativeDate(party.party_datetime) ?? new Date(),
+  party_datetime: parseRelativeDate(party.party_datetime) ?? new Date(),
   location: findLocationById(party.location_id),
-  contactOne: findStudentById(party.contact_one_id),
-  contactTwo: parseContactTwo(party.contact_two),
+  contact_one: findStudentById(party.contact_one_id),
+  contact_two: parseContactTwo(party.contact_two),
 }));

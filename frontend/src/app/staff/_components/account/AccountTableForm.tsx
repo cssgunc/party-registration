@@ -19,33 +19,33 @@ import {
 import { useState } from "react";
 import * as z from "zod";
 
-export const AccountCreateEditValues = z.object({
+export const accountTableFormSchema = z.object({
   pid: z.string().length(9, "Please input a valid PID"),
   email: z.email({ pattern: z.regexes.html5Email }).min(1, "Email is required"),
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Second name is required"),
+  first_name: z.string().min(1, "First name is required"),
+  last_name: z.string().min(1, "Second name is required"),
   role: z.string().min(1, "Role is required"),
 });
 
-type AccountCreateEditValues = z.infer<typeof AccountCreateEditValues>;
+type AccountTableFormValues = z.infer<typeof accountTableFormSchema>;
 
-interface AccountRegistrationFormProps {
-  onSubmit: (data: AccountCreateEditValues) => void | Promise<void>;
-  editData?: AccountCreateEditValues;
+interface AccountTableFormProps {
+  onSubmit: (data: AccountTableFormValues) => void | Promise<void>;
+  editData?: AccountTableFormValues;
   submissionError?: string | null;
   title?: string;
 }
 
-export default function AccountTableCreateEditForm({
+export default function AccountTableForm({
   onSubmit,
   editData,
   submissionError,
   title,
-}: AccountRegistrationFormProps) {
-  const [formData, setFormData] = useState<Partial<AccountCreateEditValues>>({
+}: AccountTableFormProps) {
+  const [formData, setFormData] = useState<Partial<AccountTableFormValues>>({
     email: editData?.email ?? "",
-    firstName: editData?.firstName ?? "",
-    lastName: editData?.lastName ?? "",
+    first_name: editData?.first_name ?? "",
+    last_name: editData?.last_name ?? "",
     role: editData?.role ?? "",
     pid: editData?.pid ?? "",
   });
@@ -56,7 +56,7 @@ export default function AccountTableCreateEditForm({
     e.preventDefault();
     setErrors({});
 
-    const result = AccountCreateEditValues.safeParse(formData);
+    const result = accountTableFormSchema.safeParse(formData);
 
     if (!result.success) {
       const fieldErrors: Record<string, string> = {};
@@ -77,9 +77,9 @@ export default function AccountTableCreateEditForm({
     }
   };
 
-  const updateField = <K extends keyof AccountCreateEditValues>(
+  const updateField = <K extends keyof AccountTableFormValues>(
     field: K,
-    value: AccountCreateEditValues[K]
+    value: AccountTableFormValues[K]
   ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
@@ -129,28 +129,28 @@ export default function AccountTableCreateEditForm({
             {errors.pid && <FieldError>{errors.pid}</FieldError>}
           </Field>
 
-          <Field data-invalid={!!errors.firstName}>
+          <Field data-invalid={!!errors.first_name}>
             <FieldLabel htmlFor="first-name">First name</FieldLabel>
             <Input
               id="first-name"
               placeholder="John"
-              value={formData.firstName}
-              onChange={(e) => updateField("firstName", e.target.value)}
-              aria-invalid={!!errors.firstName}
+              value={formData.first_name}
+              onChange={(e) => updateField("first_name", e.target.value)}
+              aria-invalid={!!errors.first_name}
             />
-            {errors.firstName && <FieldError>{errors.firstName}</FieldError>}
+            {errors.first_name && <FieldError>{errors.first_name}</FieldError>}
           </Field>
 
-          <Field data-invalid={!!errors.lastName}>
+          <Field data-invalid={!!errors.last_name}>
             <FieldLabel htmlFor="last-name">Last name</FieldLabel>
             <Input
               id="last-name"
               placeholder="Doe"
-              value={formData.lastName}
-              onChange={(e) => updateField("lastName", e.target.value)}
-              aria-invalid={!!errors.lastName}
+              value={formData.last_name}
+              onChange={(e) => updateField("last_name", e.target.value)}
+              aria-invalid={!!errors.last_name}
             />
-            {errors.lastName && <FieldError>{errors.lastName}</FieldError>}
+            {errors.last_name && <FieldError>{errors.last_name}</FieldError>}
           </Field>
 
           <Field data-invalid={!!errors.role}>

@@ -1,11 +1,8 @@
 "use client";
 
-import {
-  AdminPartyPayload,
-  PaginatedPartiesResponse,
-  PartyService,
-} from "@/lib/api/party/party.service";
-import { Party } from "@/lib/api/party/party.types";
+import { PartyService } from "@/lib/api/party/party.service";
+import { AdminCreatePartyDto, PartyDto } from "@/lib/api/party/party.types";
+import { PaginatedResponse } from "@/lib/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
 import { format, isWithinInterval, startOfDay } from "date-fns";
@@ -13,11 +10,11 @@ import { useState } from "react";
 import { DateRange } from "react-day-picker";
 import { GenericInfoChip } from "../shared/sidebar/GenericInfoChip";
 import { useSidebar } from "../shared/sidebar/SidebarContext";
+import { TableTemplate } from "../shared/table/TableTemplate";
 import ContactInfoChipDetails from "./details/ContactInfoChipDetails";
 import LocationInfoChipDetails from "./details/LocationInfoChipDetails";
 import StudentInfoChipDetails from "./details/StudentInfoChipDetails";
-import PartyTableCreateEditForm from "./PartyTableCreateEdit";
-import { TableTemplate } from "../shared/table/TableTemplate";
+import PartyTableForm from "./PartyTableForm";
 
 const partyService = new PartyService();
 
@@ -25,7 +22,7 @@ export const PartyTable = () => {
   const queryClient = useQueryClient();
   const { openSidebar, closeSidebar } = useSidebar();
   const [sidebarMode, setSidebarMode] = useState<"create" | "edit">("create");
-  const [editingParty, setEditingParty] = useState<Party | null>(null);
+  const [editingParty, setEditingParty] = useState<PartyDto | null>(null);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
 
   const partiesQuery = useQuery({
@@ -37,7 +34,7 @@ export const PartyTable = () => {
   const parties = partiesQuery.data?.items ?? [];
 
   const createMutation = useMutation({
-    mutationFn: (payload: AdminPartyPayload) =>
+    mutationFn: (payload: AdminCreatePartyDto) =>
       partyService.createParty(payload),
     onError: (error: Error) => {
       console.error("Failed to create party:", error);
@@ -63,8 +60,13 @@ export const PartyTable = () => {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: number; payload: AdminPartyPayload }) =>
-      partyService.updateParty(id, payload),
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: number;
+      payload: AdminCreatePartyDto;
+    }) => partyService.updateParty(id, payload),
     onError: (error: Error) => {
       console.error("Failed to update party:", error);
 
@@ -92,11 +94,11 @@ export const PartyTable = () => {
     onMutate: async (id: number) => {
       await queryClient.cancelQueries({ queryKey: ["parties"] });
 
-      const previous = queryClient.getQueryData<PaginatedPartiesResponse>([
+      const previous = queryClient.getQueryData<PaginatedResponse<PartyDto>>([
         "parties",
       ]);
 
-      queryClient.setQueryData<PaginatedPartiesResponse>(
+      queryClient.setQueryData<PaginatedResponse<PartyDto>>(
         ["parties"],
         (prev) =>
           prev && {
@@ -118,7 +120,7 @@ export const PartyTable = () => {
     },
   });
 
-  const handleEdit = (party: Party) => {
+  const handleEdit = (party: PartyDto) => {
     setEditingParty(party);
     setSidebarMode("edit");
     setSubmissionError(null);
@@ -126,7 +128,7 @@ export const PartyTable = () => {
       `edit-party-${party.id}`,
       "Edit Party",
       "Update party information",
-      <PartyTableCreateEditForm
+      <PartyTableForm
         title="Edit Party"
         onSubmit={handleFormSubmit}
         submissionError={submissionError}
@@ -135,7 +137,7 @@ export const PartyTable = () => {
     );
   };
 
-  const handleDelete = (party: Party) => {
+  const handleDelete = (party: PartyDto) => {
     deleteMutation.mutate(party.id);
   };
 
@@ -147,7 +149,7 @@ export const PartyTable = () => {
       "create-party",
       "New Party",
       "Add a new party to the system",
-      <PartyTableCreateEditForm
+      <PartyTableForm
         title="New Party"
         onSubmit={handleFormSubmit}
         submissionError={submissionError}
@@ -167,72 +169,22 @@ export const PartyTable = () => {
     contactTwoPhoneNumber: string;
     contactTwoPreference: "call" | "text" | string;
   }) => {
-    // Check if we're editing and if date/time have changed
-    let party_datetime_str: string;
+    // Construct party datetime
+    const [hours, minutes] = data.partyTime.split(":").map(Number);
+    const party_datetime = new Date(data.partyDate);
+    party_datetime.setHours(hours ?? 0, minutes ?? 0, 0, 0);
 
-    if (sidebarMode === "edit" && editingParty) {
-      // Get original datetime components from the Date object
-      const originalDate = new Date(editingParty.datetime);
-      const originalDateStr = `${originalDate.getFullYear()}-${String(
-        originalDate.getMonth() + 1
-      ).padStart(2, "0")}-${String(originalDate.getDate()).padStart(2, "0")}`;
-      const originalTimeStr = `${String(originalDate.getHours()).padStart(
-        2,
-        "0"
-      )}:${String(originalDate.getMinutes()).padStart(2, "0")}`;
-
-      // Get new date components
-      const newDateStr = `${data.partyDate.getFullYear()}-${String(
-        data.partyDate.getMonth() + 1
-      ).padStart(2, "0")}-${String(data.partyDate.getDate()).padStart(2, "0")}`;
-
-      // If date and time haven't changed, use the original datetime string from backend
-      if (
-        originalDateStr === newDateStr &&
-        originalTimeStr === data.partyTime
-      ) {
-        // Use the raw datetime string directly to avoid any timezone conversion
-        party_datetime_str = editingParty.datetime.toISOString().slice(0, 19);
-      } else {
-        // Date or time changed, reconstruct
-        const [hours, minutes] = data.partyTime.split(":").map(Number);
-        const datetime = new Date(data.partyDate);
-        datetime.setHours(hours ?? 0, minutes ?? 0, 0, 0);
-
-        const year = datetime.getFullYear();
-        const month = String(datetime.getMonth() + 1).padStart(2, "0");
-        const day = String(datetime.getDate()).padStart(2, "0");
-        const hour = String(datetime.getHours()).padStart(2, "0");
-        const minute = String(datetime.getMinutes()).padStart(2, "0");
-        const second = String(datetime.getSeconds()).padStart(2, "0");
-        party_datetime_str = `${year}-${month}-${day}T${hour}:${minute}:${second}`;
-      }
-    } else {
-      // Creating new party
-      const [hours, minutes] = data.partyTime.split(":").map(Number);
-      const datetime = new Date(data.partyDate);
-      datetime.setHours(hours ?? 0, minutes ?? 0, 0, 0);
-
-      const year = datetime.getFullYear();
-      const month = String(datetime.getMonth() + 1).padStart(2, "0");
-      const day = String(datetime.getDate()).padStart(2, "0");
-      const hour = String(datetime.getHours()).padStart(2, "0");
-      const minute = String(datetime.getMinutes()).padStart(2, "0");
-      const second = String(datetime.getSeconds()).padStart(2, "0");
-      party_datetime_str = `${year}-${month}-${day}T${hour}:${minute}:${second}`;
-    }
-
-    const payload: AdminPartyPayload = {
+    const payload: AdminCreatePartyDto = {
       type: "admin",
-      placeId: data.placeId,
-      partyDatetime: new Date(party_datetime_str),
-      contactOneEmail: data.contactOneEmail,
-      contactTwo: {
+      google_place_id: data.placeId,
+      party_datetime,
+      contact_one_email: data.contactOneEmail,
+      contact_two: {
         email: data.contactTwoEmail,
-        firstName: data.contactTwoFirstName,
-        lastName: data.contactTwoLastName,
-        phoneNumber: data.contactTwoPhoneNumber,
-        contactPreference:
+        first_name: data.contactTwoFirstName,
+        last_name: data.contactTwoLastName,
+        phone_number: data.contactTwoPhoneNumber,
+        contact_preference:
           (data.contactTwoPreference as "call" | "text") ?? "call",
       },
     };
@@ -243,10 +195,10 @@ export const PartyTable = () => {
       createMutation.mutate(payload);
     }
   };
-  const columns: ColumnDef<Party>[] = [
+  const columns: ColumnDef<PartyDto>[] = [
     {
       id: "location",
-      accessorFn: (row) => row.location.formattedAddress,
+      accessorFn: (row) => row.location.formatted_address,
       header: "Address",
       enableColumnFilter: true,
       meta: {
@@ -262,7 +214,7 @@ export const PartyTable = () => {
             chipKey={`party-${row.original.id}-location`}
             title="Location Information"
             description="Detailed information about the selected location"
-            shortName={location.formattedAddress}
+            shortName={location.formatted_address}
             sidebarContent={<LocationInfoChipDetails data={location} />}
           />
         );
@@ -270,8 +222,8 @@ export const PartyTable = () => {
 
       filterFn: (row, _columnId, filterValue) => {
         const location = row.original.location;
-        const addressString = `${location.streetNumber || ""} ${
-          location.streetName || ""
+        const addressString = `${location.street_number || ""} ${
+          location.street_name || ""
         }`
           .toLowerCase()
           .trim();
@@ -279,16 +231,16 @@ export const PartyTable = () => {
       },
     },
     {
-      id: "datetime",
-      accessorFn: (row) => format(row.datetime, "MM-dd-yyyy"),
+      id: "party_datetime",
+      accessorFn: (row) => format(row.party_datetime, "MM-dd-yyyy"),
       header: "Date",
       enableColumnFilter: true,
       meta: {
         filterType: "dateRange",
       },
       cell: ({ row }) => {
-        const datetime = row.original.datetime;
-        const date = new Date(datetime);
+        const party_datetime = row.original.party_datetime;
+        const date = new Date(party_datetime);
         return date.toLocaleDateString();
       },
 
@@ -296,8 +248,8 @@ export const PartyTable = () => {
         if (!filterValue) return true;
 
         const dateRange = filterValue as DateRange;
-        const datetime = row.original.datetime;
-        const date = startOfDay(new Date(datetime));
+        const party_datetime = row.original.party_datetime;
+        const date = startOfDay(new Date(party_datetime));
 
         // If only 'from' date is selected
         if (dateRange.from && !dateRange.to) {
@@ -317,15 +269,15 @@ export const PartyTable = () => {
     },
     {
       id: "time",
-      accessorFn: (row) => format(row.datetime, "HH:mm"),
+      accessorFn: (row) => format(row.party_datetime, "HH:mm"),
       header: "Time",
       enableColumnFilter: true,
       meta: {
         filterType: "time",
       },
       cell: ({ row }) => {
-        const datetime = row.original.datetime;
-        const date = new Date(datetime);
+        const party_datetime = row.original.party_datetime;
+        const date = new Date(party_datetime);
         return date.toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
@@ -335,8 +287,8 @@ export const PartyTable = () => {
       filterFn: (row, _columnId, filterValue) => {
         if (!filterValue) return true;
 
-        const datetime = row.original.datetime;
-        const date = new Date(datetime);
+        const party_datetime = row.original.party_datetime;
+        const date = new Date(party_datetime);
 
         // Get hours and minutes from the time input (e.g., "14:30")
         const [filterHours, filterMinutes] = String(filterValue)
@@ -350,20 +302,20 @@ export const PartyTable = () => {
       },
     },
     {
-      id: "contactOne",
+      id: "contact_one",
       accessorFn: (row) =>
-        `${row.contactOne.firstName} ${row.contactOne.lastName}`,
+        `${row.contact_one.first_name} ${row.contact_one.last_name}`,
       header: "Contact One",
       enableColumnFilter: true,
       meta: {
         filterType: "text",
       },
       cell: ({ row }) => {
-        const contact = row.original.contactOne;
+        const contact = row.original.contact_one;
         return contact ? (
           <GenericInfoChip
             chipKey={`party-${row.original.id}-contact-one`}
-            shortName={`${contact.firstName} ${contact.lastName}`}
+            shortName={`${contact.first_name} ${contact.last_name}`}
             title="Student Information"
             description="Detailed information about the selected student"
             sidebarContent={<StudentInfoChipDetails data={contact} />}
@@ -374,29 +326,29 @@ export const PartyTable = () => {
       },
 
       filterFn: (row, _columnId, filterValue) => {
-        const contact = row.original.contactOne;
+        const contact = row.original.contact_one;
         const fullName =
-          `${contact.firstName} ${contact.lastName}`.toLowerCase();
+          `${contact.first_name} ${contact.last_name}`.toLowerCase();
         return fullName.includes(String(filterValue).toLowerCase());
       },
     },
     {
-      id: "contactTwo",
+      id: "contact_two",
       accessorFn: (row) =>
-        `${row.contactTwo.firstName} ${row.contactTwo.lastName}`,
+        `${row.contact_two.first_name} ${row.contact_two.last_name}`,
       header: "Contact Two",
       enableColumnFilter: true,
       meta: {
         filterType: "text",
       },
       cell: ({ row }) => {
-        const contact = row.original.contactTwo;
+        const contact = row.original.contact_two;
         const partyId = row.original.id;
         if (!contact) return "—";
         return (
           <GenericInfoChip
             chipKey={`party-${partyId}-contact-two`}
-            shortName={`${contact.firstName} ${contact.lastName}`}
+            shortName={`${contact.first_name} ${contact.last_name}`}
             title="Contact Information"
             description="Detailed information about the second contact"
             sidebarContent={<ContactInfoChipDetails data={contact} />}
@@ -405,9 +357,9 @@ export const PartyTable = () => {
       },
 
       filterFn: (row, _columnId, filterValue) => {
-        const contact = row.original.contactTwo;
+        const contact = row.original.contact_two;
         const fullName =
-          `${contact.firstName} ${contact.lastName}`.toLowerCase();
+          `${contact.first_name} ${contact.last_name}`.toLowerCase();
         return fullName.includes(String(filterValue).toLowerCase());
       },
     },
@@ -419,15 +371,15 @@ export const PartyTable = () => {
         data={parties}
         columns={columns}
         resourceName="Party"
-        initialSort={[{ id: "datetime", desc: true }]}
+        initialSort={[{ id: "party_datetime", desc: true }]}
         onEdit={handleEdit}
         onDelete={handleDelete}
         onCreateNew={handleCreate}
         isLoading={partiesQuery.isLoading}
         error={partiesQuery.error as Error | null}
-        getDeleteDescription={(party: Party) =>
+        getDeleteDescription={(party: PartyDto) =>
           `Are you sure you want to delete this party on ${new Date(
-            party.datetime
+            party.party_datetime
           ).toLocaleString()}? This action cannot be undone.`
         }
         isDeleting={deleteMutation.isPending}

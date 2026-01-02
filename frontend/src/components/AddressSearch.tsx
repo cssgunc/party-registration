@@ -14,10 +14,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  AutocompleteResult,
-  LocationService,
-} from "@/lib/api/location/location.service";
+import { LocationService } from "@/lib/api/location/location.service";
+import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { cn } from "@/lib/utils";
 import { CheckIcon, Loader2Icon, MapPinIcon, XIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -122,7 +120,9 @@ export default function AddressSearch({
    * Handle address selection from dropdown
    */
   const handleSelect = (currentValue: string) => {
-    const suggestion = suggestions.find((s) => s.place_id === currentValue);
+    const suggestion = suggestions.find(
+      (s) => s.google_place_id === currentValue
+    );
 
     if (suggestion) {
       setSelectedAddress(suggestion);
@@ -190,7 +190,7 @@ export default function AddressSearch({
       case "Enter":
         e.preventDefault();
         if (highlightedIndex >= 0 && highlightedIndex < suggestions.length) {
-          handleSelect(suggestions[highlightedIndex].place_id);
+          handleSelect(suggestions[highlightedIndex].google_place_id);
         }
         break;
       case "Escape":
@@ -285,8 +285,8 @@ export default function AddressSearch({
                 <CommandGroup>
                   {suggestions.map((suggestion, index) => (
                     <CommandItem
-                      key={suggestion.place_id}
-                      value={suggestion.place_id}
+                      key={suggestion.google_place_id}
+                      value={suggestion.google_place_id}
                       onSelect={handleSelect}
                       className={cn(
                         "cursor-pointer",
@@ -301,7 +301,8 @@ export default function AddressSearch({
                       <CheckIcon
                         className={cn(
                           "ml-2 h-4 w-4 flex-shrink-0",
-                          selectedAddress?.place_id === suggestion.place_id
+                          selectedAddress?.google_place_id ===
+                            suggestion.google_place_id
                             ? "opacity-100"
                             : "opacity-0"
                         )}
