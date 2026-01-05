@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Self
 
 from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Mapped, mapped_column, relationship, selectinload
+from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column, relationship, selectinload
 from src.core.database import EntityBase
 from src.modules.student.student_model import ContactPreference
 
@@ -15,13 +15,11 @@ if TYPE_CHECKING:
     from ..student.student_entity import StudentEntity
 
 
-class PartyEntity(EntityBase):
+class PartyEntity(MappedAsDataclass, EntityBase):
     __tablename__ = "parties"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    party_datetime: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, init=False)
+    party_datetime: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     location_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("locations.id", ondelete="CASCADE"), nullable=False
     )
@@ -39,10 +37,10 @@ class PartyEntity(EntityBase):
 
     # Relationships
     location: Mapped["LocationEntity"] = relationship(
-        "LocationEntity", passive_deletes=True
+        "LocationEntity", passive_deletes=True, init=False
     )
     contact_one: Mapped["StudentEntity"] = relationship(
-        "StudentEntity", foreign_keys=[contact_one_id], passive_deletes=True
+        "StudentEntity", foreign_keys=[contact_one_id], passive_deletes=True, init=False
     )
 
     @classmethod
@@ -90,10 +88,15 @@ class PartyEntity(EntityBase):
             .where(self.__class__.id == self.id)
             .options(
                 selectinload(self.__class__.location),
-                selectinload(self.__class__.contact_one).selectinload(
-                    StudentEntity.account
-                ),
+                selectinload(self.__class__.contact_one).selectinload(StudentEntity.account),
             )
         )
         party_entity = result.scalar_one()
         return party_entity.to_model()
+
+    def set_contact_two(self, contact: Contact) -> None:
+        self.contact_two_email = contact.email
+        self.contact_two_first_name = contact.first_name
+        self.contact_two_last_name = contact.last_name
+        self.contact_two_phone_number = contact.phone_number
+        self.contact_two_contact_preference = contact.contact_preference

@@ -24,6 +24,7 @@ def handle_http_exception(req: Request, exc: HTTPException):
     return JSONResponse(
         status_code=exc.status_code,
         content={"message": exc.detail},
+        headers=exc.headers,
     )
 
 

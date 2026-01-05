@@ -2,19 +2,18 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Self
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column, relationship
 from src.core.database import EntityBase
-
-from .complaint_model import Complaint
+from src.modules.complaint.complaint_model import Complaint, ComplaintData
 
 if TYPE_CHECKING:
-    from ..location.location_entity import LocationEntity
+    from src.modules.location.location_entity import LocationEntity
 
 
-class ComplaintEntity(EntityBase):
+class ComplaintEntity(MappedAsDataclass, EntityBase):
     __tablename__ = "complaints"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, init=False)
     location_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("locations.id", ondelete="CASCADE"), nullable=False
     )
@@ -23,11 +22,11 @@ class ComplaintEntity(EntityBase):
 
     # Relationships
     location: Mapped["LocationEntity"] = relationship(
-        "LocationEntity", passive_deletes=True
+        "LocationEntity", passive_deletes=True, init=False
     )
 
     @classmethod
-    def from_model(cls, data: Complaint) -> Self:
+    def from_model(cls, data: ComplaintData) -> Self:
         return cls(
             location_id=data.location_id,
             complaint_datetime=data.complaint_datetime,

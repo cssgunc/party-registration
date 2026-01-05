@@ -1,16 +1,9 @@
 from datetime import datetime, timezone
 
 import pytest
-import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.modules.account.account_entity import AccountEntity, AccountRole
-from src.modules.student.student_entity import StudentEntity
-from src.modules.student.student_model import (
-    ContactPreference,
-    Student,
-    StudentData,
-    StudentDataWithNames,
-)
+from src.modules.account.account_entity import AccountRole
+from src.modules.student.student_model import ContactPreference, Student
 from src.modules.student.student_service import (
     AccountNotFoundException,
     InvalidAccountRoleException,
@@ -19,473 +12,208 @@ from src.modules.student.student_service import (
     StudentNotFoundException,
     StudentService,
 )
+from test.modules.account.account_utils import AccountTestUtils
+from test.modules.student.student_utils import StudentTestUtils
 
 
-@pytest.fixture()
-def student_service(test_async_session: AsyncSession) -> StudentService:
-    return StudentService(session=test_async_session)
+class TestStudentService:
+    student_utils: StudentTestUtils
+    account_utils: AccountTestUtils
+    student_service: StudentService
 
+    @pytest.fixture(autouse=True)
+    def _setup(
+        self,
+        student_utils: StudentTestUtils,
+        account_utils: AccountTestUtils,
+        student_service: StudentService,
+    ):
+        self.student_utils = student_utils
+        self.account_utils = account_utils
+        self.student_service = student_service
 
-@pytest_asyncio.fixture()
-async def student_entity(
-    test_async_session: AsyncSession, test_account: AccountEntity
-) -> StudentEntity:
-    data = StudentData(
-        contact_preference=ContactPreference.text,
-        phone_number="9999999999",
-    )
-    entity = StudentEntity.from_model(data, test_account.id)
-    test_async_session.add(entity)
-    await test_async_session.commit()
-    await test_async_session.refresh(entity)
-    return entity
+    @pytest.mark.asyncio
+    async def test_get_students_empty(self):
+        students = await self.student_service.get_students()
+        assert len(students) == 0
 
+    @pytest.mark.asyncio
+    async def test_create_student(self) -> None:
+        account = await self.account_utils.create_one(role=AccountRole.STUDENT.value)
+        data = await self.student_utils.next_data_with_names()
 
-@pytest.mark.asyncio
-async def test_get_students_empty(student_service: StudentService):
-    students = await student_service.get_students(skip=0, limit=10)
-    assert len(students) == 0
+        student = await self.student_service.create_student(data, account_id=account.id)
 
+        assert isinstance(student, Student)
+        assert student.id == account.id
+        self.student_utils.assert_matches(student, data)
 
-@pytest.mark.asyncio
-async def test_create_student(
-    student_service: StudentService, test_account: AccountEntity
-) -> None:
-    data = StudentDataWithNames(
-        first_name="John",
-        last_name="Doe",
-        contact_preference=ContactPreference.text,
-        phone_number="1234567890",
-    )
-    student = await student_service.create_student(data, account_id=test_account.id)
-    assert isinstance(student, Student)
-    assert student.id == test_account.id
-    assert student.first_name == "John"
-    assert student.last_name == "Doe"
-    assert student.phone_number == "1234567890"
+    @pytest.mark.asyncio
+    async def test_create_student_conflict(self) -> None:
+        account1 = await self.account_utils.create_one(role=AccountRole.STUDENT.value)
+        account2 = await self.account_utils.create_one(role=AccountRole.STUDENT.value)
 
+        data = await self.student_utils.next_data_with_names()
+        await self.student_service.create_student(data, account_id=account1.id)
 
-@pytest.mark.asyncio
-async def test_create_student_conflict(
-    student_service: StudentService,
-    test_account: AccountEntity,
-    test_async_session: AsyncSession,
-) -> None:
-    data = StudentDataWithNames(
-        first_name="John",
-        last_name="Doe",
-        contact_preference=ContactPreference.text,
-        phone_number="1234567890",
-    )
-    await student_service.create_student(data, account_id=test_account.id)
+        with pytest.raises(StudentConflictException):
+            await self.student_service.create_student(data, account_id=account2.id)
 
-    second_account = AccountEntity(
-        email="second@example.com",
-        first_name="Test",
-        last_name="User",
-        pid="987654321",
-        role=AccountRole.STUDENT,
-    )
-    test_async_session.add(second_account)
-    await test_async_session.commit()
-    await test_async_session.refresh(second_account)
+    @pytest.mark.asyncio
+    async def test_get_students(self):
+        students = await self.student_utils.create_many(i=3)
 
-    with pytest.raises(StudentConflictException):
-        await student_service.create_student(data, account_id=second_account.id)
+        fetched = await self.student_service.get_students()
+        assert len(fetched) == 3
 
+        for s, f in zip(students, fetched):
+            self.student_utils.assert_matches(s, f)
 
-@pytest.mark.asyncio
-async def test_get_students(
-    student_service: StudentService,
-    test_async_session: AsyncSession,
-    test_account: AccountEntity,
-):
-    accounts = []
-    names = [("Alice", "Smith"), ("Bob", "Jones"), ("Charlie", "Brown")]
-    pids = ["111111111", "222222222", "333333333"]
-    for i in range(3):
-        acc = AccountEntity(
-            email=f"user{i}@example.com",
-            first_name=names[i][0],
-            last_name=names[i][1],
-            pid=pids[i],
-            role=AccountEntity.role.type.enums[0],
+    @pytest.mark.asyncio
+    async def test_get_student_by_id(self):
+        student_entity = await self.student_utils.create_one()
+
+        fetched = await self.student_service.get_student_by_id(student_entity.account_id)
+
+        assert fetched.id == student_entity.account_id
+        self.student_utils.assert_matches(fetched, student_entity)
+
+    @pytest.mark.asyncio
+    async def test_get_student_by_id_not_found(self):
+        with pytest.raises(StudentNotFoundException):
+            await self.student_service.get_student_by_id(999)
+
+    @pytest.mark.asyncio
+    async def test_update_student(self):
+        student_entity = await self.student_utils.create_one()
+
+        update_data = await self.student_utils.next_data_with_names(
+            first_name="Jane",
+            last_name="Doe",
+            contact_preference=ContactPreference.call,
         )
-        test_async_session.add(acc)
-        accounts.append(acc)
-    await test_async_session.commit()
-    for idx, acc in enumerate(accounts):
-        data = StudentData(
-            contact_preference=[
-                ContactPreference.call,
-                ContactPreference.text,
-                ContactPreference.call,
-            ][idx],
-            phone_number=["1111111111", "2222222222", "3333333333"][idx],
+        updated = await self.student_service.update_student(student_entity.account_id, update_data)
+
+        assert student_entity.account_id == updated.id
+        self.student_utils.assert_matches(updated, update_data)
+
+    @pytest.mark.asyncio
+    async def test_update_student_not_found(self):
+        update_data = await self.student_utils.next_data_with_names()
+        with pytest.raises(StudentNotFoundException):
+            await self.student_service.update_student(999, update_data)
+
+    @pytest.mark.asyncio
+    async def test_update_student_conflict(self):
+        student1 = await self.student_utils.create_one()
+        student2 = await self.student_utils.create_one()
+
+        with pytest.raises(StudentConflictException):
+            await self.student_service.update_student(
+                student2.account_id,
+                await self.student_utils.next_data_with_names(phone_number=student1.phone_number),
+            )
+
+    @pytest.mark.asyncio
+    async def test_delete_student(self):
+        student_entity = await self.student_utils.create_one()
+
+        deleted = await self.student_service.delete_student(student_entity.account_id)
+        self.student_utils.assert_matches(deleted, student_entity)
+
+        with pytest.raises(StudentNotFoundException):
+            await self.student_service.get_student_by_id(student_entity.account_id)
+
+    @pytest.mark.asyncio
+    async def test_delete_student_not_found(self):
+        with pytest.raises(StudentNotFoundException):
+            await self.student_service.delete_student(999)
+
+    @pytest.mark.asyncio
+    async def test_create_student_with_datetime_timezone(self):
+        account = await self.account_utils.create_one(role=AccountRole.STUDENT.value)
+        last_reg = datetime(2024, 1, 15, 10, 30, 0, tzinfo=timezone.utc)
+        data = await self.student_utils.next_data_with_names(last_registered=last_reg)
+
+        student = await self.student_service.create_student(data, account_id=account.id)
+        assert student.last_registered == last_reg
+
+    @pytest.mark.asyncio
+    async def test_update_student_with_datetime_timezone(self):
+        student_entity = await self.student_utils.create_one()
+
+        last_reg = datetime(2024, 3, 20, 14, 45, 30, tzinfo=timezone.utc)
+        update_data = await self.student_utils.next_data_with_names(last_registered=last_reg)
+        updated = await self.student_service.update_student(student_entity.account_id, update_data)
+        self.student_utils.assert_matches(updated, update_data)
+
+    @pytest.mark.asyncio
+    async def test_create_student_with_nonexistent_account(self):
+        data = await self.student_utils.next_data_with_names()
+        with pytest.raises(AccountNotFoundException):
+            await self.student_service.create_student(data, account_id=99999)
+
+    @pytest.mark.asyncio
+    async def test_create_student_with_non_student_role(self):
+        admin_account = await self.account_utils.create_one(role=AccountRole.ADMIN.value)
+        data = await self.student_utils.next_data_with_names()
+
+        with pytest.raises(InvalidAccountRoleException):
+            await self.student_service.create_student(data, account_id=admin_account.id)
+
+    @pytest.mark.asyncio
+    async def test_create_student_duplicate_account_id(self):
+        account = await self.account_utils.create_one(role=AccountRole.STUDENT.value)
+        data1 = await self.student_utils.next_data_with_names()
+        await self.student_service.create_student(data1, account_id=account.id)
+
+        data2 = await self.student_utils.next_data_with_names()
+        with pytest.raises(StudentAlreadyExistsException):
+            await self.student_service.create_student(data2, account_id=account.id)
+
+    @pytest.mark.asyncio
+    async def test_update_student_with_non_student_role(self, test_session: AsyncSession):
+        account = await self.account_utils.create_one(role=AccountRole.STUDENT.value)
+        data = await self.student_utils.next_data_with_names()
+        await self.student_service.create_student(data, account_id=account.id)
+
+        account.role = AccountRole.ADMIN
+        test_session.add(account)
+        await test_session.commit()
+
+        update_data = await self.student_utils.next_data_with_names()
+        with pytest.raises(InvalidAccountRoleException):
+            await self.student_service.update_student(account.id, update_data)
+
+    @pytest.mark.asyncio
+    async def test_update_is_registered_true(self):
+        student_entity = await self.student_utils.create_one()
+
+        assert student_entity.last_registered is None
+
+        before_update = datetime.now(timezone.utc)
+        updated = await self.student_service.update_is_registered(
+            student_entity.account_id, is_registered=True
         )
-        entity = StudentEntity.from_model(data, acc.id)
-        test_async_session.add(entity)
-    await test_async_session.commit()
+        after_update = datetime.now(timezone.utc)
 
-    students = await student_service.get_students(skip=0, limit=10)
-    assert len(students) == 3
+        assert updated.last_registered is not None
+        assert before_update <= updated.last_registered <= after_update
 
-    expected = {
-        "1111111111": "Alice Smith",
-        "2222222222": "Bob Jones",
-        "3333333333": "Charlie Brown",
-    }
-    phones = {s.phone_number for s in students}
-    assert phones == set(expected.keys())
+    @pytest.mark.asyncio
+    async def test_update_is_registered_false(self):
+        last_reg = datetime(2024, 1, 15, 10, 30, 0, tzinfo=timezone.utc)
+        student_entity = await self.student_utils.create_one(last_registered=last_reg)
 
-    for s in students:
-        assert s.phone_number in expected
-        assert f"{s.first_name} {s.last_name}" == expected[s.phone_number]
-        assert isinstance(s.id, int)
+        assert student_entity.last_registered is not None
 
-
-@pytest.mark.asyncio
-async def test_get_student_by_id(
-    student_service: StudentService, student_entity: StudentEntity
-):
-    fetched = await student_service.get_student_by_id(student_entity.account_id)
-    assert fetched.id == student_entity.account_id
-    assert fetched.phone_number == "9999999999"
-    assert f"{fetched.first_name} {fetched.last_name}" == "Test User"
-
-
-@pytest.mark.asyncio
-async def test_get_student_by_id_not_found(student_service: StudentService):
-    with pytest.raises(StudentNotFoundException):
-        await student_service.get_student_by_id(999)
-
-
-@pytest.mark.asyncio
-async def test_update_student(
-    student_service: StudentService,
-    test_async_session: AsyncSession,
-    test_account: AccountEntity,
-):
-    data = StudentDataWithNames(
-        first_name="John",
-        last_name="Doe",
-        contact_preference=ContactPreference.text,
-        phone_number="1234567890",
-    )
-    entity = StudentEntity.from_model(data, test_account.id)
-    test_async_session.add(entity)
-    await test_async_session.commit()
-    await test_async_session.refresh(entity)
-
-    update_data = StudentDataWithNames(
-        first_name="Jane",
-        last_name="Doe",
-        contact_preference=ContactPreference.call,
-        phone_number="0987654321",
-    )
-    updated = await student_service.update_student(entity.account_id, update_data)
-    assert entity.account_id == updated.id
-    assert updated.first_name == "Jane"
-    assert updated.phone_number == "0987654321"
-
-
-@pytest.mark.asyncio
-async def test_update_student_not_found(student_service: StudentService):
-    update_data = StudentDataWithNames(
-        first_name="Jane",
-        last_name="Doe",
-        contact_preference=ContactPreference.call,
-        phone_number="0987654321",
-    )
-    with pytest.raises(StudentNotFoundException):
-        await student_service.update_student(999, update_data)
-
-
-@pytest.mark.asyncio
-async def test_update_student_conflict(
-    student_service: StudentService,
-    test_async_session: AsyncSession,
-    test_account: AccountEntity,
-):
-    data1 = StudentDataWithNames(
-        first_name="Alice",
-        last_name="Smith",
-        contact_preference=ContactPreference.call,
-        phone_number="1111111111",
-    )
-    data2 = StudentDataWithNames(
-        first_name="Bob",
-        last_name="Jones",
-        contact_preference=ContactPreference.text,
-        phone_number="2222222222",
-    )
-    account2 = AccountEntity(
-        email="second@example.com",
-        first_name="Test",
-        last_name="User",
-        pid="987654321",
-        role=test_account.role,
-    )
-    test_async_session.add(account2)
-    await test_async_session.commit()
-    await test_async_session.refresh(account2)
-
-    entity1 = StudentEntity.from_model(data1, test_account.id)
-    entity2 = StudentEntity.from_model(data2, account2.id)
-    test_async_session.add(entity1)
-    test_async_session.add(entity2)
-    await test_async_session.commit()
-    await test_async_session.refresh(entity1)
-    await test_async_session.refresh(entity2)
-
-    with pytest.raises(StudentConflictException):
-        await student_service.update_student(
-            entity2.account_id,
-            StudentDataWithNames(
-                first_name="Bob",
-                last_name="Jones",
-                contact_preference=ContactPreference.text,
-                phone_number=entity1.phone_number,
-            ),
+        updated = await self.student_service.update_is_registered(
+            student_entity.account_id, is_registered=False
         )
 
+        assert updated.last_registered is None
 
-@pytest.mark.asyncio
-async def test_delete_student(
-    student_service: StudentService,
-    test_async_session: AsyncSession,
-    test_account: AccountEntity,
-):
-    data = StudentDataWithNames(
-        first_name="John",
-        last_name="Doe",
-        contact_preference=ContactPreference.text,
-        phone_number="1234567890",
-    )
-    entity = StudentEntity.from_model(data, test_account.id)
-    test_async_session.add(entity)
-    await test_async_session.commit()
-    await test_async_session.refresh(entity)
-
-    deleted = await student_service.delete_student(entity.account_id)
-    assert deleted.phone_number == entity.phone_number
-    with pytest.raises(StudentNotFoundException):
-        await student_service.get_student_by_id(entity.account_id)
-
-
-@pytest.mark.asyncio
-async def test_delete_student_not_found(student_service: StudentService):
-    with pytest.raises(StudentNotFoundException):
-        await student_service.delete_student(999)
-
-
-@pytest.mark.asyncio
-async def test_create_student_with_datetime_timezone(
-    student_service: StudentService,
-    test_async_session: AsyncSession,
-    test_account: AccountEntity,
-):
-    last_reg = datetime(2024, 1, 15, 10, 30, 0, tzinfo=timezone.utc)
-    data = StudentDataWithNames(
-        first_name="Jane",
-        last_name="Smith",
-        contact_preference=ContactPreference.call,
-        phone_number="5551234567",
-        last_registered=last_reg,
-    )
-    student = await student_service.create_student(data, account_id=test_account.id)
-    assert student.last_registered == last_reg
-
-
-@pytest.mark.asyncio
-async def test_update_student_with_datetime_timezone(
-    student_service: StudentService,
-    test_async_session: AsyncSession,
-    test_account: AccountEntity,
-):
-    data = StudentDataWithNames(
-        first_name="John",
-        last_name="Doe",
-        contact_preference=ContactPreference.text,
-        phone_number="5559876543",
-    )
-    entity = StudentEntity.from_model(data, test_account.id)
-    test_async_session.add(entity)
-    await test_async_session.commit()
-    await test_async_session.refresh(entity)
-
-    last_reg = datetime(2024, 3, 20, 14, 45, 30, tzinfo=timezone.utc)
-    update_data = StudentDataWithNames(
-        first_name="John",
-        last_name="Doe",
-        contact_preference=ContactPreference.text,
-        phone_number="5559876543",
-        last_registered=last_reg,
-    )
-    updated = await student_service.update_student(entity.account_id, update_data)
-    assert updated.last_registered == last_reg
-
-
-@pytest.mark.asyncio
-async def test_create_student_with_nonexistent_account(
-    student_service: StudentService,
-):
-    data = StudentDataWithNames(
-        first_name="Test",
-        last_name="User",
-        contact_preference=ContactPreference.text,
-        phone_number="5551112222",
-    )
-    with pytest.raises(AccountNotFoundException):
-        await student_service.create_student(data, account_id=99999)
-
-
-@pytest.mark.asyncio
-async def test_create_student_with_non_student_role(
-    student_service: StudentService,
-    test_async_session: AsyncSession,
-):
-    admin_account = AccountEntity(
-        email="admin@example.com",
-        first_name="Test",
-        last_name="User",
-        pid="444444444",
-        role=AccountRole.ADMIN,
-    )
-    test_async_session.add(admin_account)
-    await test_async_session.commit()
-    await test_async_session.refresh(admin_account)
-
-    data = StudentDataWithNames(
-        first_name="Test",
-        last_name="User",
-        contact_preference=ContactPreference.text,
-        phone_number="5553334444",
-    )
-    with pytest.raises(InvalidAccountRoleException):
-        await student_service.create_student(data, account_id=admin_account.id)
-
-
-@pytest.mark.asyncio
-async def test_create_student_duplicate_account_id(
-    student_service: StudentService,
-    test_async_session: AsyncSession,
-    test_account: AccountEntity,
-):
-    data1 = StudentDataWithNames(
-        first_name="First",
-        last_name="Student",
-        contact_preference=ContactPreference.text,
-        phone_number="5555555555",
-    )
-    await student_service.create_student(data1, account_id=test_account.id)
-
-    data2 = StudentDataWithNames(
-        first_name="Second",
-        last_name="Student",
-        contact_preference=ContactPreference.call,
-        phone_number="5556666666",
-    )
-    with pytest.raises(StudentAlreadyExistsException):
-        await student_service.create_student(data2, account_id=test_account.id)
-
-
-@pytest.mark.asyncio
-async def test_update_student_with_non_student_role(
-    student_service: StudentService,
-    test_async_session: AsyncSession,
-    test_account: AccountEntity,
-):
-    data = StudentDataWithNames(
-        first_name="John",
-        last_name="Doe",
-        contact_preference=ContactPreference.text,
-        phone_number="5557778888",
-    )
-    entity = StudentEntity.from_model(data, test_account.id)
-    test_async_session.add(entity)
-    await test_async_session.commit()
-
-    test_account.role = AccountRole.ADMIN
-    test_async_session.add(test_account)
-    await test_async_session.commit()
-
-    update_data = StudentDataWithNames(
-        first_name="Jane",
-        last_name="Doe",
-        contact_preference=ContactPreference.call,
-        phone_number="5557778888",
-    )
-    with pytest.raises(InvalidAccountRoleException):
-        await student_service.update_student(test_account.id, update_data)
-
-
-@pytest.mark.asyncio
-async def test_update_is_registered_true(
-    student_service: StudentService,
-    test_async_session: AsyncSession,
-    test_account: AccountEntity,
-):
-    """Test that update_is_registered sets last_registered to current datetime when True."""
-    data = StudentDataWithNames(
-        first_name="John",
-        last_name="Doe",
-        contact_preference=ContactPreference.text,
-        phone_number="5551234567",
-    )
-    entity = StudentEntity.from_model(data, test_account.id)
-    test_async_session.add(entity)
-    await test_async_session.commit()
-    await test_async_session.refresh(entity)
-
-    # Verify initially no last_registered
-    assert entity.last_registered is None
-
-    # Update to registered
-    before_update = datetime.now(timezone.utc)
-    updated = await student_service.update_is_registered(test_account.id, is_registered=True)
-    after_update = datetime.now(timezone.utc)
-
-    # Verify last_registered is set to approximately current time
-    assert updated.last_registered is not None
-    assert before_update <= updated.last_registered <= after_update
-
-
-@pytest.mark.asyncio
-async def test_update_is_registered_false(
-    student_service: StudentService,
-    test_async_session: AsyncSession,
-    test_account: AccountEntity,
-):
-    """Test that update_is_registered sets last_registered to None when False."""
-    # Create student with a last_registered value
-    last_reg = datetime(2024, 1, 15, 10, 30, 0, tzinfo=timezone.utc)
-    data = StudentDataWithNames(
-        first_name="John",
-        last_name="Doe",
-        contact_preference=ContactPreference.text,
-        phone_number="5551234567",
-        last_registered=last_reg,
-    )
-    entity = StudentEntity.from_model(data, test_account.id)
-    test_async_session.add(entity)
-    await test_async_session.commit()
-    await test_async_session.refresh(entity)
-
-    # Verify initially has last_registered (database may strip timezone)
-    assert entity.last_registered is not None
-
-    # Update to not registered
-    updated = await student_service.update_is_registered(test_account.id, is_registered=False)
-
-    # Verify last_registered is now None
-    assert updated.last_registered is None
-
-
-@pytest.mark.asyncio
-async def test_update_is_registered_student_not_found(
-    student_service: StudentService,
-):
-    """Test that update_is_registered raises StudentNotFoundException for nonexistent student."""
-    with pytest.raises(StudentNotFoundException):
-        await student_service.update_is_registered(99999, is_registered=True)
+    @pytest.mark.asyncio
+    async def test_update_is_registered_student_not_found(self):
+        with pytest.raises(StudentNotFoundException):
+            await self.student_service.update_is_registered(99999, is_registered=True)

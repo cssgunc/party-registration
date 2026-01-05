@@ -90,7 +90,6 @@ async def reset_dev():
             data = json.load(f)
 
         police = PoliceEntity(
-            id=1,
             email=data["police"]["email"],
             hashed_password=data["police"]["hashed_password"],
         )

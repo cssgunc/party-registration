@@ -1,7 +1,12 @@
-from typing import Self
+from enum import Enum
 
 from pydantic import BaseModel, EmailStr, Field
-from src.modules.account.account_entity import AccountEntity, AccountRole
+
+
+class AccountRole(Enum):
+    STUDENT = "student"
+    STAFF = "staff"
+    ADMIN = "admin"
 
 
 class AccountData(BaseModel):
@@ -23,14 +28,3 @@ class Account(BaseModel):
     last_name: str
     pid: str
     role: AccountRole
-
-    @classmethod
-    def from_entity(cls, account_entity: AccountEntity) -> Self:
-        return cls(
-            id=account_entity.id,
-            email=account_entity.email,
-            first_name=account_entity.first_name,
-            last_name=account_entity.last_name,
-            pid=account_entity.pid,
-            role=AccountRole(account_entity.role.value),
-        )

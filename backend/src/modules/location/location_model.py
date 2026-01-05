@@ -1,7 +1,6 @@
 from typing import Self
 
 from pydantic import AwareDatetime, BaseModel, Field
-from pydantic import AwareDatetime, BaseModel
 from src.core.models import PaginatedResponse
 from src.modules.complaint.complaint_model import Complaint
 
@@ -17,7 +16,7 @@ class AutocompleteInput(BaseModel):
 class AutocompleteResult(BaseModel):
     # Result from Google Maps autocomplete
     formatted_address: str
-    place_id: str
+    google_place_id: str
 
 
 class AddressData(BaseModel):
@@ -37,10 +36,8 @@ class AddressData(BaseModel):
 
 
 class LocationData(AddressData):
-    warning_count: int = Field(default=0, ge=0, le=MAX_COUNT)
-    citation_count: int = Field(default=0, ge=0, le=MAX_COUNT)
-    warning_count: int = 0
-    citation_count: int = 0
+    warning_count: int = Field(default=0, ge=0)
+    citation_count: int = Field(default=0, ge=0)
     hold_expiration: AwareDatetime | None = None
 
     @classmethod
@@ -80,8 +77,6 @@ PaginatedLocationResponse = PaginatedResponse[Location]
 
 class LocationCreate(BaseModel):
     google_place_id: str
-    warning_count: int = Field(default=0, ge=0, le=MAX_COUNT)
-    citation_count: int = Field(default=0, ge=0, le=MAX_COUNT)
-    warning_count: int = 0
-    citation_count: int = 0
+    warning_count: int = Field(default=0, ge=0)
+    citation_count: int = Field(default=0, ge=0)
     hold_expiration: AwareDatetime | None = None

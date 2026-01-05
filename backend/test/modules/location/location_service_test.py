@@ -1,19 +1,8 @@
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch
 
 import googlemaps
 import pytest
-import pytest_asyncio
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from src.modules.complaint.complaint_entity import ComplaintEntity
-from src.modules.location.location_entity import LocationEntity
-from src.modules.location.location_model import (
-    AddressData,
-    AutocompleteResult,
-    Location,
-    LocationData,
-)
+from src.modules.location.location_model import AddressData
 from src.modules.location.location_service import (
     GoogleMapsAPIException,
     InvalidPlaceIdException,
@@ -22,1030 +11,538 @@ from src.modules.location.location_service import (
     LocationService,
     PlaceNotFoundException,
 )
+from test.modules.complaint.complaint_utils import ComplaintTestUtils
+from test.modules.location.location_utils import GmapsMockUtils, LocationTestUtils
 
 
-@pytest.fixture
-def mock_gmaps_client() -> MagicMock:
-    """Create a mock Google Maps client"""
-    return MagicMock()
+class TestLocationServiceCRUD:
+    """Tests for Location CRUD operations"""
 
+    location_utils: LocationTestUtils
+    location_service: LocationService
 
-@pytest.fixture
-def location_service(mock_gmaps_client: MagicMock) -> LocationService:
-    """Create LocationService with mocked Google Maps client (for Google Maps API tests)"""
-    return LocationService(gmaps_client=mock_gmaps_client)
+    @pytest.fixture(autouse=True)
+    def _setup(
+        self,
+        location_utils: LocationTestUtils,
+        location_service: LocationService,
+    ):
+        self.location_utils = location_utils
+        self.location_service = location_service
 
+    @pytest.mark.asyncio
+    async def test_get_locations_empty(self):
+        """Test getting all locations when none exist"""
+        locations = await self.location_service.get_locations()
+        assert locations == []
 
-@pytest.fixture
-def location_service_db(
-    test_async_session: AsyncSession, mock_gmaps_client: MagicMock
-) -> LocationService:
-    """Create LocationService with database session and mocked Google Maps client (for CRUD tests)"""
-    return LocationService(gmaps_client=mock_gmaps_client, session=test_async_session)
+    @pytest.mark.asyncio
+    async def test_create_location(self):
+        """Test creating a new location"""
+        data = await self.location_utils.next_data()
 
+        location = await self.location_service.create_location(data)
 
-@pytest.fixture
-def sample_location_data() -> LocationData:
-    """Create sample location data for testing"""
-    return LocationData(
-        google_place_id="ChIJ123abc",
-        formatted_address="123 Main St, Chapel Hill, NC 27514, USA",
-        latitude=35.9132,
-        longitude=-79.0558,
-        street_number="123",
-        street_name="Main Street",
-        unit=None,
-        city="Chapel Hill",
-        county="Orange County",
-        state="NC",
-        country="US",
-        zip_code="27514",
-        warning_count=0,
-        citation_count=0,
-        hold_expiration=None,
-    )
+        self.location_utils.assert_matches(location, data)
 
-
-@pytest.fixture
-def sample_location_data_2() -> LocationData:
-    """Create another sample location data for testing"""
-    return LocationData(
-        google_place_id="ChIJ456def",
-        formatted_address="456 Oak Ave, Durham, NC 27701, USA",
-        latitude=35.9940,
-        longitude=-78.8986,
-        street_number="456",
-        street_name="Oak Avenue",
-        unit="Apt 2B",
-        city="Durham",
-        county="Durham County",
-        state="NC",
-        country="US",
-        zip_code="27701",
-        warning_count=1,
-        citation_count=2,
-        hold_expiration=datetime(2025, 12, 31, 23, 59, 59, tzinfo=timezone.utc),
-    )
-
-
-@pytest_asyncio.fixture
-async def test_location(test_async_session: AsyncSession) -> Location:
-    """Create a test location entity directly in the database"""
-    location_entity = LocationEntity(
-        google_place_id="ChIJ123abc",
-        formatted_address="123 Main St, Chapel Hill, NC 27514, USA",
-        latitude=35.9132,
-        longitude=-79.0558,
-        street_number="123",
-        street_name="Main Street",
-        unit=None,
-        city="Chapel Hill",
-        county="Orange County",
-        state="NC",
-        country="US",
-        zip_code="27514",
-        warning_count=0,
-        citation_count=0,
-        hold_expiration=None,
-    )
-    test_async_session.add(location_entity)
-    await test_async_session.commit()
-    await test_async_session.refresh(location_entity)
-    return location_entity.to_model()
-
-
-@pytest_asyncio.fixture
-async def test_location_2(test_async_session: AsyncSession) -> Location:
-    """Create a second test location entity directly in the database"""
-    location_entity = LocationEntity(
-        google_place_id="ChIJ456def",
-        formatted_address="456 Oak Ave, Durham, NC 27701, USA",
-        latitude=35.9940,
-        longitude=-78.8986,
-        street_number="456",
-        street_name="Oak Avenue",
-        unit="Apt 2B",
-        city="Durham",
-        county="Durham County",
-        state="NC",
-        country="US",
-        zip_code="27701",
-        warning_count=1,
-        citation_count=2,
-        hold_expiration=datetime(2025, 12, 31, 23, 59, 59, tzinfo=timezone.utc),
-    )
-    test_async_session.add(location_entity)
-    await test_async_session.commit()
-    await test_async_session.refresh(location_entity)
-    return location_entity.to_model()
-
-
-@pytest_asyncio.fixture
-async def test_locations_multiple(test_async_session: AsyncSession) -> list[Location]:
-    """Create multiple test location entities directly in the database"""
-    location_entities = [
-        LocationEntity(
-            google_place_id="ChIJ123abc",
-            formatted_address="123 Main St, Chapel Hill, NC 27514, USA",
-            latitude=35.9132,
-            longitude=-79.0558,
-            street_number="123",
-            street_name="Main Street",
-            city="Chapel Hill",
-            county="Orange County",
-            state="NC",
-            country="US",
-            zip_code="27514",
-            warning_count=0,
-            citation_count=0,
-        ),
-        LocationEntity(
-            google_place_id="ChIJ456def",
-            formatted_address="456 Oak Ave, Durham, NC 27701, USA",
-            latitude=35.9940,
-            longitude=-78.8986,
-            street_number="456",
-            street_name="Oak Avenue",
+    @pytest.mark.asyncio
+    async def test_create_location_with_full_data(self):
+        """Test creating a location with all optional fields populated"""
+        data = await self.location_utils.next_data(
             unit="Apt 2B",
-            city="Durham",
-            county="Durham County",
-            state="NC",
-            country="US",
-            zip_code="27701",
             warning_count=1,
             citation_count=2,
             hold_expiration=datetime(2025, 12, 31, 23, 59, 59, tzinfo=timezone.utc),
-        ),
-    ]
+        )
 
-    for entity in location_entities:
-        test_async_session.add(entity)
-    await test_async_session.commit()
+        location = await self.location_service.create_location(data)
 
-    locations = []
-    for entity in location_entities:
-        await test_async_session.refresh(entity)
-        locations.append(entity.to_model())
+        self.location_utils.assert_matches(location, data)
 
-    return locations
+    @pytest.mark.asyncio
+    async def test_create_location_conflict(self):
+        """Test creating a location with duplicate google_place_id raises conflict exception"""
+        data = await self.location_utils.next_data()
+        await self.location_service.create_location(data)
+
+        with pytest.raises(LocationConflictException):
+            await self.location_service.create_location(data)
+
+    @pytest.mark.asyncio
+    async def test_get_locations(self):
+        """Test getting all locations"""
+        locations = await self.location_utils.create_many(i=3)
+
+        fetched = await self.location_service.get_locations()
+
+        assert len(fetched) == 3
+        for loc, f in zip(locations, fetched):
+            self.location_utils.assert_matches(loc, f)
+
+    @pytest.mark.asyncio
+    async def test_get_location_by_id(self):
+        """Test getting a location by its ID"""
+        location = await self.location_utils.create_one()
+
+        fetched = await self.location_service.get_location_by_id(location.id)
+
+        self.location_utils.assert_matches(fetched, location)
+
+    @pytest.mark.asyncio
+    async def test_get_location_by_id_not_found(self):
+        """Test getting a location by non-existent ID raises not found exception"""
+        with pytest.raises(LocationNotFoundException):
+            await self.location_service.get_location_by_id(999)
+
+    @pytest.mark.asyncio
+    async def test_get_location_by_place_id(self):
+        """Test getting a location by its Google Place ID"""
+        location = await self.location_utils.create_one()
+
+        fetched = await self.location_service.get_location_by_place_id(location.google_place_id)
+
+        self.location_utils.assert_matches(fetched, location)
+
+    @pytest.mark.asyncio
+    async def test_get_location_by_place_id_not_found(self):
+        """Test getting a location by non-existent place ID raises not found exception"""
+        with pytest.raises(LocationNotFoundException):
+            await self.location_service.get_location_by_place_id("invalid_place_id")
+
+    @pytest.mark.asyncio
+    async def test_update_location(self):
+        """Test updating a location"""
+        location = await self.location_utils.create_one()
+        update_data = await self.location_utils.next_data()
+
+        updated = await self.location_service.update_location(location.id, update_data)
+
+        self.location_utils.assert_matches(updated, update_data)
+
+    @pytest.mark.asyncio
+    async def test_update_location_not_found(self):
+        """Test updating a non-existent location raises not found exception"""
+        update_data = await self.location_utils.next_data()
+
+        with pytest.raises(LocationNotFoundException):
+            await self.location_service.update_location(999, update_data)
+
+    @pytest.mark.asyncio
+    async def test_update_location_conflict(self):
+        """Test updating a location with another location's google_place_id raises conflict exception"""
+        locations = await self.location_utils.create_many(i=2)
+        location1 = locations[0]
+        location2 = locations[1]
+
+        # Try to update location2 to have location1's place_id (should fail)
+        conflict_data = await self.location_utils.next_data(
+            google_place_id=location1.google_place_id
+        )
+
+        with pytest.raises(LocationConflictException):
+            await self.location_service.update_location(location2.id, conflict_data)
+
+    @pytest.mark.asyncio
+    async def test_update_location_same_place_id(self):
+        """Test updating a location with the same google_place_id works (no conflict with itself)"""
+        location = await self.location_utils.create_one()
+
+        update_data = await self.location_utils.next_data(
+            google_place_id=location.google_place_id,
+        )
+
+        updated = await self.location_service.update_location(location.id, update_data)
+
+        self.location_utils.assert_matches(updated, update_data)
+
+    @pytest.mark.asyncio
+    async def test_delete_location(self):
+        """Test deleting a location"""
+        location = await self.location_utils.create_one()
+
+        deleted = await self.location_service.delete_location(location.id)
+
+        self.location_utils.assert_matches(deleted, location)
+
+        # Verify it's actually deleted
+        locations = await self.location_utils.get_all()
+        assert len(locations) == 0
+
+    @pytest.mark.asyncio
+    async def test_delete_location_not_found(self):
+        """Test deleting a non-existent location raises not found exception"""
+        with pytest.raises(LocationNotFoundException):
+            await self.location_service.delete_location(999)
+
+    @pytest.mark.asyncio
+    async def test_delete_location_verify_others_remain(self):
+        """Test that deleting one location doesn't affect others"""
+        location1, location2 = await self.location_utils.create_many(i=2)
+
+        await self.location_service.delete_location(location1.id)
+
+        # Only one location should remain
+        all_locations = await self.location_utils.get_all()
+        assert len(all_locations) == 1
+        self.location_utils.assert_matches(all_locations[0], location2)
+
+    @pytest.mark.asyncio
+    async def test_location_data_persistence(self):
+        """Test that all location data fields are properly persisted"""
+        data = await self.location_utils.next_data()
+
+        await self.location_service.create_location(data)
+
+        # Fetch from database to verify persistence
+        all_locations = await self.location_utils.get_all()
+        assert len(all_locations) == 1
+        self.location_utils.assert_matches(all_locations[0], data)
+
+    @pytest.mark.asyncio
+    async def test_location_complaints_field_defaults_to_empty_list(self):
+        """Test that Location DTO complaints field defaults to empty list."""
+        data = await self.location_utils.next_data()
+
+        created = await self.location_service.create_location(data)
+
+        # Verify complaints field exists and is empty list
+        assert hasattr(created, "complaints")
+        assert created.complaints == []
+        assert isinstance(created.complaints, list)
+
+    @pytest.mark.asyncio
+    async def test_location_serialization_includes_complaints(self):
+        """Test that Location DTO properly serializes with complaints field."""
+        data = await self.location_utils.next_data()
+
+        created = await self.location_service.create_location(data)
+
+        # Test model_dump includes complaints
+        serialized = created.model_dump()
+        assert "complaints" in serialized
+        assert serialized["complaints"] == []
+
+        # Test JSON serialization
+        json_str = created.model_dump_json()
+        assert "complaints" in json_str
 
 
-@pytest.mark.asyncio
-async def test_create_location(
-    location_service_db: LocationService, sample_location_data: LocationData
-) -> None:
-    """Test creating a new location"""
-    location = await location_service_db.create_location(sample_location_data)
+class TestLocationServiceWithComplaints:
+    """Tests for Location service with complaints relationship"""
 
-    assert location is not None
-    assert location.id is not None
-    assert location.google_place_id == "ChIJ123abc"
-    assert location.formatted_address == "123 Main St, Chapel Hill, NC 27514, USA"
-    assert location.latitude == 35.9132
-    assert location.longitude == -79.0558
-    assert location.street_number == "123"
-    assert location.street_name == "Main Street"
-    assert location.unit is None
-    assert location.city == "Chapel Hill"
-    assert location.county == "Orange County"
-    assert location.state == "NC"
-    assert location.country == "US"
-    assert location.zip_code == "27514"
-    assert location.warning_count == 0
-    assert location.citation_count == 0
-    assert location.hold_expiration is None
+    location_utils: LocationTestUtils
+    complaint_utils: ComplaintTestUtils
+    location_service: LocationService
 
-
-@pytest.mark.asyncio
-async def test_create_location_with_full_data(
-    location_service_db: LocationService, sample_location_data_2: LocationData
-) -> None:
-    """Test creating a location with all optional fields populated"""
-    location = await location_service_db.create_location(sample_location_data_2)
-
-    assert location is not None
-    assert location.id is not None
-    assert location.google_place_id == "ChIJ456def"
-    assert location.unit == "Apt 2B"
-    assert location.warning_count == 1
-    assert location.citation_count == 2
-    assert location.hold_expiration == datetime(
-        2025, 12, 31, 23, 59, 59, tzinfo=timezone.utc
-    )
-
-
-@pytest.mark.asyncio
-async def test_create_location_conflict(
-    location_service_db: LocationService, sample_location_data: LocationData
-) -> None:
-    """Test creating a location with duplicate google_place_id raises conflict exception"""
-    await location_service_db.create_location(sample_location_data)
-
-    with pytest.raises(
-        LocationConflictException,
-        match="Location with Google Place ID ChIJ123abc already exists",
+    @pytest.fixture(autouse=True)
+    def _setup(
+        self,
+        location_utils: LocationTestUtils,
+        complaint_utils: ComplaintTestUtils,
+        location_service: LocationService,
     ):
-        await location_service_db.create_location(sample_location_data)
+        self.location_utils = location_utils
+        self.complaint_utils = complaint_utils
+        self.location_service = location_service
+
+    @pytest.mark.asyncio
+    async def test_get_location_with_complaints(self):
+        """Test getting a location that has complaints includes the complaints."""
+        location = await self.location_utils.create_one()
+        complaint1, complaint2 = await self.complaint_utils.create_many(
+            i=2, location_id=location.id
+        )
+
+        # Fetch the location
+        fetched = await self.location_service.get_location_by_id(location.id)
+
+        # Verify complaints are included
+        assert len(fetched.complaints) == 2
+        self.complaint_utils.assert_matches(fetched.complaints[0], complaint1)
+        self.complaint_utils.assert_matches(fetched.complaints[1], complaint2)
+
+    @pytest.mark.asyncio
+    async def test_delete_location_with_complaints_cascades(self):
+        """Test that deleting a location also deletes its complaints (cascade delete)."""
+        location = await self.location_utils.create_one()
+
+        # Add complaints to the location
+        await self.complaint_utils.create_many(i=2, location_id=location.id)
+
+        # Delete the location
+        deleted = await self.location_service.delete_location(location.id)
+
+        assert deleted.id == location.id
+
+        # Verify the location is deleted
+        all_locations = await self.location_utils.get_all()
+        assert len(all_locations) == 0
+
+        # Verify the complaints are also deleted (cascade delete)
+        all_complaints = await self.complaint_utils.get_all()
+        assert len(all_complaints) == 0
+
+    @pytest.mark.asyncio
+    async def test_update_location_retains_complaints(self):
+        """Test that updating a location retains its complaints."""
+        location = await self.location_utils.create_one()
+
+        # Add complaints to the location
+        complaint = await self.complaint_utils.create_one(
+            location_id=location.id,
+        )
+
+        # Update the location
+        update_data = await self.location_utils.next_data(
+            google_place_id=location.google_place_id,
+        )
+
+        updated = await self.location_service.update_location(location.id, update_data)
+
+        # Verify location was updated
+        self.location_utils.assert_matches(updated, update_data)
+
+        # Verify complaints are retained
+        assert len(updated.complaints) == 1
+        self.complaint_utils.assert_matches(updated.complaints[0], complaint)
+
+    @pytest.mark.asyncio
+    async def test_get_locations_includes_complaints(self):
+        """Test that getting all locations includes their complaints."""
+        location1, location2 = await self.location_utils.create_many(i=2)
+
+        # Add complaints to both locations
+        complaint1 = await self.complaint_utils.create_one(location_id=location1.id)
+        complaint2 = await self.complaint_utils.create_one(location_id=location2.id)
+
+        # Fetch all locations
+        fetched_locations = await self.location_service.get_locations()
+
+        # Find the locations by id
+        loc1 = next((loc for loc in fetched_locations if loc.id == location1.id), None)
+        loc2 = next((loc for loc in fetched_locations if loc.id == location2.id), None)
+
+        assert loc1 is not None
+        assert loc2 is not None
+
+        # Verify complaints are included
+        assert len(loc1.complaints) == 1
+        self.complaint_utils.assert_matches(loc1.complaints[0], complaint1)
+
+        assert len(loc2.complaints) == 1
+        self.complaint_utils.assert_matches(loc2.complaints[0], complaint2)
 
 
-@pytest.mark.asyncio
-async def test_get_locations_empty(location_service_db: LocationService) -> None:
-    """Test getting all locations when none exist"""
-    locations = await location_service_db.get_locations()
-    assert locations == []
+class TestLocationServiceGoogleMapsAutocomplete:
+    """Tests for Google Maps autocomplete functionality"""
 
+    gmaps_utils: GmapsMockUtils
+    location_service: LocationService
 
-@pytest.mark.asyncio
-async def test_get_locations(
-    location_service_db: LocationService, test_locations_multiple: list[Location]
-) -> None:
-    """Test getting all locations"""
-    locations = await location_service_db.get_locations()
-
-    assert len(locations) == 2
-    place_ids = sorted([loc.google_place_id for loc in locations])
-    assert place_ids == ["ChIJ123abc", "ChIJ456def"]
-
-
-@pytest.mark.asyncio
-async def test_get_location_by_id(
-    location_service_db: LocationService, test_location: Location
-) -> None:
-    """Test getting a location by its ID"""
-    fetched = await location_service_db.get_location_by_id(test_location.id)
-
-    assert fetched.id == test_location.id
-    assert fetched.google_place_id == test_location.google_place_id
-    assert fetched.formatted_address == test_location.formatted_address
-
-
-@pytest.mark.asyncio
-async def test_get_location_by_id_not_found(
-    location_service_db: LocationService,
-) -> None:
-    """Test getting a location by non-existent ID raises not found exception"""
-    with pytest.raises(
-        LocationNotFoundException, match="Location with ID 999 not found"
+    @pytest.fixture(autouse=True)
+    def _setup(
+        self,
+        gmaps_utils: GmapsMockUtils,
+        location_service: LocationService,
     ):
-        await location_service_db.get_location_by_id(999)
+        self.gmaps_utils = gmaps_utils
+        self.location_service = location_service
 
+    @pytest.mark.asyncio
+    async def test_autocomplete_address_success(self):
+        mock_predictions = self.gmaps_utils.mock_autocomplete_predictions(count=2)
 
-@pytest.mark.asyncio
-async def test_get_location_by_place_id(
-    location_service_db: LocationService, test_location: Location
-) -> None:
-    """Test getting a location by its Google Place ID"""
-    fetched = await location_service_db.get_location_by_place_id("ChIJ123abc")
+        address = "123 Main St"
+        results = await self.location_service.autocomplete_address(address)
 
-    assert fetched.id == test_location.id
-    assert fetched.google_place_id == "ChIJ123abc"
-    assert fetched.formatted_address == test_location.formatted_address
+        assert len(results) == 2
+        for r, p in zip(results, mock_predictions):
+            self.gmaps_utils.assert_autocomplete_matches(
+                result=r,
+                expected_description=p["description"],
+                expected_place_id=p["place_id"],
+            )
 
+        self.gmaps_utils.mock_autocomplete.assert_called_once_with(
+            self.location_service.gmaps_client,
+            input_text=address,
+            types="address",
+            language="en",
+            location=(35.9132, -79.0558),
+            radius=50000,
+        )
 
-@pytest.mark.asyncio
-async def test_get_location_by_place_id_not_found(
-    location_service_db: LocationService,
-) -> None:
-    """Test getting a location by non-existent place ID raises not found exception"""
-    with pytest.raises(
-        LocationNotFoundException,
-        match="Location with Google Place ID invalid_place_id not found",
+    @pytest.mark.asyncio
+    async def test_autocomplete_address_empty_results(self):
+        self.gmaps_utils.mock_autocomplete.return_value = []
+
+        results = await self.location_service.autocomplete_address("nonexistent address")
+
+        assert results == []
+
+    @pytest.mark.asyncio
+    async def test_autocomplete_address_api_error(self):
+        self.gmaps_utils.mock_autocomplete_error(Exception("API Error"))
+
+        with pytest.raises(GoogleMapsAPIException, match="Failed to autocomplete address"):
+            await self.location_service.autocomplete_address("123 Main St")
+
+    @pytest.mark.parametrize(
+        "exception_type,exception_arg,error_match",
+        [
+            (googlemaps.exceptions.Timeout, "Timed out", "Request timed out"),
+            (googlemaps.exceptions.TransportError, "Network error", "Transport error"),
+        ],
+    )
+    @pytest.mark.asyncio
+    async def test_autocomplete_googlemaps_exceptions(
+        self,
+        exception_type: type[Exception],
+        exception_arg: str,
+        error_match: str,
     ):
-        await location_service_db.get_location_by_place_id("invalid_place_id")
+        """Test that googlemaps exceptions in autocomplete are properly wrapped"""
+        self.gmaps_utils.mock_autocomplete_error(exception_type(exception_arg))
+
+        with pytest.raises(GoogleMapsAPIException, match=error_match):
+            await self.location_service.autocomplete_address("123 Main St")
 
 
-@pytest.mark.asyncio
-async def test_update_location(
-    location_service_db: LocationService, test_location: Location
-) -> None:
-    """Test updating a location"""
-    # Update the location
-    update_data = LocationData(
-        google_place_id="ChIJ123abc",  # same place ID
-        formatted_address="123 Main Street, Chapel Hill, NC 27514, USA",  # slightly different
-        latitude=35.9132,
-        longitude=-79.0558,
-        street_number="123",
-        street_name="Main Street",
-        unit="Suite 100",  # added unit
-        city="Chapel Hill",
-        county="Orange County",
-        state="NC",
-        country="US",
-        zip_code="27514",
-        warning_count=3,  # increased warnings
-        citation_count=1,  # added citation
-        hold_expiration=datetime(
-            2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc
-        ),  # added hold
-    )
+class TestLocationServiceGoogleMapsPlaceDetails:
+    """Tests for Google Maps place details functionality"""
 
-    updated = await location_service_db.update_location(test_location.id, update_data)
+    gmaps_utils: GmapsMockUtils
+    location_service: LocationService
 
-    assert updated.id == test_location.id
-    assert updated.formatted_address == "123 Main Street, Chapel Hill, NC 27514, USA"
-    assert updated.unit == "Suite 100"
-    assert updated.warning_count == 3
-    assert updated.citation_count == 1
-    assert updated.hold_expiration == datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
-
-
-@pytest.mark.asyncio
-async def test_update_location_not_found(
-    location_service_db: LocationService, sample_location_data: LocationData
-) -> None:
-    """Test updating a non-existent location raises not found exception"""
-    with pytest.raises(
-        LocationNotFoundException, match="Location with ID 999 not found"
+    @pytest.fixture(autouse=True)
+    def _setup(
+        self,
+        gmaps_utils: GmapsMockUtils,
+        location_service: LocationService,
     ):
-        await location_service_db.update_location(999, sample_location_data)
+        self.gmaps_utils = gmaps_utils
+        self.location_service = location_service
 
+    @pytest.mark.asyncio
+    async def test_get_place_details_success(self):
+        location_data = await self.gmaps_utils.location_utils.next_data()
+        expected_address = AddressData(**location_data.model_dump())
 
-@pytest.mark.asyncio
-async def test_update_location_conflict(
-    location_service_db: LocationService, test_locations_multiple: list[Location]
-) -> None:
-    """Test updating a location with another location's google_place_id raises conflict exception"""
-    location1 = test_locations_multiple[0]
-    location2 = test_locations_multiple[1]
+        self.gmaps_utils.mock_place_details(**location_data.model_dump())
 
-    # Try to update location2 to have location1's place_id
-    conflict_data = LocationData(
-        google_place_id=location1.google_place_id,  # location1's place_id
-        formatted_address="456 Oak Ave, Durham, NC 27701, USA",
-        latitude=35.9940,
-        longitude=-78.8986,
-        street_number="456",
-        street_name="Oak Avenue",
-        unit=None,
-        city="Durham",
-        county="Durham County",
-        state="NC",
-        country="US",
-        zip_code="27701",
-        warning_count=0,
-        citation_count=0,
-        hold_expiration=None,
+        result = await self.location_service.get_place_details(location_data.google_place_id)
+
+        assert isinstance(result, AddressData)
+        self.gmaps_utils.location_utils.assert_matches(result, expected_address)
+
+        self.gmaps_utils.mock_place.assert_called_once_with(
+            self.location_service.gmaps_client,
+            place_id=location_data.google_place_id,
+            fields=["formatted_address", "geometry", "address_component"],
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_place_details_not_found(self):
+        self.gmaps_utils.mock_place.return_value = {}
+
+        with pytest.raises(
+            PlaceNotFoundException, match="Place with ID invalid_place_id not found"
+        ):
+            await self.location_service.get_place_details("invalid_place_id")
+
+    @pytest.mark.asyncio
+    async def test_get_place_details_api_error(self):
+        self.gmaps_utils.mock_place_error(Exception("API Error"))
+
+        with pytest.raises(GoogleMapsAPIException, match="Failed to get place details"):
+            await self.location_service.get_place_details("ChIJ123abc")
+
+    @pytest.mark.parametrize(
+        "api_status,expected_exception,error_match",
+        [
+            ("NOT_FOUND", PlaceNotFoundException, "Place with ID.*not found"),
+            ("INVALID_REQUEST", InvalidPlaceIdException, "Invalid place ID"),
+            ("OVER_QUERY_LIMIT", GoogleMapsAPIException, "API error.*OVER_QUERY_LIMIT"),
+        ],
     )
-
-    with pytest.raises(
-        LocationConflictException,
-        match="Location with Google Place ID ChIJ123abc already exists",
+    @pytest.mark.asyncio
+    async def test_get_place_details_api_error_statuses(
+        self,
+        api_status: str,
+        expected_exception: type[Exception],
+        error_match: str,
     ):
-        await location_service_db.update_location(location2.id, conflict_data)
+        """Test that Google Maps API error statuses raise appropriate exceptions"""
+        api_error = googlemaps.exceptions.ApiError(api_status)
+        self.gmaps_utils.mock_place_error(api_error, error_status=api_status)
 
+        with pytest.raises(expected_exception, match=error_match):
+            await self.location_service.get_place_details("ChIJ123abc")
 
-@pytest.mark.asyncio
-async def test_update_location_same_place_id(
-    location_service_db: LocationService, test_location: Location
-) -> None:
-    """Test updating a location with the same google_place_id works (no conflict with itself)"""
-    update_data = LocationData(
-        google_place_id="ChIJ123abc",  # same place_id
-        formatted_address="Updated Address",
-        latitude=35.9132,
-        longitude=-79.0558,
-        street_number="123",
-        street_name="Main Street",
-        unit=None,
-        city="Chapel Hill",
-        county="Orange County",
-        state="NC",
-        country="US",
-        zip_code="27514",
-        warning_count=5,
-        citation_count=2,
-        hold_expiration=None,
-    )
-
-    updated = await location_service_db.update_location(test_location.id, update_data)
-
-    assert updated.id == test_location.id
-    assert updated.google_place_id == "ChIJ123abc"
-    assert updated.formatted_address == "Updated Address"
-    assert updated.warning_count == 5
-    assert updated.citation_count == 2
-
-
-@pytest.mark.asyncio
-async def test_delete_location(
-    location_service_db: LocationService, test_location: Location
-) -> None:
-    """Test deleting a location"""
-    deleted = await location_service_db.delete_location(test_location.id)
-
-    assert deleted.id == test_location.id
-    assert deleted.google_place_id == test_location.google_place_id
-
-    # Verify it's actually deleted
-    with pytest.raises(LocationNotFoundException):
-        await location_service_db.get_location_by_id(test_location.id)
-
-
-@pytest.mark.asyncio
-async def test_delete_location_not_found(location_service_db: LocationService) -> None:
-    """Test deleting a non-existent location raises not found exception"""
-    with pytest.raises(
-        LocationNotFoundException, match="Location with ID 999 not found"
-    ):
-        await location_service_db.delete_location(999)
-
-
-@pytest.mark.asyncio
-async def test_delete_location_verify_others_remain(
-    location_service_db: LocationService, test_locations_multiple: list[Location]
-) -> None:
-    """Test that deleting one location doesn't affect others"""
-    location1 = test_locations_multiple[0]
-    location2 = test_locations_multiple[1]
-
-    await location_service_db.delete_location(location1.id)
-
-    # location2 should still exist
-    fetched = await location_service_db.get_location_by_id(location2.id)
-    assert fetched.id == location2.id
-
-    # Only one location should remain
-    all_locations = await location_service_db.get_locations()
-    assert len(all_locations) == 1
-    assert all_locations[0].id == location2.id
-
-
-@pytest.mark.asyncio
-async def test_location_data_persistence(location_service_db: LocationService) -> None:
-    """Test that all location data fields are properly persisted"""
-    data = LocationData(
-        google_place_id="ChIJ_test_123",
-        formatted_address="789 Test Blvd, Raleigh, NC 27601, USA",
-        latitude=35.7796,
-        longitude=-78.6382,
-        street_number="789",
-        street_name="Test Boulevard",
-        unit="Floor 3",
-        city="Raleigh",
-        county="Wake County",
-        state="NC",
-        country="US",
-        zip_code="27601",
-        warning_count=10,
-        citation_count=5,
-        hold_expiration=datetime(2025, 6, 15, 12, 30, 0, tzinfo=timezone.utc),
-    )
-
-    created = await location_service_db.create_location(data)
-    fetched = await location_service_db.get_location_by_id(created.id)
-
-    # Verify all fields are preserved
-    assert fetched.google_place_id == "ChIJ_test_123"
-    assert fetched.formatted_address == "789 Test Blvd, Raleigh, NC 27601, USA"
-    assert fetched.latitude == 35.7796
-    assert fetched.longitude == -78.6382
-    assert fetched.street_number == "789"
-    assert fetched.street_name == "Test Boulevard"
-    assert fetched.unit == "Floor 3"
-    assert fetched.city == "Raleigh"
-    assert fetched.county == "Wake County"
-    assert fetched.state == "NC"
-    assert fetched.country == "US"
-    assert fetched.zip_code == "27601"
-    assert fetched.warning_count == 10
-    assert fetched.citation_count == 5
-    assert fetched.hold_expiration == datetime(
-        2025, 6, 15, 12, 30, 0, tzinfo=timezone.utc
-    )
-
-
-@pytest.mark.asyncio
-async def test_location_complaints_field_defaults_to_empty_list(
-    location_service_db: LocationService,
-) -> None:
-    """Test that Location DTO complaints field defaults to empty list."""
-    data = LocationData(
-        google_place_id="ChIJ_complaints_test",
-        formatted_address="100 Complaint St, Chapel Hill, NC 27514, USA",
-        latitude=35.9132,
-        longitude=-79.0558,
-        warning_count=0,
-        citation_count=0,
-        hold_expiration=None,
-    )
-
-    created = await location_service_db.create_location(data)
-
-    # Verify complaints field exists and is empty list
-    assert hasattr(created, "complaints")
-    assert created.complaints == []
-    assert isinstance(created.complaints, list)
-
-
-@pytest.mark.asyncio
-async def test_location_serialization_includes_complaints(
-    location_service_db: LocationService,
-) -> None:
-    """Test that Location DTO properly serializes with complaints field."""
-    data = LocationData(
-        google_place_id="ChIJ_serialize_test",
-        formatted_address="200 Serialize Ave, Chapel Hill, NC 27514, USA",
-        latitude=35.9132,
-        longitude=-79.0558,
-        warning_count=0,
-        citation_count=0,
-        hold_expiration=None,
-    )
-
-    created = await location_service_db.create_location(data)
-
-    # Test model_dump includes complaints
-    serialized = created.model_dump()
-    assert "complaints" in serialized
-    assert serialized["complaints"] == []
-
-    # Test JSON serialization
-    json_str = created.model_dump_json()
-    assert "complaints" in json_str
-
-
-@patch("src.modules.location.location_service.places.places_autocomplete")
-@pytest.mark.asyncio
-async def test_autocomplete_address_success(
-    mock_places_autocomplete: MagicMock,
-    location_service: LocationService,
-) -> None:
-    # Mock the response from Google Maps API
-    mock_predictions = [
-        {"description": "123 Main St, Chapel Hill, NC, USA", "place_id": "ChIJ123abc"},
-        {"description": "123 Main St, Durham, NC, USA", "place_id": "ChIJ456def"},
-    ]
-
-    mock_places_autocomplete.return_value = mock_predictions
-
-    results = await location_service.autocomplete_address("123 Main St")
-
-    assert len(results) == 2
-    assert isinstance(results[0], AutocompleteResult)
-    assert results[0].formatted_address == "123 Main St, Chapel Hill, NC, USA"
-    assert results[0].place_id == "ChIJ123abc"
-    assert results[1].formatted_address == "123 Main St, Durham, NC, USA"
-    assert results[1].place_id == "ChIJ456def"
-
-    mock_places_autocomplete.assert_called_once_with(
-        location_service.gmaps_client,
-        input_text="123 Main St",
-        types="address",
-        language="en",
-        location=(35.9132, -79.0558),
-        radius=50000,
-    )
-
-
-@patch("src.modules.location.location_service.places.places_autocomplete")
-@pytest.mark.asyncio
-async def test_autocomplete_address_empty_results(
-    mock_places_autocomplete: MagicMock,
-    location_service: LocationService,
-) -> None:
-    mock_places_autocomplete.return_value = []
-
-    results = await location_service.autocomplete_address("nonexistent address")
-
-    assert results == []
-
-
-@patch("src.modules.location.location_service.places.places_autocomplete")
-@pytest.mark.asyncio
-async def test_autocomplete_address_api_error(
-    mock_places_autocomplete: MagicMock,
-    location_service: LocationService,
-) -> None:
-    mock_places_autocomplete.side_effect = Exception("API Error")
-
-    with pytest.raises(GoogleMapsAPIException, match="Failed to autocomplete address"):
-        await location_service.autocomplete_address("123 Main St")
-
-
-@patch("src.modules.location.location_service.places.place")
-@pytest.mark.asyncio
-async def test_get_place_details_success(
-    mock_place: MagicMock,
-    location_service: LocationService,
-) -> None:
-    mock_place_result = {
-        "result": {
-            "formatted_address": "123 Main St, Chapel Hill, NC 27514, USA",
-            "geometry": {"location": {"lat": 35.9132, "lng": -79.0558}},
-            "address_components": [
-                {"long_name": "123", "short_name": "123", "types": ["street_number"]},
-                {
-                    "long_name": "Main Street",
-                    "short_name": "Main St",
-                    "types": ["route"],
-                },
-                {
-                    "long_name": "Chapel Hill",
-                    "short_name": "Chapel Hill",
-                    "types": ["locality", "political"],
-                },
-                {
-                    "long_name": "Orange County",
-                    "short_name": "Orange County",
-                    "types": ["administrative_area_level_2", "political"],
-                },
-                {
-                    "long_name": "North Carolina",
-                    "short_name": "NC",
-                    "types": ["administrative_area_level_1", "political"],
-                },
-                {
-                    "long_name": "United States",
-                    "short_name": "US",
-                    "types": ["country", "political"],
-                },
-                {"long_name": "27514", "short_name": "27514", "types": ["postal_code"]},
-            ],
+    @pytest.mark.asyncio
+    async def test_get_place_details_missing_components(self):
+        # Create mock response with empty address components
+        mock_place_result = {
+            "result": {
+                "formatted_address": "Somewhere",
+                "geometry": {"location": {"lat": 0.0, "lng": 0.0}},
+                "address_components": [],
+            }
         }
-    }
 
-    mock_place.return_value = mock_place_result
+        self.gmaps_utils.mock_place.return_value = mock_place_result
 
-    result = await location_service.get_place_details("ChIJ123abc")
+        result = await self.location_service.get_place_details("ChIJ123abc")
 
-    assert isinstance(result, AddressData)
-    assert result.google_place_id == "ChIJ123abc"
-    assert result.formatted_address == "123 Main St, Chapel Hill, NC 27514, USA"
-    assert result.latitude == 35.9132
-    assert result.longitude == -79.0558
-    assert result.street_number == "123"
-    assert result.street_name == "Main Street"
-    assert result.city == "Chapel Hill"
-    assert result.county == "Orange County"
-    assert result.state == "NC"
-    assert result.country == "US"
-    assert result.zip_code == "27514"
+        assert isinstance(result, AddressData)
+        expected_data = AddressData(
+            google_place_id="ChIJ123abc",
+            formatted_address="Somewhere",
+            latitude=0.0,
+            longitude=0.0,
+            street_number=None,
+            street_name=None,
+            unit=None,
+            city=None,
+            county=None,
+            state=None,
+            country=None,
+            zip_code=None,
+        )
+        self.gmaps_utils.location_utils.assert_matches(result, expected_data)
 
-    mock_place.assert_called_once_with(
-        location_service.gmaps_client,
-        place_id="ChIJ123abc",
-        fields=["formatted_address", "geometry", "address_component"],
+    @pytest.mark.asyncio
+    async def test_get_place_details_missing_geometry(self):
+        mock_place_result = {
+            "result": {
+                "formatted_address": "Somewhere",
+                "geometry": {},
+                "address_components": [],
+            }
+        }
+
+        self.gmaps_utils.mock_place.return_value = mock_place_result
+
+        with pytest.raises(GoogleMapsAPIException, match="No geometry data found"):
+            await self.location_service.get_place_details("ChIJ123abc")
+
+    @pytest.mark.parametrize(
+        "exception_type,exception_arg,error_match",
+        [
+            (googlemaps.exceptions.Timeout, "Request timed out", "Request timed out"),
+            (googlemaps.exceptions.HTTPError, 500, "HTTP error"),
+            (googlemaps.exceptions.TransportError, "Connection failed", "Transport error"),
+        ],
     )
-
-
-@patch("src.modules.location.location_service.places.place")
-@pytest.mark.asyncio
-async def test_get_place_details_not_found(
-    mock_place: MagicMock,
-    location_service: LocationService,
-) -> None:
-    mock_place.return_value = {}
-
-    with pytest.raises(
-        PlaceNotFoundException, match="Place with ID invalid_place_id not found"
+    @pytest.mark.asyncio
+    async def test_get_place_details_googlemaps_exceptions(
+        self,
+        exception_type: type[Exception],
+        exception_arg: str | int,
+        error_match: str,
     ):
-        await location_service.get_place_details("invalid_place_id")
-
-
-@patch("src.modules.location.location_service.places.place")
-@pytest.mark.asyncio
-async def test_get_place_details_api_error(
-    mock_place: MagicMock,
-    location_service: LocationService,
-) -> None:
-    mock_place.side_effect = Exception("API Error")
-
-    with pytest.raises(GoogleMapsAPIException, match="Failed to get place details"):
-        await location_service.get_place_details("ChIJ123abc")
-
-
-@patch("src.modules.location.location_service.places.place")
-@pytest.mark.asyncio
-async def test_get_place_details_api_not_found_status(
-    mock_place: MagicMock,
-    location_service: LocationService,
-) -> None:
-    """Test that Google Maps API NOT_FOUND status raises PlaceNotFoundException"""
-    api_error = googlemaps.exceptions.ApiError("NOT_FOUND")
-    api_error.status = "NOT_FOUND"
-    mock_place.side_effect = api_error
-
-    with pytest.raises(PlaceNotFoundException, match="Place with ID.*not found"):
-        await location_service.get_place_details("ChIJ123abc")
-
-
-@patch("src.modules.location.location_service.places.place")
-@pytest.mark.asyncio
-async def test_get_place_details_api_invalid_request_status(
-    mock_place: MagicMock,
-    location_service: LocationService,
-) -> None:
-    """Test that Google Maps API INVALID_REQUEST status raises InvalidPlaceIdException"""
-    api_error = googlemaps.exceptions.ApiError("INVALID_REQUEST")
-    api_error.status = "INVALID_REQUEST"
-    mock_place.side_effect = api_error
-
-    with pytest.raises(InvalidPlaceIdException, match="Invalid place ID"):
-        await location_service.get_place_details("invalid_id")
-
-
-@patch("src.modules.location.location_service.places.place")
-@pytest.mark.asyncio
-async def test_get_place_details_api_other_error_status(
-    mock_place: MagicMock,
-    location_service: LocationService,
-) -> None:
-    """Test that other Google Maps API errors raise GoogleMapsAPIException"""
-    api_error = googlemaps.exceptions.ApiError("OVER_QUERY_LIMIT")
-    api_error.status = "OVER_QUERY_LIMIT"
-    mock_place.side_effect = api_error
-
-    with pytest.raises(GoogleMapsAPIException, match="API error.*OVER_QUERY_LIMIT"):
-        await location_service.get_place_details("ChIJ123abc")
-
-
-@patch("src.modules.location.location_service.places.place")
-@pytest.mark.asyncio
-async def test_get_place_details_missing_components(
-    mock_place: MagicMock,
-    location_service: LocationService,
-) -> None:
-    mock_place_result = {
-        "result": {
-            "formatted_address": "Somewhere",
-            "geometry": {"location": {"lat": 0.0, "lng": 0.0}},
-            "address_components": [],
-        }
-    }
-
-    mock_place.return_value = mock_place_result
-
-    result = await location_service.get_place_details("ChIJ123abc")
-
-    assert isinstance(result, AddressData)
-    assert result.google_place_id == "ChIJ123abc"
-    assert result.formatted_address == "Somewhere"
-    assert result.latitude == 0.0
-    assert result.longitude == 0.0
-    assert result.street_number is None
-    assert result.street_name is None
-    assert result.city is None
-    assert result.county is None
-    assert result.state is None
-    assert result.country is None
-    assert result.zip_code is None
-
-
-@patch("src.modules.location.location_service.places.place")
-@pytest.mark.asyncio
-async def test_get_place_details_missing_geometry(
-    mock_place: MagicMock,
-    location_service: LocationService,
-) -> None:
-    mock_place_result = {
-        "result": {
-            "formatted_address": "Somewhere",
-            "geometry": {},
-            "address_components": [],
-        }
-    }
-
-    mock_place.return_value = mock_place_result
-
-    with pytest.raises(GoogleMapsAPIException, match="No geometry data found"):
-        await location_service.get_place_details("ChIJ123abc")
-
-
-@patch("src.modules.location.location_service.places.place")
-@pytest.mark.asyncio
-async def test_get_place_details_timeout_error(
-    mock_place: MagicMock,
-    location_service: LocationService,
-) -> None:
-    """Test that Timeout errors are properly wrapped in GoogleMapsAPIException"""
-    mock_place.side_effect = googlemaps.exceptions.Timeout("Request timed out")
-
-    with pytest.raises(GoogleMapsAPIException, match="Request timed out"):
-        await location_service.get_place_details("ChIJ123abc")
-
-
-@patch("src.modules.location.location_service.places.place")
-@pytest.mark.asyncio
-async def test_get_place_details_http_error(
-    mock_place: MagicMock,
-    location_service: LocationService,
-) -> None:
-    """Test that HTTP errors are properly wrapped in GoogleMapsAPIException"""
-    mock_place.side_effect = googlemaps.exceptions.HTTPError(500)
-
-    with pytest.raises(GoogleMapsAPIException, match="HTTP error"):
-        await location_service.get_place_details("ChIJ123abc")
-
-
-@patch("src.modules.location.location_service.places.place")
-@pytest.mark.asyncio
-async def test_get_place_details_transport_error(
-    mock_place: MagicMock,
-    location_service: LocationService,
-) -> None:
-    """Test that Transport errors are properly wrapped in GoogleMapsAPIException"""
-    mock_place.side_effect = googlemaps.exceptions.TransportError("Connection failed")
-
-    with pytest.raises(GoogleMapsAPIException, match="Transport error"):
-        await location_service.get_place_details("ChIJ123abc")
-
-
-@patch("src.modules.location.location_service.places.places_autocomplete")
-@pytest.mark.asyncio
-async def test_autocomplete_timeout_error(
-    mock_places_autocomplete: MagicMock,
-    location_service: LocationService,
-) -> None:
-    """Test that Timeout errors in autocomplete are properly wrapped"""
-    mock_places_autocomplete.side_effect = googlemaps.exceptions.Timeout("Timed out")
-
-    with pytest.raises(GoogleMapsAPIException, match="Request timed out"):
-        await location_service.autocomplete_address("123 Main St")
-
-
-@patch("src.modules.location.location_service.places.places_autocomplete")
-@pytest.mark.asyncio
-async def test_autocomplete_transport_error(
-    mock_places_autocomplete: MagicMock,
-    location_service: LocationService,
-) -> None:
-    """Test that Transport errors in autocomplete are properly wrapped"""
-    mock_places_autocomplete.side_effect = googlemaps.exceptions.TransportError(
-        "Network error"
-    )
-
-    with pytest.raises(GoogleMapsAPIException, match="Transport error"):
-        await location_service.autocomplete_address("123 Main St")
-
-
-# Tests for locations with complaints
-
-
-@pytest.mark.asyncio
-async def test_get_location_with_complaints(
-    location_service_db: LocationService, test_location: Location
-) -> None:
-    """Test getting a location that has complaints includes the complaints."""
-    # Add complaints to the location
-    complaint1 = ComplaintEntity(
-        location_id=test_location.id,
-        complaint_datetime=datetime(2025, 11, 18, 20, 30, 0),
-        description="Noise complaint",
-    )
-    complaint2 = ComplaintEntity(
-        location_id=test_location.id,
-        complaint_datetime=datetime(2025, 11, 19, 22, 0, 0),
-        description="Parking complaint",
-    )
-
-    location_service_db.session.add(complaint1)
-    location_service_db.session.add(complaint2)
-    await location_service_db.session.commit()
-
-    # Fetch the location
-    fetched = await location_service_db.get_location_by_id(test_location.id)
-
-    # Verify complaints are included
-    assert len(fetched.complaints) == 2
-    assert fetched.complaints[0].description == "Noise complaint"
-    assert fetched.complaints[1].description == "Parking complaint"
-    assert all(c.location_id == test_location.id for c in fetched.complaints)
-
-
-@pytest.mark.asyncio
-async def test_delete_location_with_complaints_cascades(
-    location_service_db: LocationService, test_location: Location
-) -> None:
-    """Test that deleting a location also deletes its complaints (cascade delete)."""
-    # Add complaints to the location
-    complaint1 = ComplaintEntity(
-        location_id=test_location.id,
-        complaint_datetime=datetime(2025, 11, 18, 20, 30, 0),
-        description="Noise complaint",
-    )
-    complaint2 = ComplaintEntity(
-        location_id=test_location.id,
-        complaint_datetime=datetime(2025, 11, 19, 22, 0, 0),
-        description="Parking complaint",
-    )
-
-    location_service_db.session.add(complaint1)
-    location_service_db.session.add(complaint2)
-    await location_service_db.session.commit()
-    await location_service_db.session.refresh(complaint1)
-    await location_service_db.session.refresh(complaint2)
-
-    complaint1_id = complaint1.id
-    complaint2_id = complaint2.id
-
-    # Delete the location
-    deleted = await location_service_db.delete_location(test_location.id)
-
-    assert deleted.id == test_location.id
-
-    # Verify the location is deleted
-    with pytest.raises(LocationNotFoundException):
-        await location_service_db.get_location_by_id(test_location.id)
-
-    # Verify the complaints are also deleted (cascade delete)
-    result = await location_service_db.session.execute(
-        select(ComplaintEntity).where(ComplaintEntity.id == complaint1_id)
-    )
-    assert result.scalar_one_or_none() is None
-
-    result = await location_service_db.session.execute(
-        select(ComplaintEntity).where(ComplaintEntity.id == complaint2_id)
-    )
-    assert result.scalar_one_or_none() is None
-
-
-@pytest.mark.asyncio
-async def test_update_location_retains_complaints(
-    location_service_db: LocationService, test_location: Location
-) -> None:
-    """Test that updating a location retains its complaints."""
-    # Add complaints to the location
-    complaint = ComplaintEntity(
-        location_id=test_location.id,
-        complaint_datetime=datetime(2025, 11, 18, 20, 30, 0),
-        description="Noise complaint",
-    )
-
-    location_service_db.session.add(complaint)
-    await location_service_db.session.commit()
-
-    # Update the location
-    update_data = LocationData(
-        google_place_id="ChIJ123abc",
-        formatted_address="123 Main Street Updated, Chapel Hill, NC 27514, USA",
-        latitude=35.9132,
-        longitude=-79.0558,
-        street_number="123",
-        street_name="Main Street",
-        unit=None,
-        city="Chapel Hill",
-        county="Orange County",
-        state="NC",
-        country="US",
-        zip_code="27514",
-        warning_count=5,
-        citation_count=2,
-        hold_expiration=None,
-    )
-
-    updated = await location_service_db.update_location(test_location.id, update_data)
-
-    # Verify location was updated
-    assert (
-        updated.formatted_address
-        == "123 Main Street Updated, Chapel Hill, NC 27514, USA"
-    )
-    assert updated.warning_count == 5
-    assert updated.citation_count == 2
-
-    # Verify complaints are retained
-    assert len(updated.complaints) == 1
-    assert updated.complaints[0].description == "Noise complaint"
-
-
-@pytest.mark.asyncio
-async def test_get_locations_includes_complaints(
-    location_service_db: LocationService, test_locations_multiple: list[Location]
-) -> None:
-    """Test that getting all locations includes their complaints."""
-    location1 = test_locations_multiple[0]
-    location2 = test_locations_multiple[1]
-
-    # Add complaints to both locations
-    complaint1 = ComplaintEntity(
-        location_id=location1.id,
-        complaint_datetime=datetime(2025, 11, 18, 20, 30, 0),
-        description="Noise complaint for location 1",
-    )
-    complaint2 = ComplaintEntity(
-        location_id=location2.id,
-        complaint_datetime=datetime(2025, 11, 19, 22, 0, 0),
-        description="Parking complaint for location 2",
-    )
-
-    location_service_db.session.add(complaint1)
-    location_service_db.session.add(complaint2)
-    await location_service_db.session.commit()
-
-    # Fetch all locations
-    locations = await location_service_db.get_locations()
-
-    # Find the locations by id
-    loc1 = next((loc for loc in locations if loc.id == location1.id), None)
-    loc2 = next((loc for loc in locations if loc.id == location2.id), None)
-
-    assert loc1 is not None
-    assert loc2 is not None
-
-    # Verify complaints are included
-    assert len(loc1.complaints) == 1
-    assert loc1.complaints[0].description == "Noise complaint for location 1"
-
-    assert len(loc2.complaints) == 1
-    assert loc2.complaints[0].description == "Parking complaint for location 2"
+        """Test that googlemaps exceptions are properly wrapped in GoogleMapsAPIException"""
+        self.gmaps_utils.mock_place_error(exception_type(exception_arg))
+
+        with pytest.raises(GoogleMapsAPIException, match=error_match):
+            await self.location_service.get_place_details("ChIJ123abc")
