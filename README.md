@@ -90,12 +90,13 @@ Or you can do the actions manually. Then,
 *If you haven't run in a day or more, run `python -m script.reset_dev` from the `/backend` directory to ensure all mock data is updated to be centered around today's date*
 
 ### VSCode Debugger (Recommended)
-Navigate to the "Debug and Run" tab on the VSCode side bar.  
+Navigate to the "Debug and Run" tab on the VSCode side bar.
 
 At the top of the side bar, next to the green play button, select the desired module to run
 - **Backend**: Starts the FastAPI backend on http://localhost:8000
-- **Frontend**: Starts the Next.js frontend on http://localhost:3000 in a chrome debugger window
-- **Full Stack**: Starts both at once in separate terminals
+- **Purge & Frontend**: Starts the Next.js frontend on http://localhost:3000
+  - *The "Purge" part of this is referring to the task that kills any `next dev` processes in order to address a devcontainer issue. Note that this prevents you from running multiple of these debug sessions concurrently. If mulitple are needed, refer to the manual instructions below*
+- **Full Stack**: Starts both of the above in separate terminals
 
 Then simply press the green play button
 
@@ -121,20 +122,20 @@ Navigate to [http://localhost:3000]() to view the website
 
 ### Manual Testing
 
-After running the backend, navigate to [http://localhost:3000/docs]()  
-Click on the "Authorize 🔓" button in the top right, and enter "admin", "student", or "police" as the mock token for the respective role  
+After running the backend, navigate to [http://localhost:3000/docs]()
+Click on the "Authorize 🔓" button in the top right, and enter "admin", "student", or "police" as the mock token for the respective role
 You can then make any requests using the provided GUI
 
 ### Unit Tests
 
-The best way to run unit tests is by using the "Testing" window on the sidebar. This provides an intuitive GUI for running tests within the IDE.  
+The best way to run unit tests is by using the "Testing" window on the sidebar. This provides an intuitive GUI for running tests within the IDE.
 You can also run all tests by opening a new terminal and simply running
 
 ```sh
 pytest
 ```
 
-## Accessing the database
+## Accessing the Database
 
 - Navigate to the PostgreSQL Explorer tab on the sidebar in VSCode
 - Click the plus icon in the top right
