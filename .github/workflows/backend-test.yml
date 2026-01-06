@@ -2,13 +2,30 @@ name: Run Backend Tests
 
 on:
   pull_request:
-    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-test.yml"
   push:
     branches: [main]
 
 jobs:
   backend-test:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ocsl_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - name: Checkout code
@@ -32,6 +49,11 @@ jobs:
           PYTHONPATH=backend:backend/src pytest backend/test -v --tb=long --junitxml=backend/test-results/junit.xml
         env:
           GOOGLE_MAPS_API_KEY: "test_api_key_not_used"
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          POSTGRES_DB: ocsl_test
 
       - name: Publish Test Results
         uses: EnricoMi/publish-unit-test-result-action@v2
