@@ -87,11 +87,7 @@
           "reportImportCycles": "error"
         },
         "python.analysis.typeCheckingMode": "basic",
-        "python.analysis.autoImportCompletions": true,
-        "ruff.enable": true,
-        "ruff.organizeImports": true,
-        "ruff.fixAll": true,
-        "ruff.lineLength": 100
+        "python.analysis.autoImportCompletions": true
       }
     }
   }

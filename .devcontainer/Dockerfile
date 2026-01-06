@@ -77,6 +77,9 @@ WORKDIR /workspace/backend
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
+# Install pre-commit
+RUN pip install pre-commit
+
 # Expose application ports
 EXPOSE 8000 3000
 

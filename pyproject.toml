@@ -1,0 +1,14 @@
+[tool.ruff]
+line-length = 100
+target-version = "py312"  # Should match Dockerfile
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "C4", "SIM", "RUF", "N"]
+fixable = ["E", "F", "W", "I", "B", "UP", "C4", "SIM", "RUF", "N"]
+ignore = [
+  "B008", # Allows use of Depends()
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
