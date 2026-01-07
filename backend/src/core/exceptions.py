@@ -27,6 +27,11 @@ class BadRequestException(HTTPException):
         super().__init__(status_code=400, detail=detail)
 
 
+class UnprocessableEntityException(HTTPException):
+    def __init__(self, detail: str):
+        super().__init__(status_code=422, detail=detail)
+
+
 class CredentialsException(HTTPException):
     def __init__(self):
         super().__init__(

@@ -17,7 +17,7 @@ class ComplaintEntity(MappedAsDataclass, EntityBase):
     location_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("locations.id", ondelete="CASCADE"), nullable=False
     )
-    complaint_datetime: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    complaint_datetime: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     description: Mapped[str] = mapped_column(String, nullable=False, default="")
 
     # Relationships

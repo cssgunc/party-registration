@@ -1,5 +1,7 @@
 import os
 
+from sqlalchemy import text
+
 os.environ["GOOGLE_MAPS_API_KEY"] = "invalid_google_maps_api_key_for_tests"
 
 from typing import Any, AsyncGenerator, Callable
@@ -12,8 +14,9 @@ import pytest_asyncio
 import src.modules  # Ensure all modules are imported so their entities are registered # noqa: F401
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio.engine import AsyncEngine
 from src.core.authentication import StringRole
-from src.core.database import EntityBase, get_session
+from src.core.database import EntityBase, database_url, get_session
 from src.main import app
 from src.modules.account.account_service import AccountService
 from src.modules.complaint.complaint_service import ComplaintService
@@ -29,20 +32,45 @@ from test.modules.party.party_utils import PartyTestUtils
 from test.modules.police.police_utils import PoliceTestUtils
 from test.modules.student.student_utils import StudentTestUtils
 
-DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+DATABASE_URL = database_url("ocsl_test")
 
 # =================================== Database ======================================
 
 
-@pytest_asyncio.fixture(scope="function")
-async def test_session():
+@pytest_asyncio.fixture(autouse=True, scope="session", loop_scope="session")
+async def test_engine():
+    """Create engine and tables once per test session."""
     engine = create_async_engine(DATABASE_URL, echo=False)
     async with engine.begin() as conn:
+        await conn.run_sync(EntityBase.metadata.drop_all)
         await conn.run_sync(EntityBase.metadata.create_all)
-    TestAsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    yield engine
+    async with engine.begin() as conn:
+        await conn.run_sync(EntityBase.metadata.drop_all)
+    await engine.dispose()
+
+
+@pytest_asyncio.fixture(scope="function")
+async def test_session(test_engine: AsyncEngine):
+    """Create a new session and truncate all tables after each test."""
+    TestAsyncSessionLocal = async_sessionmaker(
+        bind=test_engine,
+        expire_on_commit=False,
+        class_=AsyncSession,
+    )
+
     async with TestAsyncSessionLocal() as session:
         yield session
-    await engine.dispose()
+
+    # Clean up: truncate all tables and reset sequences
+    async with test_engine.begin() as conn:
+        tables = [table.name for table in EntityBase.metadata.sorted_tables]
+        if tables:
+            # Disable foreign key checks, truncate, and reset sequences
+            await conn.execute(text("SET session_replication_role = 'replica';"))
+            for table in tables:
+                await conn.execute(text(f"TRUNCATE TABLE {table} RESTART IDENTITY CASCADE;"))
+            await conn.execute(text("SET session_replication_role = 'origin';"))
 
 
 # =================================== Clients =======================================
