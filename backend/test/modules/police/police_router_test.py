@@ -2,7 +2,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from httpx import AsyncClient
-from src.modules.location.location_model import MAX_COUNT, Location
+from src.modules.location.location_model import MAX_COUNT, LocationDto
 from src.modules.location.location_service import (
     CountLimitExceededException,
     LocationNotFoundException,
@@ -44,7 +44,7 @@ class TestPoliceRouter:
         location = await self.location_utils.create_one(warning_count=0)
 
         response = await self.police_client.post(f"/api/police/locations/{location.id}/warnings")
-        data = assert_res_success(response, Location)
+        data = assert_res_success(response, LocationDto)
 
         assert data.id == location.id
         assert data.warning_count == 1
@@ -73,12 +73,12 @@ class TestPoliceRouter:
 
         # First increment
         response = await self.police_client.post(f"/api/police/locations/{location.id}/warnings")
-        data = assert_res_success(response, Location)
+        data = assert_res_success(response, LocationDto)
         assert data.warning_count == 1
 
         # Second increment
         response = await self.police_client.post(f"/api/police/locations/{location.id}/warnings")
-        data = assert_res_success(response, Location)
+        data = assert_res_success(response, LocationDto)
         assert data.warning_count == 2
 
     @pytest.mark.asyncio
@@ -87,7 +87,7 @@ class TestPoliceRouter:
         location = await self.location_utils.create_one(citation_count=0)
 
         response = await self.police_client.post(f"/api/police/locations/{location.id}/citations")
-        data = assert_res_success(response, Location)
+        data = assert_res_success(response, LocationDto)
 
         assert data.id == location.id
         assert data.citation_count == 1
@@ -116,10 +116,10 @@ class TestPoliceRouter:
 
         # First increment
         response = await self.police_client.post(f"/api/police/locations/{location.id}/citations")
-        data = assert_res_success(response, Location)
+        data = assert_res_success(response, LocationDto)
         assert data.citation_count == 1
 
         # Second increment
         response = await self.police_client.post(f"/api/police/locations/{location.id}/citations")
-        data = assert_res_success(response, Location)
+        data = assert_res_success(response, LocationDto)
         assert data.citation_count == 2

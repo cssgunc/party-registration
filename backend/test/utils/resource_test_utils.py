@@ -35,8 +35,8 @@ class ResourceTestUtils[
 
     Type Parameters:
     - ResourceEntity: The SQLAlchemy entity class that implements EntityBase.
-        - Note: the default implementation expects `from_model`
-        and `to_model` methods to be present. However, these methods are not required in the type definition to allow for flexibility,
+        - Note: the default implementation expects `from_data`
+        and `to_dto` methods to be present. However, these methods are not required in the type definition to allow for flexibility,
         expecting a subclass to override `next_entity` and/or `entity_to_dict` as needed if these methods are not present.
     - ResourceData: The Pydantic model representing the resource's data object used to create entities.
     - OtherModels: Additional Pydantic models that may be used in assertions
@@ -167,13 +167,13 @@ class ResourceTestUtils[
             **overrides: Fields to override in the generated entity.
         """
         data = await self.next_data(**overrides)
-        if not hasattr(self._ResourceEntity, "from_model") or not callable(
-            getattr(self._ResourceEntity, "from_model")
+        if not hasattr(self._ResourceEntity, "from_data") or not callable(
+            getattr(self._ResourceEntity, "from_data")
         ):
             raise AttributeError(
-                f"{self._ResourceEntity.__name__} must implement a 'from_model' classmethod"
+                f"{self._ResourceEntity.__name__} must implement a 'from_data' classmethod"
             )
-        return self._ResourceEntity.from_model(data)  # type: ignore
+        return self._ResourceEntity.from_data(data)  # type: ignore
 
     async def create_many(self, *, i: int, **overrides: Any) -> list[ResourceEntity]:
         """Create multiple resource entities in the database, applying any overrides to every entity.
@@ -206,13 +206,13 @@ class ResourceTestUtils[
 
     def entity_to_dict(self, entity: ResourceEntity) -> dict:
         """Convert a resource entity to a dict via its model representation."""
-        if not hasattr(self._ResourceEntity, "to_model") or not callable(
-            getattr(self._ResourceEntity, "to_model")
+        if not hasattr(self._ResourceEntity, "to_dto") or not callable(
+            getattr(self._ResourceEntity, "to_dto")
         ):
             raise AttributeError(
-                f"{self._ResourceEntity.__name__} must implement a 'to_model' method"
+                f"{self._ResourceEntity.__name__} must implement a 'to_dto' method"
             )
-        return entity.to_model().model_dump()  # type: ignore
+        return entity.to_dto().model_dump()  # type: ignore
 
     def assert_matches(
         self,

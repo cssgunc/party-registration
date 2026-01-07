@@ -79,12 +79,7 @@ async def reset_dev():
     print("Populating tables...")
     async with AsyncSessionLocal() as session:
         with open(
-            str(
-                Path(__file__).parent.parent.parent
-                / "frontend"
-                / "shared"
-                / "mock_data.json"
-            ),
+            str(Path(__file__).parent.parent.parent / "frontend" / "shared" / "mock_data.json"),
             "r",
         ) as f:
             data = json.load(f)
@@ -118,11 +113,9 @@ async def reset_dev():
             session.add(account)
             await session.flush()
 
-            student = StudentEntity.from_model(
+            student = StudentEntity.from_data(
                 StudentData(
-                    contact_preference=ContactPreference(
-                        student_data["contact_preference"]
-                    ),
+                    contact_preference=ContactPreference(student_data["contact_preference"]),
                     phone_number=student_data["phone_number"],
                     last_registered=parse_date(student_data.get("last_registered")),
                 ),
@@ -150,17 +143,20 @@ async def reset_dev():
             session.add(location)
 
         for party_data in data["parties"]:
+            party_datetime = parse_date(party_data["party_datetime"])
+            assert party_datetime is not None, f"party_datetime required for party {party_data['id']}"
+
             party = PartyEntity(
-                party_datetime=parse_date(party_data["party_datetime"]),
+                party_datetime=party_datetime,
                 location_id=party_data["location_id"],
                 contact_one_id=party_data["contact_one_id"],
                 contact_two_first_name=party_data["contact_two"]["first_name"],
                 contact_two_last_name=party_data["contact_two"]["last_name"],
                 contact_two_email=party_data["contact_two"]["email"],
                 contact_two_phone_number=party_data["contact_two"]["phone_number"],
-                contact_two_contact_preference=party_data["contact_two"][
-                    "contact_preference"
-                ],
+                contact_two_contact_preference=ContactPreference(
+                    party_data["contact_two"]["contact_preference"]
+                ),
             )
             session.add(party)
 

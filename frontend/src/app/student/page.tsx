@@ -22,7 +22,7 @@ export default function StudentDashboard() {
         <div className="flex justify-between items-center">
           <div className="font-semibold text-2xl">Events</div>
 
-          <Link href="/student/form">
+          <Link href="/student/new-party">
             <Button className="px-4 py-2 rounded-lg bg-[#09294E] text-white">
               Registration Form
             </Button>
@@ -32,7 +32,7 @@ export default function StudentDashboard() {
         <RegistrationTracker {...partiesQuery} />
         <div className="text-[24px] font-semibold">Party Smart Course </div>
         <StatusComponent
-          lastRegistered={studentQuery.data?.lastRegistered}
+          last_registered={studentQuery.data?.last_registered}
           {...studentQuery}
         />
       </div>

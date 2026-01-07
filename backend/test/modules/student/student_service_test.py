@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.modules.account.account_entity import AccountRole
-from src.modules.student.student_model import ContactPreference, Student
+from src.modules.student.student_model import ContactPreference, StudentDto
 from src.modules.student.student_service import (
     AccountNotFoundException,
     InvalidAccountRoleException,
@@ -44,7 +44,7 @@ class TestStudentService:
 
         student = await self.student_service.create_student(data, account_id=account.id)
 
-        assert isinstance(student, Student)
+        assert isinstance(student, StudentDto)
         assert student.id == account.id
         self.student_utils.assert_matches(student, data)
 
@@ -90,7 +90,7 @@ class TestStudentService:
         update_data = await self.student_utils.next_data_with_names(
             first_name="Jane",
             last_name="Doe",
-            contact_preference=ContactPreference.call,
+            contact_preference=ContactPreference.CALL,
         )
         updated = await self.student_service.update_student(student_entity.account_id, update_data)
 

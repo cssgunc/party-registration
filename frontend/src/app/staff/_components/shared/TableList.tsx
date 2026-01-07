@@ -1,17 +1,17 @@
 "use client";
 
-import { Location } from "@/lib/api/location/location.types";
-import { Party } from "@/lib/api/party/party.types";
-import { Student } from "@/lib/api/student/student.types";
+import { LocationDto } from "@/lib/api/location/location.types";
+import { PartyDto } from "@/lib/api/party/party.types";
+import { StudentDto } from "@/lib/api/student/student.types";
 import { useState } from "react";
 
 interface TableListProps {
-  parties: Party[];
-  students: Student[];
-  locations: Location[];
-  setFilteredParties: (val: Party[]) => void;
-  setFilteredStudents: (val: Student[]) => void;
-  setFilteredLocations: (val: Location[]) => void;
+  parties: PartyDto[];
+  students: StudentDto[];
+  locations: LocationDto[];
+  setFilteredParties: (val: PartyDto[]) => void;
+  setFilteredStudents: (val: StudentDto[]) => void;
+  setFilteredLocations: (val: LocationDto[]) => void;
 }
 
 export default function TableList({
@@ -30,19 +30,19 @@ export default function TableList({
 
     setFilteredParties(
       parties.filter((p) =>
-        p.location.formattedAddress.toLowerCase().includes(value)
+        p.location.formatted_address.toLowerCase().includes(value)
       )
     );
     setFilteredStudents(
       students.filter(
         (s) =>
-          s.firstName.toLowerCase().includes(value) ||
-          s.lastName.toLowerCase().includes(value) ||
+          s.first_name.toLowerCase().includes(value) ||
+          s.last_name.toLowerCase().includes(value) ||
           s.email.toLowerCase().includes(value)
       )
     );
     setFilteredLocations(
-      locations.filter((l) => l.formattedAddress.toLowerCase().includes(value))
+      locations.filter((l) => l.formatted_address.toLowerCase().includes(value))
     );
   };
 

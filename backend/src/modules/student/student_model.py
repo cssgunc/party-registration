@@ -5,8 +5,8 @@ from src.core.models import PaginatedResponse
 
 
 class ContactPreference(enum.Enum):
-    call = "call"
-    text = "text"
+    CALL = "call"
+    TEXT = "text"
 
 
 class StudentData(BaseModel):
@@ -35,7 +35,7 @@ class DbStudent(StudentData):
         return self.account_id
 
 
-class Student(BaseModel):
+class StudentDto(BaseModel):
     """
     Admin-facing Student DTO combining student and account data.
 
@@ -69,9 +69,7 @@ class StudentCreate(BaseModel):
 class IsRegisteredUpdate(BaseModel):
     """Request body for updating student registration status (staff/admin)."""
 
-    is_registered: bool = Field(
-        ..., description="True to mark as registered, False to unmark"
-    )
+    is_registered: bool = Field(..., description="True to mark as registered, False to unmark")
 
 
-PaginatedStudentsResponse = PaginatedResponse[Student]
+PaginatedStudentsResponse = PaginatedResponse[StudentDto]

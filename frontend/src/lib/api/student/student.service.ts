@@ -1,19 +1,7 @@
-import { BackendParty, Party } from "@/lib/api/party/party.types";
-import { Student } from "@/lib/api/student/student.types";
 import getMockClient from "@/lib/network/mockClient";
 import { AxiosInstance } from "axios";
-import { toFrontendParty } from "../party/party.service";
-import { BackendStudent, toFrontendStudent } from "./admin-student.service";
-
-/**
- * Student data for API requests (matches backend StudentData model)
- */
-export interface StudentDataRequest {
-  first_name: string;
-  last_name: string;
-  phone_number: string;
-  contact_preference: "call" | "text";
-}
+import { convertParty, PartyDto, PartyDtoBackend } from "../party/party.types";
+import { convertStudent, StudentData, StudentDto, StudentDtoBackend } from "./student.types";
 
 /**
  * Service class for student-related operations
@@ -22,39 +10,42 @@ export class StudentService {
   constructor(private client: AxiosInstance = getMockClient("student")) {}
 
   /**
-   * Get the current authenticated student's information
+   * Get current authenticated student (GET /api/students/me)
    */
-  async getCurrentStudent(): Promise<Student> {
-    const response = await this.client.get<BackendStudent>("/students/me");
-    return toFrontendStudent(response.data);
-  }
-
-  /**
-   * Update the current authenticated student's information
-   */
-  async updateMe(data: StudentDataRequest): Promise<Student> {
-    const response = await this.client.put<Student>("/students/me", data);
-
-    // Convert date string to Date object if present
-    if (response.data.lastRegistered) {
-      response.data.lastRegistered = new Date(response.data.lastRegistered);
+  async getCurrentStudent(): Promise<StudentDto> {
+    try {
+      const response = await this.client.get<StudentDtoBackend>("/students/me");
+      return convertStudent(response.data);
+    } catch (error) {
+      console.error("Failed to get current student:", error);
+      throw new Error("Failed to get current student");
     }
-
-    return response.data;
   }
 
   /**
-   * Get all parties for the current authenticated student
+   * Update current authenticated student (PUT /api/students/me)
    */
-  async getMyParties(): Promise<Party[]> {
-    const response = await this.client.get<BackendParty[]>(
-      "/students/me/parties"
-    );
+  async updateMe(data: StudentData): Promise<StudentDto> {
+    try {
+      const response = await this.client.put<StudentDtoBackend>("/students/me", data);
+      return convertStudent(response.data);
+    } catch (error) {
+      console.error("Failed to update student:", error);
+      throw new Error("Failed to update student");
+    }
+  }
 
-    // Transform API format to frontend format
-    const parties = response.data.map(toFrontendParty);
-
-    return parties;
+  /**
+   * Get all parties for current authenticated student (GET /api/students/me/parties)
+   */
+  async getMyParties(): Promise<PartyDto[]> {
+    try {
+      const response = await this.client.get<PartyDtoBackend[]>("/students/me/parties");
+      return response.data.map(convertParty);
+    } catch (error) {
+      console.error("Failed to get student parties:", error);
+      throw new Error("Failed to get student parties");
+    }
   }
 }
 

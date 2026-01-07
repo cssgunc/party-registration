@@ -29,10 +29,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  AutocompleteResult,
-  LocationService,
-} from "@/lib/api/location/location.service";
+import { LocationService } from "@/lib/api/location/location.service";
+import { AutocompleteResult } from "@/lib/api/location/location.types";
 
 const partyFormSchema = z.object({
   address: z.string().min(1, "Address is required"),
@@ -138,7 +136,7 @@ export default function PartyRegistrationForm({
   /** ⭐ AddressSearch now sets BOTH address + placeId */
   const handleAddressSelect = (address: AutocompleteResult | null) => {
     updateField("address", address?.formatted_address || "");
-    setPlaceId(address?.place_id || ""); // ⭐ new required field
+    setPlaceId(address?.google_place_id || ""); // ⭐ new required field
   };
 
   return (
@@ -255,7 +253,7 @@ export default function PartyRegistrationForm({
               )}
             </Field>
           </div>
-          <Field data-invalid={!!errors.phoneNumber}>
+          <Field data-invalid={!!errors.phone_number}>
             <FieldLabel htmlFor="phone-number">Phone Number</FieldLabel>
             <Input
               id="phone-number"
@@ -293,8 +291,8 @@ export default function PartyRegistrationForm({
             <FieldDescription>
               How should we contact the second contact?
             </FieldDescription>
-            {errors.contactPreference && (
-              <FieldError>{errors.contactPreference}</FieldError>
+            {errors.contact_preference && (
+              <FieldError>{errors.contact_preference}</FieldError>
             )}
           </Field>
 

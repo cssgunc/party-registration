@@ -1,6 +1,6 @@
 "use client";
 
-import { Party } from "@/lib/api/party/party.types";
+import { PartyDto } from "@/lib/api/party/party.types";
 import {
   AdvancedMarker,
   APIProvider,
@@ -11,11 +11,7 @@ import {
 } from "@vis.gl/react-google-maps";
 import { format } from "date-fns";
 import { useCallback, useEffect, useState } from "react";
-interface PoiMarkersProps {
-  pois: (Poi & { party?: Party })[];
-  activePoiKey?: string;
-  onSelect?: (party: Party | null) => void;
-}
+
 type Poi = {
   key: string;
   activePoiKey?: string;
@@ -23,10 +19,10 @@ type Poi = {
 };
 
 interface EmbeddedMapProps {
-  parties: Party[];
-  activeParty?: Party;
+  parties: PartyDto[];
+  activeParty?: PartyDto;
   center?: { lat: number; lng: number };
-  onSelect?: (party: Party | null) => void;
+  onSelect?: (party: PartyDto | null) => void;
 }
 
 const EmbeddedMap = ({
@@ -83,6 +79,12 @@ const EmbeddedMap = ({
   );
 };
 
+type PoiMarkersProps = {
+  pois: (Poi & { party?: PartyDto })[];
+  activePoiKey?: string;
+  onSelect?: (party: PartyDto | null) => void;
+};
+
 const PoiMarkers = ({ pois, activePoiKey, onSelect }: PoiMarkersProps) => {
   const map = useMap();
   const [selectedPoi, setSelectedPoi] = useState<(typeof pois)[0] | null>(null);
@@ -97,12 +99,12 @@ const PoiMarkers = ({ pois, activePoiKey, onSelect }: PoiMarkersProps) => {
     return phone;
   };
 
-  const getShortAddress = (location: Party["location"]): string => {
+  const getShortAddress = (location: PartyDto["location"]): string => {
     const parts = [];
-    if (location.streetNumber) parts.push(location.streetNumber);
-    if (location.streetName) parts.push(location.streetName);
+    if (location.street_number) parts.push(location.street_number);
+    if (location.street_name) parts.push(location.street_name);
     if (location.unit) parts.push(`Unit ${location.unit}`);
-    return parts.join(" ") || location.formattedAddress;
+    return parts.join(" ") || location.formatted_address;
   };
 
   useEffect(() => {
@@ -160,23 +162,25 @@ const PoiMarkers = ({ pois, activePoiKey, onSelect }: PoiMarkersProps) => {
         >
           <div className="space-y-1.5 text-sm">
             <div className="text-gray-700">
-              {format(selectedPoi.party.datetime, "MMM d, yyyy")} at{" "}
-              {format(selectedPoi.party.datetime, "h:mm a")}
+              {format(selectedPoi.party.party_datetime, "MMM d, yyyy")} at{" "}
+              {format(selectedPoi.party.party_datetime, "h:mm a")}
             </div>
             <div className="border-t pt-1.5">
               <div>
-                {selectedPoi.party.contactOne.firstName}{" "}
-                {selectedPoi.party.contactOne.lastName}
+                {selectedPoi.party.contact_one.first_name}{" "}
+                {selectedPoi.party.contact_one.last_name}
               </div>
               <div className="flex justify-between items-center text-xs">
                 <span>
-                  {formatPhoneNumber(selectedPoi.party.contactOne.phoneNumber)}
+                  {formatPhoneNumber(
+                    selectedPoi.party.contact_one.phone_number
+                  )}
                 </span>
                 <span className="text-gray-600">
-                  {selectedPoi.party.contactOne.contactPreference
+                  {selectedPoi.party.contact_one.contact_preference
                     .charAt(0)
                     .toUpperCase() +
-                    selectedPoi.party.contactOne.contactPreference
+                    selectedPoi.party.contact_one.contact_preference
                       .slice(1)
                       .toLowerCase()}
                 </span>

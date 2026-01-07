@@ -1,14 +1,29 @@
-type Account = {
-  id: number;
+/**
+ * Account role types matching backend AccountRole enum
+ */
+export type AccountRole = "student" | "staff" | "admin";
+
+/**
+ * DTO for creating/updating an Account
+ */
+type AccountData = {
+  email: string;
+  first_name: string;
+  last_name: string;
   pid: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  role: "staff" | "admin" | "student";
+  role: AccountRole;
 };
 
-type PoliceAccount = {
+/**
+ * DTO for Account responses
+ */
+type AccountDto = {
+  id: number;
   email: string;
+  first_name: string;
+  last_name: string;
+  pid: string;
+  role: AccountRole;
 };
 
-export type { Account, PoliceAccount };
+export type { AccountData, AccountDto };

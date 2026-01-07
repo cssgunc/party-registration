@@ -5,7 +5,7 @@ import pytest_asyncio
 from httpx import AsyncClient
 from src.modules.account.account_entity import AccountRole
 from src.modules.location.location_service import LocationHoldActiveException
-from src.modules.party.party_model import Party
+from src.modules.party.party_model import PartyDto
 from src.modules.party.party_service import PartyNotFoundException
 from src.modules.student.student_entity import StudentEntity
 from test.modules.account.account_utils import AccountTestUtils
@@ -52,7 +52,7 @@ class TestPartyListRouter:
         """Test listing parties when database is empty."""
         response = await self.admin_client.get("/api/parties/")
         paginated = assert_res_paginated(
-            response, Party, total_records=0, page_size=0, total_pages=1
+            response, PartyDto, total_records=0, page_size=0, total_pages=1
         )
         assert paginated.items == []
 
@@ -63,7 +63,7 @@ class TestPartyListRouter:
 
         response = await self.admin_client.get("/api/parties/")
         paginated = assert_res_paginated(
-            response, Party, total_records=3, page_size=3, total_pages=1
+            response, PartyDto, total_records=3, page_size=3, total_pages=1
         )
 
         assert len(paginated.items) == 3
@@ -90,7 +90,7 @@ class TestPartyGetRouter:
         party = await self.party_utils.create_one()
 
         response = await self.admin_client.get(f"/api/parties/{party.id}")
-        data = assert_res_success(response, Party)
+        data = assert_res_success(response, PartyDto)
 
         self.party_utils.assert_matches(party, data)
 
@@ -118,7 +118,7 @@ class TestPartyDeleteRouter:
         party = await self.party_utils.create_one()
 
         response = await self.admin_client.delete(f"/api/parties/{party.id}")
-        data = assert_res_success(response, Party)
+        data = assert_res_success(response, PartyDto)
 
         self.party_utils.assert_matches(party, data)
 
@@ -165,7 +165,7 @@ class TestPartyCreateAdminRouter:
         response = await self.admin_client.post(
             "/api/parties/", json=payload.model_dump(mode="json")
         )
-        data = assert_res_success(response, Party, status=201)
+        data = assert_res_success(response, PartyDto, status=201)
 
         assert data.contact_one.email == payload.contact_one_email
         assert data.contact_two.email == payload.contact_two.email
@@ -252,7 +252,7 @@ class TestPartyCreateStudentRouter:
         response = await self.student_client.post(
             "/api/parties/", json=payload.model_dump(mode="json")
         )
-        data = assert_res_success(response, Party, status=201)
+        data = assert_res_success(response, PartyDto, status=201)
 
         assert data.contact_one.id == current_student.account_id
         assert data.contact_two.email == payload.contact_two.email
@@ -293,7 +293,7 @@ class TestPartyNearbyRouter:
             "end_date": (now + timedelta(days=7)).strftime("%Y-%m-%d"),
         }
         response = await self.admin_client.get("/api/parties/nearby", params=params)
-        data = assert_res_success(response, list[Party])
+        data = assert_res_success(response, list[PartyDto])
         assert data == []
 
     @pytest.mark.asyncio
@@ -339,7 +339,7 @@ class TestPartyNearbyRouter:
             "end_date": (now + timedelta(days=1)).strftime("%Y-%m-%d"),
         }
         response = await self.admin_client.get("/api/parties/nearby", params=params)
-        data = assert_res_success(response, list[Party])
+        data = assert_res_success(response, list[PartyDto])
 
         party_ids = [p.id for p in data]
         assert party_within.id in party_ids
@@ -384,7 +384,7 @@ class TestPartyNearbyRouter:
         }
 
         response = await self.admin_client.get("/api/parties/nearby", params=params)
-        data = assert_res_success(response, list[Party])
+        data = assert_res_success(response, list[PartyDto])
 
         assert len(data) == 1
         assert data[0].id == party_valid.id
@@ -396,12 +396,36 @@ class TestPartyNearbyRouter:
             {"start_date": "2024-01-01", "end_date": "2024-01-02"},  # missing place_id
             {"place_id": "ChIJtest123", "end_date": "2024-01-02"},  # missing start_date
             {"place_id": "ChIJtest123", "start_date": "2024-01-01"},  # missing end_date
-            {"place_id": "ChIJtest123", "start_date": "01-01-2024", "end_date": "2024-01-02"},  # MM-DD-YYYY
-            {"place_id": "ChIJtest123", "start_date": "2024-01-01", "end_date": "01/02/2024"},  # MM/DD/YYYY
-            {"place_id": "ChIJtest123", "start_date": "2024/01/01", "end_date": "2024-01-02"},  # slashes
-            {"place_id": "ChIJtest123", "start_date": "2024-1-1", "end_date": "2024-01-02"},  # no leading zeros
-            {"place_id": "ChIJtest123", "start_date": "2024-01-01", "end_date": "24-01-02"},  # 2-digit year
-            {"place_id": "ChIJtest123", "start_date": "not-a-date", "end_date": "2024-01-02"},  # invalid string
+            {
+                "place_id": "ChIJtest123",
+                "start_date": "01-01-2024",
+                "end_date": "2024-01-02",
+            },  # MM-DD-YYYY
+            {
+                "place_id": "ChIJtest123",
+                "start_date": "2024-01-01",
+                "end_date": "01/02/2024",
+            },  # MM/DD/YYYY
+            {
+                "place_id": "ChIJtest123",
+                "start_date": "2024/01/01",
+                "end_date": "2024-01-02",
+            },  # slashes
+            {
+                "place_id": "ChIJtest123",
+                "start_date": "2024-1-1",
+                "end_date": "2024-01-02",
+            },  # no leading zeros
+            {
+                "place_id": "ChIJtest123",
+                "start_date": "2024-01-01",
+                "end_date": "24-01-02",
+            },  # 2-digit year
+            {
+                "place_id": "ChIJtest123",
+                "start_date": "not-a-date",
+                "end_date": "2024-01-02",
+            },  # invalid string
         ],
     )
     async def test_get_parties_nearby_validation_errors(self, params: dict[str, str]):

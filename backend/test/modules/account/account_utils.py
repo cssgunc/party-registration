@@ -2,7 +2,7 @@ from typing import Literal, TypedDict, Unpack, override
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.modules.account.account_entity import AccountEntity, AccountRole
-from src.modules.account.account_model import Account, AccountData
+from src.modules.account.account_model import AccountData, AccountDto
 from test.utils.resource_test_utils import ResourceTestUtils
 
 
@@ -18,7 +18,7 @@ class AccountTestUtils(
     ResourceTestUtils[
         AccountEntity,
         AccountData,
-        Account,
+        AccountDto,
     ]
 ):
     def __init__(self, session: AsyncSession):

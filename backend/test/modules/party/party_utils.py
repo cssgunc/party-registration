@@ -4,11 +4,11 @@ from typing import Any, TypedDict, Unpack, override
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.modules.party.party_entity import PartyEntity
 from src.modules.party.party_model import (
-    AdminCreatePartyDTO,
-    Contact,
-    Party,
+    AdminCreatePartyDto,
+    ContactDto,
     PartyData,
-    StudentCreatePartyDTO,
+    PartyDto,
+    StudentCreatePartyDto,
 )
 from src.modules.student.student_model import ContactPreference
 from test.modules.location.location_utils import LocationTestUtils
@@ -28,7 +28,7 @@ class PartyOverrides(TypedDict, total=False):
     contact_one_id: int
     google_place_id: str
     contact_one_email: str
-    contact_two: Contact
+    contact_two: ContactDto
     contact_two_email: str
     contact_two_first_name: str
     contact_two_last_name: str
@@ -40,7 +40,7 @@ class PartyTestUtils(
     ResourceTestUtils[
         PartyEntity,
         PartyData,
-        Party,
+        PartyDto,
     ]
 ):
     def __init__(
@@ -83,10 +83,10 @@ class PartyTestUtils(
 
         return await super().next_dict(**overrides)
 
-    def next_contact(self, **overrides: Unpack[PartyOverrides]) -> Contact:
+    def next_contact(self, **overrides: Unpack[PartyOverrides]) -> ContactDto:
         """Generate test contact data."""
         defaults = self.generate_defaults(self.count)
-        return Contact(
+        return ContactDto(
             email=overrides.get("contact_two_email", defaults["contact_two_email"]),
             first_name=overrides.get("contact_two_first_name", defaults["contact_two_first_name"]),
             last_name=overrides.get("contact_two_last_name", defaults["contact_two_last_name"]),
@@ -111,7 +111,7 @@ class PartyTestUtils(
 
     async def next_admin_create_dto(
         self, **overrides: Unpack[PartyOverrides]
-    ) -> AdminCreatePartyDTO:
+    ) -> AdminCreatePartyDto:
         """Generate an AdminCreatePartyDTO for testing."""
         if "google_place_id" not in overrides:
             location = await self.location_utils.create_one()
@@ -122,7 +122,7 @@ class PartyTestUtils(
             student_dto = await student.load_dto(self.student_utils.session)
             overrides["contact_one_email"] = student_dto.email
 
-        return AdminCreatePartyDTO(
+        return AdminCreatePartyDto(
             type="admin",
             party_datetime=overrides.get("party_datetime", get_valid_party_datetime()),
             google_place_id=overrides["google_place_id"],
@@ -132,13 +132,13 @@ class PartyTestUtils(
 
     async def next_student_create_dto(
         self, **overrides: Unpack[PartyOverrides]
-    ) -> StudentCreatePartyDTO:
+    ) -> StudentCreatePartyDto:
         """Generate a StudentCreatePartyDTO for testing."""
         if "google_place_id" not in overrides:
             location = await self.location_utils.create_one()
             overrides["google_place_id"] = location.google_place_id
 
-        return StudentCreatePartyDTO(
+        return StudentCreatePartyDto(
             type="student",
             party_datetime=overrides.get("party_datetime", get_valid_party_datetime()),
             google_place_id=overrides["google_place_id"],
@@ -148,8 +148,8 @@ class PartyTestUtils(
     @override
     def assert_matches(
         self,
-        resource1: PartyEntity | PartyData | Party | None,
-        resource2: PartyEntity | PartyData | Party | None,
+        resource1: PartyEntity | PartyData | PartyDto | None,
+        resource2: PartyEntity | PartyData | PartyDto | None,
     ) -> None:
         """Assert that two party resources match, with special handling for nested objects."""
         assert resource1 is not None, "First party is None"
@@ -168,7 +168,7 @@ class PartyTestUtils(
 
         # Compare location
         location_id_1, location_id_2 = [
-            party.location.id if isinstance(party, Party) else party.location_id
+            party.location.id if isinstance(party, PartyDto) else party.location_id
             for party in (resource1, resource2)
         ]
 
@@ -176,12 +176,12 @@ class PartyTestUtils(
             f"Location ID mismatch: {location_id_1} != {location_id_2}"
         )
 
-        if isinstance(resource1, Party) and isinstance(resource2, Party):
+        if isinstance(resource1, PartyDto) and isinstance(resource2, PartyDto):
             self.location_utils.assert_matches(resource1.location, resource2.location)
 
         # Compare contact_one
         contact_one_id_1, contact_one_id_2 = [
-            party.contact_one.id if isinstance(party, Party) else party.contact_one_id
+            party.contact_one.id if isinstance(party, PartyDto) else party.contact_one_id
             for party in (resource1, resource2)
         ]
 
@@ -189,7 +189,7 @@ class PartyTestUtils(
             f"Contact one ID mismatch: {contact_one_id_1} != {contact_one_id_2}"
         )
 
-        if isinstance(resource1, Party) and isinstance(resource2, Party):
+        if isinstance(resource1, PartyDto) and isinstance(resource2, PartyDto):
             self.student_utils.assert_matches(resource1.contact_one, resource2.contact_one)
 
         # Compare contact_two fields
@@ -197,7 +197,7 @@ class PartyTestUtils(
             (
                 party.contact_two
                 if not isinstance(party, PartyEntity)
-                else Contact(
+                else ContactDto(
                     email=party.contact_two_email,
                     first_name=party.contact_two_first_name,
                     last_name=party.contact_two_last_name,

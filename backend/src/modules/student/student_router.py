@@ -4,17 +4,17 @@ from src.core.authentication import (
     authenticate_staff_or_admin,
     authenticate_student,
 )
-from src.modules.account.account_model import Account
-from src.modules.party.party_model import Party
+from src.modules.account.account_model import AccountDto
+from src.modules.party.party_model import PartyDto
 from src.modules.party.party_service import PartyService
 
 from .student_model import (
     IsRegisteredUpdate,
     PaginatedStudentsResponse,
-    Student,
     StudentCreate,
     StudentData,
     StudentDataWithNames,
+    StudentDto,
 )
 from .student_service import StudentService
 
@@ -24,8 +24,8 @@ student_router = APIRouter(prefix="/api/students", tags=["students"])
 @student_router.get("/me")
 async def get_me(
     student_service: StudentService = Depends(),
-    user: "Account" = Depends(authenticate_student),
-) -> Student:
+    user: "AccountDto" = Depends(authenticate_student),
+) -> StudentDto:
     return await student_service.get_student_by_id(user.id)
 
 
@@ -33,16 +33,16 @@ async def get_me(
 async def update_me(
     data: StudentData,
     student_service: StudentService = Depends(),
-    user: "Account" = Depends(authenticate_student),
-) -> Student:
+    user: "AccountDto" = Depends(authenticate_student),
+) -> StudentDto:
     return await student_service.update_student(user.id, data)
 
 
 @student_router.get("/me/parties")
 async def get_my_parties(
     party_service: PartyService = Depends(),
-    user: "Account" = Depends(authenticate_student),
-) -> list[Party]:
+    user: "AccountDto" = Depends(authenticate_student),
+) -> list[PartyDto]:
     return await party_service.get_parties_by_contact(user.id)
 
 
@@ -98,9 +98,7 @@ async def list_students(
     students = await student_service.get_students(skip=skip, limit=page_size)
 
     # Calculate total pages (ceiling division)
-    total_pages = (
-        (total_records + page_size - 1) // page_size if total_records > 0 else 0
-    )
+    total_pages = (total_records + page_size - 1) // page_size if total_records > 0 else 0
 
     return PaginatedStudentsResponse(
         items=students,
@@ -116,7 +114,7 @@ async def get_student(
     student_id: int,
     student_service: StudentService = Depends(),
     _=Depends(authenticate_staff_or_admin),
-) -> Student:
+) -> StudentDto:
     return await student_service.get_student_by_id(student_id)
 
 
@@ -125,7 +123,7 @@ async def create_student(
     payload: StudentCreate,
     student_service: StudentService = Depends(),
     _=Depends(authenticate_admin),
-) -> Student:
+) -> StudentDto:
     return await student_service.create_student(payload.data, payload.account_id)
 
 
@@ -135,7 +133,7 @@ async def update_student(
     data: StudentDataWithNames,
     student_service: StudentService = Depends(),
     _=Depends(authenticate_admin),
-) -> Student:
+) -> StudentDto:
     return await student_service.update_student(student_id, data)
 
 
@@ -144,7 +142,7 @@ async def delete_student(
     student_id: int,
     student_service: StudentService = Depends(),
     _=Depends(authenticate_admin),
-) -> Student:
+) -> StudentDto:
     return await student_service.delete_student(student_id)
 
 
@@ -154,7 +152,7 @@ async def update_is_registered(
     data: IsRegisteredUpdate,
     student_service: StudentService = Depends(),
     _=Depends(authenticate_staff_or_admin),
-) -> Student:
+) -> StudentDto:
     """
     Update the registration status (attendance) for a student.
     Staff can use this to mark students as present/absent.

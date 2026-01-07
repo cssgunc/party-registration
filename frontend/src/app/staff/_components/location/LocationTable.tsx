@@ -1,17 +1,14 @@
 "use client";
 
-import {
-  LocationCreatePayload,
-  LocationService,
-  PaginatedLocationResponse,
-} from "@/lib/api/location/location.service";
-import { Location } from "@/lib/api/location/location.types";
+import { LocationService } from "@/lib/api/location/location.service";
+import { LocationCreate, LocationDto } from "@/lib/api/location/location.types";
+import { PaginatedResponse } from "@/lib/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
 import { useSidebar } from "../shared/sidebar/SidebarContext";
-import LocationTableCreateEditForm from "./LocationTableCreateEdit";
 import { TableTemplate } from "../shared/table/TableTemplate";
+import LocationTableForm from "./LocationTableForm";
 
 const locationService = new LocationService();
 
@@ -19,10 +16,12 @@ export const LocationTable = () => {
   const queryClient = useQueryClient();
   const { openSidebar, closeSidebar } = useSidebar();
   const [sidebarMode, setSidebarMode] = useState<"create" | "edit">("create");
-  const [editingLocation, setEditingLocation] = useState<Location | null>(null);
+  const [editingLocation, setEditingLocation] = useState<LocationDto | null>(
+    null
+  );
   const [submissionError, setSubmissionError] = useState<string | null>(null);
 
-  const locationsQuery = useQuery<PaginatedLocationResponse>({
+  const locationsQuery = useQuery<PaginatedResponse<LocationDto>>({
     queryKey: ["locations"],
     queryFn: () => locationService.getLocations(),
     retry: 1,
@@ -31,11 +30,11 @@ export const LocationTable = () => {
   const locations = (locationsQuery.data?.items ?? [])
     .slice()
     .sort((a, b) =>
-      (a.formattedAddress || "").localeCompare(b.formattedAddress || "")
+      (a.formatted_address || "").localeCompare(b.formatted_address || "")
     );
 
   const createMutation = useMutation({
-    mutationFn: (payload: LocationCreatePayload) =>
+    mutationFn: (payload: LocationCreate) =>
       locationService.createLocation(payload),
     onError: (error: Error) => {
       console.error("Failed to create location:", error);
@@ -50,13 +49,8 @@ export const LocationTable = () => {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({
-      id,
-      payload,
-    }: {
-      id: number;
-      payload: LocationCreatePayload;
-    }) => locationService.updateLocation(id, payload),
+    mutationFn: ({ id, payload }: { id: number; payload: LocationCreate }) =>
+      locationService.updateLocation(id, payload),
     onError: (error: Error) => {
       console.error("Failed to update location:", error);
       setSubmissionError(`Failed to update location: ${error.message}`);
@@ -75,11 +69,11 @@ export const LocationTable = () => {
     onMutate: async (id: number) => {
       await queryClient.cancelQueries({ queryKey: ["locations"] });
 
-      const previous = queryClient.getQueryData<PaginatedLocationResponse>([
-        "locations",
-      ]);
+      const previous = queryClient.getQueryData<PaginatedResponse<LocationDto>>(
+        ["locations"]
+      );
 
-      queryClient.setQueryData<PaginatedLocationResponse | undefined>(
+      queryClient.setQueryData<PaginatedResponse<LocationDto> | undefined>(
         ["locations"],
         (old) =>
           old
@@ -103,7 +97,7 @@ export const LocationTable = () => {
     },
   });
 
-  const handleEdit = (location: Location) => {
+  const handleEdit = (location: LocationDto) => {
     setEditingLocation(location);
     setSidebarMode("edit");
     setSubmissionError(null);
@@ -111,22 +105,22 @@ export const LocationTable = () => {
       `edit-location-${location.id}`,
       "Edit Location",
       "Update location information",
-      <LocationTableCreateEditForm
+      <LocationTableForm
         title="Edit Location"
         onSubmit={handleFormSubmit}
         submissionError={submissionError}
         editData={{
-          address: location.formattedAddress || "",
-          placeId: location.googlePlaceId || "",
-          holdExpiration: location.holdExpirationDate || null,
-          warningCount: location.warningCount ?? 0,
-          citationCount: location.citationCount ?? 0,
+          address: location.formatted_address || "",
+          placeId: location.google_place_id || "",
+          holdExpiration: location.hold_expiration || null,
+          warning_count: location.warning_count ?? 0,
+          citation_count: location.citation_count ?? 0,
         }}
       />
     );
   };
 
-  const handleDelete = (location: Location) => {
+  const handleDelete = (location: LocationDto) => {
     deleteMutation.mutate(location.id);
   };
 
@@ -138,7 +132,7 @@ export const LocationTable = () => {
       "create-location",
       "New Location",
       "Add a new location to the system",
-      <LocationTableCreateEditForm
+      <LocationTableForm
         title="New Location"
         onSubmit={handleFormSubmit}
         submissionError={submissionError}
@@ -150,27 +144,14 @@ export const LocationTable = () => {
     address: string;
     placeId: string;
     holdExpiration: Date | null;
-    warningCount: number;
-    citationCount: number;
+    warning_count: number;
+    citation_count: number;
   }) => {
-    let hold_expiration_str: string | null = null;
-    if (data.holdExpiration) {
-      // Format as local datetime without timezone (YYYY-MM-DDTHH:mm:ss)
-      const date = data.holdExpiration;
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, "0");
-      const day = String(date.getDate()).padStart(2, "0");
-      const hour = String(date.getHours()).padStart(2, "0");
-      const minute = String(date.getMinutes()).padStart(2, "0");
-      const second = String(date.getSeconds()).padStart(2, "0");
-      hold_expiration_str = `${year}-${month}-${day}T${hour}:${minute}:${second}`;
-    }
-
-    const payload: LocationCreatePayload = {
+    const payload: LocationCreate = {
       google_place_id: data.placeId,
-      warning_count: data.warningCount,
-      citation_count: data.citationCount,
-      hold_expiration: hold_expiration_str,
+      warning_count: data.warning_count,
+      citation_count: data.citation_count,
+      hold_expiration: data.holdExpiration,
     };
 
     if (sidebarMode === "edit" && editingLocation) {
@@ -179,25 +160,25 @@ export const LocationTable = () => {
       createMutation.mutate(payload);
     }
   };
-  const columns: ColumnDef<Location>[] = [
+  const columns: ColumnDef<LocationDto>[] = [
     {
-      accessorKey: "formattedAddress",
+      accessorKey: "formatted_address",
       header: "Address",
     },
     {
-      accessorKey: "warningCount",
+      accessorKey: "warning_count",
       header: "Warning Count",
     },
     {
-      accessorKey: "citationCount",
+      accessorKey: "citation_count",
       header: "Citation Count",
     },
     {
-      accessorKey: "holdExpirationDate",
+      accessorKey: "hold_expiration",
       header: "Active Hold",
       enableColumnFilter: true,
       cell: ({ row }) => {
-        const holdDate = row.getValue("holdExpirationDate") as Date | null;
+        const holdDate = row.getValue("hold_expiration") as Date | null;
         if (holdDate) {
           const formattedDate = new Date(holdDate).toLocaleDateString();
           return `until ${formattedDate}`;
@@ -228,8 +209,8 @@ export const LocationTable = () => {
         onCreateNew={handleCreate}
         isLoading={locationsQuery.isLoading}
         error={locationsQuery.error as Error | null}
-        getDeleteDescription={(location: Location) =>
-          `Are you sure you want to delete location ${location.formattedAddress}? This action cannot be undone.`
+        getDeleteDescription={(location: LocationDto) =>
+          `Are you sure you want to delete location ${location.formatted_address}? This action cannot be undone.`
         }
         isDeleting={deleteMutation.isPending}
       />

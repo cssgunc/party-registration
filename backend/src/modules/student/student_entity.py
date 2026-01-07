@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column, relationship, selectinload
 from src.core.database import EntityBase
 
-from .student_model import ContactPreference, DbStudent, Student, StudentData
+from .student_model import ContactPreference, StudentData, StudentDto
 
 if TYPE_CHECKING:
     from src.modules.account.account_entity import AccountEntity
@@ -27,7 +27,7 @@ class StudentEntity(MappedAsDataclass, EntityBase):
     account: Mapped["AccountEntity"] = relationship("AccountEntity", init=False)
 
     @classmethod
-    def from_model(cls, data: "StudentData", account_id: int) -> Self:
+    def from_data(cls, data: "StudentData", account_id: int) -> Self:
         return cls(
             contact_preference=data.contact_preference,
             last_registered=data.last_registered,
@@ -35,27 +35,14 @@ class StudentEntity(MappedAsDataclass, EntityBase):
             account_id=account_id,
         )
 
-    def to_model(self) -> "DbStudent":
-        # Ensure last_registered is timezone-aware if present
-        last_reg = self.last_registered
-        if last_reg is not None and last_reg.tzinfo is None:
-            last_reg = last_reg.replace(tzinfo=timezone.utc)
-
-        return DbStudent(
-            account_id=self.account_id,
-            contact_preference=self.contact_preference,
-            last_registered=last_reg,
-            phone_number=self.phone_number,
-        )
-
-    def to_dto(self) -> "Student":
+    def to_dto(self) -> "StudentDto":
         """Convert entity to DTO using the account relationship."""
         # Ensure last_registered is timezone-aware if present
         last_reg = self.last_registered
         if last_reg is not None and last_reg.tzinfo is None:
             last_reg = last_reg.replace(tzinfo=timezone.utc)
 
-        return Student(
+        return StudentDto(
             id=self.account_id,
             pid=self.account.pid,
             email=self.account.email,
@@ -66,7 +53,7 @@ class StudentEntity(MappedAsDataclass, EntityBase):
             last_registered=last_reg,
         )
 
-    async def load_dto(self, session: AsyncSession) -> Student:
+    async def load_dto(self, session: AsyncSession) -> StudentDto:
         """
         Load student with account relationship from database and convert to DTO.
         Should be used to get the DTO only if the account relationship hasn't been loaded yet.

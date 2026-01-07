@@ -6,15 +6,11 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from src.core.database import get_session
-from src.core.exceptions import (
-    BadRequestException,
-    ConflictException,
-    NotFoundException,
-)
+from src.core.exceptions import BadRequestException, ConflictException, NotFoundException
 from src.modules.account.account_entity import AccountEntity, AccountRole
 
 from .student_entity import StudentEntity
-from .student_model import Student, StudentData, StudentDataWithNames
+from .student_model import StudentData, StudentDataWithNames, StudentDto
 
 
 class StudentNotFoundException(NotFoundException):
@@ -64,9 +60,7 @@ class StudentService:
             raise StudentNotFoundException(account_id)
         return student_entity
 
-    async def _get_student_entity_by_phone(
-        self, phone_number: str
-    ) -> StudentEntity | None:
+    async def _get_student_entity_by_phone(self, phone_number: str) -> StudentEntity | None:
         result = await self.session.execute(
             select(StudentEntity).where(StudentEntity.phone_number == phone_number)
         )
@@ -96,14 +90,8 @@ class StudentService:
 
         return account
 
-    async def get_students(
-        self, skip: int = 0, limit: int | None = None
-    ) -> list[Student]:
-        query = (
-            select(StudentEntity)
-            .options(selectinload(StudentEntity.account))
-            .offset(skip)
-        )
+    async def get_students(self, skip: int = 0, limit: int | None = None) -> list[StudentDto]:
+        query = select(StudentEntity).options(selectinload(StudentEntity.account)).offset(skip)
         if limit is not None:
             query = query.limit(limit)
         result = await self.session.execute(query)
@@ -115,7 +103,7 @@ class StudentService:
         count_result = await self.session.execute(count_query)
         return count_result.scalar_one()
 
-    async def get_student_by_id(self, account_id: int) -> Student:
+    async def get_student_by_id(self, account_id: int) -> StudentDto:
         student_entity = await self._get_student_entity_by_account_id(account_id)
         return student_entity.to_dto()
 
@@ -123,9 +111,7 @@ class StudentService:
         """Assert that a student with the given account ID exists."""
         await self._get_student_entity_by_account_id(account_id)
 
-    async def create_student(
-        self, data: StudentDataWithNames, account_id: int
-    ) -> Student:
+    async def create_student(self, data: StudentDataWithNames, account_id: int) -> StudentDto:
         account = await self._validate_account_for_student(account_id)
 
         if await self._get_student_entity_by_phone(data.phone_number):
@@ -140,7 +126,7 @@ class StudentService:
             last_registered=data.last_registered,
             phone_number=data.phone_number,
         )
-        new_student = StudentEntity.from_model(student_data, account_id)
+        new_student = StudentEntity.from_data(student_data, account_id)
         try:
             self.session.add(new_student)
             await self.session.commit()
@@ -153,7 +139,7 @@ class StudentService:
 
     async def update_student(
         self, account_id: int, data: StudentData | StudentDataWithNames
-    ) -> Student:
+    ) -> StudentDto:
         student_entity = await self._get_student_entity_by_account_id(account_id)
 
         account = student_entity.account
@@ -187,14 +173,14 @@ class StudentService:
         await self.session.refresh(student_entity, ["account"])
         return student_entity.to_dto()
 
-    async def delete_student(self, account_id: int) -> Student:
+    async def delete_student(self, account_id: int) -> StudentDto:
         student_entity = await self._get_student_entity_by_account_id(account_id)
         student_dto = student_entity.to_dto()
         await self.session.delete(student_entity)
         await self.session.commit()
         return student_dto
 
-    async def update_is_registered(self, account_id: int, is_registered: bool) -> Student:
+    async def update_is_registered(self, account_id: int, is_registered: bool) -> StudentDto:
         """
         Update the registration status of a student.
         If is_registered is True, sets last_registered to current datetime.

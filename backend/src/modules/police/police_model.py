@@ -1,7 +1,7 @@
 from pydantic import BaseModel, EmailStr
 
 
-class PoliceAccount(BaseModel):
+class PoliceAccountDto(BaseModel):
     """DTO for Police Account responses (email only, no password exposed)."""
 
     email: EmailStr

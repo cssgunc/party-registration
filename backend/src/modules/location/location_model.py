@@ -2,7 +2,7 @@ from typing import Self
 
 from pydantic import AwareDatetime, BaseModel, Field
 from src.core.models import PaginatedResponse
-from src.modules.complaint.complaint_model import Complaint
+from src.modules.complaint.complaint_model import ComplaintDto
 
 # Maximum allowed value for warning/citation counts to prevent overflow
 MAX_COUNT = 999999
@@ -67,12 +67,12 @@ class LocationData(AddressData):
         )
 
 
-class Location(LocationData):
+class LocationDto(LocationData):
     id: int
-    complaints: list[Complaint] = []
+    complaints: list[ComplaintDto] = []
 
 
-PaginatedLocationResponse = PaginatedResponse[Location]
+PaginatedLocationResponse = PaginatedResponse[LocationDto]
 
 
 class LocationCreate(BaseModel):

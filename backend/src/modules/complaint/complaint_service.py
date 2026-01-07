@@ -7,7 +7,7 @@ from src.core.exceptions import NotFoundException
 from src.modules.location.location_service import LocationNotFoundException
 
 from .complaint_entity import ComplaintEntity
-from .complaint_model import Complaint, ComplaintData
+from .complaint_model import ComplaintData, ComplaintDto
 
 
 class ComplaintNotFoundException(NotFoundException):
@@ -31,22 +31,20 @@ class ComplaintService:
             raise ComplaintNotFoundException(complaint_id)
         return complaint_entity
 
-    async def get_complaints_by_location(self, location_id: int) -> list[Complaint]:
+    async def get_complaints_by_location(self, location_id: int) -> list[ComplaintDto]:
         """Get all complaints for a given location."""
         result = await self.session.execute(
             select(ComplaintEntity).where(ComplaintEntity.location_id == location_id)
         )
         complaints = result.scalars().all()
-        return [complaint.to_model() for complaint in complaints]
+        return [complaint.to_dto() for complaint in complaints]
 
-    async def get_complaint_by_id(self, complaint_id: int) -> Complaint:
+    async def get_complaint_by_id(self, complaint_id: int) -> ComplaintDto:
         """Get a single complaint by ID."""
         complaint_entity = await self._get_complaint_entity_by_id(complaint_id)
-        return complaint_entity.to_model()
+        return complaint_entity.to_dto()
 
-    async def create_complaint(
-        self, location_id: int, data: ComplaintData
-    ) -> Complaint:
+    async def create_complaint(self, location_id: int, data: ComplaintData) -> ComplaintDto:
         """Create a new complaint."""
         new_complaint = ComplaintEntity(
             location_id=location_id,
@@ -62,11 +60,11 @@ class ComplaintService:
                 raise LocationNotFoundException(location_id)
             raise
         await self.session.refresh(new_complaint)
-        return new_complaint.to_model()
+        return new_complaint.to_dto()
 
     async def update_complaint(
         self, complaint_id: int, location_id: int, data: ComplaintData
-    ) -> Complaint:
+    ) -> ComplaintDto:
         """Update an existing complaint."""
         complaint_entity = await self._get_complaint_entity_by_id(complaint_id)
 
@@ -83,12 +81,12 @@ class ComplaintService:
                 raise LocationNotFoundException(location_id)
             raise
         await self.session.refresh(complaint_entity)
-        return complaint_entity.to_model()
+        return complaint_entity.to_dto()
 
-    async def delete_complaint(self, complaint_id: int) -> Complaint:
+    async def delete_complaint(self, complaint_id: int) -> ComplaintDto:
         """Delete a complaint."""
         complaint_entity = await self._get_complaint_entity_by_id(complaint_id)
-        complaint = complaint_entity.to_model()
+        complaint = complaint_entity.to_dto()
         await self.session.delete(complaint_entity)
         await self.session.commit()
         return complaint

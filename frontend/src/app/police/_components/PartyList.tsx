@@ -1,12 +1,12 @@
 "use client";
 
-import { Party } from "@/lib/api/party/party.types";
+import { PartyDto } from "@/lib/api/party/party.types";
 import { format } from "date-fns";
 
 interface PartyListProps {
-  parties?: Party[];
-  onSelect?: (party: Party) => void;
-  activeParty?: Party;
+  parties?: PartyDto[];
+  onSelect?: (party: PartyDto) => void;
+  activeParty?: PartyDto;
 }
 
 const formatPhoneNumber = (phone: string): string => {
@@ -48,10 +48,11 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
             {/* Address and Date/Time */}
             <div>
               <div className="font-semibold">
-                {party.location.formattedAddress}
+                {party.location.formatted_address}
               </div>
               <div className="text-sm text-gray-600">
-                {format(party.datetime, "PPP")} at {format(party.datetime, "p")}
+                {format(party.party_datetime, "PPP")} at{" "}
+                {format(party.party_datetime, "p")}
               </div>
             </div>
 
@@ -64,15 +65,17 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                 </div>
                 <div className="text-sm ml-3">
                   <div>
-                    {party.contactOne.firstName} {party.contactOne.lastName}
+                    {party.contact_one.first_name} {party.contact_one.last_name}
                   </div>
-                  <div>{formatPhoneNumber(party.contactOne.phoneNumber)}</div>
+                  <div>{formatPhoneNumber(party.contact_one.phone_number)}</div>
                   <div className="text-gray-600">
                     Prefers:{" "}
-                    {party.contactOne.contactPreference
+                    {party.contact_one.contact_preference
                       .charAt(0)
                       .toUpperCase() +
-                      party.contactOne.contactPreference.slice(1).toLowerCase()}
+                      party.contact_one.contact_preference
+                        .slice(1)
+                        .toLowerCase()}
                   </div>
                 </div>
               </div>
@@ -84,15 +87,17 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                 </div>
                 <div className="text-sm ml-3">
                   <div>
-                    {party.contactTwo.firstName} {party.contactTwo.lastName}
+                    {party.contact_two.first_name} {party.contact_two.last_name}
                   </div>
-                  <div>{formatPhoneNumber(party.contactTwo.phoneNumber)}</div>
+                  <div>{formatPhoneNumber(party.contact_two.phone_number)}</div>
                   <div className="text-gray-600">
                     Prefers:{" "}
-                    {party.contactTwo.contactPreference
+                    {party.contact_two.contact_preference
                       .charAt(0)
                       .toUpperCase() +
-                      party.contactTwo.contactPreference.slice(1).toLowerCase()}
+                      party.contact_two.contact_preference
+                        .slice(1)
+                        .toLowerCase()}
                   </div>
                 </div>
               </div>

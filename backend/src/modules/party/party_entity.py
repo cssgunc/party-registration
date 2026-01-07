@@ -8,7 +8,7 @@ from src.core.database import EntityBase
 from src.modules.student.student_model import ContactPreference
 
 from ..student.student_entity import StudentEntity
-from .party_model import Contact, Party, PartyData
+from .party_model import ContactDto, PartyData, PartyDto
 
 if TYPE_CHECKING:
     from ..location.location_entity import LocationEntity
@@ -44,7 +44,7 @@ class PartyEntity(MappedAsDataclass, EntityBase):
     )
 
     @classmethod
-    def from_model(cls, data: PartyData) -> Self:
+    def from_data(cls, data: PartyData) -> Self:
         return cls(
             party_datetime=data.party_datetime,
             location_id=data.location_id,
@@ -56,19 +56,19 @@ class PartyEntity(MappedAsDataclass, EntityBase):
             contact_two_contact_preference=data.contact_two.contact_preference,
         )
 
-    def to_model(self) -> Party:
+    def to_dto(self) -> PartyDto:
         """Convert entity to model. Requires relationships to be eagerly loaded."""
         # Ensure party_datetime is timezone-aware
         party_dt = self.party_datetime
         if party_dt.tzinfo is None:
             party_dt = party_dt.replace(tzinfo=timezone.utc)
 
-        return Party(
+        return PartyDto(
             id=self.id,
             party_datetime=party_dt,
-            location=self.location.to_model(),
+            location=self.location.to_dto(),
             contact_one=self.contact_one.to_dto(),
-            contact_two=Contact(
+            contact_two=ContactDto(
                 email=self.contact_two_email,
                 first_name=self.contact_two_first_name,
                 last_name=self.contact_two_last_name,
@@ -77,7 +77,7 @@ class PartyEntity(MappedAsDataclass, EntityBase):
             ),
         )
 
-    async def load_model(self, session: AsyncSession) -> Party:
+    async def load_dto(self, session: AsyncSession) -> PartyDto:
         """
         Load party with relationships from database and convert to model.
         Should be used to get the model only if relationships haven't been loaded yet.
@@ -92,9 +92,9 @@ class PartyEntity(MappedAsDataclass, EntityBase):
             )
         )
         party_entity = result.scalar_one()
-        return party_entity.to_model()
+        return party_entity.to_dto()
 
-    def set_contact_two(self, contact: Contact) -> None:
+    def set_contact_two(self, contact: ContactDto) -> None:
         self.contact_two_email = contact.email
         self.contact_two_first_name = contact.first_name
         self.contact_two_last_name = contact.last_name
