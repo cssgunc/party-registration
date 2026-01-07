@@ -26,6 +26,7 @@ RUN apt-get update \
         wget \
         zsh \
         net-tools \
+        procps \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Node.js 22 from https://github.com/nodesource

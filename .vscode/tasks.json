@@ -1,0 +1,18 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    // Devcontainers has an issue where Next launch processes will persist
+    // after ending the debug session, making future launches run on different
+    // ports. Traditional "kill process on port X" attempts don't work to kill
+    // them, and this was the only fix that works
+    {
+      "label": "Purge Next Dev",
+      "type": "shell",
+      "command": "pkill -f 'next dev --turbopack' 2>/dev/null || true",
+      "presentation": {
+        "reveal": "always",
+        "close": false
+      }
+    }
+  ]
+}
