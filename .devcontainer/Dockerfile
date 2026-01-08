@@ -59,6 +59,9 @@ RUN git config --system init.defaultBranch main
 RUN git config --system core.autocrlf input
 RUN git config --system color.ui auto
 
+# Ensure vscode user owns the workspace directory
+RUN chown -R $USERNAME:$USERNAME /workspace
+
 # Configure zsh
 USER $USERNAME
 ENV HOME=/home/$USERNAME
@@ -71,14 +74,15 @@ RUN curl https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.
 # Set Locale for Functional Autocompletion in zsh
 RUN sudo locale-gen en_US.UTF-8
 
+# Install python dev dependencies
+COPY pyproject.toml /workspace/pyproject.toml
+RUN pip install --upgrade pip
+RUN pip install -e ".[dev]"
+
 # Install Backend Dependencies
 COPY backend/requirements.txt /workspace/backend/requirements.txt
 WORKDIR /workspace/backend
-RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
-
-# Install pre-commit
-RUN pip install pre-commit
 
 # Expose application ports
 EXPOSE 8000 3000
