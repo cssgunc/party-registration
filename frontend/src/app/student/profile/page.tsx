@@ -35,11 +35,7 @@ export default function StudentProfilePage() {
     <div>
       <Header />
       <div className="px-48 pb-12 flex flex-col gap-4 max-w-4xl mx-auto">
-        {student && (
-          <StudentInfo
-            initialData={student}
-          />
-        )}
+        {student && <StudentInfo initialData={student} />}
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Self
 
 from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, select
@@ -61,7 +61,7 @@ class PartyEntity(MappedAsDataclass, EntityBase):
         # Ensure party_datetime is timezone-aware
         party_dt = self.party_datetime
         if party_dt.tzinfo is None:
-            party_dt = party_dt.replace(tzinfo=timezone.utc)
+            party_dt = party_dt.replace(tzinfo=UTC)
 
         return PartyDto(
             id=self.id,

@@ -1,13 +1,13 @@
 import {
-  convertLocation,
   LocationDto,
   LocationDtoBackend,
+  convertLocation,
 } from "../location/location.types";
 import {
   ContactPreference,
-  convertStudent,
   StudentDto,
   StudentDtoBackend,
+  convertStudent,
 } from "../student/student.types";
 
 /**

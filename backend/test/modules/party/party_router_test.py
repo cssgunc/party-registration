@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 import pytest_asyncio
@@ -31,7 +31,8 @@ test_party_authentication = generate_auth_required_tests(
         "/api/parties/nearby?place_id=ChIJTest&start_date=2025-01-01&end_date=2025-12-31",
         None,
     ),
-    # POST endpoint requires condiitional body - tested separately in TestPartyCreateAdminRouter and TestPartyCreateStudentRouter
+    # POST endpoint requires condiitional body - tested separately in
+    # TestPartyCreateAdminRouter and TestPartyCreateStudentRouter
     # ({"student"}, "POST", "/api/parties/", {}),
 )
 
@@ -174,7 +175,7 @@ class TestPartyCreateAdminRouter:
     @pytest.mark.asyncio
     async def test_create_party_as_admin_location_on_hold(self):
         """Test admin cannot create party at location on hold."""
-        hold_expiration = datetime.now(timezone.utc) + timedelta(days=30)
+        hold_expiration = datetime.now(UTC) + timedelta(days=30)
         location_with_hold = await self.location_utils.create_one(hold_expiration=hold_expiration)
 
         payload = await self.party_utils.next_admin_create_dto(
@@ -224,7 +225,7 @@ class TestPartyCreateStudentRouter:
 
         # Set last_registered to indicate Party Smart completion
         student = await self.student_utils.create_one(
-            account_id=account.id, last_registered=datetime.now(timezone.utc) - timedelta(days=1)
+            account_id=account.id, last_registered=datetime.now(UTC) - timedelta(days=1)
         )
         return student
 
@@ -286,7 +287,7 @@ class TestPartyNearbyRouter:
         location_data = await self.location_utils.next_data()
         self.gmaps_utils.mock_place_details(**location_data.model_dump())
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         params = {
             "place_id": location_data.google_place_id,
             "start_date": now.strftime("%Y-%m-%d"),
@@ -322,7 +323,7 @@ class TestPartyNearbyRouter:
         )
 
         # Create parties within time window
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         party_within = await self.party_utils.create_one(
             location_id=location_within.id,
             party_datetime=now + timedelta(hours=2),
@@ -363,7 +364,7 @@ class TestPartyNearbyRouter:
             longitude=search_lon,
         )
 
-        base_time = datetime.now(timezone.utc) + timedelta(hours=2)
+        base_time = datetime.now(UTC) + timedelta(hours=2)
 
         # Party within date range
         party_valid = await self.party_utils.create_one(
@@ -448,7 +449,7 @@ class TestPartyCSVRouter:
     @pytest.mark.asyncio
     async def test_get_parties_csv_empty(self):
         """Test CSV export with no parties."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         params = {
             "start_date": now.strftime("%Y-%m-%d"),
             "end_date": (now + timedelta(days=30)).strftime("%Y-%m-%d"),
@@ -469,7 +470,7 @@ class TestPartyCSVRouter:
         parties = await self.party_utils.create_many(i=3)
 
         # Get date range that covers all parties
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         params = {
             "start_date": (now - timedelta(days=1)).strftime("%Y-%m-%d"),
             "end_date": (now + timedelta(days=365)).strftime("%Y-%m-%d"),

@@ -11,10 +11,10 @@ import { DateRange } from "react-day-picker";
 import { GenericInfoChip } from "../shared/sidebar/GenericInfoChip";
 import { useSidebar } from "../shared/sidebar/SidebarContext";
 import { TableTemplate } from "../shared/table/TableTemplate";
+import PartyTableForm from "./PartyTableForm";
 import ContactInfoChipDetails from "./details/ContactInfoChipDetails";
 import LocationInfoChipDetails from "./details/LocationInfoChipDetails";
 import StudentInfoChipDetails from "./details/StudentInfoChipDetails";
-import PartyTableForm from "./PartyTableForm";
 
 const partyService = new PartyService();
 

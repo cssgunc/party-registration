@@ -13,7 +13,9 @@ police_router = APIRouter(prefix="/api/police", tags=["police"])
     response_model=LocationDto,
     status_code=status.HTTP_200_OK,
     summary="Increment location warning count",
-    description="Increments the warning count for a location. Requires police or admin authentication.",
+    description=(
+        "Increments the warning count for a location. Requires police or admin authentication."
+    ),
 )
 async def increment_warnings(
     location_id: int,
@@ -31,7 +33,9 @@ async def increment_warnings(
     response_model=LocationDto,
     status_code=status.HTTP_200_OK,
     summary="Increment location citation count",
-    description="Increments the citation count for a location. Requires police or admin authentication.",
+    description=(
+        "Increments the citation count for a location. Requires police or admin authentication."
+    ),
 )
 async def increment_citations(
     location_id: int,

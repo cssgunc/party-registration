@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import googlemaps
 from fastapi import Depends
@@ -60,7 +60,8 @@ class LocationHoldActiveException(BadRequestException):
 class CountLimitExceededException(BadRequestException):
     def __init__(self, location_id: int, count_type: str):
         super().__init__(
-            f"Cannot increment {count_type} for location {location_id}: maximum count of {MAX_COUNT} reached"
+            f"Cannot increment {count_type} for location {location_id}: "
+            f"maximum count of {MAX_COUNT} reached"
         )
 
 
@@ -95,9 +96,7 @@ class LocationService:
 
     def assert_valid_location_hold(self, location: LocationDto) -> None:
         """Validate that location does not have an active hold."""
-        if location.hold_expiration is not None and location.hold_expiration > datetime.now(
-            timezone.utc
-        ):
+        if location.hold_expiration is not None and location.hold_expiration > datetime.now(UTC):
             raise LocationHoldActiveException(location.id, location.hold_expiration)
 
     async def get_locations(self) -> list[LocationDto]:
@@ -126,9 +125,9 @@ class LocationService:
         try:
             self.session.add(new_location)
             await self.session.commit()
-        except IntegrityError:
+        except IntegrityError as e:
             # handle race condition where another session inserted the same google_place_id
-            raise LocationConflictException(data.google_place_id)
+            raise LocationConflictException(data.google_place_id) from e
         await self.session.refresh(new_location)
         return new_location.to_dto()
 
@@ -153,9 +152,11 @@ class LocationService:
     async def update_location(self, location_id: int, data: LocationData) -> LocationDto:
         location_entity = await self._get_location_entity_by_id(location_id)
 
-        if data.google_place_id != location_entity.google_place_id:
-            if await self._get_location_entity_by_place_id(data.google_place_id):
-                raise LocationConflictException(data.google_place_id)
+        if (
+            data.google_place_id != location_entity.google_place_id
+            and await self._get_location_entity_by_place_id(data.google_place_id)
+        ):
+            raise LocationConflictException(data.google_place_id)
 
         for key, value in data.model_dump().items():
             if key == "id":
@@ -166,8 +167,8 @@ class LocationService:
         try:
             self.session.add(location_entity)
             await self.session.commit()
-        except IntegrityError:
-            raise LocationConflictException(data.google_place_id)
+        except IntegrityError as e:
+            raise LocationConflictException(data.google_place_id) from e
         await self.session.refresh(location_entity)
         return location_entity.to_dto()
 
@@ -226,15 +227,15 @@ class LocationService:
         except GoogleMapsAPIException:
             raise
         except googlemaps.exceptions.ApiError as e:
-            raise GoogleMapsAPIException(f"API error ({e.status}): {str(e)}")
+            raise GoogleMapsAPIException(f"API error ({e.status}): {e!s}") from e
         except googlemaps.exceptions.Timeout as e:
-            raise GoogleMapsAPIException(f"Request timed out: {str(e)}")
+            raise GoogleMapsAPIException(f"Request timed out: {e!s}") from e
         except googlemaps.exceptions.HTTPError as e:
-            raise GoogleMapsAPIException(f"HTTP error: {str(e)}")
+            raise GoogleMapsAPIException(f"HTTP error: {e!s}") from e
         except googlemaps.exceptions.TransportError as e:
-            raise GoogleMapsAPIException(f"Transport error: {str(e)}")
+            raise GoogleMapsAPIException(f"Transport error: {e!s}") from e
         except Exception as e:
-            raise GoogleMapsAPIException(f"Failed to autocomplete address: {str(e)}")
+            raise GoogleMapsAPIException(f"Failed to autocomplete address: {e!s}") from e
 
     async def get_place_details(self, place_id: str) -> AddressData:
         """
@@ -314,16 +315,16 @@ class LocationService:
         except googlemaps.exceptions.ApiError as e:
             # Map Google Maps API error statuses to appropriate exceptions
             if e.status == "NOT_FOUND":
-                raise PlaceNotFoundException(place_id)
+                raise PlaceNotFoundException(place_id) from e
             elif e.status == "INVALID_REQUEST":
-                raise InvalidPlaceIdException(place_id)
+                raise InvalidPlaceIdException(place_id) from e
             else:
-                raise GoogleMapsAPIException(f"API error ({e.status}): {str(e)}")
+                raise GoogleMapsAPIException(f"API error ({e.status}): {e!s}") from e
         except googlemaps.exceptions.Timeout as e:
-            raise GoogleMapsAPIException(f"Request timed out: {str(e)}")
+            raise GoogleMapsAPIException(f"Request timed out: {e!s}") from e
         except googlemaps.exceptions.HTTPError as e:
-            raise GoogleMapsAPIException(f"HTTP error: {str(e)}")
+            raise GoogleMapsAPIException(f"HTTP error: {e!s}") from e
         except googlemaps.exceptions.TransportError as e:
-            raise GoogleMapsAPIException(f"Transport error: {str(e)}")
+            raise GoogleMapsAPIException(f"Transport error: {e!s}") from e
         except Exception as e:
-            raise GoogleMapsAPIException(f"Failed to get place details: {str(e)}")
+            raise GoogleMapsAPIException(f"Failed to get place details: {e!s}") from e

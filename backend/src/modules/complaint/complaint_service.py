@@ -57,7 +57,7 @@ class ComplaintService:
         except IntegrityError as e:
             # Foreign key constraint violation indicates location doesn't exist
             if "locations" in str(e).lower() or "foreign key" in str(e).lower():
-                raise LocationNotFoundException(location_id)
+                raise LocationNotFoundException(location_id) from e
             raise
         await self.session.refresh(new_complaint)
         return new_complaint.to_dto()
@@ -78,7 +78,7 @@ class ComplaintService:
         except IntegrityError as e:
             # Foreign key constraint violation indicates location doesn't exist
             if "locations" in str(e).lower() or "foreign key" in str(e).lower():
-                raise LocationNotFoundException(location_id)
+                raise LocationNotFoundException(location_id) from e
             raise
         await self.session.refresh(complaint_entity)
         return complaint_entity.to_dto()

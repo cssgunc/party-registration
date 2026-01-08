@@ -1,5 +1,5 @@
-import logout from "@/components/icons/log-out.svg";
 import OCSLLogo from "@/components/icons/OCSL_logo.svg";
+import logout from "@/components/icons/log-out.svg";
 import pfp from "@/components/icons/pfp_temp.svg";
 import user from "@/components/icons/user.svg";
 import {

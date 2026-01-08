@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from httpx import AsyncClient
@@ -125,7 +125,7 @@ class TestComplaintRouter:
         complaint = await self.complaint_utils.create_one()
         update_data = await self.complaint_utils.next_data(
             location_id=complaint.location_id,
-            complaint_datetime=datetime(2025, 11, 20, 23, 0, 0, tzinfo=timezone.utc),
+            complaint_datetime=datetime(2025, 11, 20, 23, 0, 0, tzinfo=UTC),
             description="Updated description",
         )
 

@@ -87,15 +87,17 @@ Or you can do the actions manually. Then,
 
 ## Running The App
 
-*If you haven't run in a day or more, run `python -m script.reset_dev` from the `/backend` directory to ensure all mock data is updated to be centered around today's date*
+_If you haven't run in a day or more, run `python -m script.reset_dev` from the `/backend` directory to ensure all mock data is updated to be centered around today's date_
 
 ### VSCode Debugger (Recommended)
+
 Navigate to the "Debug and Run" tab on the VSCode side bar.
 
 At the top of the side bar, next to the green play button, select the desired module to run
+
 - **Backend**: Starts the FastAPI backend on http://localhost:8000
 - **Purge & Frontend**: Starts the Next.js frontend on http://localhost:3000
-  - *The "Purge" part of this is referring to the task that kills any `next dev` processes in order to address a devcontainer issue. Note that this prevents you from running multiple of these debug sessions concurrently. If mulitple are needed, refer to the manual instructions below*
+  - _The "Purge" part of this is referring to the task that kills any `next dev` processes in order to address a devcontainer issue. Note that this prevents you from running multiple of these debug sessions concurrently. If mulitple are needed, refer to the manual instructions below_
 - **Full Stack**: Starts both of the above in separate terminals
 
 Then simply press the green play button

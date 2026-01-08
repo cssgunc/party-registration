@@ -40,7 +40,7 @@ class TestAccountService:
         accounts = await self.account_service.get_accounts()
         [
             self.account_utils.assert_matches(account, entity)
-            for account, entity in zip(accounts, accounts_two_per_role)
+            for account, entity in zip(accounts, accounts_two_per_role, strict=False)
         ]
 
     @pytest.mark.asyncio

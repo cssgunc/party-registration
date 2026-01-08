@@ -89,9 +89,9 @@ class AccountService:
         try:
             self.session.add(new_account)
             await self.session.commit()
-        except IntegrityError:
+        except IntegrityError as e:
             # handle race condition where another session inserted the same email
-            raise AccountConflictException(data.email)
+            raise AccountConflictException(data.email) from e
         await self.session.refresh(new_account)
         return new_account.to_dto()
 
@@ -117,8 +117,8 @@ class AccountService:
         try:
             self.session.add(account_entity)
             await self.session.commit()
-        except IntegrityError:
-            raise AccountConflictException(data.email)
+        except IntegrityError as e:
+            raise AccountConflictException(data.email) from e
         await self.session.refresh(account_entity)
         return account_entity.to_dto()
 

@@ -5,10 +5,10 @@ import {
   AddressData,
   AutocompleteInput,
   AutocompleteResult,
-  convertLocation,
   LocationCreate,
   LocationDto,
   LocationDtoBackend,
+  convertLocation,
 } from "./location.types";
 
 export const hasActiveHold = (holdExpiration: Date | null): boolean => {
@@ -61,9 +61,10 @@ export class LocationService {
    */
   async getLocations(): Promise<PaginatedResponse<LocationDto>> {
     try {
-      const response = await this.client.get<
-        PaginatedResponse<LocationDtoBackend>
-      >("/locations");
+      const response =
+        await this.client.get<PaginatedResponse<LocationDtoBackend>>(
+          "/locations"
+        );
       return {
         ...response.data,
         items: response.data.items.map(convertLocation),

@@ -1,4 +1,4 @@
-from typing import Annotated, Literal, Union
+from typing import Annotated, Literal
 
 from pydantic import AwareDatetime, BaseModel, EmailStr, Field
 from src.core.models import PaginatedResponse
@@ -59,9 +59,7 @@ class AdminCreatePartyDto(BaseModel):
 
 
 # Discriminated union for party creation/update requests
-CreatePartyDto = Annotated[
-    Union[StudentCreatePartyDto, AdminCreatePartyDto], Field(discriminator="type")
-]
+CreatePartyDto = Annotated[StudentCreatePartyDto | AdminCreatePartyDto, Field(discriminator="type")]
 
 
 PaginatedPartiesResponse = PaginatedResponse[PartyDto]

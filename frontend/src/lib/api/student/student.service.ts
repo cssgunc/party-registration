@@ -1,7 +1,12 @@
 import getMockClient from "@/lib/network/mockClient";
 import { AxiosInstance } from "axios";
-import { convertParty, PartyDto, PartyDtoBackend } from "../party/party.types";
-import { convertStudent, StudentData, StudentDto, StudentDtoBackend } from "./student.types";
+import { PartyDto, PartyDtoBackend, convertParty } from "../party/party.types";
+import {
+  StudentData,
+  StudentDto,
+  StudentDtoBackend,
+  convertStudent,
+} from "./student.types";
 
 /**
  * Service class for student-related operations
@@ -27,7 +32,10 @@ export class StudentService {
    */
   async updateMe(data: StudentData): Promise<StudentDto> {
     try {
-      const response = await this.client.put<StudentDtoBackend>("/students/me", data);
+      const response = await this.client.put<StudentDtoBackend>(
+        "/students/me",
+        data
+      );
       return convertStudent(response.data);
     } catch (error) {
       console.error("Failed to update student:", error);
@@ -40,7 +48,9 @@ export class StudentService {
    */
   async getMyParties(): Promise<PartyDto[]> {
     try {
-      const response = await this.client.get<PartyDtoBackend[]>("/students/me/parties");
+      const response = await this.client.get<PartyDtoBackend[]>(
+        "/students/me/parties"
+      );
       return response.data.map(convertParty);
     } catch (error) {
       console.error("Failed to get student parties:", error);

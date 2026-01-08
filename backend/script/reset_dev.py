@@ -8,7 +8,7 @@ This script resets the database for development mode, including:
 import asyncio
 import json
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import src.modules  # Ensure all modules are imported so their entities are registered # noqa: F401
@@ -29,7 +29,7 @@ def parse_date(date_str: str | None) -> datetime | None:
     if not date_str or date_str == "null":
         return None
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     if date_str.startswith("NOW"):
         match = re.match(r"NOW([+-])(\d+)([hdwmy])", date_str)
@@ -55,7 +55,7 @@ def parse_date(date_str: str | None) -> datetime | None:
     # Parse ISO format string and ensure it's timezone-aware
     dt = datetime.fromisoformat(date_str)
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
     return dt
 
 
@@ -80,7 +80,6 @@ async def reset_dev():
     async with AsyncSessionLocal() as session:
         with open(
             str(Path(__file__).parent.parent.parent / "frontend" / "shared" / "mock_data.json"),
-            "r",
         ) as f:
             data = json.load(f)
 
@@ -144,7 +143,9 @@ async def reset_dev():
 
         for party_data in data["parties"]:
             party_datetime = parse_date(party_data["party_datetime"])
-            assert party_datetime is not None, f"party_datetime required for party {party_data['id']}"
+            assert party_datetime is not None, (
+                f"party_datetime required for party {party_data['id']}"
+            )
 
             party = PartyEntity(
                 party_datetime=party_datetime,

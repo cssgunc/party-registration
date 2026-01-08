@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Self
 
 from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, select
@@ -40,7 +40,7 @@ class StudentEntity(MappedAsDataclass, EntityBase):
         # Ensure last_registered is timezone-aware if present
         last_reg = self.last_registered
         if last_reg is not None and last_reg.tzinfo is None:
-            last_reg = last_reg.replace(tzinfo=timezone.utc)
+            last_reg = last_reg.replace(tzinfo=UTC)
 
         return StudentDto(
             id=self.account_id,
