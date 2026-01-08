@@ -21,7 +21,8 @@ repos:
     hooks:
       - id: prettier
         name: prettier
-        entry: bash -c 'cd frontend && npm run format'
+        # Runs prettier on staged, removing the `frontend/` prefix to work with relative filepaths
+        entry: bash -c 'cd frontend && npx prettier --write "${@/#frontend\//}"' --
         language: system
         files: ^frontend/.*\.(js|jsx|ts|tsx|json|css|md)$
-        pass_filenames: false
+        pass_filenames: true
