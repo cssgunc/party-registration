@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any, TypedDict, Unpack, override
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -35,7 +35,7 @@ class ComplaintTestUtils(
         return {
             "location_id": 1,
             "complaint_datetime": (
-                datetime(2025, 11, 18, 20, 30, 0, tzinfo=timezone.utc) + timedelta(days=count)
+                datetime(2025, 11, 18, 20, 30, 0, tzinfo=UTC) + timedelta(days=count)
             ).isoformat(),
             "description": f"Complaint {count}",
         }

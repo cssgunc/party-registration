@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Self
 
 from sqlalchemy import DECIMAL, DateTime, Index, Integer, String
@@ -61,7 +61,7 @@ class LocationEntity(MappedAsDataclass, EntityBase):
 
         hold_exp = self.hold_expiration
         if hold_exp is not None and hold_exp.tzinfo is None:
-            hold_exp = hold_exp.replace(tzinfo=timezone.utc)
+            hold_exp = hold_exp.replace(tzinfo=UTC)
 
         return LocationDto(
             id=self.id,

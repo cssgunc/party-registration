@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import Depends
 from sqlalchemy import func, select
@@ -130,9 +130,9 @@ class StudentService:
         try:
             self.session.add(new_student)
             await self.session.commit()
-        except IntegrityError:
+        except IntegrityError as e:
             await self.session.rollback()
-            raise StudentConflictException(data.phone_number)
+            raise StudentConflictException(data.phone_number) from e
 
         await self.session.refresh(new_student, ["account"])
         return new_student.to_dto()
@@ -149,9 +149,11 @@ class StudentService:
         if account.role != AccountRole.STUDENT:
             raise InvalidAccountRoleException(account_id, account.role)
 
-        if data.phone_number != student_entity.phone_number:
-            if await self._get_student_entity_by_phone(data.phone_number):
-                raise StudentConflictException(data.phone_number)
+        if (
+            data.phone_number != student_entity.phone_number
+            and await self._get_student_entity_by_phone(data.phone_number)
+        ):
+            raise StudentConflictException(data.phone_number)
 
         # Only update account names if data includes them (StudentDataWithNames)
         if isinstance(data, StudentDataWithNames):
@@ -166,9 +168,9 @@ class StudentService:
         try:
             self.session.add(student_entity)
             await self.session.commit()
-        except IntegrityError:
+        except IntegrityError as e:
             await self.session.rollback()
-            raise StudentConflictException(data.phone_number)
+            raise StudentConflictException(data.phone_number) from e
 
         await self.session.refresh(student_entity, ["account"])
         return student_entity.to_dto()
@@ -189,7 +191,7 @@ class StudentService:
         student_entity = await self._get_student_entity_by_account_id(account_id)
 
         if is_registered:
-            student_entity.last_registered = datetime.now(timezone.utc)
+            student_entity.last_registered = datetime.now(UTC)
         else:
             student_entity.last_registered = None
 

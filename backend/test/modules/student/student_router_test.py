@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 import pytest_asyncio
@@ -172,7 +172,7 @@ class TestStudentCRUDRouter:
     @pytest.mark.asyncio
     async def test_create_student_with_datetime(self):
         """Test creating a student with last_registered datetime."""
-        dt = datetime(2024, 3, 15, 10, 30, 0, tzinfo=timezone.utc)
+        dt = datetime(2024, 3, 15, 10, 30, 0, tzinfo=UTC)
         payload = await self.student_utils.next_student_create(last_registered=dt)
 
         response = await self.admin_client.post(
@@ -339,7 +339,7 @@ class TestStudentRegistrationRouter:
     @pytest.mark.asyncio
     async def test_update_is_registered_mark_as_not_registered_as_admin(self):
         """Test unmarking a student as registered (admin authentication)."""
-        student = await self.student_utils.create_one(last_registered=datetime.now(timezone.utc))
+        student = await self.student_utils.create_one(last_registered=datetime.now(UTC))
 
         payload = {"is_registered": False}
         response = await self.admin_client.patch(
@@ -402,8 +402,8 @@ class TestStudentMeRouter:
     async def current_student(self) -> StudentEntity:
         """Create a student for the current authenticated user.
 
-        Note: student_client authenticates as user with id=3 (from mock_authenticate in authentication.py)
-        so we need to ensure the account has id=3.
+        Note: student_client authenticates as user with id=3 (from mock_authenticate in
+        authentication.py) so we need to ensure the account has id=3.
         """
         # The student_client from conftest uses id=3 for students in mock_authenticate
         # We need to create dummy accounts for IDs 1 and 2 first
@@ -497,13 +497,13 @@ class TestStudentMeRouter:
 
         # Create a party where current_student is contact_one
         party1 = await self.party_utils.create_one(
-            party_datetime=datetime(2024, 12, 1, 20, 0, 0, tzinfo=timezone.utc),
+            party_datetime=datetime(2024, 12, 1, 20, 0, 0, tzinfo=UTC),
             contact_one_id=current_student.account_id,
         )
 
         # Create a party where other_student is contact_one (should not be returned)
         party2 = await self.party_utils.create_one(
-            party_datetime=datetime(2024, 12, 15, 21, 0, 0, tzinfo=timezone.utc),
+            party_datetime=datetime(2024, 12, 15, 21, 0, 0, tzinfo=UTC),
             contact_one_id=other_student.account_id,
         )
 

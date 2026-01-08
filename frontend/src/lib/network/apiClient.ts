@@ -72,9 +72,8 @@ apiClient.interceptors.response.use(
       })
         .then((token) => {
           if (token && originalRequest.headers) {
-            (originalRequest.headers as AxiosRequestHeaders)[
-              "Authorization"
-            ] = `Bearer ${token}`;
+            (originalRequest.headers as AxiosRequestHeaders)["Authorization"] =
+              `Bearer ${token}`;
           }
           return apiClient(originalRequest);
         })
@@ -95,9 +94,8 @@ apiClient.interceptors.response.use(
 
         // Retry the original request with new token
         if (originalRequest.headers) {
-          (originalRequest.headers as AxiosRequestHeaders)[
-            "Authorization"
-          ] = `Bearer ${newAccessToken}`;
+          (originalRequest.headers as AxiosRequestHeaders)["Authorization"] =
+            `Bearer ${newAccessToken}`;
         }
 
         return apiClient(originalRequest);

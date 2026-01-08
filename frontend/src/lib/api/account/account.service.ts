@@ -40,9 +40,15 @@ export class AccountService {
   /**
    * Update account (PUT /api/accounts/{account_id})
    */
-  async updateAccount(accountId: number, data: AccountData): Promise<AccountDto> {
+  async updateAccount(
+    accountId: number,
+    data: AccountData
+  ): Promise<AccountDto> {
     try {
-      const response = await this.client.put<AccountDto>(`/accounts/${accountId}`, data);
+      const response = await this.client.put<AccountDto>(
+        `/accounts/${accountId}`,
+        data
+      );
       return response.data;
     } catch (error) {
       console.error(`Failed to update account ${accountId}:`, error);
@@ -55,7 +61,9 @@ export class AccountService {
    */
   async deleteAccount(accountId: number): Promise<AccountDto> {
     try {
-      const response = await this.client.delete<AccountDto>(`/accounts/${accountId}`);
+      const response = await this.client.delete<AccountDto>(
+        `/accounts/${accountId}`
+      );
       return response.data;
     } catch (error) {
       console.error(`Failed to delete account ${accountId}:`, error);

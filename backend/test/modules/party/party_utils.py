@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any, TypedDict, Unpack, override
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,7 +19,7 @@ from test.utils.resource_test_utils import ResourceTestUtils
 def get_valid_party_datetime() -> datetime:
     """Get a datetime that is at least 3 business days from now."""
     days_ahead = 5  # Start with 5 calendar days to ensure 3 business days
-    return datetime.now(timezone.utc) + timedelta(days=days_ahead)
+    return datetime.now(UTC) + timedelta(days=days_ahead)
 
 
 class PartyOverrides(TypedDict, total=False):
@@ -160,9 +160,9 @@ class PartyTestUtils(
         dt2 = resource2.party_datetime
 
         if dt1.tzinfo is None:
-            dt1 = dt1.replace(tzinfo=timezone.utc)
+            dt1 = dt1.replace(tzinfo=UTC)
         if dt2.tzinfo is None:
-            dt2 = dt2.replace(tzinfo=timezone.utc)
+            dt2 = dt2.replace(tzinfo=UTC)
 
         assert dt1 == dt2, f"Party datetime mismatch: {dt1} != {dt2}"
 

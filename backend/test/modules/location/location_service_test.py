@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import googlemaps
 import pytest
@@ -52,7 +52,7 @@ class TestLocationServiceCRUD:
             unit="Apt 2B",
             warning_count=1,
             citation_count=2,
-            hold_expiration=datetime(2025, 12, 31, 23, 59, 59, tzinfo=timezone.utc),
+            hold_expiration=datetime(2025, 12, 31, 23, 59, 59, tzinfo=UTC),
         )
 
         location = await self.location_service.create_location(data)
@@ -76,7 +76,7 @@ class TestLocationServiceCRUD:
         fetched = await self.location_service.get_locations()
 
         assert len(fetched) == 3
-        for loc, f in zip(locations, fetched):
+        for loc, f in zip(locations, fetched, strict=False):
             self.location_utils.assert_matches(loc, f)
 
     @pytest.mark.asyncio
@@ -129,7 +129,9 @@ class TestLocationServiceCRUD:
 
     @pytest.mark.asyncio
     async def test_update_location_conflict(self):
-        """Test updating a location with another location's google_place_id raises conflict exception"""
+        """
+        Test updating a location with another location's google_place_id raises conflict exception
+        """
         locations = await self.location_utils.create_many(i=2)
         location1 = locations[0]
         location2 = locations[1]
@@ -356,7 +358,7 @@ class TestLocationServiceGoogleMapsAutocomplete:
         results = await self.location_service.autocomplete_address(address)
 
         assert len(results) == 2
-        for r, p in zip(results, mock_predictions):
+        for r, p in zip(results, mock_predictions, strict=False):
             self.gmaps_utils.assert_autocomplete_matches(
                 result=r,
                 expected_description=p["description"],

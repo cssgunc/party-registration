@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from src.modules.complaint.complaint_service import ComplaintNotFoundException, ComplaintService
@@ -60,7 +60,7 @@ class TestComplaintService:
         fetched = await self.complaint_service.get_complaints_by_location(location.id)
 
         assert len(fetched) == 2
-        for complaint, expected in zip(fetched, complaints):
+        for complaint, expected in zip(fetched, complaints, strict=False):
             self.complaint_utils.assert_matches(complaint, expected)
 
     @pytest.mark.asyncio
@@ -156,7 +156,7 @@ class TestComplaintService:
         location = await self.location_utils.create_one()
         data = await self.complaint_utils.next_data(
             location_id=location.id,
-            complaint_datetime=datetime(2025, 12, 25, 14, 30, 45, tzinfo=timezone.utc),
+            complaint_datetime=datetime(2025, 12, 25, 14, 30, 45, tzinfo=UTC),
             description="Detailed description of the complaint issue",
         )
 

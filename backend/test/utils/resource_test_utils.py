@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from pydantic import BaseModel
@@ -13,32 +13,42 @@ class ResourceTestUtils[
     ResourceData: BaseModel,
     OtherModels: BaseModel,
 ](ABC):
-    """Abstract base class for test utilities that manage resource creation and validation.
+    """Abstract base class for test utilities that manage resource creation and
+    validation.
 
     This utility class provides a standardized interface for repeated
     logic across tests. It is responsible for:
-    - Generating unique test data for resources, including dicts, Pydantic models, and SQLAlchemy entities.
+    - Generating unique test data for resources, including dicts, Pydantic
+      models, and SQLAlchemy entities.
     - Creating multiple resource instances in the database for testing purposes.
     - Validating that two resource instances match in their data fields.
-    It uses an internal counter to ensure unique test data generation across multiple calls.
+    It uses an internal counter to ensure unique test data generation across
+    multiple calls.
 
-    The class primarily provides default implementations for utility methods, expecting subclasses to
-    provide overrides for any logic that doesn't match the default behavior. The only method that must be
-    overridden is `generate_defaults`, which is responsible for generating unique default test data. Each
-    subsequent method builds upon this to provide dicts, models, and entities.
+    The class primarily provides default implementations for utility methods,
+    expecting subclasses to provide overrides for any logic that doesn't match
+    the default behavior. The only method that must be overridden is
+    `generate_defaults`, which is responsible for generating unique default
+    test data. Each subsequent method builds upon this to provide dicts,
+    models, and entities.
 
     Note on overrides typing:
-        Overrides are typed as `Any` in this base class because python does not support generic type parameters
-        that extend `TypedDict`, and the only way to perfectly type kwargs are with `TypedDict`. In order for overrides
-        to have proper typing, subclasses must override all methods that use kwargs, specifying the correct `TypedDict` type,
-        delegating directly to the base class if not changing default behavior.
+        Overrides are typed as `Any` in this base class because python does
+        not support generic type parameters that extend `TypedDict`, and the
+        only way to perfectly type kwargs are with `TypedDict`. In order for
+        overrides to have proper typing, subclasses must override all methods
+        that use kwargs, specifying the correct `TypedDict` type, delegating
+        directly to the base class if not changing default behavior.
 
     Type Parameters:
     - ResourceEntity: The SQLAlchemy entity class that implements EntityBase.
         - Note: the default implementation expects `from_data`
-        and `to_dto` methods to be present. However, these methods are not required in the type definition to allow for flexibility,
-        expecting a subclass to override `next_entity` and/or `entity_to_dict` as needed if these methods are not present.
-    - ResourceData: The Pydantic model representing the resource's data object used to create entities.
+        and `to_dto` methods to be present. However, these methods are not
+        required in the type definition to allow for flexibility, expecting a
+        subclass to override `next_entity` and/or `entity_to_dict` as needed
+        if these methods are not present.
+    - ResourceData: The Pydantic model representing the resource's data object
+      used to create entities.
     - OtherModels: Additional Pydantic models that may be used in assertions
         - Represented by a union if multiple models are applicable.
         - Primarily used for typing in the assert_matches method.
@@ -55,10 +65,16 @@ class ResourceTestUtils[
             last_name: str
             ...
 
-        class PersonTestUtils(ResourceTestUtils[PersonEntity, PersonData, Person | DbPerson]):
+        class PersonTestUtils(
+            ResourceTestUtils[PersonEntity, PersonData, Person | DbPerson]
+        ):
             @staticmethod
             def generate_defaults(count: int) -> dict:
-                return {"first_name": f"FPerson{count}", "last_name": f"LPerson{count}", ...}
+                return {
+                    "first_name": f"FPerson{count}",
+                    "last_name": f"LPerson{count}",
+                    ...
+                }
 
             @override
             async def next_dict(self, **overrides: Unpack[PersonOverrides]) -> dict:
@@ -67,10 +83,12 @@ class ResourceTestUtils[
                     overrides["account_id"] = account.id
                 return await super().next_dict(**overrides)
 
-            # =============================== Typing Overrides ================================
+            # ========================== Typing Overrides ===========================
 
             @override
-            async def next_data(self, **overrides: Unpack[PersonOverrides]) -> PersonData:
+            async def next_data(
+                self, **overrides: Unpack[PersonOverrides]
+            ) -> PersonData:
                 return await super().next_data(**overrides)
 
             ...
@@ -95,12 +113,15 @@ class ResourceTestUtils[
         entity_class: type[ResourceEntity],
         data_class: type[ResourceData],
     ):
-        """Initialize the ResourceTestUtils with a database session and resource classes.
+        """Initialize the ResourceTestUtils with a database session and resource
+        classes.
 
         Args:
             session (AsyncSession): The SQLAlchemy async database session.
-            entity_class (type[ResourceEntity]): The SQLAlchemy entity class, for instantiation at runtime
-            data_class (type[ResourceData]): The Pydantic model class for resource data, for instantiation at runtime
+            entity_class (type[ResourceEntity]): The SQLAlchemy entity class,
+                for instantiation at runtime
+            data_class (type[ResourceData]): The Pydantic model class for
+                resource data, for instantiation at runtime
         """
         self.session = session
         self._ResourceEntity = entity_class
@@ -152,7 +173,7 @@ class ResourceTestUtils[
         return data
 
     async def next_data(self, **overrides: Any) -> ResourceData:
-        """Generate the next unique Pydantic creation model for the resource, applying any overrides.
+        """Generate the next unique Pydantic creation model for the resource, applying any overrides
 
         Args:
             **overrides: Fields to override in the generated model.
@@ -168,7 +189,7 @@ class ResourceTestUtils[
         """
         data = await self.next_data(**overrides)
         if not hasattr(self._ResourceEntity, "from_data") or not callable(
-            getattr(self._ResourceEntity, "from_data")
+            self._ResourceEntity.from_data  # pyright: ignore[reportAttributeAccessIssue]
         ):
             raise AttributeError(
                 f"{self._ResourceEntity.__name__} must implement a 'from_data' classmethod"
@@ -176,7 +197,7 @@ class ResourceTestUtils[
         return self._ResourceEntity.from_data(data)  # type: ignore
 
     async def create_many(self, *, i: int, **overrides: Any) -> list[ResourceEntity]:
-        """Create multiple resource entities in the database, applying any overrides to every entity.
+        """Create multiple resource entities in the database, applying any overrides to every entity
 
         Args:
             i (int): The number of resource entities to create.
@@ -206,9 +227,7 @@ class ResourceTestUtils[
 
     def entity_to_dict(self, entity: ResourceEntity) -> dict:
         """Convert a resource entity to a dict via its model representation."""
-        if not hasattr(self._ResourceEntity, "to_dto") or not callable(
-            getattr(self._ResourceEntity, "to_dto")
-        ):
+        if not hasattr(self._ResourceEntity, "to_dto") or not callable(self._ResourceEntity.to_dto):  # pyright: ignore[reportAttributeAccessIssue]
             raise AttributeError(
                 f"{self._ResourceEntity.__name__} must implement a 'to_dto' method"
             )
@@ -224,8 +243,8 @@ class ResourceTestUtils[
         Extra fields are ignored; only shared fields are compared.
 
         Args:
-            resource1 (ResourceEntity | ResourceData | OtherModels | None): The first resource instance.
-            resource2 (ResourceEntity | ResourceData | OtherModels | None): The second resource instance.
+            resource1: The first resource instance.
+            resource2: The second resource instance.
         """
         assert resource1 is not None, "First resource is None"
         assert resource2 is not None, "Second resource is None"
@@ -247,7 +266,7 @@ class ResourceTestUtils[
             val2 = dict2[key]
 
             if isinstance(val1, datetime) and isinstance(val2, datetime):
-                val1 = val1.replace(tzinfo=timezone.utc)
-                val2 = val2.replace(tzinfo=timezone.utc)
+                val1 = val1.replace(tzinfo=UTC)
+                val2 = val2.replace(tzinfo=UTC)
 
             assert val1 == val2, f"Mismatch on field '{key}': {val1} != {val2}"

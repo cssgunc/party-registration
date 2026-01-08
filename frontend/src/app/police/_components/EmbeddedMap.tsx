@@ -2,8 +2,8 @@
 
 import { PartyDto } from "@/lib/api/party/party.types";
 import {
-  AdvancedMarker,
   APIProvider,
+  AdvancedMarker,
   InfoWindow,
   Map,
   Pin,

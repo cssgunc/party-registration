@@ -25,10 +25,10 @@ from .police.police_entity import PoliceEntity
 from .student.student_entity import StudentEntity
 
 __all__ = [
-    "StudentEntity",
     "AccountEntity",
-    "PoliceEntity",
-    "PartyEntity",
-    "LocationEntity",
     "ComplaintEntity",
+    "LocationEntity",
+    "PartyEntity",
+    "PoliceEntity",
+    "StudentEntity",
 ]

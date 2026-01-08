@@ -4,7 +4,8 @@ from sqlalchemy import text
 
 os.environ["GOOGLE_MAPS_API_KEY"] = "invalid_google_maps_api_key_for_tests"
 
-from typing import Any, AsyncGenerator, Callable
+from collections.abc import AsyncGenerator, Callable
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import bcrypt
@@ -53,13 +54,13 @@ async def test_engine():
 @pytest_asyncio.fixture(scope="function")
 async def test_session(test_engine: AsyncEngine):
     """Create a new session and truncate all tables after each test."""
-    TestAsyncSessionLocal = async_sessionmaker(
+    test_async_session_local = async_sessionmaker(
         bind=test_engine,
         expire_on_commit=False,
         class_=AsyncSession,
     )
 
-    async with TestAsyncSessionLocal() as session:
+    async with test_async_session_local() as session:
         yield session
 
     # Clean up: truncate all tables and reset sequences

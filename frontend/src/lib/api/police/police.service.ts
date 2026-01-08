@@ -1,9 +1,9 @@
 import getMockClient from "@/lib/network/mockClient";
 import { AxiosInstance } from "axios";
 import {
-  convertLocation,
   LocationDto,
   LocationDtoBackend,
+  convertLocation,
 } from "../location/location.types";
 
 /**

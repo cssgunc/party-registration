@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import Response
@@ -40,9 +40,11 @@ async def create_party(
 
     - Students: provide type="student", party_datetime, place_id, and contact_two (ContactDTO)
       - contact_one is auto-filled from the authenticated student
-    - Admins: provide type="admin", party_datetime, place_id, contact_one_email, and contact_two (ContactDTO)
+    - Admins: provide type="admin", party_datetime, place_id, contact_one_email, and
+      contact_two (ContactDTO)
       - contact_one_email identifies the first contact by email
-      - contact_two is a ContactDTO with email, first_name, last_name, phone_number, and contact_preference
+      - contact_two is a ContactDTO with email, first_name, last_name, phone_number, and
+        contact_preference
 
     The location will be automatically created if it doesn't exist in the database.
     If contact_two's email doesn't exist in the system, a new student account will be created.
@@ -147,12 +149,12 @@ async def get_parties_nearby(
     """
     # Parse date strings to datetime objects
     try:
-        start_datetime = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
-        end_datetime = datetime.strptime(end_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        start_datetime = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=UTC)
+        end_datetime = datetime.strptime(end_date, "%Y-%m-%d").replace(tzinfo=UTC)
         # Set end_datetime to end of day (23:59:59)
         end_datetime = end_datetime.replace(hour=23, minute=59, second=59)
     except ValueError as e:
-        raise UnprocessableEntityException(f"Invalid date format. Expected YYYY-MM-DD: {str(e)}")
+        raise UnprocessableEntityException(f"Invalid date format. Expected YYYY-MM-DD: {e}") from e
 
     # Validate that start_date is not greater than end_date
     if start_datetime > end_datetime:
@@ -201,8 +203,10 @@ async def get_parties_csv(
         end_datetime = datetime.strptime(end_date, "%Y-%m-%d")
 
         end_datetime = end_datetime.replace(hour=23, minute=59, second=59, microsecond=999999)
-    except ValueError:
-        raise UnprocessableEntityException("Invalid date format. Use YYYY-MM-DD format for dates.")
+    except ValueError as e:
+        raise UnprocessableEntityException(
+            "Invalid date format. Use YYYY-MM-DD format for dates."
+        ) from e
 
     # Validate that start_date is not greater than end_date
     if start_datetime > end_datetime:
@@ -230,9 +234,11 @@ async def update_party(
 
     - Students: provide type="student", party_datetime, place_id, and contact_two (ContactDTO)
       - contact_one is auto-filled from the authenticated student
-    - Admins: provide type="admin", party_datetime, place_id, contact_one_email, and contact_two (ContactDTO)
+    - Admins: provide type="admin", party_datetime, place_id, contact_one_email, and
+      contact_two (ContactDTO)
       - contact_one_email identifies the first contact by email
-      - contact_two is a ContactDTO with email, first_name, last_name, phone_number, and contact_preference
+      - contact_two is a ContactDTO with email, first_name, last_name, phone_number, and
+        contact_preference
 
     The location will be automatically created if it doesn't exist in the database.
     If contact_two's email doesn't exist in the system, a new student account will be created.

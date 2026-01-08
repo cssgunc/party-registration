@@ -2,11 +2,11 @@ import getMockClient from "@/lib/network/mockClient";
 import { PaginatedResponse } from "@/lib/shared";
 import { AxiosInstance } from "axios";
 import {
-  convertStudent,
   StudentCreate,
   StudentDataWithNames,
   StudentDto,
   StudentDtoBackend,
+  convertStudent,
 } from "./student.types";
 
 /**
@@ -27,10 +27,9 @@ export class AdminStudentService {
       if (pageNumber !== undefined) params.page_number = pageNumber;
       if (pageSize !== undefined) params.page_size = pageSize;
 
-      const response = await this.client.get<PaginatedResponse<StudentDtoBackend>>(
-        "/students",
-        { params }
-      );
+      const response = await this.client.get<
+        PaginatedResponse<StudentDtoBackend>
+      >("/students", { params });
 
       return {
         ...response.data,
@@ -54,7 +53,9 @@ export class AdminStudentService {
    */
   async getStudent(id: number): Promise<StudentDto> {
     try {
-      const response = await this.client.get<StudentDtoBackend>(`/students/${id}`);
+      const response = await this.client.get<StudentDtoBackend>(
+        `/students/${id}`
+      );
       return convertStudent(response.data);
     } catch (error) {
       console.error(`Failed to fetch student ${id}:`, error);

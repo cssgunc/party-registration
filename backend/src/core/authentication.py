@@ -13,8 +13,8 @@ class HTTPBearer401(HTTPBearer):
     async def __call__(self, request: Request):
         try:
             return await super().__call__(request)
-        except Exception:
-            raise CredentialsException()
+        except Exception as e:
+            raise CredentialsException() from e
 
 
 bearer_scheme = HTTPBearer401()

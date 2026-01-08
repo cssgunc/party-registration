@@ -45,13 +45,13 @@ async def autocomplete_address(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
-        )
-    except Exception:
+        ) from e
+    except Exception as e:
         # Log error in production
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to fetch address suggestions. Please try again later.",
-        )
+        ) from e
 
 
 @location_router.get(
@@ -78,12 +78,12 @@ async def get_place_details(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
-        )
-    except Exception:
+        ) from e
+    except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to fetch place details. Please try again later.",
-        )
+        ) from e
 
 
 @location_router.get("/", response_model=PaginatedLocationResponse)

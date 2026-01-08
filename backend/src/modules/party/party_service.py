@@ -1,8 +1,7 @@
 import csv
 import io
 import math
-from datetime import datetime, timedelta, timezone
-from typing import List
+from datetime import UTC, datetime, timedelta
 
 from fastapi import Depends
 from sqlalchemy import select
@@ -74,12 +73,12 @@ class PartyService:
     def _calculate_business_days_ahead(self, target_date: datetime) -> int:
         """Calculate the number of business days between now and target date."""
         # Ensure both datetimes are timezone-aware (use UTC)
-        current_date = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        current_date = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
 
         # If target_date is naive, make it UTC-aware; otherwise keep its timezone
         if target_date.tzinfo is None:
             target_date_only = target_date.replace(
-                hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc
+                hour=0, minute=0, second=0, microsecond=0, tzinfo=UTC
             )
         else:
             target_date_only = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -109,18 +108,16 @@ class PartyService:
             raise PartySmartNotCompletedException(student_id)
 
         # Calculate the most recent August 1st
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         current_year = now.year
 
         # August 1st of the current year (UTC)
-        august_first_this_year = datetime(current_year, 8, 1, 0, 0, 0, tzinfo=timezone.utc)
+        august_first_this_year = datetime(current_year, 8, 1, 0, 0, 0, tzinfo=UTC)
 
         # If today is before August 1st, use last year's August 1st
         # Otherwise, use this year's August 1st
         if now < august_first_this_year:
-            most_recent_august_first = datetime(
-                current_year - 1, 8, 1, 0, 0, 0, tzinfo=timezone.utc
-            )
+            most_recent_august_first = datetime(current_year - 1, 8, 1, 0, 0, 0, tzinfo=UTC)
         else:
             most_recent_august_first = august_first_this_year
 
@@ -146,8 +143,8 @@ class PartyService:
         # First find the account by email
         try:
             account = await self.account_service.get_account_by_email(email)
-        except AccountByEmailNotFoundException:
-            raise StudentNotFoundException(email=email)
+        except AccountByEmailNotFoundException as e:
+            raise StudentNotFoundException(email=email) from e
 
         # Then get the student entity
         result = await self.session.execute(
@@ -160,7 +157,7 @@ class PartyService:
             raise StudentNotFoundException(account.id)
         return student
 
-    async def get_parties(self, skip: int = 0, limit: int | None = None) -> List[PartyDto]:
+    async def get_parties(self, skip: int = 0, limit: int | None = None) -> list[PartyDto]:
         query = (
             select(PartyEntity)
             .offset(skip)
@@ -179,7 +176,7 @@ class PartyService:
         party_entity = await self._get_party_entity_by_id(party_id)
         return party_entity.to_dto()
 
-    async def get_parties_by_location(self, location_id: int) -> List[PartyDto]:
+    async def get_parties_by_location(self, location_id: int) -> list[PartyDto]:
         result = await self.session.execute(
             select(PartyEntity)
             .where(PartyEntity.location_id == location_id)
@@ -191,7 +188,7 @@ class PartyService:
         parties = result.scalars().all()
         return [party.to_dto() for party in parties]
 
-    async def get_parties_by_contact(self, student_id: int) -> List[PartyDto]:
+    async def get_parties_by_contact(self, student_id: int) -> list[PartyDto]:
         result = await self.session.execute(
             select(PartyEntity)
             .where(PartyEntity.contact_one_id == student_id)
@@ -205,7 +202,7 @@ class PartyService:
 
     async def get_parties_by_date_range(
         self, start_date: datetime, end_date: datetime
-    ) -> List[PartyDto]:
+    ) -> list[PartyDto]:
         result = await self.session.execute(
             select(PartyEntity)
             .where(
@@ -230,7 +227,7 @@ class PartyService:
             self.session.add(new_party)
             await self.session.commit()
         except IntegrityError as e:
-            raise PartyConflictException(f"Failed to create party: {str(e)}")
+            raise PartyConflictException(f"Failed to create party: {e!s}") from e
         return await new_party.load_dto(self.session)
 
     async def update_party(self, party_id: int, data: PartyData) -> PartyDto:
@@ -252,7 +249,7 @@ class PartyService:
             self.session.add(party_entity)
             await self.session.commit()
         except IntegrityError as e:
-            raise PartyConflictException(f"Failed to update party: {str(e)}")
+            raise PartyConflictException(f"Failed to update party: {e!s}") from e
         return await party_entity.load_dto(self.session)
 
     async def create_party_from_student_dto(
@@ -377,7 +374,7 @@ class PartyService:
 
     async def get_parties_by_student_and_date(
         self, student_id: int, target_date: datetime
-    ) -> List[PartyDto]:
+    ) -> list[PartyDto]:
         start_of_day = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
         end_of_day = target_date.replace(hour=23, minute=59, second=59, microsecond=999999)
 
@@ -396,8 +393,8 @@ class PartyService:
         parties = result.scalars().all()
         return [party.to_dto() for party in parties]
 
-    async def get_parties_by_radius(self, latitude: float, longitude: float) -> List[PartyDto]:
-        current_time = datetime.now(timezone.utc)
+    async def get_parties_by_radius(self, latitude: float, longitude: float) -> list[PartyDto]:
+        current_time = datetime.now(UTC)
         start_time = current_time - timedelta(hours=6)
         end_time = current_time + timedelta(hours=12)
 
@@ -437,7 +434,7 @@ class PartyService:
         longitude: float,
         start_date: datetime,
         end_date: datetime,
-    ) -> List[PartyDto]:
+    ) -> list[PartyDto]:
         """
         Get parties within a radius of a location within a specified date range.
 
@@ -493,7 +490,7 @@ class PartyService:
         r = 3959
         return c * r
 
-    async def export_parties_to_csv(self, parties: List[PartyDto]) -> str:
+    async def export_parties_to_csv(self, parties: list[PartyDto]) -> str:
         """
         Export a list of parties to CSV format.
 
@@ -575,7 +572,10 @@ class PartyService:
             contact_one_phone = ""
             contact_one_preference = ""
             if party_entity.contact_one:
-                contact_one_full_name = f"{party_entity.contact_one.account.first_name} {party_entity.contact_one.account.last_name}"
+                contact_one_full_name = (
+                    f"{party_entity.contact_one.account.first_name} "
+                    f"{party_entity.contact_one.account.last_name}"
+                )
                 contact_one_phone = party_entity.contact_one.phone_number or ""
                 contact_one_preference = (
                     party_entity.contact_one.contact_preference.value

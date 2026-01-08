@@ -3,10 +3,10 @@ import { PaginatedResponse } from "@/lib/shared";
 import { AxiosInstance } from "axios";
 import {
   AdminCreatePartyDto,
-  convertParty,
   PartyDto,
   PartyDtoBackend,
   StudentCreatePartyDto,
+  convertParty,
 } from "./party.types";
 
 export class PartyService {

@@ -11,11 +11,11 @@ const getMockClient = (role: StringRole) => {
     baseURL: `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"}/api`,
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${role}`,
+      Authorization: `Bearer ${role}`,
     },
   });
 
   return mockClient;
-}
+};
 
 export default getMockClient;

@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from src.modules.location.location_service import LocationNotFoundException
@@ -75,7 +75,7 @@ class TestPartyServiceCRUD:
         assert len(fetched) == 3
 
         # Verify all parties match
-        for created, fetched_party in zip(created_parties, fetched):
+        for created, fetched_party in zip(created_parties, fetched, strict=False):
             self.party_utils.assert_matches(created, fetched_party)
 
     @pytest.mark.asyncio
@@ -254,7 +254,7 @@ class TestPartyServiceQueries:
     @pytest.mark.asyncio
     async def test_get_parties_by_date_range_multiple_parties(self):
         """Test date range query with multiple parties."""
-        base_datetime = datetime.now(timezone.utc) + timedelta(days=1)
+        base_datetime = datetime.now(UTC) + timedelta(days=1)
 
         # Create parties at different times
         party1 = await self.party_utils.create_one(party_datetime=base_datetime)
@@ -404,12 +404,12 @@ class TestPartyServiceRadius:
         # Create parties within time window
         party_within = await self.party_utils.create_one(
             location_id=location_within.id,
-            party_datetime=datetime.now(timezone.utc) + timedelta(hours=2),
+            party_datetime=datetime.now(UTC) + timedelta(hours=2),
         )
 
         party_outside = await self.party_utils.create_one(
             location_id=location_outside.id,
-            party_datetime=datetime.now(timezone.utc) + timedelta(hours=2),
+            party_datetime=datetime.now(UTC) + timedelta(hours=2),
         )
 
         parties = await self.party_service.get_parties_by_radius(search_lat, search_lon)
@@ -432,7 +432,7 @@ class TestPartyServiceRadius:
         # Party 7 hours in the past (outside window)
         await self.party_utils.create_one(
             location_id=location.id,
-            party_datetime=datetime.now(timezone.utc) - timedelta(hours=7),
+            party_datetime=datetime.now(UTC) - timedelta(hours=7),
         )
 
         parties = await self.party_service.get_parties_by_radius(search_lat, search_lon)
@@ -452,7 +452,7 @@ class TestPartyServiceRadius:
         # Party 13 hours in the future (outside window)
         await self.party_utils.create_one(
             location_id=location.id,
-            party_datetime=datetime.now(timezone.utc) + timedelta(hours=13),
+            party_datetime=datetime.now(UTC) + timedelta(hours=13),
         )
 
         parties = await self.party_service.get_parties_by_radius(search_lat, search_lon)
@@ -472,13 +472,13 @@ class TestPartyServiceRadius:
         # Party ~6 hours in the past (just within window)
         party_past = await self.party_utils.create_one(
             location_id=location.id,
-            party_datetime=datetime.now(timezone.utc) - timedelta(hours=5, minutes=59),
+            party_datetime=datetime.now(UTC) - timedelta(hours=5, minutes=59),
         )
 
         # Party ~12 hours in the future (just within window)
         party_future = await self.party_utils.create_one(
             location_id=location.id,
-            party_datetime=datetime.now(timezone.utc) + timedelta(hours=11, minutes=59),
+            party_datetime=datetime.now(UTC) + timedelta(hours=11, minutes=59),
         )
 
         parties = await self.party_service.get_parties_by_radius(search_lat, search_lon)
@@ -503,7 +503,7 @@ class TestPartyServiceRadius:
             longitude=search_lon,
         )
 
-        base_time = datetime.now(timezone.utc) + timedelta(hours=2)
+        base_time = datetime.now(UTC) + timedelta(hours=2)
 
         party_valid = await self.party_utils.create_one(
             location_id=location_within.id,
@@ -536,8 +536,8 @@ class TestPartyServiceRadius:
         search_lat = 40.7128
         search_lon = -74.0060
 
-        start_date = datetime.now(timezone.utc) + timedelta(days=1)
-        end_date = datetime.now(timezone.utc) + timedelta(days=2)
+        start_date = datetime.now(UTC) + timedelta(days=1)
+        end_date = datetime.now(UTC) + timedelta(days=2)
 
         parties = await self.party_service.get_parties_by_radius_and_date_range(
             search_lat, search_lon, start_date, end_date
@@ -555,7 +555,7 @@ class TestPartyServiceRadius:
             longitude=search_lon,
         )
 
-        start_date = datetime.now(timezone.utc) + timedelta(hours=2)
+        start_date = datetime.now(UTC) + timedelta(hours=2)
 
         party = await self.party_utils.create_one(
             location_id=location.id,
@@ -581,7 +581,7 @@ class TestPartyServiceRadius:
             longitude=search_lon,
         )
 
-        end_date = datetime.now(timezone.utc) + timedelta(hours=3)
+        end_date = datetime.now(UTC) + timedelta(hours=3)
 
         party = await self.party_utils.create_one(
             location_id=location.id,

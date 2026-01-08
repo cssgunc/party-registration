@@ -1,39 +1,39 @@
 """Utility functions for asserting HTTP responses in tests."""
 
-from typing import Any, Optional, TypeVar, get_args, get_origin, overload
+from typing import Any, get_args, get_origin, overload
 
 from fastapi import HTTPException
 from httpx import Response
 from pydantic import BaseModel
 from src.core.models import PaginatedResponse
 
-T = TypeVar("T", bound=BaseModel)
-
 
 @overload
-def assert_res_success(res: Response, ExpectedModel: type[T], *, status: Optional[int] = 200) -> T:
+def assert_res_success[T: BaseModel](
+    res: Response, expected_model: type[T], *, status: int | None = 200
+) -> T:
     pass
 
 
 @overload
-def assert_res_success(
-    res: Response, ExpectedModel: type[list[T]], *, status: Optional[int] = 200
+def assert_res_success[T: BaseModel](
+    res: Response, expected_model: type[list[T]], *, status: int | None = 200
 ) -> list[T]:
     pass
 
 
-def assert_res_success(
+def assert_res_success[T: BaseModel](
     res: Response,
-    ExpectedModel: type[T] | type[list[T]],
+    expected_model: type[T] | type[list[T]],
     *,
-    status: Optional[int] = 200,
+    status: int | None = 200,
 ) -> T | list[T]:
     """
-    Assert that a response is a successful response. Validates and converts to the expected model type.
+    Assert that a response is a successful response. Validates & converts to the expected model type
 
     Args:
         res: The HTTP response to check
-        ExpectedModel: The expected Pydantic model type (or list of model type) of the response data
+        expected_model: The expected Pydantic model type (or list of model type) of response data
         status: Optional expected HTTP status code (default 200)
 
     Returns:
@@ -58,14 +58,14 @@ def assert_res_success(
     data = res.json()
     assert data is not None, "Expected response data but got None"
 
-    model_origin = get_origin(ExpectedModel)
+    model_origin = get_origin(expected_model)
 
     # List model case
     if model_origin is list:
         assert isinstance(data, list), f"Expected list response but got {type(data).__name__}"
 
         # Get the model type inside the list
-        args = get_args(ExpectedModel)
+        args = get_args(expected_model)
         assert args is not None, "Expected type args for list model but got None"
         assert len(args) > 0, "Expected at least one type arg for list model but got empty args"
         inner_model = args[0]
@@ -79,11 +79,11 @@ def assert_res_success(
     # Single model case
     assert isinstance(data, dict), f"Expected dict response but got {type(data).__name__}"
 
-    assert isinstance(ExpectedModel, type) and issubclass(ExpectedModel, BaseModel)
-    model_fields = set(ExpectedModel.model_fields.keys())
+    assert isinstance(expected_model, type) and issubclass(expected_model, BaseModel)
+    model_fields = set(expected_model.model_fields.keys())
     extra_fields = set(data.keys()) - model_fields
     assert not extra_fields, f"Unexpected fields {extra_fields} in response data: {data}"
-    return ExpectedModel(**data)
+    return expected_model(**data)
 
 
 def assert_res_failure(res: Response, expected_error: HTTPException) -> dict[str, Any]:
@@ -131,7 +131,7 @@ def assert_res_failure(res: Response, expected_error: HTTPException) -> dict[str
 
 
 def assert_res_validation_error(
-    res: Response, *, expected_fields: Optional[list[str]] = None
+    res: Response, *, expected_fields: list[str] | None = None
 ) -> dict[str, Any]:
     """
     Assert that a response is a FastAPI validation error (422).
@@ -191,21 +191,21 @@ def assert_res_validation_error(
     return data
 
 
-def assert_res_paginated(
+def assert_res_paginated[T: BaseModel](
     res: Response,
-    ItemModel: type[T],
+    item_model: type[T],
     *,
-    total_records: Optional[int] = None,
+    total_records: int | None = None,
     page_number: int = 1,
-    page_size: Optional[int] = None,
-    total_pages: Optional[int] = None,
+    page_size: int | None = None,
+    total_pages: int | None = None,
 ) -> PaginatedResponse[T]:
     """
     Assert that a response is a successful paginated response.
 
     Args:
         res: The HTTP response to check
-        ItemModel: The expected type of items in the paginated response
+        item_model: The expected type of items in the paginated response
         total_records: Optional expected total_records count
         page_number: Expected page number (default 1)
         page_size: Optional expected page size
@@ -237,12 +237,12 @@ def assert_res_paginated(
     assert isinstance(items, list), f"Expected items to be a list but got {type(items).__name__}"
 
     # Convert items to model instances
-    item_fields = set(ItemModel.model_fields.keys())
+    item_fields = set(item_model.model_fields.keys())
     converted_items = []
     for item in items:
         extra = set(item.keys()) - item_fields
         assert not extra, f"Unexpected fields {extra} in response item: {item}"
-        converted_items.append(ItemModel(**item))
+        converted_items.append(item_model(**item))
 
     # Validate pagination metadata
     if total_records is not None:
@@ -262,11 +262,7 @@ def assert_res_paginated(
     # Calculate expected_total_pages if not provided but both total and page_size are known
     if total_pages is None and total_records is not None and page_size is not None:
         if page_size > 0:
-            total_pages = (
-                (total_records + page_size - 1) // page_size
-                if total_records > 0
-                else 0
-            )
+            total_pages = (total_records + page_size - 1) // page_size if total_records > 0 else 0
         else:
             # Page size of 0 means all results on one page (no pagination)
             total_pages = 0 if total_records == 0 else 1
@@ -277,7 +273,7 @@ def assert_res_paginated(
         )
 
     # Return a properly typed PaginatedResponse
-    return PaginatedResponse[ItemModel](
+    return PaginatedResponse[item_model](
         items=converted_items,
         total_records=data["total_records"],
         page_size=data["page_size"],

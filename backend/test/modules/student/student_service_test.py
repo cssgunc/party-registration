@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -66,7 +66,7 @@ class TestStudentService:
         fetched = await self.student_service.get_students()
         assert len(fetched) == 3
 
-        for s, f in zip(students, fetched):
+        for s, f in zip(students, fetched, strict=False):
             self.student_utils.assert_matches(s, f)
 
     @pytest.mark.asyncio
@@ -132,7 +132,7 @@ class TestStudentService:
     @pytest.mark.asyncio
     async def test_create_student_with_datetime_timezone(self):
         account = await self.account_utils.create_one(role=AccountRole.STUDENT.value)
-        last_reg = datetime(2024, 1, 15, 10, 30, 0, tzinfo=timezone.utc)
+        last_reg = datetime(2024, 1, 15, 10, 30, 0, tzinfo=UTC)
         data = await self.student_utils.next_data_with_names(last_registered=last_reg)
 
         student = await self.student_service.create_student(data, account_id=account.id)
@@ -142,7 +142,7 @@ class TestStudentService:
     async def test_update_student_with_datetime_timezone(self):
         student_entity = await self.student_utils.create_one()
 
-        last_reg = datetime(2024, 3, 20, 14, 45, 30, tzinfo=timezone.utc)
+        last_reg = datetime(2024, 3, 20, 14, 45, 30, tzinfo=UTC)
         update_data = await self.student_utils.next_data_with_names(last_registered=last_reg)
         updated = await self.student_service.update_student(student_entity.account_id, update_data)
         self.student_utils.assert_matches(updated, update_data)
@@ -191,18 +191,18 @@ class TestStudentService:
 
         assert student_entity.last_registered is None
 
-        before_update = datetime.now(timezone.utc)
+        before_update = datetime.now(UTC)
         updated = await self.student_service.update_is_registered(
             student_entity.account_id, is_registered=True
         )
-        after_update = datetime.now(timezone.utc)
+        after_update = datetime.now(UTC)
 
         assert updated.last_registered is not None
         assert before_update <= updated.last_registered <= after_update
 
     @pytest.mark.asyncio
     async def test_update_is_registered_false(self):
-        last_reg = datetime(2024, 1, 15, 10, 30, 0, tzinfo=timezone.utc)
+        last_reg = datetime(2024, 1, 15, 10, 30, 0, tzinfo=UTC)
         student_entity = await self.student_utils.create_one(last_registered=last_reg)
 
         assert student_entity.last_registered is not None

@@ -64,7 +64,7 @@ class LocationTestUtils(
             "zip_code": f"275{14 + count % 10}",
             "warning_count": count % 5,
             "citation_count": count % 3,
-            "hold_expiration": None if count % 2 == 0 else None,
+            "hold_expiration": None,
         }
         defaults["formatted_address"] = (
             f"{defaults['street_number']} {defaults['street_name']} {defaults['unit']}, "
@@ -196,7 +196,7 @@ class GmapsMockUtils:
             List of mock prediction dictionaries matching Google Maps API format
         """
         predictions = []
-        for i in range(count):
+        for _ in range(count):
             data = self.location_utils.get_or_default(
                 overrides,
                 {"google_place_id", "formatted_address"},
