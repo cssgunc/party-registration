@@ -10,22 +10,6 @@ The Office of Off-Campus Student Life serves as a vital resource for students li
 
 We aim to facilitate and better secure the party registration process at UNC.
 
-## Team Members
-
-| Name             | Role            |
-| ---------------- | --------------- |
-| Nicolas Asanov   | Technical Lead  |
-| Abhimanyu Agashe | Product Manager |
-| Arnav Murthi     | Developer       |
-| Matthew Barghout | Developer       |
-| Raymond Jiang    | Developer       |
-| Aileen Rashid    | Developer       |
-| Mason Mines      | Developer       |
-| Vidur Shah       | Developer       |
-| Shlok Bhutani    | Developer       |
-| Vasu Bansal      | Developer       |
-| Caleb Han        | Developer       |
-
 ## Tech Stack
 
 - Backend
