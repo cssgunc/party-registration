@@ -10,8 +10,8 @@
       "type": "shell",
       "command": "pkill -f 'next dev --turbopack' 2>/dev/null || true",
       "presentation": {
-        "reveal": "always",
-        "close": false
+        "reveal": "silent",
+        "close": true
       }
     }
   ]
