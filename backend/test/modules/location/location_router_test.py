@@ -124,24 +124,7 @@ class TestLocationCRUDRouter:
 
         request_data = location_data.model_dump(
             mode="json",
-            include={"google_place_id", "warning_count", "citation_count", "hold_expiration"},
-        )
-
-        response = await self.admin_client.post("/api/locations/", json=request_data)
-        data = assert_res_success(response, LocationDto, status=201)
-
-        self.location_utils.assert_matches(location_data, data)
-
-    @pytest.mark.asyncio
-    async def test_create_location_with_warnings_and_citations(self):
-        """Test creating location with warnings and citations."""
-        location_data = await self.location_utils.next_data(warning_count=3, citation_count=2)
-
-        self.gmaps_utils.mock_place_details(**location_data.model_dump())
-
-        request_data = location_data.model_dump(
-            mode="json",
-            include={"google_place_id", "warning_count", "citation_count", "hold_expiration"},
+            include={"google_place_id", "hold_expiration"},
         )
 
         response = await self.admin_client.post("/api/locations/", json=request_data)
@@ -161,7 +144,7 @@ class TestLocationCRUDRouter:
 
         request_data = location_data.model_dump(
             mode="json",
-            include={"google_place_id", "warning_count", "citation_count", "hold_expiration"},
+            include={"google_place_id", "hold_expiration"},
         )
 
         response = await self.admin_client.post("/api/locations/", json=request_data)
@@ -173,23 +156,19 @@ class TestLocationCRUDRouter:
         location = await self.location_utils.create_one()
         update_data = await self.location_utils.next_data(
             google_place_id=location.google_place_id,  # Keep same place_id
-            warning_count=5,
-            citation_count=3,
         )
 
         request_data = update_data.model_dump(
             mode="json",
-            include={"google_place_id", "warning_count", "citation_count", "hold_expiration"},
+            include={"google_place_id", "hold_expiration"},
         )
 
         response = await self.admin_client.put(f"/api/locations/{location.id}", json=request_data)
         data = assert_res_success(response, LocationDto)
 
         assert data.id == location.id
-        # When place_id unchanged, address data stays the same, only counts/expiration update
+        # When place_id unchanged, address data stays the same, only expiration can update
         assert data.google_place_id == location.google_place_id
-        assert data.warning_count == 5
-        assert data.citation_count == 3
         assert data.hold_expiration is None
 
     @pytest.mark.asyncio
@@ -199,7 +178,7 @@ class TestLocationCRUDRouter:
 
         request_data = update_data.model_dump(
             mode="json",
-            include={"google_place_id", "warning_count", "citation_count", "hold_expiration"},
+            include={"google_place_id", "hold_expiration"},
         )
 
         response = await self.admin_client.put("/api/locations/999", json=request_data)
@@ -217,7 +196,7 @@ class TestLocationCRUDRouter:
 
         request_data = update_data.model_dump(
             mode="json",
-            include={"google_place_id", "warning_count", "citation_count", "hold_expiration"},
+            include={"google_place_id", "hold_expiration"},
         )
 
         response = await self.admin_client.put(

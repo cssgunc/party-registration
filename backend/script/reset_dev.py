@@ -124,8 +124,6 @@ async def reset_dev():
 
         for location_data in data["locations"]:
             location = LocationEntity(
-                citation_count=location_data["citation_count"],
-                warning_count=location_data["warning_count"],
                 hold_expiration=parse_date(location_data.get("hold_expiration")),
                 formatted_address=location_data["formatted_address"],
                 google_place_id=location_data["google_place_id"],

@@ -28,8 +28,6 @@ class LocationOverrides(TypedDict, total=False):
     state: str | None
     country: str | None
     zip_code: str | None
-    warning_count: int
-    citation_count: int
     hold_expiration: datetime | None
 
 
@@ -62,8 +60,6 @@ class LocationTestUtils(
             "state": ["NC", "VA", "SC", "GA"][count % 4],
             "country": "US",
             "zip_code": f"275{14 + count % 10}",
-            "warning_count": count % 5,
-            "citation_count": count % 3,
             "hold_expiration": None,
         }
         defaults["formatted_address"] = (

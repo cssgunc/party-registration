@@ -1,11 +1,8 @@
 from typing import Self
 
-from pydantic import AwareDatetime, BaseModel, Field
+from pydantic import AwareDatetime, BaseModel
 from src.core.models import PaginatedResponse
-from src.modules.complaint.complaint_model import ComplaintDto
-
-# Maximum allowed value for warning/citation counts to prevent overflow
-MAX_COUNT = 999999
+from src.modules.incident.incident_model import IncidentDto
 
 
 class AutocompleteInput(BaseModel):
@@ -36,16 +33,12 @@ class AddressData(BaseModel):
 
 
 class LocationData(AddressData):
-    warning_count: int = Field(default=0, ge=0)
-    citation_count: int = Field(default=0, ge=0)
     hold_expiration: AwareDatetime | None = None
 
     @classmethod
     def from_address(
         cls,
         address: AddressData,
-        warning_count: int = 0,
-        citation_count: int = 0,
         hold_expiration: AwareDatetime | None = None,
     ) -> Self:
         return cls(
@@ -61,15 +54,13 @@ class LocationData(AddressData):
             state=address.state,
             country=address.country,
             zip_code=address.zip_code,
-            warning_count=warning_count,
-            citation_count=citation_count,
             hold_expiration=hold_expiration,
         )
 
 
 class LocationDto(LocationData):
     id: int
-    complaints: list[ComplaintDto] = []
+    incidents: list[IncidentDto] = []
 
 
 PaginatedLocationResponse = PaginatedResponse[LocationDto]
@@ -77,6 +68,4 @@ PaginatedLocationResponse = PaginatedResponse[LocationDto]
 
 class LocationCreate(BaseModel):
     google_place_id: str
-    warning_count: int = Field(default=0, ge=0)
-    citation_count: int = Field(default=0, ge=0)
     hold_expiration: AwareDatetime | None = None
