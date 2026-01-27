@@ -18,7 +18,7 @@ so table definitions are registered with SQLAlchemy.
 """
 
 from .account.account_entity import AccountEntity
-from .complaint.complaint_entity import ComplaintEntity
+from .incident.incident_entity import IncidentEntity
 from .location.location_entity import LocationEntity
 from .party.party_entity import PartyEntity
 from .police.police_entity import PoliceEntity
@@ -26,7 +26,7 @@ from .student.student_entity import StudentEntity
 
 __all__ = [
     "AccountEntity",
-    "ComplaintEntity",
+    "IncidentEntity",
     "LocationEntity",
     "PartyEntity",
     "PoliceEntity",
