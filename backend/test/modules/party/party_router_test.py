@@ -1,8 +1,10 @@
 from datetime import UTC, datetime, timedelta
+from io import BytesIO
 
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
+from openpyxl import load_workbook
 from src.modules.account.account_entity import AccountRole
 from src.modules.location.location_service import LocationHoldActiveException
 from src.modules.party.party_model import PartyDto
@@ -448,7 +450,7 @@ class TestPartyCSVRouter:
 
     @pytest.mark.asyncio
     async def test_get_parties_csv_empty(self):
-        """Test CSV export with no parties."""
+        """Test Excel export with no parties."""
         now = datetime.now(UTC)
         params = {
             "start_date": now.strftime("%Y-%m-%d"),
@@ -456,17 +458,25 @@ class TestPartyCSVRouter:
         }
         response = await self.admin_client.get("/api/parties/csv", params=params)
         assert response.status_code == 200
-        assert response.headers["content-type"] == "text/csv; charset=utf-8"
+        assert (
+            response.headers["content-type"]
+            == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
 
-        csv_content = response.text
-        lines = csv_content.strip().split("\n")
-        assert len(lines) == 1  # Only header row
-        # Check for expected headers in the CSV
-        assert "Contact One Email" in lines[0] or "Contact Two Email" in lines[0]
+        # Parse Excel content
+        wb = load_workbook(BytesIO(response.content))
+        ws = wb.active
+
+        assert ws.max_row == 1
+
+        assert ws["A1"].value == "Fully formatted address"
+        assert ws["A1"].font.bold is True
+        assert "Contact One Email" in [cell.value for cell in ws[1]]
+        assert "Contact Two Email" in [cell.value for cell in ws[1]]
 
     @pytest.mark.asyncio
     async def test_get_parties_csv_with_data(self):
-        """Test CSV export with parties."""
+        """Test Excel export with parties."""
         parties = await self.party_utils.create_many(i=3)
 
         # Get date range that covers all parties
@@ -477,15 +487,31 @@ class TestPartyCSVRouter:
         }
         response = await self.admin_client.get("/api/parties/csv", params=params)
         assert response.status_code == 200
-        assert response.headers["content-type"] == "text/csv; charset=utf-8"
+        assert (
+            response.headers["content-type"]
+            == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
 
-        csv_content = response.text
-        lines = csv_content.strip().split("\n")
-        assert len(lines) == 4  # Header + 3 data rows
+        wb = load_workbook(BytesIO(response.content))
+        ws = wb.active
 
-        # Verify party IDs are in CSV
+        assert ws.max_row == 4
+        assert ws["A1"].font.bold is True
+
+        all_cell_values = []
+        for row in ws.iter_rows(values_only=True):
+            cell_strs = [str(cell) if cell is not None else "" for cell in row]
+            all_cell_values.extend(cell_strs)
+
+        excel_content = " ".join(all_cell_values)
         for party in parties:
-            assert str(party.id) in csv_content
+            has_account = party.contact_one and party.contact_one.account
+            contact_one_email = party.contact_one.account.email if has_account else None
+            contact_two_email = party.contact_two_email
+            email_found = (contact_one_email and contact_one_email in excel_content) or (
+                contact_two_email and contact_two_email in excel_content
+            )
+            assert email_found
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(

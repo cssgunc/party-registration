@@ -82,7 +82,7 @@ export class PartyService {
   }
 
   /**
-   * Download parties CSV (GET /api/parties/csv)
+   * Download parties as Excel (GET /api/parties/csv)
    */
   async downloadPartiesCsv(startDate: Date, endDate: Date): Promise<void> {
     try {
@@ -94,18 +94,20 @@ export class PartyService {
         responseType: "blob",
       });
 
-      const blob = new Blob([response.data], { type: "text/csv" });
+      const blob = new Blob([response.data], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `parties_${startDate}_to_${endDate}.csv`;
+      link.download = `parties_${startDate}_to_${endDate}.xlsx`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     } catch (error) {
-      console.error("Failed to download parties CSV:", error);
-      throw new Error("Failed to download CSV");
+      console.error("Failed to download parties Excel:", error);
+      throw new Error("Failed to download parties export");
     }
   }
 
