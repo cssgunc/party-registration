@@ -66,7 +66,6 @@ export const PartyTable = () => {
       partyService.createParty(payload),
     onError: (error: AxiosError<{ message: string }>) => {
       console.error("Failed to create party:", error);
-      console.log("Response data message:", error.response);
 
       const errorMessage =
         error.response?.data?.message ||

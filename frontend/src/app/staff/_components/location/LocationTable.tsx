@@ -21,7 +21,6 @@ export const LocationTable = () => {
     null
   );
   const [submissionError, setSubmissionError] = useState<string | null>(null);
-  // const [isSidebarOpen, setIsSidebarOpen] = useState(false); // ADD THIS
 
   useEffect(() => {
     if (submissionError) {
@@ -86,7 +85,6 @@ export const LocationTable = () => {
       closeSidebar();
       setEditingLocation(null);
       setSubmissionError(null);
-      // setIsSidebarOpen(false); // ADD THIS
     },
   });
 
@@ -104,7 +102,6 @@ export const LocationTable = () => {
       closeSidebar();
       setEditingLocation(null);
       setSubmissionError(null);
-      // setIsSidebarOpen(false); // ADD THIS
     },
   });
 
@@ -142,17 +139,9 @@ export const LocationTable = () => {
   });
 
   const handleEdit = (location: LocationDto) => {
-    console.log("=== handleEdit called ===");
-    console.log("Setting editingLocation to:", location);
-    console.log("Setting sidebarMode to: edit");
-
     setEditingLocation(location);
     setSidebarMode("edit");
     setSubmissionError(null);
-    // setIsSidebarOpen(true);
-
-    console.log("After setState - editingLocation:", location);
-    console.log("After setState - sidebarMode: edit");
 
     openSidebar(
       `edit-location-${location.id}`,
@@ -181,7 +170,6 @@ export const LocationTable = () => {
     setEditingLocation(null);
     setSidebarMode("create");
     setSubmissionError(null);
-    // setIsSidebarOpen( true); // ADD THIS
     openSidebar(
       "create-location",
       "New Location",
@@ -201,10 +189,6 @@ export const LocationTable = () => {
     warning_count: number;
     citation_count: number;
   }) => {
-    console.log("=== handleFormSubmit ===");
-    console.log("sidebarMode:", sidebarMode);
-    console.log("editingLocation:", editingLocation);
-
     const payload: LocationCreate = {
       google_place_id: data.placeId,
       warning_count: data.warning_count,
@@ -213,10 +197,8 @@ export const LocationTable = () => {
     };
 
     if (sidebarMode === "edit" && editingLocation) {
-      console.log("✅ Calling UPDATE mutation with id:", editingLocation.id);
       updateMutation.mutate({ id: editingLocation.id, payload });
     } else {
-      console.log("✅ Calling CREATE mutation");
       createMutation.mutate(payload);
     }
   };
