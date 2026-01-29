@@ -5,7 +5,8 @@ import { LocationCreate, LocationDto } from "@/lib/api/location/location.types";
 import { PaginatedResponse } from "@/lib/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
-import { useState } from "react";
+import { AxiosError } from "axios";
+import { useEffect, useState } from "react";
 import { useSidebar } from "../shared/sidebar/SidebarContext";
 import { TableTemplate } from "../shared/table/TableTemplate";
 import LocationTableForm from "./LocationTableForm";
@@ -20,6 +21,39 @@ export const LocationTable = () => {
     null
   );
   const [submissionError, setSubmissionError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (submissionError) {
+      if (sidebarMode === "edit" && editingLocation) {
+        openSidebar(
+          `edit-location-${editingLocation.id}`,
+          "Edit Location",
+          "Update location information",
+          <LocationTableForm
+            onSubmit={handleFormSubmit}
+            editData={{
+              address: editingLocation.formatted_address || "",
+              placeId: editingLocation.google_place_id || "",
+              holdExpiration: editingLocation.hold_expiration || null,
+              warning_count: editingLocation.warning_count ?? 0,
+              citation_count: editingLocation.citation_count ?? 0,
+            }}
+            submissionError={submissionError}
+          />
+        );
+      } else if (sidebarMode === "create") {
+        openSidebar(
+          "create-location",
+          "New Location",
+          "Add a new location to the system",
+          <LocationTableForm
+            onSubmit={handleFormSubmit}
+            submissionError={submissionError}
+          />
+        );
+      }
+    }
+  }, [submissionError]); // ← ADD sidebarMode and editingLocation here
 
   const locationsQuery = useQuery<PaginatedResponse<LocationDto>>({
     queryKey: ["locations"],
@@ -36,9 +70,15 @@ export const LocationTable = () => {
   const createMutation = useMutation({
     mutationFn: (payload: LocationCreate) =>
       locationService.createLocation(payload),
-    onError: (error: Error) => {
+    onError: (error: AxiosError<{ message: string }>) => {
+      // Change to any to access response
       console.error("Failed to create location:", error);
-      setSubmissionError(`Failed to create location: ${error.message}`);
+      const errorMessage = error.response?.data?.message || error.message;
+      if (error.response?.data?.message?.includes("Google Place ID")) {
+        setSubmissionError("This location already exists.");
+      } else {
+        setSubmissionError(errorMessage);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["locations"] });
@@ -51,9 +91,11 @@ export const LocationTable = () => {
   const updateMutation = useMutation({
     mutationFn: ({ id, payload }: { id: number; payload: LocationCreate }) =>
       locationService.updateLocation(id, payload),
-    onError: (error: Error) => {
+    onError: (error: AxiosError<{ message: string }>) => {
+      // Change to any to access response
       console.error("Failed to update location:", error);
-      setSubmissionError(`Failed to update location: ${error.message}`);
+      const errorMessage = error.response?.data?.message || error.message;
+      setSubmissionError(errorMessage);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["locations"] });
@@ -65,7 +107,6 @@ export const LocationTable = () => {
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => locationService.deleteLocation(id),
-    // Optimistically remove the location from the cache.
     onMutate: async (id: number) => {
       await queryClient.cancelQueries({ queryKey: ["locations"] });
 
@@ -101,6 +142,7 @@ export const LocationTable = () => {
     setEditingLocation(location);
     setSidebarMode("edit");
     setSubmissionError(null);
+
     openSidebar(
       `edit-location-${location.id}`,
       "Edit Location",
@@ -108,7 +150,7 @@ export const LocationTable = () => {
       <LocationTableForm
         title="Edit Location"
         onSubmit={handleFormSubmit}
-        submissionError={submissionError}
+        submissionError={null}
         editData={{
           address: location.formatted_address || "",
           placeId: location.google_place_id || "",
@@ -135,7 +177,7 @@ export const LocationTable = () => {
       <LocationTableForm
         title="New Location"
         onSubmit={handleFormSubmit}
-        submissionError={submissionError}
+        submissionError={null} // Pass null initially
       />
     );
   };
@@ -160,6 +202,7 @@ export const LocationTable = () => {
       createMutation.mutate(payload);
     }
   };
+
   const columns: ColumnDef<LocationDto>[] = [
     {
       accessorKey: "formatted_address",
