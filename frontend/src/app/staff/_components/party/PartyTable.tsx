@@ -1,12 +1,12 @@
 "use client";
-
 import { PartyService } from "@/lib/api/party/party.service";
 import { AdminCreatePartyDto, PartyDto } from "@/lib/api/party/party.types";
 import { PaginatedResponse } from "@/lib/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
+import { AxiosError } from "axios";
 import { format, isWithinInterval, startOfDay } from "date-fns";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DateRange } from "react-day-picker";
 import { GenericInfoChip } from "../shared/sidebar/GenericInfoChip";
 import { useSidebar } from "../shared/sidebar/SidebarContext";
@@ -25,6 +25,34 @@ export const PartyTable = () => {
   const [editingParty, setEditingParty] = useState<PartyDto | null>(null);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
 
+  // Add this useEffect to watch for submissionError changes
+  useEffect(() => {
+    if (submissionError) {
+      if (sidebarMode === "edit" && editingParty) {
+        openSidebar(
+          `edit-party-${editingParty.id}`,
+          "Edit Party",
+          "Update party information",
+          <PartyTableForm
+            onSubmit={handleFormSubmit}
+            editData={editingParty}
+            submissionError={submissionError}
+          />
+        );
+      } else if (sidebarMode === "create") {
+        openSidebar(
+          "create-party",
+          "New Party",
+          "Add a new party to the system",
+          <PartyTableForm
+            onSubmit={handleFormSubmit}
+            submissionError={submissionError}
+          />
+        );
+      }
+    }
+  }, [submissionError]);
+
   const partiesQuery = useQuery({
     queryKey: ["parties"],
     queryFn: () => partyService.listParties(),
@@ -36,20 +64,15 @@ export const PartyTable = () => {
   const createMutation = useMutation({
     mutationFn: (payload: AdminCreatePartyDto) =>
       partyService.createParty(payload),
-    onError: (error: Error) => {
+    onError: (error: AxiosError<{ message: string }>) => {
       console.error("Failed to create party:", error);
+      console.log("Response data message:", error.response);
 
-      // Check if it's a 404 error (student not found)
-      if (
-        "response" in error &&
-        (error as { response?: { status?: number } }).response?.status === 404
-      ) {
-        setSubmissionError(
-          "Student not found. Please verify the first contact email belongs to a registered student."
-        );
-      } else {
-        setSubmissionError(`Failed to create party: ${error.message}`);
-      }
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to create party";
+      setSubmissionError(errorMessage);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["parties"] });

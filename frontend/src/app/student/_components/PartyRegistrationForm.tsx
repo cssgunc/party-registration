@@ -45,13 +45,9 @@ const partyFormSchema = z.object({
   partyTime: z.string().min(1, "Party time is required"),
   secondContactFirstName: z.string().min(1, "First name is required"),
   secondContactLastName: z.string().min(1, "Last name is required"),
-  phoneNumber: z
-    .string()
-    .min(1, "Phone number is required")
-    .refine(
-      (val) => val.replace(/\D/g, "").length >= 10,
-      "Phone number must be at least 10 digits"
-    ),
+  phoneNumber: z.string().regex(/^\+?1?\d{9,15}$/, {
+    message: "String must be a valid phone number",
+  }),
   contactPreference: z.enum(["call", "text"], {
     message: "Please select a contact preference",
   }),
@@ -80,6 +76,8 @@ export default function PartyRegistrationForm({
     phoneNumber: "",
     contactPreference: undefined,
     contactTwoEmail: "",
+    secondContactFirstName: "",
+    secondContactLastName: "",
   });
 
   const [placeId, setPlaceId] = useState<string>(""); // ⭐ NEW
@@ -104,10 +102,11 @@ export default function PartyRegistrationForm({
       return;
     }
 
+    // Only set the address error if it wasn't already set by Zod
     if (!placeId) {
       setErrors((prev) => ({
         ...prev,
-        address: "Please select an address from the dropdown",
+        address: prev.address || "Please select an address from the dropdown",
       }));
       return;
     }
@@ -150,7 +149,6 @@ export default function PartyRegistrationForm({
               locationService={locationService}
               placeholder="Search for the party address..."
               className="w-full"
-              error={errors.address}
             />
             <FieldDescription>
               Search and select the address where the party will be held. The
@@ -167,6 +165,7 @@ export default function PartyRegistrationForm({
                   <Button
                     id="party-date"
                     variant="outline"
+                    aria-invalid={!!errors.partyDate}
                     className={`w-full justify-start text-left font-normal ${
                       !formData.partyDate && "text-muted-foreground"
                     }`}
@@ -227,7 +226,7 @@ export default function PartyRegistrationForm({
                 onChange={(e) =>
                   updateField("secondContactFirstName", e.target.value)
                 }
-                aria-invalid={!!errors.secondFirstContactName}
+                aria-invalid={!!errors.secondContactFirstName}
               />
               {errors.secondContactFirstName && (
                 <FieldError>{errors.secondContactFirstName}</FieldError>
@@ -252,7 +251,7 @@ export default function PartyRegistrationForm({
               )}
             </Field>
           </div>
-          <Field data-invalid={!!errors.phone_number}>
+          <Field data-invalid={!!errors.phoneNumber}>
             <FieldLabel htmlFor="phone-number">Phone Number</FieldLabel>
             <Input
               id="phone-number"
@@ -279,7 +278,10 @@ export default function PartyRegistrationForm({
                 updateField("contactPreference", value as "call" | "text")
               }
             >
-              <SelectTrigger id="contact-preference">
+              <SelectTrigger
+                id="contact-preference"
+                aria-invalid={!!errors.contactPreference}
+              >
                 <SelectValue placeholder="Select your preference" />
               </SelectTrigger>
               <SelectContent>
@@ -290,8 +292,8 @@ export default function PartyRegistrationForm({
             <FieldDescription>
               How should we contact the second contact?
             </FieldDescription>
-            {errors.contact_preference && (
-              <FieldError>{errors.contact_preference}</FieldError>
+            {errors.contactPreference && (
+              <FieldError>{errors.contactPreference}</FieldError>
             )}
           </Field>
 

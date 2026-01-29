@@ -63,6 +63,7 @@ export default function AddressSearch({
    */
   useEffect(() => {
     if (value && value !== selectedAddress?.formatted_address) {
+      setSearchTerm(value); // Ensure input shows the initial value
       // If there's an external value, try to find matching suggestion
       const match = suggestions.find((s) => s.formatted_address === value);
       if (match) {
