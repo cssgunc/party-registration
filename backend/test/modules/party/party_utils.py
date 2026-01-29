@@ -73,15 +73,18 @@ class PartyTestUtils(
 
     @override
     async def next_dict(self, **overrides: Unpack[PartyOverrides]) -> dict:
-        if "location_id" not in overrides:
+        # Create a copy to avoid mutating the original
+        local_overrides = dict(overrides)
+
+        if "location_id" not in local_overrides:
             location = await self.location_utils.create_one()
-            overrides["location_id"] = location.id
+            local_overrides["location_id"] = location.id
 
-        if "contact_one_id" not in overrides:
+        if "contact_one_id" not in local_overrides:
             student = await self.student_utils.create_one()
-            overrides["contact_one_id"] = student.account_id
+            local_overrides["contact_one_id"] = student.account_id
 
-        return await super().next_dict(**overrides)
+        return await super().next_dict(**local_overrides)
 
     def next_contact(self, **overrides: Unpack[PartyOverrides]) -> ContactDto:
         """Generate test contact data."""
