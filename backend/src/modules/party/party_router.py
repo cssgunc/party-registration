@@ -68,52 +68,50 @@ async def create_party(
 async def list_parties(
     page_number: int = Query(1, ge=1, description="Page number (1-indexed)"),
     page_size: int | None = Query(None, ge=1, le=100, description="Items per page (default: all)"),
+    sort_by: str | None = Query(None, description="Field to sort by (e.g., 'party_datetime')"),
+    sort_order: str = Query("asc", pattern="^(asc|desc)$", description="Sort order: asc or desc"),
+    location_id: int | None = Query(None, description="Filter by location ID"),
+    contact_one_id: int | None = Query(None, description="Filter by contact one (student) ID"),
     party_service: PartyService = Depends(),
     _=Depends(authenticate_by_role("admin", "staff", "police")),
 ) -> PaginatedPartiesResponse:
     """
-    Returns all party registrations in the database with optional pagination.
+    Returns all party registrations in the database with optional pagination, sorting, and filtering
 
     Query Parameters:
-    - page_number: The page number to retrieve (1-indexed)
+    - page_number: The page number to retrieve (1-indexed, default: 1)
     - page_size: Number of items per page (max 100, default: returns all parties)
+    - sort_by: Field to sort by (allowed: party_datetime, location_id, contact_one_id, id)
+    - sort_order: Sort order (asc or desc, default: asc)
+    - location_id: Filter by location ID (optional)
+    - contact_one_id: Filter by contact one (student) ID (optional)
+
+    Features:
+    - **Opt-in**: All features have sensible defaults - no parameters returns all parties
+    - **Server-side**: All sorting, filtering, and pagination happens in the database
+    - **Performant**: Scales well with large datasets
 
     Returns:
-    - items: List of party registrations
-    - total_records: Total number of records in the database
-    - page_size: Requested page size (or total_records if not specified)
-    - page_number: Requested page number
-    - total_pages: Total number of pages based on page size
+    - items: List of party registrations for the current page
+    - total_records: Total number of records matching filters (not just current page)
+    - page_size: Items per page (equals total_records when page_size is None)
+    - page_number: Current page number
+    - total_pages: Total number of pages based on page size and total records
+
+    Examples:
+    - Get all parties: GET /api/parties/
+    - Get first page of 10: GET /api/parties/?page_size=10
+    - Sort by date descending: GET /api/parties/?sort_by=party_datetime&sort_order=desc
+    - Filter by location: GET /api/parties/?location_id=5
+    - Combined: GET /api/parties/?location_id=5&sort_by=party_datetime&page_size=20
     """
-    # Get total count first
-    total_records = await party_service.get_party_count()
-
-    # If page_size is None, return all parties
-    if page_size is None:
-        parties = await party_service.get_parties(skip=0, limit=None)
-        return PaginatedPartiesResponse(
-            items=parties,
-            total_records=total_records,
-            page_size=total_records,
-            page_number=1,
-            total_pages=1,
-        )
-
-    # Calculate skip and limit for pagination
-    skip = (page_number - 1) * page_size
-
-    # Get parties with pagination
-    parties = await party_service.get_parties(skip=skip, limit=page_size)
-
-    # Calculate total pages (ceiling division)
-    total_pages = (total_records + page_size - 1) // page_size if total_records > 0 else 0
-
-    return PaginatedPartiesResponse(
-        items=parties,
-        total_records=total_records,
-        page_size=page_size,
+    return await party_service.get_parties_paginated(
         page_number=page_number,
-        total_pages=total_pages,
+        page_size=page_size,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        location_id=location_id,
+        contact_one_id=contact_one_id,
     )
 
 
