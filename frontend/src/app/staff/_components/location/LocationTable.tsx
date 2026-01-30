@@ -1,5 +1,6 @@
 "use client";
 
+import { useRole } from "@/contexts/RoleContext";
 import { LocationService } from "@/lib/api/location/location.service";
 import {
   LocationCreate,
@@ -25,6 +26,8 @@ export const LocationTable = () => {
   const [editingLocation, setEditingLocation] = useState<LocationDto | null>(
     null
   );
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const { role } = useRole();
 
   const locationsQuery = useQuery<PaginatedResponse<LocationDto>>({
     queryKey: ["locations"],
@@ -239,6 +242,8 @@ export const LocationTable = () => {
           `Are you sure you want to delete location ${location.formatted_address}? This action cannot be undone.`
         }
         isDeleting={deleteMutation.isPending}
+        showActions={role === "admin"}
+        showCreateButton={role === "admin"}
       />
     </div>
   );

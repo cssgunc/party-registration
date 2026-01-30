@@ -68,6 +68,8 @@ export type TableProps<T> = {
   getDeleteDescription?: (row: T) => string;
   isDeleting?: boolean;
   initialSort?: SortingState;
+  showActions?: boolean;
+  showCreateButton?: boolean;
 };
 
 export function TableTemplate<T extends object>({
@@ -83,6 +85,8 @@ export function TableTemplate<T extends object>({
   getDeleteDescription,
   isDeleting,
   initialSort = [],
+  showActions = true,
+  showCreateButton = true,
 }: TableProps<T>) {
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -112,9 +116,9 @@ export function TableTemplate<T extends object>({
   // Derive details from resourceName if not provided
   const tableDetails = details || `${resourceName} table`;
 
-  // Add actions column if handlers are provided
+  // Add actions column if handlers are provided and showActions is true
   const columnsWithActions: ColumnDef<T, unknown>[] =
-    onEdit || onDelete
+    showActions && (onEdit || onDelete)
       ? [
           ...columns,
           {
@@ -241,7 +245,7 @@ export function TableTemplate<T extends object>({
               <>
                 <h2 className="text-2xl font-bold">{pluralResourceName}</h2>
 
-                {onCreateNew && (
+                {onCreateNew && showCreateButton && (
                   <Button onClick={onCreateNew}>
                     <Plus className="mr-2 h-4 w-4" />
                     New {resourceName}
