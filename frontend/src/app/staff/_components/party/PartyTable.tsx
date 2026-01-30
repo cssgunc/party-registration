@@ -1,5 +1,6 @@
 "use client";
 
+import { useRole } from "@/contexts/RoleContext";
 import { PartyService } from "@/lib/api/party/party.service";
 import { AdminCreatePartyDto, PartyDto } from "@/lib/api/party/party.types";
 import { PaginatedResponse } from "@/lib/shared";
@@ -24,6 +25,7 @@ export const PartyTable = () => {
   const [sidebarMode, setSidebarMode] = useState<"create" | "edit">("create");
   const [editingParty, setEditingParty] = useState<PartyDto | null>(null);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const { role } = useRole();
 
   const partiesQuery = useQuery({
     queryKey: ["parties"],
@@ -383,6 +385,8 @@ export const PartyTable = () => {
           ).toLocaleString()}? This action cannot be undone.`
         }
         isDeleting={deleteMutation.isPending}
+        showActions={role === "admin"}
+        showCreateButton={role === "admin"}
       />
     </div>
   );
