@@ -20,10 +20,13 @@ import { useState } from "react";
 import * as z from "zod";
 
 export const accountTableFormSchema = z.object({
-  pid: z.string().length(9, "Please input a valid PID"),
+  pid: z
+    .string()
+    .length(9, "Please input a valid PID")
+    .min(1, "PID is required"),
   email: z.email({ pattern: z.regexes.html5Email }).min(1, "Email is required"),
   first_name: z.string().min(1, "First name is required"),
-  last_name: z.string().min(1, "Second name is required"),
+  last_name: z.string().min(1, "Last name is required"),
   role: z.string().min(1, "Role is required"),
 });
 
@@ -91,6 +94,7 @@ export default function AccountTableForm({
     }
   };
 
+  const isPIDEditMode = !!editData;
   return (
     <form onSubmit={handleSubmit}>
       {title && <h2 className="text-xl font-semibold mb-4">{title}</h2>}
@@ -99,7 +103,7 @@ export default function AccountTableForm({
           className="mb-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive"
           role="alert"
         >
-          {submissionError}
+          {submissionError}hello
         </div>
       )}
       <FieldGroup>
@@ -113,6 +117,7 @@ export default function AccountTableForm({
               value={formData.email}
               onChange={(e) => updateField("email", e.target.value)}
               aria-invalid={!!errors.email}
+              disabled={isPIDEditMode}
             />
             {errors.email && <FieldError>{errors.email}</FieldError>}
           </Field>
@@ -125,6 +130,7 @@ export default function AccountTableForm({
               value={formData.pid}
               onChange={(e) => updateField("pid", e.target.value)}
               aria-invalid={!!errors.pid}
+              disabled={isPIDEditMode}
             />
             {errors.pid && <FieldError>{errors.pid}</FieldError>}
           </Field>

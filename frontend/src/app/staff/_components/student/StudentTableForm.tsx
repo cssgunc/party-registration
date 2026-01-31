@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Field,
+  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
@@ -31,10 +32,18 @@ export const studentTableFormSchema = z.object({
   first_name: z.string().min(1, "First name is required"),
   last_name: z.string().min(1, "Second name is required"),
   email: z.email("Please enter a valid email").min(1, "Email is required"),
-  phone_number: z.string().min(1, "Phone number is required"),
-  contact_preference: z.enum(["call", "text"]),
+  phone_number: z
+    .string()
+    .regex(/^\+?1?\d{9,15}$/, { message: "Please input a valid phone number" })
+    .min(1, "Phone number is required"),
+  contact_preference: z.enum(["call", "text"], {
+    message: "Please select a contact preference",
+  }),
   last_registered: z.date().nullable(),
-  pid: z.string().length(9, "Please input a valid PID"),
+  pid: z
+    .string()
+    .length(9, "Please input a valid PID")
+    .min(1, "PID is required"),
 });
 
 type StudentTableFormValues = z.infer<typeof studentTableFormSchema>;
@@ -103,6 +112,7 @@ export default function StudentTableForm({
     }
   };
 
+  const isPIDEditMode = !!editData;
   return (
     <form onSubmit={handleSubmit}>
       {title && <h2 className="text-xl font-semibold mb-4">{title}</h2>}
@@ -124,6 +134,7 @@ export default function StudentTableForm({
               value={formData.pid}
               onChange={(e) => updateField("pid", e.target.value)}
               aria-invalid={!!errors.pid}
+              disabled={isPIDEditMode}
             />
             {errors.pid && <FieldError>{errors.pid}</FieldError>}
           </Field>
@@ -160,6 +171,7 @@ export default function StudentTableForm({
               value={formData.email}
               onChange={(e) => updateField("email", e.target.value)}
               aria-invalid={!!errors.email}
+              disabled={isPIDEditMode}
             />
             {errors.email && <FieldError>{errors.email}</FieldError>}
           </Field>
@@ -213,6 +225,9 @@ export default function StudentTableForm({
                 />
               </PopoverContent>
             </Popover>
+            <FieldDescription>
+              Leave blank if student is not registered.
+            </FieldDescription>
             {errors.last_registered && (
               <FieldError>{errors.last_registered}</FieldError>
             )}
