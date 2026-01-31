@@ -14,20 +14,20 @@ from test.utils.http.assertions import (
 from test.utils.http.test_templates import generate_auth_required_tests
 
 test_incident_authentication = generate_auth_required_tests(
-    ({"admin", "staff"}, "GET", "/api/locations/1/incidents", None),
+    ({"admin", "staff", "police"}, "GET", "/api/locations/1/incidents", None),
     (
-        {"admin"},
+        {"admin", "police"},
         "POST",
         "/api/locations/1/incidents",
-        IncidentTestUtils.get_sample_data(),
+        IncidentTestUtils.get_sample_create_data(),
     ),
     (
-        {"admin"},
+        {"admin", "police"},
         "PUT",
         "/api/locations/1/incidents/1",
-        IncidentTestUtils.get_sample_data(),
+        IncidentTestUtils.get_sample_create_data(),
     ),
-    ({"admin"}, "DELETE", "/api/locations/1/incidents/1", None),
+    ({"admin", "police"}, "DELETE", "/api/locations/1/incidents/1", None),
 )
 
 
@@ -79,10 +79,14 @@ class TestIncidentRouter:
         """Test successfully creating an incident."""
         location = await self.location_utils.create_one()
         incident_data = await self.incident_utils.next_data(location_id=location.id)
+        # Exclude location_id from request body (it comes from path)
+        request_body = {
+            k: v for k, v in incident_data.model_dump(mode="json").items() if k != "location_id"
+        }
 
         response = await self.admin_client.post(
             f"/api/locations/{location.id}/incidents",
-            json=incident_data.model_dump(mode="json"),
+            json=request_body,
         )
         data = assert_res_success(response, IncidentDto, status=201)
 
@@ -97,10 +101,13 @@ class TestIncidentRouter:
             incident_data = await self.incident_utils.next_data(
                 location_id=location.id, severity=severity
             )
+            request_body = {
+                k: v for k, v in incident_data.model_dump(mode="json").items() if k != "location_id"
+            }
 
             response = await self.admin_client.post(
                 f"/api/locations/{location.id}/incidents",
-                json=incident_data.model_dump(mode="json"),
+                json=request_body,
             )
             data = assert_res_success(response, IncidentDto, status=201)
 
@@ -111,37 +118,23 @@ class TestIncidentRouter:
         """Test creating an incident with empty description."""
         location = await self.location_utils.create_one()
         incident_data = await self.incident_utils.next_data(location_id=location.id, description="")
+        request_body = {
+            k: v for k, v in incident_data.model_dump(mode="json").items() if k != "location_id"
+        }
 
         response = await self.admin_client.post(
             f"/api/locations/{location.id}/incidents",
-            json=incident_data.model_dump(mode="json"),
+            json=request_body,
         )
         data = assert_res_success(response, IncidentDto, status=201)
 
         assert data.description == ""
 
     @pytest.mark.asyncio
-    async def test_create_incident_location_id_required(self) -> None:
-        """Test creating an incident without location_id fails validation."""
-        location = await self.location_utils.create_one()
-        incident_data = {
-            "incident_datetime": "2025-11-18T20:30:00Z",
-            "description": "Noise incident",
-            "severity": "complaint",
-        }
-
-        response = await self.admin_client.post(
-            f"/api/locations/{location.id}/incidents", json=incident_data
-        )
-
-        assert_res_validation_error(response, expected_fields=["location_id"])
-
-    @pytest.mark.asyncio
     async def test_create_incident_severity_required(self) -> None:
         """Test creating an incident without severity fails validation."""
         location = await self.location_utils.create_one()
         incident_data = {
-            "location_id": location.id,
             "incident_datetime": "2025-11-18T20:30:00Z",
             "description": "Noise incident",
         }
@@ -162,10 +155,13 @@ class TestIncidentRouter:
             description="Updated description",
             severity=IncidentSeverity.WARNING,
         )
+        request_body = {
+            k: v for k, v in update_data.model_dump(mode="json").items() if k != "location_id"
+        }
 
         response = await self.admin_client.put(
             f"/api/locations/{incident.location_id}/incidents/{incident.id}",
-            json=update_data.model_dump(mode="json"),
+            json=request_body,
         )
         data = assert_res_success(response, IncidentDto)
 
@@ -177,30 +173,16 @@ class TestIncidentRouter:
         """Test updating a non-existent incident."""
         location = await self.location_utils.create_one()
         update_data = await self.incident_utils.next_data(location_id=location.id)
-
-        response = await self.admin_client.put(
-            f"/api/locations/{location.id}/incidents/999",
-            json=update_data.model_dump(mode="json"),
-        )
-
-        assert_res_failure(response, IncidentNotFoundException(999))
-
-    @pytest.mark.asyncio
-    async def test_update_incident_location_id_required(self) -> None:
-        """Test updating an incident without location_id fails validation."""
-        incident = await self.incident_utils.create_one()
-        update_data = {
-            "incident_datetime": "2025-11-20T23:00:00Z",
-            "description": "Updated description",
-            "severity": "warning",
+        request_body = {
+            k: v for k, v in update_data.model_dump(mode="json").items() if k != "location_id"
         }
 
         response = await self.admin_client.put(
-            f"/api/locations/{incident.location_id}/incidents/{incident.id}",
-            json=update_data,
+            f"/api/locations/{location.id}/incidents/999",
+            json=request_body,
         )
 
-        assert_res_validation_error(response, expected_fields=["location_id"])
+        assert_res_failure(response, IncidentNotFoundException(999))
 
     @pytest.mark.asyncio
     async def test_delete_incident_success(self) -> None:

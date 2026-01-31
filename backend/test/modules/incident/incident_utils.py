@@ -42,6 +42,13 @@ class IncidentTestUtils(
             "severity": IncidentSeverity.COMPLAINT.value,
         }
 
+    @classmethod
+    def get_sample_create_data(cls) -> dict:
+        """Get sample data for IncidentCreate (without location_id, since it comes from path)."""
+        data = cls.generate_defaults(0)
+        del data["location_id"]
+        return data
+
     @override
     async def next_dict(self, **overrides: Unpack[IncidentOverrides]) -> dict:
         # If location_id not provided, create a location

@@ -7,7 +7,7 @@ from src.core.exceptions import NotFoundException
 from src.modules.location.location_service import LocationNotFoundException
 
 from .incident_entity import IncidentEntity
-from .incident_model import IncidentData, IncidentDto
+from .incident_model import IncidentCreateDto, IncidentDto
 
 
 class IncidentNotFoundException(NotFoundException):
@@ -32,9 +32,11 @@ class IncidentService:
         return incident_entity
 
     async def get_incidents_by_location(self, location_id: int) -> list[IncidentDto]:
-        """Get all incidents for a given location."""
+        """Get all incidents for a given location, ordered by incident datetime."""
         result = await self.session.execute(
-            select(IncidentEntity).where(IncidentEntity.location_id == location_id)
+            select(IncidentEntity)
+            .where(IncidentEntity.location_id == location_id)
+            .order_by(IncidentEntity.incident_datetime)
         )
         incidents = result.scalars().all()
         return [incident.to_dto() for incident in incidents]
@@ -44,7 +46,7 @@ class IncidentService:
         incident_entity = await self._get_incident_entity_by_id(incident_id)
         return incident_entity.to_dto()
 
-    async def create_incident(self, location_id: int, data: IncidentData) -> IncidentDto:
+    async def create_incident(self, location_id: int, data: IncidentCreateDto) -> IncidentDto:
         """Create a new incident."""
         new_incident = IncidentEntity(
             location_id=location_id,
@@ -64,7 +66,7 @@ class IncidentService:
         return new_incident.to_dto()
 
     async def update_incident(
-        self, incident_id: int, location_id: int, data: IncidentData
+        self, incident_id: int, location_id: int, data: IncidentCreateDto
     ) -> IncidentDto:
         """Update an existing incident."""
         incident_entity = await self._get_incident_entity_by_id(incident_id)

@@ -1,4 +1,4 @@
-from datetime import UTC
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Self
 
 from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String
@@ -17,7 +17,7 @@ class IncidentEntity(MappedAsDataclass, EntityBase):
     location_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("locations.id", ondelete="CASCADE"), nullable=False
     )
-    incident_datetime: Mapped[str] = mapped_column(DateTime(timezone=True), nullable=False)
+    incident_datetime: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     severity: Mapped[IncidentSeverity] = mapped_column(Enum(IncidentSeverity), nullable=False)
     description: Mapped[str] = mapped_column(String, nullable=False, default="")
 

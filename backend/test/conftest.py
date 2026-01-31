@@ -87,6 +87,9 @@ async def create_test_client(
 
     async def _create_test_client(role: StringRole | None):
         async def override_get_session():
+            # Rollback any pending transaction from previous failed requests
+            if test_session.in_transaction() and not test_session.is_active:
+                await test_session.rollback()
             yield test_session
 
         app.dependency_overrides[get_session] = override_get_session

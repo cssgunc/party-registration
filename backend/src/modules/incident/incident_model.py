@@ -9,13 +9,18 @@ class IncidentSeverity(Enum):
     CITATION = "citation"
 
 
-class IncidentData(BaseModel):
-    """Data DTO for an incident without id."""
+class IncidentCreateDto(BaseModel):
+    """Request body for creating/updating an incident (location_id comes from path)."""
 
-    location_id: int
     incident_datetime: AwareDatetime
     description: str = ""
     severity: IncidentSeverity
+
+
+class IncidentData(IncidentCreateDto):
+    """Full incident data including location_id (for internal use)."""
+
+    location_id: int
 
 
 class IncidentDto(IncidentData):
