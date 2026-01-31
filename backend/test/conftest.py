@@ -20,14 +20,14 @@ from src.core.authentication import StringRole
 from src.core.database import EntityBase, database_url, get_session
 from src.main import app
 from src.modules.account.account_service import AccountService
-from src.modules.complaint.complaint_service import ComplaintService
+from src.modules.incident.incident_service import IncidentService
 from src.modules.location.location_service import LocationService
 from src.modules.party.party_service import PartyService
 from src.modules.police.police_service import PoliceService
 from src.modules.student.student_service import StudentService
 
 from test.modules.account.account_utils import AccountTestUtils
-from test.modules.complaint.complaint_utils import ComplaintTestUtils
+from test.modules.incident.incident_utils import IncidentTestUtils
 from test.modules.location.location_utils import GmapsMockUtils, LocationTestUtils
 from test.modules.party.party_utils import PartyTestUtils
 from test.modules.police.police_utils import PoliceTestUtils
@@ -87,6 +87,9 @@ async def create_test_client(
 
     async def _create_test_client(role: StringRole | None):
         async def override_get_session():
+            # Rollback any pending transaction from previous failed requests
+            if test_session.in_transaction() and not test_session.is_active:
+                await test_session.rollback()
             yield test_session
 
         app.dependency_overrides[get_session] = override_get_session
@@ -183,8 +186,8 @@ def location_service(test_session: AsyncSession, mock_gmaps: MagicMock):
 
 
 @pytest.fixture()
-def complaint_service(test_session: AsyncSession):
-    return ComplaintService(session=test_session)
+def incident_service(test_session: AsyncSession):
+    return IncidentService(session=test_session)
 
 
 @pytest.fixture()
@@ -235,8 +238,8 @@ def gmaps_utils(
 
 
 @pytest.fixture()
-def complaint_utils(test_session: AsyncSession, location_utils: LocationTestUtils):
-    return ComplaintTestUtils(session=test_session, location_utils=location_utils)
+def incident_utils(test_session: AsyncSession, location_utils: LocationTestUtils):
+    return IncidentTestUtils(session=test_session, location_utils=location_utils)
 
 
 @pytest.fixture()

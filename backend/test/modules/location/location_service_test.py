@@ -11,7 +11,7 @@ from src.modules.location.location_service import (
     LocationService,
     PlaceNotFoundException,
 )
-from test.modules.complaint.complaint_utils import ComplaintTestUtils
+from test.modules.incident.incident_utils import IncidentTestUtils
 from test.modules.location.location_utils import GmapsMockUtils, LocationTestUtils
 
 
@@ -50,8 +50,6 @@ class TestLocationServiceCRUD:
         """Test creating a location with all optional fields populated"""
         data = await self.location_utils.next_data(
             unit="Apt 2B",
-            warning_count=1,
-            citation_count=2,
             hold_expiration=datetime(2025, 12, 31, 23, 59, 59, tzinfo=UTC),
         )
 
@@ -201,75 +199,73 @@ class TestLocationServiceCRUD:
         self.location_utils.assert_matches(all_locations[0], data)
 
     @pytest.mark.asyncio
-    async def test_location_complaints_field_defaults_to_empty_list(self):
-        """Test that Location DTO complaints field defaults to empty list."""
+    async def test_location_incidents_field_defaults_to_empty_list(self):
+        """Test that Location DTO incidents field defaults to empty list."""
         data = await self.location_utils.next_data()
 
         created = await self.location_service.create_location(data)
 
-        # Verify complaints field exists and is empty list
-        assert hasattr(created, "complaints")
-        assert created.complaints == []
-        assert isinstance(created.complaints, list)
+        # Verify incidents field exists and is empty list
+        assert hasattr(created, "incidents")
+        assert created.incidents == []
+        assert isinstance(created.incidents, list)
 
     @pytest.mark.asyncio
-    async def test_location_serialization_includes_complaints(self):
-        """Test that Location DTO properly serializes with complaints field."""
+    async def test_location_serialization_includes_incidents(self):
+        """Test that Location DTO properly serializes with incidents field."""
         data = await self.location_utils.next_data()
 
         created = await self.location_service.create_location(data)
 
-        # Test model_dump includes complaints
+        # Test model_dump includes incidents
         serialized = created.model_dump()
-        assert "complaints" in serialized
-        assert serialized["complaints"] == []
+        assert "incidents" in serialized
+        assert serialized["incidents"] == []
 
         # Test JSON serialization
         json_str = created.model_dump_json()
-        assert "complaints" in json_str
+        assert "incidents" in json_str
 
 
-class TestLocationServiceWithComplaints:
-    """Tests for Location service with complaints relationship"""
+class TestLocationServiceWithIncidents:
+    """Tests for Location service with incidents relationship"""
 
     location_utils: LocationTestUtils
-    complaint_utils: ComplaintTestUtils
+    incident_utils: IncidentTestUtils
     location_service: LocationService
 
     @pytest.fixture(autouse=True)
     def _setup(
         self,
         location_utils: LocationTestUtils,
-        complaint_utils: ComplaintTestUtils,
+        incident_utils: IncidentTestUtils,
         location_service: LocationService,
     ):
         self.location_utils = location_utils
-        self.complaint_utils = complaint_utils
+        self.incident_utils = incident_utils
         self.location_service = location_service
 
     @pytest.mark.asyncio
-    async def test_get_location_with_complaints(self):
-        """Test getting a location that has complaints includes the complaints."""
+    async def test_get_location_with_incidents(self):
+        """Test getting a location that has incidents includes the incidents."""
         location = await self.location_utils.create_one()
-        complaint1, complaint2 = await self.complaint_utils.create_many(
-            i=2, location_id=location.id
-        )
+        incident1, incident2 = await self.incident_utils.create_many(i=2, location_id=location.id)
 
         # Fetch the location
         fetched = await self.location_service.get_location_by_id(location.id)
 
-        # Verify complaints are included
-        assert len(fetched.complaints) == 2
-        self.complaint_utils.assert_matches(fetched.complaints[0], complaint1)
-        self.complaint_utils.assert_matches(fetched.complaints[1], complaint2)
+        # Verify incidents are included
+        assert len(fetched.incidents) == 2
+        self.incident_utils.assert_matches(fetched.incidents[0], incident1)
+        self.incident_utils.assert_matches(fetched.incidents[1], incident2)
 
     @pytest.mark.asyncio
-    async def test_delete_location_with_complaints_cascades(self):
-        """Test that deleting a location also deletes its complaints (cascade delete)."""
+    async def test_delete_location_with_incidents_cascades(self):
+        """Test that deleting a location also deletes its incidents (cascade delete)."""
         location = await self.location_utils.create_one()
 
-        # Add complaints to the location
-        await self.complaint_utils.create_many(i=2, location_id=location.id)
+        # Add incidents to the location
+        await self.incident_utils.create_many(i=2, location_id=location.id)
 
         # Delete the location
         deleted = await self.location_service.delete_location(location.id)
@@ -280,17 +276,17 @@ class TestLocationServiceWithComplaints:
         all_locations = await self.location_utils.get_all()
         assert len(all_locations) == 0
 
-        # Verify the complaints are also deleted (cascade delete)
-        all_complaints = await self.complaint_utils.get_all()
-        assert len(all_complaints) == 0
+        # Verify the incidents are also deleted (cascade delete)
+        all_incidents = await self.incident_utils.get_all()
+        assert len(all_incidents) == 0
 
     @pytest.mark.asyncio
-    async def test_update_location_retains_complaints(self):
-        """Test that updating a location retains its complaints."""
+    async def test_update_location_retains_incidents(self):
+        """Test that updating a location retains its incidents."""
         location = await self.location_utils.create_one()
 
-        # Add complaints to the location
-        complaint = await self.complaint_utils.create_one(
+        # Add incidents to the location
+        incident = await self.incident_utils.create_one(
             location_id=location.id,
         )
 
@@ -304,18 +300,18 @@ class TestLocationServiceWithComplaints:
         # Verify location was updated
         self.location_utils.assert_matches(updated, update_data)
 
-        # Verify complaints are retained
-        assert len(updated.complaints) == 1
-        self.complaint_utils.assert_matches(updated.complaints[0], complaint)
+        # Verify incidents are retained
+        assert len(updated.incidents) == 1
+        self.incident_utils.assert_matches(updated.incidents[0], incident)
 
     @pytest.mark.asyncio
-    async def test_get_locations_includes_complaints(self):
-        """Test that getting all locations includes their complaints."""
+    async def test_get_locations_includes_incidents(self):
+        """Test that getting all locations includes their incidents."""
         location1, location2 = await self.location_utils.create_many(i=2)
 
-        # Add complaints to both locations
-        complaint1 = await self.complaint_utils.create_one(location_id=location1.id)
-        complaint2 = await self.complaint_utils.create_one(location_id=location2.id)
+        # Add incidents to both locations
+        incident1 = await self.incident_utils.create_one(location_id=location1.id)
+        incident2 = await self.incident_utils.create_one(location_id=location2.id)
 
         # Fetch all locations
         fetched_locations = await self.location_service.get_locations()
@@ -327,12 +323,12 @@ class TestLocationServiceWithComplaints:
         assert loc1 is not None
         assert loc2 is not None
 
-        # Verify complaints are included
-        assert len(loc1.complaints) == 1
-        self.complaint_utils.assert_matches(loc1.complaints[0], complaint1)
+        # Verify incidents are included
+        assert len(loc1.incidents) == 1
+        self.incident_utils.assert_matches(loc1.incidents[0], incident1)
 
-        assert len(loc2.complaints) == 1
-        self.complaint_utils.assert_matches(loc2.complaints[0], complaint2)
+        assert len(loc2.incidents) == 1
+        self.incident_utils.assert_matches(loc2.incidents[0], incident2)
 
 
 class TestLocationServiceGoogleMapsAutocomplete:
