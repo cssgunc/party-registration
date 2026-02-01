@@ -57,7 +57,11 @@ export const partyTableFormSchema = z.object({
   contactTwoPhoneNumber: z
     .string()
     .min(1, "Phone number is required")
-    .regex(/^\+?1?\d{9,15}$/, { message: "Please input a valid phone number" }),
+    .refine(
+      (val) => val.replace(/\D/g, "").length >= 10,
+      "Phone number must be at least 10 digits"
+    )
+    .transform((val) => val.replace(/\D/g, "")),
   contactTwoPreference: z.enum(["call", "text"], {
     message: "Please select a contact preference",
   }),

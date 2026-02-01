@@ -47,15 +47,11 @@ export const AccountTable = () => {
         role: data.role as AccountRole,
       }),
     onError: (error: Error) => {
-      // console.log("for debug error.response", error.message);
       if (isAxiosError(error) && error.response) {
         setSubmissionError(`${error.response.data.message}`);
-        // console.log("debug submissionError if statement:", submissionError);
       } else {
         setSubmissionError(`Failed to create account: ${error.message}`);
-        // console.log("debug submissionError else statement:", submissionError);
       }
-      // console.log("debug submissionError", submissionError);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["accounts"] });

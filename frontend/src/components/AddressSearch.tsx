@@ -75,6 +75,7 @@ export default function AddressSearch({
 
   /**
    * Fetch address suggestions with debouncing
+   * Skip fetching if the search term matches the selected address
    */
   useEffect(() => {
     const fetchSuggestions = async (input: string) => {
@@ -82,6 +83,15 @@ export default function AddressSearch({
 
       if (trimmedInput.length < 3) {
         setSuggestions([]);
+        return;
+      }
+
+      // Skip API call if the search term exactly matches the selected address
+      if (
+        selectedAddress &&
+        selectedAddress.formatted_address === trimmedInput
+      ) {
+        setSuggestions([selectedAddress]);
         return;
       }
 
@@ -115,7 +125,7 @@ export default function AddressSearch({
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [searchTerm, locationService]);
+  }, [searchTerm, locationService, selectedAddress]);
 
   /**
    * Handle address selection from dropdown

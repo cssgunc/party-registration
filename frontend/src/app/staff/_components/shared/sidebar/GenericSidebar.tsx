@@ -25,9 +25,7 @@ function GenericSidebar() {
           <Button className="mb-6" onClick={closeSidebar}>
             Close
           </Button>
-          <div className="space-y-4">
-            {typeof content === "function" ? content() : content}
-          </div>
+          <div className="space-y-4">{content}</div>
         </div>
       </div>
     </>

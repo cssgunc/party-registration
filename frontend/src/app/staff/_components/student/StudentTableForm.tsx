@@ -34,15 +34,19 @@ export const studentTableFormSchema = z.object({
   email: z.email("Please enter a valid email").min(1, "Email is required"),
   phone_number: z
     .string()
-    .regex(/^\+?1?\d{9,15}$/, { message: "Please input a valid phone number" })
-    .min(1, "Phone number is required"),
+    .min(1, "Phone number is required")
+    .refine(
+      (val) => val.replace(/\D/g, "").length >= 10,
+      "Phone number must be at least 10 digits"
+    )
+    .transform((val) => val.replace(/\D/g, "")),
   contact_preference: z.enum(["call", "text"], {
     message: "Please select a contact preference",
   }),
   last_registered: z.date().nullable(),
   pid: z
     .string()
-    .length(9, "Please input a valid PID")
+    .regex(/^\d{9}$/, { message: "Please input a valid PID" })
     .min(1, "PID is required"),
 });
 

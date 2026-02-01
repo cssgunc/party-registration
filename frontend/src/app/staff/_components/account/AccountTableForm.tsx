@@ -22,7 +22,7 @@ import * as z from "zod";
 export const accountTableFormSchema = z.object({
   pid: z
     .string()
-    .length(9, "Please input a valid PID")
+    .regex(/^\d{9}$/, { message: "Please input a valid PID" })
     .min(1, "PID is required"),
   email: z.email({ pattern: z.regexes.html5Email }).min(1, "Email is required"),
   first_name: z.string().min(1, "First name is required"),
@@ -103,7 +103,7 @@ export default function AccountTableForm({
           className="mb-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive"
           role="alert"
         >
-          {submissionError}hello
+          {submissionError}
         </div>
       )}
       <FieldGroup>
