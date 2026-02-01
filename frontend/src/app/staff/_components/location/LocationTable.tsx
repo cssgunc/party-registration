@@ -86,8 +86,6 @@ export const LocationTable = () => {
               address: editingLocation.formatted_address || "",
               placeId: editingLocation.google_place_id || "",
               holdExpiration: editingLocation.hold_expiration || null,
-              warning_count: editingLocation.warning_count ?? 0,
-              citation_count: editingLocation.citation_count ?? 0,
             }}
             submissionError={userMessage}
           />
