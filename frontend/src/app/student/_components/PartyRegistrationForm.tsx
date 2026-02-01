@@ -28,7 +28,7 @@ import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { addBusinessDays, format, isAfter, startOfDay } from "date-fns";
 import { CalendarIcon } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import * as z from "zod";
 
 const partyFormSchema = z.object({
@@ -64,28 +64,84 @@ type PartyFormValues = z.infer<typeof partyFormSchema>;
 
 export type { PartyFormValues };
 
+/**
+ * Initial values that can be passed to prefill the form
+ */
+export interface PartyFormInitialValues {
+  secondContactFirstName?: string;
+  secondContactLastName?: string;
+  phoneNumber?: string;
+  contactPreference?: "call" | "text";
+  contactTwoEmail?: string;
+}
+
 interface PartyRegistrationFormProps {
   onSubmit: (data: PartyFormValues, placeId: string) => void | Promise<void>;
   locationService?: LocationService;
+  initialValues?: PartyFormInitialValues;
 }
+
+// Default party time (e.g., 8:00 PM)
+const DEFAULT_PARTY_TIME = "20:00";
+// Default contact preference
+const DEFAULT_CONTACT_PREFERENCE: "call" | "text" = "text";
 
 export default function PartyRegistrationForm({
   onSubmit,
   locationService = new LocationService(),
+  initialValues,
 }: PartyRegistrationFormProps) {
   const [formData, setFormData] = useState<Partial<PartyFormValues>>({
     address: "",
     partyDate: undefined,
-    partyTime: "",
-    phoneNumber: "",
-    contactPreference: undefined,
-    contactTwoEmail: "",
+    partyTime: DEFAULT_PARTY_TIME,
+    phoneNumber: initialValues?.phoneNumber ?? "",
+    secondContactFirstName: initialValues?.secondContactFirstName ?? "",
+    secondContactLastName: initialValues?.secondContactLastName ?? "",
+    contactPreference:
+      initialValues?.contactPreference ?? DEFAULT_CONTACT_PREFERENCE,
+    contactTwoEmail: initialValues?.contactTwoEmail ?? "",
   });
 
-  const [placeId, setPlaceId] = useState<string>(""); // ⭐ NEW
+  const [placeId, setPlaceId] = useState<string>("");
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  /**
+   * Check if the form is complete enough to enable the submit button.
+   * This performs a lightweight check (not full validation) to enable/disable the button.
+   */
+  const isFormComplete = useMemo(() => {
+    const hasAddress = !!formData.address && formData.address.length > 0;
+    const hasPlaceId = !!placeId;
+    const hasPartyDate = !!formData.partyDate;
+    const hasPartyTime = !!formData.partyTime && formData.partyTime.length > 0;
+    const hasFirstName =
+      !!formData.secondContactFirstName &&
+      formData.secondContactFirstName.length > 0;
+    const hasLastName =
+      !!formData.secondContactLastName &&
+      formData.secondContactLastName.length > 0;
+    const hasPhone =
+      !!formData.phoneNumber &&
+      formData.phoneNumber.replace(/\D/g, "").length >= 10;
+    const hasContactPref = !!formData.contactPreference;
+    const hasEmail =
+      !!formData.contactTwoEmail && formData.contactTwoEmail.length > 0;
+
+    return (
+      hasAddress &&
+      hasPlaceId &&
+      hasPartyDate &&
+      hasPartyTime &&
+      hasFirstName &&
+      hasLastName &&
+      hasPhone &&
+      hasContactPref &&
+      hasEmail
+    );
+  }, [formData, placeId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -314,7 +370,15 @@ export default function PartyRegistrationForm({
           </Field>
 
           <Field orientation="horizontal">
-            <Button type="submit" disabled={isSubmitting}>
+            <Button
+              type="submit"
+              disabled={isSubmitting || !isFormComplete}
+              title={
+                !isFormComplete
+                  ? "Please fill in all required fields"
+                  : undefined
+              }
+            >
               {isSubmitting ? "Submitting..." : "Register Party"}
             </Button>
           </Field>

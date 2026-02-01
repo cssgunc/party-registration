@@ -8,11 +8,30 @@ import {
   useCurrentStudent,
   useMyParties,
 } from "@/lib/api/student/student.queries";
+import { isAfter, isBefore, startOfDay } from "date-fns";
 import Link from "next/link";
+
+/**
+ * Check if the student has completed the course (same logic as StatusComponent)
+ */
+function isCourseCompleted(lastRegistered: Date | null | undefined): boolean {
+  if (!lastRegistered) return false;
+
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const augustFirst = new Date(currentYear, 7, 1);
+  const mostRecentAugust1 = isBefore(now, augustFirst)
+    ? new Date(currentYear - 1, 7, 1)
+    : augustFirst;
+
+  return isAfter(startOfDay(lastRegistered), startOfDay(mostRecentAugust1));
+}
 
 export default function StudentDashboard() {
   const studentQuery = useCurrentStudent();
   const partiesQuery = useMyParties();
+
+  const courseCompleted = isCourseCompleted(studentQuery.data?.last_registered);
 
   return (
     <div className="flex flex-col">
@@ -22,11 +41,21 @@ export default function StudentDashboard() {
         <div className="flex justify-between items-center">
           <div className="font-semibold text-2xl">Events</div>
 
-          <Link href="/student/new-party">
-            <Button className="px-4 py-2 rounded-lg bg-[#09294E] text-white">
+          {courseCompleted ? (
+            <Link href="/student/new-party">
+              <Button className="px-4 py-2 rounded-lg bg-[#09294E] text-white">
+                Registration Form
+              </Button>
+            </Link>
+          ) : (
+            <Button
+              className="px-4 py-2 rounded-lg bg-[#09294E] text-white"
+              disabled
+              title="Complete the Party Smart Course to register a party"
+            >
               Registration Form
             </Button>
-          </Link>
+          )}
         </div>
 
         <RegistrationTracker {...partiesQuery} />
