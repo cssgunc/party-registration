@@ -22,6 +22,7 @@ import { useEffect, useRef, useState } from "react";
 
 interface AddressSearchProps {
   value?: string;
+  initialSelection?: AutocompleteResult | null;
   onSelect: (address: AutocompleteResult | null) => void;
   placeholder?: string;
   className?: string;
@@ -36,6 +37,7 @@ interface AddressSearchProps {
  */
 export default function AddressSearch({
   value = "",
+  initialSelection,
   onSelect,
   placeholder = "Search for an address...",
   className,
@@ -44,11 +46,13 @@ export default function AddressSearch({
   error: externalError,
 }: AddressSearchProps) {
   const [open, setOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(
+    initialSelection?.formatted_address ?? value
+  );
   const [suggestions, setSuggestions] = useState<AutocompleteResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedAddress, setSelectedAddress] =
-    useState<AutocompleteResult | null>(null);
+    useState<AutocompleteResult | null>(initialSelection ?? null);
   const [internalError, setInternalError] = useState<string | null>(null);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
 

@@ -170,6 +170,14 @@ export default function PartyTableForm({
             <FieldLabel htmlFor="party-address">Party Address</FieldLabel>
             <AddressSearch
               value={formData.address}
+              initialSelection={
+                editData?.location
+                  ? {
+                      formatted_address: editData.location.formatted_address,
+                      google_place_id: editData.location.google_place_id,
+                    }
+                  : null
+              }
               onSelect={handleAddressSelect}
               locationService={locationService}
               placeholder="Search for the party address..."
