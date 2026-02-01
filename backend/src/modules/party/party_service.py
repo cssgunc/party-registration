@@ -2,6 +2,7 @@ import csv
 import io
 import math
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from fastapi import Depends
 from sqlalchemy import select
@@ -18,8 +19,6 @@ from src.core.query_utils import (
     QueryParams,
     SortOrder,
     SortParam,
-    apply_query_params,
-    get_total_count,
 )
 from src.modules.location.location_model import LocationDto
 from src.modules.student.student_service import StudentNotFoundException, StudentService
@@ -184,8 +183,7 @@ class PartyService:
         page_size: int | None = None,
         sort_by: str | None = None,
         sort_order: str = "asc",
-        location_id: int | None = None,
-        contact_one_id: int | None = None,
+        filters: dict[str, Any] | None = None,
     ) -> PaginatedPartiesResponse:
         """
         Get parties with server-side pagination, sorting, and filtering.
@@ -195,8 +193,7 @@ class PartyService:
             page_size: Items per page (None = all items)
             sort_by: Field to sort by
             sort_order: Sort order ('asc' or 'desc')
-            location_id: Filter by location ID
-            contact_one_id: Filter by contact one (student) ID
+            filters: Dictionary of field: value pairs to filter by
 
         Returns:
             PaginatedPartiesResponse with items and metadata
@@ -207,19 +204,16 @@ class PartyService:
             selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
         )
 
-        # Build query params
-        filters: list[FilterParam] = []
-        if location_id is not None:
-            filters.append(
-                FilterParam(field="location_id", operator=FilterOperator.EQUALS, value=location_id)
-            )
-        if contact_one_id is not None:
-            filters.append(
-                FilterParam(
-                    field="contact_one_id", operator=FilterOperator.EQUALS, value=contact_one_id
-                )
-            )
+        # Build filter params from dict
+        filter_params: list[FilterParam] = []
+        if filters:
+            for field, value in filters.items():
+                if value is not None:
+                    filter_params.append(
+                        FilterParam(field=field, operator=FilterOperator.EQUALS, value=value)
+                    )
 
+        # Build query params
         sort_params: list[SortParam] | None = None
         if sort_by:
             sort_params = [SortParam(field=sort_by, order=SortOrder(sort_order))]
@@ -229,44 +223,28 @@ class PartyService:
         query_params = QueryParams(
             pagination=pagination_params,
             sort=sort_params,
-            filters=filters if filters else None,
+            filters=filter_params if filter_params else None,
         )
 
-        # Define allowed fields for sorting (security measure)
+        # Define allowed fields
         allowed_sort_fields = ["id", "party_datetime", "location_id", "contact_one_id"]
-
-        # Define allowed fields for filtering (security measure)
         allowed_filter_fields = ["location_id", "contact_one_id"]
 
-        # Apply filters and sorting (but not pagination yet - need count first)
-        filtered_query, _ = apply_query_params(
-            base_query,
-            PartyEntity,  # type: ignore
-            QueryParams(filters=query_params.filters, sort=query_params.sort),
+        # Use the generic pagination utility
+        from src.core.query_utils import get_paginated_results
+
+        party_dtos, total_records = await get_paginated_results(
+            session=self.session,
+            base_query=base_query,
+            entity_class=PartyEntity,
+            dto_converter=lambda entity: entity.to_dto(),
+            query_params=query_params,
             allowed_sort_fields=allowed_sort_fields,
             allowed_filter_fields=allowed_filter_fields,
         )
 
-        # Get total count after filters but before pagination
-        total_records = await get_total_count(self.session, filtered_query)
-
-        # Now apply pagination
-        paginated_query, _ = apply_query_params(
-            filtered_query,
-            PartyEntity,  # type: ignore
-            QueryParams(pagination=query_params.pagination),
-        )
-
-        # Execute query
-        result = await self.session.execute(paginated_query)
-        parties = result.scalars().all()
-
-        # Convert to DTOs
-        party_dtos = [party.to_dto() for party in parties]
-
         # Calculate metadata
         if page_size is None:
-            # When no page_size specified, return all items on page 1
             actual_page_size = total_records
             total_pages = 1
             actual_page_number = 1
@@ -383,8 +361,10 @@ class PartyService:
         """Create a party registration from an admin. Both contacts must be specified."""
         # Get/create location and validate no hold
         location = await self._validate_and_get_location(dto.google_place_id)
+
         # Get contact_one by email
         contact_one = await self._get_student_by_email(dto.contact_one_email)
+
         # Create party data with contact_two information directly
         party_data = PartyData(
             party_datetime=dto.party_datetime,
@@ -392,6 +372,7 @@ class PartyService:
             contact_one_id=contact_one.account_id,
             contact_two=dto.contact_two,
         )
+
         # Create party
         new_party = PartyEntity.from_data(party_data)
         self.session.add(new_party)

@@ -5,6 +5,7 @@ This module provides reusable functions to apply pagination, sorting, and filter
 to SQLAlchemy queries in a type-safe and flexible manner.
 """
 
+from collections.abc import Callable
 from enum import Enum
 from typing import Any
 
@@ -12,6 +13,20 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import Select, asc, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import DeclarativeMeta
+from src.core.models import PaginatedResponse
+
+__all__ = [
+    "FilterOperator",
+    "FilterParam",
+    "PaginatedResponse",
+    "PaginationParams",
+    "QueryParams",
+    "SortOrder",
+    "SortParam",
+    "apply_query_params",
+    "get_paginated_results",
+    "get_total_count",
+]
 
 
 class SortOrder(str, Enum):
@@ -286,21 +301,54 @@ async def get_total_count(
     return result.scalar() or 0
 
 
-class PaginatedResponse[ModelType](BaseModel):
-    """Generic paginated response wrapper matching existing PaginatedResponse."""
+async def get_paginated_results[ModelType](
+    session: AsyncSession,
+    base_query: Select,
+    entity_class: type,
+    dto_converter: Callable[[Any], ModelType],
+    query_params: QueryParams,
+    allowed_sort_fields: list[str],
+    allowed_filter_fields: list[str],
+) -> tuple[list[ModelType], int]:
+    """
+    Generic function to apply filters, sorting, pagination and return results.
 
-    items: list[ModelType]
-    total_records: int
-    page_size: int
-    page_number: int
-    total_pages: int
+    Args:
+        session: SQLAlchemy async session
+        base_query: Base SELECT query with joins/options already applied
+        entity_class: The entity class (e.g., PartyEntity)
+        dto_converter: Function to convert entity to DTO (e.g., lambda e: e.to_dto())
+        query_params: Query parameters (filters, sort, pagination)
+        allowed_sort_fields: Whitelist of fields allowed for sorting
+        allowed_filter_fields: Whitelist of fields allowed for filtering
 
-    @property
-    def has_next(self) -> bool:
-        """Check if there's a next page."""
-        return self.page_number < self.total_pages
+    Returns:
+        Tuple of (list of DTOs, total_records)
+    """
+    # Apply filters and sorting (but not pagination yet - need count first)
+    filtered_query, _ = apply_query_params(
+        base_query,
+        entity_class,
+        QueryParams(filters=query_params.filters, sort=query_params.sort),
+        allowed_sort_fields=allowed_sort_fields,
+        allowed_filter_fields=allowed_filter_fields,
+    )
 
-    @property
-    def has_prev(self) -> bool:
-        """Check if there's a previous page."""
-        return self.page_number > 1
+    # Get total count after filters but before pagination
+    total_records = await get_total_count(session, filtered_query)
+
+    # Now apply pagination
+    paginated_query, _ = apply_query_params(
+        filtered_query,
+        entity_class,
+        QueryParams(pagination=query_params.pagination),
+    )
+
+    # Execute query
+    result = await session.execute(paginated_query)
+    entities = result.scalars().all()
+
+    # Convert to DTOs
+    dtos = [dto_converter(entity) for entity in entities]
+
+    return dtos, total_records

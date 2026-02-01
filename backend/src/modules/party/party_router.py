@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import Response
@@ -105,13 +106,19 @@ async def list_parties(
     - Filter by location: GET /api/parties/?location_id=5
     - Combined: GET /api/parties/?location_id=5&sort_by=party_datetime&page_size=20
     """
+    # Build filters dict from query params
+    filters: dict[str, Any] = {}
+    if location_id is not None:
+        filters["location_id"] = location_id
+    if contact_one_id is not None:
+        filters["contact_one_id"] = contact_one_id
+
     return await party_service.get_parties_paginated(
         page_number=page_number,
         page_size=page_size,
         sort_by=sort_by,
         sort_order=sort_order,
-        location_id=location_id,
-        contact_one_id=contact_one_id,
+        filters=filters if filters else None,
     )
 
 

@@ -1,7 +1,12 @@
 """
 Tests for party list endpoint with pagination, sorting, and filtering.
 
-Add these tests to your existing party_router_test.py file or create a new test file.
+This file demonstrates comprehensive pagination, sorting, and filtering tests.
+For reusable test utilities that can be applied to any 'get all' endpoint,
+see test.utils.pagination_test_utils.
+
+These utilities can be imported and used in other test files to avoid
+duplicating pagination/sort/filter test logic across modules.
 """
 
 from datetime import timedelta
@@ -23,24 +28,6 @@ class TestPartyListPagination:
     def _setup(self, party_utils: PartyTestUtils, admin_client: AsyncClient):
         self.party_utils = party_utils
         self.admin_client = admin_client
-
-    @pytest.mark.asyncio
-    async def test_debug_party_creation(self):
-        """Debug test to see what's happening with party creation."""
-        print("\n=== Starting test ===")
-
-        for i in range(5):
-            print(f"\n--- Creating party {i + 1} ---")
-            party = await self.party_utils.create_one()
-            print(f"Created party with ID: {party.id}")
-            print(f"Location ID: {party.location_id}, Contact ID: {party.contact_one_id}")
-
-        print("\n=== Checking database ===")
-        response = await self.admin_client.get("/api/parties/")
-        data = response.json()
-        print(f"Total records from API: {data['total_records']}")
-        print(f"Number of items: {len(data['items'])}")
-        print(f"Item IDs: {[item['id'] for item in data['items']]}")
 
     @pytest.mark.asyncio
     async def test_list_parties_default_pagination(self):
