@@ -10,7 +10,6 @@ import {
   FieldLabel,
   FieldSet,
 } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import {
   Popover,
   PopoverContent,
@@ -29,8 +28,6 @@ export const locationTableFormSchema = z.object({
     .string()
     .min(1, "Please select an address from the search results"),
   holdExpiration: z.date().nullable(),
-  warning_count: z.number(),
-  citation_count: z.number(),
 });
 
 type LocationTableFormValues = z.infer<typeof locationTableFormSchema>;
@@ -54,8 +51,6 @@ export default function LocationTableForm({
     address: editData?.address ?? "",
     placeId: editData?.placeId ?? undefined,
     holdExpiration: editData?.holdExpiration ?? null,
-    warning_count: editData?.warning_count ?? 0,
-    citation_count: editData?.citation_count ?? 0,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -177,40 +172,6 @@ export default function LocationTableForm({
             </Popover>
             {errors.holdExpiration && (
               <FieldError>{errors.holdExpiration}</FieldError>
-            )}
-          </Field>
-
-          <Field data-invalid={!!errors.warning_count}>
-            <FieldLabel htmlFor="warning-count">Warning count</FieldLabel>
-            <Input
-              value={formData.warning_count}
-              onChange={(e) =>
-                updateField("warning_count", Number(e.target.value))
-              }
-              id="warning-count"
-              type="number"
-              min={0}
-              step={1}
-            />
-            {errors.warning_count && (
-              <FieldError>{errors.warning_count}</FieldError>
-            )}
-          </Field>
-
-          <Field data-invalid={!!errors.citation_count}>
-            <FieldLabel htmlFor="citation-count">Citation count</FieldLabel>
-            <Input
-              value={formData.citation_count}
-              onChange={(e) =>
-                updateField("citation_count", Number(e.target.value))
-              }
-              id="warning-count"
-              type="number"
-              min={0}
-              step={1}
-            />
-            {errors.citation_count && (
-              <FieldError>{errors.citation_count}</FieldError>
             )}
           </Field>
 

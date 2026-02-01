@@ -1,7 +1,11 @@
 "use client";
 
 import { hasActiveHold } from "@/lib/api/location/location.service";
-import { LocationDto } from "@/lib/api/location/location.types";
+import {
+  LocationDto,
+  getCitationCount,
+  getWarningCount,
+} from "@/lib/api/location/location.types";
 import { GenericChipDetails } from "../../shared/sidebar/GenericChipDetails";
 
 interface LocationInfoChipDetailsProps {
@@ -22,11 +26,11 @@ function LocationInfoChipDetails({ data }: LocationInfoChipDetailsProps) {
           </div>
           <div>
             <label className="block text-sm font-medium">Warning Count</label>
-            <p className="p-2 border rounded">{d.warning_count}</p>
+            <p className="p-2 border rounded">{getWarningCount(d)}</p>
           </div>
           <div>
             <label className="block text-sm font-medium">Citation Count</label>
-            <p className="p-2 border rounded">{d.citation_count}</p>
+            <p className="p-2 border rounded">{getCitationCount(d)}</p>
           </div>
           <div>
             <label className="block text-sm font-medium">Active Hold</label>
