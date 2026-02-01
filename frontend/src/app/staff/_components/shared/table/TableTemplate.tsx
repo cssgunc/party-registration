@@ -22,6 +22,7 @@ import {
   ColumnFiltersState,
   PaginationState,
   Row,
+  RowSelectionState,
   SortingState,
   flexRender,
   getCoreRowModel,
@@ -90,6 +91,7 @@ export function TableTemplate<T extends object>({
   });
   const [sorting, setSorting] = useState<SortingState>(initialSort);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [activeFilterColumn, setActiveFilterColumn] = useState<{
     column: Column<T, unknown>;
     name: string;
@@ -101,6 +103,11 @@ export function TableTemplate<T extends object>({
   const handleDeleteClick = (row: T) => {
     setItemToDelete(row);
     setDeleteDialogOpen(true);
+  };
+
+  const handleEditClick = (rowId: string, row: T) => {
+    setRowSelection({ [rowId]: true });
+    onEdit?.(row);
   };
 
   const confirmDelete = () => {
@@ -132,7 +139,9 @@ export function TableTemplate<T extends object>({
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     {onEdit && (
-                      <DropdownMenuItem onClick={() => onEdit(row.original)}>
+                      <DropdownMenuItem
+                        onClick={() => handleEditClick(row.id, row.original)}
+                      >
                         <Pencil className="mr-2 h-4 w-4" />
                         Edit
                       </DropdownMenuItem>
@@ -210,6 +219,7 @@ export function TableTemplate<T extends object>({
       columnFilters,
       pagination,
       globalFilter,
+      rowSelection,
     },
     globalFilterFn: customFilterFn,
     onSortingChange: setSorting,
@@ -220,6 +230,7 @@ export function TableTemplate<T extends object>({
     onPaginationChange: setPagination,
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    onRowSelectionChange: setRowSelection,
   });
 
   return (
@@ -320,7 +331,14 @@ export function TableTemplate<T extends object>({
               <TableBody>
                 {table.getRowModel().rows?.length ? (
                   table.getRowModel().rows.map((row) => (
-                    <TableRow key={row.id}>
+                    <TableRow
+                      key={row.id}
+                      className={
+                        row.getIsSelected()
+                          ? "bg-blue-100 hover:bg-blue-200"
+                          : ""
+                      }
+                    >
                       {row.getVisibleCells().map((cell) => (
                         <TableCell
                           key={cell.id}
