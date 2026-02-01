@@ -1,7 +1,12 @@
 "use client";
 
 import { LocationService } from "@/lib/api/location/location.service";
-import { LocationCreate, LocationDto } from "@/lib/api/location/location.types";
+import {
+  LocationCreate,
+  LocationDto,
+  getCitationCount,
+  getWarningCount,
+} from "@/lib/api/location/location.types";
 import { PaginatedResponse } from "@/lib/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
@@ -113,8 +118,6 @@ export const LocationTable = () => {
           address: location.formatted_address || "",
           placeId: location.google_place_id || "",
           holdExpiration: location.hold_expiration || null,
-          warning_count: location.warning_count ?? 0,
-          citation_count: location.citation_count ?? 0,
         }}
       />
     );
@@ -144,13 +147,9 @@ export const LocationTable = () => {
     address: string;
     placeId: string;
     holdExpiration: Date | null;
-    warning_count: number;
-    citation_count: number;
   }) => {
     const payload: LocationCreate = {
       google_place_id: data.placeId,
-      warning_count: data.warning_count,
-      citation_count: data.citation_count,
       hold_expiration: data.holdExpiration,
     };
 
@@ -166,12 +165,14 @@ export const LocationTable = () => {
       header: "Address",
     },
     {
-      accessorKey: "warning_count",
+      id: "warning_count",
       header: "Warning Count",
+      accessorFn: (row) => getWarningCount(row),
     },
     {
-      accessorKey: "citation_count",
+      id: "citation_count",
       header: "Citation Count",
+      accessorFn: (row) => getCitationCount(row),
     },
     {
       accessorKey: "hold_expiration",
