@@ -26,7 +26,7 @@ export class PartyService {
       return convertParty(response.data);
     } catch (error) {
       console.error("Failed to create party:", error);
-      throw new Error("Failed to create party");
+      throw error;
     }
   }
 
@@ -124,7 +124,7 @@ export class PartyService {
       return convertParty(response.data);
     } catch (error) {
       console.error(`Failed to update party ${partyId}:`, error);
-      throw new Error("Failed to update party");
+      throw error;
     }
   }
 

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Field,
+  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
@@ -170,6 +171,9 @@ export default function LocationTableForm({
                 />
               </PopoverContent>
             </Popover>
+            <FieldDescription>
+              Leave blank if there is no hold on this location.
+            </FieldDescription>
             {errors.holdExpiration && (
               <FieldError>{errors.holdExpiration}</FieldError>
             )}
