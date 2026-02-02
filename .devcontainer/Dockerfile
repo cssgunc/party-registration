@@ -60,8 +60,8 @@ RUN git config --system core.autocrlf input
 RUN git config --system color.ui auto
 
 # Install python dev dependencies
-COPY pyproject.toml /workspace/pyproject.toml
 RUN pip install --upgrade pip
+COPY pyproject.toml /workspace/pyproject.toml
 RUN pip install -e ".[dev]"
 
 # Install Backend Dependencies
