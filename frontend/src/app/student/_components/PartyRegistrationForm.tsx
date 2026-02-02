@@ -28,7 +28,7 @@ import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { addBusinessDays, format, isAfter, startOfDay } from "date-fns";
 import { CalendarIcon } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import * as z from "zod";
 
 const partyFormSchema = z.object({
@@ -108,40 +108,18 @@ export default function PartyRegistrationForm({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  /**
-   * Check if the form is complete enough to enable the submit button.
-   * This performs a lightweight check (not full validation) to enable/disable the button.
-   */
-  const isFormComplete = useMemo(() => {
-    const hasAddress = !!formData.address && formData.address.length > 0;
-    const hasPlaceId = !!placeId;
-    const hasPartyDate = !!formData.partyDate;
-    const hasPartyTime = !!formData.partyTime && formData.partyTime.length > 0;
-    const hasFirstName =
-      !!formData.secondContactFirstName &&
-      formData.secondContactFirstName.length > 0;
-    const hasLastName =
-      !!formData.secondContactLastName &&
-      formData.secondContactLastName.length > 0;
-    const hasPhone =
-      !!formData.phoneNumber &&
-      formData.phoneNumber.replace(/\D/g, "").length >= 10;
-    const hasContactPref = !!formData.contactPreference;
-    const hasEmail =
-      !!formData.contactTwoEmail && formData.contactTwoEmail.length > 0;
-
-    return (
-      hasAddress &&
-      hasPlaceId &&
-      hasPartyDate &&
-      hasPartyTime &&
-      hasFirstName &&
-      hasLastName &&
-      hasPhone &&
-      hasContactPref &&
-      hasEmail
-    );
-  }, [formData, placeId]);
+  // Check if the form is complete enough to enable the submit button
+  const isFormComplete =
+    !!formData.address &&
+    !!placeId &&
+    !!formData.partyDate &&
+    !!formData.partyTime &&
+    !!formData.secondContactFirstName &&
+    !!formData.secondContactLastName &&
+    !!formData.phoneNumber &&
+    formData.phoneNumber.replace(/\D/g, "").length >= 10 &&
+    !!formData.contactPreference &&
+    !!formData.contactTwoEmail;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
