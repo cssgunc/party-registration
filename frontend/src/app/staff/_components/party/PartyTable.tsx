@@ -1,10 +1,10 @@
 "use client";
-
 import { PartyService } from "@/lib/api/party/party.service";
 import { AdminCreatePartyDto, PartyDto } from "@/lib/api/party/party.types";
 import { PaginatedResponse } from "@/lib/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
+import { AxiosError } from "axios";
 import { format, isWithinInterval, startOfDay } from "date-fns";
 import { useState } from "react";
 import { DateRange } from "react-day-picker";
@@ -23,7 +23,6 @@ export const PartyTable = () => {
   const { openSidebar, closeSidebar } = useSidebar();
   const [sidebarMode, setSidebarMode] = useState<"create" | "edit">("create");
   const [editingParty, setEditingParty] = useState<PartyDto | null>(null);
-  const [submissionError, setSubmissionError] = useState<string | null>(null);
 
   const partiesQuery = useQuery({
     queryKey: ["parties"],
@@ -36,26 +35,28 @@ export const PartyTable = () => {
   const createMutation = useMutation({
     mutationFn: (payload: AdminCreatePartyDto) =>
       partyService.createParty(payload),
-    onError: (error: Error) => {
+    onError: (error: AxiosError<{ message: string }>) => {
       console.error("Failed to create party:", error);
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to create party";
 
-      // Check if it's a 404 error (student not found)
-      if (
-        "response" in error &&
-        (error as { response?: { status?: number } }).response?.status === 404
-      ) {
-        setSubmissionError(
-          "Student not found. Please verify the first contact email belongs to a registered student."
-        );
-      } else {
-        setSubmissionError(`Failed to create party: ${error.message}`);
-      }
+      openSidebar(
+        "create-party",
+        "New Party",
+        "Add a new party to the system",
+        <PartyTableForm
+          title="New Party"
+          onSubmit={handleFormSubmit}
+          submissionError={errorMessage}
+        />
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["parties"] });
       closeSidebar();
       setEditingParty(null);
-      setSubmissionError(null);
     },
   });
 
@@ -69,17 +70,25 @@ export const PartyTable = () => {
     }) => partyService.updateParty(id, payload),
     onError: (error: Error) => {
       console.error("Failed to update party:", error);
-
-      // Check if it's a 404 error (student not found)
-      if (
+      const isNotFound =
         "response" in error &&
-        (error as { response?: { status?: number } }).response?.status === 404
-      ) {
-        setSubmissionError(
-          "Student not found. Please verify the first contact email belongs to a registered student."
+        (error as { response?: { status?: number } }).response?.status === 404;
+      const errorMessage = isNotFound
+        ? "Student not found. Please verify the first contact email belongs to a registered student."
+        : `Failed to update party: ${error.message}`;
+
+      if (editingParty) {
+        openSidebar(
+          `edit-party-${editingParty.id}`,
+          "Edit Party",
+          "Update party information",
+          <PartyTableForm
+            title="Edit Party"
+            onSubmit={handleFormSubmit}
+            editData={editingParty}
+            submissionError={errorMessage}
+          />
         );
-      } else {
-        setSubmissionError(`Failed to update party: ${error.message}`);
       }
     },
     onSettled: () => {
@@ -123,7 +132,6 @@ export const PartyTable = () => {
   const handleEdit = (party: PartyDto) => {
     setEditingParty(party);
     setSidebarMode("edit");
-    setSubmissionError(null);
     openSidebar(
       `edit-party-${party.id}`,
       "Edit Party",
@@ -131,7 +139,6 @@ export const PartyTable = () => {
       <PartyTableForm
         title="Edit Party"
         onSubmit={handleFormSubmit}
-        submissionError={submissionError}
         editData={party}
       />
     );
@@ -144,16 +151,11 @@ export const PartyTable = () => {
   const handleCreate = () => {
     setEditingParty(null);
     setSidebarMode("create");
-    setSubmissionError(null);
     openSidebar(
       "create-party",
       "New Party",
       "Add a new party to the system",
-      <PartyTableForm
-        title="New Party"
-        onSubmit={handleFormSubmit}
-        submissionError={submissionError}
-      />
+      <PartyTableForm title="New Party" onSubmit={handleFormSubmit} />
     );
   };
 

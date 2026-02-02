@@ -10,6 +10,7 @@ import json
 import re
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import src.modules as entities
 from sqlalchemy import create_engine, text
@@ -49,9 +50,15 @@ def parse_date(date_str: str | None) -> datetime | None:
             else:
                 return now
 
-            # Apply static time if provided (e.g., @20:30)
+            # Apply static time if provided (e.g., @20:30) - interpreted as local time
             if hour is not None and minute is not None:
-                result = result.replace(hour=int(hour), minute=int(minute), second=0, microsecond=0)
+                local_tz = ZoneInfo("America/New_York")
+                # Convert to local, set the time, then convert back to UTC
+                local_result = result.astimezone(local_tz)
+                local_result = local_result.replace(
+                    hour=int(hour), minute=int(minute), second=0, microsecond=0
+                )
+                result = local_result.astimezone(UTC)
 
             return result
 

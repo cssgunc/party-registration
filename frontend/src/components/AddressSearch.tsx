@@ -22,6 +22,7 @@ import { useEffect, useRef, useState } from "react";
 
 interface AddressSearchProps {
   value?: string;
+  initialSelection?: AutocompleteResult | null;
   onSelect: (address: AutocompleteResult | null) => void;
   placeholder?: string;
   className?: string;
@@ -38,6 +39,7 @@ interface AddressSearchProps {
  */
 export default function AddressSearch({
   value = "",
+  initialSelection,
   onSelect,
   placeholder = "Search for an address...",
   className,
@@ -68,6 +70,7 @@ export default function AddressSearch({
    */
   useEffect(() => {
     if (value && value !== selectedAddress?.formatted_address) {
+      setSearchTerm(value); // Ensure input shows the initial value
       // If there's an external value, try to find matching suggestion
       const match = suggestions.find((s) => s.formatted_address === value);
       if (match) {
@@ -79,6 +82,7 @@ export default function AddressSearch({
 
   /**
    * Fetch address suggestions with debouncing
+   * Skip fetching if the search term matches the selected address
    */
   useEffect(() => {
     const fetchSuggestions = async (input: string) => {
@@ -86,6 +90,15 @@ export default function AddressSearch({
 
       if (trimmedInput.length < 3) {
         setSuggestions([]);
+        return;
+      }
+
+      // Skip API call if the search term exactly matches the selected address
+      if (
+        selectedAddress &&
+        selectedAddress.formatted_address === trimmedInput
+      ) {
+        setSuggestions([selectedAddress]);
         return;
       }
 
@@ -119,7 +132,7 @@ export default function AddressSearch({
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [searchTerm, locationService]);
+  }, [searchTerm, locationService, selectedAddress]);
 
   /**
    * Handle address selection from dropdown
