@@ -68,6 +68,8 @@ export type { PartyFormValues };
  * Initial values that can be passed to prefill the form
  */
 export interface PartyFormInitialValues {
+  address?: string;
+  placeId?: string;
   secondContactFirstName?: string;
   secondContactLastName?: string;
   phoneNumber?: string;
@@ -92,7 +94,7 @@ export default function PartyRegistrationForm({
   initialValues,
 }: PartyRegistrationFormProps) {
   const [formData, setFormData] = useState<Partial<PartyFormValues>>({
-    address: "",
+    address: initialValues?.address ?? "",
     partyDate: undefined,
     partyTime: DEFAULT_PARTY_TIME,
     phoneNumber: initialValues?.phoneNumber ?? "",
@@ -103,7 +105,7 @@ export default function PartyRegistrationForm({
     contactTwoEmail: initialValues?.contactTwoEmail ?? "",
   });
 
-  const [placeId, setPlaceId] = useState<string>("");
+  const [placeId, setPlaceId] = useState<string>(initialValues?.placeId ?? "");
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -169,8 +171,17 @@ export default function PartyRegistrationForm({
   /** ⭐ AddressSearch now sets BOTH address + placeId */
   const handleAddressSelect = (address: AutocompleteResult | null) => {
     updateField("address", address?.formatted_address || "");
-    setPlaceId(address?.google_place_id || ""); // ⭐ new required field
+    setPlaceId(address?.google_place_id || "");
   };
+
+  // Build initial address object for AddressSearch if we have prefilled values
+  const initialAddress: AutocompleteResult | undefined =
+    initialValues?.address && initialValues?.placeId
+      ? {
+          formatted_address: initialValues.address,
+          google_place_id: initialValues.placeId,
+        }
+      : undefined;
 
   return (
     <form onSubmit={handleSubmit}>
@@ -185,6 +196,7 @@ export default function PartyRegistrationForm({
               placeholder="Search for the party address..."
               className="w-full"
               error={errors.address}
+              initialAddress={initialAddress}
             />
             <FieldDescription>
               Search and select the address where the party will be held. The

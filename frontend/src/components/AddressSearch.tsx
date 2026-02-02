@@ -28,6 +28,8 @@ interface AddressSearchProps {
   disabled?: boolean;
   locationService?: LocationService;
   error?: string;
+  /** Initial address to prefill (includes google_place_id for full selection state) */
+  initialAddress?: AutocompleteResult;
 }
 
 /**
@@ -42,13 +44,16 @@ export default function AddressSearch({
   disabled = false,
   locationService = new LocationService(),
   error: externalError,
+  initialAddress,
 }: AddressSearchProps) {
   const [open, setOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(
+    initialAddress?.formatted_address ?? value
+  );
   const [suggestions, setSuggestions] = useState<AutocompleteResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedAddress, setSelectedAddress] =
-    useState<AutocompleteResult | null>(null);
+    useState<AutocompleteResult | null>(initialAddress ?? null);
   const [internalError, setInternalError] = useState<string | null>(null);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
 

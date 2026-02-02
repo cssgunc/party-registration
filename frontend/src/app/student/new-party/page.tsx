@@ -40,6 +40,8 @@ export default function RegistrationForm() {
     }
 
     return {
+      address: lastParty.location.formatted_address,
+      placeId: lastParty.location.google_place_id,
       secondContactFirstName: lastParty.contact_two.first_name,
       secondContactLastName: lastParty.contact_two.last_name,
       phoneNumber: lastParty.contact_two.phone_number,
