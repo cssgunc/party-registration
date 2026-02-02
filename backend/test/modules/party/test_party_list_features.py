@@ -16,6 +16,7 @@ from httpx import AsyncClient
 from src.modules.party.party_model import PartyDto
 from test.modules.party.party_utils import PartyTestUtils, get_valid_party_datetime
 from test.utils.http.assertions import assert_res_paginated
+from test.utils.pagination_test_utils import assert_basic_pagination, assert_sorting
 
 
 class TestPartyListPagination:
@@ -360,3 +361,48 @@ class TestPartyListCombined:
         # Should show 20 total (filtered count), not 30 (total count)
         assert paginated.total_records == 20
         assert len(paginated.items) == 10
+
+    class TestPartyListWithReusableUtils:
+        """Demonstration of reusable pagination test utilities."""
+
+    admin_client: AsyncClient
+    party_utils: PartyTestUtils
+
+    @pytest.fixture(autouse=True)
+    def _setup_resuable_utils(self, party_utils: PartyTestUtils, admin_client: AsyncClient):
+        self.party_utils = party_utils
+        self.admin_client = admin_client
+
+    @pytest.mark.asyncio
+    async def test_pagination_with_util(self):
+        """Test pagination using reusable utility."""
+
+        async def create_items(n: int) -> None:
+            for _ in range(n):
+                await self.party_utils.create_one()
+
+        await assert_basic_pagination(
+            client=self.admin_client,
+            endpoint="/api/parties/",
+            create_items=create_items,
+            dto_class=PartyDto,
+            num_items=15,
+        )
+
+    @pytest.mark.asyncio
+    async def test_sorting_with_util(self):
+        """Test sorting using reusable utility."""
+        base_datetime = get_valid_party_datetime()
+
+        async def create_sorted_items() -> None:
+            for i in range(5):
+                await self.party_utils.create_one(party_datetime=base_datetime + timedelta(days=i))
+
+        await assert_sorting(
+            client=self.admin_client,
+            endpoint="/api/parties/",
+            create_sorted_items=create_sorted_items,
+            dto_class=PartyDto,
+            sort_field="party_datetime",
+            get_sort_value=lambda x: x.party_datetime,
+        )

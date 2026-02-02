@@ -266,28 +266,12 @@ class PartyService:
         return party_entity.to_dto()
 
     async def get_parties_by_location(self, location_id: int) -> list[PartyDto]:
-        result = await self.session.execute(
-            select(PartyEntity)
-            .where(PartyEntity.location_id == location_id)
-            .options(
-                selectinload(PartyEntity.location),
-                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
-            )
-        )
-        parties = result.scalars().all()
-        return [party.to_dto() for party in parties]
+        result = await self.get_parties_paginated(filters={"location_id": location_id})
+        return result.items
 
     async def get_parties_by_contact(self, student_id: int) -> list[PartyDto]:
-        result = await self.session.execute(
-            select(PartyEntity)
-            .where(PartyEntity.contact_one_id == student_id)
-            .options(
-                selectinload(PartyEntity.location),
-                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
-            )
-        )
-        parties = result.scalars().all()
-        return [party.to_dto() for party in parties]
+        result = await self.get_parties_paginated(filters={"contact_one_id": student_id})
+        return result.items
 
     async def get_parties_by_date_range(
         self, start_date: datetime, end_date: datetime
@@ -408,13 +392,18 @@ class PartyService:
         self, party_id: int, dto: AdminCreatePartyDto
     ) -> PartyDto:
         """Update a party registration from an admin. Both contacts must be specified."""
+
         # Get existing party
         party_entity = await self._get_party_entity_by_id(party_id)
+
         # Get/create location and validate no hold
         location = await self._validate_and_get_location(dto.google_place_id)
+
         # Get contact_one by email
         contact_one_student = await self._get_student_by_email(dto.contact_one_email)
+
         contact_one_id = contact_one_student.account_id
+
         # Update party fields
         party_entity.party_datetime = dto.party_datetime
         party_entity.location_id = location.id

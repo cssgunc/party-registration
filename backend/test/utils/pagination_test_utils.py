@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from test.utils.http.assertions import assert_res_paginated
 
 
-async def test_basic_pagination[T: BaseModel](
+async def assert_basic_pagination[T: BaseModel](
     client: AsyncClient,
     endpoint: str,
     create_items: Callable[[int], Awaitable[None]],
@@ -49,7 +49,7 @@ async def test_basic_pagination[T: BaseModel](
     assert len(paginated.items) == 5
 
 
-async def test_sorting[T: BaseModel](
+async def assert_sorting[T: BaseModel](
     client: AsyncClient,
     endpoint: str,
     create_sorted_items: Callable[[], Awaitable[None]],
@@ -84,7 +84,7 @@ async def test_sorting[T: BaseModel](
     assert values == sorted(values, reverse=True), "Items not sorted in descending order"
 
 
-async def test_filtering[T: BaseModel](
+async def assert_filtering[T: BaseModel](
     client: AsyncClient,
     endpoint: str,
     create_filtered_items: Callable[[], Awaitable[None]],
@@ -119,7 +119,7 @@ async def test_filtering[T: BaseModel](
     assert all(match_fn(item) for item in paginated.items), "Not all items match filter"
 
 
-async def test_combined_features[T: BaseModel](
+async def assert_combined_features[T: BaseModel](
     client: AsyncClient,
     endpoint: str,
     create_items: Callable[[], Awaitable[None]],
