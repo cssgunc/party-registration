@@ -60,30 +60,63 @@ type PartyFormValues = z.infer<typeof partyFormSchema>;
 
 export type { PartyFormValues };
 
+/**
+ * Initial values that can be passed to prefill the form
+ */
+export interface PartyFormInitialValues {
+  address?: string;
+  placeId?: string;
+  secondContactFirstName?: string;
+  secondContactLastName?: string;
+  phoneNumber?: string;
+  contactPreference?: "call" | "text";
+  contactTwoEmail?: string;
+}
+
 interface PartyRegistrationFormProps {
   onSubmit: (data: PartyFormValues, placeId: string) => void | Promise<void>;
   locationService?: LocationService;
+  initialValues?: PartyFormInitialValues;
 }
+
+// Default party time (e.g., 8:00 PM)
+const DEFAULT_PARTY_TIME = "20:00";
+// Default contact preference
+const DEFAULT_CONTACT_PREFERENCE: "call" | "text" = "text";
 
 export default function PartyRegistrationForm({
   onSubmit,
   locationService = new LocationService(),
+  initialValues,
 }: PartyRegistrationFormProps) {
   const [formData, setFormData] = useState<Partial<PartyFormValues>>({
-    address: "",
+    address: initialValues?.address ?? "",
     partyDate: undefined,
-    partyTime: "",
-    phoneNumber: "",
-    contactPreference: undefined,
-    contactTwoEmail: "",
-    secondContactFirstName: "",
-    secondContactLastName: "",
+    partyTime: DEFAULT_PARTY_TIME,
+    phoneNumber: initialValues?.phoneNumber ?? "",
+    secondContactFirstName: initialValues?.secondContactFirstName ?? "",
+    secondContactLastName: initialValues?.secondContactLastName ?? "",
+    contactPreference:
+      initialValues?.contactPreference ?? DEFAULT_CONTACT_PREFERENCE,
+    contactTwoEmail: initialValues?.contactTwoEmail ?? "",
   });
 
-  const [placeId, setPlaceId] = useState<string>(""); // ⭐ NEW
+  const [placeId, setPlaceId] = useState<string>(initialValues?.placeId ?? "");
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Check if the form is complete enough to enable the submit button
+  const isFormComplete =
+    !!formData.address &&
+    !!placeId &&
+    !!formData.partyDate &&
+    !!formData.partyTime &&
+    !!formData.secondContactFirstName &&
+    !!formData.secondContactLastName &&
+    !!formData.phoneNumber &&
+    !!formData.contactPreference &&
+    !!formData.contactTwoEmail;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,8 +167,17 @@ export default function PartyRegistrationForm({
   /** ⭐ AddressSearch now sets BOTH address + placeId */
   const handleAddressSelect = (address: AutocompleteResult | null) => {
     updateField("address", address?.formatted_address || "");
-    setPlaceId(address?.google_place_id || ""); // ⭐ new required field
+    setPlaceId(address?.google_place_id || "");
   };
+
+  // Build initial address object for AddressSearch if we have prefilled values
+  const initialAddress: AutocompleteResult | undefined =
+    initialValues?.address && initialValues?.placeId
+      ? {
+          formatted_address: initialValues.address,
+          google_place_id: initialValues.placeId,
+        }
+      : undefined;
 
   return (
     <form onSubmit={handleSubmit}>
@@ -149,6 +191,8 @@ export default function PartyRegistrationForm({
               locationService={locationService}
               placeholder="Search for the party address..."
               className="w-full"
+              error={errors.address}
+              initialSelection={initialAddress}
             />
             <FieldDescription>
               Search and select the address where the party will be held. The
@@ -316,7 +360,15 @@ export default function PartyRegistrationForm({
           </Field>
 
           <Field orientation="horizontal">
-            <Button type="submit" disabled={isSubmitting}>
+            <Button
+              type="submit"
+              disabled={isSubmitting || !isFormComplete}
+              title={
+                !isFormComplete
+                  ? "Please fill in all required fields"
+                  : undefined
+              }
+            >
               {isSubmitting ? "Submitting..." : "Register Party"}
             </Button>
           </Field>
