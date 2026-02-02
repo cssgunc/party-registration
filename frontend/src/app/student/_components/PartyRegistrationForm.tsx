@@ -115,7 +115,6 @@ export default function PartyRegistrationForm({
     !!formData.secondContactFirstName &&
     !!formData.secondContactLastName &&
     !!formData.phoneNumber &&
-    formData.phoneNumber.replace(/\D/g, "").length >= 10 &&
     !!formData.contactPreference &&
     !!formData.contactTwoEmail;
 
