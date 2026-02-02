@@ -8,24 +8,8 @@ import {
   useCurrentStudent,
   useMyParties,
 } from "@/lib/api/student/student.queries";
-import { isAfter, isBefore, startOfDay } from "date-fns";
+import { isCourseCompleted } from "@/lib/utils";
 import Link from "next/link";
-
-/**
- * Check if the student has completed the course (same logic as StatusComponent)
- */
-function isCourseCompleted(lastRegistered: Date | null | undefined): boolean {
-  if (!lastRegistered) return false;
-
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const augustFirst = new Date(currentYear, 7, 1);
-  const mostRecentAugust1 = isBefore(now, augustFirst)
-    ? new Date(currentYear - 1, 7, 1)
-    : augustFirst;
-
-  return isAfter(startOfDay(lastRegistered), startOfDay(mostRecentAugust1));
-}
 
 export default function StudentDashboard() {
   const studentQuery = useCurrentStudent();
