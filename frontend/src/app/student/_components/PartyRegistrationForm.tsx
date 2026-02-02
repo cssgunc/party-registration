@@ -193,7 +193,7 @@ export default function PartyRegistrationForm({
               placeholder="Search for the party address..."
               className="w-full"
               error={errors.address}
-              initialAddress={initialAddress}
+              initialSelection={initialAddress}
             />
             <FieldDescription>
               Search and select the address where the party will be held. The
