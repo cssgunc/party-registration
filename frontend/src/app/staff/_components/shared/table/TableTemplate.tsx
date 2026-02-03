@@ -16,6 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useRole } from "@/contexts/RoleContext";
 import {
   Column,
   ColumnDef,
@@ -68,6 +69,7 @@ export type TableProps<T> = {
   getDeleteDescription?: (row: T) => string;
   isDeleting?: boolean;
   initialSort?: SortingState;
+  sortBy?: (a: T, b: T) => number;
 };
 
 export function TableTemplate<T extends object>({
@@ -83,7 +85,11 @@ export function TableTemplate<T extends object>({
   getDeleteDescription,
   isDeleting,
   initialSort = [],
+  sortBy,
 }: TableProps<T>) {
+  const { role } = useRole();
+  // Apply custom sorting if provided
+  const sortedData = sortBy ? [...data].sort(sortBy) : data;
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: 25,
@@ -112,9 +118,9 @@ export function TableTemplate<T extends object>({
   // Derive details from resourceName if not provided
   const tableDetails = details || `${resourceName} table`;
 
-  // Add actions column if handlers are provided
+  // Add actions column if handlers are provided and user is admin
   const columnsWithActions: ColumnDef<T, unknown>[] =
-    onEdit || onDelete
+    role === "admin" && (onEdit || onDelete)
       ? [
           ...columns,
           {
@@ -203,7 +209,7 @@ export function TableTemplate<T extends object>({
   };
 
   const table = useReactTable({
-    data,
+    data: sortedData,
     columns: columnsWithActions,
     state: {
       sorting,
@@ -241,7 +247,7 @@ export function TableTemplate<T extends object>({
               <>
                 <h2 className="text-2xl font-bold">{pluralResourceName}</h2>
 
-                {onCreateNew && (
+                {onCreateNew && role === "admin" && (
                   <Button onClick={onCreateNew}>
                     <Plus className="mr-2 h-4 w-4" />
                     New {resourceName}

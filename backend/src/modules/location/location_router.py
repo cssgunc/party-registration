@@ -120,8 +120,6 @@ async def create_location(
     return await location_service.create_location(
         LocationData.from_address(
             address_data,
-            warning_count=data.warning_count,
-            citation_count=data.citation_count,
             hold_expiration=data.hold_expiration,
         )
     )
@@ -141,15 +139,11 @@ async def update_location(
         address_data = await location_service.get_place_details(data.google_place_id)
         location_data = LocationData.from_address(
             address_data,
-            warning_count=data.warning_count,
-            citation_count=data.citation_count,
             hold_expiration=data.hold_expiration,
         )
     else:
         location_data = LocationData(
-            **location.model_dump(exclude={"warning_count", "citation_count", "hold_expiration"}),
-            warning_count=data.warning_count,
-            citation_count=data.citation_count,
+            **location.model_dump(exclude={"hold_expiration", "id", "incidents"}),
             hold_expiration=data.hold_expiration,
         )
 

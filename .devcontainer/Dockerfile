@@ -51,17 +51,17 @@ RUN groupadd --gid $USER_GID $USERNAME \
     && chmod 0440 /etc/sudoers.d/$USERNAME
 
 # Git configuration
-RUN git config --system core.editor "code --wait"
-RUN git config --system safe.directory '/workspace'
-RUN git config --system push.autoSetupRemote true
-RUN git config --system pull.autoSetupRemote true
-RUN git config --system init.defaultBranch main
-RUN git config --system core.autocrlf input
-RUN git config --system color.ui auto
+RUN git config --system core.editor "code --wait" \
+    && git config --system safe.directory '/workspace' \
+    && git config --system push.autoSetupRemote true \
+    && git config --system pull.autoSetupRemote true \
+    && git config --system init.defaultBranch main \
+    && git config --system core.autocrlf input \
+    && git config --system color.ui auto
 
 # Install python dev dependencies
-COPY pyproject.toml /workspace/pyproject.toml
 RUN pip install --upgrade pip
+COPY pyproject.toml /workspace/pyproject.toml
 RUN pip install -e ".[dev]"
 
 # Install Backend Dependencies
@@ -75,7 +75,7 @@ ENV HOME=/home/$USERNAME
 # Add zsh theme with niceties
 RUN curl https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | bash - \
     && sed -i 's/robbyrussell/kennethreitz/g' ~/.zshrc \
-    && echo 'export PATH=$PATH:$HOME/.local/bin' >>~/.zshrc
+    && echo 'export PATH=$PATH:$HOME/.local/bin:/workspace/frontend/node_modules/.bin' >>~/.zshrc
 
 # Set Locale for Functional Autocompletion in zsh
 RUN sudo locale-gen en_US.UTF-8

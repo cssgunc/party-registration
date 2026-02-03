@@ -28,14 +28,9 @@ export const AccountTable = () => {
     retry: 1,
   });
 
-  const accounts = (accountsQuery.data ?? [])
-    .filter((a) => a.role === "admin" || a.role === "staff")
-    .slice()
-    .sort(
-      (a, b) =>
-        a.last_name.localeCompare(b.last_name) ||
-        a.first_name.localeCompare(b.first_name)
-    );
+  const accounts = (accountsQuery.data ?? []).filter(
+    (a) => a.role === "admin" || a.role === "staff"
+  );
 
   const createMutation = useMutation({
     mutationFn: (data: AccountTableFormValues) =>
@@ -196,6 +191,10 @@ export const AccountTable = () => {
           `Are you sure you want to delete account ${account.email}? This action cannot be undone.`
         }
         isDeleting={deleteMutation.isPending}
+        sortBy={(a, b) =>
+          a.last_name.localeCompare(b.last_name) ||
+          a.first_name.localeCompare(b.first_name)
+        }
       />
     </div>
   );

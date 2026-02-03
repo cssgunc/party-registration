@@ -2,9 +2,6 @@ name: Run Backend Tests
 
 on:
   pull_request:
-    paths:
-      - "backend/**"
-      - ".github/workflows/backend-test.yml"
   push:
     branches: [main]
 
@@ -36,7 +33,9 @@ jobs:
         with:
           python-version: "3.12"
           cache: "pip"
-          cache-dependency-path: "backend/pyproject.toml"
+          cache-dependency-path: |
+            pyproject.toml
+            backend/pyproject.toml
 
       - name: Install dependencies
         run: |
