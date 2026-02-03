@@ -1,4 +1,5 @@
 "use client";
+
 import { PartyService } from "@/lib/api/party/party.service";
 import { AdminCreatePartyDto, PartyDto } from "@/lib/api/party/party.types";
 import { PaginatedResponse } from "@/lib/shared";
