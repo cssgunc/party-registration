@@ -16,6 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useRole } from "@/contexts/RoleContext";
 import {
   Column,
   ColumnDef,
@@ -68,8 +69,6 @@ export type TableProps<T> = {
   getDeleteDescription?: (row: T) => string;
   isDeleting?: boolean;
   initialSort?: SortingState;
-  showActions?: boolean;
-  showCreateButton?: boolean;
   sortBy?: (a: T, b: T) => number;
 };
 
@@ -86,10 +85,9 @@ export function TableTemplate<T extends object>({
   getDeleteDescription,
   isDeleting,
   initialSort = [],
-  showActions = true,
-  showCreateButton = true,
   sortBy,
 }: TableProps<T>) {
+  const { role } = useRole();
   // Apply custom sorting if provided
   const sortedData = sortBy ? [...data].sort(sortBy) : data;
   const [pagination, setPagination] = useState<PaginationState>({
@@ -120,9 +118,9 @@ export function TableTemplate<T extends object>({
   // Derive details from resourceName if not provided
   const tableDetails = details || `${resourceName} table`;
 
-  // Add actions column if handlers are provided and showActions is true
+  // Add actions column if handlers are provided and user is admin
   const columnsWithActions: ColumnDef<T, unknown>[] =
-    showActions && (onEdit || onDelete)
+    role === "admin" && (onEdit || onDelete)
       ? [
           ...columns,
           {
@@ -249,7 +247,7 @@ export function TableTemplate<T extends object>({
               <>
                 <h2 className="text-2xl font-bold">{pluralResourceName}</h2>
 
-                {onCreateNew && showCreateButton && (
+                {onCreateNew && role === "admin" && (
                   <Button onClick={onCreateNew}>
                     <Plus className="mr-2 h-4 w-4" />
                     New {resourceName}

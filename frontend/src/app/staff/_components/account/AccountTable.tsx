@@ -1,6 +1,5 @@
 "use client";
 
-import { useRole } from "@/contexts/RoleContext";
 import { AccountService } from "@/lib/api/account/account.service";
 import type { AccountDto, AccountRole } from "@/lib/api/account/account.types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -22,7 +21,6 @@ export const AccountTable = () => {
   const [sidebarMode, setSidebarMode] = useState<"create" | "edit">("create");
   const [editingAccount, setEditingAccount] = useState<AccountDto | null>(null);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
-  const { role } = useRole();
 
   const accountsQuery = useQuery({
     queryKey: ["accounts"],
@@ -193,8 +191,6 @@ export const AccountTable = () => {
           `Are you sure you want to delete account ${account.email}? This action cannot be undone.`
         }
         isDeleting={deleteMutation.isPending}
-        showActions={role === "admin"}
-        showCreateButton={role === "admin"}
         sortBy={(a, b) =>
           a.last_name.localeCompare(b.last_name) ||
           a.first_name.localeCompare(b.first_name)

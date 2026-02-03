@@ -2,7 +2,6 @@
 
 import { useSidebar } from "@/app/staff/_components/shared/sidebar/SidebarContext";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useRole } from "@/contexts/RoleContext";
 import { AccountService } from "@/lib/api/account/account.service";
 import { AdminStudentService } from "@/lib/api/student/admin-student.service";
 import { StudentDto } from "@/lib/api/student/student.types";
@@ -21,7 +20,6 @@ export const StudentTable = () => {
   const { openSidebar, closeSidebar } = useSidebar();
   const [editingStudent, setEditingStudent] = useState<StudentDto | null>(null);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
-  const { role } = useRole();
 
   // Fetch students
   const studentsQuery = useQuery({
@@ -283,8 +281,6 @@ export const StudentTable = () => {
           `Are you sure you want to delete ${student.first_name} ${student.last_name}? This action cannot be undone.`
         }
         isDeleting={deleteMutation.isPending}
-        showActions={role === "admin"}
-        showCreateButton={role === "admin"}
         sortBy={(a, b) =>
           a.last_name.localeCompare(b.last_name) ||
           a.first_name.localeCompare(b.first_name)
