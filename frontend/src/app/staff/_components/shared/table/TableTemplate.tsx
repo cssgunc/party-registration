@@ -70,6 +70,7 @@ export type TableProps<T> = {
   initialSort?: SortingState;
   showActions?: boolean;
   showCreateButton?: boolean;
+  sortBy?: (a: T, b: T) => number;
 };
 
 export function TableTemplate<T extends object>({
@@ -87,7 +88,10 @@ export function TableTemplate<T extends object>({
   initialSort = [],
   showActions = true,
   showCreateButton = true,
+  sortBy,
 }: TableProps<T>) {
+  // Apply custom sorting if provided
+  const sortedData = sortBy ? [...data].sort(sortBy) : data;
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: 25,
@@ -207,7 +211,7 @@ export function TableTemplate<T extends object>({
   };
 
   const table = useReactTable({
-    data,
+    data: sortedData,
     columns: columnsWithActions,
     state: {
       sorting,

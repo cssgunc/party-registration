@@ -26,7 +26,6 @@ export const LocationTable = () => {
   const [editingLocation, setEditingLocation] = useState<LocationDto | null>(
     null
   );
-  const [submissionError, setSubmissionError] = useState<string | null>(null);
   const { role } = useRole();
 
   const locationsQuery = useQuery<PaginatedResponse<LocationDto>>({

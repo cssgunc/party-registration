@@ -25,7 +25,6 @@ export const PartyTable = () => {
   const { openSidebar, closeSidebar } = useSidebar();
   const [sidebarMode, setSidebarMode] = useState<"create" | "edit">("create");
   const [editingParty, setEditingParty] = useState<PartyDto | null>(null);
-  const [submissionError, setSubmissionError] = useState<string | null>(null);
   const { role } = useRole();
 
   const partiesQuery = useQuery({

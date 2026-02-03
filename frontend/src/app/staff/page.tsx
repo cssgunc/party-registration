@@ -41,7 +41,9 @@ export default function StaffPage() {
             <TabsTrigger value="party">Parties</TabsTrigger>
             <TabsTrigger value="student">Students</TabsTrigger>
             <TabsTrigger value="location">Locations</TabsTrigger>
-            <TabsTrigger value="account">Accounts</TabsTrigger>
+            {role === "admin" && (
+              <TabsTrigger value="account">Accounts</TabsTrigger>
+            )}
           </TabsList>
           <TabsContent value="party">
             <PartyTable />
@@ -52,9 +54,11 @@ export default function StaffPage() {
           <TabsContent value="location">
             <LocationTable />
           </TabsContent>
-          <TabsContent value="account">
-            <AccountTable />
-          </TabsContent>
+          {role === "admin" && (
+            <TabsContent value="account">
+              <AccountTable />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </div>
