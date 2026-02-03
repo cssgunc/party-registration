@@ -15,8 +15,8 @@ from src.core.exceptions import BadRequestException, ConflictException, NotFound
 from src.core.query_utils import (
     FilterOperator,
     FilterParam,
+    ListQueryParam,
     PaginationParams,
-    QueryParams,
     SortOrder,
     SortParam,
 )
@@ -198,6 +198,8 @@ class PartyService:
         Returns:
             PaginatedPartiesResponse with items and metadata
         """
+        from src.core.query_utils import get_paginated_results
+
         # Build base query with eager loading
         base_query = select(PartyEntity).options(
             selectinload(PartyEntity.location),
@@ -220,7 +222,7 @@ class PartyService:
 
         pagination_params = PaginationParams(page_number=page_number, page_size=page_size)
 
-        query_params = QueryParams(
+        query_params = ListQueryParam(
             pagination=pagination_params,
             sort=sort_params,
             filters=filter_params if filter_params else None,
@@ -230,10 +232,8 @@ class PartyService:
         allowed_sort_fields = ["id", "party_datetime", "location_id", "contact_one_id"]
         allowed_filter_fields = ["location_id", "contact_one_id"]
 
-        # Use the generic pagination utility
-        from src.core.query_utils import get_paginated_results
-
-        party_dtos, total_records = await get_paginated_results(
+        # Use the generic pagination utility - it returns PaginatedResponse directly
+        return await get_paginated_results(
             session=self.session,
             base_query=base_query,
             entity_class=PartyEntity,
@@ -241,24 +241,6 @@ class PartyService:
             query_params=query_params,
             allowed_sort_fields=allowed_sort_fields,
             allowed_filter_fields=allowed_filter_fields,
-        )
-
-        # Calculate metadata
-        if page_size is None:
-            actual_page_size = total_records
-            total_pages = 1
-            actual_page_number = 1
-        else:
-            actual_page_size = page_size
-            actual_page_number = page_number
-            total_pages = (total_records + page_size - 1) // page_size if total_records > 0 else 0
-
-        return PaginatedPartiesResponse(
-            items=party_dtos,
-            total_records=total_records,
-            page_size=actual_page_size,
-            page_number=actual_page_number,
-            total_pages=total_pages,
         )
 
     async def get_party_by_id(self, party_id: int) -> PartyDto:
@@ -304,15 +286,19 @@ class PartyService:
 
     async def update_party(self, party_id: int, data: PartyData) -> PartyDto:
         party_entity = await self._get_party_entity_by_id(party_id)
+
         # Validate that referenced resources exist
         await self.location_service.assert_location_exists(data.location_id)
         await self.student_service.assert_student_exists(data.contact_one_id)
+
         for key, value in data.model_dump().items():
             if key == "id":
                 continue
             if hasattr(party_entity, key):
                 setattr(party_entity, key, value)
+
         party_entity.set_contact_two(data.contact_two)
+
         try:
             self.session.add(party_entity)
             await self.session.commit()
@@ -326,8 +312,10 @@ class PartyService:
         """Create a party registration from a student. contact_one is auto-filled."""
         # Validate student party prerequisites (date and Party Smart)
         await self._validate_student_party_prerequisites(student_account_id, dto.party_datetime)
+
         # Get/create location and validate no hold
         location = await self._validate_and_get_location(dto.google_place_id)
+
         # Create party data with contact_two information directly
         party_data = PartyData(
             party_datetime=dto.party_datetime,
@@ -335,6 +323,7 @@ class PartyService:
             contact_one_id=student_account_id,
             contact_two=dto.contact_two,
         )
+
         # Create party
         new_party = PartyEntity.from_data(party_data)
         self.session.add(new_party)
@@ -369,12 +358,16 @@ class PartyService:
         """Update a party registration from a student. contact_one is auto-filled."""
         # Get existing party
         party_entity = await self._get_party_entity_by_id(party_id)
+
         # Validate student party prerequisites (date and Party Smart)
         await self._validate_student_party_prerequisites(student_account_id, dto.party_datetime)
+
         # Get/create location and validate no hold
         location = await self._validate_and_get_location(dto.google_place_id)
+
         # Validate contact_one (student) exists
         await self.student_service.assert_student_exists(student_account_id)
+
         # Update party fields
         party_entity.party_datetime = dto.party_datetime
         party_entity.location_id = location.id
@@ -384,6 +377,7 @@ class PartyService:
         party_entity.contact_two_last_name = dto.contact_two.last_name
         party_entity.contact_two_phone_number = dto.contact_two.phone_number
         party_entity.contact_two_contact_preference = dto.contact_two.contact_preference
+
         self.session.add(party_entity)
         await self.session.commit()
         return await party_entity.load_dto(self.session)
@@ -392,7 +386,6 @@ class PartyService:
         self, party_id: int, dto: AdminCreatePartyDto
     ) -> PartyDto:
         """Update a party registration from an admin. Both contacts must be specified."""
-
         # Get existing party
         party_entity = await self._get_party_entity_by_id(party_id)
 
@@ -401,7 +394,6 @@ class PartyService:
 
         # Get contact_one by email
         contact_one_student = await self._get_student_by_email(dto.contact_one_email)
-
         contact_one_id = contact_one_student.account_id
 
         # Update party fields
@@ -413,6 +405,7 @@ class PartyService:
         party_entity.contact_two_last_name = dto.contact_two.last_name
         party_entity.contact_two_phone_number = dto.contact_two.phone_number
         party_entity.contact_two_contact_preference = dto.contact_two.contact_preference
+
         self.session.add(party_entity)
         await self.session.commit()
         return await party_entity.load_dto(self.session)
@@ -492,11 +485,13 @@ class PartyService:
     ) -> list[PartyDto]:
         """
         Get parties within a radius of a location within a specified date range.
+
         Args:
             latitude: Latitude of the search center
             longitude: Longitude of the search center
             start_date: Start of the date range (inclusive)
             end_date: End of the date range (inclusive)
+
         Returns:
             List of parties within the radius and date range
         """
@@ -540,8 +535,10 @@ class PartyService:
     async def export_parties_to_csv(self, parties: list[PartyDto]) -> str:
         """
         Export a list of parties to CSV format.
+
         Args:
             parties: List of Party models to export
+
         Returns:
             CSV content as a string
         """

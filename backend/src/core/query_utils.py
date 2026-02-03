@@ -6,9 +6,11 @@ to SQLAlchemy queries in a type-safe and flexible manner.
 """
 
 from collections.abc import Callable
+from contextlib import suppress
 from enum import Enum
 from typing import Any
 
+from fastapi import Request
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import Select, asc, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,14 +20,15 @@ from src.core.models import PaginatedResponse
 __all__ = [
     "FilterOperator",
     "FilterParam",
+    "ListQueryParam",
     "PaginatedResponse",
     "PaginationParams",
-    "QueryParams",
     "SortOrder",
     "SortParam",
     "apply_query_params",
     "get_paginated_results",
     "get_total_count",
+    "parse_pagination_params",
 ]
 
 
@@ -104,7 +107,7 @@ class FilterParam(BaseModel):
         return v
 
 
-class QueryParams(BaseModel):
+class ListQueryParam(BaseModel):
     """Combined parameters for pagination, sorting, and filtering."""
 
     pagination: PaginationParams | None = Field(default=None)
@@ -243,7 +246,7 @@ def apply_filters[ModelType: DeclarativeMeta](
 def apply_query_params[ModelType: DeclarativeMeta](
     query: Select,
     model: type[ModelType],
-    params: QueryParams | None = None,
+    params: ListQueryParam | None = None,
     allowed_sort_fields: list[str] | None = None,
     allowed_filter_fields: list[str] | None = None,
 ) -> tuple[Select, PaginationParams | None]:
@@ -301,17 +304,68 @@ async def get_total_count(
     return result.scalar() or 0
 
 
+def parse_pagination_params(
+    request: Request,
+    allowed_sort_fields: list[str],
+    allowed_filter_fields: list[str],
+) -> ListQueryParam:
+    """
+    Parse pagination, sorting, and filtering params from FastAPI request.
+
+    Args:
+        request: FastAPI request object
+        allowed_sort_fields: Whitelist of allowed sort fields
+        allowed_filter_fields: Whitelist of allowed filter fields
+
+    Returns:
+        ListQueryParam object ready to use with apply_query_params
+    """
+    query_params_dict = dict(request.query_params)
+
+    # Parse pagination
+    page_number = int(query_params_dict.get("page_number", 1))
+    page_size_str = query_params_dict.get("page_size")
+    page_size = int(page_size_str) if page_size_str is not None else None
+    pagination_params = PaginationParams(page_number=page_number, page_size=page_size)
+
+    # Parse sorting
+    sort_params: list[SortParam] | None = None
+    if "sort_by" in query_params_dict:
+        sort_by = query_params_dict["sort_by"]
+        sort_order = query_params_dict.get("sort_order", "asc")
+        if sort_by in allowed_sort_fields:
+            sort_params = [SortParam(field=sort_by, order=SortOrder(sort_order))]
+
+    # Parse filters
+    filter_params: list[FilterParam] = []
+    for field in allowed_filter_fields:
+        if field in query_params_dict:
+            value = query_params_dict[field]
+            # Convert to int if it looks like an int
+            with suppress(ValueError, TypeError):
+                value = int(value)
+            filter_params.append(
+                FilterParam(field=field, operator=FilterOperator.EQUALS, value=value)
+            )
+
+    return ListQueryParam(
+        pagination=pagination_params,
+        sort=sort_params,
+        filters=filter_params if filter_params else None,
+    )
+
+
 async def get_paginated_results[ModelType](
     session: AsyncSession,
     base_query: Select,
     entity_class: type,
     dto_converter: Callable[[Any], ModelType],
-    query_params: QueryParams,
+    query_params: ListQueryParam,
     allowed_sort_fields: list[str],
     allowed_filter_fields: list[str],
-) -> tuple[list[ModelType], int]:
+) -> PaginatedResponse[ModelType]:
     """
-    Generic function to apply filters, sorting, pagination and return results.
+    Generic function to apply filters, sorting, pagination and return paginated results.
 
     Args:
         session: SQLAlchemy async session
@@ -323,13 +377,13 @@ async def get_paginated_results[ModelType](
         allowed_filter_fields: Whitelist of fields allowed for filtering
 
     Returns:
-        Tuple of (list of DTOs, total_records)
+        PaginatedResponse with items and metadata
     """
     # Apply filters and sorting (but not pagination yet - need count first)
     filtered_query, _ = apply_query_params(
         base_query,
         entity_class,
-        QueryParams(filters=query_params.filters, sort=query_params.sort),
+        ListQueryParam(filters=query_params.filters, sort=query_params.sort),
         allowed_sort_fields=allowed_sort_fields,
         allowed_filter_fields=allowed_filter_fields,
     )
@@ -341,7 +395,7 @@ async def get_paginated_results[ModelType](
     paginated_query, _ = apply_query_params(
         filtered_query,
         entity_class,
-        QueryParams(pagination=query_params.pagination),
+        ListQueryParam(pagination=query_params.pagination),
     )
 
     # Execute query
@@ -351,4 +405,23 @@ async def get_paginated_results[ModelType](
     # Convert to DTOs
     dtos = [dto_converter(entity) for entity in entities]
 
-    return dtos, total_records
+    # Calculate metadata
+    page_number = query_params.pagination.page_number if query_params.pagination else 1
+    page_size = query_params.pagination.page_size if query_params.pagination else total_records
+
+    if page_size is None:
+        actual_page_size = total_records
+        total_pages = 1
+        actual_page_number = 1
+    else:
+        actual_page_size = page_size
+        actual_page_number = page_number
+        total_pages = (total_records + page_size - 1) // page_size if total_records > 0 else 0
+
+    return PaginatedResponse(
+        items=dtos,
+        total_records=total_records,
+        page_size=actual_page_size,
+        page_number=actual_page_number,
+        total_pages=total_pages,
+    )
