@@ -2,9 +2,8 @@ import csv
 import io
 import math
 from datetime import UTC, datetime, timedelta
-from typing import Any
 
-from fastapi import Depends
+from fastapi import Depends, Request
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,14 +11,6 @@ from sqlalchemy.orm import selectinload
 from src.core.config import env
 from src.core.database import get_session
 from src.core.exceptions import BadRequestException, ConflictException, NotFoundException
-from src.core.query_utils import (
-    FilterOperator,
-    FilterParam,
-    ListQueryParam,
-    PaginationParams,
-    SortOrder,
-    SortParam,
-)
 from src.modules.location.location_model import LocationDto
 from src.modules.student.student_service import StudentNotFoundException, StudentService
 
@@ -89,6 +80,7 @@ class PartyService:
         """Calculate the number of business days between now and target date."""
         # Ensure both datetimes are timezone-aware (use UTC)
         current_date = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+
         # If target_date is naive, make it UTC-aware; otherwise keep its timezone
         if target_date.tzinfo is None:
             target_date_only = target_date.replace(
@@ -96,13 +88,16 @@ class PartyService:
             )
         else:
             target_date_only = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
+
         business_days = 0
         current = current_date
+
         while current < target_date_only:
             # Skip weekends (Saturday=5, Sunday=6)
             if current.weekday() < 5:
                 business_days += 1
             current += timedelta(days=1)
+
         return business_days
 
     def _validate_party_date(self, party_datetime: datetime) -> None:
@@ -114,19 +109,24 @@ class PartyService:
     async def _validate_party_smart_attendance(self, student_id: int) -> None:
         """Validate that student has completed Party Smart after the most recent August 1st."""
         student = await self.student_service.get_student_by_id(student_id)
+
         if student.last_registered is None:
             raise PartySmartNotCompletedException(student_id)
+
         # Calculate the most recent August 1st
         now = datetime.now(UTC)
         current_year = now.year
+
         # August 1st of the current year (UTC)
         august_first_this_year = datetime(current_year, 8, 1, 0, 0, 0, tzinfo=UTC)
+
         # If today is before August 1st, use last year's August 1st
         # Otherwise, use this year's August 1st
         if now < august_first_this_year:
             most_recent_august_first = datetime(current_year - 1, 8, 1, 0, 0, 0, tzinfo=UTC)
         else:
             most_recent_august_first = august_first_this_year
+
         # Check if last_registered is after the most recent August 1st
         if student.last_registered < most_recent_august_first:
             raise PartySmartNotCompletedException(student_id)
@@ -151,6 +151,7 @@ class PartyService:
             account = await self.account_service.get_account_by_email(email)
         except AccountByEmailNotFoundException as e:
             raise StudentNotFoundException(email=email) from e
+
         # Then get the student entity
         result = await self.session.execute(
             select(StudentEntity)
@@ -158,8 +159,10 @@ class PartyService:
             .options(selectinload(StudentEntity.account))
         )
         student = result.scalar_one_or_none()
+
         if student is None:
             raise StudentNotFoundException(account.id)
+
         return student
 
     async def get_parties(self, skip: int = 0, limit: int | None = None) -> list[PartyDto]:
@@ -173,32 +176,38 @@ class PartyService:
         )
         if limit is not None:
             query = query.limit(limit)
+
         result = await self.session.execute(query)
         parties = result.scalars().all()
         return [party.to_dto() for party in parties]
 
     async def get_parties_paginated(
         self,
-        page_number: int = 1,
-        page_size: int | None = None,
-        sort_by: str | None = None,
-        sort_order: str = "asc",
-        filters: dict[str, Any] | None = None,
+        request: Request,
     ) -> PaginatedPartiesResponse:
         """
         Get parties with server-side pagination, sorting, and filtering.
 
-        Args:
-            page_number: Page number (1-indexed)
-            page_size: Items per page (None = all items)
-            sort_by: Field to sort by
-            sort_order: Sort order ('asc' or 'desc')
-            filters: Dictionary of field: value pairs to filter by
+        Query parameters are automatically parsed from the request:
+        - page_number: Page number (1-indexed, default: 1)
+        - page_size: Items per page (default: all)
+        - sort_by: Field to sort by
+        - sort_order: Sort order ('asc' or 'desc')
+        - location_id: Filter by location ID
+        - contact_one_id: Filter by contact one (student) ID
 
         Returns:
             PaginatedPartiesResponse with items and metadata
         """
-        from src.core.query_utils import get_paginated_results
+        from src.core.query_utils import get_paginated_results, parse_pagination_params
+
+        # Parse query params from request
+        # Parse query params from request
+        query_params = parse_pagination_params(
+            request,
+            allowed_sort_fields=["id", "party_datetime", "location_id", "contact_one_id"],
+            allowed_filter_fields=["location_id", "contact_one_id"],
+        )
 
         # Build base query with eager loading
         base_query = select(PartyEntity).options(
@@ -206,33 +215,11 @@ class PartyService:
             selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
         )
 
-        # Build filter params from dict
-        filter_params: list[FilterParam] = []
-        if filters:
-            for field, value in filters.items():
-                if value is not None:
-                    filter_params.append(
-                        FilterParam(field=field, operator=FilterOperator.EQUALS, value=value)
-                    )
-
-        # Build query params
-        sort_params: list[SortParam] | None = None
-        if sort_by:
-            sort_params = [SortParam(field=sort_by, order=SortOrder(sort_order))]
-
-        pagination_params = PaginationParams(page_number=page_number, page_size=page_size)
-
-        query_params = ListQueryParam(
-            pagination=pagination_params,
-            sort=sort_params,
-            filters=filter_params if filter_params else None,
-        )
-
         # Define allowed fields
         allowed_sort_fields = ["id", "party_datetime", "location_id", "contact_one_id"]
         allowed_filter_fields = ["location_id", "contact_one_id"]
 
-        # Use the generic pagination utility - it returns PaginatedResponse directly
+        # Use the generic pagination utility
         return await get_paginated_results(
             session=self.session,
             base_query=base_query,
@@ -248,12 +235,30 @@ class PartyService:
         return party_entity.to_dto()
 
     async def get_parties_by_location(self, location_id: int) -> list[PartyDto]:
-        result = await self.get_parties_paginated(filters={"location_id": location_id})
-        return result.items
+        """Get all parties for a specific location (no pagination)."""
+        result = await self.session.execute(
+            select(PartyEntity)
+            .where(PartyEntity.location_id == location_id)
+            .options(
+                selectinload(PartyEntity.location),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
+            )
+        )
+        parties = result.scalars().all()
+        return [party.to_dto() for party in parties]
 
     async def get_parties_by_contact(self, student_id: int) -> list[PartyDto]:
-        result = await self.get_parties_paginated(filters={"contact_one_id": student_id})
-        return result.items
+        """Get all parties for a specific student (no pagination)."""
+        result = await self.session.execute(
+            select(PartyEntity)
+            .where(PartyEntity.contact_one_id == student_id)
+            .options(
+                selectinload(PartyEntity.location),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
+            )
+        )
+        parties = result.scalars().all()
+        return [party.to_dto() for party in parties]
 
     async def get_parties_by_date_range(
         self, start_date: datetime, end_date: datetime
@@ -276,12 +281,14 @@ class PartyService:
         # Validate that referenced resources exist
         await self.location_service.assert_location_exists(data.location_id)
         await self.student_service.assert_student_exists(data.contact_one_id)
+
         new_party = PartyEntity.from_data(data)
         try:
             self.session.add(new_party)
             await self.session.commit()
         except IntegrityError as e:
             raise PartyConflictException(f"Failed to create party: {e!s}") from e
+
         return await new_party.load_dto(self.session)
 
     async def update_party(self, party_id: int, data: PartyData) -> PartyDto:
@@ -304,6 +311,7 @@ class PartyService:
             await self.session.commit()
         except IntegrityError as e:
             raise PartyConflictException(f"Failed to update party: {e!s}") from e
+
         return await party_entity.load_dto(self.session)
 
     async def create_party_from_student_dto(
@@ -328,6 +336,7 @@ class PartyService:
         new_party = PartyEntity.from_data(party_data)
         self.session.add(new_party)
         await self.session.commit()
+
         return await new_party.load_dto(self.session)
 
     async def create_party_from_admin_dto(self, dto: AdminCreatePartyDto) -> PartyDto:
@@ -350,6 +359,7 @@ class PartyService:
         new_party = PartyEntity.from_data(party_data)
         self.session.add(new_party)
         await self.session.commit()
+
         return await new_party.load_dto(self.session)
 
     async def update_party_from_student_dto(
@@ -380,6 +390,7 @@ class PartyService:
 
         self.session.add(party_entity)
         await self.session.commit()
+
         return await party_entity.load_dto(self.session)
 
     async def update_party_from_admin_dto(
@@ -408,6 +419,7 @@ class PartyService:
 
         self.session.add(party_entity)
         await self.session.commit()
+
         return await party_entity.load_dto(self.session)
 
     async def delete_party(self, party_id: int) -> PartyDto:
@@ -431,6 +443,7 @@ class PartyService:
     ) -> list[PartyDto]:
         start_of_day = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
         end_of_day = target_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+
         result = await self.session.execute(
             select(PartyEntity)
             .where(
@@ -450,6 +463,7 @@ class PartyService:
         current_time = datetime.now(UTC)
         start_time = current_time - timedelta(hours=6)
         end_time = current_time + timedelta(hours=12)
+
         result = await self.session.execute(
             select(PartyEntity)
             .options(
@@ -462,18 +476,22 @@ class PartyService:
             )
         )
         parties = result.scalars().all()
+
         parties_within_radius: list[PartyEntity] = []
         for party in parties:
             if party.location is None:
                 continue
+
             distance = self._calculate_haversine_distance(
                 latitude,
                 longitude,
                 float(party.location.latitude),
                 float(party.location.longitude),
             )
+
             if distance <= env.PARTY_SEARCH_RADIUS_MILES:
                 parties_within_radius.append(party)
+
         return [party.to_dto() for party in parties_within_radius]
 
     async def get_parties_by_radius_and_date_range(
@@ -507,18 +525,22 @@ class PartyService:
             )
         )
         parties = result.scalars().all()
+
         parties_within_radius: list[PartyEntity] = []
         for party in parties:
             if party.location is None:
                 continue
+
             distance = self._calculate_haversine_distance(
                 latitude,
                 longitude,
                 float(party.location.latitude),
                 float(party.location.longitude),
             )
+
             if distance <= env.PARTY_SEARCH_RADIUS_MILES:
                 parties_within_radius.append(party)
+
         return [party.to_dto() for party in parties_within_radius]
 
     def _calculate_haversine_distance(
@@ -561,7 +583,9 @@ class PartyService:
                 ]
             )
             return output.getvalue()
+
         party_ids = [party.id for party in parties]
+
         result = await self.session.execute(
             select(PartyEntity)
             .options(
@@ -572,8 +596,10 @@ class PartyService:
         )
         party_entities = result.scalars().all()
         party_entity_map = {party.id: party for party in party_entities}
+
         output = io.StringIO()
         writer = csv.writer(output)
+
         writer.writerow(
             [
                 "Fully formatted address",
@@ -589,21 +615,26 @@ class PartyService:
                 "Contact Two Contact Preference",
             ]
         )
+
         for party in parties:
             party_entity = party_entity_map.get(party.id)
             if party_entity is None:
                 continue
+
             # Format address
             formatted_address = ""
             if party_entity.location:
                 formatted_address = party_entity.location.formatted_address or ""
+
             # Format date and time
             party_date = party.party_datetime.strftime("%Y-%m-%d") if party.party_datetime else ""
             party_time = party.party_datetime.strftime("%H:%M:%S") if party.party_datetime else ""
+
             contact_one_full_name = ""
             contact_one_email = ""
             contact_one_phone = ""
             contact_one_preference = ""
+
             if party_entity.contact_one:
                 contact_one_full_name = (
                     f"{party_entity.contact_one.account.first_name} "
@@ -617,10 +648,12 @@ class PartyService:
                 )
                 if party_entity.contact_one.account:
                     contact_one_email = party_entity.contact_one.account.email or ""
+
             contact_two_full_name = ""
             contact_two_email = ""
             contact_two_phone = ""
             contact_two_preference = ""
+
             contact_two_full_name = (
                 f"{party_entity.contact_two_first_name} {party_entity.contact_two_last_name}"
             )
@@ -631,6 +664,7 @@ class PartyService:
                 else ""
             )
             contact_two_email = party_entity.contact_two_email or ""
+
             writer.writerow(
                 [
                     formatted_address,
@@ -646,4 +680,5 @@ class PartyService:
                     contact_two_preference,
                 ]
             )
+
         return output.getvalue()

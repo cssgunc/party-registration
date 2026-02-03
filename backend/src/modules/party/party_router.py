@@ -1,7 +1,6 @@
 from datetime import UTC, datetime
-from typing import Any
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import Response
 from src.core.authentication import (
     authenticate_admin,
@@ -67,25 +66,20 @@ async def create_party(
 
 @party_router.get("/")
 async def list_parties(
-    page_number: int = Query(1, ge=1, description="Page number (1-indexed)"),
-    page_size: int | None = Query(None, ge=1, le=100, description="Items per page (default: all)"),
-    sort_by: str | None = Query(None, description="Field to sort by (e.g., 'party_datetime')"),
-    sort_order: str = Query("asc", pattern="^(asc|desc)$", description="Sort order: asc or desc"),
-    location_id: int | None = Query(None, description="Filter by location ID"),
-    contact_one_id: int | None = Query(None, description="Filter by contact one (student) ID"),
+    request: Request,
     party_service: PartyService = Depends(),
     _=Depends(authenticate_by_role("admin", "staff", "police")),
 ) -> PaginatedPartiesResponse:
     """
-    Returns all party registrations in the database with optional pagination, sorting, and filtering
+    Returns all party registrations with pagination, sorting, and filtering.
 
     Query Parameters:
-    - page_number: The page number to retrieve (1-indexed, default: 1)
-    - page_size: Number of items per page (max 100, default: returns all parties)
+    - page_number: Page number (1-indexed, default: 1)
+    - page_size: Items per page (default: all)
     - sort_by: Field to sort by (allowed: party_datetime, location_id, contact_one_id, id)
     - sort_order: Sort order (asc or desc, default: asc)
-    - location_id: Filter by location ID (optional)
-    - contact_one_id: Filter by contact one (student) ID (optional)
+    - location_id: Filter by location ID
+    - contact_one_id: Filter by contact one (student) ID
 
     Features:
     - **Opt-in**: All features have sensible defaults - no parameters returns all parties
@@ -94,10 +88,10 @@ async def list_parties(
 
     Returns:
     - items: List of party registrations for the current page
-    - total_records: Total number of records matching filters (not just current page)
-    - page_size: Items per page (equals total_records when page_size is None)
+    - total_records: Total number of records matching filters
+    - page_size: Items per page
     - page_number: Current page number
-    - total_pages: Total number of pages based on page size and total records
+    - total_pages: Total number of pages
 
     Examples:
     - Get all parties: GET /api/parties/
@@ -106,20 +100,7 @@ async def list_parties(
     - Filter by location: GET /api/parties/?location_id=5
     - Combined: GET /api/parties/?location_id=5&sort_by=party_datetime&page_size=20
     """
-    # Build filters dict from query params
-    filters: dict[str, Any] = {}
-    if location_id is not None:
-        filters["location_id"] = location_id
-    if contact_one_id is not None:
-        filters["contact_one_id"] = contact_one_id
-
-    return await party_service.get_parties_paginated(
-        page_number=page_number,
-        page_size=page_size,
-        sort_by=sort_by,
-        sort_order=sort_order,
-        filters=filters if filters else None,
-    )
+    return await party_service.get_parties_paginated(request=request)
 
 
 @party_router.get("/nearby")
@@ -206,7 +187,6 @@ async def get_parties_csv(
     try:
         start_datetime = datetime.strptime(start_date, "%Y-%m-%d")
         end_datetime = datetime.strptime(end_date, "%Y-%m-%d")
-
         end_datetime = end_datetime.replace(hour=23, minute=59, second=59, microsecond=999999)
     except ValueError as e:
         raise UnprocessableEntityException(

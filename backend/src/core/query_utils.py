@@ -11,7 +11,9 @@ from enum import Enum
 from typing import Any
 
 from fastapi import Request
-from pydantic import BaseModel, Field, field_validator
+from fastapi.exceptions import RequestValidationError
+from pydantic import BaseModel, Field, ValidationError, field_validator
+from pydantic_core import ValidationError as PydanticValidationError
 from sqlalchemy import Select, asc, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import DeclarativeMeta
@@ -326,7 +328,14 @@ def parse_pagination_params(
     page_number = int(query_params_dict.get("page_number", 1))
     page_size_str = query_params_dict.get("page_size")
     page_size = int(page_size_str) if page_size_str is not None else None
-    pagination_params = PaginationParams(page_number=page_number, page_size=page_size)
+    try:
+        pagination_params = PaginationParams(page_number=page_number, page_size=page_size)
+    except (ValueError, ValidationError) as e:
+        raise (
+            RequestValidationError(errors=e.errors())
+            if isinstance(e, PydanticValidationError)
+            else RequestValidationError(errors=[{"type": "value_error", "msg": str(e)}])
+        ) from None
 
     # Parse sorting
     sort_params: list[SortParam] | None = None
@@ -411,7 +420,7 @@ async def get_paginated_results[ModelType](
 
     if page_size is None:
         actual_page_size = total_records
-        total_pages = 1
+        total_pages = 1 if total_records > 0 else 0
         actual_page_number = 1
     else:
         actual_page_size = page_size

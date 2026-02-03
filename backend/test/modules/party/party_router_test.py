@@ -53,7 +53,7 @@ class TestPartyListRouter:
         """Test listing parties when database is empty."""
         response = await self.admin_client.get("/api/parties/")
         paginated = assert_res_paginated(
-            response, PartyDto, total_records=0, page_size=0, total_pages=1
+            response, PartyDto, total_records=0, page_size=0, total_pages=0
         )
         assert paginated.items == []
 
