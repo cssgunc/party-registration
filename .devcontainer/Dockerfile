@@ -51,13 +51,13 @@ RUN groupadd --gid $USER_GID $USERNAME \
     && chmod 0440 /etc/sudoers.d/$USERNAME
 
 # Git configuration
-RUN git config --system core.editor "code --wait"
-RUN git config --system safe.directory '/workspace'
-RUN git config --system push.autoSetupRemote true
-RUN git config --system pull.autoSetupRemote true
-RUN git config --system init.defaultBranch main
-RUN git config --system core.autocrlf input
-RUN git config --system color.ui auto
+RUN git config --system core.editor "code --wait" \
+    && git config --system safe.directory '/workspace' \
+    && git config --system push.autoSetupRemote true \
+    && git config --system pull.autoSetupRemote true \
+    && git config --system init.defaultBranch main \
+    && git config --system core.autocrlf input \
+    && git config --system color.ui auto
 
 # Install python dev dependencies
 RUN pip install --upgrade pip
