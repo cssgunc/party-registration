@@ -14,8 +14,8 @@ from test.utils.http.assertions import assert_res_failure, assert_res_paginated,
 from test.utils.http.test_templates import generate_auth_required_tests
 
 test_location_authentication = generate_auth_required_tests(
-    ({"admin", "staff"}, "GET", "/api/locations/", None),
-    ({"admin"}, "POST", "/api/locations/", {"google_place_id": "ChIJ123abc"}),
+    ({"admin", "staff"}, "GET", "/api/locations", None),
+    ({"admin"}, "POST", "/api/locations", {"google_place_id": "ChIJ123abc"}),
     ({"admin", "staff"}, "GET", "/api/locations/1", None),
     ({"admin"}, "PUT", "/api/locations/1", {"google_place_id": "ChIJ123abc"}),
     ({"admin"}, "DELETE", "/api/locations/1", None),
@@ -35,7 +35,7 @@ async def sample_locations(location_utils: LocationTestUtils) -> list[LocationEn
 
 
 class TestLocationListRouter:
-    """Tests for GET /api/locations/ endpoint."""
+    """Tests for GET /api/locations endpoint."""
 
     admin_client: AsyncClient
     staff_client: AsyncClient
@@ -55,7 +55,7 @@ class TestLocationListRouter:
     @pytest.mark.asyncio
     async def test_list_locations_empty(self):
         """Test listing locations when database is empty."""
-        response = await self.staff_client.get("/api/locations/")
+        response = await self.staff_client.get("/api/locations")
 
         paginated = assert_res_paginated(
             response, LocationDto, total_records=0, page_size=0, total_pages=1
@@ -65,7 +65,7 @@ class TestLocationListRouter:
     @pytest.mark.asyncio
     async def test_list_locations_with_data(self, sample_locations: list[LocationEntity]):
         """Test listing locations when multiple locations exist."""
-        response = await self.staff_client.get("/api/locations/")
+        response = await self.staff_client.get("/api/locations")
 
         paginated = assert_res_paginated(
             response, LocationDto, total_records=3, page_size=3, total_pages=1
@@ -79,7 +79,7 @@ class TestLocationListRouter:
 
 
 class TestLocationCRUDRouter:
-    """Tests for CRUD operations on /api/locations/ endpoints."""
+    """Tests for CRUD operations on /api/locations endpoints."""
 
     admin_client: AsyncClient
     staff_client: AsyncClient
@@ -127,7 +127,7 @@ class TestLocationCRUDRouter:
             include={"google_place_id", "hold_expiration"},
         )
 
-        response = await self.admin_client.post("/api/locations/", json=request_data)
+        response = await self.admin_client.post("/api/locations", json=request_data)
         data = assert_res_success(response, LocationDto, status=201)
 
         self.location_utils.assert_matches(location_data, data)
@@ -147,7 +147,7 @@ class TestLocationCRUDRouter:
             include={"google_place_id", "hold_expiration"},
         )
 
-        response = await self.admin_client.post("/api/locations/", json=request_data)
+        response = await self.admin_client.post("/api/locations", json=request_data)
         assert_res_failure(response, LocationConflictException(location.google_place_id))
 
     @pytest.mark.asyncio

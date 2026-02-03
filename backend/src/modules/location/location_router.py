@@ -86,7 +86,7 @@ async def get_place_details(
         ) from e
 
 
-@location_router.get("/", response_model=PaginatedLocationResponse)
+@location_router.get("", response_model=PaginatedLocationResponse)
 async def get_locations(
     location_service: LocationService = Depends(),
     _=Depends(authenticate_staff_or_admin),
@@ -110,7 +110,7 @@ async def get_location(
     return await location_service.get_location_by_id(location_id)
 
 
-@location_router.post("/", status_code=201, response_model=LocationDto)
+@location_router.post("", status_code=201, response_model=LocationDto)
 async def create_location(
     data: LocationCreate,
     location_service: LocationService = Depends(),
