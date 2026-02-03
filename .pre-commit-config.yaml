@@ -8,13 +8,33 @@ repos:
       - id: check-yaml
       - id: check-added-large-files
 
-  # Python
+  # Python linting and formatting with Ruff
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.14.10
     hooks:
       - id: ruff-check # Linting
         args: [--fix] # Auto-fix issues
       - id: ruff-format # Formatting
+
+  # Python type checking
+  - repo: local
+    hooks:
+      - id: pyright
+        name: pyright
+        entry: bash -c 'cd backend && pyright'
+        language: system
+        files: ^backend/.*\.py$
+        pass_filenames: false
+
+  # TypeScript type checking
+  - repo: local
+    hooks:
+      - id: tsc
+        name: tsc
+        entry: bash -c 'cd frontend && npx tsc --noEmit'
+        language: system
+        files: ^frontend/.*\.tsx?$
+        pass_filenames: false
 
   # JavaScript/TypeScript and other Prettier compatible files
   - repo: local
