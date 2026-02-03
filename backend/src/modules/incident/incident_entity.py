@@ -23,7 +23,7 @@ class IncidentEntity(MappedAsDataclass, EntityBase):
     severity: Mapped[IncidentSeverity] = mapped_column(
         Enum(IncidentSeverity, native_enum=False, length=20), nullable=False
     )
-    description: Mapped[str] = mapped_column(String, nullable=False, default="")
+    description: Mapped[str] = mapped_column(String(2000), nullable=False, default="")
 
     # Relationships
     location: Mapped["LocationEntity"] = relationship(

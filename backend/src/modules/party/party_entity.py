@@ -28,10 +28,10 @@ class PartyEntity(MappedAsDataclass, EntityBase):
         Integer, ForeignKey("students.account_id", ondelete="CASCADE"), nullable=False
     )
 
-    contact_two_email: Mapped[str] = mapped_column(String, nullable=False)
-    contact_two_first_name: Mapped[str] = mapped_column(String, nullable=False)
-    contact_two_last_name: Mapped[str] = mapped_column(String, nullable=False)
-    contact_two_phone_number: Mapped[str] = mapped_column(String, nullable=False)
+    contact_two_email: Mapped[str] = mapped_column(String(255), nullable=False)
+    contact_two_first_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    contact_two_last_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    contact_two_phone_number: Mapped[str] = mapped_column(String(20), nullable=False)
     contact_two_contact_preference: Mapped[ContactPreference] = mapped_column(
         Enum(ContactPreference, native_enum=False, length=20), nullable=False
     )

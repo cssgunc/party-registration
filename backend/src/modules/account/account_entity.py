@@ -10,9 +10,9 @@ class AccountEntity(MappedAsDataclass, EntityBase):
     __tablename__ = "accounts"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, init=False)
-    email: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
-    first_name: Mapped[str] = mapped_column(String, nullable=False)
-    last_name: Mapped[str] = mapped_column(String, nullable=False)
+    email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    first_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    last_name: Mapped[str] = mapped_column(String(255), nullable=False)
     pid: Mapped[str] = mapped_column(
         String(9),
         CheckConstraint(

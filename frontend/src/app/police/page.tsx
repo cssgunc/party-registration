@@ -12,6 +12,7 @@ import getMockClient from "@/lib/network/mockClient";
 import { useQuery } from "@tanstack/react-query";
 import { startOfDay } from "date-fns";
 import { useEffect, useMemo, useState } from "react";
+import PartyCsvExportButton from "./_components/PartyCsvExportButton";
 
 const policeLocationService = new LocationService(getMockClient("police"));
 const partyService = new PartyService(getMockClient("police"));
@@ -134,6 +135,8 @@ export default function PolicePage() {
             <h2 className="text-xl font-semibold mb-4 flex-shrink-0">
               Party List
             </h2>
+
+            <PartyCsvExportButton startDate={startDate} endDate={endDate} />
 
             {/* Loading State */}
             {(isLoading || isLoadingNearby) && (

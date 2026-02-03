@@ -64,9 +64,10 @@ async def test_session(test_engine: AsyncEngine):
         yield session
 
     # Clean up: delete all data and reset identity columns
-    async with test_engine.begin() as conn:
-        tables = [table.name for table in EntityBase.metadata.sorted_tables]
-        if tables:
+    tables = [table.name for table in EntityBase.metadata.sorted_tables]
+    if tables:
+        # Phase 1: delete data inside a transaction
+        async with test_engine.begin() as conn:
             # Disable all FK constraints so deletes can run in any order
             for table in tables:
                 await conn.execute(text(f"ALTER TABLE [{table}] NOCHECK CONSTRAINT ALL"))
@@ -75,7 +76,13 @@ async def test_session(test_engine: AsyncEngine):
             for table in reversed(tables):
                 await conn.execute(text(f"DELETE FROM [{table}]"))
 
-            # Reset identity columns back to 0
+            # Re-enable all FK constraints
+            for table in tables:
+                await conn.execute(text(f"ALTER TABLE [{table}] CHECK CONSTRAINT ALL"))
+
+        # Phase 2: reset identity columns (DBCC cannot run inside a transaction)
+        async with test_engine.connect() as conn:
+            await conn.execution_options(isolation_level="AUTOCOMMIT")
             result = await conn.execute(
                 text(
                     "SELECT t.name FROM sys.tables t"
@@ -85,10 +92,6 @@ async def test_session(test_engine: AsyncEngine):
             )
             for (table_name,) in result.fetchall():
                 await conn.execute(text(f"DBCC CHECKIDENT ('{table_name}', RESEED, 0)"))
-
-            # Re-enable all FK constraints
-            for table in tables:
-                await conn.execute(text(f"ALTER TABLE [{table}] CHECK CONSTRAINT ALL"))
 
 
 # =================================== Clients =======================================

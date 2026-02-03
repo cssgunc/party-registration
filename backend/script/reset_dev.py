@@ -197,6 +197,7 @@ async def reset_dev():
 
         await session.commit()
 
+    await async_engine.dispose()
     print("Database successfully reset!")
 
 

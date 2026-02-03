@@ -23,7 +23,7 @@ class StudentEntity(MappedAsDataclass, EntityBase):
         Enum(ContactPreference, native_enum=False, length=20), nullable=False
     )
     last_registered: Mapped[datetime | None] = mapped_column(DATETIMEOFFSET, nullable=True)
-    phone_number: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+    phone_number: Mapped[str] = mapped_column(String(20), nullable=False, unique=True)
 
     account: Mapped["AccountEntity"] = relationship("AccountEntity", init=False)
 
