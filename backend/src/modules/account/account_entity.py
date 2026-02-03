@@ -16,12 +16,14 @@ class AccountEntity(MappedAsDataclass, EntityBase):
     pid: Mapped[str] = mapped_column(
         String(9),
         CheckConstraint(
-            "length(pid) = 9 AND pid ~ '^[0-9]{9}$'",
+            "LEN(pid) = 9 AND pid NOT LIKE '%[^0-9]%'",
             name="check_pid_format",
         ),
         nullable=False,
     )
-    role: Mapped[AccountRole] = mapped_column(Enum(AccountRole), nullable=False)
+    role: Mapped[AccountRole] = mapped_column(
+        Enum(AccountRole, native_enum=False, length=20), nullable=False
+    )
 
     @classmethod
     def from_data(cls, data: "AccountData") -> Self:

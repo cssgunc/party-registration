@@ -76,10 +76,18 @@ async def reset_dev():
 
     with server_engine.connect() as connection:
         print("Deleting database...")
-        connection.execute(text(f"DROP DATABASE {env.POSTGRES_DATABASE}"))
+        connection.execute(
+            text(f"""
+                IF EXISTS (SELECT * FROM sys.databases WHERE name = '{env.MSSQL_DATABASE}')
+                BEGIN
+                    ALTER DATABASE [{env.MSSQL_DATABASE}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+                    DROP DATABASE [{env.MSSQL_DATABASE}];
+                END
+            """)
+        )
 
         print("Recreating database...")
-        connection.execute(text(f"CREATE DATABASE {env.POSTGRES_DATABASE}"))
+        connection.execute(text(f"CREATE DATABASE [{env.MSSQL_DATABASE}]"))
 
     async with async_engine.begin() as connection:
         print("Dropping tables...")
