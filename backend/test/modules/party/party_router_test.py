@@ -463,23 +463,35 @@ class TestPartyCSVRouter:
             == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
-        # Parse Excel content
         wb = load_workbook(BytesIO(response.content))
         ws = wb.active
+        assert ws is not None
 
         assert ws.max_row == 1
 
-        assert ws["A1"].value == "Fully formatted address"
+        expected_headers = [
+            "Address",
+            "Date of Party",
+            "Time of Party",
+            "Contact One Full Name",
+            "Contact One Email",
+            "Contact One Phone Number",
+            "Contact One Contact Preference",
+            "Contact Two Full Name",
+            "Contact Two Email",
+            "Contact Two Phone Number",
+            "Contact Two Contact Preference",
+        ]
+
+        actual_headers = [cell.value for cell in ws[1]]
+        assert actual_headers == expected_headers
         assert ws["A1"].font.bold is True
-        assert "Contact One Email" in [cell.value for cell in ws[1]]
-        assert "Contact Two Email" in [cell.value for cell in ws[1]]
 
     @pytest.mark.asyncio
     async def test_get_parties_csv_with_data(self):
         """Test Excel export with parties."""
         parties = await self.party_utils.create_many(i=3)
 
-        # Get date range that covers all parties
         now = datetime.now(UTC)
         params = {
             "start_date": (now - timedelta(days=1)).strftime("%Y-%m-%d"),
@@ -494,24 +506,50 @@ class TestPartyCSVRouter:
 
         wb = load_workbook(BytesIO(response.content))
         ws = wb.active
+        assert ws is not None
 
         assert ws.max_row == 4
         assert ws["A1"].font.bold is True
 
-        all_cell_values = []
-        for row in ws.iter_rows(values_only=True):
-            cell_strs = [str(cell) if cell is not None else "" for cell in row]
-            all_cell_values.extend(cell_strs)
+        expected_headers = [
+            "Address",
+            "Date of Party",
+            "Time of Party",
+            "Contact One Full Name",
+            "Contact One Email",
+            "Contact One Phone Number",
+            "Contact One Contact Preference",
+            "Contact Two Full Name",
+            "Contact Two Email",
+            "Contact Two Phone Number",
+            "Contact Two Contact Preference",
+        ]
 
-        excel_content = " ".join(all_cell_values)
-        for party in parties:
-            has_account = party.contact_one and party.contact_one.account
-            contact_one_email = party.contact_one.account.email if has_account else None
-            contact_two_email = party.contact_two_email
-            email_found = (contact_one_email and contact_one_email in excel_content) or (
-                contact_two_email and contact_two_email in excel_content
-            )
-            assert email_found
+        actual_headers = [cell.value for cell in ws[1]]
+        assert actual_headers == expected_headers
+
+        first_party = parties[0]
+        row_2 = [cell.value for cell in ws[2]]
+
+        assert first_party.location.formatted_address in str(row_2[0])
+
+        expected_date = first_party.party_datetime.strftime("%Y-%m-%d")
+        assert row_2[1] == expected_date
+
+        assert ":" in str(row_2[2])
+        assert "AM" in str(row_2[2]) or "PM" in str(row_2[2])
+
+        contact_one_email = (
+            first_party.contact_one.account.email if first_party.contact_one.account else None
+        )
+        assert contact_one_email == row_2[4]
+
+        phone_str = str(row_2[5])
+        assert "(" in phone_str and ")" in phone_str and "-" in phone_str
+
+        assert row_2[6][0].isupper()
+
+        assert first_party.contact_two_email == row_2[8]
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(

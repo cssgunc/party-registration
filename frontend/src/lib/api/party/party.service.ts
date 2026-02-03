@@ -88,8 +88,8 @@ export class PartyService {
     try {
       const response = await this.client.get("/parties/csv", {
         params: {
-          start_date: startDate.toISOString(),
-          end_date: endDate.toISOString(),
+          start_date: startDate.toISOString().split("T")[0],
+          end_date: endDate.toISOString().split("T")[0],
         },
         responseType: "blob",
       });
@@ -100,7 +100,7 @@ export class PartyService {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `parties_${startDate}_to_${endDate}.xlsx`;
+      link.download = `parties_${startDate.toISOString().split("T")[0]}_to_${endDate.toISOString().split("T")[0]}.xlsx`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

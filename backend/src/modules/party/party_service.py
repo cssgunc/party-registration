@@ -491,6 +491,23 @@ class PartyService:
         r = 3959
         return c * r
 
+    def _format_phone_number(self, phone: str) -> str:
+        """
+        Format a 10-digit phone number as (XXX) XXX-XXXX.
+
+        Args:
+            phone: Phone number string (expected to be 10 digits)
+
+        Returns:
+            Formatted phone number
+        """
+        digits = "".join(c for c in phone if c.isdigit())
+
+        if len(digits) == 10:
+            return f"({digits[:3]}) {digits[3:6]}-{digits[6:]}"
+
+        return phone
+
     async def export_parties_to_excel(self, parties: list[PartyDto]) -> bytes:
         """
         Export a list of parties to Excel format with formatting.
@@ -503,11 +520,12 @@ class PartyService:
         """
         wb = Workbook()
         ws = wb.active
+        assert ws is not None  # New workbook always has an active sheet
         ws.title = "Parties"
 
         # Define headers
         headers = [
-            "Fully formatted address",
+            "Address",
             "Date of Party",
             "Time of Party",
             "Contact One Full Name",
@@ -524,87 +542,41 @@ class PartyService:
         for cell in ws[1]:
             cell.font = Font(bold=True)
 
-        if parties:
-            party_ids = [party.id for party in parties]
+        for party in parties:
+            # Format address
+            formatted_address = party.location.formatted_address
 
-            result = await self.session.execute(
-                select(PartyEntity)
-                .options(
-                    selectinload(PartyEntity.location),
-                    selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
-                )
-                .where(PartyEntity.id.in_(party_ids))
+            # Format date and time
+            party_date = party.party_datetime.strftime("%Y-%m-%d")
+            party_time = party.party_datetime.strftime("%-I:%M %p")
+
+            # Contact one info
+            contact_one_full_name = f"{party.contact_one.first_name} {party.contact_one.last_name}"
+            contact_one_email = party.contact_one.email
+            contact_one_phone = self._format_phone_number(party.contact_one.phone_number)
+            contact_one_preference = party.contact_one.contact_preference.value.capitalize()
+
+            # Contact two info
+            contact_two_full_name = f"{party.contact_two.first_name} {party.contact_two.last_name}"
+            contact_two_email = party.contact_two.email
+            contact_two_phone = self._format_phone_number(party.contact_two.phone_number)
+            contact_two_preference = party.contact_two.contact_preference.value.capitalize()
+
+            ws.append(
+                [
+                    formatted_address,
+                    party_date,
+                    party_time,
+                    contact_one_full_name,
+                    contact_one_email,
+                    contact_one_phone,
+                    contact_one_preference,
+                    contact_two_full_name,
+                    contact_two_email,
+                    contact_two_phone,
+                    contact_two_preference,
+                ]
             )
-            party_entities = result.scalars().all()
-
-            party_entity_map = {party.id: party for party in party_entities}
-
-            for party in parties:
-                party_entity = party_entity_map.get(party.id)
-                if party_entity is None:
-                    continue
-
-                # Format address
-                formatted_address = ""
-                if party_entity.location:
-                    formatted_address = party_entity.location.formatted_address or ""
-
-                # Format date and time
-                party_date = (
-                    party.party_datetime.strftime("%Y-%m-%d") if party.party_datetime else ""
-                )
-                party_time = (
-                    party.party_datetime.strftime("%H:%M:%S") if party.party_datetime else ""
-                )
-
-                contact_one_full_name = ""
-                contact_one_email = ""
-                contact_one_phone = ""
-                contact_one_preference = ""
-                if party_entity.contact_one:
-                    contact_one_full_name = (
-                        f"{party_entity.contact_one.account.first_name} "
-                        f"{party_entity.contact_one.account.last_name}"
-                    )
-                    contact_one_phone = party_entity.contact_one.phone_number or ""
-                    contact_one_preference = (
-                        party_entity.contact_one.contact_preference.value
-                        if party_entity.contact_one.contact_preference
-                        else ""
-                    )
-                    if party_entity.contact_one.account:
-                        contact_one_email = party_entity.contact_one.account.email or ""
-
-                contact_two_full_name = ""
-                contact_two_email = ""
-                contact_two_phone = ""
-                contact_two_preference = ""
-                contact_two_full_name = (
-                    f"{party_entity.contact_two_first_name} {party_entity.contact_two_last_name}"
-                )
-                contact_two_phone = party_entity.contact_two_phone_number or ""
-                contact_two_preference = (
-                    party_entity.contact_two_contact_preference.value
-                    if party_entity.contact_two_contact_preference
-                    else ""
-                )
-                contact_two_email = party_entity.contact_two_email or ""
-
-                ws.append(
-                    [
-                        formatted_address,
-                        party_date,
-                        party_time,
-                        contact_one_full_name,
-                        contact_one_email,
-                        contact_one_phone,
-                        contact_one_preference,
-                        contact_two_full_name,
-                        contact_two_email,
-                        contact_two_phone,
-                        contact_two_preference,
-                    ]
-                )
 
         # Auto-fit column widths based on content
         for column in ws.columns:
@@ -614,7 +586,7 @@ class PartyService:
                 try:
                     if cell.value:
                         max_length = max(max_length, len(str(cell.value)))
-                except:
+                except (AttributeError, TypeError):
                     pass
             adjusted_width = min(max_length + 2, 50)
             ws.column_dimensions[column_letter].width = adjusted_width
