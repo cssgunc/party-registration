@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from src.core.authentication import (
     authenticate_admin,
     authenticate_by_role,
@@ -88,17 +88,20 @@ async def get_place_details(
 
 @location_router.get("/", response_model=PaginatedLocationResponse)
 async def get_locations(
+    request: Request,
     location_service: LocationService = Depends(),
     _=Depends(authenticate_staff_or_admin),
-):
-    locations = await location_service.get_locations()
-    return PaginatedLocationResponse(
-        items=locations,
-        total_records=len(locations),
-        page_number=1,
-        page_size=len(locations),
-        total_pages=1,
-    )
+) -> PaginatedLocationResponse:
+    """
+    Returns all locations with pagination, sorting, and filtering.
+
+    Query Parameters:
+    - page_number: Page number (1-indexed, default: 1)
+    - page_size: Items per page (default: all)
+    - sort_by: Field to sort by
+    - sort_order: Sort order (asc or desc, default: asc)
+    """
+    return await location_service.get_locations_paginated(request=request)
 
 
 @location_router.get("/{location_id}", response_model=LocationDto)

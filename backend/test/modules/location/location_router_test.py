@@ -58,7 +58,7 @@ class TestLocationListRouter:
         response = await self.staff_client.get("/api/locations/")
 
         paginated = assert_res_paginated(
-            response, LocationDto, total_records=0, page_size=0, total_pages=1
+            response, LocationDto, total_records=0, page_size=0, total_pages=0
         )
         assert paginated.items == []
 
