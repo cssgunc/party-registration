@@ -86,7 +86,7 @@ async def get_place_details(
         ) from e
 
 
-@location_router.get("/", response_model=PaginatedLocationResponse)
+@location_router.get("", response_model=PaginatedLocationResponse)
 async def get_locations(
     request: Request,
     location_service: LocationService = Depends(),
@@ -113,7 +113,7 @@ async def get_location(
     return await location_service.get_location_by_id(location_id)
 
 
-@location_router.post("/", status_code=201, response_model=LocationDto)
+@location_router.post("", status_code=201, response_model=LocationDto)
 async def create_location(
     data: LocationCreate,
     location_service: LocationService = Depends(),
@@ -123,8 +123,6 @@ async def create_location(
     return await location_service.create_location(
         LocationData.from_address(
             address_data,
-            warning_count=data.warning_count,
-            citation_count=data.citation_count,
             hold_expiration=data.hold_expiration,
         )
     )
@@ -144,15 +142,11 @@ async def update_location(
         address_data = await location_service.get_place_details(data.google_place_id)
         location_data = LocationData.from_address(
             address_data,
-            warning_count=data.warning_count,
-            citation_count=data.citation_count,
             hold_expiration=data.hold_expiration,
         )
     else:
         location_data = LocationData(
-            **location.model_dump(exclude={"warning_count", "citation_count", "hold_expiration"}),
-            warning_count=data.warning_count,
-            citation_count=data.citation_count,
+            **location.model_dump(exclude={"hold_expiration", "id", "incidents"}),
             hold_expiration=data.hold_expiration,
         )
 

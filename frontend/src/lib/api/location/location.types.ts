@@ -35,35 +35,51 @@ type AddressData = {
  * Location data with OCSL-specific fields
  */
 type LocationData = AddressData & {
-  warning_count: number;
-  citation_count: number;
   hold_expiration: Date | null;
 };
 
 /**
- * Complaint DTO
+ * Incident severity levels
  */
-type ComplaintDto = {
-  id: number;
-  location_id: number;
-  complaint_datetime: Date;
+type IncidentSeverity = "complaint" | "warning" | "citation";
+
+/**
+ * Incident create DTO (for creating/updating)
+ */
+type IncidentCreateDto = {
+  incident_datetime: Date;
   description: string;
+  severity: IncidentSeverity;
 };
 
 /**
- * Complaint DTO (backend response format with string dates)
+ * Incident data including location_id
  */
-type ComplaintDtoBackend = Omit<ComplaintDto, "complaint_datetime"> & {
-  complaint_datetime: string;
+type IncidentData = IncidentCreateDto & {
+  location_id: number;
 };
 
 /**
- * Convert complaint from backend format (string dates) to frontend format (Date objects)
+ * Incident DTO
  */
-function convertComplaint(backend: ComplaintDtoBackend): ComplaintDto {
+type IncidentDto = IncidentData & {
+  id: number;
+};
+
+/**
+ * Incident DTO (backend response format with string dates)
+ */
+type IncidentDtoBackend = Omit<IncidentDto, "incident_datetime"> & {
+  incident_datetime: string;
+};
+
+/**
+ * Convert incident from backend format (string dates) to frontend format (Date objects)
+ */
+function convertIncident(backend: IncidentDtoBackend): IncidentDto {
   return {
     ...backend,
-    complaint_datetime: new Date(backend.complaint_datetime),
+    incident_datetime: new Date(backend.incident_datetime),
   };
 }
 
@@ -72,18 +88,15 @@ function convertComplaint(backend: ComplaintDtoBackend): ComplaintDto {
  */
 type LocationDto = LocationData & {
   id: number;
-  complaints: ComplaintDto[];
+  incidents: IncidentDto[];
 };
 
 /**
  * Location DTO (backend response format with string dates)
  */
-type LocationDtoBackend = Omit<
-  LocationDto,
-  "hold_expiration" | "complaints"
-> & {
+type LocationDtoBackend = Omit<LocationDto, "hold_expiration" | "incidents"> & {
   hold_expiration: string | null;
-  complaints: ComplaintDtoBackend[];
+  incidents: IncidentDtoBackend[];
 };
 
 /**
@@ -95,7 +108,7 @@ function convertLocation(backend: LocationDtoBackend): LocationDto {
     hold_expiration: backend.hold_expiration
       ? new Date(backend.hold_expiration)
       : null,
-    complaints: backend.complaints.map(convertComplaint),
+    incidents: backend.incidents.map(convertIncident),
   };
 }
 
@@ -104,8 +117,6 @@ function convertLocation(backend: LocationDtoBackend): LocationDto {
  */
 type LocationCreate = {
   google_place_id: string;
-  warning_count?: number;
-  citation_count?: number;
   hold_expiration?: Date | null;
 };
 
@@ -113,12 +124,53 @@ export type {
   AddressData,
   AutocompleteInput,
   AutocompleteResult,
-  ComplaintDto,
-  ComplaintDtoBackend,
+  IncidentCreateDto,
+  IncidentData,
+  IncidentDto,
+  IncidentDtoBackend,
+  IncidentSeverity,
   LocationCreate,
   LocationData,
   LocationDto,
   LocationDtoBackend,
 };
 
-export { convertComplaint, convertLocation };
+/**
+ * Count incidents of a specific severity for a location
+ */
+function countIncidentsBySeverity(
+  location: LocationDto,
+  severity: IncidentSeverity
+): number {
+  return location.incidents.filter((i) => i.severity === severity).length;
+}
+
+/**
+ * Get warning count for a location
+ */
+function getWarningCount(location: LocationDto): number {
+  return countIncidentsBySeverity(location, "warning");
+}
+
+/**
+ * Get citation count for a location
+ */
+function getCitationCount(location: LocationDto): number {
+  return countIncidentsBySeverity(location, "citation");
+}
+
+/**
+ * Get complaint count for a location
+ */
+function getComplaintCount(location: LocationDto): number {
+  return countIncidentsBySeverity(location, "complaint");
+}
+
+export {
+  convertIncident,
+  convertLocation,
+  countIncidentsBySeverity,
+  getCitationCount,
+  getComplaintCount,
+  getWarningCount,
+};

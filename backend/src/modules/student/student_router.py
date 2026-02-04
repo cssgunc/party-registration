@@ -46,7 +46,7 @@ async def get_my_parties(
     return await party_service.get_parties_by_contact(user.id)
 
 
-@student_router.get("/")
+@student_router.get("")
 async def list_students(
     request: Request,
     student_service: StudentService = Depends(),
@@ -80,7 +80,7 @@ async def get_student(
     return await student_service.get_student_by_id(student_id)
 
 
-@student_router.post("/", status_code=201)
+@student_router.post("", status_code=201)
 async def create_student(
     payload: StudentCreate,
     student_service: StudentService = Depends(),

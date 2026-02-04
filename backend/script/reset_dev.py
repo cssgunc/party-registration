@@ -10,45 +10,57 @@ import json
 import re
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
-import src.modules  # Ensure all modules are imported so their entities are registered # noqa: F401
+import src.modules as entities
 from sqlalchemy import create_engine, text
 from src.core.config import env
 from src.core.database import AsyncSessionLocal, EntityBase, server_url
 from src.core.database import engine as async_engine
-from src.modules.account.account_entity import AccountEntity, AccountRole
-from src.modules.location.location_entity import LocationEntity
-from src.modules.party.party_entity import PartyEntity
-from src.modules.police.police_entity import PoliceEntity
-from src.modules.student.student_entity import StudentEntity
+from src.modules.account.account_model import AccountRole
+from src.modules.incident.incident_model import IncidentSeverity
 from src.modules.student.student_model import ContactPreference, StudentData
 
 
 def parse_date(date_str: str | None) -> datetime | None:
-    """Parse a date string in ISO format or relative format (e.g., NOW-7d, NOW+3h)."""
+    """Parse a date string in ISO format or relative format (e.g., NOW-7d, NOW+3h, NOW+5d@20:30)."""
     if not date_str or date_str == "null":
         return None
 
     now = datetime.now(UTC)
 
     if date_str.startswith("NOW"):
-        match = re.match(r"NOW([+-])(\d+)([hdwmy])", date_str)
+        match = re.match(r"NOW([+-])(\d+)([hdwmy])(?:@(\d{2}):(\d{2}))?", date_str)
         if match:
-            sign, amount, unit = match.groups()
+            sign, amount, unit, hour, minute = match.groups()
             amount = int(amount)
             if sign == "-":
                 amount = -amount
 
             if unit == "h":
-                return now + timedelta(hours=amount)
+                result = now + timedelta(hours=amount)
             elif unit == "d":
-                return now + timedelta(days=amount)
+                result = now + timedelta(days=amount)
             elif unit == "w":
-                return now + timedelta(weeks=amount)
+                result = now + timedelta(weeks=amount)
             elif unit == "m":
-                return now + timedelta(days=amount * 30)
+                result = now + timedelta(days=amount * 30)
             elif unit == "y":
-                return now + timedelta(days=amount * 365)
+                result = now + timedelta(days=amount * 365)
+            else:
+                return now
+
+            # Apply static time if provided (e.g., @20:30) - interpreted as local time
+            if hour is not None and minute is not None:
+                local_tz = ZoneInfo("America/New_York")
+                # Convert to local, set the time, then convert back to UTC
+                local_result = result.astimezone(local_tz)
+                local_result = local_result.replace(
+                    hour=int(hour), minute=int(minute), second=0, microsecond=0
+                )
+                result = local_result.astimezone(UTC)
+
+            return result
 
         return now
 
@@ -83,14 +95,14 @@ async def reset_dev():
         ) as f:
             data = json.load(f)
 
-        police = PoliceEntity(
+        police = entities.PoliceEntity(
             email=data["police"]["email"],
             hashed_password=data["police"]["hashed_password"],
         )
         session.add(police)
 
         for account_data in data["accounts"]:
-            account = AccountEntity(
+            account = entities.AccountEntity(
                 pid=account_data["pid"],
                 email=account_data["email"],
                 first_name=account_data["first_name"],
@@ -102,7 +114,7 @@ async def reset_dev():
         await session.flush()
 
         for student_data in data["students"]:
-            account = AccountEntity(
+            account = entities.AccountEntity(
                 pid=student_data["pid"],
                 email=student_data["email"],
                 first_name=student_data["first_name"],
@@ -112,7 +124,7 @@ async def reset_dev():
             session.add(account)
             await session.flush()
 
-            student = StudentEntity.from_data(
+            student = entities.StudentEntity.from_data(
                 StudentData(
                     contact_preference=ContactPreference(student_data["contact_preference"]),
                     phone_number=student_data["phone_number"],
@@ -123,9 +135,7 @@ async def reset_dev():
             session.add(student)
 
         for location_data in data["locations"]:
-            location = LocationEntity(
-                citation_count=location_data["citation_count"],
-                warning_count=location_data["warning_count"],
+            location = entities.LocationEntity(
                 hold_expiration=parse_date(location_data.get("hold_expiration")),
                 formatted_address=location_data["formatted_address"],
                 google_place_id=location_data["google_place_id"],
@@ -141,13 +151,29 @@ async def reset_dev():
             )
             session.add(location)
 
+        await session.flush()
+
+        for incident_data in data.get("incidents", []):
+            incident_datetime = parse_date(incident_data["incident_datetime"])
+            assert incident_datetime is not None, (
+                f"incident_datetime required for incident {incident_data['id']}"
+            )
+
+            incident = entities.IncidentEntity(
+                location_id=incident_data["location_id"],
+                incident_datetime=incident_datetime,
+                severity=IncidentSeverity(incident_data["severity"]),
+                description=incident_data.get("description", ""),
+            )
+            session.add(incident)
+
         for party_data in data["parties"]:
             party_datetime = parse_date(party_data["party_datetime"])
             assert party_datetime is not None, (
                 f"party_datetime required for party {party_data['id']}"
             )
 
-            party = PartyEntity(
+            party = entities.PartyEntity(
                 party_datetime=party_datetime,
                 location_id=party_data["location_id"],
                 contact_one_id=party_data["contact_one_id"],

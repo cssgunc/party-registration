@@ -2,30 +2,31 @@ from datetime import UTC, datetime, timedelta
 from typing import Any, TypedDict, Unpack, override
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.modules.complaint.complaint_entity import ComplaintEntity
-from src.modules.complaint.complaint_model import ComplaintData, ComplaintDto
+from src.modules.incident.incident_entity import IncidentEntity
+from src.modules.incident.incident_model import IncidentData, IncidentDto, IncidentSeverity
 from test.modules.location.location_utils import LocationTestUtils
 from test.utils.resource_test_utils import ResourceTestUtils
 
 
-class ComplaintOverrides(TypedDict, total=False):
+class IncidentOverrides(TypedDict, total=False):
     location_id: int
-    complaint_datetime: datetime
+    incident_datetime: datetime
     description: str
+    severity: IncidentSeverity
 
 
-class ComplaintTestUtils(
+class IncidentTestUtils(
     ResourceTestUtils[
-        ComplaintEntity,
-        ComplaintData,
-        ComplaintDto,
+        IncidentEntity,
+        IncidentData,
+        IncidentDto,
     ]
 ):
     def __init__(self, session: AsyncSession, location_utils: LocationTestUtils):
         super().__init__(
             session,
-            entity_class=ComplaintEntity,
-            data_class=ComplaintData,
+            entity_class=IncidentEntity,
+            data_class=IncidentData,
         )
         self.location_utils = location_utils
 
@@ -34,14 +35,22 @@ class ComplaintTestUtils(
     def generate_defaults(count: int) -> dict[str, Any]:
         return {
             "location_id": 1,
-            "complaint_datetime": (
-                datetime(2025, 11, 18, 20, 30, 0, tzinfo=UTC) + timedelta(days=count)
+            "incident_datetime": (
+                datetime(2026, 1, 1, 0, 0, 0, tzinfo=UTC) + timedelta(days=count)
             ).isoformat(),
-            "description": f"Complaint {count}",
+            "description": f"Incident {count}",
+            "severity": IncidentSeverity.COMPLAINT.value,
         }
 
+    @classmethod
+    def get_sample_create_data(cls) -> dict:
+        """Get sample data for IncidentCreate (without location_id, since it comes from path)."""
+        data = cls.generate_defaults(0)
+        del data["location_id"]
+        return data
+
     @override
-    async def next_dict(self, **overrides: Unpack[ComplaintOverrides]) -> dict:
+    async def next_dict(self, **overrides: Unpack[IncidentOverrides]) -> dict:
         # If location_id not provided, create a location
         local_overrides = dict(overrides)
         if "location_id" not in local_overrides:
@@ -53,24 +62,24 @@ class ComplaintTestUtils(
 
     @override
     def get_or_default(
-        self, overrides: ComplaintOverrides | None = None, fields: set[str] | None = None
+        self, overrides: IncidentOverrides | None = None, fields: set[str] | None = None
     ) -> dict:
         return super().get_or_default(overrides, fields)
 
     @override
-    async def next_data(self, **overrides: Unpack[ComplaintOverrides]) -> ComplaintData:
+    async def next_data(self, **overrides: Unpack[IncidentOverrides]) -> IncidentData:
         return await super().next_data(**overrides)
 
     @override
-    async def next_entity(self, **overrides: Unpack[ComplaintOverrides]) -> ComplaintEntity:
+    async def next_entity(self, **overrides: Unpack[IncidentOverrides]) -> IncidentEntity:
         return await super().next_entity(**overrides)
 
     @override
     async def create_many(
-        self, *, i: int, **overrides: Unpack[ComplaintOverrides]
-    ) -> list[ComplaintEntity]:
+        self, *, i: int, **overrides: Unpack[IncidentOverrides]
+    ) -> list[IncidentEntity]:
         return await super().create_many(i=i, **overrides)
 
     @override
-    async def create_one(self, **overrides: Unpack[ComplaintOverrides]) -> ComplaintEntity:
+    async def create_one(self, **overrides: Unpack[IncidentOverrides]) -> IncidentEntity:
         return await super().create_one(**overrides)

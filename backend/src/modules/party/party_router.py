@@ -29,7 +29,7 @@ from .party_service import PartyService
 party_router = APIRouter(prefix="/api/parties", tags=["parties"])
 
 
-@party_router.post("/", status_code=201)
+@party_router.post("", status_code=201)
 async def create_party(
     party_data: CreatePartyDto,
     party_service: PartyService = Depends(),
@@ -64,7 +64,7 @@ async def create_party(
         raise ForbiddenException(detail="Invalid request type")
 
 
-@party_router.get("/")
+@party_router.get("")
 async def list_parties(
     request: Request,
     party_service: PartyService = Depends(),
