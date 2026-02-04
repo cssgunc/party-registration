@@ -22,7 +22,7 @@ from test.utils.http.assertions import (
 from test.utils.http.test_templates import generate_auth_required_tests
 
 test_party_authentication = generate_auth_required_tests(
-    ({"admin", "staff", "police"}, "GET", "/api/parties/", None),
+    ({"admin", "staff", "police"}, "GET", "/api/parties", None),
     ({"admin", "staff"}, "GET", "/api/parties/1", None),
     ({"admin"}, "DELETE", "/api/parties/1", None),
     (
@@ -33,12 +33,12 @@ test_party_authentication = generate_auth_required_tests(
     ),
     # POST endpoint requires condiitional body - tested separately in
     # TestPartyCreateAdminRouter and TestPartyCreateStudentRouter
-    # ({"student"}, "POST", "/api/parties/", {}),
+    # ({"student"}, "POST", "/api/parties", {}),
 )
 
 
 class TestPartyListRouter:
-    """Tests for GET /api/parties/ endpoint."""
+    """Tests for GET /api/parties endpoint."""
 
     admin_client: AsyncClient
     party_utils: PartyTestUtils
@@ -51,7 +51,7 @@ class TestPartyListRouter:
     @pytest.mark.asyncio
     async def test_list_parties_empty(self):
         """Test listing parties when database is empty."""
-        response = await self.admin_client.get("/api/parties/")
+        response = await self.admin_client.get("/api/parties")
         paginated = assert_res_paginated(
             response, PartyDto, total_records=0, page_size=0, total_pages=1
         )
@@ -62,7 +62,7 @@ class TestPartyListRouter:
         """Test listing parties when parties exist."""
         created_parties = await self.party_utils.create_many(i=3)
 
-        response = await self.admin_client.get("/api/parties/")
+        response = await self.admin_client.get("/api/parties")
         paginated = assert_res_paginated(
             response, PartyDto, total_records=3, page_size=3, total_pages=1
         )
@@ -135,7 +135,7 @@ class TestPartyDeleteRouter:
 
 
 class TestPartyCreateAdminRouter:
-    """Tests for POST /api/parties/ endpoint (admin creation)."""
+    """Tests for POST /api/parties endpoint (admin creation)."""
 
     admin_client: AsyncClient
     party_utils: PartyTestUtils
@@ -164,7 +164,7 @@ class TestPartyCreateAdminRouter:
         )
 
         response = await self.admin_client.post(
-            "/api/parties/", json=payload.model_dump(mode="json")
+            "/api/parties", json=payload.model_dump(mode="json")
         )
         data = assert_res_success(response, PartyDto, status=201)
 
@@ -183,7 +183,7 @@ class TestPartyCreateAdminRouter:
         )
 
         response = await self.admin_client.post(
-            "/api/parties/", json=payload.model_dump(mode="json")
+            "/api/parties", json=payload.model_dump(mode="json")
         )
         assert_res_failure(
             response,
@@ -199,12 +199,12 @@ class TestPartyCreateAdminRouter:
         payload_dict = payload.model_dump(mode="json")
         del payload_dict["contact_two"]
 
-        response = await self.admin_client.post("/api/parties/", json=payload_dict)
+        response = await self.admin_client.post("/api/parties", json=payload_dict)
         assert_res_validation_error(response)
 
 
 class TestPartyCreateStudentRouter:
-    """Tests for POST /api/parties/ endpoint (student creation)."""
+    """Tests for POST /api/parties endpoint (student creation)."""
 
     student_client: AsyncClient
     party_utils: PartyTestUtils
@@ -251,7 +251,7 @@ class TestPartyCreateStudentRouter:
         )
 
         response = await self.student_client.post(
-            "/api/parties/", json=payload.model_dump(mode="json")
+            "/api/parties", json=payload.model_dump(mode="json")
         )
         data = assert_res_success(response, PartyDto, status=201)
 

@@ -26,9 +26,9 @@ from test.utils.http.assertions import (
 from test.utils.http.test_templates import generate_auth_required_tests
 
 test_student_authentication = generate_auth_required_tests(
-    ({"admin", "staff"}, "GET", "/api/students/", None),
+    ({"admin", "staff"}, "GET", "/api/students", None),
     ({"admin", "staff"}, "GET", "/api/students/12345", None),
-    ({"admin"}, "POST", "/api/students/", StudentTestUtils.get_sample_create_data()),
+    ({"admin"}, "POST", "/api/students", StudentTestUtils.get_sample_create_data()),
     ({"admin"}, "PUT", "/api/students/12345", StudentTestUtils.get_sample_data()),
     ({"admin"}, "DELETE", "/api/students/12345", None),
     ({"admin", "staff"}, "PATCH", "/api/students/12345/is-registered", {"is_registered": True}),
@@ -39,7 +39,7 @@ test_student_authentication = generate_auth_required_tests(
 
 
 class TestStudentListRouter:
-    """Tests for GET /api/students/ endpoint."""
+    """Tests for GET /api/students endpoint."""
 
     admin_client: AsyncClient
     student_utils: StudentTestUtils
@@ -52,7 +52,7 @@ class TestStudentListRouter:
     @pytest.mark.asyncio
     async def test_list_students_empty(self):
         """Test listing students when database is empty."""
-        response = await self.admin_client.get("/api/students/")
+        response = await self.admin_client.get("/api/students")
         paginated = assert_res_paginated(
             response,
             StudentDto,
@@ -67,7 +67,7 @@ class TestStudentListRouter:
         """Test listing students when multiple students exist."""
         students = await self.student_utils.create_many(i=3)
 
-        response = await self.admin_client.get("/api/students/")
+        response = await self.admin_client.get("/api/students")
         paginated = assert_res_paginated(
             response,
             StudentDto,
@@ -111,7 +111,7 @@ class TestStudentListRouter:
         if page_size is not None:
             params["page_size"] = page_size
 
-        response = await self.admin_client.get("/api/students/", params=params or None)
+        response = await self.admin_client.get("/api/students", params=params or None)
 
         # For default pagination (no params), expect page_size to equal total_records
         expected_page_number = page_number if page_number is not None else 1
@@ -141,12 +141,12 @@ class TestStudentListRouter:
     @pytest.mark.asyncio
     async def test_list_students_pagination_invalid_params(self, invalid_params: dict):
         """Test that invalid params return 422."""
-        response = await self.admin_client.get("/api/students/", params=invalid_params)
+        response = await self.admin_client.get("/api/students", params=invalid_params)
         assert_res_validation_error(response)
 
 
 class TestStudentCRUDRouter:
-    """Tests for CRUD operations on /api/students/ endpoints."""
+    """Tests for CRUD operations on /api/students endpoints."""
 
     admin_client: AsyncClient
     student_utils: StudentTestUtils
@@ -162,7 +162,7 @@ class TestStudentCRUDRouter:
         payload = await self.student_utils.next_student_create()
 
         response = await self.admin_client.post(
-            "/api/students/", json=payload.model_dump(mode="json")
+            "/api/students", json=payload.model_dump(mode="json")
         )
         data = assert_res_success(response, StudentDto, status=201)
 
@@ -176,7 +176,7 @@ class TestStudentCRUDRouter:
         payload = await self.student_utils.next_student_create(last_registered=dt)
 
         response = await self.admin_client.post(
-            "/api/students/", json=payload.model_dump(mode="json")
+            "/api/students", json=payload.model_dump(mode="json")
         )
         data = assert_res_success(response, StudentDto, status=201)
 
@@ -189,7 +189,7 @@ class TestStudentCRUDRouter:
         payload = await self.student_utils.next_student_create(account_id=999)
 
         response = await self.admin_client.post(
-            "/api/students/", json=payload.model_dump(mode="json")
+            "/api/students", json=payload.model_dump(mode="json")
         )
         assert_res_failure(response, AccountNotFoundException(999))
 
@@ -200,7 +200,7 @@ class TestStudentCRUDRouter:
         payload = await self.student_utils.next_student_create(account_id=account.id)
 
         response = await self.admin_client.post(
-            "/api/students/", json=payload.model_dump(mode="json")
+            "/api/students", json=payload.model_dump(mode="json")
         )
         assert_res_failure(response, InvalidAccountRoleException(account.id, AccountRole.ADMIN))
 
@@ -211,7 +211,7 @@ class TestStudentCRUDRouter:
         payload = await self.student_utils.next_student_create(account_id=student.account_id)
 
         response = await self.admin_client.post(
-            "/api/students/", json=payload.model_dump(mode="json")
+            "/api/students", json=payload.model_dump(mode="json")
         )
         assert_res_failure(response, StudentAlreadyExistsException(student.account_id))
 
@@ -222,7 +222,7 @@ class TestStudentCRUDRouter:
         payload = await self.student_utils.next_student_create(phone_number=student.phone_number)
 
         response = await self.admin_client.post(
-            "/api/students/", json=payload.model_dump(mode="json")
+            "/api/students", json=payload.model_dump(mode="json")
         )
         assert_res_failure(response, StudentConflictException(student.phone_number))
 
