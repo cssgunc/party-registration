@@ -1,10 +1,10 @@
-from core.query_utils import PAGINATED_OPENAPI_PARAMS
 from fastapi import APIRouter, Depends, Request
 from src.core.authentication import (
     authenticate_admin,
     authenticate_staff_or_admin,
     authenticate_student,
 )
+from src.core.query_utils import PAGINATED_OPENAPI_PARAMS
 from src.modules.account.account_model import AccountDto
 from src.modules.party.party_model import PartyDto
 from src.modules.party.party_service import PartyService
