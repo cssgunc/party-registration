@@ -3,10 +3,7 @@ name: Run Backend Tests
 on:
   pull_request:
   push:
-    branches: [
-        main,
-        nick/sql-server, # TODO: remove branch for debug
-      ]
+    branches: [main]
 
 jobs:
   backend-test:

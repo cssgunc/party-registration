@@ -125,6 +125,7 @@ pytest
 
 - Navigate to the SQL Server tab on the sidebar in VSCode (provided by the "SQL Server (mssql)" extension)
 - Click the plus icon in the top right to add a new connection
+  - *It may take a long time to initialize on the first boot up*
 - Enter these values as you are prompted
   - Server Name: db
   - Authentication Type: SQL Login
