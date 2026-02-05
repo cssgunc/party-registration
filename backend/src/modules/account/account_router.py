@@ -1,6 +1,10 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Request
 from src.core.authentication import authenticate_admin
-from src.modules.account.account_model import AccountData, AccountDto, AccountRole
+from src.modules.account.account_model import (
+    AccountData,
+    AccountDto,
+    PaginatedAccountsResponse,
+)
 from src.modules.account.account_service import AccountService
 from src.modules.police.police_model import PoliceAccountDto, PoliceAccountUpdate
 from src.modules.police.police_service import PoliceService
@@ -29,13 +33,11 @@ async def update_police_credentials(
 
 @account_router.get("")
 async def list_accounts(
-    role: list[AccountRole] | None = Query(
-        None, description="Filter by role(s): admin, staff, student"
-    ),
+    request: Request,
     account_service: AccountService = Depends(),
     _=Depends(authenticate_admin),
-) -> list[AccountDto]:
-    return await account_service.get_accounts_by_roles(role)
+) -> PaginatedAccountsResponse:
+    return await account_service.get_accounts_paginated(request)
 
 
 @account_router.post("")

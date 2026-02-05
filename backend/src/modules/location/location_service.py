@@ -15,6 +15,7 @@ from src.core.exceptions import (
     InternalServerException,
     NotFoundException,
 )
+from src.core.query_utils import get_paginated_results, parse_pagination_params
 
 from .location_entity import LocationEntity
 from .location_model import (
@@ -118,7 +119,43 @@ class LocationService:
         Returns:
             PaginatedLocationResponse with items and metadata
         """
-        from src.core.query_utils import get_paginated_results, parse_pagination_params
+        # Define allowed fields for sorting and filtering
+        allowed_sort_fields = [
+            "id",
+            "google_place_id",
+            "formatted_address",
+            "latitude",
+            "longitude",
+            "street_number",
+            "street_name",
+            "unit",
+            "city",
+            "county",
+            "state",
+            "country",
+            "zip_code",
+            "warning_count",
+            "citation_count",
+            "hold_expiration",
+        ]
+        allowed_filter_fields = [
+            "id",
+            "google_place_id",
+            "formatted_address",
+            "latitude",
+            "longitude",
+            "street_number",
+            "street_name",
+            "unit",
+            "city",
+            "county",
+            "state",
+            "country",
+            "zip_code",
+            "warning_count",
+            "citation_count",
+            "hold_expiration",
+        ]
 
         # Build base query
         base_query = select(LocationEntity)
@@ -126,8 +163,8 @@ class LocationService:
         # Parse query params and get paginated results
         query_params = parse_pagination_params(
             request,
-            allowed_sort_fields=["id", "formatted_address"],
-            allowed_filter_fields=[],
+            allowed_sort_fields=allowed_sort_fields,
+            allowed_filter_fields=allowed_filter_fields,
         )
 
         # Use the generic pagination utility
@@ -137,8 +174,8 @@ class LocationService:
             entity_class=LocationEntity,
             dto_converter=lambda entity: entity.to_dto(),
             query_params=query_params,
-            allowed_sort_fields=["id", "formatted_address"],
-            allowed_filter_fields=[],
+            allowed_sort_fields=allowed_sort_fields,
+            allowed_filter_fields=allowed_filter_fields,
         )
 
     async def get_location_by_id(self, location_id: int) -> LocationDto:

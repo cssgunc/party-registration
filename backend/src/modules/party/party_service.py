@@ -11,6 +11,7 @@ from sqlalchemy.orm import selectinload
 from src.core.config import env
 from src.core.database import get_session
 from src.core.exceptions import BadRequestException, ConflictException, NotFoundException
+from src.core.query_utils import get_paginated_results, parse_pagination_params
 from src.modules.location.location_model import LocationDto
 from src.modules.student.student_service import StudentNotFoundException, StudentService
 
@@ -199,14 +200,35 @@ class PartyService:
         Returns:
             PaginatedPartiesResponse with items and metadata
         """
-        from src.core.query_utils import get_paginated_results, parse_pagination_params
+        # Define allowed fields for sorting and filtering
+        allowed_sort_fields = [
+            "id",
+            "party_datetime",
+            "location_id",
+            "contact_one_id",
+            "contact_two_email",
+            "contact_two_first_name",
+            "contact_two_last_name",
+            "contact_two_phone_number",
+            "contact_two_contact_preference",
+        ]
+        allowed_filter_fields = [
+            "id",
+            "party_datetime",
+            "location_id",
+            "contact_one_id",
+            "contact_two_email",
+            "contact_two_first_name",
+            "contact_two_last_name",
+            "contact_two_phone_number",
+            "contact_two_contact_preference",
+        ]
 
-        # Parse query params from request
         # Parse query params from request
         query_params = parse_pagination_params(
             request,
-            allowed_sort_fields=["id", "party_datetime", "location_id", "contact_one_id"],
-            allowed_filter_fields=["location_id", "contact_one_id"],
+            allowed_sort_fields=allowed_sort_fields,
+            allowed_filter_fields=allowed_filter_fields,
         )
 
         # Build base query with eager loading
@@ -214,10 +236,6 @@ class PartyService:
             selectinload(PartyEntity.location),
             selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
         )
-
-        # Define allowed fields
-        allowed_sort_fields = ["id", "party_datetime", "location_id", "contact_one_id"]
-        allowed_filter_fields = ["location_id", "contact_one_id"]
 
         # Use the generic pagination utility
         return await get_paginated_results(

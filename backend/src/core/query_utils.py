@@ -7,6 +7,7 @@ to SQLAlchemy queries in a type-safe and flexible manner.
 
 from collections.abc import Callable
 from contextlib import suppress
+from datetime import datetime
 from enum import Enum
 from typing import Any
 
@@ -182,6 +183,19 @@ def apply_sorting[ModelType: DeclarativeMeta](
     return query
 
 
+def _convert_enum_value(field_column: Any, value: Any) -> Any:
+    """Convert string value to enum if the field is an Enum column."""
+    # Check if field has a type attribute with an enum_class (SQLAlchemy Enum)
+    if hasattr(field_column, "type") and hasattr(field_column.type, "enum_class"):
+        enum_class = field_column.type.enum_class
+        if enum_class is not None and isinstance(value, str):
+            # Try to get the enum member by value
+            for member in enum_class:
+                if member.value == value:
+                    return member
+    return value
+
+
 def apply_filters[ModelType: DeclarativeMeta](
     query: Select,
     model: type[ModelType],
@@ -217,26 +231,29 @@ def apply_filters[ModelType: DeclarativeMeta](
         # Get the model attribute
         field = getattr(model, filter_param.field)
 
+        # Convert value to enum if needed
+        value = _convert_enum_value(field, filter_param.value)
+
         # Apply the appropriate filter based on operator
         if filter_param.operator == FilterOperator.EQUALS:
-            query = query.where(field == filter_param.value)
+            query = query.where(field == value)
         elif filter_param.operator == FilterOperator.NOT_EQUALS:
-            query = query.where(field != filter_param.value)
+            query = query.where(field != value)
         elif filter_param.operator == FilterOperator.GREATER_THAN:
-            query = query.where(field > filter_param.value)
+            query = query.where(field > value)
         elif filter_param.operator == FilterOperator.GREATER_THAN_OR_EQUAL:
-            query = query.where(field >= filter_param.value)
+            query = query.where(field >= value)
         elif filter_param.operator == FilterOperator.LESS_THAN:
-            query = query.where(field < filter_param.value)
+            query = query.where(field < value)
         elif filter_param.operator == FilterOperator.LESS_THAN_OR_EQUAL:
-            query = query.where(field <= filter_param.value)
+            query = query.where(field <= value)
         elif filter_param.operator == FilterOperator.CONTAINS:
             # Case-insensitive LIKE for string fields
-            query = query.where(field.ilike(f"%{filter_param.value}%"))
+            query = query.where(field.ilike(f"%{value}%"))
         elif filter_param.operator == FilterOperator.IN:
-            query = query.where(field.in_(filter_param.value))
+            query = query.where(field.in_(value))
         elif filter_param.operator == FilterOperator.NOT_IN:
-            query = query.where(~field.in_(filter_param.value))
+            query = query.where(~field.in_(value))
         elif filter_param.operator == FilterOperator.IS_NULL:
             query = query.where(field.is_(None))
         elif filter_param.operator == FilterOperator.IS_NOT_NULL:
@@ -306,6 +323,33 @@ async def get_total_count(
     return result.scalar() or 0
 
 
+def _parse_filter_value(value: str) -> int | datetime | str:
+    """
+    Parse a filter value string into the appropriate type.
+
+    Attempts to parse as:
+    1. Integer (e.g., "123")
+    2. DateTime with timezone (e.g., "2024-01-01T12:00:00+00:00")
+    3. DateTime without timezone (e.g., "2024-01-01T12:00:00")
+    4. Date only (e.g., "2024-01-01")
+    5. Falls back to string if none match
+    """
+    # Try integer
+    with suppress(ValueError):
+        return int(value)
+
+    # Try datetime with timezone (ISO format)
+    with suppress(ValueError):
+        return datetime.fromisoformat(value)
+
+    # Try date only (add time component)
+    with suppress(ValueError):
+        return datetime.strptime(value, "%Y-%m-%d")
+
+    # Return as string
+    return value
+
+
 def parse_pagination_params(
     request: Request,
     allowed_sort_fields: list[str],
@@ -347,15 +391,30 @@ def parse_pagination_params(
 
     # Parse filters
     filter_params: list[FilterParam] = []
+
+    # Operator suffix mappings
+    operator_suffixes = {
+        "_gt": FilterOperator.GREATER_THAN,
+        "_gte": FilterOperator.GREATER_THAN_OR_EQUAL,
+        "_lt": FilterOperator.LESS_THAN,
+        "_lte": FilterOperator.LESS_THAN_OR_EQUAL,
+        "_contains": FilterOperator.CONTAINS,
+    }
+
     for field in allowed_filter_fields:
+        # Check for exact match filter (e.g., location_id=5)
         if field in query_params_dict:
-            value = query_params_dict[field]
-            # Convert to int if it looks like an int
-            with suppress(ValueError, TypeError):
-                value = int(value)
+            value = _parse_filter_value(query_params_dict[field])
             filter_params.append(
                 FilterParam(field=field, operator=FilterOperator.EQUALS, value=value)
             )
+
+        # Check for operator suffix filters (e.g., party_datetime_gte=2024-01-01)
+        for suffix, operator in operator_suffixes.items():
+            param_name = f"{field}{suffix}"
+            if param_name in query_params_dict:
+                value = _parse_filter_value(query_params_dict[param_name])
+                filter_params.append(FilterParam(field=field, operator=operator, value=value))
 
     return ListQueryParam(
         pagination=pagination_params,

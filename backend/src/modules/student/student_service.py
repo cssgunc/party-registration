@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from src.core.database import get_session
 from src.core.exceptions import BadRequestException, ConflictException, NotFoundException
+from src.core.query_utils import get_paginated_results, parse_pagination_params
 from src.modules.account.account_entity import AccountEntity, AccountRole
 
 from .student_entity import StudentEntity
@@ -114,21 +115,28 @@ class StudentService:
         Returns:
             PaginatedStudentsResponse with items and metadata
         """
-        from src.core.query_utils import get_paginated_results, parse_pagination_params
-
         # Build base query with eager loading
         base_query = select(StudentEntity).options(selectinload(StudentEntity.account))
+
+        # Define allowed fields for sorting and filtering
+        allowed_sort_fields = [
+            "account_id",
+            "phone_number",
+            "contact_preference",
+            "last_registered",
+        ]
+        allowed_filter_fields = [
+            "account_id",
+            "phone_number",
+            "contact_preference",
+            "last_registered",
+        ]
 
         # Parse query params and get paginated results
         query_params = parse_pagination_params(
             request,
-            allowed_sort_fields=[
-                "account_id",
-                "phone_number",
-                "contact_preference",
-                "last_registered",
-            ],
-            allowed_filter_fields=[],
+            allowed_sort_fields=allowed_sort_fields,
+            allowed_filter_fields=allowed_filter_fields,
         )
 
         # Use the generic pagination utility
@@ -138,13 +146,8 @@ class StudentService:
             entity_class=StudentEntity,
             dto_converter=lambda entity: entity.to_dto(),
             query_params=query_params,
-            allowed_sort_fields=[
-                "account_id",
-                "phone_number",
-                "contact_preference",
-                "last_registered",
-            ],
-            allowed_filter_fields=[],
+            allowed_sort_fields=allowed_sort_fields,
+            allowed_filter_fields=allowed_filter_fields,
         )
 
     async def get_student_count(self) -> int:
