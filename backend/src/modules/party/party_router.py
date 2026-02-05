@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, Query
+from core.query_utils import PAGINATED_OPENAPI_PARAMS
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import Response
 from src.core.authentication import (
     authenticate_admin,
@@ -64,57 +65,43 @@ async def create_party(
         raise ForbiddenException(detail="Invalid request type")
 
 
-@party_router.get("")
+@party_router.get("", openapi_extra=PAGINATED_OPENAPI_PARAMS)
 async def list_parties(
-    page_number: int = Query(1, ge=1, description="Page number (1-indexed)"),
-    page_size: int | None = Query(None, ge=1, le=100, description="Items per page (default: all)"),
+    request: Request,
     party_service: PartyService = Depends(),
     _=Depends(authenticate_by_role("admin", "staff", "police")),
 ) -> PaginatedPartiesResponse:
     """
-    Returns all party registrations in the database with optional pagination.
+    Returns all party registrations with pagination, sorting, and filtering.
 
     Query Parameters:
-    - page_number: The page number to retrieve (1-indexed)
-    - page_size: Number of items per page (max 100, default: returns all parties)
+    - page_number: Page number (1-indexed, default: 1)
+    - page_size: Items per page (default: all)
+    - sort_by: Field to sort by (allowed: party_datetime, location_id, contact_one_id, id)
+    - sort_order: Sort order (asc or desc, default: asc)
+    - location_id: Filter by location ID
+    - contact_one_id: Filter by contact one (student) ID
+
+    Features:
+    - **Opt-in**: All features have sensible defaults - no parameters returns all parties
+    - **Server-side**: All sorting, filtering, and pagination happens in the database
+    - **Performant**: Scales well with large datasets
 
     Returns:
-    - items: List of party registrations
-    - total_records: Total number of records in the database
-    - page_size: Requested page size (or total_records if not specified)
-    - page_number: Requested page number
-    - total_pages: Total number of pages based on page size
+    - items: List of party registrations for the current page
+    - total_records: Total number of records matching filters
+    - page_size: Items per page
+    - page_number: Current page number
+    - total_pages: Total number of pages
+
+    Examples:
+    - Get all parties: GET /api/parties/
+    - Get first page of 10: GET /api/parties/?page_size=10
+    - Sort by date descending: GET /api/parties/?sort_by=party_datetime&sort_order=desc
+    - Filter by location: GET /api/parties/?location_id=5
+    - Combined: GET /api/parties/?location_id=5&sort_by=party_datetime&page_size=20
     """
-    # Get total count first
-    total_records = await party_service.get_party_count()
-
-    # If page_size is None, return all parties
-    if page_size is None:
-        parties = await party_service.get_parties(skip=0, limit=None)
-        return PaginatedPartiesResponse(
-            items=parties,
-            total_records=total_records,
-            page_size=total_records,
-            page_number=1,
-            total_pages=1,
-        )
-
-    # Calculate skip and limit for pagination
-    skip = (page_number - 1) * page_size
-
-    # Get parties with pagination
-    parties = await party_service.get_parties(skip=skip, limit=page_size)
-
-    # Calculate total pages (ceiling division)
-    total_pages = (total_records + page_size - 1) // page_size if total_records > 0 else 0
-
-    return PaginatedPartiesResponse(
-        items=parties,
-        total_records=total_records,
-        page_size=page_size,
-        page_number=page_number,
-        total_pages=total_pages,
-    )
+    return await party_service.get_parties_paginated(request=request)
 
 
 @party_router.get("/nearby")
@@ -201,7 +188,6 @@ async def get_parties_csv(
     try:
         start_datetime = datetime.strptime(start_date, "%Y-%m-%d")
         end_datetime = datetime.strptime(end_date, "%Y-%m-%d")
-
         end_datetime = end_datetime.replace(hour=23, minute=59, second=59, microsecond=999999)
     except ValueError as e:
         raise UnprocessableEntityException(

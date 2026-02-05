@@ -145,6 +145,80 @@ class TestStudentListRouter:
         assert_res_validation_error(response)
 
 
+class TestStudentListSortFilter:
+    """Tests for sorting and filtering on GET /api/students endpoint."""
+
+    admin_client: AsyncClient
+    student_utils: StudentTestUtils
+
+    @pytest.fixture(autouse=True)
+    def _setup(self, student_utils: StudentTestUtils, admin_client: AsyncClient):
+        self.student_utils = student_utils
+        self.admin_client = admin_client
+
+    @pytest.mark.asyncio
+    async def test_list_students_sort_by_phone_asc(self):
+        """Test sorting students by phone number ascending."""
+        await self.student_utils.create_one(phone_number="9199999999")
+        await self.student_utils.create_one(phone_number="9191111111")
+        await self.student_utils.create_one(phone_number="9195555555")
+
+        response = await self.admin_client.get(
+            "/api/students", params={"sort_by": "phone_number", "sort_order": "asc"}
+        )
+
+        paginated = assert_res_paginated(response, StudentDto, total_records=3)
+        phones = [s.phone_number for s in paginated.items]
+        assert phones == ["9191111111", "9195555555", "9199999999"]
+
+    @pytest.mark.asyncio
+    async def test_list_students_sort_by_phone_desc(self):
+        """Test sorting students by phone number descending."""
+        await self.student_utils.create_one(phone_number="9199999999")
+        await self.student_utils.create_one(phone_number="9191111111")
+        await self.student_utils.create_one(phone_number="9195555555")
+
+        response = await self.admin_client.get(
+            "/api/students", params={"sort_by": "phone_number", "sort_order": "desc"}
+        )
+
+        paginated = assert_res_paginated(response, StudentDto, total_records=3)
+        phones = [s.phone_number for s in paginated.items]
+        assert phones == ["9199999999", "9195555555", "9191111111"]
+
+    @pytest.mark.asyncio
+    async def test_list_students_filter_by_contact_preference(self):
+        """Test filtering students by contact preference."""
+        await self.student_utils.create_one(contact_preference=ContactPreference.TEXT)
+        await self.student_utils.create_one(contact_preference=ContactPreference.CALL)
+        await self.student_utils.create_one(contact_preference=ContactPreference.TEXT)
+
+        response = await self.admin_client.get(
+            "/api/students", params={"contact_preference": "text"}
+        )
+
+        paginated = assert_res_paginated(response, StudentDto, total_records=2)
+        assert all(s.contact_preference == ContactPreference.TEXT for s in paginated.items)
+
+    @pytest.mark.asyncio
+    async def test_list_students_filter_by_last_registered_gte(self):
+        """Test filtering students by last_registered >= date."""
+        old_date = datetime(2023, 1, 1, tzinfo=UTC)
+        recent_date = datetime(2024, 6, 1, tzinfo=UTC)
+
+        await self.student_utils.create_one(last_registered=old_date)
+        await self.student_utils.create_one(last_registered=recent_date)
+        await self.student_utils.create_one(last_registered=None)
+
+        response = await self.admin_client.get(
+            "/api/students", params={"last_registered_gte": "2024-01-01"}
+        )
+
+        paginated = assert_res_paginated(response, StudentDto, total_records=1)
+        assert paginated.items[0].last_registered is not None
+        assert paginated.items[0].last_registered >= datetime(2024, 1, 1, tzinfo=UTC)
+
+
 class TestStudentCRUDRouter:
     """Tests for CRUD operations on /api/students endpoints."""
 

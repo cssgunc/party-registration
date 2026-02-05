@@ -58,7 +58,7 @@ class TestLocationListRouter:
         response = await self.staff_client.get("/api/locations")
 
         paginated = assert_res_paginated(
-            response, LocationDto, total_records=0, page_size=0, total_pages=1
+            response, LocationDto, total_records=0, page_size=0, total_pages=0
         )
         assert paginated.items == []
 
@@ -76,6 +76,133 @@ class TestLocationListRouter:
         for entity in sample_locations:
             assert entity.id in data_by_id
             self.location_utils.assert_matches(entity, data_by_id[entity.id])
+
+
+class TestLocationListPaginationSortFilter:
+    """Tests for pagination, sorting, and filtering on GET /api/locations endpoint."""
+
+    admin_client: AsyncClient
+    staff_client: AsyncClient
+    location_utils: LocationTestUtils
+
+    @pytest.fixture(autouse=True)
+    def _setup(
+        self,
+        location_utils: LocationTestUtils,
+        admin_client: AsyncClient,
+        staff_client: AsyncClient,
+    ):
+        self.location_utils = location_utils
+        self.admin_client = admin_client
+        self.staff_client = staff_client
+
+    @pytest.mark.parametrize(
+        "total_locations, page_number, page_size, expected_items",
+        [
+            (15, None, None, 15),  # Default pagination (no params)
+            (25, 1, 5, 5),  # Custom page size - first page
+            (15, 2, 10, 5),  # Second page with items
+            (5, 10, 10, 0),  # Page beyond total (empty results)
+        ],
+    )
+    @pytest.mark.asyncio
+    async def test_list_locations_pagination(
+        self,
+        total_locations: int,
+        page_number: int | None,
+        page_size: int | None,
+        expected_items: int,
+    ):
+        """Test various pagination scenarios."""
+        await self.location_utils.create_many(i=total_locations)
+
+        params = {}
+        if page_number is not None:
+            params["page_number"] = page_number
+        if page_size is not None:
+            params["page_size"] = page_size
+
+        response = await self.staff_client.get("/api/locations", params=params or None)
+
+        expected_page_number = page_number if page_number is not None else 1
+        expected_page_size = page_size if page_size is not None else total_locations
+
+        paginated = assert_res_paginated(
+            response,
+            LocationDto,
+            total_records=total_locations,
+            page_number=expected_page_number,
+            page_size=expected_page_size,
+        )
+        assert len(paginated.items) == expected_items
+
+    @pytest.mark.asyncio
+    async def test_list_locations_sort_by_city_asc(self):
+        """Test sorting locations by city ascending."""
+        await self.location_utils.create_one(city="Zebra City")
+        await self.location_utils.create_one(city="Alpha City")
+        await self.location_utils.create_one(city="Middle City")
+
+        response = await self.staff_client.get(
+            "/api/locations", params={"sort_by": "city", "sort_order": "asc"}
+        )
+
+        paginated = assert_res_paginated(response, LocationDto, total_records=3)
+        cities = [loc.city for loc in paginated.items]
+        assert cities == ["Alpha City", "Middle City", "Zebra City"]
+
+    @pytest.mark.asyncio
+    async def test_list_locations_sort_by_city_desc(self):
+        """Test sorting locations by city descending."""
+        await self.location_utils.create_one(city="Zebra City")
+        await self.location_utils.create_one(city="Alpha City")
+        await self.location_utils.create_one(city="Middle City")
+
+        response = await self.staff_client.get(
+            "/api/locations", params={"sort_by": "city", "sort_order": "desc"}
+        )
+
+        paginated = assert_res_paginated(response, LocationDto, total_records=3)
+        cities = [loc.city for loc in paginated.items]
+        assert cities == ["Zebra City", "Middle City", "Alpha City"]
+
+    @pytest.mark.asyncio
+    async def test_list_locations_filter_by_city(self):
+        """Test filtering locations by city."""
+        await self.location_utils.create_one(city="Chapel Hill")
+        await self.location_utils.create_one(city="Durham")
+        await self.location_utils.create_one(city="Chapel Hill")
+
+        response = await self.staff_client.get("/api/locations", params={"city": "Chapel Hill"})
+
+        paginated = assert_res_paginated(response, LocationDto, total_records=2)
+        assert all(loc.city == "Chapel Hill" for loc in paginated.items)
+
+    @pytest.mark.asyncio
+    async def test_list_locations_filter_by_state(self):
+        """Test filtering locations by state."""
+        await self.location_utils.create_one(state="NC")
+        await self.location_utils.create_one(state="VA")
+        await self.location_utils.create_one(state="NC")
+
+        response = await self.staff_client.get("/api/locations", params={"state": "NC"})
+
+        paginated = assert_res_paginated(response, LocationDto, total_records=2)
+        assert all(loc.state == "NC" for loc in paginated.items)
+
+    @pytest.mark.asyncio
+    async def test_list_locations_filter_contains(self):
+        """Test filtering locations with contains operator."""
+        await self.location_utils.create_one(formatted_address="123 Main Street, Chapel Hill")
+        await self.location_utils.create_one(formatted_address="456 Oak Avenue, Durham")
+        await self.location_utils.create_one(formatted_address="789 Main Boulevard, Raleigh")
+
+        response = await self.staff_client.get(
+            "/api/locations", params={"formatted_address_contains": "Main"}
+        )
+
+        paginated = assert_res_paginated(response, LocationDto, total_records=2)
+        assert all("Main" in loc.formatted_address for loc in paginated.items)
 
 
 class TestLocationCRUDRouter:
