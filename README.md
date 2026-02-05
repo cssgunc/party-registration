@@ -126,13 +126,12 @@ pytest
 - Navigate to the SQL Server tab on the sidebar in VSCode (provided by the "SQL Server (mssql)" extension)
 - Click the plus icon in the top right to add a new connection
 - Enter these values as you are prompted
-  - Server: db
+  - Server Name: db
   - Authentication Type: SQL Login
-  - User: sa
+  - User Name: sa
   - Password: YourStrong!Passw0rd
-  - Database: (leave default to see all, or select `ocsl`)
+  - Database name: ocsl
   - Port: 1433 (default)
-  - Encrypt: false
-  - Trust Server Certificate: true
+  - Encrypt: Optional
 - You should see a new entry appear in the sidebar
 - In this interface, you can explore the database, make queries, etc.

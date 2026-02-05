@@ -1,6 +1,6 @@
-from core.query_utils import PAGINATED_OPENAPI_PARAMS
 from fastapi import APIRouter, Depends, Request
 from src.core.authentication import authenticate_admin
+from src.core.query_utils import PAGINATED_OPENAPI_PARAMS
 from src.modules.account.account_model import (
     AccountData,
     AccountDto,

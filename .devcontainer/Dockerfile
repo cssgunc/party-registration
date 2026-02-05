@@ -19,6 +19,7 @@ RUN apt-get update \
         debian-archive-keyring \
         git \
         gnupg \
+        libicu-dev \
         locales \
         unixodbc \
         unixodbc-dev \

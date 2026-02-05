@@ -1,6 +1,5 @@
 from datetime import UTC, datetime
 
-from core.query_utils import PAGINATED_OPENAPI_PARAMS
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import Response
 from src.core.authentication import (
@@ -15,6 +14,7 @@ from src.core.exceptions import (
     ForbiddenException,
     UnprocessableEntityException,
 )
+from src.core.query_utils import PAGINATED_OPENAPI_PARAMS
 from src.modules.account.account_model import AccountDto, AccountRole
 from src.modules.location.location_service import LocationService
 
