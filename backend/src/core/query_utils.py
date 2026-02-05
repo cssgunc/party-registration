@@ -21,6 +21,7 @@ from sqlalchemy.orm import DeclarativeMeta
 from src.core.models import PaginatedResponse
 
 __all__ = [
+    "PAGINATED_OPENAPI_PARAMS",
     "FilterOperator",
     "FilterParam",
     "ListQueryParam",
@@ -33,6 +34,50 @@ __all__ = [
     "get_total_count",
     "parse_pagination_params",
 ]
+
+# OpenAPI extra params for paginated endpoints
+PAGINATED_OPENAPI_PARAMS: dict[str, Any] = {
+    "parameters": [
+        {
+            "name": "page_number",
+            "in": "query",
+            "required": False,
+            "schema": {"type": "integer", "default": 1, "minimum": 1},
+            "description": "Page number (1-indexed)",
+        },
+        {
+            "name": "page_size",
+            "in": "query",
+            "required": False,
+            "schema": {"type": "integer", "minimum": 1, "maximum": 100},
+            "description": "Items per page (default: all)",
+        },
+        {
+            "name": "sort_by",
+            "in": "query",
+            "required": False,
+            "schema": {"type": "string"},
+            "description": "Field to sort by",
+        },
+        {
+            "name": "sort_order",
+            "in": "query",
+            "required": False,
+            "schema": {"type": "string", "enum": ["asc", "desc"], "default": "asc"},
+            "description": "Sort order",
+        },
+        {
+            "name": "filters",
+            "in": "query",
+            "required": False,
+            "style": "form",
+            "explode": True,
+            "schema": {"type": "object", "additionalProperties": True},
+            "description": "Filters: field=value, field_contains=value, "
+            "field_gt=value, field_gte=value, field_lt=value, field_lte=value",
+        },
+    ]
+}
 
 
 class SortOrder(str, Enum):

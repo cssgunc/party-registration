@@ -1,3 +1,4 @@
+from core.query_utils import PAGINATED_OPENAPI_PARAMS
 from fastapi import APIRouter, Depends, Request
 from src.core.authentication import authenticate_admin
 from src.modules.account.account_model import (
@@ -31,7 +32,7 @@ async def update_police_credentials(
     return PoliceAccountDto(email=police_entity.email)
 
 
-@account_router.get("")
+@account_router.get("", openapi_extra=PAGINATED_OPENAPI_PARAMS)
 async def list_accounts(
     request: Request,
     account_service: AccountService = Depends(),

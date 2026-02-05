@@ -4,6 +4,7 @@ from src.core.authentication import (
     authenticate_by_role,
     authenticate_staff_or_admin,
 )
+from src.core.query_utils import PAGINATED_OPENAPI_PARAMS
 from src.modules.account.account_model import AccountDto
 from src.modules.location.location_model import (
     AddressData,
@@ -86,7 +87,11 @@ async def get_place_details(
         ) from e
 
 
-@location_router.get("", response_model=PaginatedLocationResponse)
+@location_router.get(
+    "",
+    response_model=PaginatedLocationResponse,
+    openapi_extra=PAGINATED_OPENAPI_PARAMS,
+)
 async def get_locations(
     request: Request,
     location_service: LocationService = Depends(),
@@ -94,12 +99,6 @@ async def get_locations(
 ) -> PaginatedLocationResponse:
     """
     Returns all locations with pagination, sorting, and filtering.
-
-    Query Parameters:
-    - page_number: Page number (1-indexed, default: 1)
-    - page_size: Items per page (default: all)
-    - sort_by: Field to sort by
-    - sort_order: Sort order (asc or desc, default: asc)
     """
     return await location_service.get_locations_paginated(request=request)
 

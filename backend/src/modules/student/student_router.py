@@ -1,3 +1,4 @@
+from core.query_utils import PAGINATED_OPENAPI_PARAMS
 from fastapi import APIRouter, Depends, Request
 from src.core.authentication import (
     authenticate_admin,
@@ -46,7 +47,7 @@ async def get_my_parties(
     return await party_service.get_parties_by_contact(user.id)
 
 
-@student_router.get("")
+@student_router.get("", openapi_extra=PAGINATED_OPENAPI_PARAMS)
 async def list_students(
     request: Request,
     student_service: StudentService = Depends(),

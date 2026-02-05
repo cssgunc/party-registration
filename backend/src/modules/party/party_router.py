@@ -1,5 +1,6 @@
 from datetime import UTC, datetime
 
+from core.query_utils import PAGINATED_OPENAPI_PARAMS
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import Response
 from src.core.authentication import (
@@ -64,7 +65,7 @@ async def create_party(
         raise ForbiddenException(detail="Invalid request type")
 
 
-@party_router.get("")
+@party_router.get("", openapi_extra=PAGINATED_OPENAPI_PARAMS)
 async def list_parties(
     request: Request,
     party_service: PartyService = Depends(),
