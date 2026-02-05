@@ -22,7 +22,7 @@ from test.utils.http.assertions import (
 from test.utils.http.test_templates import generate_auth_required_tests
 
 test_party_authentication = generate_auth_required_tests(
-    ({"admin", "staff", "police"}, "GET", "/api/parties/", None),
+    ({"admin", "staff", "police"}, "GET", "/api/parties", None),
     ({"admin", "staff"}, "GET", "/api/parties/1", None),
     ({"admin"}, "DELETE", "/api/parties/1", None),
     (
@@ -33,12 +33,12 @@ test_party_authentication = generate_auth_required_tests(
     ),
     # POST endpoint requires condiitional body - tested separately in
     # TestPartyCreateAdminRouter and TestPartyCreateStudentRouter
-    # ({"student"}, "POST", "/api/parties/", {}),
+    # ({"student"}, "POST", "/api/parties", {}),
 )
 
 
 class TestPartyListRouter:
-    """Tests for GET /api/parties/ endpoint."""
+    """Tests for GET /api/parties endpoint."""
 
     admin_client: AsyncClient
     party_utils: PartyTestUtils
@@ -51,9 +51,9 @@ class TestPartyListRouter:
     @pytest.mark.asyncio
     async def test_list_parties_empty(self):
         """Test listing parties when database is empty."""
-        response = await self.admin_client.get("/api/parties/")
+        response = await self.admin_client.get("/api/parties")
         paginated = assert_res_paginated(
-            response, PartyDto, total_records=0, page_size=0, total_pages=1
+            response, PartyDto, total_records=0, page_size=0, total_pages=0
         )
         assert paginated.items == []
 
@@ -62,7 +62,7 @@ class TestPartyListRouter:
         """Test listing parties when parties exist."""
         created_parties = await self.party_utils.create_many(i=3)
 
-        response = await self.admin_client.get("/api/parties/")
+        response = await self.admin_client.get("/api/parties")
         paginated = assert_res_paginated(
             response, PartyDto, total_records=3, page_size=3, total_pages=1
         )
@@ -72,6 +72,127 @@ class TestPartyListRouter:
         for entity in created_parties:
             assert entity.id in data_by_id
             self.party_utils.assert_matches(entity, data_by_id[entity.id])
+
+
+class TestPartyListPaginationSortFilter:
+    """Tests for pagination, sorting, and filtering on GET /api/parties endpoint."""
+
+    admin_client: AsyncClient
+    party_utils: PartyTestUtils
+    location_utils: LocationTestUtils
+
+    @pytest.fixture(autouse=True)
+    def _setup(
+        self,
+        party_utils: PartyTestUtils,
+        location_utils: LocationTestUtils,
+        admin_client: AsyncClient,
+    ):
+        self.party_utils = party_utils
+        self.location_utils = location_utils
+        self.admin_client = admin_client
+
+    @pytest.mark.parametrize(
+        "total_parties, page_number, page_size, expected_items",
+        [
+            (15, None, None, 15),  # Default pagination (no params)
+            (25, 1, 5, 5),  # Custom page size - first page
+            (15, 2, 10, 5),  # Second page with items
+            (5, 10, 10, 0),  # Page beyond total (empty results)
+        ],
+    )
+    @pytest.mark.asyncio
+    async def test_list_parties_pagination(
+        self,
+        total_parties: int,
+        page_number: int | None,
+        page_size: int | None,
+        expected_items: int,
+    ):
+        """Test various pagination scenarios."""
+        await self.party_utils.create_many(i=total_parties)
+
+        params = {}
+        if page_number is not None:
+            params["page_number"] = page_number
+        if page_size is not None:
+            params["page_size"] = page_size
+
+        response = await self.admin_client.get("/api/parties", params=params or None)
+
+        expected_page_number = page_number if page_number is not None else 1
+        expected_page_size = page_size if page_size is not None else total_parties
+
+        paginated = assert_res_paginated(
+            response,
+            PartyDto,
+            total_records=total_parties,
+            page_number=expected_page_number,
+            page_size=expected_page_size,
+        )
+        assert len(paginated.items) == expected_items
+
+    @pytest.mark.asyncio
+    async def test_list_parties_sort_by_party_datetime_asc(self):
+        """Test sorting parties by datetime ascending."""
+        now = datetime.now(UTC)
+        await self.party_utils.create_one(party_datetime=now + timedelta(days=30))
+        await self.party_utils.create_one(party_datetime=now + timedelta(days=10))
+        await self.party_utils.create_one(party_datetime=now + timedelta(days=20))
+
+        response = await self.admin_client.get(
+            "/api/parties", params={"sort_by": "party_datetime", "sort_order": "asc"}
+        )
+
+        paginated = assert_res_paginated(response, PartyDto, total_records=3)
+        datetimes = [p.party_datetime for p in paginated.items]
+        assert datetimes == sorted(datetimes)
+
+    @pytest.mark.asyncio
+    async def test_list_parties_sort_by_party_datetime_desc(self):
+        """Test sorting parties by datetime descending."""
+        now = datetime.now(UTC)
+        await self.party_utils.create_one(party_datetime=now + timedelta(days=30))
+        await self.party_utils.create_one(party_datetime=now + timedelta(days=10))
+        await self.party_utils.create_one(party_datetime=now + timedelta(days=20))
+
+        response = await self.admin_client.get(
+            "/api/parties", params={"sort_by": "party_datetime", "sort_order": "desc"}
+        )
+
+        paginated = assert_res_paginated(response, PartyDto, total_records=3)
+        datetimes = [p.party_datetime for p in paginated.items]
+        assert datetimes == sorted(datetimes, reverse=True)
+
+    @pytest.mark.asyncio
+    async def test_list_parties_filter_by_location_id(self):
+        """Test filtering parties by location_id."""
+        location1 = await self.location_utils.create_one()
+        location2 = await self.location_utils.create_one()
+
+        await self.party_utils.create_one(location_id=location1.id)
+        await self.party_utils.create_one(location_id=location2.id)
+        await self.party_utils.create_one(location_id=location1.id)
+
+        response = await self.admin_client.get("/api/parties", params={"location_id": location1.id})
+
+        paginated = assert_res_paginated(response, PartyDto, total_records=2)
+        assert all(p.location.id == location1.id for p in paginated.items)
+
+    @pytest.mark.asyncio
+    async def test_list_parties_filter_by_party_datetime_gte(self):
+        """Test filtering parties by party_datetime >= date."""
+        now = datetime.now(UTC)
+        await self.party_utils.create_one(party_datetime=now + timedelta(days=5))
+        await self.party_utils.create_one(party_datetime=now + timedelta(days=15))
+        await self.party_utils.create_one(party_datetime=now + timedelta(days=25))
+
+        filter_date = (now + timedelta(days=10)).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+        response = await self.admin_client.get(
+            "/api/parties", params={"party_datetime_gte": filter_date}
+        )
+
+        assert_res_paginated(response, PartyDto, total_records=2)
 
 
 class TestPartyGetRouter:
@@ -135,7 +256,7 @@ class TestPartyDeleteRouter:
 
 
 class TestPartyCreateAdminRouter:
-    """Tests for POST /api/parties/ endpoint (admin creation)."""
+    """Tests for POST /api/parties endpoint (admin creation)."""
 
     admin_client: AsyncClient
     party_utils: PartyTestUtils
@@ -164,7 +285,7 @@ class TestPartyCreateAdminRouter:
         )
 
         response = await self.admin_client.post(
-            "/api/parties/", json=payload.model_dump(mode="json")
+            "/api/parties", json=payload.model_dump(mode="json")
         )
         data = assert_res_success(response, PartyDto, status=201)
 
@@ -183,7 +304,7 @@ class TestPartyCreateAdminRouter:
         )
 
         response = await self.admin_client.post(
-            "/api/parties/", json=payload.model_dump(mode="json")
+            "/api/parties", json=payload.model_dump(mode="json")
         )
         assert_res_failure(
             response,
@@ -199,12 +320,12 @@ class TestPartyCreateAdminRouter:
         payload_dict = payload.model_dump(mode="json")
         del payload_dict["contact_two"]
 
-        response = await self.admin_client.post("/api/parties/", json=payload_dict)
+        response = await self.admin_client.post("/api/parties", json=payload_dict)
         assert_res_validation_error(response)
 
 
 class TestPartyCreateStudentRouter:
-    """Tests for POST /api/parties/ endpoint (student creation)."""
+    """Tests for POST /api/parties endpoint (student creation)."""
 
     student_client: AsyncClient
     party_utils: PartyTestUtils
@@ -251,7 +372,7 @@ class TestPartyCreateStudentRouter:
         )
 
         response = await self.student_client.post(
-            "/api/parties/", json=payload.model_dump(mode="json")
+            "/api/parties", json=payload.model_dump(mode="json")
         )
         data = assert_res_success(response, PartyDto, status=201)
 

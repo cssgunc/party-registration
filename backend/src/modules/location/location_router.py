@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from src.core.authentication import (
     authenticate_admin,
     authenticate_by_role,
     authenticate_staff_or_admin,
 )
+from src.core.query_utils import PAGINATED_OPENAPI_PARAMS
 from src.modules.account.account_model import AccountDto
 from src.modules.location.location_model import (
     AddressData,
@@ -86,19 +87,20 @@ async def get_place_details(
         ) from e
 
 
-@location_router.get("/", response_model=PaginatedLocationResponse)
+@location_router.get(
+    "",
+    response_model=PaginatedLocationResponse,
+    openapi_extra=PAGINATED_OPENAPI_PARAMS,
+)
 async def get_locations(
+    request: Request,
     location_service: LocationService = Depends(),
     _=Depends(authenticate_staff_or_admin),
-):
-    locations = await location_service.get_locations()
-    return PaginatedLocationResponse(
-        items=locations,
-        total_records=len(locations),
-        page_number=1,
-        page_size=len(locations),
-        total_pages=1,
-    )
+) -> PaginatedLocationResponse:
+    """
+    Returns all locations with pagination, sorting, and filtering.
+    """
+    return await location_service.get_locations_paginated(request=request)
 
 
 @location_router.get("/{location_id}", response_model=LocationDto)
@@ -110,7 +112,7 @@ async def get_location(
     return await location_service.get_location_by_id(location_id)
 
 
-@location_router.post("/", status_code=201, response_model=LocationDto)
+@location_router.post("", status_code=201, response_model=LocationDto)
 async def create_location(
     data: LocationCreate,
     location_service: LocationService = Depends(),

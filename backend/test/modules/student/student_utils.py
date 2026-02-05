@@ -77,14 +77,14 @@ class StudentTestUtils(
         )
 
     async def next_student_create(self, **overrides: Unpack[StudentOverrides]) -> StudentCreate:
-        if "account_id" not in overrides:
+        local_overrides: StudentOverrides = dict(overrides)  # type: ignore
+        if "account_id" not in local_overrides:
             account = await self.account_utils.create_one(
-                role=AccountRole.STUDENT.value, **overrides
+                role=AccountRole.STUDENT.value, **local_overrides
             )
-            overrides["account_id"] = account.id
-
-        student_data = await self.next_data_with_names(**overrides)
-        return StudentCreate(account_id=overrides["account_id"], data=student_data)
+            local_overrides["account_id"] = account.id
+        student_data = await self.next_data_with_names(**local_overrides)
+        return StudentCreate(account_id=local_overrides["account_id"], data=student_data)
 
     @override
     async def next_entity(self, **overrides: Unpack[StudentOverrides]) -> StudentEntity:

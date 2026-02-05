@@ -1,16 +1,17 @@
 from datetime import UTC, datetime
 
-from fastapi import Depends
+from fastapi import Depends, Request
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from src.core.database import get_session
 from src.core.exceptions import BadRequestException, ConflictException, NotFoundException
+from src.core.query_utils import get_paginated_results, parse_pagination_params
 from src.modules.account.account_entity import AccountEntity, AccountRole
 
 from .student_entity import StudentEntity
-from .student_model import StudentData, StudentDataWithNames, StudentDto
+from .student_model import PaginatedStudentsResponse, StudentData, StudentDataWithNames, StudentDto
 
 
 class StudentNotFoundException(NotFoundException):
@@ -102,6 +103,57 @@ class StudentService:
         result = await self.session.execute(query)
         students = result.scalars().all()
         return [student.to_dto() for student in students]
+
+    async def get_students_paginated(
+        self,
+        request: Request,
+    ) -> PaginatedStudentsResponse:
+        """
+        Get students with server-side pagination and sorting.
+
+        Query parameters are automatically parsed from the request:
+        - page_number: Page number (1-indexed, default: 1)
+        - page_size: Items per page (default: all)
+        - sort_by: Field to sort by
+        - sort_order: Sort order ('asc' or 'desc')
+
+        Returns:
+            PaginatedStudentsResponse with items and metadata
+        """
+        # Build base query with eager loading
+        base_query = select(StudentEntity).options(selectinload(StudentEntity.account))
+
+        # Define allowed fields for sorting and filtering
+        allowed_sort_fields = [
+            "account_id",
+            "phone_number",
+            "contact_preference",
+            "last_registered",
+        ]
+        allowed_filter_fields = [
+            "account_id",
+            "phone_number",
+            "contact_preference",
+            "last_registered",
+        ]
+
+        # Parse query params and get paginated results
+        query_params = parse_pagination_params(
+            request,
+            allowed_sort_fields=allowed_sort_fields,
+            allowed_filter_fields=allowed_filter_fields,
+        )
+
+        # Use the generic pagination utility
+        return await get_paginated_results(
+            session=self.session,
+            base_query=base_query,
+            entity_class=StudentEntity,
+            dto_converter=lambda entity: entity.to_dto(),
+            query_params=query_params,
+            allowed_sort_fields=allowed_sort_fields,
+            allowed_filter_fields=allowed_filter_fields,
+        )
 
     async def get_student_count(self) -> int:
         count_query = select(func.count(StudentEntity.account_id))
