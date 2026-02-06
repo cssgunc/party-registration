@@ -13,7 +13,22 @@
         "PYTHONPATH": "${workspaceFolder}/backend"
       },
       "console": "integratedTerminal",
-      "justMyCode": false
+      "justMyCode": false,
+    },
+    {
+      "name": "Reset DB & Backend",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "fastapi",
+      "args": ["dev", "src/main.py", "--host", "127.0.0.1", "--port", "8000"],
+      "jinja": true,
+      "cwd": "${workspaceFolder}/backend",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/backend"
+      },
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "preLaunchTask": "Reset DB"
     },
     {
       "name": "Purge & Frontend",
@@ -34,7 +49,7 @@
   "compounds": [
     {
       "name": "Full Stack: Frontend + Backend",
-      "configurations": ["Backend", "Purge & Frontend"],
+      "configurations": ["Reset DB & Backend", "Purge & Frontend"],
       "presentation": {
         "hidden": false,
         "group": "fullstack",

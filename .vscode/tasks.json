@@ -13,6 +13,15 @@
         "reveal": "silent",
         "close": true
       }
+    },
+    {
+      "label": "Reset DB",
+      "type": "shell",
+      "command": "cd /workspace/backend && python -m script.reset_dev",
+      "presentation": {
+        "reveal": "silent",
+        "close": false
+      }
     }
   ]
 }
