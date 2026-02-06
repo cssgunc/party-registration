@@ -11,6 +11,7 @@ class AccountOverrides(TypedDict, total=False):
     first_name: str
     last_name: str
     pid: str
+    onyen: str
     role: Literal["admin", "staff", "student"]
 
 
@@ -37,6 +38,7 @@ class AccountTestUtils(
             "first_name": f"FAccount{count}",
             "last_name": f"LAccount{count}",
             "pid": str(730000000 + count),
+            "onyen": f"faccount{count}laccount{count}",
             "role": roles[count % len(roles)].value,
         }
 

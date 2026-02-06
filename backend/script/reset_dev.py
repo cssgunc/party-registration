@@ -115,6 +115,7 @@ async def reset_dev():
                 email=account_data["email"],
                 first_name=account_data["first_name"],
                 last_name=account_data["last_name"],
+                onyen=account_data["onyen"],
                 role=AccountRole(account_data["role"]),
             )
             session.add(account)
@@ -127,6 +128,7 @@ async def reset_dev():
                 email=student_data["email"],
                 first_name=student_data["first_name"],
                 last_name=student_data["last_name"],
+                onyen=student_data["onyen"],
                 role=AccountRole.STUDENT,
             )
             session.add(account)

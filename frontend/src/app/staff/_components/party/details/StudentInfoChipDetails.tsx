@@ -31,11 +31,18 @@ export function StudentInfoChipDetails({ data }: StudentInfoChipDetailsProps) {
             <label className="block text-sm font-medium">
               Contact Preference
             </label>
-            <p className="p-2 border rounded">{d.contact_preference}</p>
+            <p className="p-2 border rounded">
+              {d.contact_preference.charAt(0).toUpperCase() +
+                d.contact_preference.slice(1)}
+            </p>
           </div>
           <div>
             <label className="block text-sm font-medium">PID</label>
             <p className="p-2 border rounded">{d.pid}</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium">Onyen</label>
+            <p className="p-2 border rounded">{d.onyen}</p>
           </div>
           <div>
             <label className="block text-sm font-medium">Email</label>

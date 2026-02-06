@@ -34,10 +34,11 @@ def mock_authenticate(role: AccountRole) -> AccountDto | None:
     }
     return AccountDto(
         id=role_to_id[role],
-        email="user@example.com",
+        email="testuser@example.com",
         first_name="Test",
         last_name="User",
         pid=role_to_pid[role],
+        onyen="testuser",
         role=role,
     )
 

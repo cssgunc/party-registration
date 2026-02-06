@@ -21,6 +21,7 @@ class AccountEntity(MappedAsDataclass, EntityBase):
         ),
         nullable=False,
     )
+    onyen: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     role: Mapped[AccountRole] = mapped_column(
         Enum(AccountRole, native_enum=False, length=20), nullable=False
     )
@@ -32,6 +33,7 @@ class AccountEntity(MappedAsDataclass, EntityBase):
             first_name=data.first_name,
             last_name=data.last_name,
             pid=data.pid,
+            onyen=data.onyen,
             role=AccountRole(data.role),
         )
 
@@ -42,5 +44,6 @@ class AccountEntity(MappedAsDataclass, EntityBase):
             first_name=self.first_name,
             last_name=self.last_name,
             pid=self.pid,
+            onyen=self.onyen,
             role=self.role,
         )

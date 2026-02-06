@@ -49,6 +49,7 @@ class StudentEntity(MappedAsDataclass, EntityBase):
             email=self.account.email,
             first_name=self.account.first_name,
             last_name=self.account.last_name,
+            onyen=self.account.onyen,
             phone_number=self.phone_number,
             contact_preference=self.contact_preference,
             last_registered=last_reg,

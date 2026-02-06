@@ -8,760 +8,836 @@
     {
       "id": 1,
       "pid": "730737345",
-      "email": "john.doe@unc.edu",
+      "email": "johndoe@unc.edu",
       "first_name": "John",
       "last_name": "Doe",
-      "role": "admin"
+      "role": "admin",
+      "onyen": "johndoe"
     },
     {
       "id": 2,
-      "email": "jane.smith@unc.edu",
+      "email": "janesmith@unc.edu",
       "pid": "730737926",
       "first_name": "Jane",
       "last_name": "Smith",
-      "role": "staff"
+      "role": "staff",
+      "onyen": "janesmith"
     }
   ],
   "students": [
     {
       "id": 3,
       "pid": "730523620",
-      "email": "steven.morrison@unc.edu",
+      "email": "stevenmorrison@unc.edu",
       "first_name": "Steven",
       "last_name": "Morrison",
       "phone_number": "5367829443",
       "contact_preference": "text",
-      "last_registered": "NOW-571d"
+      "last_registered": "NOW-571d",
+      "onyen": "stevenmorrison"
     },
     {
       "id": 4,
       "pid": "730871361",
-      "email": "monica.malone@unc.edu",
+      "email": "monicamalone@unc.edu",
       "first_name": "Monica",
       "last_name": "Malone",
       "phone_number": "7247664088",
       "contact_preference": "text",
-      "last_registered": "NOW-266d"
+      "last_registered": "NOW-266d",
+      "onyen": "monicamalone"
     },
     {
       "id": 5,
       "pid": "730925227",
-      "email": "laura.gonzales@unc.edu",
+      "email": "lauragonzales@unc.edu",
       "first_name": "Laura",
       "last_name": "Gonzales",
       "phone_number": "8565753194",
       "contact_preference": "call",
-      "last_registered": "NOW-700d"
+      "last_registered": "NOW-700d",
+      "onyen": "lauragonzales"
     },
     {
       "id": 6,
       "pid": "730716454",
-      "email": "jonathan.bowers@unc.edu",
+      "email": "jonathanbowers@unc.edu",
       "first_name": "Jonathan",
       "last_name": "Bowers",
       "phone_number": "4136665062",
       "contact_preference": "text",
-      "last_registered": "NOW-580d"
+      "last_registered": "NOW-580d",
+      "onyen": "jonathanbowers"
     },
     {
       "id": 7,
       "pid": "730663091",
-      "email": "joshua.taylor@unc.edu",
+      "email": "joshuataylor@unc.edu",
       "first_name": "Joshua",
       "last_name": "Taylor",
       "phone_number": "3552965822",
       "contact_preference": "call",
-      "last_registered": "NOW-306d"
+      "last_registered": "NOW-306d",
+      "onyen": "joshuataylor"
     },
     {
       "id": 8,
       "pid": "730581782",
-      "email": "carolyn.wall@unc.edu",
+      "email": "carolynwall@unc.edu",
       "first_name": "Carolyn",
       "last_name": "Wall",
       "phone_number": "0289383947",
       "contact_preference": "text",
-      "last_registered": "NOW-118d"
+      "last_registered": "NOW-118d",
+      "onyen": "carolynwall"
     },
     {
       "id": 9,
       "pid": "730291921",
-      "email": "amber.callahan@unc.edu",
+      "email": "ambercallahan@unc.edu",
       "first_name": "Amber",
       "last_name": "Callahan",
       "phone_number": "8115401257",
       "contact_preference": "text",
-      "last_registered": "NOW-594d"
+      "last_registered": "NOW-594d",
+      "onyen": "ambercallahan"
     },
     {
       "id": 10,
       "pid": "730980625",
-      "email": "george.perry@unc.edu",
+      "email": "georgeperry@unc.edu",
       "first_name": "George",
       "last_name": "Perry",
       "phone_number": "1630236315",
       "contact_preference": "text",
-      "last_registered": "NOW-171d"
+      "last_registered": "NOW-171d",
+      "onyen": "georgeperry"
     },
     {
       "id": 11,
       "pid": "730558409",
-      "email": "martin.ellis@unc.edu",
+      "email": "martinellis@unc.edu",
       "first_name": "Martin",
       "last_name": "Ellis",
       "phone_number": "5040599133",
       "contact_preference": "text",
-      "last_registered": "NOW-526d"
+      "last_registered": "NOW-526d",
+      "onyen": "martinellis"
     },
     {
       "id": 12,
       "pid": "730372923",
-      "email": "william.lamb@unc.edu",
+      "email": "williamlamb@unc.edu",
       "first_name": "William",
       "last_name": "Lamb",
       "phone_number": "3550426305",
       "contact_preference": "text",
-      "last_registered": "NOW-395d"
+      "last_registered": "NOW-395d",
+      "onyen": "williamlamb"
     },
     {
       "id": 13,
       "pid": "730403854",
-      "email": "theodore.smith@unc.edu",
+      "email": "theodoresmith@unc.edu",
       "first_name": "Theodore",
       "last_name": "Smith",
       "phone_number": "6991098313",
       "contact_preference": "call",
-      "last_registered": "NOW-699d"
+      "last_registered": "NOW-699d",
+      "onyen": "theodoresmith"
     },
     {
       "id": 14,
       "pid": "730644914",
-      "email": "nicholas.boone@unc.edu",
+      "email": "nicholasboone@unc.edu",
       "first_name": "Nicholas",
       "last_name": "Boone",
       "phone_number": "6738853178",
       "contact_preference": "call",
-      "last_registered": "NOW-240d"
+      "last_registered": "NOW-240d",
+      "onyen": "nicholasboone"
     },
     {
       "id": 15,
       "pid": "730213591",
-      "email": "bryan.garcia@unc.edu",
+      "email": "bryangarcia@unc.edu",
       "first_name": "Bryan",
       "last_name": "Garcia",
       "phone_number": "0871691117",
       "contact_preference": "text",
-      "last_registered": "NOW-450d"
+      "last_registered": "NOW-450d",
+      "onyen": "bryangarcia"
     },
     {
       "id": 16,
       "pid": "730595698",
-      "email": "karen.boone@unc.edu",
+      "email": "karenboone@unc.edu",
       "first_name": "Karen",
       "last_name": "Boone",
       "phone_number": "6909950691",
       "contact_preference": "call",
-      "last_registered": "NOW-621d"
+      "last_registered": "NOW-621d",
+      "onyen": "karenboone"
     },
     {
       "id": 17,
       "pid": "730868738",
-      "email": "mark.mccoy@unc.edu",
+      "email": "markmccoy@unc.edu",
       "first_name": "Mark",
       "last_name": "Mccoy",
       "phone_number": "6964827095",
       "contact_preference": "call",
-      "last_registered": null
+      "last_registered": null,
+      "onyen": "markmccoy"
     },
     {
       "id": 18,
       "pid": "730346411",
-      "email": "eric.bennett@unc.edu",
+      "email": "ericbennett@unc.edu",
       "first_name": "Eric",
       "last_name": "Bennett",
       "phone_number": "4774070184",
       "contact_preference": "call",
-      "last_registered": "NOW-77d"
+      "last_registered": "NOW-77d",
+      "onyen": "ericbennett"
     },
     {
       "id": 19,
       "pid": "730454978",
-      "email": "caroline.walker@unc.edu",
+      "email": "carolinewalker@unc.edu",
       "first_name": "Caroline",
       "last_name": "Walker",
       "phone_number": "0743440309",
       "contact_preference": "call",
-      "last_registered": "NOW-578d"
+      "last_registered": "NOW-578d",
+      "onyen": "carolinewalker"
     },
     {
       "id": 20,
       "pid": "730551944",
-      "email": "mary.williams@unc.edu",
+      "email": "marywilliams@unc.edu",
       "first_name": "Mary",
       "last_name": "Williams",
       "phone_number": "4371067072",
       "contact_preference": "call",
-      "last_registered": "NOW-141d"
+      "last_registered": "NOW-141d",
+      "onyen": "marywilliams"
     },
     {
       "id": 21,
       "pid": "730519093",
-      "email": "jordan.wilson@unc.edu",
+      "email": "jordanwilson@unc.edu",
       "first_name": "Jordan",
       "last_name": "Wilson",
       "phone_number": "2850625038",
       "contact_preference": "text",
-      "last_registered": "NOW-516d"
+      "last_registered": "NOW-516d",
+      "onyen": "jordanwilson"
     },
     {
       "id": 22,
       "pid": "730583862",
-      "email": "jeremy.ramos@unc.edu",
+      "email": "jeremyramos@unc.edu",
       "first_name": "Jeremy",
       "last_name": "Ramos",
       "phone_number": "2019256153",
       "contact_preference": "call",
-      "last_registered": "NOW-491d"
+      "last_registered": "NOW-491d",
+      "onyen": "jeremyramos"
     },
     {
       "id": 23,
       "pid": "730388365",
-      "email": "ronald.jones@unc.edu",
+      "email": "ronaldjones@unc.edu",
       "first_name": "Ronald",
       "last_name": "Jones",
       "phone_number": "5383184902",
       "contact_preference": "text",
-      "last_registered": "NOW-3d"
+      "last_registered": "NOW-3d",
+      "onyen": "ronaldjones"
     },
     {
       "id": 24,
       "pid": "730557982",
-      "email": "manuel.schwartz@unc.edu",
+      "email": "manuelschwartz@unc.edu",
       "first_name": "Manuel",
       "last_name": "Schwartz",
       "phone_number": "2686743843",
       "contact_preference": "call",
-      "last_registered": "NOW-448d"
+      "last_registered": "NOW-448d",
+      "onyen": "manuelschwartz"
     },
     {
       "id": 25,
       "pid": "730322797",
-      "email": "timothy.cohen@unc.edu",
+      "email": "timothycohen@unc.edu",
       "first_name": "Timothy",
       "last_name": "Cohen",
       "phone_number": "0608695584",
       "contact_preference": "text",
-      "last_registered": "NOW-231d"
+      "last_registered": "NOW-231d",
+      "onyen": "timothycohen"
     },
     {
       "id": 26,
       "pid": "730692619",
-      "email": "christine.olson@unc.edu",
+      "email": "christineolson@unc.edu",
       "first_name": "Christine",
       "last_name": "Olson",
       "phone_number": "1326280027",
       "contact_preference": "text",
-      "last_registered": "NOW-180d"
+      "last_registered": "NOW-180d",
+      "onyen": "christineolson"
     },
     {
       "id": 27,
       "pid": "730575017",
-      "email": "kristina.davidson@unc.edu",
+      "email": "kristinadavidson@unc.edu",
       "first_name": "Kristina",
       "last_name": "Davidson",
       "phone_number": "9827615102",
       "contact_preference": "call",
-      "last_registered": "NOW-409d"
+      "last_registered": "NOW-409d",
+      "onyen": "kristinadavidson"
     },
     {
       "id": 28,
       "pid": "730206074",
-      "email": "richard.mccoy@unc.edu",
+      "email": "richardmccoy@unc.edu",
       "first_name": "Richard",
       "last_name": "Mccoy",
       "phone_number": "8174015134",
       "contact_preference": "text",
-      "last_registered": "NOW-186d"
+      "last_registered": "NOW-186d",
+      "onyen": "richardmccoy"
     },
     {
       "id": 29,
       "pid": "730175087",
-      "email": "timothy.lopez@unc.edu",
+      "email": "timothylopez@unc.edu",
       "first_name": "Timothy",
       "last_name": "Lopez",
       "phone_number": "1159522119",
       "contact_preference": "text",
-      "last_registered": "NOW-689d"
+      "last_registered": "NOW-689d",
+      "onyen": "timothylopez"
     },
     {
       "id": 30,
       "pid": "730386025",
-      "email": "perry.colon@unc.edu",
+      "email": "perrycolon@unc.edu",
       "first_name": "Perry",
       "last_name": "Colon",
       "phone_number": "9329522805",
       "contact_preference": "call",
-      "last_registered": "NOW-420d"
+      "last_registered": "NOW-420d",
+      "onyen": "perrycolon"
     },
     {
       "id": 31,
       "pid": "730888068",
-      "email": "katelyn.bennett@unc.edu",
+      "email": "katelynbennett@unc.edu",
       "first_name": "Katelyn",
       "last_name": "Bennett",
       "phone_number": "8080795200",
       "contact_preference": "call",
-      "last_registered": "NOW-690d"
+      "last_registered": "NOW-690d",
+      "onyen": "katelynbennett"
     },
     {
       "id": 32,
       "pid": "730374836",
-      "email": "david.howe@unc.edu",
+      "email": "davidhowe@unc.edu",
       "first_name": "David",
       "last_name": "Howe",
       "phone_number": "5470400829",
       "contact_preference": "call",
-      "last_registered": "NOW-110d"
+      "last_registered": "NOW-110d",
+      "onyen": "davidhowe"
     },
     {
       "id": 33,
       "pid": "730913472",
-      "email": "jonathan.thomas@unc.edu",
+      "email": "jonathanthomas@unc.edu",
       "first_name": "Jonathan",
       "last_name": "Thomas",
       "phone_number": "9702868495",
       "contact_preference": "text",
-      "last_registered": "NOW-282d"
+      "last_registered": "NOW-282d",
+      "onyen": "jonathanthomas"
     },
     {
       "id": 34,
       "pid": "730644730",
-      "email": "mercedes.davenport@unc.edu",
+      "email": "mercedesdavenport@unc.edu",
       "first_name": "Mercedes",
       "last_name": "Davenport",
       "phone_number": "1393049091",
       "contact_preference": "call",
-      "last_registered": "NOW-434d"
+      "last_registered": "NOW-434d",
+      "onyen": "mercedesdavenport"
     },
     {
       "id": 35,
       "pid": "730811997",
-      "email": "susan.jones@unc.edu",
+      "email": "susanjones@unc.edu",
       "first_name": "Susan",
       "last_name": "Jones",
       "phone_number": "5623160025",
       "contact_preference": "call",
-      "last_registered": "NOW-508d"
+      "last_registered": "NOW-508d",
+      "onyen": "susanjones"
     },
     {
       "id": 36,
       "pid": "730130528",
-      "email": "nancy.patterson@unc.edu",
+      "email": "nancypatterson@unc.edu",
       "first_name": "Nancy",
       "last_name": "Patterson",
       "phone_number": "8597613689",
       "contact_preference": "text",
-      "last_registered": "NOW-518d"
+      "last_registered": "NOW-518d",
+      "onyen": "nancypatterson"
     },
     {
       "id": 37,
       "pid": "730476312",
-      "email": "amanda.benson@unc.edu",
+      "email": "amandabenson@unc.edu",
       "first_name": "Amanda",
       "last_name": "Benson",
       "phone_number": "0347041827",
       "contact_preference": "text",
-      "last_registered": "NOW-384d"
+      "last_registered": "NOW-384d",
+      "onyen": "amandabenson"
     },
     {
       "id": 38,
       "pid": "730130163",
-      "email": "briana.jones@unc.edu",
+      "email": "brianajones@unc.edu",
       "first_name": "Briana",
       "last_name": "Jones",
       "phone_number": "2329750026",
       "contact_preference": "text",
-      "last_registered": "NOW-724d"
+      "last_registered": "NOW-724d",
+      "onyen": "brianajones"
     },
     {
       "id": 39,
       "pid": "730804970",
-      "email": "austin.douglas@unc.edu",
+      "email": "austindouglas@unc.edu",
       "first_name": "Austin",
       "last_name": "Douglas",
       "phone_number": "8034245803",
       "contact_preference": "text",
-      "last_registered": "NOW-652d"
+      "last_registered": "NOW-652d",
+      "onyen": "austindouglas"
     },
     {
       "id": 40,
       "pid": "730753021",
-      "email": "kelly.pruitt@unc.edu",
+      "email": "kellypruitt@unc.edu",
       "first_name": "Kelly",
       "last_name": "Pruitt",
       "phone_number": "4323191835",
       "contact_preference": "text",
-      "last_registered": "NOW-223d"
+      "last_registered": "NOW-223d",
+      "onyen": "kellypruitt"
     },
     {
       "id": 41,
       "pid": "730688238",
-      "email": "angela.sawyer@unc.edu",
+      "email": "angelasawyer@unc.edu",
       "first_name": "Angela",
       "last_name": "Sawyer",
       "phone_number": "7900107653",
       "contact_preference": "text",
-      "last_registered": "NOW-690d"
+      "last_registered": "NOW-690d",
+      "onyen": "angelasawyer"
     },
     {
       "id": 42,
       "pid": "730165265",
-      "email": "michelle.booth@unc.edu",
+      "email": "michellebooth@unc.edu",
       "first_name": "Michelle",
       "last_name": "Booth",
       "phone_number": "7055471558",
       "contact_preference": "text",
-      "last_registered": "NOW-453d"
+      "last_registered": "NOW-453d",
+      "onyen": "michellebooth"
     },
     {
       "id": 43,
       "pid": "730879696",
-      "email": "michelle.lawson@unc.edu",
+      "email": "michellelawson@unc.edu",
       "first_name": "Michelle",
       "last_name": "Lawson",
       "phone_number": "7154704515",
       "contact_preference": "text",
-      "last_registered": "NOW-458d"
+      "last_registered": "NOW-458d",
+      "onyen": "michellelawson"
     },
     {
       "id": 44,
       "pid": "730915948",
-      "email": "ashley.gordon@unc.edu",
+      "email": "ashleygordon@unc.edu",
       "first_name": "Ashley",
       "last_name": "Gordon",
       "phone_number": "1720107314",
       "contact_preference": "text",
-      "last_registered": "NOW-393d"
+      "last_registered": "NOW-393d",
+      "onyen": "ashleygordon"
     },
     {
       "id": 45,
       "pid": "730821302",
-      "email": "douglas.trujillo@unc.edu",
+      "email": "douglastrujillo@unc.edu",
       "first_name": "Douglas",
       "last_name": "Trujillo",
       "phone_number": "4810904735",
       "contact_preference": "text",
-      "last_registered": "NOW-692d"
+      "last_registered": "NOW-692d",
+      "onyen": "douglastrujillo"
     },
     {
       "id": 46,
       "pid": "730897610",
-      "email": "ana.washington@unc.edu",
+      "email": "anawashington@unc.edu",
       "first_name": "Ana",
       "last_name": "Washington",
       "phone_number": "4440115552",
       "contact_preference": "text",
-      "last_registered": "NOW-312d"
+      "last_registered": "NOW-312d",
+      "onyen": "anawashington"
     },
     {
       "id": 47,
       "pid": "730669019",
-      "email": "nicole.doyle@unc.edu",
+      "email": "nicoledoyle@unc.edu",
       "first_name": "Nicole",
       "last_name": "Doyle",
       "phone_number": "6954827095",
       "contact_preference": "call",
-      "last_registered": "NOW-636d"
+      "last_registered": "NOW-636d",
+      "onyen": "nicoledoyle"
     },
     {
       "id": 48,
       "pid": "730370563",
-      "email": "shaun.cardenas@unc.edu",
+      "email": "shauncardenas@unc.edu",
       "first_name": "Shaun",
       "last_name": "Cardenas",
       "phone_number": "8162287744",
       "contact_preference": "text",
-      "last_registered": "NOW-426d"
+      "last_registered": "NOW-426d",
+      "onyen": "shauncardenas"
     },
     {
       "id": 49,
       "pid": "730422342",
-      "email": "frank.wallace@unc.edu",
+      "email": "frankwallace@unc.edu",
       "first_name": "Frank",
       "last_name": "Wallace",
       "phone_number": "4690838189",
       "contact_preference": "text",
-      "last_registered": "NOW-353d"
+      "last_registered": "NOW-353d",
+      "onyen": "frankwallace"
     },
     {
       "id": 50,
       "pid": "730633413",
-      "email": "keith.martinez@unc.edu",
+      "email": "keithmartinez@unc.edu",
       "first_name": "Keith",
       "last_name": "Martinez",
       "phone_number": "0964966004",
       "contact_preference": "text",
-      "last_registered": "NOW-20d"
+      "last_registered": "NOW-20d",
+      "onyen": "keithmartinez"
     },
     {
       "id": 51,
       "pid": "730269746",
-      "email": "christopher.miller@unc.edu",
+      "email": "christophermiller@unc.edu",
       "first_name": "Christopher",
       "last_name": "Miller",
       "phone_number": "8879848197",
       "contact_preference": "text",
-      "last_registered": null
+      "last_registered": null,
+      "onyen": "christophermiller"
     },
     {
       "id": 52,
       "pid": "730855174",
-      "email": "mark.solis@unc.edu",
+      "email": "marksolis@unc.edu",
       "first_name": "Mark",
       "last_name": "Solis",
       "phone_number": "7356585248",
       "contact_preference": "text",
-      "last_registered": "NOW-631d"
+      "last_registered": "NOW-631d",
+      "onyen": "marksolis"
     },
     {
       "id": 53,
       "pid": "730856272",
-      "email": "travis.andersen@unc.edu",
+      "email": "travisandersen@unc.edu",
       "first_name": "Travis",
       "last_name": "Andersen",
       "phone_number": "9042516249",
       "contact_preference": "text",
-      "last_registered": "NOW-659d"
+      "last_registered": "NOW-659d",
+      "onyen": "travisandersen"
     },
     {
       "id": 54,
       "pid": "730852515",
-      "email": "melinda.holland@unc.edu",
+      "email": "melindaholland@unc.edu",
       "first_name": "Melinda",
       "last_name": "Holland",
       "phone_number": "1975041368",
       "contact_preference": "text",
-      "last_registered": "NOW-726d"
+      "last_registered": "NOW-726d",
+      "onyen": "melindaholland"
     },
     {
       "id": 55,
       "pid": "730957441",
-      "email": "catherine.stevens@unc.edu",
+      "email": "catherinestevens@unc.edu",
       "first_name": "Catherine",
       "last_name": "Stevens",
       "phone_number": "3250380312",
       "contact_preference": "text",
-      "last_registered": "NOW-585d"
+      "last_registered": "NOW-585d",
+      "onyen": "catherinestevens"
     },
     {
       "id": 56,
       "pid": "730659998",
-      "email": "joanne.white@unc.edu",
+      "email": "joannewhite@unc.edu",
       "first_name": "Joanne",
       "last_name": "White",
       "phone_number": "9637296013",
       "contact_preference": "call",
-      "last_registered": "NOW-37d"
+      "last_registered": "NOW-37d",
+      "onyen": "joannewhite"
     },
     {
       "id": 57,
       "pid": "730822984",
-      "email": "savannah.johnson@unc.edu",
+      "email": "savannahjohnson@unc.edu",
       "first_name": "Savannah",
       "last_name": "Johnson",
       "phone_number": "0634622490",
       "contact_preference": "text",
-      "last_registered": null
+      "last_registered": null,
+      "onyen": "savannahjohnson"
     },
     {
       "id": 58,
       "pid": "730129699",
-      "email": "roy.gonzalez@unc.edu",
+      "email": "roygonzalez@unc.edu",
       "first_name": "Roy",
       "last_name": "Gonzalez",
       "phone_number": "8790458763",
       "contact_preference": "text",
-      "last_registered": "NOW-162d"
+      "last_registered": "NOW-162d",
+      "onyen": "roygonzalez"
     },
     {
       "id": 59,
       "pid": "730626990",
-      "email": "ryan.pope@unc.edu",
+      "email": "ryanpope@unc.edu",
       "first_name": "Ryan",
       "last_name": "Pope",
       "phone_number": "8645777450",
       "contact_preference": "text",
-      "last_registered": null
+      "last_registered": null,
+      "onyen": "ryanpope"
     },
     {
       "id": 60,
       "pid": "730369025",
-      "email": "christopher.smith@unc.edu",
+      "email": "christophersmith@unc.edu",
       "first_name": "Christopher",
       "last_name": "Smith",
       "phone_number": "4839300352",
       "contact_preference": "text",
-      "last_registered": "NOW-384d"
+      "last_registered": "NOW-384d",
+      "onyen": "christophersmith"
     },
     {
       "id": 61,
       "pid": "730745876",
-      "email": "carl.smith@unc.edu",
+      "email": "carlsmith@unc.edu",
       "first_name": "Carl",
       "last_name": "Smith",
       "phone_number": "8738997432",
       "contact_preference": "text",
-      "last_registered": "NOW-135d"
+      "last_registered": "NOW-135d",
+      "onyen": "carlsmith"
     },
     {
       "id": 62,
       "pid": "730144200",
-      "email": "william.perez@unc.edu",
+      "email": "williamperez@unc.edu",
       "first_name": "William",
       "last_name": "Perez",
       "phone_number": "2790409215",
       "contact_preference": "text",
-      "last_registered": "NOW-592d"
+      "last_registered": "NOW-592d",
+      "onyen": "williamperez"
     },
     {
       "id": 63,
       "pid": "730121870",
-      "email": "james.wilson@unc.edu",
+      "email": "jameswilson@unc.edu",
       "first_name": "James",
       "last_name": "Wilson",
       "phone_number": "3066645204",
       "contact_preference": "call",
-      "last_registered": "NOW-133d"
+      "last_registered": "NOW-133d",
+      "onyen": "jameswilson"
     },
     {
       "id": 64,
       "pid": "730373811",
-      "email": "angelica.hamilton@unc.edu",
+      "email": "angelicahamilton@unc.edu",
       "first_name": "Angelica",
       "last_name": "Hamilton",
       "phone_number": "9846111710",
       "contact_preference": "text",
-      "last_registered": "NOW-22d"
+      "last_registered": "NOW-22d",
+      "onyen": "angelicahamilton"
     },
     {
       "id": 65,
       "pid": "730705663",
-      "email": "michael.torres@unc.edu",
+      "email": "michaeltorres@unc.edu",
       "first_name": "Michael",
       "last_name": "Torres",
       "phone_number": "2444268424",
       "contact_preference": "text",
-      "last_registered": "NOW-318d"
+      "last_registered": "NOW-318d",
+      "onyen": "michaeltorres"
     },
     {
       "id": 66,
       "pid": "730768393",
-      "email": "jeffrey.taylor@unc.edu",
+      "email": "jeffreytaylor@unc.edu",
       "first_name": "Jeffrey",
       "last_name": "Taylor",
       "phone_number": "6424401732",
       "contact_preference": "text",
-      "last_registered": "NOW-410d"
+      "last_registered": "NOW-410d",
+      "onyen": "jeffreytaylor"
     },
     {
       "id": 67,
       "pid": "730680432",
-      "email": "samantha.marshall@unc.edu",
+      "email": "samanthamarshall@unc.edu",
       "first_name": "Samantha",
       "last_name": "Marshall",
       "phone_number": "5557860678",
       "contact_preference": "text",
-      "last_registered": "NOW-574d"
+      "last_registered": "NOW-574d",
+      "onyen": "samanthamarshall"
     },
     {
       "id": 68,
       "pid": "730555458",
-      "email": "michael.smith@unc.edu",
+      "email": "michaelsmith@unc.edu",
       "first_name": "Michael",
       "last_name": "Smith",
       "phone_number": "9692094073",
       "contact_preference": "call",
-      "last_registered": "NOW-143d"
+      "last_registered": "NOW-143d",
+      "onyen": "michaelsmith"
     },
     {
       "id": 69,
       "pid": "730590126",
-      "email": "hayley.garcia@unc.edu",
+      "email": "hayleygarcia@unc.edu",
       "first_name": "Hayley",
       "last_name": "Garcia",
       "phone_number": "6273577824",
       "contact_preference": "text",
-      "last_registered": "NOW-673d"
+      "last_registered": "NOW-673d",
+      "onyen": "hayleygarcia"
     },
     {
       "id": 70,
       "pid": "730869707",
-      "email": "william.middleton@unc.edu",
+      "email": "williammiddleton@unc.edu",
       "first_name": "William",
       "last_name": "Middleton",
       "phone_number": "3345141282",
       "contact_preference": "text",
-      "last_registered": "NOW-63d"
+      "last_registered": "NOW-63d",
+      "onyen": "williammiddleton"
     },
     {
       "id": 71,
       "pid": "730323692",
-      "email": "bryan.hale@unc.edu",
+      "email": "bryanhale@unc.edu",
       "first_name": "Bryan",
       "last_name": "Hale",
       "phone_number": "7362022441",
       "contact_preference": "call",
-      "last_registered": "NOW-584d"
+      "last_registered": "NOW-584d",
+      "onyen": "bryanhale"
     },
     {
       "id": 72,
       "pid": "730514489",
-      "email": "diane.merritt@unc.edu",
+      "email": "dianemerritt@unc.edu",
       "first_name": "Diane",
       "last_name": "Merritt",
       "phone_number": "3870407072",
       "contact_preference": "call",
-      "last_registered": "NOW-566d"
+      "last_registered": "NOW-566d",
+      "onyen": "dianemerritt"
     },
     {
       "id": 73,
       "pid": "730975376",
-      "email": "angela.todd@unc.edu",
+      "email": "angelatodd@unc.edu",
       "first_name": "Angela",
       "last_name": "Todd",
       "phone_number": "8894897302",
       "contact_preference": "text",
-      "last_registered": "NOW-223d"
+      "last_registered": "NOW-223d",
+      "onyen": "angelatodd"
     },
     {
       "id": 74,
       "pid": "730348889",
-      "email": "danielle.stewart@unc.edu",
+      "email": "daniellestewart@unc.edu",
       "first_name": "Danielle",
       "last_name": "Stewart",
       "phone_number": "3017410106",
       "contact_preference": "text",
-      "last_registered": "NOW-550d"
+      "last_registered": "NOW-550d",
+      "onyen": "daniellestewart"
     },
     {
       "id": 75,
       "pid": "730731435",
-      "email": "ryan.oliver@unc.edu",
+      "email": "ryanoliver@unc.edu",
       "first_name": "Ryan",
       "last_name": "Oliver",
       "phone_number": "6708441824",
       "contact_preference": "text",
-      "last_registered": "NOW-79d"
+      "last_registered": "NOW-79d",
+      "onyen": "ryanoliver"
     },
     {
       "id": 76,
       "pid": "730375991",
-      "email": "mason.watson@unc.edu",
+      "email": "masonwatson@unc.edu",
       "first_name": "Mason",
       "last_name": "Watson",
       "phone_number": "9960151797",
       "contact_preference": "text",
-      "last_registered": "NOW-561d"
+      "last_registered": "NOW-561d",
+      "onyen": "masonwatson"
     }
   ],
   "parties": [
@@ -3224,8 +3300,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 1
     },
@@ -3242,8 +3316,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27514",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 2
     },
@@ -3260,8 +3332,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 3
     },
@@ -3278,8 +3348,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 4
     },
@@ -3296,8 +3364,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 5
     },
@@ -3314,8 +3380,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 6
     },
@@ -3332,8 +3396,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 7
     },
@@ -3350,8 +3412,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 2,
-      "citation_count": 0,
       "hold_expiration": "NOW+90d",
       "id": 8
     },
@@ -3368,8 +3428,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 9
     },
@@ -3386,8 +3444,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 10
     },
@@ -3404,8 +3460,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27514",
-      "warning_count": 0,
-      "citation_count": 1,
       "hold_expiration": "NOW+90d",
       "id": 11
     },
@@ -3422,8 +3476,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 12
     },
@@ -3440,8 +3492,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27514",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 13
     },
@@ -3458,8 +3508,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 2,
-      "citation_count": 0,
       "hold_expiration": "NOW+90d",
       "id": 14
     },
@@ -3476,8 +3524,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27514",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 15
     },
@@ -3494,8 +3540,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27514",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 16
     },
@@ -3512,8 +3556,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 2,
-      "citation_count": 1,
       "hold_expiration": "NOW+90d",
       "id": 17
     },
@@ -3530,8 +3572,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 18
     },
@@ -3548,8 +3588,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 19
     },
@@ -3566,8 +3604,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 20
     },
@@ -3584,8 +3620,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 21
     },
@@ -3602,8 +3636,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27514",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 22
     },
@@ -3620,8 +3652,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 23
     },
@@ -3638,8 +3668,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 24
     },
@@ -3656,8 +3684,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27514",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 25
     },
@@ -3674,8 +3700,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 26
     },
@@ -3692,8 +3716,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27514",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 27
     },
@@ -3710,8 +3732,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 28
     },
@@ -3728,8 +3748,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 29
     },
@@ -3746,8 +3764,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 30
     },
@@ -3764,8 +3780,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27514",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 31
     },
@@ -3782,8 +3796,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27514",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 32
     },
@@ -3800,8 +3812,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 33
     },
@@ -3818,8 +3828,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 34
     },
@@ -3836,8 +3844,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 35
     },
@@ -3854,8 +3860,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 36
     },
@@ -3872,8 +3876,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 37
     },
@@ -3890,8 +3892,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 38
     },
@@ -3908,8 +3908,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 39
     },
@@ -3926,8 +3924,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 40
     },
@@ -3944,8 +3940,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 41
     },
@@ -3962,8 +3956,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 42
     },
@@ -3980,8 +3972,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 43
     },
@@ -3998,8 +3988,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 44
     },
@@ -4016,8 +4004,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 45
     },
@@ -4034,8 +4020,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 46
     },
@@ -4052,8 +4036,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 47
     },
@@ -4070,8 +4052,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 48
     },
@@ -4088,8 +4068,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 49
     },
@@ -4106,8 +4084,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27514",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 50
     },
@@ -4124,8 +4100,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 51
     },
@@ -4142,8 +4116,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 52
     },
@@ -4160,8 +4132,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 53
     },
@@ -4178,8 +4148,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 54
     },
@@ -4196,8 +4164,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 55
     },
@@ -4214,8 +4180,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 56
     },
@@ -4232,8 +4196,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 57
     },
@@ -4250,8 +4212,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 58
     },
@@ -4268,8 +4228,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 59
     },
@@ -4286,8 +4244,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 60
     },
@@ -4304,8 +4260,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 61
     },
@@ -4322,8 +4276,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 62
     },
@@ -4340,8 +4292,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 63
     },
@@ -4358,8 +4308,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 64
     },
@@ -4376,8 +4324,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27514",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 65
     },
@@ -4394,8 +4340,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 66
     },
@@ -4412,8 +4356,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27514",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 67
     },
@@ -4430,8 +4372,6 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "warning_count": 0,
-      "citation_count": 0,
       "hold_expiration": null,
       "id": 68
     }

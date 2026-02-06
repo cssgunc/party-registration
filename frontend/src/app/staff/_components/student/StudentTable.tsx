@@ -207,6 +207,11 @@ export const StudentTable = () => {
       enableColumnFilter: true,
     },
     {
+      accessorKey: "onyen",
+      header: "Onyen",
+      enableColumnFilter: true,
+    },
+    {
       accessorKey: "email",
       header: "Email",
       enableColumnFilter: true,

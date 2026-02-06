@@ -2,20 +2,6 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Backend",
-      "type": "debugpy",
-      "request": "launch",
-      "module": "fastapi",
-      "args": ["dev", "src/main.py", "--host", "127.0.0.1", "--port", "8000"],
-      "jinja": true,
-      "cwd": "${workspaceFolder}/backend",
-      "env": {
-        "PYTHONPATH": "${workspaceFolder}/backend"
-      },
-      "console": "integratedTerminal",
-      "justMyCode": false,
-    },
-    {
       "name": "Reset DB & Backend",
       "type": "debugpy",
       "request": "launch",
@@ -44,6 +30,20 @@
         "action": "openExternally"
       },
       "preLaunchTask": "Purge Next Dev" // Kill lingering procs blocking port
+    },
+    {
+      "name": "Backend",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "fastapi",
+      "args": ["dev", "src/main.py", "--host", "127.0.0.1", "--port", "8000"],
+      "jinja": true,
+      "cwd": "${workspaceFolder}/backend",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/backend"
+      },
+      "console": "integratedTerminal",
+      "justMyCode": false
     }
   ],
   "compounds": [
