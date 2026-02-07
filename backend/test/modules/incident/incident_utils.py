@@ -52,11 +52,11 @@ class IncidentTestUtils(
     @override
     async def next_dict(self, **overrides: Unpack[IncidentOverrides]) -> dict:
         # If location_id not provided, create a location
-        if "location_id" not in overrides:
+        local_overrides = dict(overrides)
+        if "location_id" not in local_overrides:
             location = await self.location_utils.create_one()
-            overrides["location_id"] = location.id
-
-        return await super().next_dict(**overrides)
+            local_overrides["location_id"] = location.id
+        return await super().next_dict(**local_overrides)
 
     # ================================ Typing Overrides ================================
 

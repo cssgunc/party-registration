@@ -2,7 +2,7 @@ import asyncio
 from datetime import UTC, datetime
 
 import googlemaps
-from fastapi import Depends
+from fastapi import Depends, Request
 from googlemaps import places
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -15,9 +15,16 @@ from src.core.exceptions import (
     InternalServerException,
     NotFoundException,
 )
+from src.core.query_utils import get_paginated_results, parse_pagination_params
 
 from .location_entity import LocationEntity
-from .location_model import AddressData, AutocompleteResult, LocationData, LocationDto
+from .location_model import (
+    AddressData,
+    AutocompleteResult,
+    LocationData,
+    LocationDto,
+    PaginatedLocationResponse,
+)
 
 
 class GoogleMapsAPIException(InternalServerException):
@@ -95,6 +102,81 @@ class LocationService:
         result = await self.session.execute(select(LocationEntity))
         locations = result.scalars().all()
         return [location.to_dto() for location in locations]
+
+    async def get_locations_paginated(
+        self,
+        request: Request,
+    ) -> "PaginatedLocationResponse":
+        """
+        Get locations with server-side pagination and sorting.
+
+        Query parameters are automatically parsed from the request:
+        - page_number: Page number (1-indexed, default: 1)
+        - page_size: Items per page (default: all)
+        - sort_by: Field to sort by
+        - sort_order: Sort order ('asc' or 'desc')
+
+        Returns:
+            PaginatedLocationResponse with items and metadata
+        """
+        # Define allowed fields for sorting and filtering
+        allowed_sort_fields = [
+            "id",
+            "google_place_id",
+            "formatted_address",
+            "latitude",
+            "longitude",
+            "street_number",
+            "street_name",
+            "unit",
+            "city",
+            "county",
+            "state",
+            "country",
+            "zip_code",
+            "warning_count",
+            "citation_count",
+            "hold_expiration",
+        ]
+        allowed_filter_fields = [
+            "id",
+            "google_place_id",
+            "formatted_address",
+            "latitude",
+            "longitude",
+            "street_number",
+            "street_name",
+            "unit",
+            "city",
+            "county",
+            "state",
+            "country",
+            "zip_code",
+            "warning_count",
+            "citation_count",
+            "hold_expiration",
+        ]
+
+        # Build base query
+        base_query = select(LocationEntity)
+
+        # Parse query params and get paginated results
+        query_params = parse_pagination_params(
+            request,
+            allowed_sort_fields=allowed_sort_fields,
+            allowed_filter_fields=allowed_filter_fields,
+        )
+
+        # Use the generic pagination utility
+        return await get_paginated_results(
+            session=self.session,
+            base_query=base_query,
+            entity_class=LocationEntity,
+            dto_converter=lambda entity: entity.to_dto(),
+            query_params=query_params,
+            allowed_sort_fields=allowed_sort_fields,
+            allowed_filter_fields=allowed_filter_fields,
+        )
 
     async def get_location_by_id(self, location_id: int) -> LocationDto:
         location_entity = await self._get_location_entity_by_id(location_id)

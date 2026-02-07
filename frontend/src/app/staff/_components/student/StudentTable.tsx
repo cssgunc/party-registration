@@ -8,7 +8,7 @@ import { StudentDto } from "@/lib/api/student/student.types";
 import { PaginatedResponse } from "@/lib/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { TableTemplate } from "../shared/table/TableTemplate";
 import StudentTableForm from "./StudentTableForm";
 
@@ -28,17 +28,7 @@ export const StudentTable = () => {
     retry: 1, // Only retry once
   });
 
-  const students = useMemo(
-    () =>
-      (studentsQuery.data?.items ?? [])
-        .slice()
-        .sort(
-          (a, b) =>
-            a.last_name.localeCompare(b.last_name) ||
-            a.first_name.localeCompare(b.first_name)
-        ),
-    [studentsQuery.data?.items]
-  );
+  const students = studentsQuery.data?.items ?? [];
 
   // Update student mutation (for checkbox and edit)
   const updateMutation = useMutation({
@@ -291,6 +281,10 @@ export const StudentTable = () => {
           `Are you sure you want to delete ${student.first_name} ${student.last_name}? This action cannot be undone.`
         }
         isDeleting={deleteMutation.isPending}
+        sortBy={(a, b) =>
+          a.last_name.localeCompare(b.last_name) ||
+          a.first_name.localeCompare(b.first_name)
+        }
       />
     </div>
   );

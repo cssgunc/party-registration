@@ -87,7 +87,7 @@ export class LocationService {
       return convertLocation(response.data);
     } catch (error) {
       console.error("Failed to create location:", error);
-      throw new Error("Failed to create location");
+      throw error;
     }
   }
 
@@ -106,7 +106,7 @@ export class LocationService {
       return convertLocation(response.data);
     } catch (error) {
       console.error(`Failed to update location ${id}:`, error);
-      throw new Error("Failed to update location");
+      throw error;
     }
   }
 
