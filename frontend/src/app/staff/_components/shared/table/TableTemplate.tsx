@@ -41,8 +41,9 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DeleteConfirmDialog } from "../dialog/DeleteConfirmDialog";
+import { useSidebar } from "../sidebar/SidebarContext";
 import { ColumnHeader } from "./ColumnHeader";
 import { FilterInput } from "./FilterInput";
 
@@ -85,6 +86,7 @@ export function TableTemplate<T extends object>({
   isDeleting,
   initialSort = [],
 }: TableProps<T>) {
+  const { isOpen } = useSidebar();
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: 25,
@@ -99,6 +101,12 @@ export function TableTemplate<T extends object>({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<T | null>(null);
   const [globalFilter, setGlobalFilter] = useState<string>("");
+
+  useEffect(() => {
+    if (!isOpen) {
+      setRowSelection({});
+    }
+  }, [isOpen]);
 
   const handleDeleteClick = (row: T) => {
     setItemToDelete(row);
