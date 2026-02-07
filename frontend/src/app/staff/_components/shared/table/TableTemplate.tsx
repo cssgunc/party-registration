@@ -23,6 +23,7 @@ import {
   ColumnFiltersState,
   PaginationState,
   Row,
+  RowSelectionState,
   SortingState,
   flexRender,
   getCoreRowModel,
@@ -41,8 +42,9 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DeleteConfirmDialog } from "../dialog/DeleteConfirmDialog";
+import { useSidebar } from "../sidebar/SidebarContext";
 import { ColumnHeader } from "./ColumnHeader";
 import { FilterInput } from "./FilterInput";
 
@@ -87,15 +89,20 @@ export function TableTemplate<T extends object>({
   initialSort = [],
   sortBy,
 }: TableProps<T>) {
+  const { isOpen } = useSidebar();
   const { role } = useRole();
   // Apply custom sorting if provided
-  const sortedData = sortBy ? [...data].sort(sortBy) : data;
+  const sortedData = useMemo(
+    () => (sortBy ? [...data].sort(sortBy) : data),
+    [data, sortBy]
+  );
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: 25,
   });
   const [sorting, setSorting] = useState<SortingState>(initialSort);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [activeFilterColumn, setActiveFilterColumn] = useState<{
     column: Column<T, unknown>;
     name: string;
@@ -104,9 +111,20 @@ export function TableTemplate<T extends object>({
   const [itemToDelete, setItemToDelete] = useState<T | null>(null);
   const [globalFilter, setGlobalFilter] = useState<string>("");
 
+  useEffect(() => {
+    if (!isOpen && Object.keys(rowSelection).length > 0) {
+      setRowSelection({});
+    }
+  }, [isOpen, rowSelection]);
+
   const handleDeleteClick = (row: T) => {
     setItemToDelete(row);
     setDeleteDialogOpen(true);
+  };
+
+  const handleEditClick = (rowId: string, row: T) => {
+    setRowSelection({ [rowId]: true });
+    onEdit?.(row);
   };
 
   const confirmDelete = () => {
@@ -138,7 +156,9 @@ export function TableTemplate<T extends object>({
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     {onEdit && (
-                      <DropdownMenuItem onClick={() => onEdit(row.original)}>
+                      <DropdownMenuItem
+                        onClick={() => handleEditClick(row.id, row.original)}
+                      >
                         <Pencil className="mr-2 h-4 w-4" />
                         Edit
                       </DropdownMenuItem>
@@ -216,6 +236,7 @@ export function TableTemplate<T extends object>({
       columnFilters,
       pagination,
       globalFilter,
+      rowSelection,
     },
     globalFilterFn: customFilterFn,
     onSortingChange: setSorting,
@@ -226,6 +247,7 @@ export function TableTemplate<T extends object>({
     onPaginationChange: setPagination,
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    onRowSelectionChange: setRowSelection,
   });
 
   return (
@@ -326,7 +348,14 @@ export function TableTemplate<T extends object>({
               <TableBody>
                 {table.getRowModel().rows?.length ? (
                   table.getRowModel().rows.map((row) => (
-                    <TableRow key={row.id}>
+                    <TableRow
+                      key={row.id}
+                      className={
+                        row.getIsSelected()
+                          ? "bg-blue-100 hover:bg-blue-200"
+                          : ""
+                      }
+                    >
                       {row.getVisibleCells().map((cell) => (
                         <TableCell
                           key={cell.id}
