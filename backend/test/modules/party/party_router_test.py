@@ -5,9 +5,13 @@ import pytest_asyncio
 from httpx import AsyncClient
 from src.modules.account.account_entity import AccountRole
 from src.modules.location.location_service import LocationHoldActiveException
-from src.modules.party.party_model import PartyDto
-from src.modules.party.party_service import PartyNotFoundException
+from src.modules.party.party_model import ContactDto, PartyDto
+from src.modules.party.party_service import (
+    ContactTwoMatchesContactOneException,
+    PartyNotFoundException,
+)
 from src.modules.student.student_entity import StudentEntity
+from src.modules.student.student_model import ContactPreference
 from test.modules.account.account_utils import AccountTestUtils
 from test.modules.location.location_utils import GmapsMockUtils, LocationTestUtils
 from test.modules.party.party_utils import PartyTestUtils
@@ -323,6 +327,54 @@ class TestPartyCreateAdminRouter:
         response = await self.admin_client.post("/api/parties", json=payload_dict)
         assert_res_validation_error(response)
 
+    @pytest.mark.asyncio
+    async def test_create_party_as_admin_duplicate_email(self):
+        """Test admin cannot create party with contact_two email matching contact_one."""
+        location = await self.location_utils.create_one()
+        student = await self.student_utils.create_one()
+        student_dto = await student.load_dto(self.student_utils.session)
+
+        payload = await self.party_utils.next_admin_create_dto(
+            google_place_id=location.google_place_id,
+            contact_one_email=student_dto.email,
+            contact_two=ContactDto(
+                email=student_dto.email,
+                first_name="Other",
+                last_name="Person",
+                phone_number="9195559999",
+                contact_preference=ContactPreference.TEXT,
+            ),
+        )
+
+        response = await self.admin_client.post(
+            "/api/parties", json=payload.model_dump(mode="json")
+        )
+        assert_res_failure(response, ContactTwoMatchesContactOneException("email"))
+
+    @pytest.mark.asyncio
+    async def test_create_party_as_admin_duplicate_phone(self):
+        """Test admin cannot create party with contact_two phone matching contact_one."""
+        location = await self.location_utils.create_one()
+        student = await self.student_utils.create_one()
+        student_dto = await student.load_dto(self.student_utils.session)
+
+        payload = await self.party_utils.next_admin_create_dto(
+            google_place_id=location.google_place_id,
+            contact_one_email=student_dto.email,
+            contact_two=ContactDto(
+                email="different@email.com",
+                first_name="Other",
+                last_name="Person",
+                phone_number=student_dto.phone_number,
+                contact_preference=ContactPreference.TEXT,
+            ),
+        )
+
+        response = await self.admin_client.post(
+            "/api/parties", json=payload.model_dump(mode="json")
+        )
+        assert_res_failure(response, ContactTwoMatchesContactOneException("phone number"))
+
 
 class TestPartyCreateStudentRouter:
     """Tests for POST /api/parties endpoint (student creation)."""
@@ -379,6 +431,50 @@ class TestPartyCreateStudentRouter:
         assert data.contact_one.id == current_student.account_id
         assert data.contact_two.email == payload.contact_two.email
         assert data.location.google_place_id == payload.google_place_id
+
+    @pytest.mark.asyncio
+    async def test_create_party_as_student_duplicate_email(self, current_student: StudentEntity):
+        """Test student cannot create party with contact_two email matching their own."""
+        student_dto = await current_student.load_dto(self.student_utils.session)
+        location = await self.location_utils.create_one()
+
+        payload = await self.party_utils.next_student_create_dto(
+            google_place_id=location.google_place_id,
+            contact_two=ContactDto(
+                email=student_dto.email,
+                first_name="Other",
+                last_name="Person",
+                phone_number="9195559999",
+                contact_preference=ContactPreference.TEXT,
+            ),
+        )
+
+        response = await self.student_client.post(
+            "/api/parties", json=payload.model_dump(mode="json")
+        )
+        assert_res_failure(response, ContactTwoMatchesContactOneException("email"))
+
+    @pytest.mark.asyncio
+    async def test_create_party_as_student_duplicate_phone(self, current_student: StudentEntity):
+        """Test student cannot create party with contact_two phone matching their own."""
+        student_dto = await current_student.load_dto(self.student_utils.session)
+        location = await self.location_utils.create_one()
+
+        payload = await self.party_utils.next_student_create_dto(
+            google_place_id=location.google_place_id,
+            contact_two=ContactDto(
+                email="different@email.com",
+                first_name="Other",
+                last_name="Person",
+                phone_number=student_dto.phone_number,
+                contact_preference=ContactPreference.TEXT,
+            ),
+        )
+
+        response = await self.student_client.post(
+            "/api/parties", json=payload.model_dump(mode="json")
+        )
+        assert_res_failure(response, ContactTwoMatchesContactOneException("phone number"))
 
 
 class TestPartyNearbyRouter:

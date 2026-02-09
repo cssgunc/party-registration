@@ -77,6 +77,10 @@ interface PartyRegistrationFormProps {
   onSubmit: (data: PartyFormValues, placeId: string) => void | Promise<void>;
   locationService?: LocationService;
   initialValues?: PartyFormInitialValues;
+  /** The authenticated student's email (contact one) for duplicate validation */
+  studentEmail?: string;
+  /** The authenticated student's phone number (contact one) for duplicate validation */
+  studentPhoneNumber?: string;
 }
 
 // Default party time (e.g., 8:00 PM)
@@ -88,6 +92,8 @@ export default function PartyRegistrationForm({
   onSubmit,
   locationService = new LocationService(),
   initialValues,
+  studentEmail,
+  studentPhoneNumber,
 }: PartyRegistrationFormProps) {
   const [formData, setFormData] = useState<Partial<PartyFormValues>>({
     address: initialValues?.address ?? "",
@@ -132,6 +138,29 @@ export default function PartyRegistrationForm({
         }
       });
       setErrors(fieldErrors);
+      return;
+    }
+
+    // Validate contact two differs from contact one (the student)
+    const contactTwoErrors: Record<string, string> = {};
+    if (
+      studentEmail &&
+      result.data.contactTwoEmail.trim().toLowerCase() ===
+        studentEmail.trim().toLowerCase()
+    ) {
+      contactTwoErrors.contactTwoEmail =
+        "Contact two email must be different from your email";
+    }
+    if (studentPhoneNumber) {
+      const c1Digits = studentPhoneNumber.replace(/\D/g, "");
+      const c2Digits = result.data.phoneNumber.replace(/\D/g, "");
+      if (c1Digits === c2Digits) {
+        contactTwoErrors.phoneNumber =
+          "Contact two phone number must be different from your phone number";
+      }
+    }
+    if (Object.keys(contactTwoErrors).length > 0) {
+      setErrors(contactTwoErrors);
       return;
     }
 
