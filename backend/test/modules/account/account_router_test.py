@@ -111,7 +111,10 @@ class TestAccountRouter:
         """Test that creating an account with duplicate email returns 409."""
         new_account = await self.account_utils.next_dict(email=accounts_two_per_role[0].email)
         response = await self.admin_client.post("/api/accounts", json=new_account)
-        assert_res_failure(response, AccountConflictException(new_account["email"]))
+        assert_res_failure(
+            response,
+            AccountConflictException(f"Account with email {new_account['email']} already exists"),
+        )
 
     @pytest.mark.parametrize(
         "invalid_data",
@@ -162,7 +165,10 @@ class TestAccountRouter:
         response = await self.admin_client.put(
             f"/api/accounts/{account_to_update.id}", json=updated_data
         )
-        assert_res_failure(response, AccountConflictException(updated_data["email"]))
+        assert_res_failure(
+            response,
+            AccountConflictException(f"Account with email {updated_data['email']} already exists"),
+        )
 
     @pytest.mark.asyncio
     async def test_update_account_not_found(self):
