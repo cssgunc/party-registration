@@ -98,7 +98,7 @@ export default function PolicePage() {
         <div className=" md:w-1/3 border-r border-gray-200 flex flex-col overflow-hidden">
           {/* Filter Between Section */}
           <div className="px-4 md:px-6 py-4 flex-shrink-0 border-b border-gray-200">
-            <h2 className="text-2xl md:text-xl font-semibold mb-4">
+            <h2 className="text-2xl font-semibold mb-4 md:text-xl">
               Filter Between
             </h2>
             <div className="hidden md:flex">
@@ -121,7 +121,7 @@ export default function PolicePage() {
 
           {/* Dto Search Section */}
           <div className="px-4 md:px-6 py-4 flex-shrink-0 border-b border-gray-200">
-            <h2 className="text-2xl font-semibold mb-4 flex-shrink-0 md: text-xl">
+            <h2 className="text-2xl font-semibold mb-4 flex-shrink-0 md:text-xl">
               Proximity Search
             </h2>
 
@@ -143,7 +143,7 @@ export default function PolicePage() {
 
           {/* Party List Section */}
           <div className="px-4 md:px-6 py-4 flex-1 flex flex-col overflow-hidden">
-            <h2 className="text-2xl font-semibold mb-4 flex-shrink-0 md: text-xl">
+            <h2 className="text-2xl font-semibold mb-4 flex-shrink-0 md:text-xl">
               Party List
             </h2>
 
@@ -164,7 +164,7 @@ export default function PolicePage() {
             {/* Party List - Scrollable */}
             {!isLoading && !isLoadingNearby && (
               <div
-                className="max-h-48.5 overflow-scroll md:flex-1 min-h-0 max-h-100"
+                className="max-h-48.5 overflow-scroll md:max-h-100 flex-1 min-h-0"
                 id="party-list"
               >
                 <PartyList
@@ -179,7 +179,7 @@ export default function PolicePage() {
 
         {/* Right Panel - Map */}
         <div className="h-[60vh] sm:h-[75vh] md:h-full flex-1 px-6 py-4 flex flex-col overflow-hidden">
-          <h2 className="text-2xl font-semibold mb-4 flex-shrink-0 md: text-xl">
+          <h2 className="text-2xl font-semibold mb-4 flex-shrink-0 md:text-xl">
             {searchAddress ? "Showing Nearby Parties" : "Showing Parties"}
           </h2>
           <div className="h-full md:flex-1 overflow-hidden">
