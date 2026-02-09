@@ -1,6 +1,6 @@
 from typing import Self
 
-from sqlalchemy import CheckConstraint, Enum, Integer, String
+from sqlalchemy import CheckConstraint, Enum, Index, Integer, String, text
 from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column
 from src.core.database import EntityBase
 from src.modules.account.account_model import AccountData, AccountDto, AccountRole
@@ -10,7 +10,7 @@ class AccountEntity(MappedAsDataclass, EntityBase):
     __tablename__ = "accounts"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, init=False)
-    email: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
+    email: Mapped[str] = mapped_column(String, index=True, nullable=False)
     first_name: Mapped[str] = mapped_column(String, nullable=False)
     last_name: Mapped[str] = mapped_column(String, nullable=False)
     pid: Mapped[str] = mapped_column(
@@ -19,9 +19,14 @@ class AccountEntity(MappedAsDataclass, EntityBase):
             "length(pid) = 9 AND pid ~ '^[0-9]{9}$'",
             name="check_pid_format",
         ),
+        unique=True,
+        index=True,
         nullable=False,
     )
     role: Mapped[AccountRole] = mapped_column(Enum(AccountRole), nullable=False)
+
+    # Create case-insensitive unique index for email using text expression
+    __table_args__ = (Index("ix_accounts_email_lower", text("lower(email)"), unique=True),)
 
     @classmethod
     def from_data(cls, data: "AccountData") -> Self:
