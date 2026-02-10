@@ -2,9 +2,10 @@ import io
 import math
 from datetime import UTC, datetime, timedelta
 
-from fastapi import Depends
+from fastapi import Depends, Request
 from openpyxl import Workbook
 from openpyxl.styles import Font
+from openpyxl.utils import get_column_letter
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +13,7 @@ from sqlalchemy.orm import selectinload
 from src.core.config import env
 from src.core.database import get_session
 from src.core.exceptions import BadRequestException, ConflictException, NotFoundException
+from src.core.query_utils import get_paginated_results, parse_pagination_params
 from src.modules.location.location_model import LocationDto
 from src.modules.student.student_service import StudentNotFoundException, StudentService
 
@@ -19,7 +21,13 @@ from ..account.account_service import AccountByEmailNotFoundException, AccountSe
 from ..location.location_service import LocationService
 from ..student.student_entity import StudentEntity
 from .party_entity import PartyEntity
-from .party_model import AdminCreatePartyDto, PartyData, PartyDto, StudentCreatePartyDto
+from .party_model import (
+    AdminCreatePartyDto,
+    PaginatedPartiesResponse,
+    PartyData,
+    PartyDto,
+    StudentCreatePartyDto,
+)
 
 
 class PartyNotFoundException(NotFoundException):
@@ -154,8 +162,10 @@ class PartyService:
             .options(selectinload(StudentEntity.account))
         )
         student = result.scalar_one_or_none()
+
         if student is None:
             raise StudentNotFoundException(account.id)
+
         return student
 
     async def get_parties(self, skip: int = 0, limit: int | None = None) -> list[PartyDto]:
@@ -169,15 +179,83 @@ class PartyService:
         )
         if limit is not None:
             query = query.limit(limit)
+
         result = await self.session.execute(query)
         parties = result.scalars().all()
         return [party.to_dto() for party in parties]
+
+    async def get_parties_paginated(
+        self,
+        request: Request,
+    ) -> PaginatedPartiesResponse:
+        """
+        Get parties with server-side pagination, sorting, and filtering.
+
+        Query parameters are automatically parsed from the request:
+        - page_number: Page number (1-indexed, default: 1)
+        - page_size: Items per page (default: all)
+        - sort_by: Field to sort by
+        - sort_order: Sort order ('asc' or 'desc')
+        - location_id: Filter by location ID
+        - contact_one_id: Filter by contact one (student) ID
+
+        Returns:
+            PaginatedPartiesResponse with items and metadata
+        """
+        # Define allowed fields for sorting and filtering
+        allowed_sort_fields = [
+            "id",
+            "party_datetime",
+            "location_id",
+            "contact_one_id",
+            "contact_two_email",
+            "contact_two_first_name",
+            "contact_two_last_name",
+            "contact_two_phone_number",
+            "contact_two_contact_preference",
+        ]
+        allowed_filter_fields = [
+            "id",
+            "party_datetime",
+            "location_id",
+            "contact_one_id",
+            "contact_two_email",
+            "contact_two_first_name",
+            "contact_two_last_name",
+            "contact_two_phone_number",
+            "contact_two_contact_preference",
+        ]
+
+        # Parse query params from request
+        query_params = parse_pagination_params(
+            request,
+            allowed_sort_fields=allowed_sort_fields,
+            allowed_filter_fields=allowed_filter_fields,
+        )
+
+        # Build base query with eager loading
+        base_query = select(PartyEntity).options(
+            selectinload(PartyEntity.location),
+            selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
+        )
+
+        # Use the generic pagination utility
+        return await get_paginated_results(
+            session=self.session,
+            base_query=base_query,
+            entity_class=PartyEntity,
+            dto_converter=lambda entity: entity.to_dto(),
+            query_params=query_params,
+            allowed_sort_fields=allowed_sort_fields,
+            allowed_filter_fields=allowed_filter_fields,
+        )
 
     async def get_party_by_id(self, party_id: int) -> PartyDto:
         party_entity = await self._get_party_entity_by_id(party_id)
         return party_entity.to_dto()
 
     async def get_parties_by_location(self, location_id: int) -> list[PartyDto]:
+        """Get all parties for a specific location (no pagination)."""
         result = await self.session.execute(
             select(PartyEntity)
             .where(PartyEntity.location_id == location_id)
@@ -190,6 +268,7 @@ class PartyService:
         return [party.to_dto() for party in parties]
 
     async def get_parties_by_contact(self, student_id: int) -> list[PartyDto]:
+        """Get all parties for a specific student (no pagination)."""
         result = await self.session.execute(
             select(PartyEntity)
             .where(PartyEntity.contact_one_id == student_id)
@@ -229,6 +308,7 @@ class PartyService:
             await self.session.commit()
         except IntegrityError as e:
             raise PartyConflictException(f"Failed to create party: {e!s}") from e
+
         return await new_party.load_dto(self.session)
 
     async def update_party(self, party_id: int, data: PartyData) -> PartyDto:
@@ -251,6 +331,7 @@ class PartyService:
             await self.session.commit()
         except IntegrityError as e:
             raise PartyConflictException(f"Failed to update party: {e!s}") from e
+
         return await party_entity.load_dto(self.session)
 
     async def create_party_from_student_dto(
@@ -275,6 +356,7 @@ class PartyService:
         new_party = PartyEntity.from_data(party_data)
         self.session.add(new_party)
         await self.session.commit()
+
         return await new_party.load_dto(self.session)
 
     async def create_party_from_admin_dto(self, dto: AdminCreatePartyDto) -> PartyDto:
@@ -297,6 +379,7 @@ class PartyService:
         new_party = PartyEntity.from_data(party_data)
         self.session.add(new_party)
         await self.session.commit()
+
         return await new_party.load_dto(self.session)
 
     async def update_party_from_student_dto(
@@ -327,6 +410,7 @@ class PartyService:
 
         self.session.add(party_entity)
         await self.session.commit()
+
         return await party_entity.load_dto(self.session)
 
     async def update_party_from_admin_dto(
@@ -355,6 +439,7 @@ class PartyService:
 
         self.session.add(party_entity)
         await self.session.commit()
+
         return await party_entity.load_dto(self.session)
 
     async def delete_party(self, party_id: int) -> PartyDto:
@@ -482,12 +567,10 @@ class PartyService:
         self, lat1: float, lon1: float, lat2: float, lon2: float
     ) -> float:
         lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
-
         dlat = lat2 - lat1
         dlon = lon2 - lon1
         a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
         c = 2 * math.asin(math.sqrt(a))
-
         r = 3959
         return c * r
 
@@ -579,9 +662,9 @@ class PartyService:
             )
 
         # Auto-fit column widths based on content
-        for column in ws.columns:
+        for col_idx, column in enumerate(ws.columns, start=1):
             max_length = 0
-            column_letter = column[0].column_letter
+            column_letter = get_column_letter(col_idx)
             for cell in column:
                 try:
                     if cell.value:

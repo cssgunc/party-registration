@@ -1,11 +1,12 @@
-from fastapi import Depends
+from fastapi import Depends, Request
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.database import get_session
 from src.core.exceptions import ConflictException, NotFoundException
+from src.core.query_utils import get_paginated_results, parse_pagination_params
 from src.modules.account.account_entity import AccountEntity, AccountRole
-from src.modules.account.account_model import AccountData, AccountDto
+from src.modules.account.account_model import AccountData, AccountDto, PaginatedAccountsResponse
 
 
 class AccountNotFoundException(NotFoundException):
@@ -49,6 +50,62 @@ class AccountService:
         result = await self.session.execute(select(AccountEntity))
         accounts = result.scalars().all()
         return [account.to_dto() for account in accounts]
+
+    async def get_accounts_paginated(
+        self,
+        request: Request,
+    ) -> PaginatedAccountsResponse:
+        """
+        Get accounts with server-side pagination, sorting, and filtering.
+
+        Query parameters are automatically parsed from the request:
+        - page_number: Page number (1-indexed, default: 1)
+        - page_size: Items per page (default: all)
+        - sort_by: Field to sort by
+        - sort_order: Sort order ('asc' or 'desc')
+
+        Returns:
+            PaginatedAccountsResponse with items and metadata
+        """
+        # Define allowed fields for sorting and filtering
+        allowed_sort_fields = [
+            "id",
+            "email",
+            "first_name",
+            "last_name",
+            "pid",
+            "role",
+        ]
+        allowed_filter_fields = [
+            "id",
+            "email",
+            "first_name",
+            "last_name",
+            "pid",
+            "role",
+        ]
+
+        # Build base query
+        base_query = select(AccountEntity)
+
+        # Parse query params and get paginated results
+        query_params = parse_pagination_params(
+            request,
+            allowed_sort_fields=allowed_sort_fields,
+            allowed_filter_fields=allowed_filter_fields,
+        )
+
+        # Use the generic pagination utility
+        result = await get_paginated_results(
+            session=self.session,
+            base_query=base_query,
+            entity_class=AccountEntity,
+            dto_converter=lambda entity: entity.to_dto(),
+            query_params=query_params,
+            allowed_sort_fields=allowed_sort_fields,
+            allowed_filter_fields=allowed_filter_fields,
+        )
+        return PaginatedAccountsResponse(**result.model_dump())
 
     async def get_accounts_by_roles(
         self, roles: list[AccountRole] | None = None

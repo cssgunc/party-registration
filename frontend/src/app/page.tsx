@@ -1,3 +1,6 @@
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+
 export default function Home() {
   return (
     <div className="font-sans min-h-screen flex flex-col items-center justify-center p-8 sm:p-20 max-w-2xl mx-auto">
@@ -7,6 +10,17 @@ export default function Home() {
       <p className="mb-8 text-lg text-center">
         A CS+SG project for the Office of Off-Campus Student Life at UNC.
       </p>
+      <div className="flex gap-4 mb-8">
+        <Button asChild>
+          <Link href="/student">Student</Link>
+        </Button>
+        <Button asChild>
+          <Link href="/staff">Staff</Link>
+        </Button>
+        <Button asChild>
+          <Link href="/police">Police</Link>
+        </Button>
+      </div>
       <h2 className="text-xl font-semibold mb-4 text-center">
         About the Office of Off-Campus Student Life
       </h2>

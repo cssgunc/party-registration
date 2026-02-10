@@ -1,4 +1,5 @@
 import getMockClient from "@/lib/network/mockClient";
+import { PaginatedResponse } from "@/lib/shared";
 import { AxiosInstance } from "axios";
 import { AccountData, AccountDto, AccountRole } from "./account.types";
 
@@ -13,11 +14,14 @@ export class AccountService {
    */
   async listAccounts(roles?: AccountRole[]): Promise<AccountDto[]> {
     try {
-      const params = roles ? { role: roles } : {};
-      const response = await this.client.get<AccountDto[]>("/accounts/", {
-        params,
-      });
-      return response.data;
+      const params = roles ? { role_in: roles } : {};
+      const response = await this.client.get<PaginatedResponse<AccountDto>>(
+        "/accounts",
+        {
+          params,
+        }
+      );
+      return response.data.items;
     } catch (error) {
       console.error("Failed to fetch accounts:", error);
       throw new Error("Failed to fetch accounts");
@@ -29,7 +33,7 @@ export class AccountService {
    */
   async createAccount(data: AccountData): Promise<AccountDto> {
     try {
-      const response = await this.client.post<AccountDto>("/accounts/", data);
+      const response = await this.client.post<AccountDto>("/accounts", data);
       return response.data;
     } catch (error) {
       console.error("Failed to create account:", error);
