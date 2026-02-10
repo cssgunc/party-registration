@@ -60,14 +60,10 @@ jobs:
           MSSQL_DRIVER: ODBC Driver 18 for SQL Server
           MSSQL_TRUST_SERVER_CERTIFICATE: "yes"
           GOOGLE_MAPS_API_KEY: "test_api_key_not_used"
-        run: |
-          cd /home/runner/work/party-registration/party-registration
-          PYTHONPATH=backend python -m script.create_test_db
+        run: PYTHONPATH=backend python -m script.create_test_db
 
       - name: Run pytest
-        run: |
-          cd /home/runner/work/party-registration/party-registration
-          PYTHONPATH=backend:backend/src pytest backend/test -v --tb=long --junitxml=backend/test-results/junit.xml
+        run: PYTHONPATH=backend:backend/src pytest backend/test -v --tb=long --junitxml=backend/test-results/junit.xml
         env:
           GOOGLE_MAPS_API_KEY: "test_api_key_not_used"
           MSSQL_USER: sa

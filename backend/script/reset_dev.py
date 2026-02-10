@@ -15,7 +15,7 @@ from zoneinfo import ZoneInfo
 import src.modules as entities
 from sqlalchemy import create_engine, text
 from src.core.config import env
-from src.core.database import AsyncSessionLocal, EntityBase, server_url
+from src.core.database import AsyncSessionLocal, EntityBase, server_url, validate_sql_identifier
 from src.core.database import engine as async_engine
 from src.modules.account.account_model import AccountRole
 from src.modules.incident.incident_model import IncidentSeverity
@@ -74,20 +74,22 @@ def parse_date(date_str: str | None) -> datetime | None:
 async def reset_dev():
     server_engine = create_engine(server_url(sync=True), isolation_level="AUTOCOMMIT")
 
+    db_name = validate_sql_identifier(env.MSSQL_DATABASE)
+
     with server_engine.connect() as connection:
-        print("Deleting database...")
+        print(f"Deleting database '{db_name}' if it exists...")
         connection.execute(
             text(f"""
-                IF EXISTS (SELECT * FROM sys.databases WHERE name = '{env.MSSQL_DATABASE}')
+                IF EXISTS (SELECT * FROM sys.databases WHERE name = '{db_name}')
                 BEGIN
-                    ALTER DATABASE [{env.MSSQL_DATABASE}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
-                    DROP DATABASE [{env.MSSQL_DATABASE}];
+                    ALTER DATABASE [{db_name}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+                    DROP DATABASE [{db_name}];
                 END
             """)
         )
 
-        print("Recreating database...")
-        connection.execute(text(f"CREATE DATABASE [{env.MSSQL_DATABASE}]"))
+        print(f"Recreating database '{db_name}'...")
+        connection.execute(text(f"CREATE DATABASE [{db_name}]"))
 
     async with async_engine.begin() as connection:
         print("Dropping tables...")

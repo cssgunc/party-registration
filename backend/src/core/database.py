@@ -1,3 +1,4 @@
+import re
 from collections.abc import AsyncGenerator
 
 from sqlalchemy import URL
@@ -5,6 +6,15 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.orm import DeclarativeBase
 
 from .config import env
+
+
+def validate_sql_identifier(name: str) -> str:
+    """Validate SQL Server identifier to prevent injection."""
+    if not re.match(r"^[a-zA-Z0-9_]+$", name):
+        raise ValueError(f"Invalid database name: {name}")
+    if len(name) > 128:
+        raise ValueError(f"Database name too long: {name}")
+    return name
 
 
 def _mssql_query() -> dict[str, str]:
