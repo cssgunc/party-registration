@@ -169,6 +169,7 @@ class PartyService:
     async def get_parties(self, skip: int = 0, limit: int | None = None) -> list[PartyDto]:
         query = (
             select(PartyEntity)
+            .order_by(PartyEntity.id)
             .offset(skip)
             .options(
                 selectinload(PartyEntity.location),

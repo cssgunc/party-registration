@@ -12,6 +12,7 @@ import getMockClient from "@/lib/network/mockClient";
 import { useQuery } from "@tanstack/react-query";
 import { startOfDay } from "date-fns";
 import { useEffect, useMemo, useState } from "react";
+import PartyCsvExportButton from "./_components/PartyCsvExportButton";
 
 const policeLocationService = new LocationService(getMockClient("police"));
 const partyService = new PartyService(getMockClient("police"));
@@ -39,11 +40,14 @@ export default function PolicePage() {
     isLoading,
     error,
   } = useQuery({
-    queryKey: ["parties"],
+    queryKey: ["parties", startDate, endDate],
     queryFn: async () => {
-      const page = await partyService.listParties();
+      const page = await partyService.listParties({
+        startDate,
+        endDate,
+      });
       return page.items;
-    }, // TODO: add date filtering
+    },
     enabled: !!startDate && !!endDate,
   });
 
@@ -131,9 +135,12 @@ export default function PolicePage() {
 
           {/* Party List Section */}
           <div className="px-6 py-4 flex-1 flex flex-col overflow-hidden">
-            <h2 className="text-xl font-semibold mb-4 flex-shrink-0">
-              Party List
-            </h2>
+            <div className="flex justify-between">
+              <h2 className="text-xl font-semibold mb-4 flex-shrink-0">
+                Party List
+              </h2>
+              <PartyCsvExportButton startDate={startDate} endDate={endDate} />
+            </div>
 
             {/* Loading State */}
             {(isLoading || isLoadingNearby) && (

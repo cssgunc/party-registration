@@ -17,8 +17,8 @@ class PoliceEntity(MappedAsDataclass, EntityBase):
     __table_args__ = (CheckConstraint("id = 1", name="police_singleton_constraint"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, init=False)
-    email: Mapped[str] = mapped_column(String, nullable=False)
-    hashed_password: Mapped[str] = mapped_column(String, nullable=False)
+    email: Mapped[str] = mapped_column(String(255), nullable=False)
+    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
 
     @classmethod
     def from_data(cls, data: PoliceAccountUpdate) -> Self:

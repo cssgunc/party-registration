@@ -63,15 +63,35 @@ async def test_session(test_engine: AsyncEngine):
     async with test_async_session_local() as session:
         yield session
 
-    # Clean up: truncate all tables and reset sequences
-    async with test_engine.begin() as conn:
-        tables = [table.name for table in EntityBase.metadata.sorted_tables]
-        if tables:
-            # Disable foreign key checks, truncate, and reset sequences
-            await conn.execute(text("SET session_replication_role = 'replica';"))
+    # Clean up: delete all data and reset identity columns
+    tables = [table.name for table in EntityBase.metadata.sorted_tables]
+    if tables:
+        # Phase 1: delete data inside a transaction
+        async with test_engine.begin() as conn:
+            # Disable all FK constraints so deletes can run in any order
             for table in tables:
-                await conn.execute(text(f"TRUNCATE TABLE {table} RESTART IDENTITY CASCADE;"))
-            await conn.execute(text("SET session_replication_role = 'origin';"))
+                await conn.execute(text(f"ALTER TABLE [{table}] NOCHECK CONSTRAINT ALL"))
+
+            # Delete all data in reverse FK order
+            for table in reversed(tables):
+                await conn.execute(text(f"DELETE FROM [{table}]"))
+
+            # Re-enable all FK constraints
+            for table in tables:
+                await conn.execute(text(f"ALTER TABLE [{table}] CHECK CONSTRAINT ALL"))
+
+        # Phase 2: reset identity columns (DBCC cannot run inside a transaction)
+        async with test_engine.connect() as conn:
+            await conn.execution_options(isolation_level="AUTOCOMMIT")
+            result = await conn.execute(
+                text(
+                    "SELECT t.name FROM sys.tables t"
+                    " INNER JOIN sys.columns c ON t.object_id = c.object_id"
+                    " WHERE c.is_identity = 1"
+                )
+            )
+            for (table_name,) in result.fetchall():
+                await conn.execute(text(f"DBCC CHECKIDENT ('{table_name}', RESEED, 0)"))
 
 
 # =================================== Clients =======================================

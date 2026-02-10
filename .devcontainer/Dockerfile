@@ -19,8 +19,10 @@ RUN apt-get update \
         debian-archive-keyring \
         git \
         gnupg \
+        libicu-dev \
         locales \
-        postgresql-client \
+        unixodbc \
+        unixodbc-dev \
         sudo \
         tzdata \
         wget \
@@ -28,6 +30,15 @@ RUN apt-get update \
         net-tools \
         procps \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Microsoft ODBC Driver 18 and SQL Server tools
+RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-archive-keyring.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/microsoft-archive-keyring.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" | tee /etc/apt/sources.list.d/mssql-release.list \
+    && apt-get update \
+    && ACCEPT_EULA=Y apt-get install -y msodbcsql18 mssql-tools18 \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV PATH=$PATH:/opt/mssql-tools18/bin
 
 # Install Node.js 22 from https://github.com/nodesource
 ENV NODE_MAJOR=22

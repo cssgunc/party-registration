@@ -92,7 +92,12 @@ class StudentService:
         return account
 
     async def get_students(self, skip: int = 0, limit: int | None = None) -> list[StudentDto]:
-        query = select(StudentEntity).options(selectinload(StudentEntity.account)).offset(skip)
+        query = (
+            select(StudentEntity)
+            .options(selectinload(StudentEntity.account))
+            .order_by(StudentEntity.account_id)
+            .offset(skip)
+        )
         if limit is not None:
             query = query.limit(limit)
         result = await self.session.execute(query)

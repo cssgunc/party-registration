@@ -14,7 +14,7 @@ We aim to facilitate and better secure the party registration process at UNC.
 
 - Backend
   - FastAPI
-  - PostgreSQL
+  - Microsoft SQL Server
   - SQLAlchemy
   - Pytest
 - Frontend
@@ -123,15 +123,16 @@ pytest
 
 ## Accessing the Database
 
-- Navigate to the PostgreSQL Explorer tab on the sidebar in VSCode
-- Click the plus icon in the top right
+- Navigate to the SQL Server tab on the sidebar in VSCode (provided by the "SQL Server (mssql)" extension)
+- Click the plus icon in the top right to add a new connection
+  - *It may take a long time to initialize on the first boot up*
 - Enter these values as you are prompted
-  - Hostname: db
-  - User: postgres
-  - Password: admin
-  - Port: 5432 (default)
-  - Connection: Standard Connection
-  - Database: ocsl
-  - Display Name: party-reg
+  - Server Name: db
+  - Authentication Type: SQL Login
+  - User Name: sa
+  - Password: YourStrong!Passw0rd
+  - Database name: ocsl
+  - Port: 1433 (default)
+  - Encrypt: Optional
 - You should see a new entry appear in the sidebar
 - In this interface, you can explore the database, make queries, etc.
