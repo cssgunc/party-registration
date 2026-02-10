@@ -199,12 +199,12 @@ async def get_parties_csv(
         raise BadRequestException("Start date must be less than or equal to end date")
 
     parties = await party_service.get_parties_by_date_range(start_datetime, end_datetime)
-    csv_content = await party_service.export_parties_to_csv(parties)
+    excel_content = await party_service.export_parties_to_excel(parties)
 
     return Response(
-        content=csv_content,
-        media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=parties.csv"},
+        content=excel_content,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=parties.xlsx"},
     )
 
 

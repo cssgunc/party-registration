@@ -1,8 +1,10 @@
 from datetime import UTC, datetime, timedelta
+from io import BytesIO
 
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
+from openpyxl import load_workbook
 from src.modules.account.account_entity import AccountRole
 from src.modules.location.location_service import LocationHoldActiveException
 from src.modules.party.party_model import PartyDto
@@ -569,7 +571,7 @@ class TestPartyCSVRouter:
 
     @pytest.mark.asyncio
     async def test_get_parties_csv_empty(self):
-        """Test CSV export with no parties."""
+        """Test Excel export with no parties."""
         now = datetime.now(UTC)
         params = {
             "start_date": now.strftime("%Y-%m-%d"),
@@ -577,20 +579,40 @@ class TestPartyCSVRouter:
         }
         response = await self.admin_client.get("/api/parties/csv", params=params)
         assert response.status_code == 200
-        assert response.headers["content-type"] == "text/csv; charset=utf-8"
+        assert (
+            response.headers["content-type"]
+            == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
 
-        csv_content = response.text
-        lines = csv_content.strip().split("\n")
-        assert len(lines) == 1  # Only header row
-        # Check for expected headers in the CSV
-        assert "Contact One Email" in lines[0] or "Contact Two Email" in lines[0]
+        wb = load_workbook(BytesIO(response.content))
+        ws = wb.active
+        assert ws is not None
+
+        assert ws.max_row == 1
+
+        expected_headers = [
+            "Address",
+            "Date of Party",
+            "Time of Party",
+            "Contact One Full Name",
+            "Contact One Email",
+            "Contact One Phone Number",
+            "Contact One Contact Preference",
+            "Contact Two Full Name",
+            "Contact Two Email",
+            "Contact Two Phone Number",
+            "Contact Two Contact Preference",
+        ]
+
+        actual_headers = [cell.value for cell in ws[1]]
+        assert actual_headers == expected_headers
+        assert ws["A1"].font.bold is True
 
     @pytest.mark.asyncio
     async def test_get_parties_csv_with_data(self):
-        """Test CSV export with parties."""
+        """Test Excel export with parties."""
         parties = await self.party_utils.create_many(i=3)
 
-        # Get date range that covers all parties
         now = datetime.now(UTC)
         params = {
             "start_date": (now - timedelta(days=1)).strftime("%Y-%m-%d"),
@@ -598,15 +620,57 @@ class TestPartyCSVRouter:
         }
         response = await self.admin_client.get("/api/parties/csv", params=params)
         assert response.status_code == 200
-        assert response.headers["content-type"] == "text/csv; charset=utf-8"
+        assert (
+            response.headers["content-type"]
+            == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
 
-        csv_content = response.text
-        lines = csv_content.strip().split("\n")
-        assert len(lines) == 4  # Header + 3 data rows
+        wb = load_workbook(BytesIO(response.content))
+        ws = wb.active
+        assert ws is not None
 
-        # Verify party IDs are in CSV
-        for party in parties:
-            assert str(party.id) in csv_content
+        assert ws.max_row == 4
+        assert ws["A1"].font.bold is True
+
+        expected_headers = [
+            "Address",
+            "Date of Party",
+            "Time of Party",
+            "Contact One Full Name",
+            "Contact One Email",
+            "Contact One Phone Number",
+            "Contact One Contact Preference",
+            "Contact Two Full Name",
+            "Contact Two Email",
+            "Contact Two Phone Number",
+            "Contact Two Contact Preference",
+        ]
+
+        actual_headers = [cell.value for cell in ws[1]]
+        assert actual_headers == expected_headers
+
+        first_party = parties[0]
+        row_2 = [cell.value for cell in ws[2]]
+
+        assert first_party.location.formatted_address in str(row_2[0])
+
+        expected_date = first_party.party_datetime.strftime("%Y-%m-%d")
+        assert row_2[1] == expected_date
+
+        assert ":" in str(row_2[2])
+        assert "AM" in str(row_2[2]) or "PM" in str(row_2[2])
+
+        contact_one_email = (
+            first_party.contact_one.account.email if first_party.contact_one.account else None
+        )
+        assert contact_one_email == row_2[4]
+
+        phone_str = str(row_2[5])
+        assert "(" in phone_str and ")" in phone_str and "-" in phone_str
+
+        assert str(row_2[6] or "")[0].isupper()
+
+        assert first_party.contact_two_email == row_2[8]
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
