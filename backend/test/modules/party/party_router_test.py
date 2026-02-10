@@ -4,7 +4,6 @@ import pytest
 import pytest_asyncio
 from httpx import AsyncClient
 from src.modules.account.account_entity import AccountRole
-from src.modules.location.location_service import LocationHoldActiveException
 from src.modules.party.party_model import PartyDto
 from src.modules.party.party_service import PartyNotFoundException
 from src.modules.student.student_entity import StudentEntity
@@ -295,7 +294,7 @@ class TestPartyCreateAdminRouter:
 
     @pytest.mark.asyncio
     async def test_create_party_as_admin_location_on_hold(self):
-        """Test admin cannot create party at location on hold."""
+        """Test admin can create party at location on hold (admins skip hold validation)."""
         hold_expiration = datetime.now(UTC) + timedelta(days=30)
         location_with_hold = await self.location_utils.create_one(hold_expiration=hold_expiration)
 
@@ -306,12 +305,8 @@ class TestPartyCreateAdminRouter:
         response = await self.admin_client.post(
             "/api/parties", json=payload.model_dump(mode="json")
         )
-        assert_res_failure(
-            response,
-            LocationHoldActiveException(
-                location_id=location_with_hold.id, hold_expiration=hold_expiration
-            ),
-        )
+        data = assert_res_success(response, PartyDto, status=201)
+        assert data.location.google_place_id == location_with_hold.google_place_id
 
     @pytest.mark.asyncio
     async def test_create_party_as_admin_validation_errors(self):
