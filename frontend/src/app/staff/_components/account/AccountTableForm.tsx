@@ -27,6 +27,7 @@ export const accountTableFormSchema = z.object({
   email: z.email({ pattern: z.regexes.html5Email }).min(1, "Email is required"),
   first_name: z.string().min(1, "First name is required"),
   last_name: z.string().min(1, "Last name is required"),
+  onyen: z.string().min(1, "Onyen is required"),
   role: z.string().min(1, "Role is required"),
 });
 
@@ -49,8 +50,9 @@ export default function AccountTableForm({
     email: editData?.email ?? "",
     first_name: editData?.first_name ?? "",
     last_name: editData?.last_name ?? "",
-    role: editData?.role ?? "",
     pid: editData?.pid ?? "",
+    onyen: editData?.onyen ?? "",
+    role: editData?.role ?? "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -157,6 +159,19 @@ export default function AccountTableForm({
               aria-invalid={!!errors.last_name}
             />
             {errors.last_name && <FieldError>{errors.last_name}</FieldError>}
+          </Field>
+
+          <Field data-invalid={!!errors.onyen}>
+            <FieldLabel htmlFor="onyen">Onyen</FieldLabel>
+            <Input
+              id="onyen"
+              placeholder="johndoe"
+              value={formData.onyen}
+              onChange={(e) => updateField("onyen", e.target.value)}
+              aria-invalid={!!errors.onyen}
+              disabled={isPIDEditMode}
+            />
+            {errors.onyen && <FieldError>{errors.onyen}</FieldError>}
           </Field>
 
           <Field data-invalid={!!errors.role}>

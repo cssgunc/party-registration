@@ -48,6 +48,7 @@ export const studentTableFormSchema = z.object({
     .string()
     .regex(/^\d{9}$/, { message: "Please input a valid PID" })
     .min(1, "PID is required"),
+  onyen: z.string().min(1, "Onyen is required"),
 });
 
 type StudentTableFormValues = z.infer<typeof studentTableFormSchema>;
@@ -70,6 +71,7 @@ export default function StudentTableForm({
     first_name: editData?.first_name ?? "",
     last_name: editData?.last_name ?? "",
     email: editData?.email ?? "",
+    onyen: editData?.onyen ?? "",
     phone_number: editData?.phone_number ?? "",
     contact_preference: editData?.contact_preference ?? undefined,
     last_registered: editData?.last_registered ?? null,
@@ -178,6 +180,19 @@ export default function StudentTableForm({
               disabled={isPIDEditMode}
             />
             {errors.email && <FieldError>{errors.email}</FieldError>}
+          </Field>
+
+          <Field data-invalid={!!errors.onyen}>
+            <FieldLabel htmlFor="onyen">Onyen</FieldLabel>
+            <Input
+              id="onyen"
+              placeholder="johndoe"
+              value={formData.onyen}
+              onChange={(e) => updateField("onyen", e.target.value)}
+              aria-invalid={!!errors.onyen}
+              disabled={isPIDEditMode}
+            />
+            {errors.onyen && <FieldError>{errors.onyen}</FieldError>}
           </Field>
 
           <Field data-invalid={!!errors.phone_number}>

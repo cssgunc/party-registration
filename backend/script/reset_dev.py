@@ -15,7 +15,7 @@ from zoneinfo import ZoneInfo
 import src.modules as entities
 from sqlalchemy import create_engine, text
 from src.core.config import env
-from src.core.database import AsyncSessionLocal, EntityBase, server_url
+from src.core.database import AsyncSessionLocal, EntityBase, server_url, validate_sql_identifier
 from src.core.database import engine as async_engine
 from src.modules.account.account_model import AccountRole
 from src.modules.incident.incident_model import IncidentSeverity
@@ -74,12 +74,22 @@ def parse_date(date_str: str | None) -> datetime | None:
 async def reset_dev():
     server_engine = create_engine(server_url(sync=True), isolation_level="AUTOCOMMIT")
 
-    with server_engine.connect() as connection:
-        print("Deleting database...")
-        connection.execute(text(f"DROP DATABASE {env.POSTGRES_DATABASE}"))
+    db_name = validate_sql_identifier(env.MSSQL_DATABASE)
 
-        print("Recreating database...")
-        connection.execute(text(f"CREATE DATABASE {env.POSTGRES_DATABASE}"))
+    with server_engine.connect() as connection:
+        print(f"Deleting database '{db_name}' if it exists...")
+        connection.execute(
+            text(f"""
+                IF EXISTS (SELECT * FROM sys.databases WHERE name = '{db_name}')
+                BEGIN
+                    ALTER DATABASE [{db_name}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+                    DROP DATABASE [{db_name}];
+                END
+            """)
+        )
+
+        print(f"Recreating database '{db_name}'...")
+        connection.execute(text(f"CREATE DATABASE [{db_name}]"))
 
     async with async_engine.begin() as connection:
         print("Dropping tables...")
@@ -107,6 +117,7 @@ async def reset_dev():
                 email=account_data["email"],
                 first_name=account_data["first_name"],
                 last_name=account_data["last_name"],
+                onyen=account_data["onyen"],
                 role=AccountRole(account_data["role"]),
             )
             session.add(account)
@@ -119,6 +130,7 @@ async def reset_dev():
                 email=student_data["email"],
                 first_name=student_data["first_name"],
                 last_name=student_data["last_name"],
+                onyen=student_data["onyen"],
                 role=AccountRole.STUDENT,
             )
             session.add(account)
@@ -189,6 +201,7 @@ async def reset_dev():
 
         await session.commit()
 
+    await async_engine.dispose()
     print("Database successfully reset!")
 
 

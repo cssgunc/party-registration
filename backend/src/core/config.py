@@ -15,11 +15,13 @@ class Config(BaseSettings):
         extra="ignore",
     )
 
-    POSTGRES_DATABASE: str = "ocsl"
-    POSTGRES_USER: str = "postgres"
-    POSTGRES_PASSWORD: str = "admin"
-    POSTGRES_HOST: str = "db"
-    POSTGRES_PORT: int = 5432
+    MSSQL_DATABASE: str = "ocsl"
+    MSSQL_USER: str = "sa"
+    MSSQL_PASSWORD: str = "YourStrong!Passw0rd"
+    MSSQL_HOST: str = "db"
+    MSSQL_PORT: int = 1433
+    MSSQL_DRIVER: str = "ODBC Driver 18 for SQL Server"
+    MSSQL_TRUST_SERVER_CERTIFICATE: str = "yes"
     HOST: str = "localhost"
     PARTY_SEARCH_RADIUS_MILES: float = 0.25
     GOOGLE_MAPS_API_KEY: str

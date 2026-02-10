@@ -1,30 +1,63 @@
+import re
 from collections.abc import AsyncGenerator
 
+from sqlalchemy import URL
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
 from .config import env
 
 
-def server_url(sync: bool = False) -> str:
+def validate_sql_identifier(name: str) -> str:
+    """Validate SQL Server identifier to prevent injection."""
+    if not re.match(r"^[a-zA-Z0-9_]+$", name):
+        raise ValueError(f"Invalid database name: {name}")
+    if len(name) > 128:
+        raise ValueError(f"Database name too long: {name}")
+    return name
+
+
+def _mssql_query() -> dict[str, str]:
+    return {
+        "driver": env.MSSQL_DRIVER,
+        "TrustServerCertificate": env.MSSQL_TRUST_SERVER_CERTIFICATE,
+    }
+
+
+def server_url(sync: bool = False) -> URL:
     """
-    Gets the url for the base database server.
+    Gets the URL for the master database (used for CREATE/DROP DATABASE).
 
     :param sync: Whether to use synchronous or asynchronous database driver
     :type sync: bool
     """
-    dialect = "postgresql+psycopg2" if sync else "postgresql+asyncpg"
-    return f"{dialect}://{env.POSTGRES_USER}:{env.POSTGRES_PASSWORD}@{env.POSTGRES_HOST}:{env.POSTGRES_PORT}"
+    return URL.create(
+        drivername="mssql+pyodbc" if sync else "mssql+aioodbc",
+        username=env.MSSQL_USER,
+        password=env.MSSQL_PASSWORD,
+        host=env.MSSQL_HOST,
+        port=env.MSSQL_PORT,
+        database="master",
+        query=_mssql_query(),
+    )
 
 
-def database_url(database: str = env.POSTGRES_DATABASE) -> str:
+def database_url(database: str = env.MSSQL_DATABASE) -> URL:
     """
-    Gets the url for the database.
+    Gets the URL for the application database.
 
     :param database: The database name (default: ocsl)
     :type database: str
     """
-    return f"{server_url()}/{database}"
+    return URL.create(
+        drivername="mssql+aioodbc",
+        username=env.MSSQL_USER,
+        password=env.MSSQL_PASSWORD,
+        host=env.MSSQL_HOST,
+        port=env.MSSQL_PORT,
+        database=database,
+        query=_mssql_query(),
+    )
 
 
 engine = create_async_engine(database_url(), echo=True)

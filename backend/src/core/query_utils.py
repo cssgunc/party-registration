@@ -15,7 +15,7 @@ from fastapi import Request
 from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel, Field, ValidationError, field_validator
 from pydantic_core import ValidationError as PydanticValidationError
-from sqlalchemy import Select, asc, desc, func, select
+from sqlalchemy import Select, asc, desc, func, inspect, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import DeclarativeMeta
 from src.core.models import PaginatedResponse
@@ -177,7 +177,9 @@ def apply_pagination(query: Select, params: PaginationParams | None = None) -> S
     if params is None:
         return query
 
-    query = query.offset(params.skip)
+    # Only apply offset if it's greater than 0 (MSSQL requires ORDER BY with OFFSET)
+    if params.skip > 0:
+        query = query.offset(params.skip)
     if params.limit is not None:
         query = query.limit(params.limit)
 
@@ -339,6 +341,18 @@ def apply_query_params[ModelType: DeclarativeMeta](
     # Apply sorting (before pagination to ensure consistent ordering)
     if params.sort:
         query = apply_sorting(query, model, params.sort, allowed_sort_fields)
+    elif params.pagination and (params.pagination.skip > 0 or params.pagination.limit is not None):
+        # MSSQL requires ORDER BY when using OFFSET or LIMIT
+        # Default to sorting by primary key if no explicit sort is provided and pagination is active
+        # Get the primary key column(s) from the model's mapper
+        mapper = inspect(model)
+        if mapper is None:
+            raise ValueError(f"Cannot inspect model {model.__name__}: not a valid SQLAlchemy model")
+
+        primary_key_columns = list(mapper.primary_key)
+        if primary_key_columns:
+            # Order by the first primary key column
+            query = query.order_by(asc(primary_key_columns[0]))
 
     # Apply pagination last
     pagination_params = params.pagination
