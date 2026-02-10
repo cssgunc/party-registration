@@ -4,18 +4,15 @@ import Header from "@/app/student/_components/Header";
 import RegistrationTracker from "@/app/student/_components/RegistrationTracker";
 import StatusComponent from "@/app/student/_components/StatusComponent";
 import { Button } from "@/components/ui/button";
-import {
-  useCurrentStudent,
-  useMyParties,
-} from "@/lib/api/student/student.queries";
-import { isCourseCompleted } from "@/lib/utils";
+import { PARTIES } from "@/lib/mockData";
 import Link from "next/link";
 
 export default function StudentDashboard() {
-  const studentQuery = useCurrentStudent();
-  const partiesQuery = useMyParties();
+  // const studentQuery = useCurrentStudent();
+  // const partiesQuery = useMyParties();
 
-  const courseCompleted = isCourseCompleted(studentQuery.data?.last_registered);
+  // const courseCompleted = isCourseCompleted(studentQuery.data?.last_registered);
+  const courseCompleted = true;
 
   return (
     <div className="flex flex-col">
@@ -42,12 +39,15 @@ export default function StudentDashboard() {
           )}
         </div>
 
-        <RegistrationTracker {...partiesQuery} />
+        <RegistrationTracker
+          data={PARTIES.filter((p) => p.contact_one.id === 35)}
+        />
         <div className="text-[24px] font-semibold">Party Smart Course </div>
-        <StatusComponent
+        {/* <StatusComponent
           last_registered={studentQuery.data?.last_registered}
           {...studentQuery}
-        />
+        /> */}
+        <StatusComponent last_registered={new Date("2026-01-01")} />
       </div>
     </div>
   );
