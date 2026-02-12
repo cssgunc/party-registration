@@ -55,7 +55,7 @@ const EmbeddedMap = ({
   const mapKey = center ? `${center.lat}-${center.lng}` : "default";
 
   return (
-    <div className="w-full h-full overflow-hidden rounded-2xl shadow-md">
+    <div className="md:w-full h-full overflow-hidden rounded-2xl shadow-md">
       <APIProvider
         apiKey={API_KEY}
         onLoad={() => console.log("Maps API loaded.")}

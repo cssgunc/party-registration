@@ -7,7 +7,8 @@ services:
       - ..:/workspace
 
   db:
-    image: mcr.microsoft.com/mssql/server:2022-latest
+    image: mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04
+    platform: linux/amd64
     environment:
       ACCEPT_EULA: "Y"
       MSSQL_SA_PASSWORD: "YourStrong!Passw0rd"
@@ -15,11 +16,11 @@ services:
     ports:
       - "1433:1433"
     volumes:
-      - party-reg-mssql:/var/opt/mssql
+      - party-reg-mssql-v2:/var/opt/mssql
     deploy:
       resources:
         limits:
           memory: 2G
 
 volumes:
-  party-reg-mssql:
+  party-reg-mssql-v2:
