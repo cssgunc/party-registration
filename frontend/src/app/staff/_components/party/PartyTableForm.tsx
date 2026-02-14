@@ -126,6 +126,19 @@ export default function PartyTableForm({
       return;
     }
 
+    // Validate contact two phone differs from contact one's phone (when available)
+    if (editData?.contact_one.phone_number) {
+      const c1Digits = editData.contact_one.phone_number.replace(/\D/g, "");
+      const c2Digits = result.data.contactTwoPhoneNumber.replace(/\D/g, "");
+      if (c1Digits === c2Digits) {
+        setErrors({
+          contactTwoPhoneNumber:
+            "Contact two phone number must be different from contact one's phone number",
+        });
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     try {
       await onSubmit(result.data);
