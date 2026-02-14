@@ -52,7 +52,7 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
   const [incidentType, setIncidentType] = useState<
     "complaint" | "warning" | "citation"
   >("complaint");
-  const [party, setParty] = useState<PartyDto | null>(null);
+  const [selectedParty, setSelectedParty] = useState<PartyDto | null>(null);
 
   if (parties.length === 0) {
     return (
@@ -68,7 +68,7 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
     selectedParty: PartyDto
   ) => {
     event.stopPropagation();
-    setParty(selectedParty);
+    setSelectedParty(selectedParty);
     setIncidentType(type);
     setIncidentDialogOpen(true);
   };
@@ -113,11 +113,7 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                               openIncidentDialog(event, "complaint", party)
                             }
                           >
-                            <Image
-                              src={blackFlag}
-                              alt="complaints"
-                              className="pr-5"
-                            />
+                            <Image src={blackFlag} alt="complaints" />
                             Add complaint
                           </div>
                           <div
@@ -244,7 +240,7 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
         open={incidentDialogOpen}
         onOpenChange={setIncidentDialogOpen}
         incidentType={incidentType}
-        party={party}
+        party={selectedParty}
       />
     </div>
   );
