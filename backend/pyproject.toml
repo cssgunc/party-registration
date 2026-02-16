@@ -16,6 +16,9 @@ dependencies = [
   "googlemaps~=4.10.0",
 ]
 
+[tool.setuptools]
+packages = ["src"]
+
 [tool.pytest.ini_options]
 pythonpath = "."
 testpaths = ["test"]

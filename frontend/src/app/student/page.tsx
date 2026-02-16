@@ -18,7 +18,7 @@ export default function StudentDashboard() {
     <div className="flex flex-col">
       <Header />
 
-      <div className="px-48 pb-12 pt-6 flex flex-col gap-4 max-w-4xl mx-auto w-full">
+      <div className="px-14 lg:px-48 pb-12 pt-6 flex flex-col gap-4 max-w-4xl mx-auto w-full">
         <div className="flex justify-between items-center">
           <div className="font-semibold text-2xl">Events</div>
 
