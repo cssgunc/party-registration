@@ -3,12 +3,10 @@ from datetime import UTC, datetime, timedelta
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
-from src.modules.account.account_entity import AccountRole
 from src.modules.location.location_service import LocationHoldActiveException
 from src.modules.party.party_model import PartyDto
 from src.modules.party.party_service import PartyNotFoundException
 from src.modules.student.student_entity import StudentEntity
-from test.modules.account.account_utils import AccountTestUtils
 from test.modules.location.location_utils import GmapsMockUtils, LocationTestUtils
 from test.modules.party.party_utils import PartyTestUtils
 from test.modules.student.student_utils import StudentTestUtils
@@ -212,20 +210,10 @@ class TestPartyCreateStudentRouter:
     student_utils: StudentTestUtils
 
     @pytest_asyncio.fixture
-    async def current_student(self) -> StudentEntity:
-        """Create student for authenticated student client (id=3)."""
-        # student_client uses id=3 from mock_authenticate
-        # Create dummy accounts for IDs 1 and 2
-        account_utils = AccountTestUtils(self.student_utils.session)
-        await account_utils.create_one(role=AccountRole.ADMIN.value)
-        await account_utils.create_one(role=AccountRole.STAFF.value)
-
-        account = await account_utils.create_one(role=AccountRole.STUDENT.value)
-        assert account.id == 3
-
-        # Set last_registered to indicate Party Smart completion
+    async def current_student(self, student_account) -> StudentEntity:
+        """Create a student record for the authenticated student_client account."""
         student = await self.student_utils.create_one(
-            account_id=account.id, last_registered=datetime.now(UTC) - timedelta(days=1)
+            account_id=student_account.id, last_registered=datetime.now(UTC) - timedelta(days=1)
         )
         return student
 

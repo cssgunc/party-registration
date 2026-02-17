@@ -20,51 +20,30 @@ class HTTPBearer401(HTTPBearer):
 bearer_scheme = HTTPBearer401()
 
 
-def mock_authenticate(role: AccountRole) -> AccountDto | None:
-    """Mock authentication function. Replace with real authentication logic."""
-    role_to_id = {
-        AccountRole.ADMIN: 1,
-        AccountRole.STAFF: 2,
-        AccountRole.STUDENT: 3,
-    }
-    role_to_pid = {
-        AccountRole.STUDENT: "111111111",
-        AccountRole.ADMIN: "222222222",
-        AccountRole.STAFF: "333333333",
-    }
-    return AccountDto(
-        id=role_to_id[role],
-        email="user@example.com",
-        first_name="Test",
-        last_name="User",
-        pid=role_to_pid[role],
-        role=role,
-    )
-
-
 async def authenticate_user(
     authorization: HTTPAuthorizationCredentials = Depends(bearer_scheme),
 ) -> AccountDto:
     """
     Middleware to authenticate user from Bearer token.
-    Expects token to be one of: "student", "admin", "staff" for mock authentication.
-    Note: Police authenticate separately via the police singleton table.
+    Decodes JWT access token and validates it.
+    Note: This only works for account tokens, not police tokens.
     """
-    token = authorization.credentials.lower()
+    from src.modules.auth.auth_service import AuthService
 
-    role_map = {
-        "student": AccountRole.STUDENT,
-        "admin": AccountRole.ADMIN,
-        "staff": AccountRole.STAFF,
-    }
+    token = authorization.credentials
+    payload = AuthService.decode_access_token(token)
 
-    if token not in role_map:
+    if payload.get("sub") != "account":
         raise CredentialsException()
 
-    user = mock_authenticate(role_map[token])
-    if not user:
-        raise CredentialsException()
-    return user
+    return AccountDto(
+        id=payload.get("id", 0),
+        email=payload["email"],
+        first_name=payload["first_name"],
+        last_name=payload["last_name"],
+        pid=payload["pid"],
+        role=AccountRole(payload["role"]),
+    )
 
 
 def authenticate_by_role(*roles: StringRole):
@@ -75,28 +54,32 @@ def authenticate_by_role(*roles: StringRole):
     async def _authenticate(
         authorization: HTTPAuthorizationCredentials = Depends(bearer_scheme),
     ) -> AccountDto | PoliceAccountDto:
-        token = authorization.credentials.lower()
+        from src.modules.auth.auth_service import AuthService
 
-        # Check if police token and police is allowed
-        if token == "police":
-            if "police" in roles:
-                return PoliceAccountDto(email="police@example.com")
-            else:
+        token = authorization.credentials
+        payload = AuthService.decode_access_token(token)
+        subject = payload.get("sub")
+
+        if subject == "police":
+            if "police" not in roles:
                 raise ForbiddenException(detail="Insufficient privileges")
+            return PoliceAccountDto(email=payload["email"])
 
-        role_map = {
-            "student": AccountRole.STUDENT,
-            "admin": AccountRole.ADMIN,
-            "staff": AccountRole.STAFF,
-        }
+        elif subject == "account":
+            account = AccountDto(
+                id=payload.get("id", 0),
+                email=payload["email"],
+                first_name=payload["first_name"],
+                last_name=payload["last_name"],
+                pid=payload["pid"],
+                role=AccountRole(payload["role"]),
+            )
+            if account.role.value not in roles:
+                raise ForbiddenException(detail="Insufficient privileges")
+            return account
 
-        if token not in role_map:
+        else:
             raise CredentialsException()
-
-        user = mock_authenticate(role_map[token])
-        if not user or user.role.value not in roles:
-            raise ForbiddenException(detail="Insufficient privileges")
-        return user
 
     return _authenticate
 

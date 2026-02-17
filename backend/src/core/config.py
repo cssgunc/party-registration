@@ -24,5 +24,14 @@ class Config(BaseSettings):
     PARTY_SEARCH_RADIUS_MILES: float = 0.25
     GOOGLE_MAPS_API_KEY: str
 
+    # JWT Configuration
+    JWT_SECRET_KEY: str
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+
+    # Internal API Secret
+    INTERNAL_API_SECRET: str
+
 
 env = Config()  # pyright: ignore[reportCallIssue]

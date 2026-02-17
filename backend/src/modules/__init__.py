@@ -18,6 +18,7 @@ so table definitions are registered with SQLAlchemy.
 """
 
 from .account.account_entity import AccountEntity
+from .auth.auth_entity import RefreshTokenEntity
 from .complaint.complaint_entity import ComplaintEntity
 from .location.location_entity import LocationEntity
 from .party.party_entity import PartyEntity
@@ -30,5 +31,6 @@ __all__ = [
     "LocationEntity",
     "PartyEntity",
     "PoliceEntity",
+    "RefreshTokenEntity",
     "StudentEntity",
 ]

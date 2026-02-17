@@ -86,12 +86,34 @@ async def create_test_client(
     """Fixture to create test HTTP clients with different authentication roles."""
 
     async def _create_test_client(role: StringRole | None):
+        from src.modules.account.account_model import AccountDto, AccountRole
+        from src.modules.auth.auth_service import AuthService
+        from src.modules.police.police_model import PoliceAccountDto
+
         async def override_get_session():
             yield test_session
 
         app.dependency_overrides[get_session] = override_get_session
 
-        headers = {"Authorization": f"Bearer {role}"} if role else {}
+        # Generate JWT token based on role
+        if role == "police":
+            police = PoliceAccountDto(email="police@unc.edu")
+            token, _ = AuthService.create_police_access_token(police)
+        elif role in ("admin", "staff", "student"):
+            # Create mock account DTO for the role
+            account = AccountDto(
+                id=0,
+                email=f"{role}@unc.edu",
+                first_name="Test",
+                last_name="User",
+                pid="111111111",
+                role=AccountRole(role),
+            )
+            token, _ = AuthService.create_account_access_token(account)
+        else:
+            token = None
+
+        headers = {"Authorization": f"Bearer {token}"} if token else {}
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://test", headers=headers
         ) as ac:
@@ -115,9 +137,52 @@ async def staff_client(create_test_client: CreateClientCallable):
 
 
 @pytest_asyncio.fixture
-async def student_client(create_test_client: CreateClientCallable):
-    async for client in create_test_client("student"):
-        yield client
+async def student_account(test_session: AsyncSession):
+    """Dedicated account for student_client authentication (always gets a real DB id)."""
+    from src.modules.account.account_entity import AccountEntity
+    from src.modules.account.account_model import AccountRole
+
+    account = AccountEntity(
+        email="test-student@unc.edu",
+        first_name="Test",
+        last_name="Student",
+        pid="000000001",
+        role=AccountRole.STUDENT,
+    )
+    test_session.add(account)
+    await test_session.flush()
+    return account
+
+
+@pytest_asyncio.fixture
+async def student_client(test_session: AsyncSession, student_account):
+    """Client authenticated as the test student account."""
+    from src.modules.account.account_model import AccountDto, AccountRole
+    from src.modules.auth.auth_service import AuthService
+
+    async def override_get_session():
+        yield test_session
+
+    app.dependency_overrides[get_session] = override_get_session
+
+    account_dto = AccountDto(
+        id=student_account.id,
+        email=student_account.email,
+        first_name=student_account.first_name,
+        last_name=student_account.last_name,
+        pid=student_account.pid,
+        role=AccountRole.STUDENT,
+    )
+    token, _ = AuthService.create_account_access_token(account_dto)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+        headers={"Authorization": f"Bearer {token}"},
+    ) as ac:
+        yield ac
+
+    app.dependency_overrides.clear()
 
 
 @pytest_asyncio.fixture
