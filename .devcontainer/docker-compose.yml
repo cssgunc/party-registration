@@ -16,7 +16,7 @@ services:
     ports:
       - "1433:1433"
     volumes:
-      - party-reg-mssql-v2:/var/opt/mssql
+      - party-reg-mssql/var/opt/mssql
     deploy:
       resources:
         limits:
