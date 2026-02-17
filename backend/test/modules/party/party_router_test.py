@@ -368,10 +368,15 @@ class TestPartyCreateStudentRouter:
     @pytest.mark.asyncio
     async def test_create_party_as_student_success(self, current_student: StudentEntity):
         """Test student creating a party."""
+        # Set up student residence
         location = await self.location_utils.create_one()
-        payload = await self.party_utils.next_student_create_dto(
-            google_place_id=location.google_place_id
-        )
+        current_student.residence_id = location.id
+        current_student.residence_chosen_date = datetime.now(UTC)
+        self.student_utils.session.add(current_student)
+        await self.student_utils.session.commit()
+        await self.student_utils.session.refresh(current_student, ["residence"])
+
+        payload = await self.party_utils.next_student_create_dto()
 
         response = await self.student_client.post(
             "/api/parties", json=payload.model_dump(mode="json")
@@ -380,7 +385,7 @@ class TestPartyCreateStudentRouter:
 
         assert data.contact_one.id == current_student.account_id
         assert data.contact_two.email == payload.contact_two.email
-        assert data.location.google_place_id == payload.google_place_id
+        assert data.location.id == location.id
 
 
 class TestPartyNearbyRouter:

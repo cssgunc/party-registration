@@ -199,12 +199,12 @@ async def get_parties_csv(
         raise BadRequestException("Start date must be less than or equal to end date")
 
     parties = await party_service.get_parties_by_date_range(start_datetime, end_datetime)
-    excel_content = await party_service.export_parties_to_excel(parties)
+    csv_content = await party_service.export_parties_to_csv(parties)
 
     return Response(
-        content=excel_content,
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": "attachment; filename=parties.xlsx"},
+        content=csv_content,
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=parties.csv"},
     )
 
 
@@ -269,18 +269,29 @@ async def get_party(
 async def delete_party(
     party_id: int,
     party_service: PartyService = Depends(),
-    _=Depends(authenticate_admin),
+    user: AccountDto = Depends(authenticate_user),
 ) -> PartyDto:
     """
-    Deletes a party registration by ID.
+    Deletes or cancels a party registration by ID.
+
+    - Students: Changes party status to "cancelled" (can only cancel their own parties)
+    - Admins: Permanently deletes the party from the database
 
     Parameters:
-    - party_id: The ID of the party to delete
+    - party_id: The ID of the party to delete/cancel
 
     Returns:
-    - The deleted party registration
+    - The deleted/cancelled party registration
 
     Raises:
     - 404: If party with the specified ID does not exist
+    - 403: If student tries to cancel another student's party
     """
-    return await party_service.delete_party(party_id)
+    if user.role == AccountRole.STUDENT:
+        # Students cancel their own parties
+        return await party_service.cancel_party(party_id, user.id)
+    elif user.role == AccountRole.ADMIN:
+        # Admins permanently delete parties
+        return await party_service.delete_party(party_id)
+    else:
+        raise ForbiddenException(detail="Only students and admins can delete/cancel parties")
