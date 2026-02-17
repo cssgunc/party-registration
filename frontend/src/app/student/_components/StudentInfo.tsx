@@ -139,7 +139,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
 
   if (!isEditing) {
     return (
-      <div className="bg-white rounded-lg">
+      <div className="bg-white rounded-lg p-12 w-full">
         <div className="flex justify-between items-center mb-6">
           <div className="text-[32px] font-semibold text-[#09294E]">
             Edit Profile Information
