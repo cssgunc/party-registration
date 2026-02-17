@@ -2,9 +2,8 @@
 
 import EmbeddedMap from "@/app/police/_components/EmbeddedMap";
 import PartyList from "@/app/police/_components/PartyList";
-import SplitDateComponent from "@/app/police/_components/SplitDateComponent";
+import SplitDateRangeFilter from "@/app/police/_components/SplitDateRangeFilter";
 import AddressSearch from "@/components/AddressSearch";
-import DateRangeFilter from "@/components/DateRangeFilter";
 import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { PartyService } from "@/lib/api/party/party.service";
@@ -105,16 +104,8 @@ export default function PolicePage() {
             <h2 className="text-2xl font-semibold mb-4 md:text-xl">
               Filter Between
             </h2>
-            <div className="hidden md:flex">
-              <DateRangeFilter
-                startDate={startDate}
-                endDate={endDate}
-                onStartDateChange={setStartDate}
-                onEndDateChange={setEndDate}
-              />
-            </div>
             <div>
-              <SplitDateComponent
+              <SplitDateRangeFilter
                 startDate={startDate}
                 endDate={endDate}
                 onStartDateChange={setStartDate}
