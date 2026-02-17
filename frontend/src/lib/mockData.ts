@@ -1,20 +1,24 @@
 import mockData from "@/../shared/mock_data.json";
 import type { AccountDto } from "@/lib/api/account/account.types";
-import { LocationDto } from "./api/location/location.types";
+import {
+  IncidentDto,
+  IncidentSeverity,
+  LocationDto,
+} from "./api/location/location.types";
 import { ContactDto, PartyDto } from "./api/party/party.types";
 import { PoliceAccountDto } from "./api/police/police.types";
 import { StudentDto } from "./api/student/student.types";
 
 /**
- * Parses relative date strings like "NOW+7d", "NOW-30d", "NOW+4h", or "NOW-2h" into Date objects
+ * Parses relative date strings like "NOW+7d", "NOW-30d", "NOW+4h", "NOW-2h", or "NOW+5d@20:30" into Date objects
  */
 function parseRelativeDate(dateStr: string | null): Date | null {
   if (!dateStr) return null;
 
-  const match = dateStr.match(/^NOW([+-])(\d+)([dh])$/);
+  const match = dateStr.match(/^NOW([+-])(\d+)([dh])(?:@(\d{2}):(\d{2}))?$/);
   if (!match) return null;
 
-  const [, operator, amount, unit] = match;
+  const [, operator, amount, unit, hour, minute] = match;
   const date = new Date();
   const amountNum = parseInt(amount, 10);
 
@@ -34,6 +38,11 @@ function parseRelativeDate(dateStr: string | null): Date | null {
     }
   }
 
+  // Apply static time if provided (e.g., @20:30)
+  if (hour !== undefined && minute !== undefined) {
+    date.setHours(parseInt(hour, 10), parseInt(minute, 10), 0, 0);
+  }
+
   return date;
 }
 
@@ -49,6 +58,7 @@ export const ACCOUNTS: AccountDto[] = mockData.accounts.map((acc) => ({
   pid: acc.pid,
   first_name: acc.first_name,
   last_name: acc.last_name,
+  onyen: acc.onyen,
   role: acc.role as "staff" | "admin" | "student",
 }));
 
@@ -59,6 +69,7 @@ export const STUDENTS: StudentDto[] = mockData.students.map((student) => ({
   email: student.email,
   first_name: student.first_name,
   last_name: student.last_name,
+  onyen: student.onyen,
   phone_number: student.phone_number,
   contact_preference: student.contact_preference as "call" | "text",
   last_registered: student.last_registered
@@ -66,11 +77,24 @@ export const STUDENTS: StudentDto[] = mockData.students.map((student) => ({
     : null,
 }));
 
+// Parse Incidents
+export const INCIDENTS: IncidentDto[] = mockData.incidents.map((incident) => ({
+  id: incident.id,
+  location_id: incident.location_id,
+  incident_datetime:
+    parseRelativeDate(incident.incident_datetime) ?? new Date(),
+  severity: incident.severity as IncidentSeverity,
+  description: incident.description,
+}));
+
+// Helper to get incidents by location ID
+function getIncidentsByLocationId(locationId: number): IncidentDto[] {
+  return INCIDENTS.filter((incident) => incident.location_id === locationId);
+}
+
 // Parse Locations
 export const LOCATIONS: LocationDto[] = mockData.locations.map((loc) => ({
   id: loc.id,
-  citation_count: loc.citation_count,
-  warning_count: loc.warning_count,
   hold_expiration: parseRelativeDate(loc.hold_expiration),
   google_place_id: loc.google_place_id,
   formatted_address: loc.formatted_address,
@@ -84,7 +108,7 @@ export const LOCATIONS: LocationDto[] = mockData.locations.map((loc) => ({
   state: loc.state,
   country: loc.country,
   zip_code: loc.zip_code,
-  complaints: [],
+  incidents: getIncidentsByLocationId(loc.id),
 }));
 
 // Helper to find student by ID

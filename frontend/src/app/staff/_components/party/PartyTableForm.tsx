@@ -54,8 +54,17 @@ export const partyTableFormSchema = z.object({
     .min(1, "Contact email is required"),
   contactTwoFirstName: z.string().min(1, "First name is required"),
   contactTwoLastName: z.string().min(1, "Last name is required"),
-  contactTwoPhoneNumber: z.string().min(1, "Phone number is required"),
-  contactTwoPreference: z.string(),
+  contactTwoPhoneNumber: z
+    .string()
+    .min(1, "Phone number is required")
+    .refine(
+      (val) => val.replace(/\D/g, "").length >= 10,
+      "Phone number must be at least 10 digits"
+    )
+    .transform((val) => val.replace(/\D/g, "")),
+  contactTwoPreference: z.enum(["call", "text"], {
+    message: "Please select a contact preference",
+  }),
 });
 
 type PartyTableFormValues = z.infer<typeof partyTableFormSchema>;
@@ -85,7 +94,7 @@ export default function PartyTableForm({
     contactTwoFirstName: editData?.contact_two.first_name ?? "",
     contactTwoLastName: editData?.contact_two.last_name ?? "",
     contactTwoPhoneNumber: editData?.contact_two.phone_number ?? "",
-    contactTwoPreference: editData?.contact_two.contact_preference ?? "",
+    contactTwoPreference: editData?.contact_two.contact_preference ?? undefined,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -161,6 +170,14 @@ export default function PartyTableForm({
             <FieldLabel htmlFor="party-address">Party Address</FieldLabel>
             <AddressSearch
               value={formData.address}
+              initialSelection={
+                editData?.location
+                  ? {
+                      formatted_address: editData.location.formatted_address,
+                      google_place_id: editData.location.google_place_id,
+                    }
+                  : null
+              }
               onSelect={handleAddressSelect}
               locationService={locationService}
               placeholder="Search for the party address..."

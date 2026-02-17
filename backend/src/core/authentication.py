@@ -34,10 +34,11 @@ def mock_authenticate(role: AccountRole) -> AccountDto | None:
     }
     return AccountDto(
         id=role_to_id[role],
-        email="user@example.com",
+        email="testuser@example.com",
         first_name="Test",
         last_name="User",
         pid=role_to_pid[role],
+        onyen="testuser",
         role=role,
     )
 
@@ -135,5 +136,13 @@ async def authenticate_student(
 
 async def authenticate_police_or_admin(
     account: AccountDto | PoliceAccountDto = Depends(authenticate_by_role("police", "admin")),
+) -> PoliceAccountDto | AccountDto:
+    return account
+
+
+async def authenticate_police_staff_or_admin(
+    account: AccountDto | PoliceAccountDto = Depends(
+        authenticate_by_role("police", "staff", "admin")
+    ),
 ) -> PoliceAccountDto | AccountDto:
     return account

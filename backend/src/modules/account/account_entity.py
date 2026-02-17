@@ -10,20 +10,23 @@ class AccountEntity(MappedAsDataclass, EntityBase):
     __tablename__ = "accounts"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, init=False)
-    email: Mapped[str] = mapped_column(String, index=True, nullable=False)
-    first_name: Mapped[str] = mapped_column(String, nullable=False)
-    last_name: Mapped[str] = mapped_column(String, nullable=False)
+    email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    first_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    last_name: Mapped[str] = mapped_column(String(255), nullable=False)
     pid: Mapped[str] = mapped_column(
         String(9),
         CheckConstraint(
-            "length(pid) = 9 AND pid ~ '^[0-9]{9}$'",
+            "LEN(pid) = 9 AND pid NOT LIKE '%[^0-9]%'",
             name="check_pid_format",
         ),
         unique=True,
         index=True,
         nullable=False,
     )
-    role: Mapped[AccountRole] = mapped_column(Enum(AccountRole), nullable=False)
+    onyen: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    role: Mapped[AccountRole] = mapped_column(
+        Enum(AccountRole, native_enum=False, length=20), nullable=False
+    )
 
     # Create case-insensitive unique index for email using text expression
     __table_args__ = (Index("ix_accounts_email_lower", text("lower(email)"), unique=True),)
@@ -35,6 +38,7 @@ class AccountEntity(MappedAsDataclass, EntityBase):
             first_name=data.first_name,
             last_name=data.last_name,
             pid=data.pid,
+            onyen=data.onyen,
             role=AccountRole(data.role),
         )
 
@@ -45,5 +49,6 @@ class AccountEntity(MappedAsDataclass, EntityBase):
             first_name=self.first_name,
             last_name=self.last_name,
             pid=self.pid,
+            onyen=self.onyen,
             role=self.role,
         )

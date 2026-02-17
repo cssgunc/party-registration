@@ -33,6 +33,14 @@ class TestAccountService:
             await self.account_service.create_account(data)
 
     @pytest.mark.asyncio
+    async def test_create_account_onyen_conflict(self) -> None:
+        account = await self.account_utils.create_one()
+        conflict_data = await self.account_utils.next_data(onyen=account.onyen)
+
+        with pytest.raises(AccountConflictException):
+            await self.account_service.create_account(conflict_data)
+
+    @pytest.mark.asyncio
     async def test_get_accounts(
         self,
         accounts_two_per_role: list[AccountEntity],
@@ -93,6 +101,7 @@ class TestAccountService:
             first_name=account.first_name,
             last_name=account.last_name,
             pid=account.pid,
+            onyen=account.onyen,
             role=AccountRole.ADMIN,
         )
         updated = await self.account_service.update_account(account.id, update_data)
@@ -121,8 +130,27 @@ class TestAccountService:
                     first_name="Test",
                     last_name="User",
                     pid=data2.pid,
+                    onyen=data2.onyen,
                     role=AccountRole.STUDENT,
                 ),
+            )
+
+    @pytest.mark.asyncio
+    async def test_update_account_onyen_conflict(self):
+        account1, account2 = await self.account_utils.create_many(i=2)
+        conflict_data = AccountData(
+            email=account2.email,
+            first_name=account2.first_name,
+            last_name=account2.last_name,
+            pid=account2.pid,
+            onyen=account1.onyen,
+            role=account2.role,
+        )
+
+        with pytest.raises(AccountConflictException):
+            await self.account_service.update_account(
+                account2.id,
+                conflict_data,
             )
 
     @pytest.mark.asyncio

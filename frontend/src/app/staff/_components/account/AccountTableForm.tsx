@@ -20,10 +20,14 @@ import { useState } from "react";
 import * as z from "zod";
 
 export const accountTableFormSchema = z.object({
-  pid: z.string().length(9, "Please input a valid PID"),
+  pid: z
+    .string()
+    .regex(/^\d{9}$/, { message: "Please input a valid PID" })
+    .min(1, "PID is required"),
   email: z.email({ pattern: z.regexes.html5Email }).min(1, "Email is required"),
   first_name: z.string().min(1, "First name is required"),
-  last_name: z.string().min(1, "Second name is required"),
+  last_name: z.string().min(1, "Last name is required"),
+  onyen: z.string().min(1, "Onyen is required"),
   role: z.string().min(1, "Role is required"),
 });
 
@@ -46,8 +50,9 @@ export default function AccountTableForm({
     email: editData?.email ?? "",
     first_name: editData?.first_name ?? "",
     last_name: editData?.last_name ?? "",
-    role: editData?.role ?? "",
     pid: editData?.pid ?? "",
+    onyen: editData?.onyen ?? "",
+    role: editData?.role ?? "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -91,6 +96,7 @@ export default function AccountTableForm({
     }
   };
 
+  const isPIDEditMode = !!editData;
   return (
     <form onSubmit={handleSubmit}>
       {title && <h2 className="text-xl font-semibold mb-4">{title}</h2>}
@@ -113,6 +119,7 @@ export default function AccountTableForm({
               value={formData.email}
               onChange={(e) => updateField("email", e.target.value)}
               aria-invalid={!!errors.email}
+              disabled={isPIDEditMode}
             />
             {errors.email && <FieldError>{errors.email}</FieldError>}
           </Field>
@@ -125,6 +132,7 @@ export default function AccountTableForm({
               value={formData.pid}
               onChange={(e) => updateField("pid", e.target.value)}
               aria-invalid={!!errors.pid}
+              disabled={isPIDEditMode}
             />
             {errors.pid && <FieldError>{errors.pid}</FieldError>}
           </Field>
@@ -151,6 +159,19 @@ export default function AccountTableForm({
               aria-invalid={!!errors.last_name}
             />
             {errors.last_name && <FieldError>{errors.last_name}</FieldError>}
+          </Field>
+
+          <Field data-invalid={!!errors.onyen}>
+            <FieldLabel htmlFor="onyen">Onyen</FieldLabel>
+            <Input
+              id="onyen"
+              placeholder="johndoe"
+              value={formData.onyen}
+              onChange={(e) => updateField("onyen", e.target.value)}
+              aria-invalid={!!errors.onyen}
+              disabled={isPIDEditMode}
+            />
+            {errors.onyen && <FieldError>{errors.onyen}</FieldError>}
           </Field>
 
           <Field data-invalid={!!errors.role}>
