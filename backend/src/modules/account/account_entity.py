@@ -1,6 +1,6 @@
 from typing import Self
 
-from sqlalchemy import CheckConstraint, Enum, Index, Integer, String, text
+from sqlalchemy import CheckConstraint, Enum, Integer, String
 from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column
 from src.core.database import EntityBase
 from src.modules.account.account_model import AccountData, AccountDto, AccountRole
@@ -28,8 +28,8 @@ class AccountEntity(MappedAsDataclass, EntityBase):
         Enum(AccountRole, native_enum=False, length=20), nullable=False
     )
 
-    # Create case-insensitive unique index for email using text expression
-    __table_args__ = (Index("ix_accounts_email_lower", text("lower(email)"), unique=True),)
+    # MSSQL uses case-insensitive collation by default (SQL_Latin1_General_CP1_CI_AS)
+    # The unique constraint on email column already provides case-insensitive uniqueness
 
     @classmethod
     def from_data(cls, data: "AccountData") -> Self:
