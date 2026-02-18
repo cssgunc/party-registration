@@ -230,6 +230,7 @@ class PartyService:
             "contact_two_last_name",
             "contact_two_phone_number",
             "contact_two_contact_preference",
+            "status",
         ]
         allowed_filter_fields = [
             "id",
@@ -241,6 +242,7 @@ class PartyService:
             "contact_two_last_name",
             "contact_two_phone_number",
             "contact_two_contact_preference",
+            "status",
         ]
 
         # Parse query params from request
@@ -677,7 +679,7 @@ class PartyService:
             writer = csv.writer(output)
             writer.writerow(
                 [
-                    "Fully formatted address",
+                    "Address",
                     "Date of Party",
                     "Time of Party",
                     "Contact One Full Name",
@@ -710,7 +712,7 @@ class PartyService:
 
         writer.writerow(
             [
-                "Fully formatted address",
+                "Address",
                 "Date of Party",
                 "Time of Party",
                 "Contact One Full Name",
@@ -736,7 +738,9 @@ class PartyService:
 
             # Format date and time
             party_date = party.party_datetime.strftime("%Y-%m-%d") if party.party_datetime else ""
-            party_time = party.party_datetime.strftime("%H:%M:%S") if party.party_datetime else ""
+            party_time = (
+                party.party_datetime.strftime("%I:%M:%S %p") if party.party_datetime else ""
+            )
 
             contact_one_full_name = ""
             contact_one_email = ""
@@ -748,9 +752,19 @@ class PartyService:
                     f"{party_entity.contact_one.account.first_name} "
                     f"{party_entity.contact_one.account.last_name}"
                 )
-                contact_one_phone = party_entity.contact_one.phone_number or ""
+                # Format phone number as (XXX) XXX-XXXX
+                raw_phone = party_entity.contact_one.phone_number or ""
+                if raw_phone and len(raw_phone) >= 10:
+                    # Remove any non-digit characters
+                    digits = "".join(c for c in raw_phone if c.isdigit())
+                    if len(digits) >= 10:
+                        contact_one_phone = f"({digits[-10:-7]}) {digits[-7:-4]}-{digits[-4:]}"
+                    else:
+                        contact_one_phone = raw_phone
+                else:
+                    contact_one_phone = raw_phone
                 contact_one_preference = (
-                    party_entity.contact_one.contact_preference.value
+                    party_entity.contact_one.contact_preference.value.capitalize()
                     if party_entity.contact_one.contact_preference
                     else ""
                 )
@@ -765,9 +779,19 @@ class PartyService:
             contact_two_full_name = (
                 f"{party_entity.contact_two_first_name} {party_entity.contact_two_last_name}"
             )
-            contact_two_phone = party_entity.contact_two_phone_number or ""
+            # Format phone number as (XXX) XXX-XXXX
+            raw_phone = party_entity.contact_two_phone_number or ""
+            if raw_phone and len(raw_phone) >= 10:
+                # Remove any non-digit characters
+                digits = "".join(c for c in raw_phone if c.isdigit())
+                if len(digits) >= 10:
+                    contact_two_phone = f"({digits[-10:-7]}) {digits[-7:-4]}-{digits[-4:]}"
+                else:
+                    contact_two_phone = raw_phone
+            else:
+                contact_two_phone = raw_phone
             contact_two_preference = (
-                party_entity.contact_two_contact_preference.value
+                party_entity.contact_two_contact_preference.value.capitalize()
                 if party_entity.contact_two_contact_preference
                 else ""
             )

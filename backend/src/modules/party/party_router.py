@@ -285,7 +285,7 @@ async def delete_party(
 
     Raises:
     - 404: If party with the specified ID does not exist
-    - 403: If student tries to cancel another student's party
+    - 403: If user lacks permission (staff/police) or student tries to cancel another's party
     """
     if user.role == AccountRole.STUDENT:
         # Students cancel their own parties
@@ -294,4 +294,5 @@ async def delete_party(
         # Admins permanently delete parties
         return await party_service.delete_party(party_id)
     else:
-        raise ForbiddenException(detail="Only students and admins can delete/cancel parties")
+        # Staff and police cannot delete/cancel parties
+        raise ForbiddenException(detail="Insufficient privileges")

@@ -35,6 +35,7 @@ test_student_authentication = generate_auth_required_tests(
     ({"admin", "staff"}, "PATCH", "/api/students/12345/is-registered", {"is_registered": True}),
     ({"student"}, "GET", "/api/students/me", None),
     ({"student"}, "PUT", "/api/students/me", StudentTestUtils.get_sample_data()),
+    ({"student"}, "PUT", "/api/students/me/residence", {"residence_place_id": "ChIJTest"}),
     ({"student"}, "GET", "/api/students/me/parties", None),
 )
 

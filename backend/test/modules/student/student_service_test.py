@@ -239,14 +239,17 @@ class TestStudentResidenceService:
         self,
         student_utils: StudentTestUtils,
         account_utils: AccountTestUtils,
-        student_service: StudentService,
+        test_session: AsyncSession,
         location_utils: "LocationTestUtils",
         location_service: "LocationService",
         gmaps_utils: "GmapsMockUtils",
     ):
         self.student_utils = student_utils
         self.account_utils = account_utils
-        self.student_service = student_service
+        # Create student_service with location_service injected
+        self.student_service = StudentService(
+            session=test_session, location_service=location_service
+        )
         self.location_utils = location_utils
         self.location_service = location_service
         self.gmaps_utils = gmaps_utils
