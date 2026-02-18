@@ -7,7 +7,10 @@ import PartyRegistrationForm, {
 import { LocationService } from "@/lib/api/location/location.service";
 import { useCreateParty } from "@/lib/api/party/party.queries";
 import { StudentCreatePartyDto } from "@/lib/api/party/party.types";
-import { useMyParties } from "@/lib/api/student/student.queries";
+import {
+  useCurrentStudent,
+  useMyParties,
+} from "@/lib/api/student/student.queries";
 import getMockClient from "@/lib/network/mockClient";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -16,6 +19,7 @@ import { useMemo } from "react";
 export default function RegistrationForm() {
   const createPartyMutation = useCreateParty();
   const partiesQuery = useMyParties();
+  const studentQuery = useCurrentStudent();
   const router = useRouter();
 
   /**
@@ -99,6 +103,8 @@ export default function RegistrationForm() {
           onSubmit={handleSubmit}
           locationService={new LocationService(getMockClient("student"))}
           initialValues={initialValues}
+          studentEmail={studentQuery.data?.email}
+          studentPhoneNumber={studentQuery.data?.phone_number}
         />
       </div>
     </div>

@@ -21,6 +21,7 @@ from ..student.student_entity import StudentEntity
 from .party_entity import PartyEntity
 from .party_model import (
     AdminCreatePartyDto,
+    ContactDto,
     PaginatedPartiesResponse,
     PartyData,
     PartyDto,
@@ -36,6 +37,11 @@ class PartyNotFoundException(NotFoundException):
 class PartyConflictException(ConflictException):
     def __init__(self, message: str):
         super().__init__(message)
+
+
+class ContactTwoMatchesContactOneException(BadRequestException):
+    def __init__(self, field: str):
+        super().__init__(f"Contact two {field} must be different from contact one's {field}")
 
 
 class PartyDateTooSoonException(BadRequestException):
@@ -155,6 +161,18 @@ class PartyService:
         location = await self.location_service.get_or_create_location(place_id)
         self.location_service.assert_valid_location_hold(location)
         return location
+
+    def _validate_contact_two_differs_from_contact_one(
+        self, contact_one_email: str, contact_one_phone: str, contact_two: ContactDto
+    ) -> None:
+        """Validate that contact two's email and phone number differ from contact one's."""
+        if contact_two.email.strip().lower() == contact_one_email.strip().lower():
+            raise ContactTwoMatchesContactOneException("email")
+        # Normalize phone numbers to digits only for comparison
+        c1_phone_digits = "".join(filter(str.isdigit, contact_one_phone))
+        c2_phone_digits = "".join(filter(str.isdigit, contact_two.phone_number))
+        if c1_phone_digits == c2_phone_digits:
+            raise ContactTwoMatchesContactOneException("phone number")
 
     async def _validate_student_party_prerequisites(
         self, student_id: int, party_datetime: datetime
@@ -428,6 +446,12 @@ class PartyService:
             dto.google_place_id, dto.contact_one_email
         )
 
+        # Validate contact two differs from contact one
+        contact_one_dto = contact_one.to_dto()
+        self._validate_contact_two_differs_from_contact_one(
+            contact_one_dto.email, contact_one_dto.phone_number, dto.contact_two
+        )
+
         # Create party data with contact_two information directly
         party_data = PartyData(
             party_datetime=dto.party_datetime,
@@ -515,6 +539,12 @@ class PartyService:
         # Validate and get location and contact_one details
         location, contact_one_id = await self._validate_admin_party_and_get_details(
             dto.google_place_id, dto.contact_one_email
+        )
+
+        # Validate contact two differs from contact one
+        contact_one_dto = contact_one_student.to_dto()
+        self._validate_contact_two_differs_from_contact_one(
+            contact_one_dto.email, contact_one_dto.phone_number, dto.contact_two
         )
 
         # Update party fields
