@@ -261,19 +261,14 @@ class StudentService:
             self.session.add(account)
 
             # Handle residence_place_id for admin updates
+            # Note: StudentData (used by students for self-updates) does not have
+            # residence_place_id, so this code path is only executed for admin updates
+            # using StudentDataWithNames.
+            # Students must use the dedicated PUT /students/me/residence endpoint
+            # to update residence.
             if hasattr(data, "residence_place_id"):
                 if data.residence_place_id is not None:
-                    # Check if student already has a residence in the same academic year
-                    # Admins can override this check
-                    if (
-                        not is_admin
-                        and student_entity.residence_chosen_date is not None
-                        and self._is_same_academic_year(
-                            student_entity.residence_chosen_date, datetime.now(UTC)
-                        )
-                    ):
-                        raise ResidenceAlreadyChosenException()
-
+                    # Admins can update residence at any time, bypassing academic year restrictions
                     # Get or create the new residence location
                     location = await self.location_service.get_or_create_location(
                         data.residence_place_id
@@ -302,6 +297,10 @@ class StudentService:
     async def update_residence(self, account_id: int, residence_place_id: str) -> LocationDto:
         """Update student's residence. Can only be done once per academic year."""
         student_entity = await self._get_student_entity_by_account_id(account_id)
+
+        # Student must have completed Party Smart before choosing a residence
+        if student_entity.last_registered is None:
+            raise BadRequestException("Must complete Party Smart before choosing a residence")
 
         # Check if student has already chosen a residence this academic year
         if student_entity.residence_chosen_date is not None and self._is_same_academic_year(

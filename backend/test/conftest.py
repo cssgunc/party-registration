@@ -177,8 +177,8 @@ def police_service(test_session: AsyncSession, fast_bcrypt: None):
 
 
 @pytest.fixture()
-def student_service(test_session: AsyncSession):
-    return StudentService(session=test_session)
+def student_service(test_session: AsyncSession, location_service: LocationService):
+    return StudentService(session=test_session, location_service=location_service)
 
 
 @pytest.fixture(autouse=True)

@@ -44,10 +44,8 @@ class PartyDateTooSoonException(BadRequestException):
 
 
 class PartySmartNotCompletedException(BadRequestException):
-    def __init__(self, student_id: int):
-        super().__init__(
-            f"Student {student_id} must complete Party Smart before registering a party"
-        )
+    def __init__(self):
+        super().__init__("You must complete Party Smart before registering a party")
 
 
 class NoResidenceException(BadRequestException):
@@ -132,7 +130,7 @@ class PartyService:
         student = await self.student_service.get_student_by_id(student_id)
 
         if student.last_registered is None:
-            raise PartySmartNotCompletedException(student_id)
+            raise PartySmartNotCompletedException()
 
         # Calculate the most recent August 1st
         now = datetime.now(UTC)
@@ -150,7 +148,7 @@ class PartyService:
 
         # Check if last_registered is after the most recent August 1st
         if student.last_registered < most_recent_august_first:
-            raise PartySmartNotCompletedException(student_id)
+            raise PartySmartNotCompletedException()
 
     async def _validate_and_get_location(self, place_id: str) -> LocationDto:
         """Get or create location and validate it has no active hold."""
@@ -358,15 +356,15 @@ class PartyService:
 
         return await party_entity.load_dto(self.session)
 
-    async def create_party_from_student_dto(
-        self, dto: StudentCreatePartyDto, student_account_id: int
-    ) -> PartyDto:
+    async def _validate_student_party_and_get_location(
+        self, student_account_id: int, party_datetime: datetime
+    ) -> tuple[LocationDto, int]:
         """
-        Create a party registration from a student.
-        contact_one is auto-filled, location from residence.
+        Validate student can register a party and get their residence location.
+        Returns tuple of (location, student_account_id).
         """
         # Validate student party prerequisites (date and Party Smart)
-        await self._validate_student_party_prerequisites(student_account_id, dto.party_datetime)
+        await self._validate_student_party_prerequisites(student_account_id, party_datetime)
 
         # Get student and validate they have a residence
         student = await self.student_service.get_student_by_id(student_account_id)
@@ -378,6 +376,19 @@ class PartyService:
 
         # Validate location has no active hold
         self.location_service.assert_valid_location_hold(location)
+
+        return location, student_account_id
+
+    async def create_party_from_student_dto(
+        self, dto: StudentCreatePartyDto, student_account_id: int
+    ) -> PartyDto:
+        """
+        Create a party registration from a student.
+        contact_one is auto-filled, location from residence.
+        """
+        location, _ = await self._validate_student_party_and_get_location(
+            student_account_id, dto.party_datetime
+        )
 
         # Create party data with contact_two information directly
         party_data = PartyData(
@@ -394,19 +405,32 @@ class PartyService:
 
         return await new_party.load_dto(self.session)
 
-    async def create_party_from_admin_dto(self, dto: AdminCreatePartyDto) -> PartyDto:
-        """Create a party registration from an admin. Both contacts must be specified."""
+    async def _validate_admin_party_and_get_details(
+        self, google_place_id: str, contact_one_email: str
+    ) -> tuple[LocationDto, int]:
+        """
+        Validate admin party data and get location and contact_one_id.
+        Returns tuple of (location, contact_one_id).
+        """
         # Get/create location and validate no hold
-        location = await self._validate_and_get_location(dto.google_place_id)
+        location = await self._validate_and_get_location(google_place_id)
 
         # Get contact_one by email
-        contact_one = await self._get_student_by_email(dto.contact_one_email)
+        contact_one = await self._get_student_by_email(contact_one_email)
+
+        return location, contact_one.account_id
+
+    async def create_party_from_admin_dto(self, dto: AdminCreatePartyDto) -> PartyDto:
+        """Create a party registration from an admin. Both contacts must be specified."""
+        location, contact_one_id = await self._validate_admin_party_and_get_details(
+            dto.google_place_id, dto.contact_one_email
+        )
 
         # Create party data with contact_two information directly
         party_data = PartyData(
             party_datetime=dto.party_datetime,
             location_id=location.id,
-            contact_one_id=contact_one.account_id,
+            contact_one_id=contact_one_id,
             contact_two=dto.contact_two,
         )
 
@@ -441,19 +465,10 @@ class PartyService:
         if party_entity.party_datetime < datetime.now(UTC):
             raise PartyInPastException()
 
-        # Validate student party prerequisites (date and Party Smart)
-        await self._validate_student_party_prerequisites(student_account_id, dto.party_datetime)
-
-        # Get student and validate they have a residence
-        student = await self.student_service.get_student_by_id(student_account_id)
-        if student.residence is None:
-            raise NoResidenceException()
-
-        # Use student's residence as the party location
-        location = student.residence.location
-
-        # Validate location has no active hold
-        self.location_service.assert_valid_location_hold(location)
+        # Validate student can create party and get location
+        location, _ = await self._validate_student_party_and_get_location(
+            student_account_id, dto.party_datetime
+        )
 
         # Update party fields
         party_entity.party_datetime = dto.party_datetime
@@ -495,12 +510,10 @@ class PartyService:
         # Get existing party
         party_entity = await self._get_party_entity_by_id(party_id)
 
-        # Get/create location and validate no hold
-        location = await self._validate_and_get_location(dto.google_place_id)
-
-        # Get contact_one by email
-        contact_one_student = await self._get_student_by_email(dto.contact_one_email)
-        contact_one_id = contact_one_student.account_id
+        # Validate and get location and contact_one details
+        location, contact_one_id = await self._validate_admin_party_and_get_details(
+            dto.google_place_id, dto.contact_one_email
+        )
 
         # Update party fields
         party_entity.party_datetime = dto.party_datetime

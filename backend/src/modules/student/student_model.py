@@ -29,7 +29,9 @@ class StudentDataWithNames(StudentData):
     contact_preference: ContactPreference
     last_registered: AwareDatetime | None = None
     phone_number: str = Field(pattern=r"^\+?1?\d{9,15}$")
-    residence_place_id: str | None = None
+    residence_place_id: str | None = Field(
+        None, description="Google Maps place ID for student residence"
+    )
 
 
 class SelfUpdateStudentDto(BaseModel):
@@ -102,3 +104,10 @@ class IsRegisteredUpdate(BaseModel):
 
 
 PaginatedStudentsResponse = PaginatedResponse[StudentDto]
+
+# Resolve forward references after all models are defined
+if not TYPE_CHECKING:
+    from src.modules.location.location_model import LocationDto
+
+    ResidenceDto.model_rebuild()
+    StudentDto.model_rebuild()
