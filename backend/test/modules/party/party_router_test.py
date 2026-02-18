@@ -494,10 +494,15 @@ class TestPartyCreateStudentRouter:
     async def test_create_party_as_student_duplicate_email(self, current_student: StudentEntity):
         """Test student cannot create party with contact_two email matching their own."""
         student_dto = await current_student.load_dto(self.student_utils.session)
+        # Set up student residence
         location = await self.location_utils.create_one()
+        current_student.residence_id = location.id
+        current_student.residence_chosen_date = datetime.now(UTC)
+        self.student_utils.session.add(current_student)
+        await self.student_utils.session.commit()
+        await self.student_utils.session.refresh(current_student, ["residence"])
 
         payload = await self.party_utils.next_student_create_dto(
-            google_place_id=location.google_place_id,
             contact_two=ContactDto(
                 email=student_dto.email,
                 first_name="Other",
@@ -516,10 +521,15 @@ class TestPartyCreateStudentRouter:
     async def test_create_party_as_student_duplicate_phone(self, current_student: StudentEntity):
         """Test student cannot create party with contact_two phone matching their own."""
         student_dto = await current_student.load_dto(self.student_utils.session)
+        # Set up student residence
         location = await self.location_utils.create_one()
+        current_student.residence_id = location.id
+        current_student.residence_chosen_date = datetime.now(UTC)
+        self.student_utils.session.add(current_student)
+        await self.student_utils.session.commit()
+        await self.student_utils.session.refresh(current_student, ["residence"])
 
         payload = await self.party_utils.next_student_create_dto(
-            google_place_id=location.google_place_id,
             contact_two=ContactDto(
                 email="different@email.com",
                 first_name="Other",
@@ -694,19 +704,22 @@ class TestPartyUpdateStudentRouter:
     @pytest.mark.asyncio
     async def test_update_party_as_student_success(self, current_student: StudentEntity):
         """Test student updating a party."""
+        # Set up student residence
         location = await self.location_utils.create_one()
-        create_payload = await self.party_utils.next_student_create_dto(
-            google_place_id=location.google_place_id
-        )
+        current_student.residence_id = location.id
+        current_student.residence_chosen_date = datetime.now(UTC)
+        self.student_utils.session.add(current_student)
+        await self.student_utils.session.commit()
+        await self.student_utils.session.refresh(current_student, ["residence"])
+
+        create_payload = await self.party_utils.next_student_create_dto()
 
         create_response = await self.student_client.post(
             "/api/parties", json=create_payload.model_dump(mode="json")
         )
         created = assert_res_success(create_response, PartyDto, status=201)
 
-        update_payload = await self.party_utils.next_student_create_dto(
-            google_place_id=location.google_place_id
-        )
+        update_payload = await self.party_utils.next_student_create_dto()
 
         response = await self.student_client.put(
             f"/api/parties/{created.id}", json=update_payload.model_dump(mode="json")
@@ -716,18 +729,22 @@ class TestPartyUpdateStudentRouter:
         assert data.id == created.id
         assert data.contact_one.id == current_student.account_id
         assert data.contact_two.email == update_payload.contact_two.email
-        assert data.location.google_place_id == update_payload.google_place_id
+        assert data.location.id == location.id
 
     @pytest.mark.asyncio
     async def test_update_party_as_student_duplicate_email(self, current_student: StudentEntity):
         """Test student cannot update party with contact_two email matching their own."""
         student_dto = await current_student.load_dto(self.student_utils.session)
+        # Set up student residence
         location = await self.location_utils.create_one()
+        current_student.residence_id = location.id
+        current_student.residence_chosen_date = datetime.now(UTC)
+        self.student_utils.session.add(current_student)
+        await self.student_utils.session.commit()
+        await self.student_utils.session.refresh(current_student, ["residence"])
 
         # Create a party first
-        create_payload = await self.party_utils.next_student_create_dto(
-            google_place_id=location.google_place_id
-        )
+        create_payload = await self.party_utils.next_student_create_dto()
         create_response = await self.student_client.post(
             "/api/parties", json=create_payload.model_dump(mode="json")
         )
@@ -735,7 +752,6 @@ class TestPartyUpdateStudentRouter:
 
         # Attempt update with duplicate email
         update_payload = await self.party_utils.next_student_create_dto(
-            google_place_id=location.google_place_id,
             contact_two=ContactDto(
                 email=student_dto.email,
                 first_name="Other",
@@ -754,12 +770,16 @@ class TestPartyUpdateStudentRouter:
     async def test_update_party_as_student_duplicate_phone(self, current_student: StudentEntity):
         """Test student cannot update party with contact_two phone matching their own."""
         student_dto = await current_student.load_dto(self.student_utils.session)
+        # Set up student residence
         location = await self.location_utils.create_one()
+        current_student.residence_id = location.id
+        current_student.residence_chosen_date = datetime.now(UTC)
+        self.student_utils.session.add(current_student)
+        await self.student_utils.session.commit()
+        await self.student_utils.session.refresh(current_student, ["residence"])
 
         # Create a party first
-        create_payload = await self.party_utils.next_student_create_dto(
-            google_place_id=location.google_place_id
-        )
+        create_payload = await self.party_utils.next_student_create_dto()
         create_response = await self.student_client.post(
             "/api/parties", json=create_payload.model_dump(mode="json")
         )
@@ -767,7 +787,6 @@ class TestPartyUpdateStudentRouter:
 
         # Attempt update with duplicate phone
         update_payload = await self.party_utils.next_student_create_dto(
-            google_place_id=location.google_place_id,
             contact_two=ContactDto(
                 email="different@email.com",
                 first_name="Other",

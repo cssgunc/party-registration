@@ -13,6 +13,7 @@ from src.core.database import get_session
 from src.core.exceptions import BadRequestException, ConflictException, NotFoundException
 from src.core.query_utils import get_paginated_results, parse_pagination_params
 from src.modules.location.location_model import LocationDto
+from src.modules.student.student_model import StudentDto
 from src.modules.student.student_service import StudentNotFoundException, StudentService
 
 from ..account.account_service import AccountByEmailNotFoundException, AccountService
@@ -410,6 +411,14 @@ class PartyService:
             student_account_id, dto.party_datetime
         )
 
+        # Get student info for contact_two validation
+        student = await self.student_service.get_student_by_id(student_account_id)
+
+        # Validate contact two differs from contact one
+        self._validate_contact_two_differs_from_contact_one(
+            student.email, student.phone_number, dto.contact_two
+        )
+
         # Create party data with contact_two information directly
         party_data = PartyData(
             party_datetime=dto.party_datetime,
@@ -427,29 +436,29 @@ class PartyService:
 
     async def _validate_admin_party_and_get_details(
         self, google_place_id: str, contact_one_email: str
-    ) -> tuple[LocationDto, int]:
+    ) -> tuple[LocationDto, StudentDto, int]:
         """
-        Validate admin party data and get location and contact_one_id.
-        Returns tuple of (location, contact_one_id).
+        Validate admin party data and get location, contact_one entity, and contact_one_id.
+        Returns tuple of (location, contact_one, contact_one_id).
         """
         # Get/create location and validate no hold
         location = await self._validate_and_get_location(google_place_id)
 
         # Get contact_one by email
         contact_one = await self._get_student_by_email(contact_one_email)
+        contact_one_dto = await contact_one.load_dto(self.session)
 
-        return location, contact_one.account_id
+        return location, contact_one_dto, contact_one.account_id
 
     async def create_party_from_admin_dto(self, dto: AdminCreatePartyDto) -> PartyDto:
         """Create a party registration from an admin. Both contacts must be specified."""
-        location, contact_one_id = await self._validate_admin_party_and_get_details(
+        location, contact_one, contact_one_id = await self._validate_admin_party_and_get_details(
             dto.google_place_id, dto.contact_one_email
         )
 
         # Validate contact two differs from contact one
-        contact_one_dto = contact_one.to_dto()
         self._validate_contact_two_differs_from_contact_one(
-            contact_one_dto.email, contact_one_dto.phone_number, dto.contact_two
+            contact_one.email, contact_one.phone_number, dto.contact_two
         )
 
         # Create party data with contact_two information directly
@@ -496,6 +505,14 @@ class PartyService:
             student_account_id, dto.party_datetime
         )
 
+        # Get student info for contact_two validation
+        student = await self.student_service.get_student_by_id(student_account_id)
+
+        # Validate contact two differs from contact one
+        self._validate_contact_two_differs_from_contact_one(
+            student.email, student.phone_number, dto.contact_two
+        )
+
         # Update party fields
         party_entity.party_datetime = dto.party_datetime
         party_entity.location_id = location.id
@@ -537,14 +554,13 @@ class PartyService:
         party_entity = await self._get_party_entity_by_id(party_id)
 
         # Validate and get location and contact_one details
-        location, contact_one_id = await self._validate_admin_party_and_get_details(
+        location, contact_one, contact_one_id = await self._validate_admin_party_and_get_details(
             dto.google_place_id, dto.contact_one_email
         )
 
         # Validate contact two differs from contact one
-        contact_one_dto = contact_one_student.to_dto()
         self._validate_contact_two_differs_from_contact_one(
-            contact_one_dto.email, contact_one_dto.phone_number, dto.contact_two
+            contact_one.email, contact_one.phone_number, dto.contact_two
         )
 
         # Update party fields
