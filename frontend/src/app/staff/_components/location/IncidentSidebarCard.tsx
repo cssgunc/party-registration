@@ -1,4 +1,4 @@
-"use client";
+"use state";
 import {
   Collapsible,
   CollapsibleContent,
@@ -12,13 +12,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { IncidentDto } from "@/lib/api/location/location.types";
 import { ChevronDown, MoreHorizontal } from "lucide-react";
-import { useState } from "react";
 
 type IncidentSidebarProps = {
   incidents: IncidentDto[];
+  onDeleteIncident: (incidentId: number) => void;
 };
 export default function IncidentSidebarCard({
   incidents,
+  onDeleteIncident,
 }: IncidentSidebarProps) {
   return (
     <div>
@@ -47,7 +48,9 @@ export default function IncidentSidebarCard({
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 <DropdownMenuItem>Edit</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => console.log("Delete clicked")}>
+                <DropdownMenuItem
+                  onClick={() => onDeleteIncident(incidents[0].id)}
+                >
                   Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -55,7 +58,7 @@ export default function IncidentSidebarCard({
           </div>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm">
             {incidents[0].description || "No description provided."}
           </p>
         </CollapsibleContent>
