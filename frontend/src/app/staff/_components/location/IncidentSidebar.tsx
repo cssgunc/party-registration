@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { useRole } from "@/contexts/RoleContext";
 import { IncidentDto } from "@/lib/api/location/location.types";
 import { useState } from "react";
 import IncidentSidebarCard from "./IncidentSidebarCard";
@@ -8,6 +9,7 @@ type IncidentSidebarProps = {
 };
 
 export default function IncidentSidebar({ incidents }: IncidentSidebarProps) {
+  const { role, setRole } = useRole();
   const [incidentList, setIncidentList] = useState<IncidentDto[]>(incidents);
   const handleDeleteIncident = (incidentId: number) => {
     setIncidentList((prevIncidents) =>
@@ -27,9 +29,11 @@ export default function IncidentSidebar({ incidents }: IncidentSidebarProps) {
           onDeleteIncident={handleDeleteIncident}
         />
       ))}
-      <Button variant="default" className="mt-4">
-        Add Incident
-      </Button>
+      {role === "admin" && (
+        <Button variant="default" className="mt-4">
+          Add Incident
+        </Button>
+      )}
     </div>
   );
 }

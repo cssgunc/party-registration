@@ -10,6 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useRole } from "@/contexts/RoleContext";
 import { IncidentDto } from "@/lib/api/location/location.types";
 import { ChevronDown, MoreHorizontal } from "lucide-react";
 
@@ -21,6 +22,7 @@ export default function IncidentSidebarCard({
   incidents,
   onDeleteIncident,
 }: IncidentSidebarProps) {
+  const { role, setRole } = useRole();
   return (
     <div>
       <Collapsible>
@@ -42,24 +44,29 @@ export default function IncidentSidebarCard({
                 })}
               </p>
             </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger className="ml-2">
-                <MoreHorizontal />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem>Edit</DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => onDeleteIncident(incidents[0].id)}
-                >
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {role === "admin" && (
+              <DropdownMenu>
+                <DropdownMenuTrigger className="ml-2">
+                  <MoreHorizontal />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem>Edit</DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => onDeleteIncident(incidents[0].id)}
+                  >
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         </CollapsibleTrigger>
         <CollapsibleContent>
           <p className="text-sm">
             {incidents[0].description || "No description provided."}
+            <div>
+              <strong>Severity:</strong> {incidents[0].severity || "N/A"}
+            </div>
           </p>
         </CollapsibleContent>
       </Collapsible>
