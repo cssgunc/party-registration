@@ -24,7 +24,7 @@ export default function SplitDateRangeFilter({
   onEndDateChange,
 }: SplitDateRangeProps) {
   return (
-    <div className="flex gap-2 justify-center flex-row md:justify-between gap-4">
+    <div className="flex gap-2 justify-center flex-row md:justify-between md:gap-4">
       {/* Start Date */}
       <Popover>
         <PopoverTrigger asChild>
