@@ -15,6 +15,7 @@ import { AxiosError } from "axios";
 import { useState } from "react";
 import { useSidebar } from "../shared/sidebar/SidebarContext";
 import { TableTemplate } from "../shared/table/TableTemplate";
+import IncidentSidebar from "./IncidentSidebar";
 import LocationTableForm from "./LocationTableForm";
 
 const locationService = new LocationService();
@@ -194,8 +195,9 @@ export const LocationTable = () => {
       id: "incidents_info_chip",
       header: "Incidents",
       cell: ({ row }) => {
+        console.log("Row data for incidents:", row.original);
         return (
-          <div className="flex">
+          <div className="flex w-auto">
             <Badge
               variant="outline"
               className="cursor-pointer"
@@ -204,28 +206,24 @@ export const LocationTable = () => {
                   `incidents-${row.original.id}`,
                   "Incidents at Location",
                   `Warnings & Citations go here`,
-                  `
-              There are ${getWarningCount(row.original)} warnings and ${getCitationCount(row.original)} citations associated with this location.
-              `
+                  <IncidentSidebar incidents={row.original.incidents} />
                 )
               }
             >
               <span className="mr-1">
                 {getWarningCount(row.original) + getCitationCount(row.original)}{" "}
-                incidents
+                {getWarningCount(row.original) +
+                  getCitationCount(row.original) ===
+                1
+                  ? "incident"
+                  : "incidents"}
               </span>
             </Badge>
           </div>
         );
       },
       enableColumnFilter: false,
-      // accessorFn: (row) => getWarningCount(row),
     },
-    // {
-    //   id: "citation_count",
-    //   header: "Citation Count",
-    //   accessorFn: (row) => getCitationCount(row),
-    // },
     {
       accessorKey: "hold_expiration",
       header: "Active Hold",
@@ -250,7 +248,6 @@ export const LocationTable = () => {
       },
     },
   ];
-
   return (
     <div className="space-y-4">
       <TableTemplate
