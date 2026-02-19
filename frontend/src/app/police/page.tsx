@@ -2,8 +2,8 @@
 
 import EmbeddedMap from "@/app/police/_components/EmbeddedMap";
 import PartyList from "@/app/police/_components/PartyList";
+import SplitDateRangeFilter from "@/app/police/_components/SplitDateRangeFilter";
 import AddressSearch from "@/components/AddressSearch";
-import DateRangeFilter from "@/components/DateRangeFilter";
 import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { PartyService } from "@/lib/api/party/party.service";
@@ -96,24 +96,27 @@ export default function PolicePage() {
     <div className="h-screen bg-white flex flex-col overflow-hidden">
       {/* Navbar */}
       <div className="w-full bg-[#6FB2DC] h-16 flex-shrink-0"></div>
-
-      <div className="flex flex-1 overflow-hidden">
+      <div className="overflow-y-scroll md:flex flex-1 overflow-hidden">
         {/* Left Panel - Filters and Search */}
-        <div className="w-1/3 border-r border-gray-200 flex flex-col overflow-hidden">
+        <div className=" md:w-1/3 border-r border-gray-200 flex flex-col overflow-hidden">
           {/* Filter Between Section */}
-          <div className="px-6 py-4 flex-shrink-0 border-b border-gray-200">
-            <h2 className="text-xl font-semibold mb-4">Filter Between</h2>
-            <DateRangeFilter
-              startDate={startDate}
-              endDate={endDate}
-              onStartDateChange={setStartDate}
-              onEndDateChange={setEndDate}
-            />
+          <div className="px-4 md:px-6 py-4 flex-shrink-0 border-b border-gray-200">
+            <h2 className="text-2xl font-semibold mb-4 md:text-xl">
+              Filter Between
+            </h2>
+            <div>
+              <SplitDateRangeFilter
+                startDate={startDate}
+                endDate={endDate}
+                onStartDateChange={setStartDate}
+                onEndDateChange={setEndDate}
+              />
+            </div>
           </div>
 
           {/* Dto Search Section */}
-          <div className="px-6 py-4 flex-shrink-0 border-b border-gray-200">
-            <h2 className="text-xl font-semibold mb-4 flex-shrink-0">
+          <div className="px-4 md:px-6 py-4 flex-shrink-0 border-b border-gray-200">
+            <h2 className="text-2xl font-semibold mb-4 flex-shrink-0 md:text-xl">
               Proximity Search
             </h2>
 
@@ -134,9 +137,9 @@ export default function PolicePage() {
           </div>
 
           {/* Party List Section */}
-          <div className="px-6 py-4 flex-1 flex flex-col overflow-hidden">
+          <div className="px-4 md:px-6 py-4 flex-1 flex flex-col overflow-hidden">
             <div className="flex justify-between">
-              <h2 className="text-xl font-semibold mb-4 flex-shrink-0">
+              <h2 className="text-2xl font-semibold mb-4 flex-shrink-0 md:text-xl">
                 Party List
               </h2>
               <PartyCsvExportButton startDate={startDate} endDate={endDate} />
@@ -158,7 +161,10 @@ export default function PolicePage() {
 
             {/* Party List - Scrollable */}
             {!isLoading && !isLoadingNearby && (
-              <div className="flex-1 min-h-0" id="party-list">
+              <div
+                className="max-h-48.5 overflow-scroll md:max-h-100 flex-1 min-h-0"
+                id="party-list"
+              >
                 <PartyList
                   parties={filteredParties}
                   onSelect={(party) => handleActiveParty(party)}
@@ -170,11 +176,11 @@ export default function PolicePage() {
         </div>
 
         {/* Right Panel - Map */}
-        <div className="flex-1 px-6 py-4 flex flex-col overflow-hidden">
-          <h2 className="text-xl font-semibold mb-4 flex-shrink-0">
+        <div className="h-[60vh] sm:h-[75vh] md:h-full flex-1 px-6 py-4 flex flex-col overflow-hidden">
+          <h2 className="text-2xl font-semibold mb-4 flex-shrink-0 md:text-xl">
             {searchAddress ? "Showing Nearby Parties" : "Showing Parties"}
           </h2>
-          <div className="flex-1 overflow-hidden">
+          <div className="h-full md:flex-1 overflow-hidden">
             <EmbeddedMap
               parties={filteredParties}
               activeParty={activeParty}

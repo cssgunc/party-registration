@@ -7,7 +7,8 @@ services:
       - ..:/workspace
 
   db:
-    image: mcr.microsoft.com/mssql/server:2022-latest
+    image: mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04
+    platform: linux/amd64
     environment:
       ACCEPT_EULA: "Y"
       MSSQL_SA_PASSWORD: "YourStrong!Passw0rd"
