@@ -29,7 +29,7 @@ import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { PartyDto } from "@/lib/api/party/party.types";
 import { addBusinessDays, format, isAfter, startOfDay } from "date-fns";
 import { CalendarIcon } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import * as z from "zod";
 
 export const createPartyTableFormSchema = (isAdmin: boolean) => {
@@ -110,10 +110,7 @@ export default function PartyTableForm({
   const isAdmin = role === "admin";
   const locationService = new LocationService();
 
-  const partyTableFormSchema = useMemo(
-    () => createPartyTableFormSchema(isAdmin),
-    [isAdmin]
-  );
+  const partyTableFormSchema = createPartyTableFormSchema(isAdmin);
 
   const [formData, setFormData] = useState<Partial<PartyTableFormValues>>({
     address: editData?.location.formatted_address ?? "",
