@@ -153,7 +153,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-x-12 gap-y-8">
+        <div className="sm:grid sm:grid-cols-2 sm:gap-x-12 sm:gap-y-8">
           <div>
             <div className="text-[#09294E] font-semibold text-lg mb-2">
               First Name
@@ -164,7 +164,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
           </div>
 
           <div>
-            <div className="text-[#09294E] font-semibold text-lg mb-2">
+            <div className="text-[#09294E] font-semibold text-lg mb-2 mt-5 sm:mt-0">
               Last Name
             </div>
             <div className="text-gray-600 text-base border-b border-gray-300 pb-2">
@@ -173,7 +173,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
           </div>
 
           <div>
-            <div className="text-[#09294E] font-semibold text-lg mb-2">
+            <div className="text-[#09294E] font-semibold text-lg mb-2 mt-5 sm:mt-0">
               Phone Number
             </div>
             <div className="text-gray-600 text-base border-b border-gray-300 pb-2">
@@ -182,7 +182,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
           </div>
 
           <div>
-            <div className="text-[#09294E] font-semibold text-lg mb-2">
+            <div className="text-[#09294E] font-semibold text-lg mb-2 mt-5 sm:mt-0">
               Contact Method
             </div>
             <div className="text-gray-600 text-base border-b border-gray-300 pb-2">

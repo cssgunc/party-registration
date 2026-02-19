@@ -15,7 +15,7 @@ export default function StudentProfilePage() {
     return (
       <div>
         <Header />
-        <div className="px-14 pb-12 flex flex-col gap-4 max-w-4xl mx-auto w-full">
+        <div className="sm:px-14 pb-12 flex flex-col gap-4 max-w-4xl mx-auto w-full">
           <div className="text-center py-8">Loading...</div>
         </div>
       </div>
@@ -26,7 +26,7 @@ export default function StudentProfilePage() {
     return (
       <div>
         <Header />
-        <div className="px-14 pb-12 flex flex-col gap-4 max-w-4xl mx-auto w-full">
+        <div className="sm:px-14 pb-12 flex flex-col gap-4 max-w-4xl mx-auto w-full">
           <div className="text-center py-8 text-red-600">
             Error loading student data
           </div>
@@ -38,7 +38,7 @@ export default function StudentProfilePage() {
   return (
     <div className="flex flex-col lg:flex lg:flex-col">
       <Header />
-      <div className="px-14 pb-12 gap-4 max-w-4xl mx-auto w-full flex justify-center">
+      <div className="sm:px-14 pb-12 gap-4 max-w-4xl mx-auto w-full flex justify-center">
         <div className="w-full lg:self-center">
           {student && <StudentInfo initialData={student} />}
         </div>
