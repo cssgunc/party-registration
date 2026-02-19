@@ -1,5 +1,6 @@
 "use client";
 
+import { Badge } from "@/components/ui/badge";
 import { LocationService } from "@/lib/api/location/location.service";
 import {
   LocationCreate,
@@ -190,15 +191,41 @@ export const LocationTable = () => {
       header: "Address",
     },
     {
-      id: "warning_count",
-      header: "Warning Count",
-      accessorFn: (row) => getWarningCount(row),
+      id: "incidents_info_chip",
+      header: "Incidents",
+      cell: ({ row }) => {
+        return (
+          <div className="flex">
+            <Badge
+              variant="outline"
+              className="cursor-pointer"
+              onClick={() =>
+                openSidebar(
+                  `incidents-${row.original.id}`,
+                  "Incidents at Location",
+                  `Warnings & Citations go here`,
+                  `
+              There are ${getWarningCount(row.original)} warnings and ${getCitationCount(row.original)} citations associated with this location.
+              `
+                )
+              }
+            >
+              <span className="mr-1">
+                {getWarningCount(row.original) + getCitationCount(row.original)}{" "}
+                incidents
+              </span>
+            </Badge>
+          </div>
+        );
+      },
+      enableColumnFilter: false,
+      // accessorFn: (row) => getWarningCount(row),
     },
-    {
-      id: "citation_count",
-      header: "Citation Count",
-      accessorFn: (row) => getCitationCount(row),
-    },
+    // {
+    //   id: "citation_count",
+    //   header: "Citation Count",
+    //   accessorFn: (row) => getCitationCount(row),
+    // },
     {
       accessorKey: "hold_expiration",
       header: "Active Hold",
