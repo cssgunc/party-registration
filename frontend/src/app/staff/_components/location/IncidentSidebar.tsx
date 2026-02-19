@@ -9,7 +9,7 @@ type IncidentSidebarProps = {
 };
 
 export default function IncidentSidebar({ incidents }: IncidentSidebarProps) {
-  const { role, setRole } = useRole();
+  const { role } = useRole();
   const [incidentList, setIncidentList] = useState<IncidentDto[]>(incidents);
   const handleDeleteIncident = (incidentId: number) => {
     setIncidentList((prevIncidents) =>

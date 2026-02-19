@@ -22,7 +22,7 @@ export default function IncidentSidebarCard({
   incidents,
   onDeleteIncident,
 }: IncidentSidebarProps) {
-  const { role, setRole } = useRole();
+  const { role } = useRole();
   return (
     <div>
       <Collapsible>
