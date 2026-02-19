@@ -88,7 +88,7 @@ export default function PartyTableForm({
     address: editData?.location.formatted_address ?? "",
     placeId: editData?.location.google_place_id ?? undefined,
     partyDate: editData?.party_datetime ?? undefined,
-    partyTime: editData?.party_datetime.toISOString().slice(11, 16) ?? "",
+    partyTime: format(editData?.party_datetime ?? "", "HH:mm"),
     contactOneEmail: editData?.contact_one.email ?? "",
     contactTwoEmail: editData?.contact_two.email ?? "",
     contactTwoFirstName: editData?.contact_two.first_name ?? "",
