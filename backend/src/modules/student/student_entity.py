@@ -1,7 +1,8 @@
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Self
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, select
+from sqlalchemy import Enum, ForeignKey, Integer, String, select
+from sqlalchemy.dialects.mssql import DATETIMEOFFSET
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column, relationship, selectinload
 from src.core.database import EntityBase
@@ -19,10 +20,10 @@ class StudentEntity(MappedAsDataclass, EntityBase):
         Integer, ForeignKey("accounts.id"), primary_key=True, autoincrement=False, index=True
     )
     contact_preference: Mapped[ContactPreference] = mapped_column(
-        Enum(ContactPreference), nullable=False
+        Enum(ContactPreference, native_enum=False, length=20), nullable=False
     )
-    last_registered: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    phone_number: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+    last_registered: Mapped[datetime | None] = mapped_column(DATETIMEOFFSET, nullable=True)
+    phone_number: Mapped[str] = mapped_column(String(20), nullable=False, unique=True)
 
     account: Mapped["AccountEntity"] = relationship("AccountEntity", init=False)
 
@@ -48,6 +49,7 @@ class StudentEntity(MappedAsDataclass, EntityBase):
             email=self.account.email,
             first_name=self.account.first_name,
             last_name=self.account.last_name,
+            onyen=self.account.onyen,
             phone_number=self.phone_number,
             contact_preference=self.contact_preference,
             last_registered=last_reg,

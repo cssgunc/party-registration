@@ -49,3 +49,6 @@ coverage/
 .coverage
 htmlcov/
 *.cover
+
+# Generated files
+backend/script/schema.sql

@@ -1,6 +1,7 @@
 from typing import Any, TypedDict, Unpack, override
 
 import bcrypt
+from sqlalchemy import delete, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.modules.police.police_entity import PoliceEntity
 from src.modules.police.police_model import PoliceAccountDto, PoliceAccountUpdate
@@ -50,11 +51,24 @@ class PoliceTestUtils(
     @override
     async def create_one(self, **overrides: Unpack[PoliceUpdateOverrides]) -> PoliceEntity:
         """Create a single police entity (singleton)."""
+        # Delete any existing police record (singleton pattern)
+        await self.session.execute(delete(PoliceEntity))
+        await self.session.commit()
+
+        # Enable identity insert to explicitly set id=1
+        await self.session.execute(text("SET IDENTITY_INSERT police ON"))
+
         hashed_password = self.hash_password(overrides.get("password", self.TEST_PASSWORD))
         police_entity = await super().next_entity(**overrides, hashed_password=hashed_password)
 
+        # Explicitly set id to 1 (required by CHECK constraint)
+        police_entity.id = 1
+
         self.session.add(police_entity)
         await self.session.flush()
+
+        # Disable identity insert
+        await self.session.execute(text("SET IDENTITY_INSERT police OFF"))
         await self.session.commit()
 
         return police_entity

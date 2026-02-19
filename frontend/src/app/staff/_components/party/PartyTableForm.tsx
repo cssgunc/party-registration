@@ -50,33 +50,43 @@ export const createPartyTableFormSchema = (isAdmin: boolean) => {
           "Party must be at least 2 business days in the future"
         );
 
-  return z.object({
-    address: z.string().min(1, "Address is required"),
-    placeId: z
-      .string()
-      .min(1, "Please select an address from the search results"),
-    partyDate: partyDateSchema,
-    partyTime: z.string().min(1, "Party time is required"),
-    contactOneEmail: z
-      .email({ pattern: z.regexes.html5Email })
-      .min(1, "Contact email is required"),
-    contactTwoEmail: z
-      .email({ pattern: z.regexes.html5Email })
-      .min(1, "Contact email is required"),
-    contactTwoFirstName: z.string().min(1, "First name is required"),
-    contactTwoLastName: z.string().min(1, "Last name is required"),
-    contactTwoPhoneNumber: z
-      .string()
-      .min(1, "Phone number is required")
-      .refine(
-        (val) => val.replace(/\D/g, "").length >= 10,
-        "Phone number must be at least 10 digits"
-      )
-      .transform((val) => val.replace(/\D/g, "")),
-    contactTwoPreference: z.enum(["call", "text"], {
-      message: "Please select a contact preference",
-    }),
-  });
+  return z
+    .object({
+      address: z.string().min(1, "Address is required"),
+      placeId: z
+        .string()
+        .min(1, "Please select an address from the search results"),
+      partyDate: partyDateSchema,
+      partyTime: z.string().min(1, "Party time is required"),
+      contactOneEmail: z
+        .email({ pattern: z.regexes.html5Email })
+        .min(1, "Contact email is required"),
+      contactTwoEmail: z
+        .email({ pattern: z.regexes.html5Email })
+        .min(1, "Contact email is required"),
+      contactTwoFirstName: z.string().min(1, "First name is required"),
+      contactTwoLastName: z.string().min(1, "Last name is required"),
+      contactTwoPhoneNumber: z
+        .string()
+        .min(1, "Phone number is required")
+        .refine(
+          (val) => val.replace(/\D/g, "").length >= 10,
+          "Phone number must be at least 10 digits"
+        )
+        .transform((val) => val.replace(/\D/g, "")),
+      contactTwoPreference: z.enum(["call", "text"], {
+        message: "Please select a contact preference",
+      }),
+    })
+    .refine(
+      (data) =>
+        data.contactTwoEmail.trim().toLowerCase() !==
+        data.contactOneEmail.trim().toLowerCase(),
+      {
+        message: "Contact two email must be different from contact one's email",
+        path: ["contactTwoEmail"],
+      }
+    );
 };
 
 type PartyTableFormValues = z.infer<
@@ -135,6 +145,19 @@ export default function PartyTableForm({
       });
       setErrors(fieldErrors);
       return;
+    }
+
+    // Validate contact two phone differs from contact one's phone (when available)
+    if (editData?.contact_one.phone_number) {
+      const c1Digits = editData.contact_one.phone_number.replace(/\D/g, "");
+      const c2Digits = result.data.contactTwoPhoneNumber.replace(/\D/g, "");
+      if (c1Digits === c2Digits) {
+        setErrors({
+          contactTwoPhoneNumber:
+            "Contact two phone number must be different from contact one's phone number",
+        });
+        return;
+      }
     }
 
     setIsSubmitting(true);

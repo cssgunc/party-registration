@@ -29,6 +29,7 @@ type StudentDto = {
   email: string;
   first_name: string;
   last_name: string;
+  onyen: string;
   phone_number: string;
   contact_preference: ContactPreference;
   last_registered: Date | null;

@@ -11,6 +11,7 @@ type AccountData = {
   first_name: string;
   last_name: string;
   pid: string;
+  onyen: string;
   role: AccountRole;
 };
 
@@ -23,6 +24,7 @@ type AccountDto = {
   first_name: string;
   last_name: string;
   pid: string;
+  onyen: string;
   role: AccountRole;
 };
 

@@ -58,6 +58,7 @@ export const ACCOUNTS: AccountDto[] = mockData.accounts.map((acc) => ({
   pid: acc.pid,
   first_name: acc.first_name,
   last_name: acc.last_name,
+  onyen: acc.onyen,
   role: acc.role as "staff" | "admin" | "student",
 }));
 
@@ -68,6 +69,7 @@ export const STUDENTS: StudentDto[] = mockData.students.map((student) => ({
   email: student.email,
   first_name: student.first_name,
   last_name: student.last_name,
+  onyen: student.onyen,
   phone_number: student.phone_number,
   contact_preference: student.contact_preference as "call" | "text",
   last_registered: student.last_registered

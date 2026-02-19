@@ -6,6 +6,7 @@ import { AccountService } from "@/lib/api/account/account.service";
 import { AdminStudentService } from "@/lib/api/student/admin-student.service";
 import { StudentDto } from "@/lib/api/student/student.types";
 import { PaginatedResponse } from "@/lib/shared";
+import { isCourseCompleted } from "@/lib/utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
@@ -207,6 +208,11 @@ export const StudentTable = () => {
       enableColumnFilter: true,
     },
     {
+      accessorKey: "onyen",
+      header: "Onyen",
+      enableColumnFilter: true,
+    },
+    {
       accessorKey: "email",
       header: "Email",
       enableColumnFilter: true,
@@ -245,7 +251,7 @@ export const StudentTable = () => {
       enableColumnFilter: false,
       cell: ({ row }) => {
         const student = row.original;
-        const isRegistered = !!student.last_registered;
+        const isRegistered = isCourseCompleted(student.last_registered);
         return (
           <Checkbox
             checked={isRegistered}
