@@ -2,12 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { LocationService } from "@/lib/api/location/location.service";
-import {
-  LocationCreate,
-  LocationDto,
-  getCitationCount,
-  getWarningCount,
-} from "@/lib/api/location/location.types";
+import { LocationCreate, LocationDto } from "@/lib/api/location/location.types";
 import { PaginatedResponse } from "@/lib/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
@@ -211,12 +206,8 @@ export const LocationTable = () => {
               }
             >
               <span className="mr-1">
-                {getWarningCount(row.original) + getCitationCount(row.original)}{" "}
-                {getWarningCount(row.original) +
-                  getCitationCount(row.original) ===
-                1
-                  ? "incident"
-                  : "incidents"}
+                {row.original.incidents.length}{" "}
+                {row.original.incidents.length === 1 ? "incident" : "incidents"}
               </span>
             </Badge>
           </div>
