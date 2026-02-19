@@ -8,6 +8,7 @@ from src.modules.party.party_model import (
     ContactDto,
     PartyData,
     PartyDto,
+    PartyStatus,
     StudentCreatePartyDto,
 )
 from src.modules.student.student_model import ContactPreference
@@ -34,6 +35,7 @@ class PartyOverrides(TypedDict, total=False):
     contact_two_last_name: str
     contact_two_phone_number: str
     contact_two_contact_preference: ContactPreference
+    status: PartyStatus
 
 
 class PartyTestUtils(

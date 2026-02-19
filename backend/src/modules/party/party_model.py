@@ -1,9 +1,15 @@
+import enum
 from typing import Annotated, Literal
 
 from pydantic import AwareDatetime, BaseModel, EmailStr, Field
 from src.core.models import PaginatedResponse
 from src.modules.location.location_model import LocationDto
 from src.modules.student.student_model import ContactPreference, StudentDto
+
+
+class PartyStatus(enum.Enum):
+    CONFIRMED = "confirmed"
+    CANCELLED = "cancelled"
 
 
 class PartyData(BaseModel):
@@ -33,6 +39,7 @@ class PartyDto(BaseModel):
     location: LocationDto = Field(..., description="Location where the party is held")
     contact_one: StudentDto = Field(..., description="First contact student")
     contact_two: ContactDto = Field(..., description="Contact information for the second contact")
+    status: PartyStatus
 
 
 class StudentCreatePartyDto(BaseModel):

@@ -11,7 +11,13 @@ from src.core.query_utils import get_paginated_results, parse_pagination_params
 from src.modules.account.account_entity import AccountEntity, AccountRole
 
 from .student_entity import StudentEntity
-from .student_model import PaginatedStudentsResponse, StudentData, StudentDataWithNames, StudentDto
+from .student_model import (
+    PaginatedStudentsResponse,
+    StudentData,
+    StudentDataWithNames,
+    StudentDto,
+    StudentSelfUpdateData,
+)
 
 
 class StudentNotFoundException(NotFoundException):
@@ -229,6 +235,29 @@ class StudentService:
             await self.session.rollback()
             raise StudentConflictException(data.phone_number) from e
 
+        await self.session.refresh(student_entity, ["account"])
+        return student_entity.to_dto()
+
+    async def update_student_self(self, account_id: int, data: StudentSelfUpdateData) -> StudentDto:
+        student_entity = await self._get_student_entity_by_account_id(account_id)
+        account = student_entity.account
+        if account is None:
+            raise AccountNotFoundException(account_id)
+        if account.role != AccountRole.STUDENT:
+            raise InvalidAccountRoleException(account_id, account.role)
+        if (
+            data.phone_number != student_entity.phone_number
+            and await self._get_student_entity_by_phone(data.phone_number)
+        ):
+            raise StudentConflictException(data.phone_number)
+        student_entity.contact_preference = data.contact_preference
+        student_entity.phone_number = data.phone_number
+        try:
+            self.session.add(student_entity)
+            await self.session.commit()
+        except IntegrityError as e:
+            await self.session.rollback()
+            raise StudentConflictException(data.phone_number) from e
         await self.session.refresh(student_entity, ["account"])
         return student_entity.to_dto()
 

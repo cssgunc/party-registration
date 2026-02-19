@@ -68,6 +68,11 @@ class StudentCreate(BaseModel):
     data: StudentDataWithNames
 
 
+class StudentSelfUpdateData(BaseModel):
+    contact_preference: ContactPreference
+    phone_number: str = Field(pattern=r"^\+?1?\d{9,15}$")
+
+
 class IsRegisteredUpdate(BaseModel):
     """Request body for updating student registration status (staff/admin)."""
 
