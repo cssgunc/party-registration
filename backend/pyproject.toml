@@ -17,6 +17,9 @@ dependencies = [
   "openpyxl~=3.1.0",
 ]
 
+[tool.setuptools]
+packages = ["src"]
+
 [tool.pytest.ini_options]
 pythonpath = "."
 testpaths = ["test"]
