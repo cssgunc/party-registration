@@ -9,13 +9,8 @@ pre-commit install
 pre-commit install-hooks
 
 echo ""
-echo "=============== Installing frontend dependencies ==============="
-cd ./frontend
-npm i --verbose
-
-echo ""
 echo "==================== Setting up the database ==================="
-cd ../backend
+cd backend
 
 # SQL Server takes ~30s to start; wait before running db scripts
 echo "Waiting for SQL Server to be ready..."
