@@ -43,6 +43,7 @@ class StudentDto(BaseModel):
     - pid: PID string
     - email: account email
     - first_name, last_name: from account
+    - onyen: from account
     - phone_number, last_registered: from student
     """
 
@@ -51,6 +52,7 @@ class StudentDto(BaseModel):
     email: EmailStr
     first_name: str
     last_name: str
+    onyen: str
     phone_number: str
     contact_preference: ContactPreference
     last_registered: AwareDatetime | None = None

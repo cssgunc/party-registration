@@ -31,32 +31,51 @@ import { CalendarIcon } from "lucide-react";
 import { useState } from "react";
 import * as z from "zod";
 
-export const partyTableFormSchema = z.object({
-  address: z.string().min(1, "Address is required"),
-  placeId: z
-    .string()
-    .min(1, "Please select an address from the search results"),
-  partyDate: z
-    .date({
-      message: "Party date is required",
-    })
-    .refine(
-      (date) =>
-        isAfter(startOfDay(date), addBusinessDays(startOfDay(new Date()), 1)),
-      "Party must be at least 2 business days in the future"
-    ),
-  partyTime: z.string().min(1, "Party time is required"),
-  contactOneEmail: z
-    .email({ pattern: z.regexes.html5Email })
-    .min(1, "Contact email is required"),
-  contactTwoEmail: z
-    .email({ pattern: z.regexes.html5Email })
-    .min(1, "Contact email is required"),
-  contactTwoFirstName: z.string().min(1, "First name is required"),
-  contactTwoLastName: z.string().min(1, "Last name is required"),
-  contactTwoPhoneNumber: z.string().min(1, "Phone number is required"),
-  contactTwoPreference: z.string(),
-});
+export const partyTableFormSchema = z
+  .object({
+    address: z.string().min(1, "Address is required"),
+    placeId: z
+      .string()
+      .min(1, "Please select an address from the search results"),
+    partyDate: z
+      .date({
+        message: "Party date is required",
+      })
+      .refine(
+        (date) =>
+          isAfter(startOfDay(date), addBusinessDays(startOfDay(new Date()), 1)),
+        "Party must be at least 2 business days in the future"
+      ),
+    partyTime: z.string().min(1, "Party time is required"),
+    contactOneEmail: z
+      .email({ pattern: z.regexes.html5Email })
+      .min(1, "Contact email is required"),
+    contactTwoEmail: z
+      .email({ pattern: z.regexes.html5Email })
+      .min(1, "Contact email is required"),
+    contactTwoFirstName: z.string().min(1, "First name is required"),
+    contactTwoLastName: z.string().min(1, "Last name is required"),
+    contactTwoPhoneNumber: z
+      .string()
+      .min(1, "Phone number is required")
+      .refine(
+        (val) => val.replace(/\D/g, "").length >= 10,
+        "Phone number must be at least 10 digits"
+      )
+      .transform((val) => val.replace(/\D/g, "")),
+    contactTwoPreference: z.enum(["call", "text"], {
+      message: "Please select a contact preference",
+    }),
+  })
+  .refine(
+    (data) =>
+      data.contactTwoEmail.trim().toLowerCase() !==
+      data.contactOneEmail.trim().toLowerCase(),
+    {
+      message: "Contact two email must be different from contact one's email",
+      path: ["contactTwoEmail"],
+    }
+  );
 
 type PartyTableFormValues = z.infer<typeof partyTableFormSchema>;
 
@@ -85,7 +104,7 @@ export default function PartyTableForm({
     contactTwoFirstName: editData?.contact_two.first_name ?? "",
     contactTwoLastName: editData?.contact_two.last_name ?? "",
     contactTwoPhoneNumber: editData?.contact_two.phone_number ?? "",
-    contactTwoPreference: editData?.contact_two.contact_preference ?? "",
+    contactTwoPreference: editData?.contact_two.contact_preference ?? undefined,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -105,6 +124,19 @@ export default function PartyTableForm({
       });
       setErrors(fieldErrors);
       return;
+    }
+
+    // Validate contact two phone differs from contact one's phone (when available)
+    if (editData?.contact_one.phone_number) {
+      const c1Digits = editData.contact_one.phone_number.replace(/\D/g, "");
+      const c2Digits = result.data.contactTwoPhoneNumber.replace(/\D/g, "");
+      if (c1Digits === c2Digits) {
+        setErrors({
+          contactTwoPhoneNumber:
+            "Contact two phone number must be different from contact one's phone number",
+        });
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -161,6 +193,14 @@ export default function PartyTableForm({
             <FieldLabel htmlFor="party-address">Party Address</FieldLabel>
             <AddressSearch
               value={formData.address}
+              initialSelection={
+                editData?.location
+                  ? {
+                      formatted_address: editData.location.formatted_address,
+                      google_place_id: editData.location.google_place_id,
+                    }
+                  : null
+              }
               onSelect={handleAddressSelect}
               locationService={locationService}
               placeholder="Search for the party address..."

@@ -1,6 +1,7 @@
 from enum import Enum
 
 from pydantic import BaseModel, EmailStr, Field
+from src.core.models import PaginatedResponse
 
 
 class AccountRole(Enum):
@@ -16,6 +17,7 @@ class AccountData(BaseModel):
     first_name: str
     last_name: str
     pid: str = Field(..., pattern=r"^[0-9]{9}$", min_length=9, max_length=9)
+    onyen: str
     role: AccountRole
 
 
@@ -27,4 +29,11 @@ class AccountDto(BaseModel):
     first_name: str
     last_name: str
     pid: str
+    onyen: str
     role: AccountRole
+
+
+class PaginatedAccountsResponse(PaginatedResponse[AccountDto]):
+    """Paginated response for accounts."""
+
+    pass

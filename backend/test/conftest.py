@@ -20,14 +20,14 @@ from src.core.authentication import StringRole
 from src.core.database import EntityBase, database_url, get_session
 from src.main import app
 from src.modules.account.account_service import AccountService
-from src.modules.complaint.complaint_service import ComplaintService
+from src.modules.incident.incident_service import IncidentService
 from src.modules.location.location_service import LocationService
 from src.modules.party.party_service import PartyService
 from src.modules.police.police_service import PoliceService
 from src.modules.student.student_service import StudentService
 
 from test.modules.account.account_utils import AccountTestUtils
-from test.modules.complaint.complaint_utils import ComplaintTestUtils
+from test.modules.incident.incident_utils import IncidentTestUtils
 from test.modules.location.location_utils import GmapsMockUtils, LocationTestUtils
 from test.modules.party.party_utils import PartyTestUtils
 from test.modules.police.police_utils import PoliceTestUtils
@@ -63,15 +63,35 @@ async def test_session(test_engine: AsyncEngine):
     async with test_async_session_local() as session:
         yield session
 
-    # Clean up: truncate all tables and reset sequences
-    async with test_engine.begin() as conn:
-        tables = [table.name for table in EntityBase.metadata.sorted_tables]
-        if tables:
-            # Disable foreign key checks, truncate, and reset sequences
-            await conn.execute(text("SET session_replication_role = 'replica';"))
+    # Clean up: delete all data and reset identity columns
+    tables = [table.name for table in EntityBase.metadata.sorted_tables]
+    if tables:
+        # Phase 1: delete data inside a transaction
+        async with test_engine.begin() as conn:
+            # Disable all FK constraints so deletes can run in any order
             for table in tables:
-                await conn.execute(text(f"TRUNCATE TABLE {table} RESTART IDENTITY CASCADE;"))
-            await conn.execute(text("SET session_replication_role = 'origin';"))
+                await conn.execute(text(f"ALTER TABLE [{table}] NOCHECK CONSTRAINT ALL"))
+
+            # Delete all data in reverse FK order
+            for table in reversed(tables):
+                await conn.execute(text(f"DELETE FROM [{table}]"))
+
+            # Re-enable all FK constraints
+            for table in tables:
+                await conn.execute(text(f"ALTER TABLE [{table}] CHECK CONSTRAINT ALL"))
+
+        # Phase 2: reset identity columns (DBCC cannot run inside a transaction)
+        async with test_engine.connect() as conn:
+            await conn.execution_options(isolation_level="AUTOCOMMIT")
+            result = await conn.execute(
+                text(
+                    "SELECT t.name FROM sys.tables t"
+                    " INNER JOIN sys.columns c ON t.object_id = c.object_id"
+                    " WHERE c.is_identity = 1"
+                )
+            )
+            for (table_name,) in result.fetchall():
+                await conn.execute(text(f"DBCC CHECKIDENT ('{table_name}', RESEED, 0)"))
 
 
 # =================================== Clients =======================================
@@ -91,6 +111,9 @@ async def create_test_client(
         from src.modules.police.police_model import PoliceAccountDto
 
         async def override_get_session():
+            # Rollback any pending transaction from previous failed requests
+            if test_session.in_transaction() and not test_session.is_active:
+                await test_session.rollback()
             yield test_session
 
         app.dependency_overrides[get_session] = override_get_session
@@ -248,8 +271,8 @@ def location_service(test_session: AsyncSession, mock_gmaps: MagicMock):
 
 
 @pytest.fixture()
-def complaint_service(test_session: AsyncSession):
-    return ComplaintService(session=test_session)
+def incident_service(test_session: AsyncSession):
+    return IncidentService(session=test_session)
 
 
 @pytest.fixture()
@@ -300,8 +323,8 @@ def gmaps_utils(
 
 
 @pytest.fixture()
-def complaint_utils(test_session: AsyncSession, location_utils: LocationTestUtils):
-    return ComplaintTestUtils(session=test_session, location_utils=location_utils)
+def incident_utils(test_session: AsyncSession, location_utils: LocationTestUtils):
+    return IncidentTestUtils(session=test_session, location_utils=location_utils)
 
 
 @pytest.fixture()

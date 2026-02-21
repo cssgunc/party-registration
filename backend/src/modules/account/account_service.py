@@ -1,11 +1,12 @@
-from fastapi import Depends
+from fastapi import Depends, Request
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.database import get_session
 from src.core.exceptions import ConflictException, NotFoundException
+from src.core.query_utils import get_paginated_results, parse_pagination_params
 from src.modules.account.account_entity import AccountEntity, AccountRole
-from src.modules.account.account_model import AccountData, AccountDto
+from src.modules.account.account_model import AccountData, AccountDto, PaginatedAccountsResponse
 
 
 class AccountNotFoundException(NotFoundException):
@@ -14,13 +15,25 @@ class AccountNotFoundException(NotFoundException):
 
 
 class AccountConflictException(ConflictException):
-    def __init__(self, email: str):
-        super().__init__(f"Account with email {email} already exists")
+    def __init__(self, email: str | None = None, onyen: str | None = None):
+        if email is not None and onyen is not None:
+            super().__init__(f"Account with email {email} or onyen {onyen} already exists")
+        elif email is not None:
+            super().__init__(f"Account with email {email} already exists")
+        elif onyen is not None:
+            super().__init__(f"Account with onyen {onyen} already exists")
+        else:
+            super().__init__("Account already exists")
 
 
 class AccountByEmailNotFoundException(NotFoundException):
     def __init__(self, email: str):
         super().__init__(f"Account with email {email} not found")
+
+
+class AccountByOnyenNotFoundException(NotFoundException):
+    def __init__(self, onyen: str):
+        super().__init__(f"Account with onyen {onyen} not found")
 
 
 class AccountService:
@@ -45,10 +58,75 @@ class AccountService:
             raise AccountByEmailNotFoundException(email)
         return account
 
+    async def _get_account_entity_by_onyen(self, onyen: str) -> AccountEntity:
+        result = await self.session.execute(
+            select(AccountEntity).where(AccountEntity.onyen.ilike(onyen))
+        )
+        account = result.scalar_one_or_none()
+        if account is None:
+            raise AccountByOnyenNotFoundException(onyen)
+        return account
+
     async def get_accounts(self) -> list[AccountDto]:
         result = await self.session.execute(select(AccountEntity))
         accounts = result.scalars().all()
         return [account.to_dto() for account in accounts]
+
+    async def get_accounts_paginated(
+        self,
+        request: Request,
+    ) -> PaginatedAccountsResponse:
+        """
+        Get accounts with server-side pagination, sorting, and filtering.
+
+        Query parameters are automatically parsed from the request:
+        - page_number: Page number (1-indexed, default: 1)
+        - page_size: Items per page (default: all)
+        - sort_by: Field to sort by
+        - sort_order: Sort order ('asc' or 'desc')
+
+        Returns:
+            PaginatedAccountsResponse with items and metadata
+        """
+        # Define allowed fields for sorting and filtering
+        allowed_sort_fields = [
+            "id",
+            "email",
+            "first_name",
+            "last_name",
+            "pid",
+            "role",
+        ]
+        allowed_filter_fields = [
+            "id",
+            "email",
+            "first_name",
+            "last_name",
+            "pid",
+            "role",
+        ]
+
+        # Build base query
+        base_query = select(AccountEntity)
+
+        # Parse query params and get paginated results
+        query_params = parse_pagination_params(
+            request,
+            allowed_sort_fields=allowed_sort_fields,
+            allowed_filter_fields=allowed_filter_fields,
+        )
+
+        # Use the generic pagination utility
+        result = await get_paginated_results(
+            session=self.session,
+            base_query=base_query,
+            entity_class=AccountEntity,
+            dto_converter=lambda entity: entity.to_dto(),
+            query_params=query_params,
+            allowed_sort_fields=allowed_sort_fields,
+            allowed_filter_fields=allowed_filter_fields,
+        )
+        return PaginatedAccountsResponse(**result.model_dump())
 
     async def get_accounts_by_roles(
         self, roles: list[AccountRole] | None = None
@@ -74,9 +152,17 @@ class AccountService:
         try:
             await self._get_account_entity_by_email(data.email)
             # If we get here, account exists
-            raise AccountConflictException(data.email)
+            raise AccountConflictException(email=data.email)
         except AccountByEmailNotFoundException:
             # Account doesn't exist, proceed with creation
+            pass
+
+        try:
+            await self._get_account_entity_by_onyen(data.onyen)
+            # If we get here, onyen exists
+            raise AccountConflictException(onyen=data.onyen)
+        except AccountByOnyenNotFoundException:
+            # Onyen doesn't exist, proceed with creation
             pass
 
         new_account = AccountEntity(
@@ -84,14 +170,15 @@ class AccountService:
             first_name=data.first_name,
             last_name=data.last_name,
             pid=data.pid,
+            onyen=data.onyen,
             role=AccountRole(data.role.value),
         )
         try:
             self.session.add(new_account)
             await self.session.commit()
         except IntegrityError as e:
-            # handle race condition where another session inserted the same email
-            raise AccountConflictException(data.email) from e
+            # handle race condition where another session inserted the same email or onyen
+            raise AccountConflictException(email=data.email, onyen=data.onyen) from e
         await self.session.refresh(new_account)
         return new_account.to_dto()
 
@@ -102,9 +189,18 @@ class AccountService:
             try:
                 await self._get_account_entity_by_email(data.email)
                 # If we get here, account with this email exists
-                raise AccountConflictException(data.email)
+                raise AccountConflictException(email=data.email)
             except AccountByEmailNotFoundException:
                 # Email is available, proceed
+                pass
+
+        if data.onyen != account_entity.onyen:
+            try:
+                await self._get_account_entity_by_onyen(data.onyen)
+                # If we get here, account with this onyen exists
+                raise AccountConflictException(onyen=data.onyen)
+            except AccountByOnyenNotFoundException:
+                # Onyen is available, proceed
                 pass
 
         # Update fields
@@ -112,13 +208,14 @@ class AccountService:
         account_entity.first_name = data.first_name
         account_entity.last_name = data.last_name
         account_entity.pid = data.pid
+        account_entity.onyen = data.onyen
         account_entity.role = AccountRole(data.role.value)
 
         try:
             self.session.add(account_entity)
             await self.session.commit()
         except IntegrityError as e:
-            raise AccountConflictException(data.email) from e
+            raise AccountConflictException(email=data.email, onyen=data.onyen) from e
         await self.session.refresh(account_entity)
         return account_entity.to_dto()
 

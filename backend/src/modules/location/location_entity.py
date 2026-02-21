@@ -1,13 +1,16 @@
 from datetime import UTC, datetime
-from typing import Self
+from typing import TYPE_CHECKING, Self
 
-from sqlalchemy import DECIMAL, DateTime, Index, Integer, String
+from sqlalchemy import DECIMAL, Index, Integer, String
+from sqlalchemy.dialects.mssql import DATETIMEOFFSET
 from sqlalchemy.inspection import inspect
 from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column, relationship
 from src.core.database import EntityBase
-from src.modules.complaint.complaint_entity import ComplaintEntity
 
 from .location_model import LocationData, LocationDto
+
+if TYPE_CHECKING:
+    from src.modules.incident.incident_entity import IncidentEntity
 
 
 class LocationEntity(MappedAsDataclass, EntityBase):
@@ -26,10 +29,8 @@ class LocationEntity(MappedAsDataclass, EntityBase):
     longitude: Mapped[float] = mapped_column(DECIMAL(11, 8), nullable=False)
 
     # OCSL Data (fields with defaults)
-    warning_count: Mapped[int] = mapped_column(Integer, default=0)
-    citation_count: Mapped[int] = mapped_column(Integer, default=0)
     hold_expiration: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True, default=None
+        DATETIMEOFFSET, nullable=True, default=None
     )
 
     # Address Components
@@ -43,8 +44,8 @@ class LocationEntity(MappedAsDataclass, EntityBase):
     zip_code: Mapped[str | None] = mapped_column(String(10), default=None)  # e.g. "27514"
 
     # Relationships
-    complaints: Mapped[list["ComplaintEntity"]] = relationship(
-        "ComplaintEntity",
+    incidents: Mapped[list["IncidentEntity"]] = relationship(
+        "IncidentEntity",
         back_populates="location",
         cascade="all, delete-orphan",
         lazy="selectin",  # Use selectin loading to avoid N+1 queries
@@ -54,10 +55,10 @@ class LocationEntity(MappedAsDataclass, EntityBase):
     __table_args__ = (Index("idx_lat_lng", "latitude", "longitude"),)
 
     def to_dto(self) -> LocationDto:
-        # Check if complaints relationship is loaded to avoid lazy loading in tests
+        # Check if incidents relationship is loaded to avoid lazy loading in tests
         # This prevents issues when LocationEntity is created without loading relationships
         insp = inspect(self)
-        complaints_loaded = "complaints" not in insp.unloaded
+        incidents_loaded = "incidents" not in insp.unloaded
 
         hold_exp = self.hold_expiration
         if hold_exp is not None and hold_exp.tzinfo is None:
@@ -77,11 +78,9 @@ class LocationEntity(MappedAsDataclass, EntityBase):
             state=self.state,
             country=self.country,
             zip_code=self.zip_code,
-            warning_count=self.warning_count,
-            citation_count=self.citation_count,
             hold_expiration=hold_exp,
-            complaints=[complaint.to_dto() for complaint in self.complaints]
-            if complaints_loaded
+            incidents=[incident.to_dto() for incident in self.incidents]
+            if incidents_loaded
             else [],
         )
 
@@ -100,7 +99,5 @@ class LocationEntity(MappedAsDataclass, EntityBase):
             state=data.state,
             country=data.country,
             zip_code=data.zip_code,
-            warning_count=data.warning_count,
-            citation_count=data.citation_count,
             hold_expiration=data.hold_expiration,
         )

@@ -16,12 +16,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useRole } from "@/contexts/RoleContext";
 import {
   Column,
   ColumnDef,
   ColumnFiltersState,
   PaginationState,
   Row,
+  RowSelectionState,
   SortingState,
   flexRender,
   getCoreRowModel,
@@ -40,8 +42,9 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DeleteConfirmDialog } from "../dialog/DeleteConfirmDialog";
+import { useSidebar } from "../sidebar/SidebarContext";
 import { ColumnHeader } from "./ColumnHeader";
 import { FilterInput } from "./FilterInput";
 
@@ -68,6 +71,7 @@ export type TableProps<T> = {
   getDeleteDescription?: (row: T) => string;
   isDeleting?: boolean;
   initialSort?: SortingState;
+  sortBy?: (a: T, b: T) => number;
 };
 
 export function TableTemplate<T extends object>({
@@ -83,13 +87,22 @@ export function TableTemplate<T extends object>({
   getDeleteDescription,
   isDeleting,
   initialSort = [],
+  sortBy,
 }: TableProps<T>) {
+  const { isOpen } = useSidebar();
+  const { role } = useRole();
+  // Apply custom sorting if provided
+  const sortedData = useMemo(
+    () => (sortBy ? [...data].sort(sortBy) : data),
+    [data, sortBy]
+  );
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: 25,
   });
   const [sorting, setSorting] = useState<SortingState>(initialSort);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [activeFilterColumn, setActiveFilterColumn] = useState<{
     column: Column<T, unknown>;
     name: string;
@@ -98,9 +111,20 @@ export function TableTemplate<T extends object>({
   const [itemToDelete, setItemToDelete] = useState<T | null>(null);
   const [globalFilter, setGlobalFilter] = useState<string>("");
 
+  useEffect(() => {
+    if (!isOpen && Object.keys(rowSelection).length > 0) {
+      setRowSelection({});
+    }
+  }, [isOpen, rowSelection]);
+
   const handleDeleteClick = (row: T) => {
     setItemToDelete(row);
     setDeleteDialogOpen(true);
+  };
+
+  const handleEditClick = (rowId: string, row: T) => {
+    setRowSelection({ [rowId]: true });
+    onEdit?.(row);
   };
 
   const confirmDelete = () => {
@@ -112,9 +136,9 @@ export function TableTemplate<T extends object>({
   // Derive details from resourceName if not provided
   const tableDetails = details || `${resourceName} table`;
 
-  // Add actions column if handlers are provided
+  // Add actions column if handlers are provided and user is admin
   const columnsWithActions: ColumnDef<T, unknown>[] =
-    onEdit || onDelete
+    role === "admin" && (onEdit || onDelete)
       ? [
           ...columns,
           {
@@ -132,7 +156,9 @@ export function TableTemplate<T extends object>({
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     {onEdit && (
-                      <DropdownMenuItem onClick={() => onEdit(row.original)}>
+                      <DropdownMenuItem
+                        onClick={() => handleEditClick(row.id, row.original)}
+                      >
                         <Pencil className="mr-2 h-4 w-4" />
                         Edit
                       </DropdownMenuItem>
@@ -203,13 +229,14 @@ export function TableTemplate<T extends object>({
   };
 
   const table = useReactTable({
-    data,
+    data: sortedData,
     columns: columnsWithActions,
     state: {
       sorting,
       columnFilters,
       pagination,
       globalFilter,
+      rowSelection,
     },
     globalFilterFn: customFilterFn,
     onSortingChange: setSorting,
@@ -220,6 +247,7 @@ export function TableTemplate<T extends object>({
     onPaginationChange: setPagination,
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    onRowSelectionChange: setRowSelection,
   });
 
   return (
@@ -241,7 +269,7 @@ export function TableTemplate<T extends object>({
               <>
                 <h2 className="text-2xl font-bold">{pluralResourceName}</h2>
 
-                {onCreateNew && (
+                {onCreateNew && role === "admin" && (
                   <Button onClick={onCreateNew}>
                     <Plus className="mr-2 h-4 w-4" />
                     New {resourceName}
@@ -320,7 +348,14 @@ export function TableTemplate<T extends object>({
               <TableBody>
                 {table.getRowModel().rows?.length ? (
                   table.getRowModel().rows.map((row) => (
-                    <TableRow key={row.id}>
+                    <TableRow
+                      key={row.id}
+                      className={
+                        row.getIsSelected()
+                          ? "bg-blue-100 hover:bg-blue-200"
+                          : ""
+                      }
+                    >
                       {row.getVisibleCells().map((cell) => (
                         <TableCell
                           key={cell.id}

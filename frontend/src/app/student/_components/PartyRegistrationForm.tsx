@@ -45,13 +45,9 @@ const partyFormSchema = z.object({
   partyTime: z.string().min(1, "Party time is required"),
   secondContactFirstName: z.string().min(1, "First name is required"),
   secondContactLastName: z.string().min(1, "Last name is required"),
-  phoneNumber: z
-    .string()
-    .min(1, "Phone number is required")
-    .refine(
-      (val) => val.replace(/\D/g, "").length >= 10,
-      "Phone number must be at least 10 digits"
-    ),
+  phoneNumber: z.string().regex(/^\+?1?\d{9,15}$/, {
+    message: "String must be a valid phone number",
+  }),
   contactPreference: z.enum(["call", "text"], {
     message: "Please select a contact preference",
   }),
@@ -64,28 +60,69 @@ type PartyFormValues = z.infer<typeof partyFormSchema>;
 
 export type { PartyFormValues };
 
+/**
+ * Initial values that can be passed to prefill the form
+ */
+export interface PartyFormInitialValues {
+  address?: string;
+  placeId?: string;
+  secondContactFirstName?: string;
+  secondContactLastName?: string;
+  phoneNumber?: string;
+  contactPreference?: "call" | "text";
+  contactTwoEmail?: string;
+}
+
 interface PartyRegistrationFormProps {
   onSubmit: (data: PartyFormValues, placeId: string) => void | Promise<void>;
   locationService?: LocationService;
+  initialValues?: PartyFormInitialValues;
+  /** The authenticated student's email (contact one) for duplicate validation */
+  studentEmail?: string;
+  /** The authenticated student's phone number (contact one) for duplicate validation */
+  studentPhoneNumber?: string;
 }
+
+// Default party time (e.g., 8:00 PM)
+const DEFAULT_PARTY_TIME = "20:00";
+// Default contact preference
+const DEFAULT_CONTACT_PREFERENCE: "call" | "text" = "text";
 
 export default function PartyRegistrationForm({
   onSubmit,
   locationService = new LocationService(),
+  initialValues,
+  studentEmail,
+  studentPhoneNumber,
 }: PartyRegistrationFormProps) {
   const [formData, setFormData] = useState<Partial<PartyFormValues>>({
-    address: "",
+    address: initialValues?.address ?? "",
     partyDate: undefined,
-    partyTime: "",
-    phoneNumber: "",
-    contactPreference: undefined,
-    contactTwoEmail: "",
+    partyTime: DEFAULT_PARTY_TIME,
+    phoneNumber: initialValues?.phoneNumber ?? "",
+    secondContactFirstName: initialValues?.secondContactFirstName ?? "",
+    secondContactLastName: initialValues?.secondContactLastName ?? "",
+    contactPreference:
+      initialValues?.contactPreference ?? DEFAULT_CONTACT_PREFERENCE,
+    contactTwoEmail: initialValues?.contactTwoEmail ?? "",
   });
 
-  const [placeId, setPlaceId] = useState<string>(""); // ⭐ NEW
+  const [placeId, setPlaceId] = useState<string>(initialValues?.placeId ?? "");
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Check if the form is complete enough to enable the submit button
+  const isFormComplete =
+    !!formData.address &&
+    !!placeId &&
+    !!formData.partyDate &&
+    !!formData.partyTime &&
+    !!formData.secondContactFirstName &&
+    !!formData.secondContactLastName &&
+    !!formData.phoneNumber &&
+    !!formData.contactPreference &&
+    !!formData.contactTwoEmail;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -104,10 +141,34 @@ export default function PartyRegistrationForm({
       return;
     }
 
+    // Validate contact two differs from contact one (the student)
+    const contactTwoErrors: Record<string, string> = {};
+    if (
+      studentEmail &&
+      result.data.contactTwoEmail.trim().toLowerCase() ===
+        studentEmail.trim().toLowerCase()
+    ) {
+      contactTwoErrors.contactTwoEmail =
+        "Contact two email must be different from your email";
+    }
+    if (studentPhoneNumber) {
+      const c1Digits = studentPhoneNumber.replace(/\D/g, "");
+      const c2Digits = result.data.phoneNumber.replace(/\D/g, "");
+      if (c1Digits === c2Digits) {
+        contactTwoErrors.phoneNumber =
+          "Contact two phone number must be different from your phone number";
+      }
+    }
+    if (Object.keys(contactTwoErrors).length > 0) {
+      setErrors(contactTwoErrors);
+      return;
+    }
+
+    // Only set the address error if it wasn't already set by Zod
     if (!placeId) {
       setErrors((prev) => ({
         ...prev,
-        address: "Please select an address from the dropdown",
+        address: prev.address || "Please select an address from the dropdown",
       }));
       return;
     }
@@ -135,8 +196,17 @@ export default function PartyRegistrationForm({
   /** ⭐ AddressSearch now sets BOTH address + placeId */
   const handleAddressSelect = (address: AutocompleteResult | null) => {
     updateField("address", address?.formatted_address || "");
-    setPlaceId(address?.google_place_id || ""); // ⭐ new required field
+    setPlaceId(address?.google_place_id || "");
   };
+
+  // Build initial address object for AddressSearch if we have prefilled values
+  const initialAddress: AutocompleteResult | undefined =
+    initialValues?.address && initialValues?.placeId
+      ? {
+          formatted_address: initialValues.address,
+          google_place_id: initialValues.placeId,
+        }
+      : undefined;
 
   return (
     <form onSubmit={handleSubmit}>
@@ -151,6 +221,7 @@ export default function PartyRegistrationForm({
               placeholder="Search for the party address..."
               className="w-full"
               error={errors.address}
+              initialSelection={initialAddress}
             />
             <FieldDescription>
               Search and select the address where the party will be held. The
@@ -167,6 +238,7 @@ export default function PartyRegistrationForm({
                   <Button
                     id="party-date"
                     variant="outline"
+                    aria-invalid={!!errors.partyDate}
                     className={`w-full justify-start text-left font-normal ${
                       !formData.partyDate && "text-muted-foreground"
                     }`}
@@ -227,7 +299,7 @@ export default function PartyRegistrationForm({
                 onChange={(e) =>
                   updateField("secondContactFirstName", e.target.value)
                 }
-                aria-invalid={!!errors.secondFirstContactName}
+                aria-invalid={!!errors.secondContactFirstName}
               />
               {errors.secondContactFirstName && (
                 <FieldError>{errors.secondContactFirstName}</FieldError>
@@ -252,7 +324,7 @@ export default function PartyRegistrationForm({
               )}
             </Field>
           </div>
-          <Field data-invalid={!!errors.phone_number}>
+          <Field data-invalid={!!errors.phoneNumber}>
             <FieldLabel htmlFor="phone-number">Phone Number</FieldLabel>
             <Input
               id="phone-number"
@@ -279,7 +351,10 @@ export default function PartyRegistrationForm({
                 updateField("contactPreference", value as "call" | "text")
               }
             >
-              <SelectTrigger id="contact-preference">
+              <SelectTrigger
+                id="contact-preference"
+                aria-invalid={!!errors.contactPreference}
+              >
                 <SelectValue placeholder="Select your preference" />
               </SelectTrigger>
               <SelectContent>
@@ -290,8 +365,8 @@ export default function PartyRegistrationForm({
             <FieldDescription>
               How should we contact the second contact?
             </FieldDescription>
-            {errors.contact_preference && (
-              <FieldError>{errors.contact_preference}</FieldError>
+            {errors.contactPreference && (
+              <FieldError>{errors.contactPreference}</FieldError>
             )}
           </Field>
 
@@ -314,7 +389,15 @@ export default function PartyRegistrationForm({
           </Field>
 
           <Field orientation="horizontal">
-            <Button type="submit" disabled={isSubmitting}>
+            <Button
+              type="submit"
+              disabled={isSubmitting || !isFormComplete}
+              title={
+                !isFormComplete
+                  ? "Please fill in all required fields"
+                  : undefined
+              }
+            >
               {isSubmitting ? "Submitting..." : "Register Party"}
             </Button>
           </Field>

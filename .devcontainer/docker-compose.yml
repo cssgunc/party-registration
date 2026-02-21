@@ -7,13 +7,20 @@ services:
       - ..:/workspace
 
   db:
-    image: "postgres:latest"
+    image: mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04
+    platform: linux/amd64
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "YourStrong!Passw0rd"
+      MSSQL_PID: "Express"
     ports:
-      - "5432:5432"
-    env_file:
-      - ../backend/.env
+      - "1433:1433"
     volumes:
-      - party-reg-postgres:/var/lib/postgresql
+      - party-reg-mssql:/var/opt/mssql
+    deploy:
+      resources:
+        limits:
+          memory: 2G
 
 volumes:
-  party-reg-postgres:
+  party-reg-mssql:

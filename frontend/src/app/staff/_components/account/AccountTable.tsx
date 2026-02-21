@@ -28,14 +28,9 @@ export const AccountTable = () => {
     retry: 1,
   });
 
-  const accounts = (accountsQuery.data ?? [])
-    .filter((a) => a.role === "admin" || a.role === "staff")
-    .slice()
-    .sort(
-      (a, b) =>
-        a.last_name.localeCompare(b.last_name) ||
-        a.first_name.localeCompare(b.first_name)
-    );
+  const accounts = (accountsQuery.data ?? []).filter(
+    (a) => a.role === "admin" || a.role === "staff"
+  );
 
   const createMutation = useMutation({
     mutationFn: (data: AccountTableFormValues) =>
@@ -44,6 +39,7 @@ export const AccountTable = () => {
         first_name: data.first_name,
         last_name: data.last_name,
         pid: data.pid,
+        onyen: data.onyen,
         role: data.role as AccountRole,
       }),
     onError: (error: Error) => {
@@ -68,6 +64,7 @@ export const AccountTable = () => {
         first_name: data.first_name,
         last_name: data.last_name,
         pid: data.pid,
+        onyen: data.onyen,
         role: data.role as AccountRole,
       }),
     onError: (error: Error) => {
@@ -123,8 +120,9 @@ export const AccountTable = () => {
           email: account.email,
           first_name: account.first_name,
           last_name: account.last_name,
-          role: account.role,
           pid: account.pid ?? "",
+          onyen: account.onyen ?? "",
+          role: account.role,
         }}
       />
     );
@@ -175,9 +173,18 @@ export const AccountTable = () => {
       enableColumnFilter: true,
     },
     {
+      accessorKey: "onyen",
+      header: "Onyen",
+      enableColumnFilter: true,
+    },
+    {
       accessorKey: "role",
       header: "Admin Type",
       enableColumnFilter: true,
+      cell: ({ row }) => {
+        const role = row.getValue("role") as string;
+        return role.charAt(0).toUpperCase() + role.slice(1);
+      },
     },
   ];
 
@@ -196,6 +203,10 @@ export const AccountTable = () => {
           `Are you sure you want to delete account ${account.email}? This action cannot be undone.`
         }
         isDeleting={deleteMutation.isPending}
+        sortBy={(a, b) =>
+          a.last_name.localeCompare(b.last_name) ||
+          a.first_name.localeCompare(b.first_name)
+        }
       />
     </div>
   );

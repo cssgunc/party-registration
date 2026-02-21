@@ -1,7 +1,7 @@
 import alertTriangleIcon from "@/components/icons/alert-triangle.svg";
 import checkIcon from "@/components/icons/check-circle.svg";
 import { Card, CardContent } from "@/components/ui/card";
-import { isAfter, isBefore, startOfDay } from "date-fns";
+import { isCourseCompleted } from "@/lib/utils";
 import Image from "next/image";
 
 type CompletionCardProps = {
@@ -40,17 +40,7 @@ export default function StatusComponent({
     );
   }
 
-  // Calculate the most recent August 1st
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const augustFirst = new Date(currentYear, 7, 1);
-  const mostRecentAugust1 = isBefore(now, augustFirst)
-    ? new Date(currentYear - 1, 7, 1)
-    : augustFirst;
-
-  const isCompleted =
-    last_registered !== null &&
-    isAfter(startOfDay(last_registered), startOfDay(mostRecentAugust1));
+  const isCompleted = isCourseCompleted(last_registered);
 
   return (
     <Card className="p-4 rounded-2xl shadow-sm w-full bg-white">

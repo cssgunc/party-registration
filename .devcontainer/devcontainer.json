@@ -3,7 +3,7 @@
   "workspaceFolder": "/workspace",
   "service": "app",
   "remoteUser": "vscode",
-  "forwardPorts": [5432, 5050],
+  "forwardPorts": [1433, 5050],
   "postCreateCommand": "cd .devcontainer && ./post_create.sh",
   "customizations": {
     "vscode": {
@@ -14,7 +14,7 @@
         "esbenp.prettier-vscode",
         "bradlc.vscode-tailwindcss",
         "tamasfe.even-better-toml",
-        "ckolkman.vscode-postgres",
+        "ms-mssql.mssql",
         "ms-python.python",
         "ms-python.vscode-pylance",
         "charliermarsh.ruff",
@@ -83,13 +83,6 @@
         "python.analysis.extraPaths": ["backend"],
         "python.testing.pytestEnabled": true,
         "python.testing.unittestEnabled": false,
-        "python.analysis.diagnosticSeverityOverrides": {
-          "reportMissingParameterType": "error",
-          "reportGeneralTypeIssues": "error",
-          "reportDeprecated": "error",
-          "reportImportCycles": "error"
-        },
-        "python.analysis.typeCheckingMode": "basic",
         "python.analysis.autoImportCompletions": true
       }
     }

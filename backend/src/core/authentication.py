@@ -120,3 +120,11 @@ async def authenticate_police_or_admin(
     account: AccountDto | PoliceAccountDto = Depends(authenticate_by_role("police", "admin")),
 ) -> PoliceAccountDto | AccountDto:
     return account
+
+
+async def authenticate_police_staff_or_admin(
+    account: AccountDto | PoliceAccountDto = Depends(
+        authenticate_by_role("police", "staff", "admin")
+    ),
+) -> PoliceAccountDto | AccountDto:
+    return account

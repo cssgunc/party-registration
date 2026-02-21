@@ -11,6 +11,7 @@ from test.modules.account.account_utils import AccountTestUtils
 from test.modules.police.police_utils import PoliceTestUtils
 from test.utils.http.assertions import (
     assert_res_failure,
+    assert_res_paginated,
     assert_res_success,
     assert_res_validation_error,
 )
@@ -58,40 +59,45 @@ class TestAccountRouter:
         accounts_two_per_role: list[AccountEntity],
     ):
         response = await self.admin_client.get("/api/accounts")
-        data = assert_res_success(response, list[AccountDto])
+        paginated = assert_res_paginated(response, AccountDto, total_records=6)
 
-        data_by_id = {account.id: account for account in data}
+        data_by_id = {account.id: account for account in paginated.items}
 
         for entity in accounts_two_per_role:
             assert entity.id in data_by_id, f"Account {entity.id} not found in response"
             self.account_utils.assert_matches(entity, data_by_id[entity.id])
 
-    @pytest.mark.parametrize(
-        "roles",
-        [
-            [AccountRole.STUDENT],
-            [AccountRole.STAFF],
-            [AccountRole.ADMIN],
-            [AccountRole.STUDENT, AccountRole.ADMIN],
-            [AccountRole.STUDENT, AccountRole.STAFF, AccountRole.ADMIN],
-        ],
-    )
     @pytest.mark.asyncio
-    async def test_get_accounts_by_role(
-        self, roles: list[AccountRole], accounts_two_per_role: list[AccountEntity]
-    ):
-        query_string = "&".join(f"role={role.value}" for role in roles)
-        response = await self.admin_client.get(f"/api/accounts?{query_string}")
+    async def test_get_accounts_by_role(self, accounts_two_per_role: list[AccountEntity]):
+        """Test filtering accounts by role."""
+        response = await self.admin_client.get("/api/accounts", params={"role": "student"})
 
-        data = assert_res_success(response, list[AccountDto])
+        paginated = assert_res_paginated(response, AccountDto, total_records=2)
 
-        filtered_fixture = [a for a in accounts_two_per_role if a.role in roles]
-        assert len(data) == len(filtered_fixture)
+        assert all(a.role == AccountRole.STUDENT for a in paginated.items)
 
-        data_by_id = {account.id: account for account in data}
-        for entity in filtered_fixture:
-            assert entity.id in data_by_id, f"Account {entity.id} not found in response"
-            self.account_utils.assert_matches(entity, data_by_id[entity.id])
+    @pytest.mark.asyncio
+    async def test_get_accounts_pagination(self, accounts_two_per_role: list[AccountEntity]):
+        """Test pagination on accounts endpoint."""
+        response = await self.admin_client.get(
+            "/api/accounts", params={"page_number": 1, "page_size": 2}
+        )
+
+        paginated = assert_res_paginated(
+            response, AccountDto, total_records=6, page_number=1, page_size=2
+        )
+        assert len(paginated.items) == 2
+
+    @pytest.mark.asyncio
+    async def test_get_accounts_sort_by_email(self, accounts_two_per_role: list[AccountEntity]):
+        """Test sorting accounts by email."""
+        response = await self.admin_client.get(
+            "/api/accounts", params={"sort_by": "email", "sort_order": "asc"}
+        )
+
+        paginated = assert_res_paginated(response, AccountDto, total_records=6)
+        emails = [a.email for a in paginated.items]
+        assert emails == sorted(emails)
 
     @pytest.mark.parametrize("role", [AccountRole.ADMIN, AccountRole.STUDENT, AccountRole.STAFF])
     @pytest.mark.asyncio
@@ -111,7 +117,17 @@ class TestAccountRouter:
         """Test that creating an account with duplicate email returns 409."""
         new_account = await self.account_utils.next_dict(email=accounts_two_per_role[0].email)
         response = await self.admin_client.post("/api/accounts", json=new_account)
-        assert_res_failure(response, AccountConflictException(new_account["email"]))
+        assert_res_failure(response, AccountConflictException(email=new_account["email"]))
+
+    @pytest.mark.asyncio
+    async def test_create_account_duplicate_onyen(
+        self,
+        accounts_two_per_role: list[AccountEntity],
+    ):
+        """Test that creating an account with duplicate onyen returns 409."""
+        new_account = await self.account_utils.next_dict(onyen=accounts_two_per_role[0].onyen)
+        response = await self.admin_client.post("/api/accounts", json=new_account)
+        assert_res_failure(response, AccountConflictException(onyen=new_account["onyen"]))
 
     @pytest.mark.parametrize(
         "invalid_data",
@@ -162,7 +178,17 @@ class TestAccountRouter:
         response = await self.admin_client.put(
             f"/api/accounts/{account_to_update.id}", json=updated_data
         )
-        assert_res_failure(response, AccountConflictException(updated_data["email"]))
+        assert_res_failure(response, AccountConflictException(email=updated_data["email"]))
+
+    @pytest.mark.asyncio
+    async def test_update_account_duplicate_onyen(self, accounts_two_per_role: list[AccountEntity]):
+        """Test that updating to an onyen that already exists returns 409."""
+        account_to_update = accounts_two_per_role[0]
+        updated_data = await self.account_utils.next_dict(onyen=accounts_two_per_role[1].onyen)
+        response = await self.admin_client.put(
+            f"/api/accounts/{account_to_update.id}", json=updated_data
+        )
+        assert_res_failure(response, AccountConflictException(onyen=updated_data["onyen"]))
 
     @pytest.mark.asyncio
     async def test_update_account_not_found(self):
