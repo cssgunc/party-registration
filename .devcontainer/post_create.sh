@@ -3,6 +3,9 @@ set -e
 
 # Expected to run from .devcontainer/
 
+# Ensure pre-commit cache directory has correct permissions
+sudo chown -R vscode:vscode /home/vscode/.cache/pre-commit 2>/dev/null || true
+
 echo "================== Installing pre-commit hooks ================="
 cd ..
 pre-commit install

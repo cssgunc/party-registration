@@ -60,7 +60,9 @@ RUN groupadd --gid $USER_GID $USERNAME \
     && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME -s /usr/bin/zsh \
     && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
     && chmod 0440 /etc/sudoers.d/$USERNAME \
-    && chown -R $USERNAME:$USERNAME /workspace
+    && chown -R $USERNAME:$USERNAME /workspace \
+    && mkdir -p /home/$USERNAME/.cache/pre-commit \
+    && chown -R $USERNAME:$USERNAME /home/$USERNAME/.cache
 
 # Git configuration
 RUN git config --system core.editor "code --wait" \
