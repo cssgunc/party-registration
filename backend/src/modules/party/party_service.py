@@ -1,11 +1,9 @@
+import csv
 import io
 import math
 from datetime import UTC, datetime, timedelta
 
 from fastapi import Depends, Request
-from openpyxl import Workbook
-from openpyxl.styles import Font
-from openpyxl.utils import get_column_letter
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,6 +13,7 @@ from src.core.database import get_session
 from src.core.exceptions import BadRequestException, ConflictException, NotFoundException
 from src.core.query_utils import get_paginated_results, parse_pagination_params
 from src.modules.location.location_model import LocationDto
+from src.modules.student.student_model import StudentDto
 from src.modules.student.student_service import StudentNotFoundException, StudentService
 
 from ..account.account_service import AccountByEmailNotFoundException, AccountService
@@ -52,10 +51,28 @@ class PartyDateTooSoonException(BadRequestException):
 
 
 class PartySmartNotCompletedException(BadRequestException):
-    def __init__(self, student_id: int):
-        super().__init__(
-            f"Student {student_id} must complete Party Smart before registering a party"
-        )
+    def __init__(self):
+        super().__init__("You must complete Party Smart before registering a party")
+
+
+class NoResidenceException(BadRequestException):
+    def __init__(self):
+        super().__init__("Student must choose a residence before registering a party")
+
+
+class PartyAlreadyCancelledException(BadRequestException):
+    def __init__(self):
+        super().__init__("Cannot modify a cancelled party")
+
+
+class PartyInPastException(BadRequestException):
+    def __init__(self):
+        super().__init__("Cannot modify a party in the past")
+
+
+class UnauthorizedPartyAccessException(BadRequestException):
+    def __init__(self):
+        super().__init__("Student can only modify their own parties")
 
 
 class PartyService:
@@ -120,7 +137,7 @@ class PartyService:
         student = await self.student_service.get_student_by_id(student_id)
 
         if student.last_registered is None:
-            raise PartySmartNotCompletedException(student_id)
+            raise PartySmartNotCompletedException()
 
         # Calculate the most recent August 1st
         now = datetime.now(UTC)
@@ -138,7 +155,7 @@ class PartyService:
 
         # Check if last_registered is after the most recent August 1st
         if student.last_registered < most_recent_august_first:
-            raise PartySmartNotCompletedException(student_id)
+            raise PartySmartNotCompletedException()
 
     async def _validate_and_get_location(self, place_id: str) -> LocationDto:
         """Get or create location and validate it has no active hold."""
@@ -232,6 +249,7 @@ class PartyService:
             "contact_two_last_name",
             "contact_two_phone_number",
             "contact_two_contact_preference",
+            "status",
         ]
         allowed_filter_fields = [
             "id",
@@ -243,6 +261,7 @@ class PartyService:
             "contact_two_last_name",
             "contact_two_phone_number",
             "contact_two_contact_preference",
+            "status",
         ]
 
         # Parse query params from request
@@ -287,10 +306,15 @@ class PartyService:
         return [party.to_dto() for party in parties]
 
     async def get_parties_by_contact(self, student_id: int) -> list[PartyDto]:
-        """Get all parties for a specific student (no pagination)."""
+        """Get all non-cancelled parties for a specific student (no pagination)."""
+        from .party_model import PartyStatus
+
         result = await self.session.execute(
             select(PartyEntity)
-            .where(PartyEntity.contact_one_id == student_id)
+            .where(
+                PartyEntity.contact_one_id == student_id,
+                PartyEntity.status == PartyStatus.CONFIRMED,
+            )
             .options(
                 selectinload(PartyEntity.location),
                 selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
@@ -353,21 +377,47 @@ class PartyService:
 
         return await party_entity.load_dto(self.session)
 
+    async def _validate_student_party_and_get_location(
+        self, student_account_id: int, party_datetime: datetime
+    ) -> tuple[LocationDto, int]:
+        """
+        Validate student can register a party and get their residence location.
+        Returns tuple of (location, student_account_id).
+        """
+        # Validate student party prerequisites (date and Party Smart)
+        await self._validate_student_party_prerequisites(student_account_id, party_datetime)
+
+        # Get student and validate they have a residence
+        student = await self.student_service.get_student_by_id(student_account_id)
+        if student.residence is None:
+            raise NoResidenceException()
+
+        # Use student's residence as the party location
+        location = student.residence.location
+
+        # Validate location has no active hold
+        self.location_service.assert_valid_location_hold(location)
+
+        return location, student_account_id
+
     async def create_party_from_student_dto(
         self, dto: StudentCreatePartyDto, student_account_id: int
     ) -> PartyDto:
-        """Create a party registration from a student. contact_one is auto-filled."""
-        # Validate student party prerequisites (date and Party Smart)
-        await self._validate_student_party_prerequisites(student_account_id, dto.party_datetime)
+        """
+        Create a party registration from a student.
+        contact_one is auto-filled, location from residence.
+        """
+        location, _ = await self._validate_student_party_and_get_location(
+            student_account_id, dto.party_datetime
+        )
 
-        # Validate contact two differs from contact one (the student)
+        # Get student info for contact_two validation
         student = await self.student_service.get_student_by_id(student_account_id)
+
+        # Validate contact two differs from contact one
         self._validate_contact_two_differs_from_contact_one(
             student.email, student.phone_number, dto.contact_two
         )
-
-        # Get/create location and validate no hold
-        location = await self._validate_and_get_location(dto.google_place_id)
 
         # Create party data with contact_two information directly
         party_data = PartyData(
@@ -384,25 +434,38 @@ class PartyService:
 
         return await new_party.load_dto(self.session)
 
-    async def create_party_from_admin_dto(self, dto: AdminCreatePartyDto) -> PartyDto:
-        """Create a party registration from an admin. Both contacts must be specified."""
+    async def _validate_admin_party_and_get_details(
+        self, google_place_id: str, contact_one_email: str
+    ) -> tuple[LocationDto, StudentDto, int]:
+        """
+        Validate admin party data and get location, contact_one entity, and contact_one_id.
+        Returns tuple of (location, contact_one, contact_one_id).
+        """
         # Get/create location and validate no hold
-        location = await self._validate_and_get_location(dto.google_place_id)
+        location = await self._validate_and_get_location(google_place_id)
 
         # Get contact_one by email
-        contact_one = await self._get_student_by_email(dto.contact_one_email)
+        contact_one = await self._get_student_by_email(contact_one_email)
+        contact_one_dto = await contact_one.load_dto(self.session)
+
+        return location, contact_one_dto, contact_one.account_id
+
+    async def create_party_from_admin_dto(self, dto: AdminCreatePartyDto) -> PartyDto:
+        """Create a party registration from an admin. Both contacts must be specified."""
+        location, contact_one, contact_one_id = await self._validate_admin_party_and_get_details(
+            dto.google_place_id, dto.contact_one_email
+        )
 
         # Validate contact two differs from contact one
-        contact_one_dto = contact_one.to_dto()
         self._validate_contact_two_differs_from_contact_one(
-            contact_one_dto.email, contact_one_dto.phone_number, dto.contact_two
+            contact_one.email, contact_one.phone_number, dto.contact_two
         )
 
         # Create party data with contact_two information directly
         party_data = PartyData(
             party_datetime=dto.party_datetime,
             location_id=location.id,
-            contact_one_id=contact_one.account_id,
+            contact_one_id=contact_one_id,
             contact_two=dto.contact_two,
         )
 
@@ -416,24 +479,39 @@ class PartyService:
     async def update_party_from_student_dto(
         self, party_id: int, dto: StudentCreatePartyDto, student_account_id: int
     ) -> PartyDto:
-        """Update a party registration from a student. contact_one is auto-filled."""
+        """
+        Update a party registration from a student.
+        contact_one is auto-filled, location from residence.
+        """
+        from .party_model import PartyStatus
+
         # Get existing party
         party_entity = await self._get_party_entity_by_id(party_id)
 
-        # Validate student party prerequisites (date and Party Smart)
-        await self._validate_student_party_prerequisites(student_account_id, dto.party_datetime)
+        # Validate that the student owns this party
+        if party_entity.contact_one_id != student_account_id:
+            raise UnauthorizedPartyAccessException()
 
-        # Validate contact two differs from contact one (the student)
+        # Validate party is not cancelled
+        if party_entity.status == PartyStatus.CANCELLED:
+            raise PartyAlreadyCancelledException()
+
+        # Validate party is not in the past
+        if party_entity.party_datetime < datetime.now(UTC):
+            raise PartyInPastException()
+
+        # Validate student can create party and get location
+        location, _ = await self._validate_student_party_and_get_location(
+            student_account_id, dto.party_datetime
+        )
+
+        # Get student info for contact_two validation
         student = await self.student_service.get_student_by_id(student_account_id)
+
+        # Validate contact two differs from contact one
         self._validate_contact_two_differs_from_contact_one(
             student.email, student.phone_number, dto.contact_two
         )
-
-        # Get/create location and validate no hold
-        location = await self._validate_and_get_location(dto.google_place_id)
-
-        # Validate contact_one (student) exists
-        await self.student_service.assert_student_exists(student_account_id)
 
         # Update party fields
         party_entity.party_datetime = dto.party_datetime
@@ -450,6 +528,24 @@ class PartyService:
 
         return await party_entity.load_dto(self.session)
 
+    async def cancel_party(self, party_id: int, student_account_id: int | None = None) -> PartyDto:
+        """Cancel a party. If student_account_id is provided, validates ownership."""
+        from .party_model import PartyStatus
+
+        party_entity = await self._get_party_entity_by_id(party_id)
+
+        # If called by a student, validate ownership
+        if student_account_id is not None and party_entity.contact_one_id != student_account_id:
+            raise UnauthorizedPartyAccessException()
+
+        # Update status to cancelled
+        party_entity.status = PartyStatus.CANCELLED
+
+        self.session.add(party_entity)
+        await self.session.commit()
+
+        return await party_entity.load_dto(self.session)
+
     async def update_party_from_admin_dto(
         self, party_id: int, dto: AdminCreatePartyDto
     ) -> PartyDto:
@@ -457,17 +553,14 @@ class PartyService:
         # Get existing party
         party_entity = await self._get_party_entity_by_id(party_id)
 
-        # Get/create location and validate no hold
-        location = await self._validate_and_get_location(dto.google_place_id)
-
-        # Get contact_one by email
-        contact_one_student = await self._get_student_by_email(dto.contact_one_email)
-        contact_one_id = contact_one_student.account_id
+        # Validate and get location and contact_one details
+        location, contact_one, contact_one_id = await self._validate_admin_party_and_get_details(
+            dto.google_place_id, dto.contact_one_email
+        )
 
         # Validate contact two differs from contact one
-        contact_one_dto = contact_one_student.to_dto()
         self._validate_contact_two_differs_from_contact_one(
-            contact_one_dto.email, contact_one_dto.phone_number, dto.contact_two
+            contact_one.email, contact_one.phone_number, dto.contact_two
         )
 
         # Update party fields
@@ -617,78 +710,140 @@ class PartyService:
         r = 3959
         return c * r
 
-    def _format_phone_number(self, phone: str) -> str:
+    async def export_parties_to_csv(self, parties: list[PartyDto]) -> str:
         """
-        Format a 10-digit phone number as (XXX) XXX-XXXX.
-
-        Args:
-            phone: Phone number string (expected to be 10 digits)
-
-        Returns:
-            Formatted phone number
-        """
-        digits = "".join(c for c in phone if c.isdigit())
-
-        if len(digits) == 10:
-            return f"({digits[:3]}) {digits[3:6]}-{digits[6:]}"
-
-        return phone
-
-    async def export_parties_to_excel(self, parties: list[PartyDto]) -> bytes:
-        """
-        Export a list of parties to Excel format with formatting.
+        Export a list of parties to CSV format.
 
         Args:
             parties: List of Party models to export
 
         Returns:
-            Excel file content as bytes
+            CSV content as a string
         """
-        wb = Workbook()
-        ws = wb.active
-        assert ws is not None  # New workbook always has an active sheet
-        ws.title = "Parties"
+        if not parties:
+            output = io.StringIO()
+            writer = csv.writer(output)
+            writer.writerow(
+                [
+                    "Address",
+                    "Date of Party",
+                    "Time of Party",
+                    "Contact One Full Name",
+                    "Contact One Email",
+                    "Contact One Phone Number",
+                    "Contact One Contact Preference",
+                    "Contact Two Full Name",
+                    "Contact Two Email",
+                    "Contact Two Phone Number",
+                    "Contact Two Contact Preference",
+                ]
+            )
+            return output.getvalue()
 
-        # Define headers
-        headers = [
-            "Address",
-            "Date of Party",
-            "Time of Party",
-            "Contact One Full Name",
-            "Contact One Email",
-            "Contact One Phone Number",
-            "Contact One Contact Preference",
-            "Contact Two Full Name",
-            "Contact Two Email",
-            "Contact Two Phone Number",
-            "Contact Two Contact Preference",
-        ]
+        party_ids = [party.id for party in parties]
 
-        ws.append(headers)
-        for cell in ws[1]:
-            cell.font = Font(bold=True)
+        result = await self.session.execute(
+            select(PartyEntity)
+            .options(
+                selectinload(PartyEntity.location),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
+            )
+            .where(PartyEntity.id.in_(party_ids))
+        )
+        party_entities = result.scalars().all()
+        party_entity_map = {party.id: party for party in party_entities}
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+
+        writer.writerow(
+            [
+                "Address",
+                "Date of Party",
+                "Time of Party",
+                "Contact One Full Name",
+                "Contact One Email",
+                "Contact One Phone Number",
+                "Contact One Contact Preference",
+                "Contact Two Full Name",
+                "Contact Two Email",
+                "Contact Two Phone Number",
+                "Contact Two Contact Preference",
+            ]
+        )
 
         for party in parties:
+            party_entity = party_entity_map.get(party.id)
+            if party_entity is None:
+                continue
+
             # Format address
-            formatted_address = party.location.formatted_address
+            formatted_address = ""
+            if party_entity.location:
+                formatted_address = party_entity.location.formatted_address or ""
 
             # Format date and time
-            party_date = party.party_datetime.strftime("%Y-%m-%d")
-            party_time = party.party_datetime.strftime("%-I:%M %p")
+            party_date = party.party_datetime.strftime("%Y-%m-%d") if party.party_datetime else ""
+            party_time = (
+                party.party_datetime.strftime("%I:%M:%S %p") if party.party_datetime else ""
+            )
 
-            # Contact one info
-            contact_one_full_name = f"{party.contact_one.first_name} {party.contact_one.last_name}"
-            contact_one_email = party.contact_one.email
-            contact_one_phone = self._format_phone_number(party.contact_one.phone_number)
-            contact_one_preference = party.contact_one.contact_preference.value.capitalize()
+            contact_one_full_name = ""
+            contact_one_email = ""
+            contact_one_phone = ""
+            contact_one_preference = ""
 
-            # Contact two info
-            contact_two_full_name = f"{party.contact_two.first_name} {party.contact_two.last_name}"
-            contact_two_email = party.contact_two.email
-            contact_two_phone = self._format_phone_number(party.contact_two.phone_number)
-            contact_two_preference = party.contact_two.contact_preference.value.capitalize()
+            if party_entity.contact_one:
+                contact_one_full_name = (
+                    f"{party_entity.contact_one.account.first_name} "
+                    f"{party_entity.contact_one.account.last_name}"
+                )
+                # Format phone number as (XXX) XXX-XXXX
+                raw_phone = party_entity.contact_one.phone_number or ""
+                if raw_phone and len(raw_phone) >= 10:
+                    # Remove any non-digit characters
+                    digits = "".join(c for c in raw_phone if c.isdigit())
+                    if len(digits) >= 10:
+                        contact_one_phone = f"({digits[-10:-7]}) {digits[-7:-4]}-{digits[-4:]}"
+                    else:
+                        contact_one_phone = raw_phone
+                else:
+                    contact_one_phone = raw_phone
+                contact_one_preference = (
+                    party_entity.contact_one.contact_preference.value.capitalize()
+                    if party_entity.contact_one.contact_preference
+                    else ""
+                )
+                if party_entity.contact_one.account:
+                    contact_one_email = party_entity.contact_one.account.email or ""
 
-            ws.append(
+            contact_two_full_name = ""
+            contact_two_email = ""
+            contact_two_phone = ""
+            contact_two_preference = ""
+
+            contact_two_full_name = (
+                f"{party_entity.contact_two_first_name} {party_entity.contact_two_last_name}"
+            )
+            # Format phone number as (XXX) XXX-XXXX
+            raw_phone = party_entity.contact_two_phone_number or ""
+            if raw_phone and len(raw_phone) >= 10:
+                # Remove any non-digit characters
+                digits = "".join(c for c in raw_phone if c.isdigit())
+                if len(digits) >= 10:
+                    contact_two_phone = f"({digits[-10:-7]}) {digits[-7:-4]}-{digits[-4:]}"
+                else:
+                    contact_two_phone = raw_phone
+            else:
+                contact_two_phone = raw_phone
+            contact_two_preference = (
+                party_entity.contact_two_contact_preference.value.capitalize()
+                if party_entity.contact_two_contact_preference
+                else ""
+            )
+            contact_two_email = party_entity.contact_two_email or ""
+
+            writer.writerow(
                 [
                     formatted_address,
                     party_date,
@@ -704,20 +859,4 @@ class PartyService:
                 ]
             )
 
-        # Auto-fit column widths based on content
-        for col_idx, column in enumerate(ws.columns, start=1):
-            max_length = 0
-            column_letter = get_column_letter(col_idx)
-            for cell in column:
-                try:
-                    if cell.value:
-                        max_length = max(max_length, len(str(cell.value)))
-                except (AttributeError, TypeError):
-                    pass
-            adjusted_width = min(max_length + 2, 50)
-            ws.column_dimensions[column_letter].width = adjusted_width
-
-        output = io.BytesIO()
-        wb.save(output)
-        output.seek(0)
         return output.getvalue()

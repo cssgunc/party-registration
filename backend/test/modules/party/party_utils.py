@@ -137,14 +137,9 @@ class PartyTestUtils(
         self, **overrides: Unpack[PartyOverrides]
     ) -> StudentCreatePartyDto:
         """Generate a StudentCreatePartyDTO for testing."""
-        if "google_place_id" not in overrides:
-            location = await self.location_utils.create_one()
-            overrides["google_place_id"] = location.google_place_id
-
         return StudentCreatePartyDto(
             type="student",
             party_datetime=overrides.get("party_datetime", get_valid_party_datetime()),
-            google_place_id=overrides["google_place_id"],
             contact_two=overrides.get("contact_two", self.next_contact()),
         )
 

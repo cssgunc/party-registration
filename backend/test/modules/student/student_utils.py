@@ -25,6 +25,7 @@ class StudentOverrides(TypedDict, total=False):
     last_name: str
     email: str
     pid: str
+    residence_place_id: str | None
 
 
 class StudentTestUtils(
@@ -71,10 +72,14 @@ class StudentTestUtils(
         self, **overrides: Unpack[StudentOverrides]
     ) -> StudentDataWithNames:
         student_data = await self.next_dict(**overrides)
-        return StudentDataWithNames(
+        result_data = {
             **self.get_or_default(overrides, {"first_name", "last_name"}),
             **student_data,
-        )
+        }
+        # Add residence_place_id if provided
+        if "residence_place_id" in overrides:
+            result_data["residence_place_id"] = overrides["residence_place_id"]
+        return StudentDataWithNames(**result_data)
 
     async def next_student_create(self, **overrides: Unpack[StudentOverrides]) -> StudentCreate:
         local_overrides: StudentOverrides = dict(overrides)  # type: ignore
