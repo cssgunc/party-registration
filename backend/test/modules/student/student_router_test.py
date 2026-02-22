@@ -6,7 +6,11 @@ from httpx import AsyncClient
 from src.modules.account.account_entity import AccountRole
 from src.modules.party.party_model import PartyDto
 from src.modules.student.student_entity import StudentEntity
-from src.modules.student.student_model import ContactPreference, StudentData, StudentDto
+from src.modules.student.student_model import (
+    ContactPreference,
+    StudentDto,
+    StudentSelfUpdateData,
+)
 from src.modules.student.student_service import (
     AccountNotFoundException,
     InvalidAccountRoleException,
@@ -33,7 +37,12 @@ test_student_authentication = generate_auth_required_tests(
     ({"admin"}, "DELETE", "/api/students/12345", None),
     ({"admin", "staff"}, "PATCH", "/api/students/12345/is-registered", {"is_registered": True}),
     ({"student"}, "GET", "/api/students/me", None),
-    ({"student"}, "PUT", "/api/students/me", StudentTestUtils.get_sample_data()),
+    (
+        {"student"},
+        "PUT",
+        "/api/students/me",
+        {"contact_preference": "text", "phone_number": "9195550000"},
+    ),
     ({"student"}, "GET", "/api/students/me/parties", None),
 )
 
@@ -528,7 +537,10 @@ class TestStudentMeRouter:
     @pytest.mark.asyncio
     async def test_update_me_success(self, current_student: StudentEntity):
         """Test updating current student's own information."""
-        updated_data = await self.student_utils.next_data()
+        updated_data = StudentSelfUpdateData(
+            contact_preference=ContactPreference.CALL,
+            phone_number="9195559876",
+        )
 
         response = await self.student_client.put(
             "/api/students/me",
@@ -536,15 +548,32 @@ class TestStudentMeRouter:
         )
         data = assert_res_success(response, StudentDto)
 
-        self.student_utils.assert_matches(updated_data, data)
-        # Names should not change via /me endpoint (only StudentData, not StudentDataWithNames)
+        assert data.contact_preference == updated_data.contact_preference
+        assert data.phone_number == updated_data.phone_number
+        assert data.id == current_student.account_id
+
+    @pytest.mark.asyncio
+    async def test_update_me_cannot_change_last_registered(self, current_student: StudentEntity):
+        """Test that PUT /students/me ignores last_registered field."""
+        original_last_registered = current_student.last_registered
+
+        payload = {
+            "contact_preference": "text",
+            "phone_number": "9195558765",
+            "last_registered": "2020-01-01T00:00:00+00:00",
+        }
+
+        response = await self.student_client.put("/api/students/me", json=payload)
+        data = assert_res_success(response, StudentDto)
+
+        assert data.last_registered == original_last_registered
         assert data.id == current_student.account_id
 
     @pytest.mark.asyncio
     async def test_update_me_phone_conflict(self, current_student: StudentEntity):
         """Test updating me with phone number that already exists."""
         other_student = await self.student_utils.create_one()
-        updated_data = StudentData(
+        updated_data = StudentSelfUpdateData(
             contact_preference=ContactPreference.TEXT,
             phone_number=other_student.phone_number,
         )

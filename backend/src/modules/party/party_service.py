@@ -12,7 +12,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from src.core.config import env
 from src.core.database import get_session
-from src.core.exceptions import BadRequestException, ConflictException, NotFoundException
+from src.core.exceptions import (
+    BadRequestException,
+    ConflictException,
+    ForbiddenException,
+    NotFoundException,
+)
 from src.core.query_utils import get_paginated_results, parse_pagination_params
 from src.modules.location.location_model import LocationDto
 from src.modules.student.student_service import StudentNotFoundException, StudentService
@@ -27,6 +32,7 @@ from .party_model import (
     PaginatedPartiesResponse,
     PartyData,
     PartyDto,
+    PartyStatus,
     StudentCreatePartyDto,
 )
 
@@ -56,6 +62,21 @@ class PartySmartNotCompletedException(BadRequestException):
         super().__init__(
             f"Student {student_id} must complete Party Smart before registering a party"
         )
+
+
+class PartyCancelledException(BadRequestException):
+    def __init__(self, party_id: int):
+        super().__init__(f"Party {party_id} has been cancelled")
+
+
+class PartyNotOwnedByStudentException(ForbiddenException):
+    def __init__(self, party_id: int):
+        super().__init__(f"Party {party_id} does not belong to you")
+
+
+class PartyInPastException(BadRequestException):
+    def __init__(self):
+        super().__init__("Cannot modify a party that has already occurred")
 
 
 class PartyService:
@@ -157,6 +178,23 @@ class PartyService:
         c2_phone_digits = "".join(filter(str.isdigit, contact_two.phone_number))
         if c1_phone_digits == c2_phone_digits:
             raise ContactTwoMatchesContactOneException("phone number")
+
+    def _validate_party_not_cancelled(self, party_entity: PartyEntity) -> None:
+        if party_entity.status == PartyStatus.CANCELLED:
+            raise PartyCancelledException(party_entity.id)
+
+    def _validate_party_belongs_to_student(
+        self, party_entity: PartyEntity, student_id: int
+    ) -> None:
+        if party_entity.contact_one_id != student_id:
+            raise PartyNotOwnedByStudentException(party_entity.id)
+
+    def _validate_party_in_future(self, party_entity: PartyEntity) -> None:
+        party_dt = party_entity.party_datetime
+        if party_dt.tzinfo is None:
+            party_dt = party_dt.replace(tzinfo=UTC)
+        if party_dt <= datetime.now(UTC):
+            raise PartyInPastException()
 
     async def _validate_student_party_prerequisites(
         self, student_id: int, party_datetime: datetime
@@ -290,7 +328,10 @@ class PartyService:
         """Get all parties for a specific student (no pagination)."""
         result = await self.session.execute(
             select(PartyEntity)
-            .where(PartyEntity.contact_one_id == student_id)
+            .where(
+                PartyEntity.contact_one_id == student_id,
+                PartyEntity.status != PartyStatus.CANCELLED,
+            )
             .options(
                 selectinload(PartyEntity.location),
                 selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
@@ -420,6 +461,11 @@ class PartyService:
         # Get existing party
         party_entity = await self._get_party_entity_by_id(party_id)
 
+        # Validate ownership, status, and timing
+        self._validate_party_belongs_to_student(party_entity, student_account_id)
+        self._validate_party_not_cancelled(party_entity)
+        self._validate_party_in_future(party_entity)
+
         # Validate student party prerequisites (date and Party Smart)
         await self._validate_student_party_prerequisites(student_account_id, dto.party_datetime)
 
@@ -483,6 +529,16 @@ class PartyService:
         self.session.add(party_entity)
         await self.session.commit()
 
+        return await party_entity.load_dto(self.session)
+
+    async def cancel_party_as_student(self, party_id: int, student_account_id: int) -> PartyDto:
+        party_entity = await self._get_party_entity_by_id(party_id)
+        self._validate_party_belongs_to_student(party_entity, student_account_id)
+        self._validate_party_not_cancelled(party_entity)
+        self._validate_party_in_future(party_entity)
+        party_entity.status = PartyStatus.CANCELLED
+        self.session.add(party_entity)
+        await self.session.commit()
         return await party_entity.load_dto(self.session)
 
     async def delete_party(self, party_id: int) -> PartyDto:
