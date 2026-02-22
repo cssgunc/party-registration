@@ -22,7 +22,6 @@ const partyService = new PartyService();
 export const PartyTable = () => {
   const queryClient = useQueryClient();
   const { openSidebar, closeSidebar } = useSidebar();
-  const [sidebarMode, setSidebarMode] = useState<"create" | "edit">("create");
   const [editingParty, setEditingParty] = useState<PartyDto | null>(null);
 
   const partiesQuery = useQuery({
@@ -49,7 +48,7 @@ export const PartyTable = () => {
         "Add a new party to the system",
         <PartyTableForm
           title="New Party"
-          onSubmit={handleFormSubmit}
+          onSubmit={handleCreateSubmit}
           submissionError={errorMessage}
         />
       );
@@ -69,7 +68,10 @@ export const PartyTable = () => {
       id: number;
       payload: AdminCreatePartyDto;
     }) => partyService.updateParty(id, payload),
-    onError: (error: Error) => {
+    onError: (
+      error: Error,
+      variables: { id: number; payload: AdminCreatePartyDto }
+    ) => {
       console.error("Failed to update party:", error);
       const isNotFound =
         "response" in error &&
@@ -78,19 +80,24 @@ export const PartyTable = () => {
         ? "Student not found. Please verify the first contact email belongs to a registered student."
         : `Failed to update party: ${error.message}`;
 
-      if (editingParty) {
-        openSidebar(
-          `edit-party-${editingParty.id}`,
-          "Edit Party",
-          "Update party information",
-          <PartyTableForm
-            title="Edit Party"
-            onSubmit={handleFormSubmit}
-            editData={editingParty}
-            submissionError={errorMessage}
-          />
-        );
+      const editTarget =
+        editingParty && editingParty.id === variables.id ? editingParty : null;
+
+      if (!editTarget) {
+        return;
       }
+
+      openSidebar(
+        `edit-party-${editTarget.id}`,
+        "Edit Party",
+        "Update party information",
+        <PartyTableForm
+          title="Edit Party"
+          onSubmit={(data) => handleEditSubmit(editTarget.id, data)}
+          editData={editTarget}
+          submissionError={errorMessage}
+        />
+      );
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["parties"] });
@@ -132,14 +139,13 @@ export const PartyTable = () => {
 
   const handleEdit = (party: PartyDto) => {
     setEditingParty(party);
-    setSidebarMode("edit");
     openSidebar(
       `edit-party-${party.id}`,
       "Edit Party",
       "Update party information",
       <PartyTableForm
         title="Edit Party"
-        onSubmit={handleFormSubmit}
+        onSubmit={(data) => handleEditSubmit(party.id, data)}
         editData={party}
       />
     );
@@ -151,16 +157,15 @@ export const PartyTable = () => {
 
   const handleCreate = () => {
     setEditingParty(null);
-    setSidebarMode("create");
     openSidebar(
       "create-party",
       "New Party",
       "Add a new party to the system",
-      <PartyTableForm title="New Party" onSubmit={handleFormSubmit} />
+      <PartyTableForm title="New Party" onSubmit={handleCreateSubmit} />
     );
   };
 
-  const handleFormSubmit = async (data: {
+  const buildPayload = (data: {
     address: string;
     placeId: string;
     partyDate: Date;
@@ -192,11 +197,44 @@ export const PartyTable = () => {
       },
     };
 
-    if (sidebarMode === "edit" && editingParty) {
-      updateMutation.mutate({ id: editingParty.id, payload });
-    } else {
-      createMutation.mutate(payload);
+    return payload;
+  };
+
+  const handleCreateSubmit = async (data: {
+    address: string;
+    placeId: string;
+    partyDate: Date;
+    partyTime: string;
+    contactOneEmail: string;
+    contactTwoEmail: string;
+    contactTwoFirstName: string;
+    contactTwoLastName: string;
+    contactTwoPhoneNumber: string;
+    contactTwoPreference: "call" | "text" | string;
+  }) => {
+    const payload = buildPayload(data);
+
+    createMutation.mutate(payload);
+  };
+
+  const handleEditSubmit = async (
+    partyId: number,
+    data: {
+      address: string;
+      placeId: string;
+      partyDate: Date;
+      partyTime: string;
+      contactOneEmail: string;
+      contactTwoEmail: string;
+      contactTwoFirstName: string;
+      contactTwoLastName: string;
+      contactTwoPhoneNumber: string;
+      contactTwoPreference: "call" | "text" | string;
     }
+  ) => {
+    const payload = buildPayload(data);
+
+    updateMutation.mutate({ id: partyId, payload });
   };
   const columns: ColumnDef<PartyDto>[] = [
     {
