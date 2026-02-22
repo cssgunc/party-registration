@@ -1,0 +1,75 @@
+"use state";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useRole } from "@/contexts/RoleContext";
+import { IncidentDto } from "@/lib/api/location/location.types";
+import { ChevronDown, MoreHorizontal } from "lucide-react";
+
+type IncidentSidebarProps = {
+  incidents: IncidentDto[];
+  onDeleteIncident: (incidentId: number) => void;
+};
+export default function IncidentSidebarCard({
+  incidents,
+  onDeleteIncident,
+}: IncidentSidebarProps) {
+  const { role } = useRole();
+  return (
+    <div>
+      <Collapsible>
+        <CollapsibleTrigger className="w-full text-left">
+          <div className="flex flex-row justify-between">
+            <div className="flex gap-4">
+              <ChevronDown className="mr-2" />
+              <p className="text-md font-medium">
+                {incidents[0].incident_datetime.toLocaleDateString("en-US", {
+                  month: "2-digit",
+                  day: "2-digit",
+                })}
+              </p>
+              <p className="text-md font-medium">
+                {incidents[0].incident_datetime.toLocaleTimeString("en-US", {
+                  hour: "numeric",
+                  minute: "2-digit",
+                  hour12: true,
+                })}
+              </p>
+            </div>
+            {role === "admin" && (
+              <DropdownMenu>
+                <DropdownMenuTrigger className="ml-2">
+                  <MoreHorizontal />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem>Edit</DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => onDeleteIncident(incidents[0].id)}
+                  >
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <p className="text-sm">
+            {incidents[0].description || "No description provided."}
+            <div>
+              <strong>Severity:</strong> {incidents[0].severity || "N/A"}
+            </div>
+          </p>
+        </CollapsibleContent>
+      </Collapsible>
+    </div>
+  );
+}

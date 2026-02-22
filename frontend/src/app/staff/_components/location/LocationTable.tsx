@@ -1,12 +1,8 @@
 "use client";
 
+import { Badge } from "@/components/ui/badge";
 import { LocationService } from "@/lib/api/location/location.service";
-import {
-  LocationCreate,
-  LocationDto,
-  getCitationCount,
-  getWarningCount,
-} from "@/lib/api/location/location.types";
+import { LocationCreate, LocationDto } from "@/lib/api/location/location.types";
 import { PaginatedResponse } from "@/lib/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
@@ -14,6 +10,7 @@ import { AxiosError } from "axios";
 import { useState } from "react";
 import { useSidebar } from "../shared/sidebar/SidebarContext";
 import { TableTemplate } from "../shared/table/TableTemplate";
+import IncidentSidebar from "./IncidentSidebar";
 import LocationTableForm from "./LocationTableForm";
 
 const locationService = new LocationService();
@@ -190,14 +187,33 @@ export const LocationTable = () => {
       header: "Address",
     },
     {
-      id: "warning_count",
-      header: "Warning Count",
-      accessorFn: (row) => getWarningCount(row),
-    },
-    {
-      id: "citation_count",
-      header: "Citation Count",
-      accessorFn: (row) => getCitationCount(row),
+      id: "incidents_info_chip",
+      header: "Incidents",
+      cell: ({ row }) => {
+        console.log("Row data for incidents:", row.original);
+        return (
+          <div className="flex w-auto">
+            <Badge
+              variant="outline"
+              className="cursor-pointer"
+              onClick={() =>
+                openSidebar(
+                  `incidents-${row.original.id}`,
+                  "Incidents at Location",
+                  `Warnings & Citations go here`,
+                  <IncidentSidebar incidents={row.original.incidents} />
+                )
+              }
+            >
+              <span className="mr-1">
+                {row.original.incidents.length}{" "}
+                {row.original.incidents.length === 1 ? "incident" : "incidents"}
+              </span>
+            </Badge>
+          </div>
+        );
+      },
+      enableColumnFilter: false,
     },
     {
       accessorKey: "hold_expiration",
@@ -223,7 +239,6 @@ export const LocationTable = () => {
       },
     },
   ];
-
   return (
     <div className="space-y-4">
       <TableTemplate
