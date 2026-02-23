@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Header, status
 from src.core.authentication import authenticate_by_role
+from src.core.config import env
 from src.modules.account.account_model import AccountData
 from src.modules.account.account_service import AccountService
 from src.modules.auth.auth_model import (
@@ -8,11 +9,26 @@ from src.modules.auth.auth_model import (
     RefreshTokenDto,
     TokensDto,
 )
-from src.modules.auth.auth_service import AuthService
-from src.modules.police.police_model import PoliceAccountDto
+from src.modules.auth.auth_service import AuthService, InvalidInternalSecretException
 from src.modules.police.police_service import PoliceService
 
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
+
+
+def verify_internal_secret(
+    x_internal_secret: str = Header(..., alias="X-Internal-Secret"),
+) -> None:
+    """
+    Dependency function to verify the internal API secret.
+
+    Args:
+        x_internal_secret: The internal secret from the request header
+
+    Raises:
+        InvalidInternalSecretException: If secret is invalid
+    """
+    if x_internal_secret != env.INTERNAL_API_SECRET:
+        raise InvalidInternalSecretException()
 
 
 @router.post("/exchange")
@@ -20,7 +36,7 @@ async def exchange_account_data_for_tokens(
     data: AccountData,
     account_service: AccountService = Depends(),
     auth_service: AuthService = Depends(),
-    _: None = Depends(AuthService.verify_internal_secret),
+    _: None = Depends(verify_internal_secret),
 ) -> TokensDto:
     """
     Exchange SAML account data for JWT tokens.
@@ -33,8 +49,15 @@ async def exchange_account_data_for_tokens(
     # Get or create account by email
     try:
         account = await account_service.get_account_by_email(data.email)
-        # Update existing account
-        account = await account_service.update_account(account.id, data)
+        # Only update if data has changed
+        if (
+            account.first_name != data.first_name
+            or account.last_name != data.last_name
+            or account.pid != data.pid
+            or account.onyen != data.onyen
+            or account.role != data.role
+        ):
+            account = await account_service.update_account(account.id, data)
     except Exception:
         # Create new account
         account = await account_service.create_account(data)
@@ -48,7 +71,7 @@ async def police_login(
     credentials: PoliceCredentialsDto,
     police_service: PoliceService = Depends(),
     auth_service: AuthService = Depends(),
-    _: None = Depends(AuthService.verify_internal_secret),
+    _: None = Depends(verify_internal_secret),
 ) -> TokensDto:
     """
     Authenticate police credentials and return JWT tokens.
@@ -61,7 +84,7 @@ async def police_login(
     police = await police_service.verify_police_credentials(credentials.email, credentials.password)
 
     # Generate token pair
-    police_dto = PoliceAccountDto(email=police.email)
+    police_dto = police.to_dto()
     return await auth_service.exchange_police_for_tokens(police_dto)
 
 
@@ -69,7 +92,7 @@ async def police_login(
 async def refresh_access_token(
     data: RefreshTokenDto,
     auth_service: AuthService = Depends(),
-    _: None = Depends(AuthService.verify_internal_secret),
+    _: None = Depends(verify_internal_secret),
 ) -> AccessTokenDto:
     """
     Refresh an access token using a valid refresh token.
@@ -86,7 +109,7 @@ async def logout(
     data: RefreshTokenDto,
     auth_service: AuthService = Depends(),
     _=Depends(authenticate_by_role("student", "admin", "staff", "police")),
-) -> Response:
+) -> None:
     """
     Logout by revoking the refresh token.
 
@@ -96,4 +119,3 @@ async def logout(
     Requires valid access token in Authorization header.
     """
     await auth_service.revoke_refresh_token(data.refresh_token)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)

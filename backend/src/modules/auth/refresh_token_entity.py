@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column, relationship
+from src.core.config import env
 from src.core.database import EntityBase
 
 if TYPE_CHECKING:
@@ -18,18 +19,17 @@ class RefreshTokenEntity(MappedAsDataclass, EntityBase):
     __tablename__ = "refresh_tokens"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, init=False)
-    token_hash: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)
     account_id: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey("accounts.id", ondelete="CASCADE"),
         nullable=True,
         index=True,
-        default=None,
     )
     expires_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        default_factory=lambda: datetime.now(UTC) + timedelta(days=7),
+        default_factory=lambda: datetime.now(UTC) + timedelta(days=env.REFRESH_TOKEN_EXPIRE_DAYS),
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

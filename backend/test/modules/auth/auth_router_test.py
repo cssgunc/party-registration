@@ -4,8 +4,11 @@ from src.core.config import env
 from src.core.exceptions import CredentialsException
 from src.modules.account.account_model import AccountData, AccountRole
 from src.modules.auth.auth_model import PoliceCredentialsDto, TokensDto
+from src.modules.auth.auth_service import AuthService
 
+from test.modules.account.account_utils import AccountTestUtils
 from test.modules.auth.auth_utils import AuthTestUtils
+from test.modules.police.police_utils import PoliceTestUtils
 from test.utils.http.assertions import assert_res_failure, assert_res_success
 
 
@@ -43,6 +46,7 @@ class TestAuthRouter:
             first_name="New",
             last_name="User",
             pid="123456789",
+            onyen="newuser",
             role=AccountRole.STUDENT,
         )
 
@@ -63,7 +67,7 @@ class TestAuthRouter:
         assert payload["role"] == account_data.role.value
 
     @pytest.mark.asyncio
-    async def test_exchange_existing_account_updates(self, account_utils) -> None:
+    async def test_exchange_existing_account_updates(self, account_utils: AccountTestUtils) -> None:
         """Test exchanging existing account data updates the account."""
         # Create existing account
         existing_account = await account_utils.create_one(email="existing@unc.edu", role="student")
@@ -74,6 +78,7 @@ class TestAuthRouter:
             first_name="Updated",
             last_name="Name",
             pid=existing_account.pid,
+            onyen=existing_account.onyen,
             role=AccountRole.ADMIN,  # Role changed
         )
 
@@ -99,6 +104,7 @@ class TestAuthRouter:
             first_name="Test",
             last_name="User",
             pid="123456789",
+            onyen="testuser",
             role=AccountRole.STUDENT,
         )
 
@@ -117,6 +123,7 @@ class TestAuthRouter:
             first_name="Test",
             last_name="User",
             pid="123456789",
+            onyen="testuser",
             role=AccountRole.STUDENT,
         )
 
@@ -131,7 +138,7 @@ class TestAuthRouter:
     # ========================= /auth/police/login Tests =========================
 
     @pytest.mark.asyncio
-    async def test_police_login_success(self, police_utils) -> None:
+    async def test_police_login_success(self, police_utils: PoliceTestUtils) -> None:
         """Test police login with valid credentials."""
         police_entity = await police_utils.create_one()
 
@@ -156,7 +163,7 @@ class TestAuthRouter:
         assert payload["email"] == police_entity.email
 
     @pytest.mark.asyncio
-    async def test_police_login_wrong_password(self, police_utils) -> None:
+    async def test_police_login_wrong_password(self, police_utils: PoliceTestUtils) -> None:
         """Test police login with wrong password fails."""
         police_entity = await police_utils.create_one()
 
@@ -174,7 +181,7 @@ class TestAuthRouter:
         assert_res_failure(response, CredentialsException())
 
     @pytest.mark.asyncio
-    async def test_police_login_wrong_email(self, police_utils) -> None:
+    async def test_police_login_wrong_email(self, police_utils: PoliceTestUtils) -> None:
         """Test police login with wrong email fails."""
         await police_utils.create_one()
 
@@ -192,7 +199,9 @@ class TestAuthRouter:
         assert_res_failure(response, CredentialsException())
 
     @pytest.mark.asyncio
-    async def test_police_login_missing_internal_secret(self, police_utils) -> None:
+    async def test_police_login_missing_internal_secret(
+        self, police_utils: PoliceTestUtils
+    ) -> None:
         """Test police login without internal secret returns 422."""
         police_entity = await police_utils.create_one()
 
@@ -211,7 +220,9 @@ class TestAuthRouter:
     # ========================= /auth/refresh Tests =========================
 
     @pytest.mark.asyncio
-    async def test_refresh_access_token_success(self, auth_service, account_utils) -> None:
+    async def test_refresh_access_token_success(
+        self, auth_service: AuthService, account_utils: AccountTestUtils
+    ) -> None:
         """Test refreshing access token with valid refresh token."""
         account_entity = await account_utils.create_one()
         account = account_entity.to_dto()
@@ -247,7 +258,7 @@ class TestAuthRouter:
 
     @pytest.mark.asyncio
     async def test_refresh_access_token_missing_internal_secret(
-        self, auth_service, account_utils
+        self, auth_service: AuthService, account_utils: AccountTestUtils
     ) -> None:
         """Test refresh without internal secret returns 422."""
         account_entity = await account_utils.create_one()
@@ -263,7 +274,9 @@ class TestAuthRouter:
     # ========================= /auth/logout Tests =========================
 
     @pytest.mark.asyncio
-    async def test_logout_success(self, auth_service, account_utils) -> None:
+    async def test_logout_success(
+        self, auth_service: AuthService, account_utils: AccountTestUtils
+    ) -> None:
         """Test logout revokes refresh token."""
         account_entity = await account_utils.create_one()
         account = account_entity.to_dto()
@@ -289,7 +302,9 @@ class TestAuthRouter:
             await auth_service.validate_refresh_token(tokens.refresh_token)
 
     @pytest.mark.asyncio
-    async def test_logout_missing_access_token(self, auth_service, account_utils) -> None:
+    async def test_logout_missing_access_token(
+        self, auth_service: AuthService, account_utils: AccountTestUtils
+    ) -> None:
         """Test logout without access token fails."""
         account_entity = await account_utils.create_one()
         refresh_token, _ = await auth_service.create_refresh_token(account_entity.id)
@@ -302,7 +317,7 @@ class TestAuthRouter:
         assert response.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_logout_expired_access_token(self, account_utils) -> None:
+    async def test_logout_expired_access_token(self, account_utils: AccountTestUtils) -> None:
         """Test logout with expired access token fails."""
         account_entity = await account_utils.create_one()
         account = account_entity.to_dto()

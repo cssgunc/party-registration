@@ -18,7 +18,7 @@ so table definitions are registered with SQLAlchemy.
 """
 
 from .account.account_entity import AccountEntity
-from .auth.auth_entity import RefreshTokenEntity
+from .auth.refresh_token_entity import RefreshTokenEntity
 from .incident.incident_entity import IncidentEntity
 from .location.location_entity import LocationEntity
 from .party.party_entity import PartyEntity

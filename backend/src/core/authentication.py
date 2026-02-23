@@ -4,6 +4,8 @@ from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from src.core.exceptions import CredentialsException, ForbiddenException
 from src.modules.account.account_model import AccountDto, AccountRole
+from src.modules.auth.auth_model import AccountAccessTokenPayload, PoliceAccessTokenPayload
+from src.modules.auth.auth_service import AuthService
 from src.modules.police.police_model import PoliceAccountDto
 
 StringRole = Literal["student", "admin", "staff", "police"]
@@ -28,21 +30,20 @@ async def authenticate_user(
     Decodes JWT access token and validates it.
     Note: This only works for account tokens, not police tokens.
     """
-    from src.modules.auth.auth_service import AuthService
-
     token = authorization.credentials
     payload = AuthService.decode_access_token(token)
 
-    if payload.get("sub") != "account":
+    if not isinstance(payload, AccountAccessTokenPayload):
         raise CredentialsException()
 
     return AccountDto(
-        id=payload.get("id", 0),
-        email=payload["email"],
-        first_name=payload["first_name"],
-        last_name=payload["last_name"],
-        pid=payload["pid"],
-        role=AccountRole(payload["role"]),
+        id=payload.id,
+        email=payload.email,
+        first_name=payload.first_name,
+        last_name=payload.last_name,
+        pid=payload.pid,
+        onyen=payload.onyen,
+        role=AccountRole(payload.role),
     )
 
 
@@ -54,25 +55,23 @@ def authenticate_by_role(*roles: StringRole):
     async def _authenticate(
         authorization: HTTPAuthorizationCredentials = Depends(bearer_scheme),
     ) -> AccountDto | PoliceAccountDto:
-        from src.modules.auth.auth_service import AuthService
-
         token = authorization.credentials
         payload = AuthService.decode_access_token(token)
-        subject = payload.get("sub")
 
-        if subject == "police":
+        if isinstance(payload, PoliceAccessTokenPayload):
             if "police" not in roles:
                 raise ForbiddenException(detail="Insufficient privileges")
-            return PoliceAccountDto(email=payload["email"])
+            return PoliceAccountDto(email=payload.email)
 
-        elif subject == "account":
+        elif isinstance(payload, AccountAccessTokenPayload):
             account = AccountDto(
-                id=payload.get("id", 0),
-                email=payload["email"],
-                first_name=payload["first_name"],
-                last_name=payload["last_name"],
-                pid=payload["pid"],
-                role=AccountRole(payload["role"]),
+                id=payload.id,
+                email=payload.email,
+                first_name=payload.first_name,
+                last_name=payload.last_name,
+                pid=payload.pid,
+                onyen=payload.onyen,
+                role=AccountRole(payload.role),
             )
             if account.role.value not in roles:
                 raise ForbiddenException(detail="Insufficient privileges")

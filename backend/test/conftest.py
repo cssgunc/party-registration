@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio.engine import AsyncEngine
 from src.core.authentication import StringRole
 from src.core.database import EntityBase, database_url, get_session
 from src.main import app
+from src.modules.account.account_entity import AccountEntity
 from src.modules.account.account_service import AccountService
 from src.modules.incident.incident_service import IncidentService
 from src.modules.location.location_service import LocationService
@@ -130,6 +131,7 @@ async def create_test_client(
                 first_name="Test",
                 last_name="User",
                 pid="111111111",
+                onyen=f"test{role}",
                 role=AccountRole(role),
             )
             token, _ = AuthService.create_account_access_token(account)
@@ -170,6 +172,7 @@ async def student_account(test_session: AsyncSession):
         first_name="Test",
         last_name="Student",
         pid="000000001",
+        onyen="teststudent",
         role=AccountRole.STUDENT,
     )
     test_session.add(account)
@@ -178,7 +181,7 @@ async def student_account(test_session: AsyncSession):
 
 
 @pytest_asyncio.fixture
-async def student_client(test_session: AsyncSession, student_account):
+async def student_client(test_session: AsyncSession, student_account: AccountEntity):
     """Client authenticated as the test student account."""
     from src.modules.account.account_model import AccountDto, AccountRole
     from src.modules.auth.auth_service import AuthService
@@ -194,6 +197,7 @@ async def student_client(test_session: AsyncSession, student_account):
         first_name=student_account.first_name,
         last_name=student_account.last_name,
         pid=student_account.pid,
+        onyen=student_account.onyen,
         role=AccountRole.STUDENT,
     )
     token, _ = AuthService.create_account_access_token(account_dto)

@@ -1,14 +1,16 @@
-import hashlib
 from datetime import UTC, datetime, timedelta
 
 import pytest
 from src.core.config import env
 from src.core.exceptions import CredentialsException
 from src.modules.account.account_model import AccountDto, AccountRole
+from src.modules.auth.auth_model import AccountAccessTokenPayload
 from src.modules.auth.auth_service import AuthService, InvalidRefreshTokenException
 from src.modules.police.police_model import PoliceAccountDto
 
+from test.modules.account.account_utils import AccountTestUtils
 from test.modules.auth.auth_utils import AuthTestUtils
+from test.modules.police.police_utils import PoliceTestUtils
 
 
 class TestAuthService:
@@ -35,6 +37,7 @@ class TestAuthService:
             first_name="Test",
             last_name="User",
             pid="111111111",
+            onyen="testuser",
             role=AccountRole.STUDENT,
         )
 
@@ -80,15 +83,17 @@ class TestAuthService:
             first_name="Test",
             last_name="User",
             pid="111111111",
+            onyen="testuser",
             role=AccountRole.ADMIN,
         )
 
         token = self.auth_utils.create_mock_access_token(account=account)
         payload = AuthService.decode_access_token(token)
 
-        assert payload["sub"] == "account"
-        assert payload["email"] == account.email
-        assert payload["role"] == "admin"
+        assert isinstance(payload, AccountAccessTokenPayload)
+        assert payload.sub == "account"
+        assert payload.email == account.email
+        assert payload.role == "admin"
 
     @pytest.mark.asyncio
     async def test_decode_access_token_expired(self) -> None:
@@ -99,6 +104,7 @@ class TestAuthService:
             first_name="Test",
             last_name="User",
             pid="111111111",
+            onyen="testuser",
             role=AccountRole.STUDENT,
         )
 
@@ -116,7 +122,7 @@ class TestAuthService:
     # ========================= Refresh Token Tests =========================
 
     @pytest.mark.asyncio
-    async def test_create_refresh_token_account(self, account_utils) -> None:
+    async def test_create_refresh_token_account(self, account_utils: AccountTestUtils) -> None:
         """Test creating refresh token for account."""
         account_entity = await account_utils.create_one()
         account_id = account_entity.id
@@ -124,7 +130,7 @@ class TestAuthService:
         token, expires_at = await self.auth_service.create_refresh_token(account_id)
 
         # Decode and verify (sub is stored as string)
-        payload = self.auth_utils.decode_token(token)
+        payload = self.auth_utils.decode_token(token, env.REFRESH_TOKEN_SECRET_KEY)
         assert payload["sub"] == str(account_id)
         assert "jti" in payload
 
@@ -135,11 +141,11 @@ class TestAuthService:
 
         # Verify token hash is stored in database
         jti = payload["jti"]
-        token_hash = hashlib.sha256(jti.encode()).hexdigest()
+        token_hash = AuthService._hash_token_id(jti)
 
         # Query database to verify
         from sqlalchemy import select
-        from src.modules.auth.auth_entity import RefreshTokenEntity
+        from src.modules.auth.refresh_token_entity import RefreshTokenEntity
 
         result = await self.auth_service.session.execute(
             select(RefreshTokenEntity).where(RefreshTokenEntity.token_hash == token_hash)
@@ -156,16 +162,16 @@ class TestAuthService:
         token, _ = await self.auth_service.create_refresh_token(None)
 
         # Decode and verify (sub is "police" sentinel for police tokens)
-        payload = self.auth_utils.decode_token(token)
+        payload = self.auth_utils.decode_token(token, env.REFRESH_TOKEN_SECRET_KEY)
         assert payload["sub"] == "police"
         assert "jti" in payload
 
         # Verify token hash is stored in database
         jti = payload["jti"]
-        token_hash = hashlib.sha256(jti.encode()).hexdigest()
+        token_hash = AuthService._hash_token_id(jti)
 
         from sqlalchemy import select
-        from src.modules.auth.auth_entity import RefreshTokenEntity
+        from src.modules.auth.refresh_token_entity import RefreshTokenEntity
 
         result = await self.auth_service.session.execute(
             select(RefreshTokenEntity).where(RefreshTokenEntity.token_hash == token_hash)
@@ -176,7 +182,7 @@ class TestAuthService:
         assert entity.account_id is None
 
     @pytest.mark.asyncio
-    async def test_validate_refresh_token_valid(self, account_utils) -> None:
+    async def test_validate_refresh_token_valid(self, account_utils: AccountTestUtils) -> None:
         """Test validating a valid refresh token."""
         account_entity = await account_utils.create_one()
         account_id = account_entity.id
@@ -191,7 +197,7 @@ class TestAuthService:
         """Test validating an expired refresh token raises exception."""
         # Create police entity with past expiration (no FK constraint for None account_id)
         jti = "test-jti-expired"
-        token_hash = hashlib.sha256(jti.encode()).hexdigest()
+        token_hash = AuthService._hash_token_id(jti)
         await self.auth_utils.create_refresh_token_entity(
             account_id=None,
             token_hash=token_hash,
@@ -207,10 +213,20 @@ class TestAuthService:
             "exp": datetime.now(UTC) + timedelta(hours=1),
             "iat": datetime.now(UTC),
         }
-        token = jwt.encode(payload, env.JWT_SECRET_KEY, algorithm=env.JWT_ALGORITHM)
+        token = jwt.encode(payload, env.REFRESH_TOKEN_SECRET_KEY, algorithm=env.JWT_ALGORITHM)
 
         with pytest.raises(InvalidRefreshTokenException):
             await self.auth_service.validate_refresh_token(token)
+
+        # Verify the expired token was deleted from the database
+        from sqlalchemy import select
+        from src.modules.auth.refresh_token_entity import RefreshTokenEntity
+
+        result = await self.auth_service.session.execute(
+            select(RefreshTokenEntity).where(RefreshTokenEntity.token_hash == token_hash)
+        )
+        deleted_entity = result.scalar_one_or_none()
+        assert deleted_entity is None
 
     @pytest.mark.asyncio
     async def test_validate_refresh_token_not_in_allowlist(self) -> None:
@@ -224,7 +240,7 @@ class TestAuthService:
             "exp": datetime.now(UTC) + timedelta(days=7),
             "iat": datetime.now(UTC),
         }
-        token = jwt.encode(payload, env.JWT_SECRET_KEY, algorithm=env.JWT_ALGORITHM)
+        token = jwt.encode(payload, env.REFRESH_TOKEN_SECRET_KEY, algorithm=env.JWT_ALGORITHM)
 
         with pytest.raises(InvalidRefreshTokenException):
             await self.auth_service.validate_refresh_token(token)
@@ -236,7 +252,7 @@ class TestAuthService:
             await self.auth_service.validate_refresh_token("invalid.jwt.token")
 
     @pytest.mark.asyncio
-    async def test_revoke_refresh_token(self, account_utils) -> None:
+    async def test_revoke_refresh_token(self, account_utils: AccountTestUtils) -> None:
         """Test revoking a refresh token removes it from database."""
         account_entity = await account_utils.create_one()
         account_id = account_entity.id
@@ -264,7 +280,7 @@ class TestAuthService:
             "exp": datetime.now(UTC) + timedelta(days=7),
             "iat": datetime.now(UTC),
         }
-        token = jwt.encode(payload, env.JWT_SECRET_KEY, algorithm=env.JWT_ALGORITHM)
+        token = jwt.encode(payload, env.REFRESH_TOKEN_SECRET_KEY, algorithm=env.JWT_ALGORITHM)
 
         # Should not raise exception
         await self.auth_service.revoke_refresh_token(token)
@@ -278,7 +294,7 @@ class TestAuthService:
     # ========================= High-Level Operations Tests =========================
 
     @pytest.mark.asyncio
-    async def test_exchange_account_for_tokens(self, account_utils) -> None:
+    async def test_exchange_account_for_tokens(self, account_utils: AccountTestUtils) -> None:
         """Test exchanging account for token pair."""
         account_entity = await account_utils.create_one()
         account = account_entity.to_dto()
@@ -291,7 +307,9 @@ class TestAuthService:
         assert access_payload["email"] == account.email
 
         # Verify refresh token (sub is string)
-        refresh_payload = self.auth_utils.decode_token(tokens.refresh_token)
+        refresh_payload = self.auth_utils.decode_token(
+            tokens.refresh_token, env.REFRESH_TOKEN_SECRET_KEY
+        )
         assert refresh_payload["sub"] == str(account.id)
 
     @pytest.mark.asyncio
@@ -307,11 +325,13 @@ class TestAuthService:
         assert access_payload["email"] == police.email
 
         # Verify refresh token (sub is "police" sentinel)
-        refresh_payload = self.auth_utils.decode_token(tokens.refresh_token)
+        refresh_payload = self.auth_utils.decode_token(
+            tokens.refresh_token, env.REFRESH_TOKEN_SECRET_KEY
+        )
         assert refresh_payload["sub"] == "police"
 
     @pytest.mark.asyncio
-    async def test_refresh_access_token_account(self, account_utils) -> None:
+    async def test_refresh_access_token_account(self, account_utils: AccountTestUtils) -> None:
         """Test refreshing access token for account."""
         account_entity = await account_utils.create_one()
         account = account_entity.to_dto()
@@ -328,7 +348,7 @@ class TestAuthService:
         assert payload["email"] == account.email
 
     @pytest.mark.asyncio
-    async def test_refresh_access_token_police(self, police_utils) -> None:
+    async def test_refresh_access_token_police(self, police_utils: PoliceTestUtils) -> None:
         """Test refreshing access token for police."""
         police_entity = await police_utils.create_one()
 

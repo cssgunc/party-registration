@@ -5,7 +5,7 @@ import jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.config import env
 from src.modules.account.account_model import AccountDto, AccountRole
-from src.modules.auth.auth_entity import RefreshTokenEntity
+from src.modules.auth.refresh_token_entity import RefreshTokenEntity
 from src.modules.police.police_model import PoliceAccountDto
 
 
@@ -70,6 +70,7 @@ class AuthTestUtils:
                 first_name="Test",
                 last_name="User",
                 pid="111111111",
+                onyen="testuser",
                 role=AccountRole.STUDENT,
             )
 
@@ -81,15 +82,18 @@ class AuthTestUtils:
         if account:
             payload = {
                 "sub": "account",
+                "id": account.id,
                 "email": account.email,
                 "first_name": account.first_name,
                 "last_name": account.last_name,
                 "pid": account.pid,
+                "onyen": account.onyen,
                 "role": account.role.value,
                 "exp": expires_at,
                 "iat": datetime.now(UTC),
             }
         else:
+            assert police is not None
             payload = {
                 "sub": "police",
                 "email": police.email,
@@ -100,11 +104,13 @@ class AuthTestUtils:
         return jwt.encode(payload, env.JWT_SECRET_KEY, algorithm=env.JWT_ALGORITHM)
 
     @staticmethod
-    def decode_token(token: str) -> dict:
+    def decode_token(token: str, secret_key: str | None = None) -> dict:
         """Decode a JWT token without expiry validation (for testing)."""
+        if secret_key is None:
+            secret_key = env.JWT_SECRET_KEY
         return jwt.decode(
             token,
-            env.JWT_SECRET_KEY,
+            secret_key,
             algorithms=[env.JWT_ALGORITHM],
             options={"verify_exp": False, "verify_sub": False},
         )

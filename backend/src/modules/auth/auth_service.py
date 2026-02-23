@@ -3,7 +3,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import jwt
-from fastapi import Depends, Header
+from fastapi import Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.config import env
@@ -11,8 +11,14 @@ from src.core.database import get_session
 from src.core.exceptions import CredentialsException, ForbiddenException
 from src.modules.account.account_model import AccountDto
 from src.modules.account.account_service import AccountService
-from src.modules.auth.auth_entity import RefreshTokenEntity
-from src.modules.auth.auth_model import AccessTokenDto, TokensDto
+from src.modules.auth.auth_model import (
+    AccessTokenDto,
+    AccountAccessTokenPayload,
+    PoliceAccessTokenPayload,
+    RefreshTokenPayload,
+    TokensDto,
+)
+from src.modules.auth.refresh_token_entity import RefreshTokenEntity
 from src.modules.police.police_model import PoliceAccountDto
 from src.modules.police.police_service import PoliceService
 
@@ -31,8 +37,29 @@ class InvalidInternalSecretException(ForbiddenException):
 
 
 class AuthService:
-    def __init__(self, session: AsyncSession = Depends(get_session)):
+    def __init__(
+        self,
+        session: AsyncSession = Depends(get_session),
+        account_service: AccountService = Depends(),
+        police_service: PoliceService = Depends(),
+    ):
         self.session = session
+        self.account_service = account_service
+        self.police_service = police_service
+
+    # Helper Methods
+    @staticmethod
+    def _hash_token_id(jti: str) -> str:
+        """
+        Hash a JWT token ID (jti) using SHA256.
+
+        Args:
+            jti: The JWT token ID to hash
+
+        Returns:
+            str: Hexadecimal SHA256 hash of the jti
+        """
+        return hashlib.sha256(jti.encode()).hexdigest()
 
     # JWT Operations (static methods)
     @staticmethod
@@ -46,19 +73,20 @@ class AuthService:
         expires_delta = timedelta(minutes=env.ACCESS_TOKEN_EXPIRE_MINUTES)
         expires_at = datetime.now(UTC) + expires_delta
 
-        payload = {
-            "sub": "account",
-            "id": account.id,
-            "email": account.email,
-            "first_name": account.first_name,
-            "last_name": account.last_name,
-            "pid": account.pid,
-            "role": account.role.value,
-            "exp": expires_at,
-            "iat": datetime.now(UTC),
-        }
+        payload = AccountAccessTokenPayload(
+            sub="account",
+            id=account.id,
+            email=account.email,
+            first_name=account.first_name,
+            last_name=account.last_name,
+            pid=account.pid,
+            onyen=account.onyen,
+            role=account.role.value,
+            exp=expires_at,
+            iat=datetime.now(UTC),
+        )
 
-        token = jwt.encode(payload, env.JWT_SECRET_KEY, algorithm=env.JWT_ALGORITHM)
+        token = jwt.encode(payload.model_dump(), env.JWT_SECRET_KEY, algorithm=env.JWT_ALGORITHM)
         return token, expires_at
 
     @staticmethod
@@ -72,18 +100,18 @@ class AuthService:
         expires_delta = timedelta(minutes=env.ACCESS_TOKEN_EXPIRE_MINUTES)
         expires_at = datetime.now(UTC) + expires_delta
 
-        payload = {
-            "sub": "police",
-            "email": police.email,
-            "exp": expires_at,
-            "iat": datetime.now(UTC),
-        }
+        payload = PoliceAccessTokenPayload(
+            sub="police",
+            email=police.email,
+            exp=expires_at,
+            iat=datetime.now(UTC),
+        )
 
-        token = jwt.encode(payload, env.JWT_SECRET_KEY, algorithm=env.JWT_ALGORITHM)
+        token = jwt.encode(payload.model_dump(), env.JWT_SECRET_KEY, algorithm=env.JWT_ALGORITHM)
         return token, expires_at
 
     @staticmethod
-    def decode_access_token(token: str) -> dict:
+    def decode_access_token(token: str) -> AccountAccessTokenPayload | PoliceAccessTokenPayload:
         """
         Decode and validate a JWT access token.
 
@@ -91,17 +119,28 @@ class AuthService:
             token: The JWT token to decode
 
         Returns:
-            dict: The decoded token payload
+            AccountAccessTokenPayload | PoliceAccessTokenPayload: The validated token payload
 
         Raises:
-            CredentialsException: If token is invalid or expired
+            CredentialsException: If token is invalid, expired, or malformed
         """
         try:
             payload = jwt.decode(token, env.JWT_SECRET_KEY, algorithms=[env.JWT_ALGORITHM])
-            return payload
+
+            # Validate against the appropriate model based on sub
+            sub = payload.get("sub")
+            if sub == "account":
+                return AccountAccessTokenPayload(**payload)
+            elif sub == "police":
+                return PoliceAccessTokenPayload(**payload)
+            else:
+                raise CredentialsException()
         except jwt.ExpiredSignatureError as e:
             raise CredentialsException() from e
         except jwt.InvalidTokenError as e:
+            raise CredentialsException() from e
+        except Exception as e:
+            # Catch Pydantic validation errors
             raise CredentialsException() from e
 
     # Refresh Token Management (async methods)
@@ -120,17 +159,19 @@ class AuthService:
         jti = str(uuid4())
 
         # JWT sub must be a string; use "police" sentinel for police tokens
-        payload = {
-            "jti": jti,
-            "sub": str(account_id) if account_id is not None else "police",
-            "exp": expires_at,
-            "iat": datetime.now(UTC),
-        }
+        payload = RefreshTokenPayload(
+            jti=jti,
+            sub=str(account_id) if account_id is not None else "police",
+            exp=expires_at,
+            iat=datetime.now(UTC),
+        )
 
-        token = jwt.encode(payload, env.JWT_SECRET_KEY, algorithm=env.JWT_ALGORITHM)
+        token = jwt.encode(
+            payload.model_dump(), env.REFRESH_TOKEN_SECRET_KEY, algorithm=env.JWT_ALGORITHM
+        )
 
         # Hash the jti and store in database
-        token_hash = hashlib.sha256(jti.encode()).hexdigest()
+        token_hash = self._hash_token_id(jti)
         refresh_token_entity = RefreshTokenEntity(
             account_id=account_id,
             token_hash=token_hash,
@@ -154,9 +195,14 @@ class AuthService:
 
         Raises:
             InvalidRefreshTokenException: If token is invalid or not in allow-list
+
+        Note:
+            Expired tokens are automatically deleted from the database
         """
         try:
-            payload = jwt.decode(token, env.JWT_SECRET_KEY, algorithms=[env.JWT_ALGORITHM])
+            payload = jwt.decode(
+                token, env.REFRESH_TOKEN_SECRET_KEY, algorithms=[env.JWT_ALGORITHM]
+            )
         except jwt.ExpiredSignatureError as e:
             raise InvalidRefreshTokenException() from e
         except jwt.InvalidTokenError as e:
@@ -167,7 +213,7 @@ class AuthService:
             raise InvalidRefreshTokenException()
 
         # Hash the jti and look it up in the database
-        token_hash = hashlib.sha256(jti.encode()).hexdigest()
+        token_hash = self._hash_token_id(jti)
         result = await self.session.execute(
             select(RefreshTokenEntity).where(RefreshTokenEntity.token_hash == token_hash)
         )
@@ -176,8 +222,10 @@ class AuthService:
         if refresh_token_entity is None:
             raise InvalidRefreshTokenException()
 
-        # Check if token is expired
+        # Check if token is expired and clean up if so
         if refresh_token_entity.expires_at < datetime.now(UTC):
+            await self.session.delete(refresh_token_entity)
+            await self.session.commit()
             raise InvalidRefreshTokenException()
 
         return refresh_token_entity.account_id
@@ -195,13 +243,13 @@ class AuthService:
         try:
             payload = jwt.decode(
                 token,
-                env.JWT_SECRET_KEY,
+                env.REFRESH_TOKEN_SECRET_KEY,
                 algorithms=[env.JWT_ALGORITHM],
                 options={"verify_exp": False},
             )
             jti = payload.get("jti")
             if jti:
-                token_hash = hashlib.sha256(jti.encode()).hexdigest()
+                token_hash = self._hash_token_id(jti)
                 result = await self.session.execute(
                     select(RefreshTokenEntity).where(RefreshTokenEntity.token_hash == token_hash)
                 )
@@ -271,31 +319,12 @@ class AuthService:
 
         if account_id is None:
             # Police token
-            police_service = PoliceService(self.session)
-            police = await police_service.get_police()
-            police_dto = PoliceAccountDto(email=police.email)
+            police = await self.police_service.get_police()
+            police_dto = police.to_dto()
             access_token, access_expires = self.create_police_access_token(police_dto)
         else:
             # Account token
-            account_service = AccountService(self.session)
-            account = await account_service.get_account_by_id(account_id)
+            account = await self.account_service.get_account_by_id(account_id)
             access_token, access_expires = self.create_account_access_token(account)
 
         return AccessTokenDto(access_token=access_token, access_token_expires=access_expires)
-
-    # Internal Secret Verification
-    @staticmethod
-    def verify_internal_secret(
-        x_internal_secret: str = Header(..., alias="X-Internal-Secret"),
-    ) -> None:
-        """
-        Dependency function to verify the internal API secret.
-
-        Args:
-            x_internal_secret: The internal secret from the request header
-
-        Raises:
-            InvalidInternalSecretException: If secret is invalid
-        """
-        if x_internal_secret != env.INTERNAL_API_SECRET:
-            raise InvalidInternalSecretException()
