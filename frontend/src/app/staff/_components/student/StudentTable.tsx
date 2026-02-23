@@ -38,7 +38,7 @@ export const StudentTable = () => {
     }: {
       id: number;
       data: Omit<StudentDto, "id" | "email" | "pid">;
-      source?: "form" | "inline";
+      source?: "form";
       editData?: StudentDto;
     }) => studentService.updateStudent(id, data),
     // Optimistically update the student in the cache so things like the
