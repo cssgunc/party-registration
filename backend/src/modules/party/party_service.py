@@ -386,8 +386,8 @@ class PartyService:
 
     async def create_party_from_admin_dto(self, dto: AdminCreatePartyDto) -> PartyDto:
         """Create a party registration from an admin. Both contacts must be specified."""
-        # Get/create location and validate no hold
-        location = await self._validate_and_get_location(dto.google_place_id)
+        # Get/create location (admins skip hold validation)
+        location = await self.location_service.get_or_create_location(dto.google_place_id)
 
         # Get contact_one by email
         contact_one = await self._get_student_by_email(dto.contact_one_email)
@@ -457,8 +457,8 @@ class PartyService:
         # Get existing party
         party_entity = await self._get_party_entity_by_id(party_id)
 
-        # Get/create location and validate no hold
-        location = await self._validate_and_get_location(dto.google_place_id)
+        # Get/create location (admins skip hold validation)
+        location = await self.location_service.get_or_create_location(dto.google_place_id)
 
         # Get contact_one by email
         contact_one_student = await self._get_student_by_email(dto.contact_one_email)
