@@ -1,4 +1,3 @@
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import axios, { AxiosRequestConfig, AxiosRequestHeaders } from "axios";
 import { getServerSession } from "next-auth";
 import { getSession, signOut } from "next-auth/react";
@@ -32,6 +31,7 @@ const processQueue = (error: Error | null, token: string | null = null) => {
 // callback to refresh the token.
 async function resolveFreshAccessToken(): Promise<string | undefined> {
   if (typeof window === "undefined") {
+    const { authOptions } = await import("@/app/api/auth/[...nextauth]/route");
     const session = await getServerSession(authOptions);
     return session?.accessToken as string | undefined;
   } else {
