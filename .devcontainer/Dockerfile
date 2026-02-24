@@ -83,7 +83,7 @@ COPY pyproject.toml /workspace/pyproject.toml
 RUN pip install -e ".[dev]"
 
 # Install Backend Dependencies
-COPY backend/ /workspace/backend/
+COPY backend/pyproject.toml /workspace/backend/pyproject.toml
 RUN pip install -e /workspace/backend
 
 # Configure zsh

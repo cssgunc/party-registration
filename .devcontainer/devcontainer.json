@@ -1,4 +1,3 @@
-
 {
   "dockerComposeFile": "docker-compose.yml",
   "workspaceFolder": "/workspace",
