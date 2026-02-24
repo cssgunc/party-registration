@@ -11,10 +11,10 @@ from src.modules.party.party_model import ContactDto, PartyDto, PartyStatus
 from src.modules.party.party_service import (
     ContactTwoMatchesContactOneException,
     PartyCancelledException,
+    PartyDateTooSoonException,
     PartyInPastException,
     PartyNotFoundException,
     PartyNotOwnedByStudentException,
-    PartyDateTooSoonException,
     PartySmartNotCompletedException,
 )
 from src.modules.student.student_entity import StudentEntity
