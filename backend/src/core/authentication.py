@@ -22,31 +22,6 @@ class HTTPBearer401(HTTPBearer):
 bearer_scheme = HTTPBearer401()
 
 
-async def authenticate_user(
-    authorization: HTTPAuthorizationCredentials = Depends(bearer_scheme),
-) -> AccountDto:
-    """
-    Middleware to authenticate user from Bearer token.
-    Decodes JWT access token and validates it.
-    Note: This only works for account tokens, not police tokens.
-    """
-    token = authorization.credentials
-    payload = AuthService.decode_access_token(token)
-
-    if not isinstance(payload, AccountAccessTokenPayload):
-        raise CredentialsException()
-
-    return AccountDto(
-        id=payload.id,
-        email=payload.email,
-        first_name=payload.first_name,
-        last_name=payload.last_name,
-        pid=payload.pid,
-        onyen=payload.onyen,
-        role=AccountRole(payload.role),
-    )
-
-
 def authenticate_by_role(*roles: StringRole):
     """
     Middleware factory to ensure the authenticated user has one of the specified roles.
@@ -54,9 +29,10 @@ def authenticate_by_role(*roles: StringRole):
 
     async def _authenticate(
         authorization: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+        auth_service: AuthService = Depends(),
     ) -> AccountDto | PoliceAccountDto:
         token = authorization.credentials
-        payload = AuthService.decode_access_token(token)
+        payload = auth_service.decode_access_token(token)
 
         if isinstance(payload, PoliceAccessTokenPayload):
             if "police" not in roles:
@@ -65,7 +41,7 @@ def authenticate_by_role(*roles: StringRole):
 
         elif isinstance(payload, AccountAccessTokenPayload):
             account = AccountDto(
-                id=payload.id,
+                id=payload.sub,
                 email=payload.email,
                 first_name=payload.first_name,
                 last_name=payload.last_name,
@@ -81,6 +57,18 @@ def authenticate_by_role(*roles: StringRole):
             raise CredentialsException()
 
     return _authenticate
+
+
+async def authenticate_user(
+    account: AccountDto | PoliceAccountDto = Depends(
+        authenticate_by_role("student", "staff", "admin", "police")
+    ),
+) -> AccountDto | PoliceAccountDto:
+    """
+    Middleware to authenticate any user from Bearer token.
+    Accepts account tokens (student/staff/admin) and police tokens.
+    """
+    return account
 
 
 async def authenticate_admin(

@@ -2,9 +2,11 @@ import hashlib
 from datetime import UTC, datetime, timedelta
 
 import jwt
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.config import env
 from src.modules.account.account_model import AccountDto, AccountRole
+from src.modules.auth.auth_model import AccountAccessTokenPayload, PoliceAccessTokenPayload
 from src.modules.auth.refresh_token_entity import RefreshTokenEntity
 from src.modules.police.police_model import PoliceAccountDto
 
@@ -23,7 +25,6 @@ class AuthTestUtils:
     ) -> RefreshTokenEntity:
         """Create a refresh token entity in the database."""
         if token_hash is None:
-            # Generate a random hash for testing
             import uuid
 
             token_hash = hashlib.sha256(str(uuid.uuid4()).encode()).hexdigest()
@@ -41,6 +42,23 @@ class AuthTestUtils:
         await self.session.commit()
         await self.session.refresh(entity)
         return entity
+
+    async def get_refresh_token_entity(self, token: str) -> RefreshTokenEntity | None:
+        """Get refresh token entity from DB by raw token."""
+        payload = jwt.decode(
+            token,
+            env.REFRESH_TOKEN_SECRET_KEY,
+            algorithms=[env.JWT_ALGORITHM],
+            options={"verify_exp": False},
+        )
+        jti = payload.get("jti")
+        if not jti:
+            return None
+        token_hash = hashlib.sha256(jti.encode()).hexdigest()
+        result = await self.session.execute(
+            select(RefreshTokenEntity).where(RefreshTokenEntity.token_hash == token_hash)
+        )
+        return result.scalar_one_or_none()
 
     @staticmethod
     def create_mock_access_token(
@@ -63,7 +81,6 @@ class AuthTestUtils:
             raise ValueError("Cannot create token for both account and police")
 
         if not account and not police:
-            # Create a default account token
             account = AccountDto(
                 id=1,
                 email="test@unc.edu",
@@ -80,26 +97,26 @@ class AuthTestUtils:
             expires_at = datetime.now(UTC) + timedelta(minutes=env.ACCESS_TOKEN_EXPIRE_MINUTES)
 
         if account:
-            payload = {
-                "sub": "account",
-                "id": account.id,
-                "email": account.email,
-                "first_name": account.first_name,
-                "last_name": account.last_name,
-                "pid": account.pid,
-                "onyen": account.onyen,
-                "role": account.role.value,
-                "exp": expires_at,
-                "iat": datetime.now(UTC),
-            }
+            payload = AccountAccessTokenPayload(
+                sub=account.id,
+                email=account.email,
+                first_name=account.first_name,
+                last_name=account.last_name,
+                pid=account.pid,
+                onyen=account.onyen,
+                role=account.role.value,
+                exp=expires_at,
+                iat=datetime.now(UTC),
+            ).model_dump()
         else:
             assert police is not None
-            payload = {
-                "sub": "police",
-                "email": police.email,
-                "exp": expires_at,
-                "iat": datetime.now(UTC),
-            }
+            payload = PoliceAccessTokenPayload(
+                sub="police",
+                email=police.email,
+                role="police",
+                exp=expires_at,
+                iat=datetime.now(UTC),
+            ).model_dump()
 
         return jwt.encode(payload, env.JWT_SECRET_KEY, algorithm=env.JWT_ALGORITHM)
 
@@ -114,3 +131,29 @@ class AuthTestUtils:
             algorithms=[env.JWT_ALGORITHM],
             options={"verify_exp": False, "verify_sub": False},
         )
+
+    @staticmethod
+    def assert_account_token_payload(payload: dict, account: AccountDto) -> None:
+        """Assert that a decoded access token payload matches the given account."""
+        assert payload["sub"] == account.id
+        assert payload["email"] == account.email
+        assert payload["first_name"] == account.first_name
+        assert payload["last_name"] == account.last_name
+        assert payload["pid"] == account.pid
+        assert payload["onyen"] == account.onyen
+        assert payload["role"] == account.role.value
+
+    @staticmethod
+    def assert_police_token_payload(payload: dict, police: PoliceAccountDto) -> None:
+        """Assert that a decoded access token payload matches the given police account."""
+        assert payload["sub"] == "police"
+        assert payload["email"] == police.email
+        assert payload["role"] == "police"
+
+    @staticmethod
+    def assert_expiration_approx(
+        expires_at: datetime, expected_seconds: int, tolerance: int = 5
+    ) -> None:
+        """Assert that an expiration time is approximately the expected number of seconds away."""
+        actual_seconds = (expires_at - datetime.now(UTC)).total_seconds()
+        assert abs(actual_seconds - expected_seconds) < tolerance

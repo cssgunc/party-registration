@@ -1,9 +1,11 @@
 import hashlib
 from datetime import UTC, datetime, timedelta
+from typing import Literal
 from uuid import uuid4
 
 import jwt
 from fastapi import Depends
+from pydantic import TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.config import env
@@ -13,6 +15,7 @@ from src.modules.account.account_model import AccountDto
 from src.modules.account.account_service import AccountService
 from src.modules.auth.auth_model import (
     AccessTokenDto,
+    AccessTokenPayload,
     AccountAccessTokenPayload,
     PoliceAccessTokenPayload,
     RefreshTokenPayload,
@@ -61,9 +64,8 @@ class AuthService:
         """
         return hashlib.sha256(jti.encode()).hexdigest()
 
-    # JWT Operations (static methods)
-    @staticmethod
-    def create_account_access_token(account: AccountDto) -> tuple[str, datetime]:
+    # JWT Operations (instance methods)
+    def create_account_access_token(self, account: AccountDto) -> tuple[str, datetime]:
         """
         Create a JWT access token for a university account.
 
@@ -74,8 +76,7 @@ class AuthService:
         expires_at = datetime.now(UTC) + expires_delta
 
         payload = AccountAccessTokenPayload(
-            sub="account",
-            id=account.id,
+            sub=account.id,
             email=account.email,
             first_name=account.first_name,
             last_name=account.last_name,
@@ -89,8 +90,7 @@ class AuthService:
         token = jwt.encode(payload.model_dump(), env.JWT_SECRET_KEY, algorithm=env.JWT_ALGORITHM)
         return token, expires_at
 
-    @staticmethod
-    def create_police_access_token(police: PoliceAccountDto) -> tuple[str, datetime]:
+    def create_police_access_token(self, police: PoliceAccountDto) -> tuple[str, datetime]:
         """
         Create a JWT access token for a police account.
 
@@ -103,6 +103,7 @@ class AuthService:
         payload = PoliceAccessTokenPayload(
             sub="police",
             email=police.email,
+            role="police",
             exp=expires_at,
             iat=datetime.now(UTC),
         )
@@ -110,8 +111,9 @@ class AuthService:
         token = jwt.encode(payload.model_dump(), env.JWT_SECRET_KEY, algorithm=env.JWT_ALGORITHM)
         return token, expires_at
 
-    @staticmethod
-    def decode_access_token(token: str) -> AccountAccessTokenPayload | PoliceAccessTokenPayload:
+    def decode_access_token(
+        self, token: str
+    ) -> AccountAccessTokenPayload | PoliceAccessTokenPayload:
         """
         Decode and validate a JWT access token.
 
@@ -125,16 +127,13 @@ class AuthService:
             CredentialsException: If token is invalid, expired, or malformed
         """
         try:
-            payload = jwt.decode(token, env.JWT_SECRET_KEY, algorithms=[env.JWT_ALGORITHM])
-
-            # Validate against the appropriate model based on sub
-            sub = payload.get("sub")
-            if sub == "account":
-                return AccountAccessTokenPayload(**payload)
-            elif sub == "police":
-                return PoliceAccessTokenPayload(**payload)
-            else:
-                raise CredentialsException()
+            payload = jwt.decode(
+                token,
+                env.JWT_SECRET_KEY,
+                algorithms=[env.JWT_ALGORITHM],
+                options={"verify_sub": False},
+            )
+            return TypeAdapter(AccessTokenPayload).validate_python(payload)
         except jwt.ExpiredSignatureError as e:
             raise CredentialsException() from e
         except jwt.InvalidTokenError as e:
@@ -144,12 +143,14 @@ class AuthService:
             raise CredentialsException() from e
 
     # Refresh Token Management (async methods)
-    async def create_refresh_token(self, account_id: int | None) -> tuple[str, datetime]:
+    async def create_refresh_token(
+        self, account_id: int | Literal["police"]
+    ) -> tuple[str, datetime]:
         """
         Create a refresh token and store its hash in the database.
 
         Args:
-            account_id: Account ID (None for police tokens)
+            account_id: Account ID or "police" sentinel for police tokens
 
         Returns:
             tuple[str, datetime]: (token, expiration_time)
@@ -158,10 +159,13 @@ class AuthService:
         expires_at = datetime.now(UTC) + expires_delta
         jti = str(uuid4())
 
+        # Map "police" sentinel to None for DB storage
+        db_account_id = None if account_id == "police" else account_id
+
         # JWT sub must be a string; use "police" sentinel for police tokens
         payload = RefreshTokenPayload(
             jti=jti,
-            sub=str(account_id) if account_id is not None else "police",
+            sub=str(account_id) if isinstance(account_id, int) else "police",
             exp=expires_at,
             iat=datetime.now(UTC),
         )
@@ -173,7 +177,7 @@ class AuthService:
         # Hash the jti and store in database
         token_hash = self._hash_token_id(jti)
         refresh_token_entity = RefreshTokenEntity(
-            account_id=account_id,
+            account_id=db_account_id,
             token_hash=token_hash,
             expires_at=expires_at,
         )
@@ -293,7 +297,7 @@ class AuthService:
             TokensDto: Token pair with expiration times
         """
         access_token, access_expires = self.create_police_access_token(police)
-        refresh_token, refresh_expires = await self.create_refresh_token(None)
+        refresh_token, refresh_expires = await self.create_refresh_token("police")
 
         return TokensDto(
             access_token=access_token,

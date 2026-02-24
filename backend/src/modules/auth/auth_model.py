@@ -1,17 +1,18 @@
-from pydantic import AwareDatetime, BaseModel, EmailStr
+from typing import Annotated, Literal
+
+from pydantic import AwareDatetime, BaseModel, EmailStr, Field
 
 
 class AccountAccessTokenPayload(BaseModel):
     """JWT payload for account access tokens."""
 
-    sub: str  # "account"
-    id: int
+    sub: int  # Account ID
     email: str
     first_name: str
     last_name: str
     pid: str
     onyen: str
-    role: str
+    role: Literal["student", "staff", "admin"]
     exp: AwareDatetime
     iat: AwareDatetime
 
@@ -21,8 +22,15 @@ class PoliceAccessTokenPayload(BaseModel):
 
     sub: str  # "police"
     email: str
+    role: Literal["police"]
     exp: AwareDatetime
     iat: AwareDatetime
+
+
+AccessTokenPayload = Annotated[
+    AccountAccessTokenPayload | PoliceAccessTokenPayload,
+    Field(discriminator="role"),
+]
 
 
 class RefreshTokenPayload(BaseModel):
