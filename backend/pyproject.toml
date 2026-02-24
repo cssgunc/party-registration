@@ -17,9 +17,6 @@ dependencies = [
   "openpyxl~=3.1.0",
 ]
 
-[tool.setuptools]
-packages = ["src"]
-
 [tool.pytest.ini_options]
 pythonpath = "."
 testpaths = ["test"]
@@ -32,7 +29,6 @@ asyncio_default_test_loop_scope = "session"
 addopts = "--color=yes"
 
 [tool.pyright]
-# Matches Pylance settings in .devcontainer/devcontainer.json
 typeCheckingMode = "basic"
 reportMissingParameterType = "error"
 reportGeneralTypeIssues = "error"

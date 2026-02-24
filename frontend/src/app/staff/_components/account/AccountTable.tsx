@@ -18,9 +18,7 @@ const accountService = new AccountService();
 export const AccountTable = () => {
   const queryClient = useQueryClient();
   const { openSidebar, closeSidebar } = useSidebar();
-  const [sidebarMode, setSidebarMode] = useState<"create" | "edit">("create");
   const [editingAccount, setEditingAccount] = useState<AccountDto | null>(null);
-  const [submissionError, setSubmissionError] = useState<string | null>(null);
 
   const accountsQuery = useQuery({
     queryKey: ["accounts"],
@@ -42,18 +40,34 @@ export const AccountTable = () => {
         onyen: data.onyen,
         role: data.role as AccountRole,
       }),
-    onError: (error: Error) => {
+    onError: (error: Error, variables) => {
+      const errorMessage =
+        isAxiosError(error) && error.response
+          ? `${error.response.data.message}`
+          : `Failed to create account: ${error.message}`;
+
       if (isAxiosError(error) && error.response) {
-        setSubmissionError(`${error.response.data.message}`);
+        console.error("Failed to create account:", error.response.data);
       } else {
-        setSubmissionError(`Failed to create account: ${error.message}`);
+        console.error("Failed to create account:", error);
       }
+
+      openSidebar(
+        "create-account",
+        "New Account",
+        "Add a new account to the system",
+        <AccountTableForm
+          title="New Account"
+          onSubmit={handleCreateSubmit}
+          submissionError={errorMessage}
+          editData={variables}
+        />
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["accounts"] });
       closeSidebar();
       setEditingAccount(null);
-      setSubmissionError(null);
     },
   });
 
@@ -67,15 +81,41 @@ export const AccountTable = () => {
         onyen: data.onyen,
         role: data.role as AccountRole,
       }),
-    onError: (error: Error) => {
+    onError: (error: Error, variables) => {
       console.error("Failed to update account:", error);
-      setSubmissionError(`Failed to update account: ${error.message}`);
+      const errorMessage = `Failed to update account: ${error.message}`;
+      const editTarget =
+        editingAccount && editingAccount.id === variables.id
+          ? editingAccount
+          : null;
+
+      const editData = editTarget
+        ? {
+            email: editTarget.email,
+            first_name: editTarget.first_name,
+            last_name: editTarget.last_name,
+            pid: editTarget.pid ?? "",
+            onyen: editTarget.onyen ?? "",
+            role: editTarget.role,
+          }
+        : variables.data;
+
+      openSidebar(
+        `edit-account-${variables.id}`,
+        "Edit Account",
+        "Update account information",
+        <AccountTableForm
+          title="Edit Account"
+          onSubmit={(data) => handleEditSubmit(variables.id, data)}
+          submissionError={errorMessage}
+          editData={editData}
+        />
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["accounts"] });
       closeSidebar();
       setEditingAccount(null);
-      setSubmissionError(null);
     },
   });
 
@@ -106,16 +146,13 @@ export const AccountTable = () => {
 
   const handleEdit = (account: AccountDto) => {
     setEditingAccount(account);
-    setSidebarMode("edit");
-    setSubmissionError(null);
     openSidebar(
       `edit-account-${account.id}`,
       "Edit Account",
       "Update account information",
       <AccountTableForm
         title="Edit Account"
-        onSubmit={handleFormSubmit}
-        submissionError={submissionError}
+        onSubmit={(data) => handleEditSubmit(account.id, data)}
         editData={{
           email: account.email,
           first_name: account.first_name,
@@ -134,26 +171,23 @@ export const AccountTable = () => {
 
   const handleCreate = () => {
     setEditingAccount(null);
-    setSidebarMode("create");
-    setSubmissionError(null);
     openSidebar(
       "create-account",
       "New Account",
       "Add a new account to the system",
-      <AccountTableForm
-        title="New Account"
-        onSubmit={handleFormSubmit}
-        submissionError={submissionError}
-      />
+      <AccountTableForm title="New Account" onSubmit={handleCreateSubmit} />
     );
   };
 
-  const handleFormSubmit = async (data: AccountTableFormValues) => {
-    if (sidebarMode === "edit" && editingAccount) {
-      updateMutation.mutate({ id: editingAccount.id, data });
-    } else if (sidebarMode === "create") {
-      createMutation.mutate(data);
-    }
+  const handleCreateSubmit = async (data: AccountTableFormValues) => {
+    createMutation.mutate(data);
+  };
+
+  const handleEditSubmit = async (
+    accountId: number,
+    data: AccountTableFormValues
+  ) => {
+    updateMutation.mutate({ id: accountId, data });
   };
 
   const columns: ColumnDef<AccountDto>[] = [

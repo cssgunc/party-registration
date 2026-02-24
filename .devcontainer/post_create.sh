@@ -1,21 +1,20 @@
 #!/bin/bash
 set -e
 
-# Expected to run from .devcontainer/
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(dirname "$SCRIPT_DIR")"
+
+# Ensure pre-commit cache directory has correct permissions
+sudo chown -R vscode:vscode /home/vscode/.cache/pre-commit 2>/dev/null || true
 
 echo "================== Installing pre-commit hooks ================="
-cd ..
+cd "$REPO_ROOT"
 pre-commit install
 pre-commit install-hooks
 
 echo ""
-echo "=============== Installing frontend dependencies ==============="
-cd ./frontend
-npm i --verbose
-
-echo ""
 echo "==================== Setting up the database ==================="
-cd ../backend
+cd "$REPO_ROOT/backend"
 
 # SQL Server takes ~30s to start; wait before running db scripts
 echo "Waiting for SQL Server to be ready..."
