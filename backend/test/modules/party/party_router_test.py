@@ -803,15 +803,13 @@ class TestPartyUpdateStudentRouter:
         assert_res_failure(response, PartyDateTooSoonException())
 
     @pytest.mark.asyncio
-    async def test_update_party_as_student_party_smart_not_completed(self):
+    async def test_update_party_as_student_party_smart_not_completed(
+        self, student_account: AccountEntity
+    ):
         """Test student cannot update party if Party Smart not completed."""
-        account_utils = AccountTestUtils(self.student_utils.session)
-        await account_utils.create_one(role=AccountRole.ADMIN.value)
-        await account_utils.create_one(role=AccountRole.STAFF.value)
-        account = await account_utils.create_one(role=AccountRole.STUDENT.value)
-        assert account.id == 3
-
-        student = await self.student_utils.create_one(account_id=account.id, last_registered=None)
+        student = await self.student_utils.create_one(
+            account_id=student_account.id, last_registered=None
+        )
 
         # Create party directly in DB (bypasses Party Smart validation)
         party = await self.party_utils.create_one(contact_one_id=student.account_id)
