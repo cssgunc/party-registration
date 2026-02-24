@@ -2,7 +2,7 @@
 
 import Header from "@/app/student/_components/Header";
 import StudentInfo from "@/app/student/_components/StudentInfo";
-import { useCurrentStudent } from "@/lib/api/student/student.queries";
+import { Card, CardContent } from "@/components/ui/card";
 import { STUDENTS } from "@/lib/mockData";
 
 export default function StudentProfilePage() {
@@ -36,12 +36,14 @@ export default function StudentProfilePage() {
   }
 
   return (
-    <div className="flex flex-col lg:flex lg:flex-col">
+    <div className="flex flex-col items-center lg:flex lg:flex-col min-h-screen">
       <Header />
-      <div className="px-14 pb-12 gap-4 max-w-4xl mx-auto w-full flex justify-center">
-        <div className="w-full lg:self-center">
-          {student && <StudentInfo initialData={student} />}
-        </div>
+      <div className="mt-12 px-14 pb-12 gap-4 max-w-4xl w-full flex justify-center">
+        <Card className="mb-12 max-w-4xl w-full">
+          <CardContent className="">
+            {student && <StudentInfo initialData={student} />}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

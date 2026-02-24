@@ -1,5 +1,6 @@
 "use client";
 
+import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PartyDto } from "@/lib/api/party/party.types";
 import { format } from "date-fns";
@@ -62,7 +63,7 @@ export default function RegistrationTracker({
   }, [parties]);
 
   const PartyCard = ({ party }: { party: PartyDto }) => (
-    <div className="px-4 py-4 border-b border-gray-100 last:border-b-0">
+    <Card className="px-4 py-4 border-b border-gray-100 last:border-b-0">
       <div className="space-y-2">
         {/* Address and Date/Time */}
         <div>
@@ -118,7 +119,7 @@ export default function RegistrationTracker({
           </div>
         </div>
       </div>
-    </div>
+    </Card>
   );
 
   if (error) {
@@ -148,7 +149,7 @@ export default function RegistrationTracker({
         value={activeTab}
         onValueChange={(value) => setActiveTab(value as "active" | "past")}
       >
-        <TabsList className="w-full grid grid-cols-2">
+        <TabsList className="w-fit my-2">
           <TabsTrigger value="active" className="cursor-pointer">
             Active
           </TabsTrigger>
@@ -157,7 +158,7 @@ export default function RegistrationTracker({
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="active" className="mt-4">
+        <TabsContent value="active">
           <div className="w-full bg-white border border-gray-200 rounded-md max-h-[600px] overflow-y-auto">
             {activeParties.length === 0 ? (
               <div className="text-center text-gray-400 py-8">
