@@ -270,6 +270,7 @@ class PartyService:
             "contact_two_last_name",
             "contact_two_phone_number",
             "contact_two_contact_preference",
+            "status",
         ]
         allowed_filter_fields = [
             "id",
@@ -281,6 +282,7 @@ class PartyService:
             "contact_two_last_name",
             "contact_two_phone_number",
             "contact_two_contact_preference",
+            "status",
         ]
 
         # Parse query params from request
@@ -348,6 +350,7 @@ class PartyService:
             .where(
                 PartyEntity.party_datetime >= start_date,
                 PartyEntity.party_datetime <= end_date,
+                PartyEntity.status != PartyStatus.CANCELLED,
             )
             .options(
                 selectinload(PartyEntity.location),
@@ -641,6 +644,7 @@ class PartyService:
             .where(
                 PartyEntity.party_datetime >= start_date,
                 PartyEntity.party_datetime <= end_date,
+                PartyEntity.status != PartyStatus.CANCELLED,
             )
         )
         parties = result.scalars().all()

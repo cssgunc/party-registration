@@ -217,11 +217,14 @@ class PartyTestUtils(
             f"Contact two mismatch: {contact_two_1} != {contact_two_2}"
         )
 
-        # Check ID when both have them
+        # Check ID and status when both have them
         if not isinstance(resource1, PartyData) and not isinstance(resource2, PartyData):
             assert resource1.id is not None, "First party ID is None"
             assert resource2.id is not None, "Second party ID is None"
             assert resource1.id == resource2.id, f"ID mismatch: {resource1.id} != {resource2.id}"
+            assert resource1.status == resource2.status, (
+                f"Status mismatch: {resource1.status} != {resource2.status}"
+            )
 
     # ================================ Typing Overrides ================================
 
