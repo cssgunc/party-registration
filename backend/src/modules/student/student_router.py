@@ -15,9 +15,9 @@ from .student_model import (
     PaginatedStudentsResponse,
     ResidenceUpdateDto,
     SelfUpdateStudentDto,
-    StudentCreate,
-    StudentDataWithNames,
+    StudentCreateDto,
     StudentDto,
+    StudentUpdateDto,
 )
 from .student_service import StudentService
 
@@ -38,18 +38,18 @@ async def update_me(
     student_service: StudentService = Depends(),
     user: "AccountDto" = Depends(authenticate_student),
 ) -> StudentDto:
-    from .student_model import StudentData
+    """Update student's own information (phone and contact preference only)."""
+    # Get current student to preserve fields not in SelfUpdateStudentDto
+    current_student = await student_service.get_student_by_id(user.id)
 
-    # Convert SelfUpdateStudentDto to StudentData for the service call
-    student_data = StudentData(
+    # Create StudentUpdateDto preserving last_registered and residence
+    update_data = StudentUpdateDto(
         phone_number=data.phone_number,
         contact_preference=data.contact_preference,
-        last_registered=None,  # Will be ignored in update
+        last_registered=current_student.last_registered,
+        residence_place_id=None,  # Students cannot update residence via this endpoint
     )
-    # Get current student to preserve last_registered
-    current_student = await student_service.get_student_by_id(user.id)
-    student_data.last_registered = current_student.last_registered
-    return await student_service.update_student(user.id, student_data, is_admin=False)
+    return await student_service.update_student(user.id, update_data)
 
 
 @student_router.put("/me/residence")
@@ -105,21 +105,21 @@ async def get_student(
 
 @student_router.post("", status_code=201)
 async def create_student(
-    payload: StudentCreate,
+    payload: StudentCreateDto,
     student_service: StudentService = Depends(),
     _=Depends(authenticate_admin),
 ) -> StudentDto:
-    return await student_service.create_student(payload.data, payload.account_id, is_admin=True)
+    return await student_service.create_student(payload.data, payload.account_id)
 
 
 @student_router.put("/{student_id}")
 async def update_student(
     student_id: int,
-    data: StudentDataWithNames,
+    data: StudentUpdateDto,
     student_service: StudentService = Depends(),
     _=Depends(authenticate_admin),
 ) -> StudentDto:
-    return await student_service.update_student(student_id, data, is_admin=True)
+    return await student_service.update_student(student_id, data)
 
 
 @student_router.delete("/{student_id}")

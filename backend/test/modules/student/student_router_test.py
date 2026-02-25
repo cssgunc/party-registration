@@ -697,7 +697,9 @@ class TestStudentResidenceRouter:
         response = await self.student_client.put("/api/students/me/residence", json=payload)
         assert_res_failure(
             response,
-            BadRequestException("Must complete Party Smart before choosing a residence"),
+            BadRequestException(
+                "Must complete Party Smart in the current academic year before choosing a residence"
+            ),
         )
 
     @pytest.mark.asyncio
@@ -731,11 +733,10 @@ class TestStudentResidenceRouter:
         from src.modules.location.location_model import LocationDto
 
         # Create student with old residence from previous academic year
+        # The key is: residence_chosen_date is from last year, but last_registered is current year
+        # (meaning they completed Party Smart again this year)
         now = datetime.now(UTC)
-        if now.month >= 8:
-            old_date = datetime(now.year - 1, 8, 2, tzinfo=UTC)
-        else:
-            old_date = datetime(now.year - 2, 8, 2, tzinfo=UTC)
+        old_residence_date = self.student_utils.get_old_academic_year_date()
 
         await self.account_utils.create_one(role=AccountRole.ADMIN.value)
         await self.account_utils.create_one(role=AccountRole.STAFF.value)
@@ -744,10 +745,10 @@ class TestStudentResidenceRouter:
         location1 = await self.location_utils.create_one()
         student = await self.student_utils.create_one(
             account_id=account.id,
-            last_registered=old_date,
+            last_registered=now,  # Completed Party Smart this year
         )
         student.residence_id = location1.id
-        student.residence_chosen_date = old_date
+        student.residence_chosen_date = old_residence_date  # But chose residence last year
         self.student_utils.session.add(student)
         await self.student_utils.session.commit()
 

@@ -1,9 +1,9 @@
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.modules.account.account_entity import AccountRole
+from src.modules.location.location_service import LocationService
 from src.modules.student.student_model import ContactPreference, StudentDto
 from src.modules.student.student_service import (
     AccountNotFoundException,
@@ -14,11 +14,8 @@ from src.modules.student.student_service import (
     StudentService,
 )
 from test.modules.account.account_utils import AccountTestUtils
+from test.modules.location.location_utils import GmapsMockUtils, LocationTestUtils
 from test.modules.student.student_utils import StudentTestUtils
-
-if TYPE_CHECKING:
-    from src.modules.location.location_service import LocationService
-    from test.modules.location.location_utils import GmapsMockUtils, LocationTestUtils
 
 
 class TestStudentService:
@@ -230,26 +227,23 @@ class TestStudentResidenceService:
     student_utils: StudentTestUtils
     account_utils: AccountTestUtils
     student_service: StudentService
-    location_utils: "LocationTestUtils"
-    location_service: "LocationService"
-    gmaps_utils: "GmapsMockUtils"
+    location_utils: LocationTestUtils
+    location_service: LocationService
+    gmaps_utils: GmapsMockUtils
 
     @pytest.fixture(autouse=True)
     def _setup(
         self,
         student_utils: StudentTestUtils,
         account_utils: AccountTestUtils,
-        test_session: AsyncSession,
-        location_utils: "LocationTestUtils",
-        location_service: "LocationService",
-        gmaps_utils: "GmapsMockUtils",
+        student_service: StudentService,
+        location_utils: LocationTestUtils,
+        location_service: LocationService,
+        gmaps_utils: GmapsMockUtils,
     ):
         self.student_utils = student_utils
         self.account_utils = account_utils
-        # Create student_service with location_service injected
-        self.student_service = StudentService(
-            session=test_session, location_service=location_service
-        )
+        self.student_service = student_service
         self.location_utils = location_utils
         self.location_service = location_service
         self.gmaps_utils = gmaps_utils
@@ -267,9 +261,7 @@ class TestStudentResidenceService:
             residence_place_id=location.google_place_id,
         )
 
-        student = await self.student_service.create_student(
-            data, account_id=account.id, is_admin=True
-        )
+        student = await self.student_service.create_student(data, account_id=account.id)
 
         assert student.residence is not None
         assert student.residence.location.id == location.id
@@ -289,7 +281,7 @@ class TestStudentResidenceService:
             last_registered=student_entity.last_registered,
         )
         updated1 = await self.student_service.update_student(
-            student_entity.account_id, update_data1, is_admin=True
+            student_entity.account_id, update_data1
         )
         assert updated1.residence is not None
         assert updated1.residence.location.id == location1.id
@@ -301,7 +293,7 @@ class TestStudentResidenceService:
             last_registered=student_entity.last_registered,
         )
         updated2 = await self.student_service.update_student(
-            student_entity.account_id, update_data2, is_admin=True
+            student_entity.account_id, update_data2
         )
         assert updated2.residence is not None
         assert updated2.residence.location.id == location2.id
@@ -348,22 +340,17 @@ class TestStudentResidenceService:
         """Test that student can change residence in a new academic year."""
 
         # Create student with residence chosen last academic year
-        # If today is after Aug 1 this year, set date to last year's Aug 2
-        # If today is before Aug 1 this year, set date to two years ago Aug 2
+        # The key is: residence_chosen_date is from last year, but last_registered is current year
+        # (meaning they completed Party Smart again this year)
         now = datetime.now(UTC)
-        if now.month >= 8:
-            # We're in current academic year, so set to last year
-            old_date = datetime(now.year - 1, 8, 2, tzinfo=UTC)
-        else:
-            # We're before Aug 1, so set to two years ago
-            old_date = datetime(now.year - 2, 8, 2, tzinfo=UTC)
+        old_residence_date = self.student_utils.get_old_academic_year_date()
 
-        student_entity = await self.student_utils.create_one(last_registered=old_date)
+        student_entity = await self.student_utils.create_one(last_registered=now)
         location1 = await self.location_utils.create_one()
 
-        # Manually set old residence
+        # Manually set old residence (from last academic year)
         student_entity.residence_id = location1.id
-        student_entity.residence_chosen_date = old_date
+        student_entity.residence_chosen_date = old_residence_date
         self.student_utils.session.add(student_entity)
         await self.student_utils.session.commit()
 

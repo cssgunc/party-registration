@@ -21,14 +21,12 @@ class StudentData(BaseModel):
     phone_number: str = Field(pattern=r"^\+?1?\d{9,15}$")
 
 
-class StudentDataWithNames(StudentData):
-    """Student data including names for create/update operations."""
+class StudentUpdateDto(BaseModel):
+    """DTO for admin creating or updating a student (without names - those are in Account)."""
 
-    first_name: str = Field(min_length=1)
-    last_name: str = Field(min_length=1)
+    phone_number: str = Field(pattern=r"^\+?1?\d{9,15}$")
     contact_preference: ContactPreference
     last_registered: AwareDatetime | None = None
-    phone_number: str = Field(pattern=r"^\+?1?\d{9,15}$")
     residence_place_id: str | None = Field(
         None, description="Google Maps place ID for student residence"
     )
@@ -87,14 +85,15 @@ class StudentDto(BaseModel):
     residence: ResidenceDto | None = None
 
 
-class StudentCreate(BaseModel):
+class StudentCreateDto(BaseModel):
     """Request body for creating a student (admin).
 
     Requires an existing account_id to associate with the student.
+    Names come from the existing account, not this DTO.
     """
 
     account_id: int
-    data: StudentDataWithNames
+    data: StudentUpdateDto
 
 
 class IsRegisteredUpdate(BaseModel):

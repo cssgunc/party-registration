@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column, relationship, selectinload
 from src.core.database import EntityBase
 
-from .student_model import ContactPreference, StudentData, StudentDto
+from .student_model import ContactPreference, ResidenceDto, StudentData, StudentDto
 
 if TYPE_CHECKING:
     from src.modules.account.account_entity import AccountEntity
@@ -78,8 +78,6 @@ class StudentEntity(MappedAsDataclass, EntityBase):
             residence_chosen = residence_chosen.replace(tzinfo=UTC)
 
         # Create ResidenceDto if residence is present
-        from .student_model import ResidenceDto
-
         residence_dto = None
         if (
             self.residence_id is not None

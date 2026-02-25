@@ -51,18 +51,21 @@ async def create_party(
     If contact_two's email doesn't exist in the system, a new student account will be created.
     """
     # Validate that the DTO type matches the user's role
-    if isinstance(party_data, StudentCreatePartyDto):
-        if user.role != AccountRole.STUDENT:
-            raise ForbiddenException(
-                detail="Only students can use the student party creation endpoint"
-            )
-        return await party_service.create_party_from_student_dto(party_data, user.id)
-    elif isinstance(party_data, AdminCreatePartyDto):
-        if user.role != AccountRole.ADMIN:
-            raise ForbiddenException(detail="Only admins can use the admin party creation endpoint")
-        return await party_service.create_party_from_admin_dto(party_data)
-    else:
-        raise ForbiddenException(detail="Invalid request type")
+    match party_data:
+        case StudentCreatePartyDto():
+            if user.role != AccountRole.STUDENT:
+                raise ForbiddenException(
+                    detail="Only students can use the student party creation endpoint"
+                )
+            return await party_service.create_party_from_student_dto(party_data, user.id)
+        case AdminCreatePartyDto():
+            if user.role != AccountRole.ADMIN:
+                raise ForbiddenException(
+                    detail="Only admins can use the admin party creation endpoint"
+                )
+            return await party_service.create_party_from_admin_dto(party_data)
+        case _:
+            raise ForbiddenException(detail="Invalid request type")
 
 
 @party_router.get("", openapi_extra=PAGINATED_OPENAPI_PARAMS)
@@ -173,14 +176,14 @@ async def get_parties_csv(
     _=Depends(authenticate_admin),
 ) -> Response:
     """
-    Returns parties within the specified date range as a CSV file.
+    Returns parties within the specified date range as an Excel file.
 
     Query Parameters:
     - start_date: Start date in YYYY-MM-DD format (required)
     - end_date: End date in YYYY-MM-DD format (required)
 
     Returns:
-    - CSV file stream with party data
+    - Excel file stream with party data
 
     Raises:
     - 400: If date format is invalid
@@ -199,12 +202,12 @@ async def get_parties_csv(
         raise BadRequestException("Start date must be less than or equal to end date")
 
     parties = await party_service.get_parties_by_date_range(start_datetime, end_datetime)
-    csv_content = await party_service.export_parties_to_csv(parties)
+    excel_content = await party_service.export_parties_to_excel(parties)
 
     return Response(
-        content=csv_content,
-        media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=parties.csv"},
+        content=excel_content,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=parties.xlsx"},
     )
 
 
@@ -230,18 +233,21 @@ async def update_party(
     If contact_two's email doesn't exist in the system, a new student account will be created.
     """
     # Validate that the DTO type matches the user's role
-    if isinstance(party_data, StudentCreatePartyDto):
-        if user.role != AccountRole.STUDENT:
-            raise ForbiddenException(
-                detail="Only students can use the student party update endpoint"
-            )
-        return await party_service.update_party_from_student_dto(party_id, party_data, user.id)
-    elif isinstance(party_data, AdminCreatePartyDto):
-        if user.role != AccountRole.ADMIN:
-            raise ForbiddenException(detail="Only admins can use the admin party update endpoint")
-        return await party_service.update_party_from_admin_dto(party_id, party_data)
-    else:
-        raise ForbiddenException(detail="Invalid request type")
+    match party_data:
+        case StudentCreatePartyDto():
+            if user.role != AccountRole.STUDENT:
+                raise ForbiddenException(
+                    detail="Only students can use the student party update endpoint"
+                )
+            return await party_service.update_party_from_student_dto(party_id, party_data, user.id)
+        case AdminCreatePartyDto():
+            if user.role != AccountRole.ADMIN:
+                raise ForbiddenException(
+                    detail="Only admins can use the admin party update endpoint"
+                )
+            return await party_service.update_party_from_admin_dto(party_id, party_data)
+        case _:
+            raise ForbiddenException(detail="Invalid request type")
 
 
 @party_router.get("/{party_id}")
@@ -269,30 +275,18 @@ async def get_party(
 async def delete_party(
     party_id: int,
     party_service: PartyService = Depends(),
-    user: AccountDto = Depends(authenticate_user),
+    _=Depends(authenticate_admin),
 ) -> PartyDto:
     """
-    Deletes or cancels a party registration by ID.
-
-    - Students: Changes party status to "cancelled" (can only cancel their own parties)
-    - Admins: Permanently deletes the party from the database
+    Deletes a party registration by ID.
 
     Parameters:
-    - party_id: The ID of the party to delete/cancel
+    - party_id: The ID of the party to delete
 
     Returns:
-    - The deleted/cancelled party registration
+    - The deleted party registration
 
     Raises:
     - 404: If party with the specified ID does not exist
-    - 403: If user lacks permission (staff/police) or student tries to cancel another's party
     """
-    if user.role == AccountRole.STUDENT:
-        # Students cancel their own parties
-        return await party_service.cancel_party(party_id, user.id)
-    elif user.role == AccountRole.ADMIN:
-        # Admins permanently delete parties
-        return await party_service.delete_party(party_id)
-    else:
-        # Staff and police cannot delete/cancel parties
-        raise ForbiddenException(detail="Insufficient privileges")
+    return await party_service.delete_party(party_id)

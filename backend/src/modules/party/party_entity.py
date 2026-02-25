@@ -9,7 +9,7 @@ from src.core.database import EntityBase
 from src.modules.student.student_model import ContactPreference
 
 from ..student.student_entity import StudentEntity
-from .party_model import ContactDto, PartyData, PartyDto, PartyStatus
+from .party_model import ContactDto, PartyData, PartyDto
 
 if TYPE_CHECKING:
     from ..location.location_entity import LocationEntity
@@ -36,12 +36,6 @@ class PartyEntity(MappedAsDataclass, EntityBase):
         Enum(ContactPreference, native_enum=False, length=20), nullable=False
     )
 
-    status: Mapped[PartyStatus] = mapped_column(
-        Enum(PartyStatus, native_enum=False, length=20),
-        nullable=False,
-        default=PartyStatus.CONFIRMED,
-    )
-
     # Relationships
     location: Mapped["LocationEntity"] = relationship(
         "LocationEntity", passive_deletes=True, init=False
@@ -53,7 +47,6 @@ class PartyEntity(MappedAsDataclass, EntityBase):
     @classmethod
     def from_data(cls, data: PartyData) -> Self:
         return cls(
-            status=PartyStatus.CONFIRMED,
             party_datetime=data.party_datetime,
             location_id=data.location_id,
             contact_one_id=data.contact_one_id,
@@ -73,7 +66,6 @@ class PartyEntity(MappedAsDataclass, EntityBase):
 
         return PartyDto(
             id=self.id,
-            status=self.status,
             party_datetime=party_dt,
             location=self.location.to_dto(),
             contact_one=self.contact_one.to_dto(),

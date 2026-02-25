@@ -1,7 +1,7 @@
-import csv
 from datetime import UTC, datetime, timedelta
-from io import StringIO
+from io import BytesIO
 
+import openpyxl
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
@@ -30,7 +30,7 @@ from test.utils.http.test_templates import generate_auth_required_tests
 test_party_authentication = generate_auth_required_tests(
     ({"admin", "staff", "police"}, "GET", "/api/parties", None),
     ({"admin", "staff"}, "GET", "/api/parties/1", None),
-    ({"admin", "student"}, "DELETE", "/api/parties/1", None),
+    ({"admin"}, "DELETE", "/api/parties/1", None),
     (
         {"admin", "police"},
         "GET",
@@ -387,14 +387,11 @@ class TestPartyCreateStudentRouter:
     student_utils: StudentTestUtils
 
     @pytest_asyncio.fixture
-    async def current_student(self) -> StudentEntity:
+    async def current_student(
+        self, setup_test_accounts: None, account_utils: AccountTestUtils
+    ) -> StudentEntity:
         """Create student for authenticated student client (id=3)."""
         # student_client uses id=3 from mock_authenticate
-        # Create dummy accounts for IDs 1 and 2
-        account_utils = AccountTestUtils(self.student_utils.session)
-        await account_utils.create_one(role=AccountRole.ADMIN.value)
-        await account_utils.create_one(role=AccountRole.STAFF.value)
-
         account = await account_utils.create_one(role=AccountRole.STUDENT.value)
         assert account.id == 3
 
@@ -422,11 +419,7 @@ class TestPartyCreateStudentRouter:
         """Test student creating a party."""
         # Set up student residence
         location = await self.location_utils.create_one()
-        current_student.residence_id = location.id
-        current_student.residence_chosen_date = datetime.now(UTC)
-        self.student_utils.session.add(current_student)
-        await self.student_utils.session.commit()
-        await self.student_utils.session.refresh(current_student, ["residence"])
+        await self.student_utils.set_student_residence(current_student, location.id)
 
         payload = await self.party_utils.next_student_create_dto()
 
@@ -453,35 +446,23 @@ class TestPartyCreateStudentRouter:
         assert_res_failure(response, NoResidenceException())
 
     @pytest.mark.asyncio
-    async def test_create_party_without_party_smart_fails(self):
+    async def test_create_party_without_party_smart_fails(
+        self, setup_test_accounts: None, account_utils: AccountTestUtils
+    ):
         """Test that student who hasn't completed Party Smart cannot create party."""
         from src.modules.party.party_service import PartySmartNotCompletedException
 
-        # Create student with old last_registered (before most recent August 1st)
-        # This simulates a student who completed Party Smart last year but not this year
-        account_utils = AccountTestUtils(self.student_utils.session)
-        await account_utils.create_one(role=AccountRole.ADMIN.value)
-        await account_utils.create_one(role=AccountRole.STAFF.value)
+        # Create student with old Party Smart completion (previous academic year)
         account = await account_utils.create_one(role=AccountRole.STUDENT.value)
-
-        # Set last_registered to over a year ago
-        now = datetime.now(UTC)
-        if now.month >= 8:
-            # We're in current academic year, so set to last year before August
-            old_date = datetime(now.year - 1, 7, 1, tzinfo=UTC)
-        else:
-            # We're before Aug 1, so set to two years ago
-            old_date = datetime(now.year - 2, 7, 1, tzinfo=UTC)
-
-        location = await self.location_utils.create_one()
-        student = await self.student_utils.create_one(
-            account_id=account.id,
-            last_registered=old_date,  # Old Party Smart completion - needs to do it again
+        student = await self.student_utils.create_student_with_old_party_smart(
+            account_id=account.id
         )
-        student.residence_id = location.id
-        student.residence_chosen_date = old_date
-        self.student_utils.session.add(student)
-        await self.student_utils.session.commit()
+
+        # Set up old residence from previous year
+        location = await self.location_utils.create_one()
+        await self.student_utils.set_student_residence(
+            student, location.id, student.last_registered
+        )
 
         payload = await self.party_utils.next_student_create_dto()
 
@@ -496,11 +477,7 @@ class TestPartyCreateStudentRouter:
         student_dto = await current_student.load_dto(self.student_utils.session)
         # Set up student residence
         location = await self.location_utils.create_one()
-        current_student.residence_id = location.id
-        current_student.residence_chosen_date = datetime.now(UTC)
-        self.student_utils.session.add(current_student)
-        await self.student_utils.session.commit()
-        await self.student_utils.session.refresh(current_student, ["residence"])
+        await self.student_utils.set_student_residence(current_student, location.id)
 
         payload = await self.party_utils.next_student_create_dto(
             contact_two=ContactDto(
@@ -523,11 +500,7 @@ class TestPartyCreateStudentRouter:
         student_dto = await current_student.load_dto(self.student_utils.session)
         # Set up student residence
         location = await self.location_utils.create_one()
-        current_student.residence_id = location.id
-        current_student.residence_chosen_date = datetime.now(UTC)
-        self.student_utils.session.add(current_student)
-        await self.student_utils.session.commit()
-        await self.student_utils.session.refresh(current_student, ["residence"])
+        await self.student_utils.set_student_residence(current_student, location.id)
 
         payload = await self.party_utils.next_student_create_dto(
             contact_two=ContactDto(
@@ -674,12 +647,10 @@ class TestPartyUpdateStudentRouter:
     student_utils: StudentTestUtils
 
     @pytest_asyncio.fixture
-    async def current_student(self) -> StudentEntity:
+    async def current_student(
+        self, setup_test_accounts: None, account_utils: AccountTestUtils
+    ) -> StudentEntity:
         """Create student for authenticated student client (id=3)."""
-        account_utils = AccountTestUtils(self.student_utils.session)
-        await account_utils.create_one(role=AccountRole.ADMIN.value)
-        await account_utils.create_one(role=AccountRole.STAFF.value)
-
         account = await account_utils.create_one(role=AccountRole.STUDENT.value)
         assert account.id == 3
 
@@ -706,11 +677,7 @@ class TestPartyUpdateStudentRouter:
         """Test student updating a party."""
         # Set up student residence
         location = await self.location_utils.create_one()
-        current_student.residence_id = location.id
-        current_student.residence_chosen_date = datetime.now(UTC)
-        self.student_utils.session.add(current_student)
-        await self.student_utils.session.commit()
-        await self.student_utils.session.refresh(current_student, ["residence"])
+        await self.student_utils.set_student_residence(current_student, location.id)
 
         create_payload = await self.party_utils.next_student_create_dto()
 
@@ -737,11 +704,7 @@ class TestPartyUpdateStudentRouter:
         student_dto = await current_student.load_dto(self.student_utils.session)
         # Set up student residence
         location = await self.location_utils.create_one()
-        current_student.residence_id = location.id
-        current_student.residence_chosen_date = datetime.now(UTC)
-        self.student_utils.session.add(current_student)
-        await self.student_utils.session.commit()
-        await self.student_utils.session.refresh(current_student, ["residence"])
+        await self.student_utils.set_student_residence(current_student, location.id)
 
         # Create a party first
         create_payload = await self.party_utils.next_student_create_dto()
@@ -772,11 +735,7 @@ class TestPartyUpdateStudentRouter:
         student_dto = await current_student.load_dto(self.student_utils.session)
         # Set up student residence
         location = await self.location_utils.create_one()
-        current_student.residence_id = location.id
-        current_student.residence_chosen_date = datetime.now(UTC)
-        self.student_utils.session.add(current_student)
-        await self.student_utils.session.commit()
-        await self.student_utils.session.refresh(current_student, ["residence"])
+        await self.student_utils.set_student_residence(current_student, location.id)
 
         # Create a party first
         create_payload = await self.party_utils.next_student_create_dto()
@@ -990,7 +949,7 @@ class TestPartyCSVRouter:
 
     @pytest.mark.asyncio
     async def test_get_parties_csv_empty(self):
-        """Test CSV export with no parties."""
+        """Test Excel export with no parties."""
         now = datetime.now(UTC)
         params = {
             "start_date": now.strftime("%Y-%m-%d"),
@@ -998,17 +957,21 @@ class TestPartyCSVRouter:
         }
         response = await self.admin_client.get("/api/parties/csv", params=params)
         assert response.status_code == 200
-        assert "text/csv" in response.headers["content-type"]
+        assert (
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            in response.headers["content-type"]
+        )
 
-        # Parse CSV content
-        csv_content = response.text
-        csv_reader = csv.reader(StringIO(csv_content))
-        rows = list(csv_reader)
+        # Parse Excel content
+        workbook = openpyxl.load_workbook(BytesIO(response.content))
+        sheet = workbook.active
+        assert sheet is not None
+        rows = list(sheet.values)
 
         # Should only have header row
         assert len(rows) == 1
 
-        expected_headers = [
+        expected_headers = (
             "Address",
             "Date of Party",
             "Time of Party",
@@ -1020,13 +983,13 @@ class TestPartyCSVRouter:
             "Contact Two Email",
             "Contact Two Phone Number",
             "Contact Two Contact Preference",
-        ]
+        )
 
         assert rows[0] == expected_headers
 
     @pytest.mark.asyncio
     async def test_get_parties_csv_with_data(self):
-        """Test CSV export with parties."""
+        """Test Excel export with parties."""
         parties = await self.party_utils.create_many(i=3)
 
         now = datetime.now(UTC)
@@ -1036,17 +999,21 @@ class TestPartyCSVRouter:
         }
         response = await self.admin_client.get("/api/parties/csv", params=params)
         assert response.status_code == 200
-        assert "text/csv" in response.headers["content-type"]
+        assert (
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            in response.headers["content-type"]
+        )
 
-        # Parse CSV content
-        csv_content = response.text
-        csv_reader = csv.reader(StringIO(csv_content))
-        rows = list(csv_reader)
+        # Parse Excel content
+        workbook = openpyxl.load_workbook(BytesIO(response.content))
+        sheet = workbook.active
+        assert sheet is not None
+        rows = list(sheet.values)
 
         # Should have header + 3 data rows
         assert len(rows) == 4
 
-        expected_headers = [
+        expected_headers = (
             "Address",
             "Date of Party",
             "Time of Party",
@@ -1058,7 +1025,7 @@ class TestPartyCSVRouter:
             "Contact Two Email",
             "Contact Two Phone Number",
             "Contact Two Contact Preference",
-        ]
+        )
 
         assert rows[0] == expected_headers
 
