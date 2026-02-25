@@ -10,7 +10,9 @@ from src.modules.location.location_service import LocationHoldActiveException
 from src.modules.party.party_model import ContactDto, PartyDto
 from src.modules.party.party_service import (
     ContactTwoMatchesContactOneException,
+    PartyDateTooSoonException,
     PartyNotFoundException,
+    PartySmartNotCompletedException,
 )
 from src.modules.student.student_entity import StudentEntity
 from src.modules.student.student_model import ContactPreference
@@ -37,8 +39,10 @@ test_party_authentication = generate_auth_required_tests(
         "/api/parties/nearby?place_id=ChIJTest&start_date=2025-01-01&end_date=2025-12-31",
         None,
     ),
-    # POST endpoint requires condiitional body - tested separately in
+    # POST endpoint requires conditional body - tested separately in
     # TestPartyCreateAdminRouter and TestPartyCreateStudentRouter
+    # PUT endpoint requires conditional body - tested separately in
+    # TestPartyUpdateAdminRouter and TestPartyUpdateStudentRouter
     # ({"student"}, "POST", "/api/parties", {}),
 )
 
@@ -301,7 +305,7 @@ class TestPartyCreateAdminRouter:
 
     @pytest.mark.asyncio
     async def test_create_party_as_admin_location_on_hold(self):
-        """Test admin cannot create party at location on hold."""
+        """Test admin can create party at location on hold (admins skip hold validation)."""
         hold_expiration = datetime.now(UTC) + timedelta(days=30)
         location_with_hold = await self.location_utils.create_one(hold_expiration=hold_expiration)
 
@@ -312,12 +316,8 @@ class TestPartyCreateAdminRouter:
         response = await self.admin_client.post(
             "/api/parties", json=payload.model_dump(mode="json")
         )
-        assert_res_failure(
-            response,
-            LocationHoldActiveException(
-                location_id=location_with_hold.id, hold_expiration=hold_expiration
-            ),
-        )
+        data = assert_res_success(response, PartyDto, status=201)
+        assert data.location.google_place_id == location_with_hold.google_place_id
 
     @pytest.mark.asyncio
     async def test_create_party_as_admin_validation_errors(self):
@@ -637,6 +637,65 @@ class TestPartyUpdateAdminRouter:
         )
         assert_res_failure(response, ContactTwoMatchesContactOneException("phone number"))
 
+    @pytest.mark.asyncio
+    async def test_update_party_as_admin_not_found(self):
+        """Test updating a non-existent party returns 404."""
+        location = await self.location_utils.create_one()
+        payload = await self.party_utils.next_admin_create_dto(
+            google_place_id=location.google_place_id
+        )
+
+        response = await self.admin_client.put(
+            "/api/parties/999", json=payload.model_dump(mode="json")
+        )
+        assert_res_failure(response, PartyNotFoundException(999))
+
+    @pytest.mark.asyncio
+    async def test_update_party_as_admin_validation_errors(self):
+        """Test validation errors for admin party update."""
+        location = await self.location_utils.create_one()
+        create_payload = await self.party_utils.next_admin_create_dto(
+            google_place_id=location.google_place_id
+        )
+        create_response = await self.admin_client.post(
+            "/api/parties", json=create_payload.model_dump(mode="json")
+        )
+        created = assert_res_success(create_response, PartyDto, status=201)
+
+        update_payload = await self.party_utils.next_admin_create_dto(
+            google_place_id=location.google_place_id
+        )
+        payload_dict = update_payload.model_dump(mode="json")
+        del payload_dict["contact_two"]
+
+        response = await self.admin_client.put(f"/api/parties/{created.id}", json=payload_dict)
+        assert_res_validation_error(response)
+
+    @pytest.mark.asyncio
+    async def test_update_party_as_admin_location_on_hold(self):
+        """Test admin can update party at location on hold (admins skip hold validation)."""
+        hold_expiration = datetime.now(UTC) + timedelta(days=30)
+        location_with_hold = await self.location_utils.create_one(hold_expiration=hold_expiration)
+
+        create_payload = await self.party_utils.next_admin_create_dto(
+            google_place_id=location_with_hold.google_place_id
+        )
+        create_response = await self.admin_client.post(
+            "/api/parties", json=create_payload.model_dump(mode="json")
+        )
+        created = assert_res_success(create_response, PartyDto, status=201)
+
+        update_payload = await self.party_utils.next_admin_create_dto(
+            google_place_id=location_with_hold.google_place_id,
+            contact_one_email=create_payload.contact_one_email,
+        )
+
+        response = await self.admin_client.put(
+            f"/api/parties/{created.id}", json=update_payload.model_dump(mode="json")
+        )
+        data = assert_res_success(response, PartyDto)
+        assert data.location.google_place_id == location_with_hold.google_place_id
+
 
 class TestPartyUpdateStudentRouter:
     """Tests for PUT /api/parties/{id} endpoint (student update)."""
@@ -759,6 +818,90 @@ class TestPartyUpdateStudentRouter:
             f"/api/parties/{created.id}", json=update_payload.model_dump(mode="json")
         )
         assert_res_failure(response, ContactTwoMatchesContactOneException("phone number"))
+
+    @pytest.mark.asyncio
+    async def test_update_party_as_student_not_found(self, current_student: StudentEntity):
+        """Test updating a non-existent party returns 404."""
+        location = await self.location_utils.create_one()
+        payload = await self.party_utils.next_student_create_dto(
+            google_place_id=location.google_place_id
+        )
+
+        response = await self.student_client.put(
+            "/api/parties/999", json=payload.model_dump(mode="json")
+        )
+        assert_res_failure(response, PartyNotFoundException(999))
+
+    @pytest.mark.asyncio
+    async def test_update_party_as_student_date_too_soon(self, current_student: StudentEntity):
+        """Test student cannot update party with a date less than 2 business days away."""
+        location = await self.location_utils.create_one()
+        create_payload = await self.party_utils.next_student_create_dto(
+            google_place_id=location.google_place_id
+        )
+        create_response = await self.student_client.post(
+            "/api/parties", json=create_payload.model_dump(mode="json")
+        )
+        created = assert_res_success(create_response, PartyDto, status=201)
+
+        update_payload = await self.party_utils.next_student_create_dto(
+            google_place_id=location.google_place_id,
+            party_datetime=datetime.now(UTC) + timedelta(hours=12),
+        )
+
+        response = await self.student_client.put(
+            f"/api/parties/{created.id}", json=update_payload.model_dump(mode="json")
+        )
+        assert_res_failure(response, PartyDateTooSoonException())
+
+    @pytest.mark.asyncio
+    async def test_update_party_as_student_party_smart_not_completed(self):
+        """Test student cannot update party if Party Smart not completed."""
+        account_utils = AccountTestUtils(self.student_utils.session)
+        await account_utils.create_one(role=AccountRole.ADMIN.value)
+        await account_utils.create_one(role=AccountRole.STAFF.value)
+        account = await account_utils.create_one(role=AccountRole.STUDENT.value)
+        assert account.id == 3
+
+        student = await self.student_utils.create_one(account_id=account.id, last_registered=None)
+
+        # Create party directly in DB (bypasses Party Smart validation)
+        party = await self.party_utils.create_one(contact_one_id=student.account_id)
+
+        location = await self.location_utils.create_one()
+        update_payload = await self.party_utils.next_student_create_dto(
+            google_place_id=location.google_place_id
+        )
+
+        response = await self.student_client.put(
+            f"/api/parties/{party.id}", json=update_payload.model_dump(mode="json")
+        )
+        assert_res_failure(response, PartySmartNotCompletedException(student.account_id))
+
+    @pytest.mark.asyncio
+    async def test_update_party_as_student_location_on_hold(self, current_student: StudentEntity):
+        """Test student cannot update party to a location that has an active hold."""
+        valid_location = await self.location_utils.create_one()
+        create_payload = await self.party_utils.next_student_create_dto(
+            google_place_id=valid_location.google_place_id
+        )
+        create_response = await self.student_client.post(
+            "/api/parties", json=create_payload.model_dump(mode="json")
+        )
+        created = assert_res_success(create_response, PartyDto, status=201)
+
+        hold_expiration = datetime.now(UTC) + timedelta(days=30)
+        location_with_hold = await self.location_utils.create_one(hold_expiration=hold_expiration)
+        update_payload = await self.party_utils.next_student_create_dto(
+            google_place_id=location_with_hold.google_place_id
+        )
+
+        response = await self.student_client.put(
+            f"/api/parties/{created.id}", json=update_payload.model_dump(mode="json")
+        )
+        assert_res_failure(
+            response, LocationHoldActiveException(location_with_hold.id, hold_expiration)
+        )
 
 
 class TestPartyNearbyRouter:

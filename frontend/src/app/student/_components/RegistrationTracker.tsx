@@ -76,7 +76,7 @@ export default function RegistrationTracker({
         </div>
 
         {/* Contacts Side by Side */}
-        <div className="mt-3 grid grid-cols-2 gap-4">
+        <div className="mt-3 gap-4 md:grid md:grid-cols-2">
           {/* Contact One */}
           <div>
             <div className="text-sm font-medium text-gray-700">Contact 1:</div>
@@ -98,7 +98,7 @@ export default function RegistrationTracker({
           </div>
 
           {/* Contact Two */}
-          <div>
+          <div className="mt-2 md:mt-0">
             <div className="text-sm font-medium text-gray-700">Contact 2:</div>
             <div className="text-sm ml-3">
               <div>

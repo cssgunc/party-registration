@@ -29,7 +29,6 @@ asyncio_default_test_loop_scope = "session"
 addopts = "--color=yes"
 
 [tool.pyright]
-# Matches Pylance settings in .devcontainer/devcontainer.json
 typeCheckingMode = "basic"
 reportMissingParameterType = "error"
 reportGeneralTypeIssues = "error"

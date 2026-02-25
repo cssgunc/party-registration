@@ -59,7 +59,10 @@ ARG USER_GID=$USER_UID
 RUN groupadd --gid $USER_GID $USERNAME \
     && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME -s /usr/bin/zsh \
     && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
-    && chmod 0440 /etc/sudoers.d/$USERNAME
+    && chmod 0440 /etc/sudoers.d/$USERNAME \
+    && chown -R $USERNAME:$USERNAME /workspace \
+    && mkdir -p /home/$USERNAME/.cache/pre-commit \
+    && chown -R $USERNAME:$USERNAME /home/$USERNAME/.cache
 
 # Git configuration
 RUN git config --system core.editor "code --wait" \
@@ -69,6 +72,10 @@ RUN git config --system core.editor "code --wait" \
     && git config --system init.defaultBranch main \
     && git config --system core.autocrlf input \
     && git config --system color.ui auto
+
+# Install frontend dependencies
+COPY frontend/package.json frontend/package-lock.json /workspace/frontend/
+RUN cd /workspace/frontend && npm ci
 
 # Install python dev dependencies
 RUN pip install --upgrade pip
