@@ -836,16 +836,15 @@ class TestPartyUpdateStudentRouter:
     async def test_update_party_as_student_date_too_soon(self, current_student: StudentEntity):
         """Test student cannot update party with a date less than 2 business days away."""
         location = await self.location_utils.create_one()
-        create_payload = await self.party_utils.next_student_create_dto(
-            google_place_id=location.google_place_id
-        )
+        await self.student_utils.set_student_residence(current_student, location.id)
+
+        create_payload = await self.party_utils.next_student_create_dto()
         create_response = await self.student_client.post(
             "/api/parties", json=create_payload.model_dump(mode="json")
         )
         created = assert_res_success(create_response, PartyDto, status=201)
 
         update_payload = await self.party_utils.next_student_create_dto(
-            google_place_id=location.google_place_id,
             party_datetime=datetime.now(UTC) + timedelta(hours=12),
         )
 
@@ -882,9 +881,9 @@ class TestPartyUpdateStudentRouter:
     async def test_update_party_as_student_location_on_hold(self, current_student: StudentEntity):
         """Test student cannot update party to a location that has an active hold."""
         valid_location = await self.location_utils.create_one()
-        create_payload = await self.party_utils.next_student_create_dto(
-            google_place_id=valid_location.google_place_id
-        )
+        await self.student_utils.set_student_residence(current_student, valid_location.id)
+
+        create_payload = await self.party_utils.next_student_create_dto()
         create_response = await self.student_client.post(
             "/api/parties", json=create_payload.model_dump(mode="json")
         )
@@ -892,9 +891,9 @@ class TestPartyUpdateStudentRouter:
 
         hold_expiration = datetime.now(UTC) + timedelta(days=30)
         location_with_hold = await self.location_utils.create_one(hold_expiration=hold_expiration)
-        update_payload = await self.party_utils.next_student_create_dto(
-            google_place_id=location_with_hold.google_place_id
-        )
+        await self.student_utils.set_student_residence(current_student, location_with_hold.id)
+
+        update_payload = await self.party_utils.next_student_create_dto()
 
         response = await self.student_client.put(
             f"/api/parties/{created.id}", json=update_payload.model_dump(mode="json")

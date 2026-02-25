@@ -141,10 +141,13 @@ class PartyService:
         if not is_same_academic_year(student.last_registered):
             raise PartySmartNotCompletedException()
 
-    async def _validate_and_get_location(self, place_id: str) -> LocationDto:
-        """Get or create location and validate it has no active hold."""
+    async def _validate_and_get_location(
+        self, place_id: str, skip_hold_check: bool = False
+    ) -> LocationDto:
+        """Get or create location and optionally validate it has no active hold."""
         location = await self.location_service.get_or_create_location(place_id)
-        self.location_service.assert_valid_location_hold(location)
+        if not skip_hold_check:
+            self.location_service.assert_valid_location_hold(location)
         return location
 
     def _validate_contact_two_differs_from_contact_one(
@@ -417,9 +420,10 @@ class PartyService:
         """
         Validate admin party data and get location, contact_one entity, and contact_one_id.
         Returns tuple of (location, contact_one, contact_one_id).
+        Admins skip hold validation.
         """
-        # Get/create location and validate no hold
-        location = await self._validate_and_get_location(google_place_id)
+        # Get/create location (skip hold validation for admins)
+        location = await self._validate_and_get_location(google_place_id, skip_hold_check=True)
 
         # Get contact_one by email
         contact_one = await self._get_student_by_email(contact_one_email)
