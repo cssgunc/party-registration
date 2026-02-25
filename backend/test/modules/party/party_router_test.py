@@ -876,7 +876,7 @@ class TestPartyUpdateStudentRouter:
         response = await self.student_client.put(
             f"/api/parties/{party.id}", json=update_payload.model_dump(mode="json")
         )
-        assert_res_failure(response, PartySmartNotCompletedException(student.account_id))
+        assert_res_failure(response, PartySmartNotCompletedException())
 
     @pytest.mark.asyncio
     async def test_update_party_as_student_location_on_hold(self, current_student: StudentEntity):
