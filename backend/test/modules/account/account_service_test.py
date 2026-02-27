@@ -3,6 +3,7 @@ from src.modules.account.account_entity import AccountEntity
 from src.modules.account.account_model import AccountData, AccountRole
 from src.modules.account.account_service import (
     AccountByEmailNotFoundException,
+    AccountByPidNotFoundException,
     AccountConflictException,
     AccountNotFoundException,
     AccountService,
@@ -348,7 +349,5 @@ class TestAccountService:
     @pytest.mark.asyncio
     async def test_get_account_by_pid_not_found(self) -> None:
         """Test that getting account by non-existent PID raises error."""
-        from src.modules.account.account_service import AccountByPidNotFoundException
-
         with pytest.raises(AccountByPidNotFoundException):
             await self.account_service.get_account_by_pid("999999999")
