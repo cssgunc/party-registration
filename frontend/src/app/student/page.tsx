@@ -16,6 +16,7 @@ export default function StudentDashboard() {
   const partiesQuery = useMyParties();
 
   const courseCompleted = isCourseCompleted(studentQuery.data?.last_registered);
+  const address = "123 Hillsborough St";
 
   return (
     <div className="flex flex-col items-center">
@@ -25,23 +26,23 @@ export default function StudentDashboard() {
         <div className="2xl:w-1/2">
           <div className="flex justify-between items-center">
             <div className="font-semibold text-2xl">Events</div>
-
-            {courseCompleted ? (
-              <Link href="/student/new-party">
-                <Button className="px-4 py-2 rounded-lg bg-[#09294E] text-white">
-                  Registration Form
-                </Button>
-              </Link>
-            ) : (
-              <Button
-                className="px-4 py-2 rounded-lg bg-[#09294E] text-white"
-                disabled
-                title="Complete the Party Smart Course to register a party"
-              >
+            <div>{address}</div>
+          </div>
+          {courseCompleted ? (
+            <Link href="/student/new-party">
+              <Button className="px-4 py-2 rounded-lg bg-[#09294E] text-white">
                 Registration Form
               </Button>
-            )}
-          </div>
+            </Link>
+          ) : (
+            <Button
+              className="px-4 py-2 rounded-lg bg-[#09294E] text-white"
+              disabled
+              title="Complete the Party Smart Course to register a party"
+            >
+              Registration Form
+            </Button>
+          )}
 
           <RegistrationTracker {...partiesQuery} />
           <div className="text-[24px] font-semibold">Party Smart Course </div>
