@@ -26,3 +26,14 @@ echo "SQL Server is ready!"
 python -m script.create_db
 python -m script.create_test_db
 python -m script.reset_dev
+
+echo ""
+echo "================= Generating frontend SAML certs ==============="
+cd "$REPO_ROOT/frontend"
+mkdir -p certs
+if [ ! -f certs/key.pem ] || [ ! -f certs/cert.pem ]; then
+  openssl req -x509 -newkey rsa:4096 -keyout certs/key.pem -out certs/cert.pem -nodes -days 900 -subj "/CN=localhost"
+  echo "Frontend SAML SP certificates generated in frontend/certs/."
+else
+  echo "Frontend SAML SP certificates already exist; skipping generation."
+fi
