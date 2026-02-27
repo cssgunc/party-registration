@@ -82,7 +82,7 @@ class AuthService:
             last_name=account.last_name,
             pid=account.pid,
             onyen=account.onyen,
-            role=account.role.value,
+            role=account.role,
             exp=expires_at,
             iat=datetime.now(UTC),
         )

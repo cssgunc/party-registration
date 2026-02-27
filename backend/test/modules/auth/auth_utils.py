@@ -17,7 +17,7 @@ class AuthTestUtils:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def create_refresh_token_entity(
+    async def create_one(
         self,
         account_id: int | None = None,
         token_hash: str | None = None,
@@ -104,7 +104,7 @@ class AuthTestUtils:
                 last_name=account.last_name,
                 pid=account.pid,
                 onyen=account.onyen,
-                role=account.role.value,
+                role=account.role,
                 exp=expires_at,
                 iat=datetime.now(UTC),
             ).model_dump()
@@ -133,8 +133,12 @@ class AuthTestUtils:
         )
 
     @staticmethod
-    def assert_account_token_payload(payload: dict, account: AccountDto) -> None:
+    def assert_account_token_payload(
+        payload: dict | AccountAccessTokenPayload, account: AccountDto
+    ) -> None:
         """Assert that a decoded access token payload matches the given account."""
+        if isinstance(payload, AccountAccessTokenPayload):
+            payload = payload.model_dump(mode="json")
         assert payload["sub"] == account.id
         assert payload["email"] == account.email
         assert payload["first_name"] == account.first_name
@@ -144,11 +148,17 @@ class AuthTestUtils:
         assert payload["role"] == account.role.value
 
     @staticmethod
-    def assert_police_token_payload(payload: dict, police: PoliceAccountDto) -> None:
+    def assert_police_token_payload(
+        payload: dict | PoliceAccessTokenPayload, police: PoliceAccountDto
+    ) -> None:
         """Assert that a decoded access token payload matches the given police account."""
+        if isinstance(payload, PoliceAccessTokenPayload):
+            payload = payload.model_dump(mode="json")
         assert payload["sub"] == "police"
         assert payload["email"] == police.email
         assert payload["role"] == "police"
+        for field in ("first_name", "last_name", "pid", "onyen"):
+            assert field not in payload, f"Police token should not contain '{field}'"
 
     @staticmethod
     def assert_expiration_approx(

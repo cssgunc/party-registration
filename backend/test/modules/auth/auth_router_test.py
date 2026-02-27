@@ -1,17 +1,26 @@
 import pytest
 from httpx import AsyncClient
 from src.core.config import env
-from src.core.exceptions import CredentialsException
+from src.core.exceptions import CredentialsException, ForbiddenException
 from src.modules.account.account_model import AccountData, AccountRole
-from src.modules.auth.auth_model import PoliceCredentialsDto, TokensDto
-from src.modules.auth.auth_service import AuthService, InvalidRefreshTokenException
+from src.modules.auth.auth_model import AccessTokenDto, PoliceCredentialsDto, TokensDto
+from src.modules.auth.auth_service import (
+    AuthService,
+    InvalidInternalSecretException,
+    InvalidRefreshTokenException,
+)
 from src.modules.police.police_model import PoliceAccountDto
+from src.modules.student.student_model import StudentDto
 
 from test.modules.account.account_utils import AccountTestUtils
 from test.modules.auth.auth_utils import AuthTestUtils
 from test.modules.police.police_utils import PoliceTestUtils
 from test.modules.student.student_utils import StudentTestUtils
-from test.utils.http.assertions import assert_res_failure, assert_res_success
+from test.utils.http.assertions import (
+    assert_res_failure,
+    assert_res_success,
+    assert_res_validation_error,
+)
 
 
 class TestAuthRouter:
@@ -52,8 +61,6 @@ class TestAuthRouter:
         )
 
         data = assert_res_success(response, TokensDto)
-        assert data.access_token
-        assert data.refresh_token
 
         payload = self.auth_utils.decode_token(data.access_token)
         assert payload["email"] == account_data.email
@@ -97,7 +104,7 @@ class TestAuthRouter:
             json=account_data.model_dump(mode="json"),
         )
 
-        assert response.status_code == 422
+        assert_res_validation_error(response)
 
     @pytest.mark.asyncio
     async def test_exchange_invalid_internal_secret(self, account_utils: AccountTestUtils) -> None:
@@ -110,7 +117,7 @@ class TestAuthRouter:
             headers={"X-Internal-Secret": "invalid-secret"},
         )
 
-        assert response.status_code == 403
+        assert_res_failure(response, InvalidInternalSecretException())
 
     # ========================= /auth/police/login Tests =========================
 
@@ -131,8 +138,6 @@ class TestAuthRouter:
         )
 
         data = assert_res_success(response, TokensDto)
-        assert data.access_token
-        assert data.refresh_token
 
         payload = self.auth_utils.decode_token(data.access_token)
         self.auth_utils.assert_police_token_payload(
@@ -192,7 +197,7 @@ class TestAuthRouter:
             json=credentials.model_dump(),
         )
 
-        assert response.status_code == 422
+        assert_res_validation_error(response)
 
     # ========================= /auth/refresh Tests =========================
 
@@ -212,13 +217,9 @@ class TestAuthRouter:
             headers={"X-Internal-Secret": env.INTERNAL_API_SECRET},
         )
 
-        assert response.status_code == 200
-        data = response.json()
-        assert "access_token" in data
-        assert "access_token_expires" in data
-
-        payload = self.auth_utils.decode_token(data["access_token"])
-        assert payload["email"] == account.email
+        data = assert_res_success(response, AccessTokenDto)
+        payload = self.auth_utils.decode_token(data.access_token)
+        self.auth_utils.assert_account_token_payload(payload, account)
 
     @pytest.mark.asyncio
     async def test_refresh_access_token_invalid(self) -> None:
@@ -229,7 +230,7 @@ class TestAuthRouter:
             headers={"X-Internal-Secret": env.INTERNAL_API_SECRET},
         )
 
-        assert response.status_code == 401
+        assert_res_failure(response, InvalidRefreshTokenException())
 
     @pytest.mark.asyncio
     async def test_refresh_with_revoked_token(
@@ -251,7 +252,7 @@ class TestAuthRouter:
             headers={"X-Internal-Secret": env.INTERNAL_API_SECRET},
         )
 
-        assert response.status_code == 401
+        assert_res_failure(response, InvalidRefreshTokenException())
 
     @pytest.mark.asyncio
     async def test_refresh_access_token_missing_internal_secret(
@@ -266,7 +267,7 @@ class TestAuthRouter:
             json={"refresh_token": refresh_token},
         )
 
-        assert response.status_code == 422
+        assert_res_validation_error(response)
 
     # ========================= /auth/logout Tests =========================
 
@@ -306,7 +307,7 @@ class TestAuthRouter:
             json={"refresh_token": refresh_token},
         )
 
-        assert response.status_code == 401
+        assert_res_failure(response, CredentialsException())
 
     @pytest.mark.asyncio
     async def test_logout_expired_access_token(self, account_utils: AccountTestUtils) -> None:
@@ -322,7 +323,7 @@ class TestAuthRouter:
             headers={"Authorization": f"Bearer {expired_token}"},
         )
 
-        assert response.status_code == 401
+        assert_res_failure(response, CredentialsException())
 
 
 class TestAuthMiddleware:
@@ -387,7 +388,7 @@ class TestAuthMiddleware:
             headers={"Authorization": "Bearer invalid.token.here"},
         )
 
-        assert response.status_code == 401
+        assert_res_failure(response, CredentialsException())
 
     @pytest.mark.asyncio
     async def test_expired_token_returns_401(self, account_utils: AccountTestUtils) -> None:
@@ -402,7 +403,7 @@ class TestAuthMiddleware:
             headers={"Authorization": f"Bearer {expired_token}"},
         )
 
-        assert response.status_code == 401
+        assert_res_failure(response, CredentialsException())
 
     @pytest.mark.asyncio
     async def test_missing_token_returns_401(self) -> None:
@@ -412,7 +413,7 @@ class TestAuthMiddleware:
             json={"refresh_token": "any"},
         )
 
-        assert response.status_code == 401
+        assert_res_failure(response, CredentialsException())
 
     @pytest.mark.asyncio
     async def test_wrong_role_returns_403(self, account_utils: AccountTestUtils) -> None:
@@ -425,7 +426,7 @@ class TestAuthMiddleware:
             headers={"Authorization": f"Bearer {token}"},
         )
 
-        assert response.status_code == 403
+        assert_res_failure(response, ForbiddenException("Insufficient privileges"))
 
     @pytest.mark.asyncio
     async def test_account_token_payload_has_correct_id(
@@ -441,6 +442,5 @@ class TestAuthMiddleware:
             headers={"Authorization": f"Bearer {token}"},
         )
 
-        assert response.status_code == 200
-        data = response.json()
-        assert data["id"] == account_entity.id
+        data = assert_res_success(response, StudentDto)
+        assert data.id == account_entity.id

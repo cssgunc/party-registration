@@ -5,7 +5,7 @@ import pytest
 from sqlalchemy import select
 from src.core.config import env
 from src.core.exceptions import CredentialsException
-from src.modules.account.account_model import AccountDto, AccountRole
+from src.modules.account.account_model import AccountDto
 from src.modules.auth.auth_model import AccountAccessTokenPayload, PoliceAccessTokenPayload
 from src.modules.auth.auth_service import AuthService, InvalidRefreshTokenException
 from src.modules.auth.refresh_token_entity import RefreshTokenEntity
@@ -52,7 +52,6 @@ class TestAuthService:
 
         payload = self.auth_utils.decode_token(token)
         self.auth_utils.assert_police_token_payload(payload, police)
-        assert "first_name" not in payload
         self.auth_utils.assert_expiration_approx(expires_at, 900)
 
     # ========================= JWT Validation Tests =========================
@@ -67,9 +66,7 @@ class TestAuthService:
         payload = self.auth_service.decode_access_token(token)
 
         assert isinstance(payload, AccountAccessTokenPayload)
-        assert payload.sub == account.id
-        assert payload.email == account.email
-        assert payload.role == account.role.value
+        self.auth_utils.assert_account_token_payload(payload, account)
 
     @pytest.mark.asyncio
     async def test_decode_police_access_token(self) -> None:
@@ -80,26 +77,19 @@ class TestAuthService:
         payload = self.auth_service.decode_access_token(token)
 
         assert isinstance(payload, PoliceAccessTokenPayload)
-        assert payload.sub == "police"
-        assert payload.email == police.email
-        assert payload.role == "police"
+        self.auth_utils.assert_police_token_payload(payload, police)
 
     @pytest.mark.asyncio
-    async def test_decode_access_token_invalid_account_id(self) -> None:
+    async def test_decode_access_token_invalid_account_id(
+        self, account_utils: AccountTestUtils
+    ) -> None:
         """Test decoding a valid JWT with a nonexistent account id.
 
         decode_access_token does not check the DB, so decoding itself succeeds.
         DB lookup failure happens downstream in route handlers.
         """
-        fake_account = AccountDto(
-            id=99999,
-            email="ghost@unc.edu",
-            first_name="Ghost",
-            last_name="User",
-            pid="999999999",
-            onyen="ghostuser",
-            role=AccountRole.STUDENT,
-        )
+        data = account_utils.get_or_default()
+        fake_account = AccountDto(id=99999, **data)
 
         token = self.auth_utils.create_mock_access_token(account=fake_account)
         payload = self.auth_service.decode_access_token(token)
@@ -182,7 +172,7 @@ class TestAuthService:
         """Test validating an expired refresh token raises exception."""
         jti = "test-jti-expired"
         token_hash = AuthService._hash_token_id(jti)
-        await self.auth_utils.create_refresh_token_entity(
+        await self.auth_utils.create_one(
             account_id=None,
             token_hash=token_hash,
             expires_at=datetime.now(UTC) - timedelta(hours=1),

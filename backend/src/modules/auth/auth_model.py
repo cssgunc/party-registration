@@ -1,6 +1,7 @@
-from typing import Annotated, Literal
+from typing import Literal
 
-from pydantic import AwareDatetime, BaseModel, EmailStr, Field
+from pydantic import AwareDatetime, BaseModel, EmailStr, field_serializer
+from src.modules.account.account_model import AccountRole
 
 
 class AccountAccessTokenPayload(BaseModel):
@@ -12,25 +13,26 @@ class AccountAccessTokenPayload(BaseModel):
     last_name: str
     pid: str
     onyen: str
-    role: Literal["student", "staff", "admin"]
+    role: AccountRole
     exp: AwareDatetime
     iat: AwareDatetime
+
+    @field_serializer("role")
+    def serialize_role(self, role: AccountRole) -> str:
+        return role.value
 
 
 class PoliceAccessTokenPayload(BaseModel):
     """JWT payload for police access tokens."""
 
-    sub: str  # "police"
+    sub: Literal["police"]
     email: str
     role: Literal["police"]
     exp: AwareDatetime
     iat: AwareDatetime
 
 
-AccessTokenPayload = Annotated[
-    AccountAccessTokenPayload | PoliceAccessTokenPayload,
-    Field(discriminator="role"),
-]
+AccessTokenPayload = AccountAccessTokenPayload | PoliceAccessTokenPayload
 
 
 class RefreshTokenPayload(BaseModel):
