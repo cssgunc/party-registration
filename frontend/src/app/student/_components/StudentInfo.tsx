@@ -1,5 +1,6 @@
 "use client";
 
+import triangle_alert from "@/components/icons/triangle-alert.svg";
 import { Button } from "@/components/ui/button";
 import {
   Field,
@@ -19,6 +20,7 @@ import {
 import { useUpdateStudent } from "@/lib/api/student/student.queries";
 import { StudentDto } from "@/lib/api/student/student.types";
 import { Pencil } from "lucide-react";
+import Image from "next/image";
 import { useState } from "react";
 import * as z from "zod";
 
@@ -50,6 +52,10 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
   const [formData, setFormData] = useState<StudentInfoValues>(initialData);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [mockAddress, setMockAddress] = useState(
+    "123 Hillsborough St, Chapel Hill NC 27514"
+  );
+  const [addressOutOfDate, setAddressOutOfDate] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -193,6 +199,20 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
             </div>
           </div>
         </div>
+        <div className="text-[#09294E] font-semibold text-lg mb-2 mt-5 sm:mt-0 pt-4">
+          2025-26 Address
+        </div>
+        <div className="text-gray-600 text-base border-gray-300 pb-3">
+          {mockAddress}
+        </div>
+
+        <div className="flex flex-row gap-4">
+          <Image src={triangle_alert} alt="triangle alert" width={20}></Image>
+          <div className="text-gray-600 text-base italic border-gray-300">
+            You cannot change your address until August 1st 2026. If you are
+            experiencing hardship, contact [email] for changes
+          </div>
+        </div>
 
         <div className="mt-8 flex justify-center">
           <Button className="bg-[#09294E] text-white px-8 py-2 rounded-lg hover:bg-[#0a1f38]">
@@ -204,7 +224,19 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded-lg">
+    <form onSubmit={handleSubmit} className="bg-white rounded-lg p-12 w-full">
+      <div className="flex justify-between items-center mb-6">
+        <div className="text-[32px] font-semibold text-[#09294E]">
+          Edit Profile Information
+        </div>
+        <button
+          onClick={() => setIsEditing(true)}
+          className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+          aria-label="Edit profile"
+        >
+          <Pencil className="w-6 h-6 text-[#09294E]" />
+        </button>
+      </div>
       <FieldGroup>
         <FieldSet>
           <div className="grid grid-cols-2 gap-x-12 gap-y-6">
@@ -294,6 +326,45 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
                 <FieldError>{errors.contact_preference}</FieldError>
               )}
             </Field>
+            {(!mockAddress || addressOutOfDate) && (
+              <Field>
+                <FieldLabel
+                  htmlFor="address"
+                  className="text-[#09294E] font-semibold text-lg mb-2 mt-5 sm:mt-0"
+                >
+                  2025-26 Address
+                </FieldLabel>
+                <Input
+                  id="address"
+                  placeholder="123 Main St, Chapel Hill NC 27514"
+                  value={mockAddress}
+                  // onChange={}
+                  className="border-gray-300"
+                />
+              </Field>
+            )}
+            {mockAddress && !addressOutOfDate && (
+              <div className="col-span-2">
+                <div className="text-[#09294E] font-semibold text-lg mb-2">
+                  2025-26 Address
+                </div>
+                <div className="text-gray-600 text-base pb-3">
+                  {mockAddress}
+                </div>
+
+                <div className="flex flex-row gap-4">
+                  <Image
+                    src={triangle_alert}
+                    alt="triangle alert"
+                    width={20}
+                  ></Image>
+                  <div className="text-gray-600 text-base italic flex-1">
+                    You cannot change your address until August 1st 2026. If you
+                    are experiencing hardship, contact [email] for changes
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {errors.submit && (

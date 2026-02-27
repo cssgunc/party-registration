@@ -4,6 +4,14 @@ import AddressSearch from "@/components/AddressSearch";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Field,
   FieldDescription,
   FieldError,
@@ -111,6 +119,11 @@ export default function PartyRegistrationForm({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showAddressConfirmation, setShowAddressConfirmation] = useState(false);
+  const [pendingSubmitData, setPendingSubmitData] = useState<{
+    data: PartyFormValues;
+    placeId: string;
+  } | null>(null);
 
   // Check if the form is complete enough to enable the submit button
   const isFormComplete =
@@ -173,6 +186,18 @@ export default function PartyRegistrationForm({
       return;
     }
 
+    // Check if address has changed from initial value
+    const addressChanged =
+      initialValues?.address && result.data.address !== initialValues.address;
+
+    // If address changed, show confirmation dialog
+    if (addressChanged) {
+      setPendingSubmitData({ data: result.data, placeId });
+      setShowAddressConfirmation(true);
+      return;
+    }
+
+    // Proceed with submission if address didn't change
     setIsSubmitting(true);
     try {
       await onSubmit(result.data, placeId); // ⭐ now sends placeId too
@@ -208,27 +233,49 @@ export default function PartyRegistrationForm({
         }
       : undefined;
 
+  const [mockAddress, setMockAddress] = useState(
+    "123 Hillsborough St, Chapel Hill NC 27514"
+  );
+  const [addressOutOfDate, setAddressOutOfDate] = useState(true);
+
   return (
     <form onSubmit={handleSubmit}>
       <FieldGroup>
         <FieldSet>
-          <Field data-invalid={!!errors.address}>
-            <FieldLabel htmlFor="party-address">Party Address</FieldLabel>
-            <AddressSearch
-              value={formData.address}
-              onSelect={handleAddressSelect}
-              locationService={locationService}
-              placeholder="Search for the party address..."
-              className="w-full"
-              error={errors.address}
-              initialSelection={initialAddress}
-            />
-            <FieldDescription>
-              Search and select the address where the party will be held. The
-              address will be locked after selection.
-            </FieldDescription>
-            {errors.address && <FieldError>{errors.address}</FieldError>}
-          </Field>
+          {(!mockAddress || addressOutOfDate) && (
+            <Field data-invalid={!!errors.address}>
+              <FieldLabel htmlFor="party-address">Party Address</FieldLabel>
+              <AddressSearch
+                value={formData.address}
+                onSelect={handleAddressSelect}
+                locationService={locationService}
+                placeholder="Search for the party address..."
+                className="w-full"
+                error={errors.address}
+                initialSelection={initialAddress}
+              />
+              <FieldDescription className="italics">
+                This will be added to your profile as your 2025-2026 location.
+                You may change it after August 1st 2026
+              </FieldDescription>
+              {errors.address && <FieldError>{errors.address}</FieldError>}
+            </Field>
+          )}
+          {mockAddress && !addressOutOfDate && (
+            <div className="col-span-2">
+              <div className="text-[#09294E] font-semibold text-sm mb-2">
+                Event Address
+              </div>
+              <div className="text-gray-600 text-base pb-3">{mockAddress}</div>
+
+              <div className="flex flex-row gap-4">
+                <div className="text-gray-600 text-base italic flex-1">
+                  You cannot change your address until August 1st 2026. If you
+                  are experiencing hardship, contact [email] for changes
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <Field data-invalid={!!errors.partyDate}>
@@ -403,6 +450,61 @@ export default function PartyRegistrationForm({
           </Field>
         </FieldSet>
       </FieldGroup>
+
+      <Dialog
+        open={showAddressConfirmation}
+        onOpenChange={setShowAddressConfirmation}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Address Change</DialogTitle>
+            <DialogDescription>
+              You are changing your registered address. This will update your
+              2025-2026 residence on file. You will not be able to change it
+              again until August 1st, 2026.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm">
+              <span className="font-semibold">New Address:</span>
+              <br />
+              {pendingSubmitData?.data.address}
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowAddressConfirmation(false);
+                setPendingSubmitData(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={async () => {
+                if (pendingSubmitData) {
+                  setShowAddressConfirmation(false);
+                  setIsSubmitting(true);
+                  try {
+                    await onSubmit(
+                      pendingSubmitData.data,
+                      pendingSubmitData.placeId
+                    );
+                  } finally {
+                    setIsSubmitting(false);
+                    setPendingSubmitData(null);
+                  }
+                }
+              }}
+            >
+              Confirm Address Change
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </form>
   );
 }
