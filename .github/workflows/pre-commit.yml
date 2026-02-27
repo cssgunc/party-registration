@@ -52,5 +52,5 @@ jobs:
       - name: Fail with instructions if pre-commit failed
         if: steps.pre-commit.outcome == 'failure'
         run: |
-          echo "::error::Pre-commit checks failed. Run 'pre-commit run --all-files' locally and commit the fixes."
+          echo "::error::Pre-commit checks failed. Check the step above for issues, make sure main is pulled in, and run 'pre-commit run --all-files' locally. Then commit the fixes."
           exit 1
