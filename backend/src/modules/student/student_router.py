@@ -6,16 +6,18 @@ from src.core.authentication import (
 )
 from src.core.query_utils import PAGINATED_OPENAPI_PARAMS
 from src.modules.account.account_model import AccountDto
+from src.modules.location.location_model import LocationDto
 from src.modules.party.party_model import PartyDto
 from src.modules.party.party_service import PartyService
 
 from .student_model import (
     IsRegisteredUpdate,
     PaginatedStudentsResponse,
-    StudentCreate,
-    StudentData,
-    StudentDataWithNames,
+    ResidenceUpdateDto,
+    SelfUpdateStudentDto,
+    StudentCreateDto,
     StudentDto,
+    StudentUpdateDto,
 )
 from .student_service import StudentService
 
@@ -32,11 +34,31 @@ async def get_me(
 
 @student_router.put("/me")
 async def update_me(
-    data: StudentData,
+    data: SelfUpdateStudentDto,
     student_service: StudentService = Depends(),
     user: "AccountDto" = Depends(authenticate_student),
 ) -> StudentDto:
-    return await student_service.update_student(user.id, data)
+    """Update student's own information (phone and contact preference only)."""
+    # Get current student to preserve fields not in SelfUpdateStudentDto
+    current_student = await student_service.get_student_by_id(user.id)
+
+    # Create StudentUpdateDto preserving last_registered and residence
+    update_data = StudentUpdateDto(
+        phone_number=data.phone_number,
+        contact_preference=data.contact_preference,
+        last_registered=current_student.last_registered,
+        residence_place_id=None,  # Students cannot update residence via this endpoint
+    )
+    return await student_service.update_student(user.id, update_data)
+
+
+@student_router.put("/me/residence")
+async def update_my_residence(
+    data: ResidenceUpdateDto,
+    student_service: StudentService = Depends(),
+    user: "AccountDto" = Depends(authenticate_student),
+) -> LocationDto:
+    return await student_service.update_residence(user.id, data.residence_place_id)
 
 
 @student_router.get("/me/parties")
@@ -83,7 +105,7 @@ async def get_student(
 
 @student_router.post("", status_code=201)
 async def create_student(
-    payload: StudentCreate,
+    payload: StudentCreateDto,
     student_service: StudentService = Depends(),
     _=Depends(authenticate_admin),
 ) -> StudentDto:
@@ -93,7 +115,7 @@ async def create_student(
 @student_router.put("/{student_id}")
 async def update_student(
     student_id: int,
-    data: StudentDataWithNames,
+    data: StudentUpdateDto,
     student_service: StudentService = Depends(),
     _=Depends(authenticate_admin),
 ) -> StudentDto:

@@ -15,6 +15,7 @@ from src.modules.student.student_service import (
     StudentNotFoundException,
 )
 from test.modules.account.account_utils import AccountTestUtils
+from test.modules.location.location_utils import GmapsMockUtils, LocationTestUtils
 from test.modules.party.party_utils import PartyTestUtils
 from test.modules.student.student_utils import StudentTestUtils
 from test.utils.http.assertions import (
@@ -34,6 +35,7 @@ test_student_authentication = generate_auth_required_tests(
     ({"admin", "staff"}, "PATCH", "/api/students/12345/is-registered", {"is_registered": True}),
     ({"student"}, "GET", "/api/students/me", None),
     ({"student"}, "PUT", "/api/students/me", StudentTestUtils.get_sample_data()),
+    ({"student"}, "PUT", "/api/students/me/residence", {"residence_place_id": "ChIJTest"}),
     ({"student"}, "GET", "/api/students/me/parties", None),
 )
 
@@ -299,6 +301,33 @@ class TestStudentCRUDRouter:
             "/api/students", json=payload.model_dump(mode="json")
         )
         assert_res_failure(response, StudentConflictException(student.phone_number))
+
+    @pytest.mark.asyncio
+    async def test_create_student_with_residence(
+        self, gmaps_utils: GmapsMockUtils, location_utils: LocationTestUtils
+    ):
+        """Test admin creating a student with a residence."""
+        location = await location_utils.create_one()
+        gmaps_utils.mock_place_details(
+            google_place_id=location.google_place_id,
+            formatted_address=location.formatted_address,
+            latitude=float(location.latitude),
+            longitude=float(location.longitude),
+        )
+
+        payload = await self.student_utils.next_student_create(
+            last_registered=datetime.now(UTC),
+            residence_place_id=location.google_place_id,
+        )
+
+        response = await self.admin_client.post(
+            "/api/students", json=payload.model_dump(mode="json")
+        )
+        data = assert_res_success(response, StudentDto, status=201)
+
+        assert data.residence is not None
+        assert data.residence.location.id == location.id
+        assert data.residence.residence_chosen_date is not None
 
     @pytest.mark.asyncio
     async def test_get_student_success(self):
@@ -587,3 +616,147 @@ class TestStudentMeRouter:
         assert len(parties) == 1
         assert party2.id not in [p.id for p in parties]
         self.party_utils.assert_matches(parties[0], party1)
+
+
+class TestStudentResidenceRouter:
+    """Tests for /api/students/me/residence endpoint."""
+
+    student_client: AsyncClient
+    student_utils: StudentTestUtils
+    account_utils: AccountTestUtils
+    location_utils: LocationTestUtils
+    gmaps_utils: GmapsMockUtils
+
+    @pytest_asyncio.fixture
+    async def current_student(self) -> StudentEntity:
+        """Create a student for the current authenticated user with last_registered set."""
+        # The student_client from conftest uses id=3 for students
+        await self.account_utils.create_one(role=AccountRole.ADMIN.value)
+        await self.account_utils.create_one(role=AccountRole.STAFF.value)
+        account = await self.account_utils.create_one(role=AccountRole.STUDENT.value)
+        assert account.id == 3
+
+        # Create student with last_registered to allow residence selection
+        student = await self.student_utils.create_one(
+            account_id=account.id,
+            last_registered=datetime.now(UTC),
+        )
+        return student
+
+    @pytest.fixture(autouse=True)
+    def _setup(
+        self,
+        student_utils: StudentTestUtils,
+        account_utils: AccountTestUtils,
+        location_utils: LocationTestUtils,
+        gmaps_utils: GmapsMockUtils,
+        student_client: AsyncClient,
+    ):
+        self.student_utils = student_utils
+        self.account_utils = account_utils
+        self.location_utils = location_utils
+        self.gmaps_utils = gmaps_utils
+        self.student_client = student_client
+
+    @pytest.mark.asyncio
+    async def test_update_residence_success(self, current_student: StudentEntity):
+        """Test student successfully updating their residence."""
+        from src.modules.location.location_model import LocationDto
+
+        location = await self.location_utils.create_one()
+        self.gmaps_utils.mock_place_details(
+            google_place_id=location.google_place_id,
+            formatted_address=location.formatted_address,
+            latitude=float(location.latitude),
+            longitude=float(location.longitude),
+        )
+
+        payload = {"residence_place_id": location.google_place_id}
+        response = await self.student_client.put("/api/students/me/residence", json=payload)
+        data = assert_res_success(response, LocationDto)
+
+        assert data.id == location.id
+
+    @pytest.mark.asyncio
+    async def test_update_residence_without_party_smart(self):
+        """Test that unregistered student cannot choose residence."""
+        from src.core.exceptions import BadRequestException
+
+        # Create student without last_registered
+        await self.account_utils.create_one(role=AccountRole.ADMIN.value)
+        await self.account_utils.create_one(role=AccountRole.STAFF.value)
+        account = await self.account_utils.create_one(role=AccountRole.STUDENT.value)
+        await self.student_utils.create_one(
+            account_id=account.id,
+            last_registered=None,
+        )
+
+        location = await self.location_utils.create_one()
+        payload = {"residence_place_id": location.google_place_id}
+
+        response = await self.student_client.put("/api/students/me/residence", json=payload)
+        assert_res_failure(
+            response,
+            BadRequestException(
+                "Must complete Party Smart in the current academic year before choosing a residence"
+            ),
+        )
+
+    @pytest.mark.asyncio
+    async def test_update_residence_same_academic_year(self, current_student: StudentEntity):
+        """Test that student cannot change residence in same academic year."""
+        from src.modules.student.student_service import ResidenceAlreadyChosenException
+
+        # Set initial residence
+        location1 = await self.location_utils.create_one()
+        current_student.residence_id = location1.id
+        current_student.residence_chosen_date = datetime.now(UTC)
+        self.student_utils.session.add(current_student)
+        await self.student_utils.session.commit()
+
+        # Try to change residence in same academic year
+        location2 = await self.location_utils.create_one()
+        self.gmaps_utils.mock_place_details(
+            google_place_id=location2.google_place_id,
+            formatted_address=location2.formatted_address,
+            latitude=float(location2.latitude),
+            longitude=float(location2.longitude),
+        )
+
+        payload = {"residence_place_id": location2.google_place_id}
+        response = await self.student_client.put("/api/students/me/residence", json=payload)
+        assert_res_failure(response, ResidenceAlreadyChosenException())
+
+    @pytest.mark.asyncio
+    async def test_update_residence_new_academic_year(self):
+        """Test that student can change residence in a new academic year."""
+        from src.modules.location.location_model import LocationDto
+
+        # Create student with old residence from previous academic year
+        # The key is: residence_chosen_date is from last year, but last_registered is current year
+        # (meaning they completed Party Smart again this year)
+        now = datetime.now(UTC)
+        old_residence_date = self.student_utils.get_old_academic_year_date()
+
+        await self.account_utils.create_one(role=AccountRole.ADMIN.value)
+        await self.account_utils.create_one(role=AccountRole.STAFF.value)
+        account = await self.account_utils.create_one(role=AccountRole.STUDENT.value)
+
+        location1 = await self.location_utils.create_one()
+        student = await self.student_utils.create_one(
+            account_id=account.id,
+            last_registered=now,  # Completed Party Smart this year
+        )
+        student.residence_id = location1.id
+        student.residence_chosen_date = old_residence_date  # But chose residence last year
+        self.student_utils.session.add(student)
+        await self.student_utils.session.commit()
+
+        # Should be able to change residence in new academic year
+        location2 = await self.location_utils.create_one()
+        self.gmaps_utils.mock_place_details()
+
+        payload = {"residence_place_id": location2.google_place_id}
+        response = await self.student_client.put("/api/students/me/residence", json=payload)
+        data = assert_res_success(response, LocationDto)
+        assert data.id == location2.id

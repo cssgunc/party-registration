@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio.engine import AsyncEngine
 from src.core.authentication import StringRole
 from src.core.database import EntityBase, database_url, get_session
 from src.main import app
+from src.modules.account.account_model import AccountRole
 from src.modules.account.account_service import AccountService
 from src.modules.incident.incident_service import IncidentService
 from src.modules.location.location_service import LocationService
@@ -177,8 +178,8 @@ def police_service(test_session: AsyncSession, fast_bcrypt: None):
 
 
 @pytest.fixture()
-def student_service(test_session: AsyncSession):
-    return StudentService(session=test_session)
+def student_service(test_session: AsyncSession, location_service: LocationService):
+    return StudentService(session=test_session, location_service=location_service)
 
 
 @pytest.fixture(autouse=True)
@@ -231,6 +232,16 @@ def party_service(
 @pytest.fixture()
 def account_utils(test_session: AsyncSession):
     return AccountTestUtils(session=test_session)
+
+
+@pytest_asyncio.fixture()
+async def setup_test_accounts(account_utils: AccountTestUtils):
+    """
+    Create dummy admin and staff accounts so student accounts will have ID=3.
+    This is required because mock_authenticate assigns student role to ID 3.
+    """
+    await account_utils.create_one(role=AccountRole.ADMIN.value)
+    await account_utils.create_one(role=AccountRole.STAFF.value)
 
 
 @pytest.fixture()

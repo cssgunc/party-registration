@@ -6,12 +6,15 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from src.core.database import get_session
+from src.core.date_utils import is_same_academic_year
 from src.core.exceptions import BadRequestException, ConflictException, NotFoundException
 from src.core.query_utils import get_paginated_results, parse_pagination_params
 from src.modules.account.account_entity import AccountEntity, AccountRole
+from src.modules.location.location_model import LocationDto
+from src.modules.location.location_service import LocationService
 
 from .student_entity import StudentEntity
-from .student_model import PaginatedStudentsResponse, StudentData, StudentDataWithNames, StudentDto
+from .student_model import PaginatedStudentsResponse, StudentData, StudentDto, StudentUpdateDto
 
 
 class StudentNotFoundException(NotFoundException):
@@ -46,15 +49,27 @@ class StudentAlreadyExistsException(ConflictException):
         super().__init__(f"Student with account ID {account_id} already exists")
 
 
+class ResidenceAlreadyChosenException(BadRequestException):
+    def __init__(self):
+        super().__init__(
+            "Student has already chosen a residence for this academic year and cannot change it"
+        )
+
+
 class StudentService:
-    def __init__(self, session: AsyncSession = Depends(get_session)):
+    def __init__(
+        self,
+        session: AsyncSession = Depends(get_session),
+        location_service: LocationService = Depends(),
+    ):
         self.session = session
+        self.location_service = location_service
 
     async def _get_student_entity_by_account_id(self, account_id: int) -> StudentEntity:
         result = await self.session.execute(
             select(StudentEntity)
             .where(StudentEntity.account_id == account_id)
-            .options(selectinload(StudentEntity.account))
+            .options(selectinload(StudentEntity.account), selectinload(StudentEntity.residence))
         )
         student_entity = result.scalar_one_or_none()
         if student_entity is None:
@@ -94,7 +109,7 @@ class StudentService:
     async def get_students(self, skip: int = 0, limit: int | None = None) -> list[StudentDto]:
         query = (
             select(StudentEntity)
-            .options(selectinload(StudentEntity.account))
+            .options(selectinload(StudentEntity.account), selectinload(StudentEntity.residence))
             .order_by(StudentEntity.account_id)
             .offset(skip)
         )
@@ -121,7 +136,9 @@ class StudentService:
             PaginatedStudentsResponse with items and metadata
         """
         # Build base query with eager loading
-        base_query = select(StudentEntity).options(selectinload(StudentEntity.account))
+        base_query = select(StudentEntity).options(
+            selectinload(StudentEntity.account), selectinload(StudentEntity.residence)
+        )
 
         # Define allowed fields for sorting and filtering
         allowed_sort_fields = [
@@ -168,22 +185,24 @@ class StudentService:
         """Assert that a student with the given account ID exists."""
         await self._get_student_entity_by_account_id(account_id)
 
-    async def create_student(self, data: StudentDataWithNames, account_id: int) -> StudentDto:
-        account = await self._validate_account_for_student(account_id)
+    async def create_student(self, data: StudentUpdateDto, account_id: int) -> StudentDto:
+        await self._validate_account_for_student(account_id)
 
         if await self._get_student_entity_by_phone(data.phone_number):
             raise StudentConflictException(data.phone_number)
 
-        account.first_name = data.first_name
-        account.last_name = data.last_name
-        self.session.add(account)
+        # Get or create residence location if residence_place_id is provided
+        residence_id = None
+        if data.residence_place_id:
+            location = await self.location_service.get_or_create_location(data.residence_place_id)
+            residence_id = location.id
 
         student_data = StudentData(
             contact_preference=data.contact_preference,
             last_registered=data.last_registered,
             phone_number=data.phone_number,
         )
-        new_student = StudentEntity.from_data(student_data, account_id)
+        new_student = StudentEntity.from_data(student_data, account_id, residence_id)
         try:
             self.session.add(new_student)
             await self.session.commit()
@@ -191,12 +210,10 @@ class StudentService:
             await self.session.rollback()
             raise StudentConflictException(data.phone_number) from e
 
-        await self.session.refresh(new_student, ["account"])
+        await self.session.refresh(new_student, ["account", "residence"])
         return new_student.to_dto()
 
-    async def update_student(
-        self, account_id: int, data: StudentData | StudentDataWithNames
-    ) -> StudentDto:
+    async def update_student(self, account_id: int, data: StudentUpdateDto) -> StudentDto:
         student_entity = await self._get_student_entity_by_account_id(account_id)
 
         account = student_entity.account
@@ -212,11 +229,14 @@ class StudentService:
         ):
             raise StudentConflictException(data.phone_number)
 
-        # Only update account names if data includes them (StudentDataWithNames)
-        if isinstance(data, StudentDataWithNames):
-            account.first_name = data.first_name
-            account.last_name = data.last_name
-            self.session.add(account)
+        # Handle residence_place_id for admin updates
+        # Admins can update residence at any time, bypassing academic year restrictions
+        # Students must use the dedicated PUT /students/me/residence endpoint to update residence
+        if data.residence_place_id is not None:
+            # Get or create the new residence location
+            location = await self.location_service.get_or_create_location(data.residence_place_id)
+            student_entity.residence_id = location.id
+            student_entity.residence_chosen_date = datetime.now(UTC)
 
         student_entity.contact_preference = data.contact_preference
         student_entity.last_registered = data.last_registered
@@ -229,8 +249,39 @@ class StudentService:
             await self.session.rollback()
             raise StudentConflictException(data.phone_number) from e
 
-        await self.session.refresh(student_entity, ["account"])
+        await self.session.refresh(student_entity, ["account", "residence"])
         return student_entity.to_dto()
+
+    async def update_residence(self, account_id: int, residence_place_id: str) -> LocationDto:
+        """Update student's residence. Can only be done once per academic year."""
+        student_entity = await self._get_student_entity_by_account_id(account_id)
+
+        # Student must have completed Party Smart in current academic year
+        # before choosing a residence
+        if student_entity.last_registered is None or not is_same_academic_year(
+            student_entity.last_registered
+        ):
+            raise BadRequestException(
+                "Must complete Party Smart in the current academic year before choosing a residence"
+            )
+
+        # Check if student has already chosen a residence this academic year
+        if student_entity.residence_chosen_date is not None and is_same_academic_year(
+            student_entity.residence_chosen_date
+        ):
+            raise ResidenceAlreadyChosenException()
+
+        # Get or create the residence location
+        location = await self.location_service.get_or_create_location(residence_place_id)
+
+        # Update student's residence
+        student_entity.residence_id = location.id
+        student_entity.residence_chosen_date = datetime.now(UTC)
+
+        self.session.add(student_entity)
+        await self.session.commit()
+
+        return location
 
     async def delete_student(self, account_id: int) -> StudentDto:
         student_entity = await self._get_student_entity_by_account_id(account_id)
@@ -254,5 +305,5 @@ class StudentService:
 
         self.session.add(student_entity)
         await self.session.commit()
-        await self.session.refresh(student_entity, ["account"])
+        await self.session.refresh(student_entity, ["account", "residence"])
         return student_entity.to_dto()
