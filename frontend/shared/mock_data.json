@@ -4497,13 +4497,6 @@
       "description": "Property damage to neighboring fence."
     },
     {
-      "id": 50,
-      "location_id": 1,
-      "incident_datetime": "NOW-300d@20:15",
-      "severity": "complaint",
-      "description": "Property damage to neighboring fence."
-    },
-    {
       "id": 18,
       "location_id": 15,
       "incident_datetime": "NOW-192d@23:45",
