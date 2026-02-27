@@ -17,16 +17,16 @@ export default function IncidentSidebar({ incidents }: IncidentSidebarProps) {
     );
   };
   return (
-    <div className="">
+    <div>
       <h1 className="text-lg font-semibold">Incidents</h1>
       <p className="text-sm text-gray-500">
         Manage the incidents for this location here.
       </p>
       {incidentList.map((incident) => (
         <IncidentSidebarCard
-          incidents={[incident]}
+          incidents={incident}
           key={incident.id}
-          onDeleteIncident={handleDeleteIncident}
+          onDeleteIncidentAction={handleDeleteIncident}
         />
       ))}
       {role === "admin" && (

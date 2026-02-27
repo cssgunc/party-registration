@@ -19,6 +19,7 @@ export const LocationTable = () => {
   const queryClient = useQueryClient();
   const { openSidebar, closeSidebar } = useSidebar();
   const [sidebarMode, setSidebarMode] = useState<"create" | "edit">("create");
+  // const [incidents, setIncidents] = useState<IncidentDto[]>([]);
   const [editingLocation, setEditingLocation] = useState<LocationDto | null>(
     null
   );
@@ -190,7 +191,6 @@ export const LocationTable = () => {
       id: "incidents_info_chip",
       header: "Incidents",
       cell: ({ row }) => {
-        console.log("Row data for incidents:", row.original);
         return (
           <div className="flex w-auto">
             <Badge
