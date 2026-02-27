@@ -108,7 +108,7 @@ Navigate to [http://localhost:3000]() to view the website
 
 When you open this project in the Dev Container, the post-create script will automatically generate the Service Provider (SP) certs used by `saml2-js` in `frontend/certs` (`key.pem` and `cert.pem`).
 
-For the development IdP certificate (`SAML_IDP_CERT`), use the test IdP cert published by `kristophjunge/test-saml-idp`:
+The development IdP certificate (`SAML_IDP_CERT`) is already populated in `frontend/.env.template` using the test IdP cert published by `kristophjunge/test-saml-idp`:
 
 - [https://github.com/kristophjunge/docker-test-saml-idp/blob/master/config/simplesamlphp/server.crt](https://github.com/kristophjunge/docker-test-saml-idp/blob/master/config/simplesamlphp/server.crt)
 
