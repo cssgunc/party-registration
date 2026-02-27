@@ -214,14 +214,6 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
           {mockAddress}
         </div>
 
-        <div className="flex flex-row gap-4">
-          <Image src={triangle_alert} alt="triangle alert" width={20}></Image>
-          <div className="text-gray-600 text-base italic border-gray-300">
-            You cannot change your address until {change_date}. If you are
-            experiencing hardship, contact [email] for changes
-          </div>
-        </div>
-
         <div className="mt-8 flex justify-center">
           <Button className="bg-[#09294E] text-white px-8 py-2 rounded-lg hover:bg-[#0a1f38]">
             Log Out
