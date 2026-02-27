@@ -186,11 +186,9 @@ export default function PartyRegistrationForm({
       return;
     }
 
-    // Check if address has changed from initial value
     const addressChanged =
-      initialValues?.address && result.data.address !== initialValues.address;
+      !initialValues?.address || result.data.address !== initialValues.address;
 
-    // If address changed, show confirmation dialog
     if (addressChanged) {
       setPendingSubmitData({ data: result.data, placeId });
       setShowAddressConfirmation(true);
@@ -217,6 +215,19 @@ export default function PartyRegistrationForm({
       setErrors(newErrors);
     }
   };
+
+  const currentDate = new Date();
+  var school_year = "";
+  var change_date = "";
+  if (currentDate < new Date("08-01")) {
+    school_year =
+      currentDate.getFullYear() + "-" + (currentDate.getFullYear() + 1);
+    change_date = "August 1, " + (currentDate.getFullYear() + 1);
+  } else {
+    school_year =
+      currentDate.getFullYear() - 1 + "-" + currentDate.getFullYear();
+    change_date = "August 1, " + currentDate.getFullYear();
+  }
 
   /** ⭐ AddressSearch now sets BOTH address + placeId */
   const handleAddressSelect = (address: AutocompleteResult | null) => {
@@ -255,8 +266,8 @@ export default function PartyRegistrationForm({
                 initialSelection={initialAddress}
               />
               <FieldDescription className="italics">
-                This will be added to your profile as your 2025-2026 location.
-                You may change it after August 1st 2026
+                This will be added to your profile as your {school_year}{" "}
+                location. You may change it after {change_date}.
               </FieldDescription>
               {errors.address && <FieldError>{errors.address}</FieldError>}
             </Field>
@@ -460,11 +471,11 @@ export default function PartyRegistrationForm({
             <DialogTitle>Confirm Address Change</DialogTitle>
             <DialogDescription>
               You are changing your registered address. This will update your
-              2025-2026 residence on file. You will not be able to change it
-              again until August 1st, 2026.
+              {school_year} residence on file. You will not be able to change it
+              again until {change_date}.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
+          <div className="pt-2">
             <p className="text-sm">
               <span className="font-semibold">New Address:</span>
               <br />

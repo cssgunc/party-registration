@@ -143,6 +143,14 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
       undefined,
   };
 
+  const currentDate = new Date();
+  var change_date = "";
+  if (currentDate < new Date("08-01")) {
+    change_date = "August 1, " + (currentDate.getFullYear() + 1);
+  } else {
+    change_date = "August 1, " + currentDate.getFullYear();
+  }
+
   if (!isEditing) {
     return (
       <div className="bg-white rounded-lg p-12 w-full">
@@ -209,7 +217,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
         <div className="flex flex-row gap-4">
           <Image src={triangle_alert} alt="triangle alert" width={20}></Image>
           <div className="text-gray-600 text-base italic border-gray-300">
-            You cannot change your address until August 1st 2026. If you are
+            You cannot change your address until {change_date}. If you are
             experiencing hardship, contact [email] for changes
           </div>
         </div>
