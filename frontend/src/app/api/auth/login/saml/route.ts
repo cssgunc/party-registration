@@ -23,11 +23,25 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const formData = await req.formData();
   const body = Object.fromEntries(formData);
-  const appBaseUrl = process.env.NEXTAUTH_URL ?? new URL(req.url).origin;
 
-  const { data, headers } = await axios.get(`${appBaseUrl}/api/auth/csrf`);
-  const { csrfToken } = data;
-  const encodedSAMLBody = encodeURIComponent(JSON.stringify(body));
+  // Grab the CSRF token from the API endpoint
+  let headers, csrfToken, encodedSAMLBody;
+  try {
+    const appBaseUrl = process.env.NEXTAUTH_URL ?? new URL(req.url).origin;
+    const res = await axios.get(`${appBaseUrl}/api/auth/csrf`);
+    headers = res.headers;
+    csrfToken = res.data?.csrfToken;
+    encodedSAMLBody = encodeURIComponent(JSON.stringify(body));
+  } catch (error) {
+    console.error("Failed to fetch CSRF token:", error);
+    return NextResponse.json(
+      {
+        error:
+          "Failed to fetch CSRF token. Please check that NEXTAUTH_URL is set correctly and points to this app (e.g. http://localhost:3000 in development).",
+      },
+      { status: 500 }
+    );
+  }
 
   // Create a form that instantly submits to the SAML IdP so that the CSRF token is included in the request.
   // This is required by Next-Auth. Method derived from https://github.com/Jenyus-Org/next-auth-saml?tab=readme-ov-file#customizing
