@@ -14,6 +14,7 @@ export const serviceProvider = new saml2.ServiceProvider({
 export const identityProvider = new saml2.IdentityProvider({
   sso_login_url: process.env.SAML_IDP_SSO_LOGIN_URL!,
   sso_logout_url: process.env.SAML_IDP_SSO_LOGOUT_URL!,
-  allow_unencrypted_assertion: true,
+  allow_unencrypted_assertion:
+    process.env.SAML_ALLOW_UNENCRYPTED_ASSERTION !== "false",
   certificates: [process.env.SAML_IDP_CERT!],
 });
