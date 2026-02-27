@@ -19,14 +19,19 @@ from sqlalchemy.ext.asyncio.engine import AsyncEngine
 from src.core.authentication import StringRole
 from src.core.database import EntityBase, database_url, get_session
 from src.main import app
+from src.modules.account.account_entity import AccountEntity
+from src.modules.account.account_model import AccountDto, AccountRole
 from src.modules.account.account_service import AccountService
+from src.modules.auth.auth_service import AuthService
 from src.modules.incident.incident_service import IncidentService
 from src.modules.location.location_service import LocationService
 from src.modules.party.party_service import PartyService
+from src.modules.police.police_model import PoliceAccountDto
 from src.modules.police.police_service import PoliceService
 from src.modules.student.student_service import StudentService
 
 from test.modules.account.account_utils import AccountTestUtils
+from test.modules.auth.auth_utils import AuthTestUtils
 from test.modules.incident.incident_utils import IncidentTestUtils
 from test.modules.location.location_utils import GmapsMockUtils, LocationTestUtils
 from test.modules.party.party_utils import PartyTestUtils
@@ -102,6 +107,7 @@ CreateClientCallable = Callable[[StringRole | None], AsyncGenerator[AsyncClient,
 @pytest_asyncio.fixture
 async def create_test_client(
     test_session: AsyncSession,
+    auth_service: AuthService,
 ) -> CreateClientCallable:
     """Fixture to create test HTTP clients with different authentication roles."""
 
@@ -114,7 +120,27 @@ async def create_test_client(
 
         app.dependency_overrides[get_session] = override_get_session
 
-        headers = {"Authorization": f"Bearer {role}"} if role else {}
+        # Generate JWT token based on role
+        # Use fake DTOs — middleware reads from JWT only, no DB lookup needed.
+        # Tests needing a real DB account use the student_client / student_account fixtures.
+        if role == "police":
+            police = PoliceAccountDto(email="police@unc.edu")
+            token, _ = auth_service.create_police_access_token(police)
+        elif role in ("admin", "staff", "student"):
+            fake_account = AccountDto(
+                id=99999,
+                email=f"{role}@unc.edu",
+                first_name=role.capitalize(),
+                last_name="Client",
+                pid="999999999",
+                onyen=f"{role}client",
+                role=AccountRole(role),
+            )
+            token, _ = auth_service.create_account_access_token(fake_account)
+        else:
+            token = None
+
+        headers = {"Authorization": f"Bearer {token}"} if token else {}
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://test", headers=headers
         ) as ac:
@@ -138,9 +164,35 @@ async def staff_client(create_test_client: CreateClientCallable):
 
 
 @pytest_asyncio.fixture
-async def student_client(create_test_client: CreateClientCallable):
-    async for client in create_test_client("student"):
-        yield client
+async def student_account(account_utils: AccountTestUtils) -> AccountEntity:
+    """Dedicated account for student_client authentication (always gets a real DB id)."""
+    return await account_utils.create_one(role="student")
+
+
+@pytest_asyncio.fixture
+async def student_client(
+    test_session: AsyncSession,
+    student_account: AccountEntity,
+    auth_service: AuthService,
+):
+    """Client authenticated as the test student account."""
+
+    async def override_get_session():
+        yield test_session
+
+    app.dependency_overrides[get_session] = override_get_session
+
+    account_dto = student_account.to_dto()
+    token, _ = auth_service.create_account_access_token(account_dto)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+        headers={"Authorization": f"Bearer {token}"},
+    ) as ac:
+        yield ac
+
+    app.dependency_overrides.clear()
 
 
 @pytest_asyncio.fixture
@@ -174,6 +226,15 @@ def fast_bcrypt():
 @pytest.fixture()
 def police_service(test_session: AsyncSession, fast_bcrypt: None):
     return PoliceService(session=test_session)
+
+
+@pytest.fixture()
+def auth_service(
+    test_session: AsyncSession,
+    account_service: AccountService,
+    police_service: PoliceService,
+):
+    return AuthService(test_session, account_service, police_service)
 
 
 @pytest.fixture()
@@ -231,6 +292,11 @@ def party_service(
 @pytest.fixture()
 def account_utils(test_session: AsyncSession):
     return AccountTestUtils(session=test_session)
+
+
+@pytest_asyncio.fixture
+async def auth_utils(test_session: AsyncSession):
+    return AuthTestUtils(test_session)
 
 
 @pytest.fixture()

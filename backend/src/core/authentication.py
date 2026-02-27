@@ -4,6 +4,8 @@ from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from src.core.exceptions import CredentialsException, ForbiddenException
 from src.modules.account.account_model import AccountDto, AccountRole
+from src.modules.auth.auth_model import AccountAccessTokenPayload, PoliceAccessTokenPayload
+from src.modules.auth.auth_service import AuthService
 from src.modules.police.police_model import PoliceAccountDto
 
 StringRole = Literal["student", "admin", "staff", "police"]
@@ -20,54 +22,6 @@ class HTTPBearer401(HTTPBearer):
 bearer_scheme = HTTPBearer401()
 
 
-def mock_authenticate(role: AccountRole) -> AccountDto | None:
-    """Mock authentication function. Replace with real authentication logic."""
-    role_to_id = {
-        AccountRole.ADMIN: 1,
-        AccountRole.STAFF: 2,
-        AccountRole.STUDENT: 3,
-    }
-    role_to_pid = {
-        AccountRole.STUDENT: "111111111",
-        AccountRole.ADMIN: "222222222",
-        AccountRole.STAFF: "333333333",
-    }
-    return AccountDto(
-        id=role_to_id[role],
-        email="testuser@example.com",
-        first_name="Test",
-        last_name="User",
-        pid=role_to_pid[role],
-        onyen="testuser",
-        role=role,
-    )
-
-
-async def authenticate_user(
-    authorization: HTTPAuthorizationCredentials = Depends(bearer_scheme),
-) -> AccountDto:
-    """
-    Middleware to authenticate user from Bearer token.
-    Expects token to be one of: "student", "admin", "staff" for mock authentication.
-    Note: Police authenticate separately via the police singleton table.
-    """
-    token = authorization.credentials.lower()
-
-    role_map = {
-        "student": AccountRole.STUDENT,
-        "admin": AccountRole.ADMIN,
-        "staff": AccountRole.STAFF,
-    }
-
-    if token not in role_map:
-        raise CredentialsException()
-
-    user = mock_authenticate(role_map[token])
-    if not user:
-        raise CredentialsException()
-    return user
-
-
 def authenticate_by_role(*roles: StringRole):
     """
     Middleware factory to ensure the authenticated user has one of the specified roles.
@@ -75,31 +29,46 @@ def authenticate_by_role(*roles: StringRole):
 
     async def _authenticate(
         authorization: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+        auth_service: AuthService = Depends(),
     ) -> AccountDto | PoliceAccountDto:
-        token = authorization.credentials.lower()
+        token = authorization.credentials
+        payload = auth_service.decode_access_token(token)
 
-        # Check if police token and police is allowed
-        if token == "police":
-            if "police" in roles:
-                return PoliceAccountDto(email="police@example.com")
-            else:
+        if isinstance(payload, PoliceAccessTokenPayload):
+            if "police" not in roles:
                 raise ForbiddenException(detail="Insufficient privileges")
+            return PoliceAccountDto(email=payload.email)
 
-        role_map = {
-            "student": AccountRole.STUDENT,
-            "admin": AccountRole.ADMIN,
-            "staff": AccountRole.STAFF,
-        }
+        elif isinstance(payload, AccountAccessTokenPayload):
+            account = AccountDto(
+                id=payload.sub,
+                email=payload.email,
+                first_name=payload.first_name,
+                last_name=payload.last_name,
+                pid=payload.pid,
+                onyen=payload.onyen,
+                role=AccountRole(payload.role),
+            )
+            if account.role.value not in roles:
+                raise ForbiddenException(detail="Insufficient privileges")
+            return account
 
-        if token not in role_map:
+        else:
             raise CredentialsException()
 
-        user = mock_authenticate(role_map[token])
-        if not user or user.role.value not in roles:
-            raise ForbiddenException(detail="Insufficient privileges")
-        return user
-
     return _authenticate
+
+
+async def authenticate_user(
+    account: AccountDto | PoliceAccountDto = Depends(
+        authenticate_by_role("student", "staff", "admin", "police")
+    ),
+) -> AccountDto | PoliceAccountDto:
+    """
+    Middleware to authenticate any user from Bearer token.
+    Accepts account tokens (student/staff/admin) and police tokens.
+    """
+    return account
 
 
 async def authenticate_admin(
