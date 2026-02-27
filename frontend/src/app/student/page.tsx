@@ -8,12 +8,21 @@ import {
   useCurrentStudent,
   useMyParties,
 } from "@/lib/api/student/student.queries";
+import { LOCATIONS } from "@/lib/mockData";
 import { isCourseCompleted } from "@/lib/utils";
 import Link from "next/link";
+import { useMemo } from "react";
 
 export default function StudentDashboard() {
   const studentQuery = useCurrentStudent();
   const partiesQuery = useMyParties();
+  // Get mock incidents from first location with incidents
+  const mockIncidents = useMemo(() => {
+    const locationWithIncidents = LOCATIONS.find(
+      (loc) => loc.incidents.length > 0
+    );
+    return locationWithIncidents?.incidents || [];
+  }, []);
 
   const courseCompleted = isCourseCompleted(studentQuery.data?.last_registered);
 
@@ -43,7 +52,7 @@ export default function StudentDashboard() {
             )}
           </div>
 
-          <RegistrationTracker {...partiesQuery} />
+          <RegistrationTracker {...partiesQuery} incidents={mockIncidents} />
           <div className="text-[24px] font-semibold">Party Smart Course </div>
           <StatusComponent
             last_registered={studentQuery.data?.last_registered}
