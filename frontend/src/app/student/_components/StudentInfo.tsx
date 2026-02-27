@@ -144,10 +144,15 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
   };
 
   const currentDate = new Date();
+  var school_year = "";
   var change_date = "";
   if (currentDate < new Date("08-01")) {
+    school_year =
+      currentDate.getFullYear() + "-" + (currentDate.getFullYear() + 1);
     change_date = "August 1, " + (currentDate.getFullYear() + 1);
   } else {
+    school_year =
+      currentDate.getFullYear() - 1 + "-" + currentDate.getFullYear();
     change_date = "August 1, " + currentDate.getFullYear();
   }
 
@@ -208,7 +213,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
           </div>
         </div>
         <div className="text-[#09294E] font-semibold text-lg mb-2 mt-5 sm:mt-0 pt-4">
-          2025-26 Address
+          {school_year} Address
         </div>
         <div className="text-gray-600 text-base border-gray-300 pb-3">
           {mockAddress}
@@ -240,44 +245,32 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
       <FieldGroup>
         <FieldSet>
           <div className="grid grid-cols-2 gap-x-12 gap-y-6">
-            <Field data-invalid={!!errors.first_name}>
-              <FieldLabel
-                htmlFor="first-name"
-                className="text-[#09294E] font-semibold text-lg"
-              >
+            <div>
+              <div className="text-[#09294E] font-semibold text-lg mb-2">
                 First Name
-              </FieldLabel>
-              <Input
-                id="first-name"
-                placeholder="John"
-                value={formData.first_name}
-                onChange={(e) => updateField("first_name", e.target.value)}
-                aria-invalid={!!errors.first_name}
-                className="border-gray-300"
-              />
-              {errors.first_name && (
-                <FieldError>{errors.first_name}</FieldError>
-              )}
-            </Field>
+              </div>
+              <div className="text-gray-600 text-base border-b border-gray-300 pb-2">
+                {displayData.first_name}
+              </div>
+            </div>
 
-            <Field data-invalid={!!errors.last_name}>
-              <FieldLabel
-                htmlFor="last-name"
-                className="text-[#09294E] font-semibold text-lg"
-              >
+            <div>
+              <div className="text-[#09294E] font-semibold text-lg mb-2 mt-5 sm:mt-0">
                 Last Name
-              </FieldLabel>
-              <Input
-                id="last-name"
-                placeholder="Doe"
-                value={formData.last_name}
-                onChange={(e) => updateField("last_name", e.target.value)}
-                aria-invalid={!!errors.last_name}
-                className="border-gray-300"
-              />
-              {errors.last_name && <FieldError>{errors.last_name}</FieldError>}
-            </Field>
+              </div>
+              <div className="text-gray-600 text-base border-b border-gray-300 pb-2">
+                {displayData.last_name}
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-row gap-2">
+            <Image src={triangle_alert} alt="triangle alert" width={20}></Image>
+            <div className="text-gray-600 text-base italic flex-1">
+              Your name is associated with your Onyen
+            </div>
+          </div>
 
+          <div className="grid grid-cols-2 gap-x-12 gap-y-6">
             <Field data-invalid={!!errors.phone_number}>
               <FieldLabel
                 htmlFor="phone-number"
