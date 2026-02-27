@@ -1,4 +1,5 @@
 import hashlib
+import uuid
 from datetime import UTC, datetime, timedelta
 
 import jwt
@@ -25,8 +26,6 @@ class AuthTestUtils:
     ) -> RefreshTokenEntity:
         """Create a refresh token entity in the database."""
         if token_hash is None:
-            import uuid
-
             token_hash = hashlib.sha256(str(uuid.uuid4()).encode()).hexdigest()
 
         if expires_at is None:
