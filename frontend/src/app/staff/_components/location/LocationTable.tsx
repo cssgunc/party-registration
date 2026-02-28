@@ -1,11 +1,11 @@
 "use client";
 
+import { Badge } from "@/components/ui/badge";
 import { LocationService } from "@/lib/api/location/location.service";
 import {
+  IncidentDto,
   LocationCreate,
   LocationDto,
-  getCitationCount,
-  getWarningCount,
 } from "@/lib/api/location/location.types";
 import { PaginatedResponse } from "@/lib/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -14,6 +14,7 @@ import { AxiosError } from "axios";
 import { useState } from "react";
 import { useSidebar } from "../shared/sidebar/SidebarContext";
 import { TableTemplate } from "../shared/table/TableTemplate";
+import IncidentSidebar from "./IncidentSidebar";
 import LocationTableForm from "./LocationTableForm";
 
 const locationService = new LocationService();
@@ -22,6 +23,10 @@ export const LocationTable = () => {
   const queryClient = useQueryClient();
   const { openSidebar, closeSidebar } = useSidebar();
   const [editingLocation, setEditingLocation] = useState<LocationDto | null>(
+    null
+  );
+  const [incidentList, setIncidentList] = useState<IncidentDto[]>([]);
+  const [selectedLocationId, setSelectedLocationId] = useState<number | null>(
     null
   );
 
@@ -203,20 +208,83 @@ export const LocationTable = () => {
     updateMutation.mutate({ id: locationId, payload });
   };
 
+  const handleDeleteIncident = (incidentId: number) => {
+    const updated = incidentList.filter(
+      (incident) => incident.id !== incidentId
+    );
+    setIncidentList(updated);
+
+    queryClient.setQueryData<PaginatedResponse<LocationDto> | undefined>(
+      ["locations"],
+      (old) =>
+        old
+          ? {
+              ...old,
+              items: old.items.map((loc) =>
+                loc.id === selectedLocationId
+                  ? {
+                      ...loc,
+                      incidents: loc.incidents.filter(
+                        (inc) => inc.id !== incidentId
+                      ),
+                    }
+                  : loc
+              ),
+            }
+          : old
+    );
+
+    if (selectedLocationId !== null) {
+      openSidebar(
+        `incidents-${selectedLocationId}`,
+        "Incidents at Location",
+        `Warnings & Citations go here`,
+        <IncidentSidebar
+          incidents={updated}
+          onDeleteIncidentAction={handleDeleteIncident}
+        />
+      );
+    }
+  };
+
   const columns: ColumnDef<LocationDto>[] = [
     {
       accessorKey: "formatted_address",
       header: "Address",
     },
     {
-      id: "warning_count",
-      header: "Warning Count",
-      accessorFn: (row) => getWarningCount(row),
-    },
-    {
-      id: "citation_count",
-      header: "Citation Count",
-      accessorFn: (row) => getCitationCount(row),
+      id: "incidents_info_chip",
+      header: "Incidents",
+      cell: ({ row }) => {
+        return (
+          <div className="flex w-auto">
+            <Badge
+              variant="outline"
+              className="cursor-pointer"
+              onClick={() => {
+                const locIncidents = row.original.incidents;
+                setSelectedLocationId(row.original.id);
+                setIncidentList(locIncidents);
+                openSidebar(
+                  `incidents-${row.original.id}`,
+                  "Incidents at Location",
+                  `Warnings & Citations go here`,
+                  <IncidentSidebar
+                    incidents={locIncidents}
+                    onDeleteIncidentAction={handleDeleteIncident}
+                  />
+                );
+              }}
+            >
+              <span className="mr-1">
+                {row.original.incidents.length}{" "}
+                {row.original.incidents.length === 1 ? "incident" : "incidents"}
+              </span>
+            </Badge>
+          </div>
+        );
+      },
+      enableColumnFilter: false,
     },
     {
       accessorKey: "hold_expiration",
@@ -242,7 +310,6 @@ export const LocationTable = () => {
       },
     },
   ];
-
   return (
     <div className="space-y-4">
       <TableTemplate
