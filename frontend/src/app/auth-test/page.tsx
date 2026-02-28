@@ -1,6 +1,6 @@
 "use client";
 
-import { SessionProvider, signIn, signOut, useSession } from "next-auth/react";
+import { SessionProvider, signOut, useSession } from "next-auth/react";
 import Link from "next/link";
 
 // Wrap the AuthTest component in a SessionProvider since this is a client-side rendered page
@@ -56,17 +56,12 @@ function AuthTest() {
       ) : (
         <div className="text-center">
           <p className="mb-4">Not signed in</p>
-          <button
-            onClick={() =>
-              signIn("credentials", {
-                username: "admin",
-                password: "password",
-              })
-            } // Hard code credentials for now to make testing easier
-            className="bg-blue-500 text-white px-4 py-2 rounded"
+          <Link
+            href="/api/auth/login/saml"
+            className="bg-blue-500 text-white px-4 py-2 rounded inline-block"
           >
-            Sign In
-          </button>
+            Sign In with SAML
+          </Link>
         </div>
       )}
     </div>
