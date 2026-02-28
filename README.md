@@ -112,6 +112,8 @@ The development IdP certificate (`SAML_IDP_CERT`) is already populated in `front
 
 - [https://github.com/kristophjunge/docker-test-saml-idp/blob/master/config/simplesamlphp/server.crt](https://github.com/kristophjunge/docker-test-saml-idp/blob/master/config/simplesamlphp/server.crt)
 
+Default credentials for the example IdP: **username** `user1`, **password** `user1pass`.
+
 ## Running Backend Tests
 
 ### Manual Testing
