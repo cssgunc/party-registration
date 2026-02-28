@@ -15,7 +15,7 @@ export default function StudentProfilePage() {
     return (
       <div>
         <Header />
-        <div className="px-14 pb-12 flex flex-col gap-4 max-w-4xl mx-auto w-full">
+        <div className="sm:px-14 pb-12 flex flex-col gap-4 max-w-4xl mx-auto w-full">
           <div className="text-center py-8">Loading...</div>
         </div>
       </div>
@@ -26,7 +26,7 @@ export default function StudentProfilePage() {
     return (
       <div>
         <Header />
-        <div className="px-14 pb-12 flex flex-col gap-4 max-w-4xl mx-auto w-full">
+        <div className="sm:px-14 pb-12 flex flex-col gap-4 max-w-4xl mx-auto w-full">
           <div className="text-center py-8 text-red-600">
             Error loading student data
           </div>
@@ -40,7 +40,7 @@ export default function StudentProfilePage() {
       <Header />
       <div className="mt-12 px-14 pb-12 gap-4 max-w-4xl w-full flex justify-center">
         <Card className="mb-12 max-w-4xl w-full">
-          <CardContent className="">
+          <CardContent>
             {student && <StudentInfo initialData={student} />}
           </CardContent>
         </Card>

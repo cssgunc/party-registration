@@ -2,11 +2,14 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from src.modules.location.location_service import LocationNotFoundException
+from src.modules.party.party_model import ContactDto
 from src.modules.party.party_service import (
+    ContactTwoMatchesContactOneException,
     PartyNotFoundException,
     PartyService,
     StudentNotFoundException,
 )
+from src.modules.student.student_model import ContactPreference
 from test.modules.location.location_utils import LocationTestUtils
 from test.modules.party.party_utils import PartyTestUtils
 from test.modules.student.student_utils import StudentTestUtils
@@ -595,3 +598,66 @@ class TestPartyServiceRadius:
         )
         assert len(parties) == 1
         assert parties[0].id == party.id
+
+
+class TestPartyServiceContactTwoValidation:
+    """Tests for contact two duplicate validation in PartyService."""
+
+    party_service: PartyService
+
+    @pytest.fixture(autouse=True)
+    def _setup(self, party_service: PartyService):
+        self.party_service = party_service
+
+    def _make_contact(
+        self,
+        email: str = "contact2@email.com",
+        phone_number: str = "9195559999",
+    ) -> ContactDto:
+        return ContactDto(
+            email=email,
+            first_name="Contact",
+            last_name="Two",
+            phone_number=phone_number,
+            contact_preference=ContactPreference.TEXT,
+        )
+
+    def test_valid_different_contact_two(self):
+        """Test that validation passes when contact two differs from contact one."""
+        contact_two = self._make_contact(email="different@email.com", phone_number="9195550000")
+        # Should not raise
+        self.party_service._validate_contact_two_differs_from_contact_one(
+            "student@unc.edu", "9195551111", contact_two
+        )
+
+    def test_duplicate_email_raises(self):
+        """Test that matching email between contacts raises an error."""
+        contact_two = self._make_contact(email="student@unc.edu", phone_number="9195550000")
+        with pytest.raises(ContactTwoMatchesContactOneException):
+            self.party_service._validate_contact_two_differs_from_contact_one(
+                "student@unc.edu", "9195551111", contact_two
+            )
+
+    def test_duplicate_email_case_insensitive(self):
+        """Test that email comparison is case-insensitive."""
+        contact_two = self._make_contact(email="STUDENT@UNC.EDU", phone_number="9195550000")
+        with pytest.raises(ContactTwoMatchesContactOneException):
+            self.party_service._validate_contact_two_differs_from_contact_one(
+                "student@unc.edu", "9195551111", contact_two
+            )
+
+    def test_duplicate_phone_raises(self):
+        """Test that matching phone number between contacts raises an error."""
+        contact_two = self._make_contact(email="different@email.com", phone_number="9195551111")
+        with pytest.raises(ContactTwoMatchesContactOneException):
+            self.party_service._validate_contact_two_differs_from_contact_one(
+                "student@unc.edu", "9195551111", contact_two
+            )
+
+    def test_both_duplicate_raises(self):
+        """Test that when both email and phone match, an error is raised."""
+        contact_two = self._make_contact(email="student@unc.edu", phone_number="9195551111")
+        with pytest.raises(ContactTwoMatchesContactOneException):
+            self.party_service._validate_contact_two_differs_from_contact_one(
+                "student@unc.edu", "9195551111", contact_two
+            )

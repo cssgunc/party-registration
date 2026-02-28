@@ -6,6 +6,7 @@ import { AccountService } from "@/lib/api/account/account.service";
 import { AdminStudentService } from "@/lib/api/student/admin-student.service";
 import { StudentDto } from "@/lib/api/student/student.types";
 import { PaginatedResponse } from "@/lib/shared";
+import { isCourseCompleted } from "@/lib/utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
@@ -19,7 +20,6 @@ export const StudentTable = () => {
   const queryClient = useQueryClient();
   const { openSidebar, closeSidebar } = useSidebar();
   const [editingStudent, setEditingStudent] = useState<StudentDto | null>(null);
-  const [submissionError, setSubmissionError] = useState<string | null>(null);
 
   // Fetch students
   const studentsQuery = useQuery({
@@ -38,6 +38,8 @@ export const StudentTable = () => {
     }: {
       id: number;
       data: Omit<StudentDto, "id" | "email" | "pid">;
+      source?: "form";
+      editData?: StudentDto;
     }) => studentService.updateStudent(id, data),
     // Optimistically update the student in the cache so things like the
     // "Is Registered" checkbox feel instant.
@@ -61,24 +63,48 @@ export const StudentTable = () => {
 
       return { previous };
     },
-    onError: (error: Error, _vars, context) => {
+    onError: (error: Error, variables, context) => {
       console.error("Failed to update student:", error);
-      setSubmissionError(`Failed to update student: ${error.message}`);
       if (context?.previous) {
         queryClient.setQueryData(["students"], context.previous);
       }
+
+      if (variables?.source !== "form") {
+        return;
+      }
+
+      const editTarget = variables.editData ?? editingStudent;
+      if (!editTarget) {
+        return;
+      }
+
+      openSidebar(
+        `edit-student-${editTarget.id}`,
+        "Edit Student",
+        "Update student information",
+        <StudentTableForm
+          title="Edit Student"
+          onSubmit={(data) => handleEditSubmit(editTarget, data)}
+          submissionError={`Failed to update student: ${error.message}`}
+          editData={editTarget}
+        />
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["students"] });
       closeSidebar();
       setEditingStudent(null);
-      setSubmissionError(null);
     },
   });
 
   // Create student mutation
   const createStudentMutation = useMutation({
-    mutationFn: async ({ data }: { data: Omit<StudentDto, "id"> }) => {
+    mutationFn: async ({
+      data,
+    }: {
+      data: Omit<StudentDto, "id">;
+      source?: "form";
+    }) => {
       const account = await accountService.createAccount({
         role: "student",
         ...data,
@@ -89,15 +115,28 @@ export const StudentTable = () => {
         data,
       });
     },
-    onError: (error: Error) => {
+    onError: (error: Error, variables) => {
       console.error("Failed to create student:", error);
-      setSubmissionError(`Failed to create student: ${error.message}`);
+      if (variables?.source !== "form") {
+        return;
+      }
+
+      openSidebar(
+        "create-student",
+        "New Student",
+        "Add a new student to the system",
+        <StudentTableForm
+          title="New Student"
+          onSubmit={handleCreateSubmit}
+          submissionError={`Failed to create student: ${error.message}`}
+          editData={variables.data}
+        />
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["students"] });
       closeSidebar();
       setEditingStudent(null);
-      setSubmissionError(null);
     },
   });
 
@@ -147,22 +186,13 @@ export const StudentTable = () => {
 
   const handleEdit = (student: StudentDto) => {
     setEditingStudent(student);
-
-    setSubmissionError(null);
     openSidebar(
       `edit-student-${student.id}`,
       "Edit Student",
       "Update student information",
       <StudentTableForm
         title="Edit Student"
-        onSubmit={async (data) => {
-          if (!editingStudent) return;
-          await updateMutation.mutateAsync({
-            id: editingStudent.id,
-            data,
-          });
-        }}
-        submissionError={submissionError}
+        onSubmit={(data) => handleEditSubmit(student, data)}
         editData={student}
       />
     );
@@ -174,20 +204,28 @@ export const StudentTable = () => {
 
   const handleCreate = () => {
     setEditingStudent(null);
-
-    setSubmissionError(null);
     openSidebar(
       "create-student",
       "New Student",
       "Add a new student to the system",
-      <StudentTableForm
-        title="New Student"
-        onSubmit={async (data) => {
-          await createStudentMutation.mutateAsync({ data });
-        }}
-        submissionError={submissionError}
-      />
+      <StudentTableForm title="New Student" onSubmit={handleCreateSubmit} />
     );
+  };
+
+  const handleCreateSubmit = async (data: Omit<StudentDto, "id">) => {
+    createStudentMutation.mutate({ data, source: "form" });
+  };
+
+  const handleEditSubmit = async (
+    student: StudentDto,
+    data: Omit<StudentDto, "id" | "email" | "pid">
+  ) => {
+    updateMutation.mutate({
+      id: student.id,
+      data,
+      source: "form",
+      editData: student,
+    });
   };
 
   const columns: ColumnDef<StudentDto>[] = [
@@ -250,7 +288,7 @@ export const StudentTable = () => {
       enableColumnFilter: false,
       cell: ({ row }) => {
         const student = row.original;
-        const isRegistered = !!student.last_registered;
+        const isRegistered = isCourseCompleted(student.last_registered);
         return (
           <Checkbox
             checked={isRegistered}

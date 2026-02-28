@@ -18,7 +18,7 @@ line-length = 100
 target-version = "py312"  # Should match Dockerfile
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "B", "UP", "C4", "SIM", "RUF", "N"]
+select = ["E", "F", "W", "I", "B", "UP", "C4", "SIM", "RUF", "N", "PLC0415"]
 fixable = ["E", "F", "W", "I", "B", "UP", "C4", "SIM", "RUF", "N"]
 ignore = [
   "B008", # Allows use of Depends()

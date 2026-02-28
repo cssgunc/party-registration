@@ -4,12 +4,24 @@ import Header from "@/app/student/_components/Header";
 import RegistrationTracker from "@/app/student/_components/RegistrationTracker";
 import StatusComponent from "@/app/student/_components/StatusComponent";
 import { Button } from "@/components/ui/button";
-import { PARTIES } from "@/lib/mockData";
+import {
+  useCurrentStudent,
+  useMyParties,
+} from "@/lib/api/student/student.queries";
+import { LOCATIONS } from "@/lib/mockData";
 import Link from "next/link";
+import { useMemo } from "react";
 
 export default function StudentDashboard() {
-  // const studentQuery = useCurrentStudent();
-  // const partiesQuery = useMyParties();
+  const studentQuery = useCurrentStudent();
+  const partiesQuery = useMyParties();
+  // Get mock incidents from first location with incidents
+  const mockIncidents = useMemo(() => {
+    const locationWithIncidents = LOCATIONS.find(
+      (loc) => loc.incidents.length > 0
+    );
+    return locationWithIncidents?.incidents || [];
+  }, []);
 
   // const courseCompleted = isCourseCompleted(studentQuery.data?.last_registered);
   const courseCompleted = true;
@@ -39,16 +51,12 @@ export default function StudentDashboard() {
               </Button>
             )}
           </div>
-
-          <RegistrationTracker
-            data={PARTIES.filter((p) => p.contact_one.id === 35)}
-          />
+          <RegistrationTracker {...partiesQuery} incidents={mockIncidents} />
           <div className="text-[24px] font-semibold">Party Smart Course </div>
-          {/* <StatusComponent
+          <StatusComponent
             last_registered={studentQuery.data?.last_registered}
             {...studentQuery}
-          /> */}
-          <StatusComponent last_registered={new Date("2026-01-01")} />
+          />
         </div>
 
         <div className="2xl:w-1/2">
