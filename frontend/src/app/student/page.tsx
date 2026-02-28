@@ -9,7 +9,6 @@ import {
   useMyParties,
 } from "@/lib/api/student/student.queries";
 import { LOCATIONS } from "@/lib/mockData";
-import { isCourseCompleted } from "@/lib/utils";
 import Link from "next/link";
 import { useMemo } from "react";
 
@@ -24,7 +23,8 @@ export default function StudentDashboard() {
     return locationWithIncidents?.incidents || [];
   }, []);
 
-  const courseCompleted = isCourseCompleted(studentQuery.data?.last_registered);
+  // const courseCompleted = isCourseCompleted(studentQuery.data?.last_registered);
+  const courseCompleted = true;
 
   return (
     <div className="flex flex-col items-center">
@@ -51,13 +51,16 @@ export default function StudentDashboard() {
               </Button>
             )}
           </div>
-
           <RegistrationTracker {...partiesQuery} incidents={mockIncidents} />
           <div className="text-[24px] font-semibold">Party Smart Course </div>
           <StatusComponent
             last_registered={studentQuery.data?.last_registered}
             {...studentQuery}
           />
+        </div>
+
+        <div className="2xl:w-1/2">
+          {/* Place for future "About Party Registration and Party Smart section on Student Dashboard" */}
         </div>
       </div>
     </div>
