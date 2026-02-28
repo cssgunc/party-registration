@@ -19,7 +19,6 @@ export const LocationTable = () => {
   const queryClient = useQueryClient();
   const { openSidebar, closeSidebar } = useSidebar();
   const [sidebarMode, setSidebarMode] = useState<"create" | "edit">("create");
-  // const [incidents, setIncidents] = useState<IncidentDto[]>([]);
   const [editingLocation, setEditingLocation] = useState<LocationDto | null>(
     null
   );

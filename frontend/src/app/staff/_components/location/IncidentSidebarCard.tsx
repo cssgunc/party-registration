@@ -26,10 +26,10 @@ export default function IncidentSidebarCard({
   return (
     <div>
       <Collapsible>
-        <CollapsibleTrigger className="w-full text-left" asChild>
+        <CollapsibleTrigger className="w-full text-left group" asChild>
           <div className="flex flex-row justify-between">
             <div className="flex gap-4">
-              <ChevronDown className="mr-2" />
+              <ChevronDown className="mr-2 cursor-pointer transition-transform duration-100 group-data-[state=open]:rotate-180" />
               <p className="text-md font-medium">
                 {incidents.incident_datetime.toLocaleDateString("en-US", {
                   month: "2-digit",
