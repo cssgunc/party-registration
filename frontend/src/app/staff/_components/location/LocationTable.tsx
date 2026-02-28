@@ -2,7 +2,11 @@
 
 import { Badge } from "@/components/ui/badge";
 import { LocationService } from "@/lib/api/location/location.service";
-import { LocationCreate, LocationDto } from "@/lib/api/location/location.types";
+import {
+  IncidentDto,
+  LocationCreate,
+  LocationDto,
+} from "@/lib/api/location/location.types";
 import { PaginatedResponse } from "@/lib/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
@@ -20,6 +24,10 @@ export const LocationTable = () => {
   const { openSidebar, closeSidebar } = useSidebar();
   const [sidebarMode, setSidebarMode] = useState<"create" | "edit">("create");
   const [editingLocation, setEditingLocation] = useState<LocationDto | null>(
+    null
+  );
+  const [incidentList, setIncidentList] = useState<IncidentDto[]>([]);
+  const [selectedLocationId, setSelectedLocationId] = useState<number | null>(
     null
   );
 
@@ -181,6 +189,45 @@ export const LocationTable = () => {
     }
   };
 
+  const handleDeleteIncident = (incidentId: number) => {
+    const updated = incidentList.filter(
+      (incident) => incident.id !== incidentId
+    );
+    setIncidentList(updated);
+
+    queryClient.setQueryData<PaginatedResponse<LocationDto> | undefined>(
+      ["locations"],
+      (old) =>
+        old
+          ? {
+              ...old,
+              items: old.items.map((loc) =>
+                loc.id === selectedLocationId
+                  ? {
+                      ...loc,
+                      incidents: loc.incidents.filter(
+                        (inc) => inc.id !== incidentId
+                      ),
+                    }
+                  : loc
+              ),
+            }
+          : old
+    );
+
+    if (selectedLocationId !== null) {
+      openSidebar(
+        `incidents-${selectedLocationId}`,
+        "Incidents at Location",
+        `Warnings & Citations go here`,
+        <IncidentSidebar
+          incidents={updated}
+          onDeleteIncidentAction={handleDeleteIncident}
+        />
+      );
+    }
+  };
+
   const columns: ColumnDef<LocationDto>[] = [
     {
       accessorKey: "formatted_address",
@@ -195,14 +242,20 @@ export const LocationTable = () => {
             <Badge
               variant="outline"
               className="cursor-pointer"
-              onClick={() =>
+              onClick={() => {
+                const locIncidents = row.original.incidents;
+                setSelectedLocationId(row.original.id);
+                setIncidentList(locIncidents);
                 openSidebar(
                   `incidents-${row.original.id}`,
                   "Incidents at Location",
                   `Warnings & Citations go here`,
-                  <IncidentSidebar incidents={row.original.incidents} />
-                )
-              }
+                  <IncidentSidebar
+                    incidents={locIncidents}
+                    onDeleteIncidentAction={handleDeleteIncident}
+                  />
+                );
+              }}
             >
               <span className="mr-1">
                 {row.original.incidents.length}{" "}
