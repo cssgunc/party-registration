@@ -19,3 +19,39 @@ export function useCreateParty(role: StringRole = "student") {
     },
   });
 }
+
+/**
+ * Hook to update an existing party registration
+ */
+export function useUpdateParty(role: StringRole = "student") {
+  const partyService = new PartyService(getMockClient(role));
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    PartyDto,
+    Error,
+    { partyId: number; data: CreatePartyDto }
+  >({
+    mutationFn: ({ partyId, data }) => partyService.updateParty(partyId, data),
+    onSuccess: () => {
+      // Invalidate parties list to refetch after update
+      queryClient.invalidateQueries({ queryKey: ["student", "me", "parties"] });
+    },
+  });
+}
+
+/**
+ * Hook to delete a party registration
+ */
+export function useDeleteParty(role: StringRole = "student") {
+  const partyService = new PartyService(getMockClient(role));
+  const queryClient = useQueryClient();
+
+  return useMutation<PartyDto, Error, number>({
+    mutationFn: (partyId) => partyService.deleteParty(partyId),
+    onSuccess: () => {
+      // Invalidate parties list to refetch after deletion
+      queryClient.invalidateQueries({ queryKey: ["student", "me", "parties"] });
+    },
+  });
+}
