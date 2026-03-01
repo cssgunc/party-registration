@@ -13,9 +13,9 @@ from .student_model import (
     IsRegisteredUpdate,
     PaginatedStudentsResponse,
     StudentCreate,
-    StudentData,
     StudentDataWithNames,
     StudentDto,
+    StudentSelfUpdateData,
 )
 from .student_service import StudentService
 
@@ -32,11 +32,11 @@ async def get_me(
 
 @student_router.put("/me")
 async def update_me(
-    data: StudentData,
+    data: StudentSelfUpdateData,
     student_service: StudentService = Depends(),
     user: "AccountDto" = Depends(authenticate_student),
 ) -> StudentDto:
-    return await student_service.update_student(user.id, data)
+    return await student_service.update_student_self(user.id, data)
 
 
 @student_router.get("/me/parties")
