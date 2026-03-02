@@ -284,8 +284,8 @@ export default function PartyRegistrationForm({
 
               <div className="flex flex-row gap-4">
                 <div className="text-gray-600 text-base italic flex-1">
-                  You cannot change your address until August 1st 2026. If you
-                  are experiencing hardship, contact [email] for changes
+                  You cannot change your address until {change_date}. If you are
+                  experiencing hardship, contact [email] for changes
                 </div>
               </div>
             </div>
