@@ -10,7 +10,7 @@ export function cn(...inputs: ClassValue[]) {
  * Check if a date is before or after August 1st.
  * Course completion and residence registration expires on August 1st each year.
  */
-export function isValid(date: Date | null | undefined): boolean {
+export function isFromThisSchoolYear(date: Date | null | undefined): boolean {
   if (!date) return false;
 
   const now = new Date();

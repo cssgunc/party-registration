@@ -9,7 +9,7 @@ import {
   useCurrentStudent,
   useMyParties,
 } from "@/lib/api/student/student.queries";
-import { isValid } from "@/lib/utils";
+import { isFromThisSchoolYear } from "@/lib/utils";
 import Link from "next/link";
 
 const locationService = new LocationService();
@@ -41,8 +41,10 @@ export default function StudentDashboard() {
   }
 
   const partiesQuery = useMyParties();
-  const courseCompleted = isValid(studentQuery.data?.last_registered);
-  const validResidence = isValid(
+  const courseCompleted = isFromThisSchoolYear(
+    studentQuery.data?.last_registered
+  );
+  const validResidence = isFromThisSchoolYear(
     studentQuery?.data?.residence?.residence_chosen_date
   );
   return (

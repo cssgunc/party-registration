@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import { useUpdateStudent } from "@/lib/api/student/student.queries";
 import { StudentDto } from "@/lib/api/student/student.types";
-import { isValid } from "@/lib/utils";
+import { isFromThisSchoolYear } from "@/lib/utils";
 import { Pencil, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import * as z from "zod";
@@ -157,7 +157,9 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
     change_date = "August 1, " + currentDate.getFullYear();
   }
 
-  const validAddress = isValid(initialData.residence?.residence_chosen_date);
+  const validAddress = isFromThisSchoolYear(
+    initialData.residence?.residence_chosen_date
+  );
   if (!isEditing) {
     return (
       <div className="bg-white rounded-lg p-12 w-full">

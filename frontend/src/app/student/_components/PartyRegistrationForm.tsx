@@ -35,7 +35,7 @@ import {
 import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { ResidenceDto } from "@/lib/api/student/student.types";
-import { isValid } from "@/lib/utils";
+import { isFromThisSchoolYear } from "@/lib/utils";
 import { addBusinessDays, format, isAfter, startOfDay } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { useState } from "react";
@@ -248,7 +248,9 @@ export default function PartyRegistrationForm({
         }
       : undefined;
 
-  const validResidence = isValid(studentResidence?.residence_chosen_date);
+  const validResidence = isFromThisSchoolYear(
+    studentResidence?.residence_chosen_date
+  );
 
   return (
     <form onSubmit={handleSubmit}>
