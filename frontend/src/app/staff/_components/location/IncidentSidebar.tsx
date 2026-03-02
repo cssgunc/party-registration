@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { useRole } from "@/contexts/RoleContext";
 import { IncidentDto } from "@/lib/api/location/location.types";
 import { useEffect, useState } from "react";
+import { DeleteConfirmDialog } from "../shared/dialog/DeleteConfirmDialog";
 import IncidentModal from "./IncidentModal";
 import IncidentSidebarCard from "./IncidentSidebarCard";
 
@@ -27,9 +28,25 @@ export default function IncidentSidebar({
     setLocalIncidents(incidents);
   }, [incidents]);
 
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmingId, setConfirmingId] = useState<number | null>(null);
+
+  const requestDelete = (incidentId: number) => {
+    setConfirmingId(incidentId);
+    setConfirmOpen(true);
+  };
+
   const handleDelete = (incidentId: number) => {
     setLocalIncidents((prev) => prev.filter((i) => i.id !== incidentId));
     onDeleteIncidentAction(incidentId);
+  };
+
+  const doDelete = () => {
+    if (confirmingId !== null) {
+      handleDelete(confirmingId);
+    }
+    setConfirmOpen(false);
+    setConfirmingId(null);
   };
 
   const handleEdit = (incident: IncidentDto) => {
@@ -88,10 +105,17 @@ export default function IncidentSidebar({
         <IncidentSidebarCard
           incidents={incident}
           key={incident.id}
-          onDeleteIncidentAction={handleDelete}
+          onDeleteIncidentAction={requestDelete}
           onEditIncidentAction={handleEdit}
         />
       ))}
+      <DeleteConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        onConfirm={doDelete}
+        title="Delete Incident"
+        description="Are you sure you want to delete this incident? This action cannot be undone."
+      />
       {role === "admin" && (
         <Button variant="default" className="mt-4" onClick={handleAdd}>
           Add Incident
