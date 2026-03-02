@@ -1,6 +1,4 @@
 "use client";
-
-import triangle_alert from "@/components/icons/triangle-alert.svg";
 import { Button } from "@/components/ui/button";
 import {
   Field,
@@ -19,8 +17,8 @@ import {
 } from "@/components/ui/select";
 import { useUpdateStudent } from "@/lib/api/student/student.queries";
 import { StudentDto } from "@/lib/api/student/student.types";
-import { Pencil } from "lucide-react";
-import Image from "next/image";
+import { isValid } from "@/lib/utils";
+import { Pencil, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import * as z from "zod";
 
@@ -37,6 +35,7 @@ const studentInfoSchema = z.object({
   contact_preference: z.enum(["call", "text"], {
     message: "Please select a contact preference",
   }),
+  address: z.string().min(1, "Address is required"),
 });
 
 // Grab the type of the form data from the schema so we can use it in the component
@@ -49,13 +48,15 @@ interface StudentInfoProps {
 export default function StudentInfo({ initialData }: StudentInfoProps) {
   const updateStudentMutation = useUpdateStudent();
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState<StudentInfoValues>(initialData);
+  const [formData, setFormData] = useState<StudentInfoValues>({
+    first_name: initialData.first_name,
+    last_name: initialData.last_name,
+    phone_number: initialData.phone_number,
+    contact_preference: initialData.contact_preference,
+    address: initialData.residence?.location.formatted_address ?? "",
+  });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [mockAddress, setMockAddress] = useState(
-    "123 Hillsborough St, Chapel Hill NC 27514"
-  );
-  const [addressOutOfDate, setAddressOutOfDate] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -156,6 +157,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
     change_date = "August 1, " + currentDate.getFullYear();
   }
 
+  const validAddress = isValid(initialData.residence?.residence_chosen_date);
   if (!isEditing) {
     return (
       <div className="bg-white rounded-lg p-12 w-full">
@@ -215,8 +217,9 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
         <div className="text-[#09294E] font-semibold text-lg mb-2 mt-5 sm:mt-0 pt-4">
           {school_year} Address
         </div>
-        <div className="text-gray-600 text-base border-gray-300 pb-3">
-          {mockAddress}
+
+        <div className="text-gray-600 text-base border-b border-gray-300 pb-2">
+          {initialData.residence?.location.formatted_address}
         </div>
 
         <div className="mt-8 flex justify-center">
@@ -264,7 +267,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
             </div>
           </div>
           <div className="flex flex-row gap-2">
-            <Image src={triangle_alert} alt="triangle alert" width={20}></Image>
+            <TriangleAlert />
             <div className="text-gray-600 text-base italic flex-1">
               Your name is associated with your Onyen
             </div>
@@ -319,40 +322,37 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
                 <FieldError>{errors.contact_preference}</FieldError>
               )}
             </Field>
-            {(!mockAddress || addressOutOfDate) && (
-              <Field>
+            {!validAddress && (
+              <Field data-invalid={!!errors.address}>
                 <FieldLabel
                   htmlFor="address"
                   className="text-[#09294E] font-semibold text-lg mb-2 mt-5 sm:mt-0"
                 >
-                  2025-26 Address
+                  {school_year} Address
                 </FieldLabel>
                 <Input
                   id="address"
                   placeholder="123 Main St, Chapel Hill NC 27514"
-                  value={mockAddress}
-                  // onChange={}
+                  value={formData.address}
+                  onChange={(e) => updateField("address", e.target.value)}
                   className="border-gray-300"
                 />
+                {errors.address && <FieldError>{errors.address}</FieldError>}
               </Field>
             )}
-            {mockAddress && !addressOutOfDate && (
+            {validAddress && (
               <div className="col-span-2">
                 <div className="text-[#09294E] font-semibold text-lg mb-2">
-                  2025-26 Address
+                  {school_year} Address
                 </div>
                 <div className="text-gray-600 text-base pb-3">
-                  {mockAddress}
+                  {initialData.residence?.location.formatted_address}
                 </div>
 
                 <div className="flex flex-row gap-4">
-                  <Image
-                    src={triangle_alert}
-                    alt="triangle alert"
-                    width={20}
-                  ></Image>
+                  <TriangleAlert />
                   <div className="text-gray-600 text-base italic flex-1">
-                    You cannot change your address until August 1st 2026. If you
+                    You cannot change your address until {change_date}. If you
                     are experiencing hardship, contact [email] for changes
                   </div>
                 </div>

@@ -34,6 +34,8 @@ import {
 } from "@/components/ui/select";
 import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
+import { ResidenceDto } from "@/lib/api/student/student.types";
+import { isValid } from "@/lib/utils";
 import { addBusinessDays, format, isAfter, startOfDay } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { useState } from "react";
@@ -89,6 +91,7 @@ interface PartyRegistrationFormProps {
   studentEmail?: string;
   /** The authenticated student's phone number (contact one) for duplicate validation */
   studentPhoneNumber?: string;
+  studentResidence?: ResidenceDto | null;
 }
 
 // Default party time (e.g., 8:00 PM)
@@ -102,6 +105,7 @@ export default function PartyRegistrationForm({
   initialValues,
   studentEmail,
   studentPhoneNumber,
+  studentResidence,
 }: PartyRegistrationFormProps) {
   const [formData, setFormData] = useState<Partial<PartyFormValues>>({
     address: initialValues?.address ?? "",
@@ -244,16 +248,13 @@ export default function PartyRegistrationForm({
         }
       : undefined;
 
-  const [mockAddress, setMockAddress] = useState(
-    "123 Hillsborough St, Chapel Hill NC 27514"
-  );
-  const [addressOutOfDate, setAddressOutOfDate] = useState(true);
+  const validResidence = isValid(studentResidence?.residence_chosen_date);
 
   return (
     <form onSubmit={handleSubmit}>
       <FieldGroup>
         <FieldSet>
-          {(!mockAddress || addressOutOfDate) && (
+          {!validResidence && (
             <Field data-invalid={!!errors.address}>
               <FieldLabel htmlFor="party-address">Party Address</FieldLabel>
               <AddressSearch
@@ -272,12 +273,14 @@ export default function PartyRegistrationForm({
               {errors.address && <FieldError>{errors.address}</FieldError>}
             </Field>
           )}
-          {mockAddress && !addressOutOfDate && (
+          {validResidence && (
             <div className="col-span-2">
               <div className="text-[#09294E] font-semibold text-sm mb-2">
-                Event Address
+                Party Address
               </div>
-              <div className="text-gray-600 text-base pb-3">{mockAddress}</div>
+              <div className="text-gray-600 text-base pb-3">
+                {studentResidence?.location.formatted_address}
+              </div>
 
               <div className="flex flex-row gap-4">
                 <div className="text-gray-600 text-base italic flex-1">

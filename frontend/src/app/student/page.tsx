@@ -4,20 +4,47 @@ import Header from "@/app/student/_components/Header";
 import RegistrationTracker from "@/app/student/_components/RegistrationTracker";
 import StatusComponent from "@/app/student/_components/StatusComponent";
 import { Button } from "@/components/ui/button";
+import { LocationService } from "@/lib/api/location/location.service";
 import {
   useCurrentStudent,
   useMyParties,
 } from "@/lib/api/student/student.queries";
-import { isCourseCompleted } from "@/lib/utils";
+import { isValid } from "@/lib/utils";
 import Link from "next/link";
+
+const locationService = new LocationService();
 
 export default function StudentDashboard() {
   const studentQuery = useCurrentStudent();
+  // mocking
+  if (studentQuery?.data) {
+    studentQuery.data.residence = {
+      location: {
+        google_place_id: "ChIJqWQcpuXCrIkRqI-BGFaaqLw",
+        formatted_address: "408 Pittsboro St, Chapel Hill, NC 27516, USA",
+        latitude: 35.9059464,
+        longitude: -79.0553058,
+        street_number: "408",
+        street_name: "Pittsboro Street",
+        unit: null,
+        city: "Chapel Hill",
+        county: "Orange County",
+        state: "NC",
+        country: "US",
+        zip_code: "27516",
+        hold_expiration: null,
+        id: 1,
+        incidents: [],
+      },
+      residence_chosen_date: new Date(),
+    };
+  }
+
   const partiesQuery = useMyParties();
-
-  const courseCompleted = isCourseCompleted(studentQuery.data?.last_registered);
-  const address = "123 Hillsborough St";
-
+  const courseCompleted = isValid(studentQuery.data?.last_registered);
+  const validResidence = isValid(
+    studentQuery?.data?.residence?.residence_chosen_date
+  );
   return (
     <div className="flex flex-col items-center">
       <Header />
@@ -26,7 +53,13 @@ export default function StudentDashboard() {
         <div className="2xl:w-1/2">
           <div className="flex justify-between items-center">
             <div className="font-semibold text-2xl">Events</div>
-            <div>{address}</div>
+            {validResidence && (
+              <div>
+                {studentQuery?.data?.residence?.location.street_number}{" "}
+                {studentQuery?.data?.residence?.location.street_name}{" "}
+                {studentQuery?.data?.residence?.location.unit}
+              </div>
+            )}
           </div>
           {courseCompleted ? (
             <Link href="/student/new-party">
