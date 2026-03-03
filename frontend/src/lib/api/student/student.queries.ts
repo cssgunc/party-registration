@@ -1,42 +1,49 @@
 import { PartyDto } from "@/lib/api/party/party.types";
 import StudentService from "@/lib/api/student/student.service";
 import { StudentData, StudentDto } from "@/lib/api/student/student.types";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { OptimisticMutationOptions } from "@/lib/shared";
+import {
+  UseQueryOptions,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
 const studentService = new StudentService();
 
-/**
- * Hook to fetch the current authenticated student's information
- */
-export function useCurrentStudent() {
+export const CURRENT_STUDENT_KEY = ["student", "me"] as const;
+export const STUDENT_PARTIES_KEY = ["student", "me", "parties"] as const;
+
+export function useCurrentStudent(options?: UseQueryOptions<StudentDto>) {
   return useQuery<StudentDto, Error>({
-    queryKey: ["student", "me"],
+    queryKey: CURRENT_STUDENT_KEY,
     queryFn: () => studentService.getCurrentStudent(),
+    retry: 1,
+    ...options,
   });
 }
 
-/**
- * Hook to update the current authenticated student's information
- */
-export function useUpdateStudent() {
+export function useUpdateStudent(
+  options?: OptimisticMutationOptions<StudentDto, Error, StudentData>
+) {
   const queryClient = useQueryClient();
 
   return useMutation<StudentDto, Error, StudentData>({
+    ...options,
     mutationFn: (data: StudentData) => studentService.updateMe(data),
-    onSuccess: (updatedStudent) => {
-      // Invalidate and refetch student data
-      queryClient.setQueryData(["student", "me"], updatedStudent);
-      queryClient.invalidateQueries({ queryKey: ["student", "me"] });
+    onSuccess: (updatedStudent, ...rest) => {
+      queryClient.setQueryData(CURRENT_STUDENT_KEY, updatedStudent);
+      queryClient.invalidateQueries({ queryKey: CURRENT_STUDENT_KEY });
+      options?.onSuccess?.(updatedStudent, ...rest);
     },
   });
 }
 
-/**
- * Hook to fetch all parties for the current authenticated student
- */
-export function useMyParties() {
+export function useMyParties(options?: UseQueryOptions<PartyDto[]>) {
   return useQuery<PartyDto[], Error>({
-    queryKey: ["student", "me", "parties"],
+    queryKey: STUDENT_PARTIES_KEY,
     queryFn: () => studentService.getMyParties(),
+    retry: 1,
+    ...options,
   });
 }
