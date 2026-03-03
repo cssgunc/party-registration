@@ -43,7 +43,7 @@
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
+  --background: oklch(0.7349 0.0915 237.35 / 0.1);
   --background-gradient: linear-gradient(
     in oklch 161deg,
     #dceef9 0%,
@@ -61,7 +61,6 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
   --primary: oklch(0.7349 0.0915 237.35);
-  --primary-background: oklch(0.7349 0.0915 237.35 / 0.1);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.281 0.0773 254.77);
   --secondary-foreground: oklch(0.205 0 0);
@@ -74,7 +73,6 @@
   --input: oklch(0.922 0 0);
   --input-shadow: oklch(0.7349 0.0915 237.35 / 0.1);
   --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
   --chart-1: var(--primary);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -147,6 +145,18 @@
   .primary-background {
     background: var(--primary-background);
   }
+  .page-title {
+    @apply text-2xl font-semibold;
+  }
+  .subhead-title {
+    @apply text-xl font-semibold;
+  }
+  .subhead-title {
+    @apply text-lg font-medium;
+  }
+  .content {
+    @apply text-sm font-normal;
+  }
 }
 
 @layer base {
@@ -155,17 +165,5 @@
   }
   body {
     @apply bg-background text-foreground;
-  }
-  h1 {
-    @apply text-2xl font-semibold;
-  }
-  h2 {
-    @apply text-xl font-semibold;
-  }
-  h3 {
-    @apply text-lg font-medium;
-  }
-  p {
-    @apply text-sm font-normal;
   }
 }

@@ -37,7 +37,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${avenirNext.variable} font-[family-name:var(--font-avenir-next)] antialiased primary-background`}
+        className={`${avenirNext.variable} font-[family-name:var(--font-avenir-next)] antialiased bg-background`}
       >
         <Providers>{children}</Providers>
       </body>

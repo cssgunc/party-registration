@@ -9,6 +9,7 @@ import {
   useMyParties,
 } from "@/lib/api/student/student.queries";
 import { LOCATIONS } from "@/lib/mockData";
+import { isCourseCompleted } from "@/lib/utils";
 import Link from "next/link";
 import { useMemo } from "react";
 
@@ -23,9 +24,7 @@ export default function StudentDashboard() {
     return locationWithIncidents?.incidents || [];
   }, []);
 
-  // const courseCompleted = isCourseCompleted(studentQuery.data?.last_registered);
-  const courseCompleted = true;
-
+  const courseCompleted = isCourseCompleted(studentQuery.data?.last_registered);
   return (
     <div className="flex flex-col items-center">
       <Header />

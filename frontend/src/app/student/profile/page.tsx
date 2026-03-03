@@ -3,13 +3,11 @@
 import Header from "@/app/student/_components/Header";
 import StudentInfo from "@/app/student/_components/StudentInfo";
 import { Card, CardContent } from "@/components/ui/card";
+import { useCurrentStudent } from "@/lib/api/student/student.queries";
 import { STUDENTS } from "@/lib/mockData";
 
 export default function StudentProfilePage() {
-  // const { data: student, isLoading, error } = useCurrentStudent();
-  const isLoading = false;
-  const error = null;
-  const student = STUDENTS.filter((s) => 35 === s.id)[0];
+  const { data: student, isLoading, error } = useCurrentStudent();
 
   if (isLoading) {
     return (
