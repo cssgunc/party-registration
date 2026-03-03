@@ -2,12 +2,14 @@ from datetime import UTC, datetime
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
+from src.core.exceptions import BadRequestException
 from src.modules.account.account_entity import AccountRole
 from src.modules.location.location_service import LocationService
 from src.modules.student.student_model import ContactPreference, StudentDto
 from src.modules.student.student_service import (
     AccountNotFoundException,
     InvalidAccountRoleException,
+    ResidenceAlreadyChosenException,
     StudentAlreadyExistsException,
     StudentConflictException,
     StudentNotFoundException,
@@ -42,7 +44,7 @@ class TestStudentService:
     @pytest.mark.asyncio
     async def test_create_student(self) -> None:
         account = await self.account_utils.create_one(role=AccountRole.STUDENT.value)
-        data = await self.student_utils.next_data_with_names()
+        data = await self.student_utils.next_update_dto()
 
         student = await self.student_service.create_student(data, account_id=account.id)
 
@@ -55,7 +57,7 @@ class TestStudentService:
         account1 = await self.account_utils.create_one(role=AccountRole.STUDENT.value)
         account2 = await self.account_utils.create_one(role=AccountRole.STUDENT.value)
 
-        data = await self.student_utils.next_data_with_names()
+        data = await self.student_utils.next_update_dto()
         await self.student_service.create_student(data, account_id=account1.id)
 
         with pytest.raises(StudentConflictException):
@@ -89,7 +91,7 @@ class TestStudentService:
     async def test_update_student(self):
         student_entity = await self.student_utils.create_one()
 
-        update_data = await self.student_utils.next_data_with_names(
+        update_data = await self.student_utils.next_update_dto(
             first_name="Jane",
             last_name="Doe",
             contact_preference=ContactPreference.CALL,
@@ -101,7 +103,7 @@ class TestStudentService:
 
     @pytest.mark.asyncio
     async def test_update_student_not_found(self):
-        update_data = await self.student_utils.next_data_with_names()
+        update_data = await self.student_utils.next_update_dto()
         with pytest.raises(StudentNotFoundException):
             await self.student_service.update_student(999, update_data)
 
@@ -113,7 +115,7 @@ class TestStudentService:
         with pytest.raises(StudentConflictException):
             await self.student_service.update_student(
                 student2.account_id,
-                await self.student_utils.next_data_with_names(phone_number=student1.phone_number),
+                await self.student_utils.next_update_dto(phone_number=student1.phone_number),
             )
 
     @pytest.mark.asyncio
@@ -135,7 +137,7 @@ class TestStudentService:
     async def test_create_student_with_datetime_timezone(self):
         account = await self.account_utils.create_one(role=AccountRole.STUDENT.value)
         last_reg = datetime(2024, 1, 15, 10, 30, 0, tzinfo=UTC)
-        data = await self.student_utils.next_data_with_names(last_registered=last_reg)
+        data = await self.student_utils.next_update_dto(last_registered=last_reg)
 
         student = await self.student_service.create_student(data, account_id=account.id)
         assert student.last_registered == last_reg
@@ -145,20 +147,20 @@ class TestStudentService:
         student_entity = await self.student_utils.create_one()
 
         last_reg = datetime(2024, 3, 20, 14, 45, 30, tzinfo=UTC)
-        update_data = await self.student_utils.next_data_with_names(last_registered=last_reg)
+        update_data = await self.student_utils.next_update_dto(last_registered=last_reg)
         updated = await self.student_service.update_student(student_entity.account_id, update_data)
         self.student_utils.assert_matches(updated, update_data)
 
     @pytest.mark.asyncio
     async def test_create_student_with_nonexistent_account(self):
-        data = await self.student_utils.next_data_with_names()
+        data = await self.student_utils.next_update_dto()
         with pytest.raises(AccountNotFoundException):
             await self.student_service.create_student(data, account_id=99999)
 
     @pytest.mark.asyncio
     async def test_create_student_with_non_student_role(self):
         admin_account = await self.account_utils.create_one(role=AccountRole.ADMIN.value)
-        data = await self.student_utils.next_data_with_names()
+        data = await self.student_utils.next_update_dto()
 
         with pytest.raises(InvalidAccountRoleException):
             await self.student_service.create_student(data, account_id=admin_account.id)
@@ -166,24 +168,24 @@ class TestStudentService:
     @pytest.mark.asyncio
     async def test_create_student_duplicate_account_id(self):
         account = await self.account_utils.create_one(role=AccountRole.STUDENT.value)
-        data1 = await self.student_utils.next_data_with_names()
+        data1 = await self.student_utils.next_update_dto()
         await self.student_service.create_student(data1, account_id=account.id)
 
-        data2 = await self.student_utils.next_data_with_names()
+        data2 = await self.student_utils.next_update_dto()
         with pytest.raises(StudentAlreadyExistsException):
             await self.student_service.create_student(data2, account_id=account.id)
 
     @pytest.mark.asyncio
     async def test_update_student_with_non_student_role(self, test_session: AsyncSession):
         account = await self.account_utils.create_one(role=AccountRole.STUDENT.value)
-        data = await self.student_utils.next_data_with_names()
+        data = await self.student_utils.next_update_dto()
         await self.student_service.create_student(data, account_id=account.id)
 
         account.role = AccountRole.ADMIN
         test_session.add(account)
         await test_session.commit()
 
-        update_data = await self.student_utils.next_data_with_names()
+        update_data = await self.student_utils.next_update_dto()
         with pytest.raises(InvalidAccountRoleException):
             await self.student_service.update_student(account.id, update_data)
 
@@ -256,7 +258,7 @@ class TestStudentResidenceService:
         location = await self.location_utils.create_one()
 
         # Create data with residence
-        data = await self.student_utils.next_data_with_names(
+        data = await self.student_utils.next_update_dto(
             last_registered=datetime.now(UTC),
             residence_place_id=location.google_place_id,
         )
@@ -276,7 +278,7 @@ class TestStudentResidenceService:
         location1 = await self.location_utils.create_one()
 
         # Set initial residence
-        update_data1 = await self.student_utils.next_data_with_names(
+        update_data1 = await self.student_utils.next_update_dto(
             residence_place_id=location1.google_place_id,
             last_registered=student_entity.last_registered,
         )
@@ -288,7 +290,7 @@ class TestStudentResidenceService:
 
         # Admin should be able to change residence in same academic year
         location2 = await self.location_utils.create_one()
-        update_data2 = await self.student_utils.next_data_with_names(
+        update_data2 = await self.student_utils.next_update_dto(
             residence_place_id=location2.google_place_id,
             last_registered=student_entity.last_registered,
         )
@@ -301,8 +303,6 @@ class TestStudentResidenceService:
     @pytest.mark.asyncio
     async def test_update_residence_without_being_registered(self):
         """Test that student cannot choose residence without being registered."""
-        from src.core.exceptions import BadRequestException
-
         # Create student without last_registered
         student_entity = await self.student_utils.create_one(last_registered=None)
         location = await self.location_utils.create_one()
@@ -317,8 +317,6 @@ class TestStudentResidenceService:
     @pytest.mark.asyncio
     async def test_update_residence_same_academic_year_fails(self):
         """Test that student cannot change residence in the same academic year."""
-        from src.modules.student.student_service import ResidenceAlreadyChosenException
-
         # Create student with residence chosen this academic year
         student_entity = await self.student_utils.create_one(last_registered=datetime.now(UTC))
         location1 = await self.location_utils.create_one()

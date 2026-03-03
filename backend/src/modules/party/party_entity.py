@@ -13,7 +13,6 @@ from .party_model import ContactDto, PartyData, PartyDto
 
 if TYPE_CHECKING:
     from ..location.location_entity import LocationEntity
-    from ..student.student_entity import StudentEntity
 
 
 class PartyEntity(MappedAsDataclass, EntityBase):
@@ -89,7 +88,10 @@ class PartyEntity(MappedAsDataclass, EntityBase):
             .where(self.__class__.id == self.id)
             .options(
                 selectinload(self.__class__.location),
-                selectinload(self.__class__.contact_one).selectinload(StudentEntity.account),
+                selectinload(self.__class__.contact_one).options(
+                    selectinload(StudentEntity.account),
+                    selectinload(StudentEntity.residence),
+                ),
             )
         )
         party_entity = result.scalar_one()

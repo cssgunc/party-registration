@@ -250,8 +250,12 @@ def police_utils(test_session: AsyncSession):
 
 
 @pytest.fixture()
-def student_utils(test_session: AsyncSession, account_utils: AccountTestUtils):
-    return StudentTestUtils(session=test_session, account_utils=account_utils)
+def student_utils(
+    test_session: AsyncSession, account_utils: AccountTestUtils, location_utils: LocationTestUtils
+):
+    return StudentTestUtils(
+        session=test_session, account_utils=account_utils, location_utils=location_utils
+    )
 
 
 @pytest.fixture()

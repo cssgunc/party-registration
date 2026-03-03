@@ -10,6 +10,7 @@ from src.modules.location.location_service import LocationHoldActiveException
 from src.modules.party.party_model import ContactDto, PartyDto
 from src.modules.party.party_service import (
     ContactTwoMatchesContactOneException,
+    NoResidenceException,
     PartyDateTooSoonException,
     PartyNotFoundException,
     PartySmartNotCompletedException,
@@ -435,8 +436,6 @@ class TestPartyCreateStudentRouter:
     @pytest.mark.asyncio
     async def test_create_party_without_residence_fails(self, current_student: StudentEntity):
         """Test that student cannot create party without a residence."""
-        from src.modules.party.party_service import NoResidenceException
-
         # current_student has no residence set
         payload = await self.party_utils.next_student_create_dto()
 
@@ -450,8 +449,6 @@ class TestPartyCreateStudentRouter:
         self, setup_test_accounts: None, account_utils: AccountTestUtils
     ):
         """Test that student who hasn't completed Party Smart cannot create party."""
-        from src.modules.party.party_service import PartySmartNotCompletedException
-
         # Create student with old Party Smart completion (previous academic year)
         account = await account_utils.create_one(role=AccountRole.STUDENT.value)
         student = await self.student_utils.create_student_with_old_party_smart(
@@ -1128,6 +1125,7 @@ class TestPartyCSVRouter:
         )
 
         assert rows[0] == expected_headers
+        assert sheet["A1"].font.bold is True
 
     @pytest.mark.asyncio
     async def test_get_parties_csv_with_data(self):
@@ -1170,6 +1168,7 @@ class TestPartyCSVRouter:
         )
 
         assert rows[0] == expected_headers
+        assert sheet["A1"].font.bold is True
 
         first_party = parties[0]
         row_2 = rows[1]

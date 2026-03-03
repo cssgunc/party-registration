@@ -3,13 +3,16 @@ from datetime import UTC, datetime
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
+from src.core.exceptions import BadRequestException
 from src.modules.account.account_entity import AccountRole
+from src.modules.location.location_model import LocationDto
 from src.modules.party.party_model import PartyDto
 from src.modules.student.student_entity import StudentEntity
 from src.modules.student.student_model import ContactPreference, StudentData, StudentDto
 from src.modules.student.student_service import (
     AccountNotFoundException,
     InvalidAccountRoleException,
+    ResidenceAlreadyChosenException,
     StudentAlreadyExistsException,
     StudentConflictException,
     StudentNotFoundException,
@@ -349,7 +352,7 @@ class TestStudentCRUDRouter:
     async def test_update_student_success(self):
         """Test successfully updating a student."""
         student = await self.student_utils.create_one()
-        updated_data = await self.student_utils.next_data_with_names()
+        updated_data = await self.student_utils.next_update_dto()
 
         response = await self.admin_client.put(
             f"/api/students/{student.account_id}",
@@ -363,7 +366,7 @@ class TestStudentCRUDRouter:
     @pytest.mark.asyncio
     async def test_update_student_not_found(self):
         """Test updating a non-existent student."""
-        updated_data = await self.student_utils.next_data_with_names()
+        updated_data = await self.student_utils.next_update_dto()
 
         response = await self.admin_client.put(
             "/api/students/99999",
@@ -375,7 +378,7 @@ class TestStudentCRUDRouter:
     async def test_update_student_phone_conflict(self):
         """Test updating student with phone number that already exists."""
         students = await self.student_utils.create_many(i=2)
-        updated_data = await self.student_utils.next_data_with_names(
+        updated_data = await self.student_utils.next_update_dto(
             phone_number=students[0].phone_number
         )
 
@@ -661,8 +664,6 @@ class TestStudentResidenceRouter:
     @pytest.mark.asyncio
     async def test_update_residence_success(self, current_student: StudentEntity):
         """Test student successfully updating their residence."""
-        from src.modules.location.location_model import LocationDto
-
         location = await self.location_utils.create_one()
         self.gmaps_utils.mock_place_details(
             google_place_id=location.google_place_id,
@@ -680,8 +681,6 @@ class TestStudentResidenceRouter:
     @pytest.mark.asyncio
     async def test_update_residence_without_party_smart(self):
         """Test that unregistered student cannot choose residence."""
-        from src.core.exceptions import BadRequestException
-
         # Create student without last_registered
         await self.account_utils.create_one(role=AccountRole.ADMIN.value)
         await self.account_utils.create_one(role=AccountRole.STAFF.value)
@@ -705,8 +704,6 @@ class TestStudentResidenceRouter:
     @pytest.mark.asyncio
     async def test_update_residence_same_academic_year(self, current_student: StudentEntity):
         """Test that student cannot change residence in same academic year."""
-        from src.modules.student.student_service import ResidenceAlreadyChosenException
-
         # Set initial residence
         location1 = await self.location_utils.create_one()
         current_student.residence_id = location1.id
@@ -730,8 +727,6 @@ class TestStudentResidenceRouter:
     @pytest.mark.asyncio
     async def test_update_residence_new_academic_year(self):
         """Test that student can change residence in a new academic year."""
-        from src.modules.location.location_model import LocationDto
-
         # Create student with old residence from previous academic year
         # The key is: residence_chosen_date is from last year, but last_registered is current year
         # (meaning they completed Party Smart again this year)

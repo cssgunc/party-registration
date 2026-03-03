@@ -92,7 +92,10 @@ class PartyService:
             .where(PartyEntity.id == party_id)
             .options(
                 selectinload(PartyEntity.location),
-                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
+                selectinload(PartyEntity.contact_one).options(
+                    selectinload(StudentEntity.account),
+                    selectinload(StudentEntity.residence),
+                ),
             )
         )
         party_entity = result.scalar_one_or_none()
@@ -197,7 +200,10 @@ class PartyService:
             .offset(skip)
             .options(
                 selectinload(PartyEntity.location),
-                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
+                selectinload(PartyEntity.contact_one).options(
+                    selectinload(StudentEntity.account),
+                    selectinload(StudentEntity.residence),
+                ),
             )
         )
         if limit is not None:
@@ -259,7 +265,10 @@ class PartyService:
         # Build base query with eager loading
         base_query = select(PartyEntity).options(
             selectinload(PartyEntity.location),
-            selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
+            selectinload(PartyEntity.contact_one).options(
+                selectinload(StudentEntity.account),
+                selectinload(StudentEntity.residence),
+            ),
         )
 
         # Use the generic pagination utility
@@ -284,7 +293,10 @@ class PartyService:
             .where(PartyEntity.location_id == location_id)
             .options(
                 selectinload(PartyEntity.location),
-                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
+                selectinload(PartyEntity.contact_one).options(
+                    selectinload(StudentEntity.account),
+                    selectinload(StudentEntity.residence),
+                ),
             )
         )
         parties = result.scalars().all()
@@ -297,7 +309,10 @@ class PartyService:
             .where(PartyEntity.contact_one_id == student_id)
             .options(
                 selectinload(PartyEntity.location),
-                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
+                selectinload(PartyEntity.contact_one).options(
+                    selectinload(StudentEntity.account),
+                    selectinload(StudentEntity.residence),
+                ),
             )
         )
         parties = result.scalars().all()
@@ -314,7 +329,10 @@ class PartyService:
             )
             .options(
                 selectinload(PartyEntity.location),
-                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
+                selectinload(PartyEntity.contact_one).options(
+                    selectinload(StudentEntity.account),
+                    selectinload(StudentEntity.residence),
+                ),
             )
         )
         parties = result.scalars().all()
@@ -359,10 +377,10 @@ class PartyService:
 
     async def _validate_student_party_and_get_location(
         self, student_account_id: int, party_datetime: datetime
-    ) -> tuple[LocationDto, int]:
+    ) -> tuple[LocationDto, StudentDto]:
         """
         Validate student can register a party and get their residence location.
-        Returns tuple of (location, student_account_id).
+        Returns tuple of (location, student).
         """
         # Validate student party prerequisites (date and Party Smart)
         await self._validate_student_party_prerequisites(student_account_id, party_datetime)
@@ -378,7 +396,7 @@ class PartyService:
         # Validate location has no active hold
         self.location_service.assert_valid_location_hold(location)
 
-        return location, student_account_id
+        return location, student
 
     async def create_party_from_student_dto(
         self, dto: StudentCreatePartyDto, student_account_id: int
@@ -387,12 +405,9 @@ class PartyService:
         Create a party registration from a student.
         contact_one is auto-filled, location from residence.
         """
-        location, _ = await self._validate_student_party_and_get_location(
+        location, student = await self._validate_student_party_and_get_location(
             student_account_id, dto.party_datetime
         )
-
-        # Get student info for contact_two validation
-        student = await self.student_service.get_student_by_id(student_account_id)
 
         # Validate contact two differs from contact one
         self._validate_contact_two_differs_from_contact_one(
@@ -472,12 +487,9 @@ class PartyService:
             raise UnauthorizedPartyAccessException()
 
         # Validate student can create party and get location
-        location, _ = await self._validate_student_party_and_get_location(
+        location, student = await self._validate_student_party_and_get_location(
             student_account_id, dto.party_datetime
         )
-
-        # Get student info for contact_two validation
-        student = await self.student_service.get_student_by_id(student_account_id)
 
         # Validate contact two differs from contact one
         self._validate_contact_two_differs_from_contact_one(
@@ -562,7 +574,10 @@ class PartyService:
             )
             .options(
                 selectinload(PartyEntity.location),
-                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
+                selectinload(PartyEntity.contact_one).options(
+                    selectinload(StudentEntity.account),
+                    selectinload(StudentEntity.residence),
+                ),
             )
         )
         parties = result.scalars().all()
@@ -577,7 +592,10 @@ class PartyService:
             select(PartyEntity)
             .options(
                 selectinload(PartyEntity.location),
-                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
+                selectinload(PartyEntity.contact_one).options(
+                    selectinload(StudentEntity.account),
+                    selectinload(StudentEntity.residence),
+                ),
             )
             .where(
                 PartyEntity.party_datetime >= start_time,
@@ -626,7 +644,10 @@ class PartyService:
             select(PartyEntity)
             .options(
                 selectinload(PartyEntity.location),
-                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
+                selectinload(PartyEntity.contact_one).options(
+                    selectinload(StudentEntity.account),
+                    selectinload(StudentEntity.residence),
+                ),
             )
             .where(
                 PartyEntity.party_datetime >= start_date,

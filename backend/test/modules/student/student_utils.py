@@ -13,6 +13,7 @@ from src.modules.student.student_model import (
     StudentUpdateDto,
 )
 from test.modules.account.account_utils import AccountTestUtils
+from test.modules.location.location_utils import LocationTestUtils
 from test.utils.resource_test_utils import ResourceTestUtils
 
 
@@ -35,13 +36,19 @@ class StudentTestUtils(
         StudentDto | StudentUpdateDto | DbStudent,
     ]
 ):
-    def __init__(self, session: AsyncSession, account_utils: AccountTestUtils):
+    def __init__(
+        self,
+        session: AsyncSession,
+        account_utils: AccountTestUtils,
+        location_utils: LocationTestUtils | None = None,
+    ):
         super().__init__(
             session,
             entity_class=StudentEntity,
             data_class=StudentData,
         )
         self.account_utils = account_utils
+        self.location_utils = location_utils
 
     @override
     @staticmethod
@@ -79,11 +86,6 @@ class StudentTestUtils(
         )
         return StudentUpdateDto(**result_data)
 
-    # Backward compatibility alias
-    async def next_data_with_names(self, **overrides: Unpack[StudentOverrides]) -> StudentUpdateDto:
-        """Deprecated: Use next_update_dto instead."""
-        return await self.next_update_dto(**overrides)
-
     async def next_student_create(self, **overrides: Unpack[StudentOverrides]) -> StudentCreateDto:
         local_overrides: StudentOverrides = dict(overrides)  # type: ignore
         if "account_id" not in local_overrides:
@@ -97,17 +99,17 @@ class StudentTestUtils(
     @override
     async def next_entity(self, **overrides: Unpack[StudentOverrides]) -> StudentEntity:
         student_create = await self.next_student_create(**overrides)
-        # Convert StudentUpdateDto to StudentData for entity creation
         student_data = StudentData(
             contact_preference=student_create.data.contact_preference,
             last_registered=student_create.data.last_registered,
             phone_number=student_create.data.phone_number,
         )
         residence_id = None
-        if student_create.data.residence_place_id:
-            # Note: This requires location_service, but entity creation doesn't need it
-            # The residence_id will be None here, can be set separately if needed
-            pass
+        if student_create.data.residence_place_id and self.location_utils is not None:
+            location = await self.location_utils.create_one(
+                google_place_id=student_create.data.residence_place_id
+            )
+            residence_id = location.id
         return StudentEntity.from_data(student_data, student_create.account_id, residence_id)
 
     # ================================ Typing Overrides ================================
@@ -133,7 +135,7 @@ class StudentTestUtils(
         return await super().create_one(**overrides)
 
     async def create_student_with_old_party_smart(
-        self, account_id: int | None = None, **overrides: Any
+        self, **overrides: Unpack[StudentOverrides]
     ) -> StudentEntity:
         """Create a student with Party Smart completion from a previous academic year.
 
@@ -141,14 +143,10 @@ class StudentTestUtils(
         in the current academic year.
         """
         old_date = self.get_old_academic_year_date()
-
-        # Create student with old last_registered date
-        if account_id is not None:
-            overrides["account_id"] = account_id
-        if "last_registered" not in overrides:
-            overrides["last_registered"] = old_date
-
-        return await self.create_one(**overrides)
+        local_overrides: StudentOverrides = dict(overrides)  # type: ignore
+        if "last_registered" not in local_overrides:
+            local_overrides["last_registered"] = old_date
+        return await self.create_one(**local_overrides)
 
     def get_old_academic_year_date(self) -> datetime:
         """Get a date from the previous academic year (before most recent August 1st).

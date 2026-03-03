@@ -38,18 +38,7 @@ async def update_me(
     student_service: StudentService = Depends(),
     user: "AccountDto" = Depends(authenticate_student),
 ) -> StudentDto:
-    """Update student's own information (phone and contact preference only)."""
-    # Get current student to preserve fields not in SelfUpdateStudentDto
-    current_student = await student_service.get_student_by_id(user.id)
-
-    # Create StudentUpdateDto preserving last_registered and residence
-    update_data = StudentUpdateDto(
-        phone_number=data.phone_number,
-        contact_preference=data.contact_preference,
-        last_registered=current_student.last_registered,
-        residence_place_id=None,  # Students cannot update residence via this endpoint
-    )
-    return await student_service.update_student(user.id, update_data)
+    return await student_service.update_student_self(user.id, data)
 
 
 @student_router.put("/me/residence")

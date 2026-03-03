@@ -14,7 +14,13 @@ from src.modules.location.location_model import LocationDto
 from src.modules.location.location_service import LocationService
 
 from .student_entity import StudentEntity
-from .student_model import PaginatedStudentsResponse, StudentData, StudentDto, StudentUpdateDto
+from .student_model import (
+    PaginatedStudentsResponse,
+    SelfUpdateStudentDto,
+    StudentData,
+    StudentDto,
+    StudentUpdateDto,
+)
 
 
 class StudentNotFoundException(NotFoundException):
@@ -240,6 +246,29 @@ class StudentService:
 
         student_entity.contact_preference = data.contact_preference
         student_entity.last_registered = data.last_registered
+        student_entity.phone_number = data.phone_number
+
+        try:
+            self.session.add(student_entity)
+            await self.session.commit()
+        except IntegrityError as e:
+            await self.session.rollback()
+            raise StudentConflictException(data.phone_number) from e
+
+        await self.session.refresh(student_entity, ["account", "residence"])
+        return student_entity.to_dto()
+
+    async def update_student_self(self, account_id: int, data: SelfUpdateStudentDto) -> StudentDto:
+        """Update only the fields a student is allowed to change themselves."""
+        student_entity = await self._get_student_entity_by_account_id(account_id)
+
+        if (
+            data.phone_number != student_entity.phone_number
+            and await self._get_student_entity_by_phone(data.phone_number)
+        ):
+            raise StudentConflictException(data.phone_number)
+
+        student_entity.contact_preference = data.contact_preference
         student_entity.phone_number = data.phone_number
 
         try:
