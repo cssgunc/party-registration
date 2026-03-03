@@ -32,7 +32,6 @@ export function useUpdateStudent(
     ...options,
     mutationFn: (data: StudentData) => studentService.updateMe(data),
     onSuccess: (updatedStudent, ...rest) => {
-      queryClient.setQueryData(CURRENT_STUDENT_KEY, updatedStudent);
       queryClient.invalidateQueries({ queryKey: CURRENT_STUDENT_KEY });
       options?.onSuccess?.(updatedStudent, ...rest);
     },

@@ -81,7 +81,7 @@ export const PartyTable = () => {
         />
       );
     },
-    onSettled: () => {
+    onSuccess: () => {
       closeSidebar();
       setEditingParty(null);
     },
