@@ -44,9 +44,10 @@ class IncidentTestUtils(
 
     @classmethod
     def get_sample_create_data(cls) -> dict:
-        """Get sample data for IncidentCreate (without location_id, since it comes from path)."""
+        """Get sample data for IncidentCreateDto (with location_place_id instead of location_id)."""
         data = cls.generate_defaults(0)
         del data["location_id"]
+        data["location_place_id"] = "ChIJSamplePlace0000"
         return data
 
     @override

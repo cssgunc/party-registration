@@ -1,7 +1,11 @@
 from datetime import UTC, datetime
 
 import pytest
-from src.modules.incident.incident_model import IncidentSeverity
+from src.modules.incident.incident_model import (
+    IncidentCreateDto,
+    IncidentSeverity,
+    IncidentUpdateDto,
+)
 from src.modules.incident.incident_service import IncidentNotFoundException, IncidentService
 from test.modules.incident.incident_utils import IncidentTestUtils
 from test.modules.location.location_utils import LocationTestUtils
@@ -29,7 +33,14 @@ class TestIncidentService:
         location = await self.location_utils.create_one()
         data = await self.incident_utils.next_data(location_id=location.id)
 
-        incident = await self.incident_service.create_incident(location.id, data)
+        incident = await self.incident_service.create_incident(
+            IncidentCreateDto(
+                location_place_id=location.google_place_id,
+                incident_datetime=data.incident_datetime,
+                description=data.description,
+                severity=data.severity,
+            )
+        )
 
         self.incident_utils.assert_matches(incident, data)
 
@@ -39,7 +50,14 @@ class TestIncidentService:
         location = await self.location_utils.create_one()
         data = await self.incident_utils.next_data(location_id=location.id, description="")
 
-        incident = await self.incident_service.create_incident(location.id, data)
+        incident = await self.incident_service.create_incident(
+            IncidentCreateDto(
+                location_place_id=location.google_place_id,
+                incident_datetime=data.incident_datetime,
+                description=data.description,
+                severity=data.severity,
+            )
+        )
 
         assert incident.description == ""
 
@@ -50,7 +68,14 @@ class TestIncidentService:
 
         for severity in IncidentSeverity:
             data = await self.incident_utils.next_data(location_id=location.id, severity=severity)
-            incident = await self.incident_service.create_incident(location.id, data)
+            incident = await self.incident_service.create_incident(
+                IncidentCreateDto(
+                    location_place_id=location.google_place_id,
+                    incident_datetime=data.incident_datetime,
+                    description=data.description,
+                    severity=severity,
+                )
+            )
             assert incident.severity == severity
 
     @pytest.mark.asyncio
@@ -99,7 +124,12 @@ class TestIncidentService:
         )
 
         updated = await self.incident_service.update_incident(
-            incident_entity.id, incident_entity.location_id, update_data
+            incident_entity.id,
+            IncidentUpdateDto(
+                incident_datetime=update_data.incident_datetime,
+                description=update_data.description,
+                severity=update_data.severity,
+            ),
         )
 
         assert updated.id == incident_entity.id
@@ -116,7 +146,12 @@ class TestIncidentService:
         )
 
         updated = await self.incident_service.update_incident(
-            incident_entity.id, incident_entity.location_id, update_data
+            incident_entity.id,
+            IncidentUpdateDto(
+                incident_datetime=update_data.incident_datetime,
+                description=update_data.description,
+                severity=IncidentSeverity.CITATION,
+            ),
         )
 
         assert updated.severity == IncidentSeverity.CITATION
@@ -127,7 +162,14 @@ class TestIncidentService:
         data = await self.incident_utils.next_data()
 
         with pytest.raises(IncidentNotFoundException, match="Incident with ID 999 not found"):
-            await self.incident_service.update_incident(999, data.location_id, data)
+            await self.incident_service.update_incident(
+                999,
+                IncidentUpdateDto(
+                    incident_datetime=data.incident_datetime,
+                    description=data.description,
+                    severity=data.severity,
+                ),
+            )
 
     @pytest.mark.asyncio
     async def test_delete_incident(self) -> None:
@@ -173,7 +215,14 @@ class TestIncidentService:
             location_id=location.id, description="Location noise incident"
         )
 
-        incident = await self.incident_service.create_incident(location.id, data)
+        incident = await self.incident_service.create_incident(
+            IncidentCreateDto(
+                location_place_id=location.google_place_id,
+                incident_datetime=data.incident_datetime,
+                description=data.description,
+                severity=data.severity,
+            )
+        )
 
         self.incident_utils.assert_matches(incident, data)
 
@@ -188,7 +237,14 @@ class TestIncidentService:
             severity=IncidentSeverity.WARNING,
         )
 
-        created = await self.incident_service.create_incident(location.id, data)
+        created = await self.incident_service.create_incident(
+            IncidentCreateDto(
+                location_place_id=location.google_place_id,
+                incident_datetime=data.incident_datetime,
+                description=data.description,
+                severity=data.severity,
+            )
+        )
         fetched = await self.incident_service.get_incident_by_id(created.id)
 
         self.incident_utils.assert_matches(fetched, data)
