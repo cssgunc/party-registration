@@ -34,6 +34,7 @@ from .party_model import (
     PaginatedPartiesResponse,
     PartyData,
     PartyDto,
+    PartyStatus,
     StudentCreatePartyDto,
 )
 
@@ -73,6 +74,21 @@ class UnauthorizedPartyAccessException(ForbiddenException):
         super().__init__("Student can only modify their own parties")
 
 
+class PartyNotOwnedByStudentException(ForbiddenException):
+    def __init__(self, party_id: int):
+        super().__init__(f"Student does not own party with ID {party_id}")
+
+
+class PartyCancelledException(BadRequestException):
+    def __init__(self, party_id: int):
+        super().__init__(f"Party with ID {party_id} has already been cancelled")
+
+
+class PartyInPastException(BadRequestException):
+    def __init__(self):
+        super().__init__("Cannot modify a party that has already occurred")
+
+
 class PartyService:
     def __init__(
         self,
@@ -92,10 +108,7 @@ class PartyService:
             .where(PartyEntity.id == party_id)
             .options(
                 selectinload(PartyEntity.location),
-                selectinload(PartyEntity.contact_one).options(
-                    selectinload(StudentEntity.account),
-                    selectinload(StudentEntity.residence),
-                ),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
             )
         )
         party_entity = result.scalar_one_or_none()
@@ -200,10 +213,7 @@ class PartyService:
             .offset(skip)
             .options(
                 selectinload(PartyEntity.location),
-                selectinload(PartyEntity.contact_one).options(
-                    selectinload(StudentEntity.account),
-                    selectinload(StudentEntity.residence),
-                ),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
             )
         )
         if limit is not None:
@@ -265,10 +275,7 @@ class PartyService:
         # Build base query with eager loading
         base_query = select(PartyEntity).options(
             selectinload(PartyEntity.location),
-            selectinload(PartyEntity.contact_one).options(
-                selectinload(StudentEntity.account),
-                selectinload(StudentEntity.residence),
-            ),
+            selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
         )
 
         # Use the generic pagination utility
@@ -293,10 +300,7 @@ class PartyService:
             .where(PartyEntity.location_id == location_id)
             .options(
                 selectinload(PartyEntity.location),
-                selectinload(PartyEntity.contact_one).options(
-                    selectinload(StudentEntity.account),
-                    selectinload(StudentEntity.residence),
-                ),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
             )
         )
         parties = result.scalars().all()
@@ -306,13 +310,13 @@ class PartyService:
         """Get all parties for a specific student (no pagination)."""
         result = await self.session.execute(
             select(PartyEntity)
-            .where(PartyEntity.contact_one_id == student_id)
+            .where(
+                PartyEntity.contact_one_id == student_id,
+                PartyEntity.status != PartyStatus.CANCELLED,
+            )
             .options(
                 selectinload(PartyEntity.location),
-                selectinload(PartyEntity.contact_one).options(
-                    selectinload(StudentEntity.account),
-                    selectinload(StudentEntity.residence),
-                ),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
             )
         )
         parties = result.scalars().all()
@@ -329,10 +333,7 @@ class PartyService:
             )
             .options(
                 selectinload(PartyEntity.location),
-                selectinload(PartyEntity.contact_one).options(
-                    selectinload(StudentEntity.account),
-                    selectinload(StudentEntity.residence),
-                ),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
             )
         )
         parties = result.scalars().all()
@@ -484,7 +485,18 @@ class PartyService:
 
         # Validate that the student owns this party
         if party_entity.contact_one_id != student_account_id:
-            raise UnauthorizedPartyAccessException()
+            raise PartyNotOwnedByStudentException(party_id)
+
+        # Validate party is not already cancelled
+        if party_entity.status == PartyStatus.CANCELLED:
+            raise PartyCancelledException(party_id)
+
+        # Validate party has not already occurred
+        party_dt = party_entity.party_datetime
+        if party_dt.tzinfo is None:
+            party_dt = party_dt.replace(tzinfo=UTC)
+        if party_dt < datetime.now(UTC):
+            raise PartyInPastException()
 
         # Validate student can create party and get location
         location, student = await self._validate_student_party_and_get_location(
@@ -543,6 +555,27 @@ class PartyService:
 
         return await party_entity.load_dto(self.session)
 
+    async def cancel_party_as_student(self, party_id: int, student_account_id: int) -> PartyDto:
+        party_entity = await self._get_party_entity_by_id(party_id)
+
+        if party_entity.contact_one_id != student_account_id:
+            raise PartyNotOwnedByStudentException(party_id)
+
+        if party_entity.status == PartyStatus.CANCELLED:
+            raise PartyCancelledException(party_id)
+
+        party_dt = party_entity.party_datetime
+        if party_dt.tzinfo is None:
+            party_dt = party_dt.replace(tzinfo=UTC)
+        if party_dt < datetime.now(UTC):
+            raise PartyInPastException()
+
+        party_entity.status = PartyStatus.CANCELLED
+        self.session.add(party_entity)
+        await self.session.commit()
+
+        return party_entity.to_dto()
+
     async def delete_party(self, party_id: int) -> PartyDto:
         party_entity = await self._get_party_entity_by_id(party_id)
         party = party_entity.to_dto()
@@ -574,10 +607,7 @@ class PartyService:
             )
             .options(
                 selectinload(PartyEntity.location),
-                selectinload(PartyEntity.contact_one).options(
-                    selectinload(StudentEntity.account),
-                    selectinload(StudentEntity.residence),
-                ),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
             )
         )
         parties = result.scalars().all()
@@ -592,10 +622,7 @@ class PartyService:
             select(PartyEntity)
             .options(
                 selectinload(PartyEntity.location),
-                selectinload(PartyEntity.contact_one).options(
-                    selectinload(StudentEntity.account),
-                    selectinload(StudentEntity.residence),
-                ),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
             )
             .where(
                 PartyEntity.party_datetime >= start_time,
@@ -644,10 +671,7 @@ class PartyService:
             select(PartyEntity)
             .options(
                 selectinload(PartyEntity.location),
-                selectinload(PartyEntity.contact_one).options(
-                    selectinload(StudentEntity.account),
-                    selectinload(StudentEntity.residence),
-                ),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
             )
             .where(
                 PartyEntity.party_datetime >= start_date,

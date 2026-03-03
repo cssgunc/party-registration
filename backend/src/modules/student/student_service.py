@@ -259,9 +259,12 @@ class StudentService:
         return student_entity.to_dto()
 
     async def update_student_self(self, account_id: int, data: SelfUpdateStudentDto) -> StudentDto:
-        """Update only the fields a student is allowed to change themselves."""
         student_entity = await self._get_student_entity_by_account_id(account_id)
-
+        account = student_entity.account
+        if account is None:
+            raise AccountNotFoundException(account_id)
+        if account.role != AccountRole.STUDENT:
+            raise InvalidAccountRoleException(account_id, account.role)
         if (
             data.phone_number != student_entity.phone_number
             and await self._get_student_entity_by_phone(data.phone_number)
