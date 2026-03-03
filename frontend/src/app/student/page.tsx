@@ -25,7 +25,6 @@ export default function StudentDashboard() {
   }, []);
 
   const courseCompleted = isCourseCompleted(studentQuery.data?.last_registered);
-
   return (
     <div className="flex flex-col items-center">
       <Header />
@@ -51,13 +50,16 @@ export default function StudentDashboard() {
               </Button>
             )}
           </div>
-
           <RegistrationTracker {...partiesQuery} incidents={mockIncidents} />
           <div className="text-[24px] font-semibold">Party Smart Course </div>
           <StatusComponent
             last_registered={studentQuery.data?.last_registered}
             {...studentQuery}
           />
+        </div>
+
+        <div className="2xl:w-1/2">
+          {/* Place for future "About Party Registration and Party Smart section on Student Dashboard" */}
         </div>
       </div>
     </div>
