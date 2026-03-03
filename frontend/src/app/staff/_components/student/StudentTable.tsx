@@ -2,125 +2,57 @@
 
 import { useSidebar } from "@/app/staff/_components/shared/sidebar/SidebarContext";
 import { Checkbox } from "@/components/ui/checkbox";
-import { AccountService } from "@/lib/api/account/account.service";
-import { AdminStudentService } from "@/lib/api/student/admin-student.service";
+import {
+  useCreateStudent,
+  useDeleteStudent,
+  useStudents,
+  useUpdateStudent,
+} from "@/lib/api/student/admin-student.queries";
 import { StudentDto } from "@/lib/api/student/student.types";
-import { PaginatedResponse } from "@/lib/shared";
 import { isCourseCompleted } from "@/lib/utils";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
 import { TableTemplate } from "../shared/table/TableTemplate";
 import StudentTableForm from "./StudentTableForm";
 
-const studentService = new AdminStudentService();
-const accountService = new AccountService();
-
 export const StudentTable = () => {
-  const queryClient = useQueryClient();
   const { openSidebar, closeSidebar } = useSidebar();
   const [editingStudent, setEditingStudent] = useState<StudentDto | null>(null);
 
-  // Fetch students
-  const studentsQuery = useQuery({
-    queryKey: ["students"],
-    queryFn: () => studentService.listStudents(),
-    retry: 1, // Only retry once
-  });
-
+  const studentsQuery = useStudents();
   const students = studentsQuery.data?.items ?? [];
 
-  // Update student mutation (for checkbox and edit)
-  const updateMutation = useMutation({
-    mutationFn: ({
-      id,
-      data,
-    }: {
-      id: number;
-      data: Omit<StudentDto, "id" | "email" | "pid">;
-      source?: "form";
-      editData?: StudentDto;
-    }) => studentService.updateStudent(id, data),
-    // Optimistically update the student in the cache so things like the
-    // "Is Registered" checkbox feel instant.
-    onMutate: async ({ id, data }) => {
-      await queryClient.cancelQueries({ queryKey: ["students"] });
+  const checkboxMutation = useUpdateStudent();
 
-      const previous = queryClient.getQueryData<PaginatedResponse<StudentDto>>([
-        "students",
-      ]);
-
-      queryClient.setQueryData<PaginatedResponse<StudentDto>>(
-        ["students"],
-        (old) =>
-          old && {
-            ...old,
-            items: old.items.map((student) =>
-              student.id === id ? { ...student, ...data } : student
-            ),
-          }
-      );
-
-      return { previous };
+  const editFormMutation = useUpdateStudent({
+    onOptimisticUpdate: () => {
+      closeSidebar();
+      setEditingStudent(null);
     },
-    onError: (error: Error, variables, context) => {
+    onError: (error) => {
       console.error("Failed to update student:", error);
-      if (context?.previous) {
-        queryClient.setQueryData(["students"], context.previous);
-      }
-
-      if (variables?.source !== "form") {
-        return;
-      }
-
-      const editTarget = variables.editData ?? editingStudent;
-      if (!editTarget) {
-        return;
-      }
-
+      if (!editingStudent) return;
       openSidebar(
-        `edit-student-${editTarget.id}`,
+        `edit-student-${editingStudent.id}`,
         "Edit Student",
         "Update student information",
         <StudentTableForm
           title="Edit Student"
-          onSubmit={(data) => handleEditSubmit(editTarget, data)}
+          onSubmit={(data) => handleEditSubmit(editingStudent, data)}
           submissionError={`Failed to update student: ${error.message}`}
-          editData={editTarget}
+          editData={editingStudent}
         />
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["students"] });
       closeSidebar();
       setEditingStudent(null);
     },
   });
 
-  // Create student mutation
-  const createStudentMutation = useMutation({
-    mutationFn: async ({
-      data,
-    }: {
-      data: Omit<StudentDto, "id">;
-      source?: "form";
-    }) => {
-      const account = await accountService.createAccount({
-        role: "student",
-        ...data,
-      });
-
-      studentService.createStudent({
-        account_id: account.id,
-        data,
-      });
-    },
-    onError: (error: Error, variables) => {
+  const createMutation = useCreateStudent({
+    onError: (error, vars) => {
       console.error("Failed to create student:", error);
-      if (variables?.source !== "form") {
-        return;
-      }
-
       openSidebar(
         "create-student",
         "New Student",
@@ -129,58 +61,19 @@ export const StudentTable = () => {
           title="New Student"
           onSubmit={handleCreateSubmit}
           submissionError={`Failed to create student: ${error.message}`}
-          editData={variables.data}
+          editData={vars.data}
         />
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["students"] });
       closeSidebar();
       setEditingStudent(null);
     },
   });
 
-  // Delete student mutation
-  const deleteMutation = useMutation({
-    mutationFn: (id: number) => studentService.deleteStudent(id),
-    // Optimistically remove the student from the cache.
-    onMutate: async (id: number) => {
-      await queryClient.cancelQueries({ queryKey: ["students"] });
-
-      const previous = queryClient.getQueryData(["students"]);
-
-      queryClient.setQueryData(["students"], (old: unknown) => {
-        if (!old || typeof old !== "object") return old;
-
-        const oldWithItems = old as { items?: StudentDto[] };
-        if (Array.isArray(oldWithItems.items)) {
-          const paginated = old as {
-            items: StudentDto[];
-            [key: string]: unknown;
-          };
-          return {
-            ...paginated,
-            items: paginated.items.filter((s) => s.id !== id),
-          };
-        }
-
-        if (Array.isArray(old)) {
-          return (old as StudentDto[]).filter((s) => s.id !== id);
-        }
-
-        return old;
-      });
-
-      return { previous };
-    },
-    onError: (error: Error, _vars, context) => {
+  const deleteMutation = useDeleteStudent({
+    onError: (error) => {
       console.error("Failed to delete student:", error);
-      if (context?.previous) {
-        queryClient.setQueryData(["students"], context.previous);
-      }
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["students"] });
     },
   });
 
@@ -213,19 +106,14 @@ export const StudentTable = () => {
   };
 
   const handleCreateSubmit = async (data: Omit<StudentDto, "id">) => {
-    createStudentMutation.mutate({ data, source: "form" });
+    createMutation.mutate({ data });
   };
 
   const handleEditSubmit = async (
     student: StudentDto,
     data: Omit<StudentDto, "id" | "email" | "pid">
   ) => {
-    updateMutation.mutate({
-      id: student.id,
-      data,
-      source: "form",
-      editData: student,
-    });
+    editFormMutation.mutate({ id: student.id, data });
   };
 
   const columns: ColumnDef<StudentDto>[] = [
@@ -261,10 +149,7 @@ export const StudentTable = () => {
       cell: ({ row }) => {
         const number = row.getValue("phone_number") as string;
         return number
-          ? `(${number.slice(0, 3)}) ${number.slice(3, 6)}-${number.slice(
-              6,
-              10
-            )}`
+          ? `(${number.slice(0, 3)}) ${number.slice(3, 6)}-${number.slice(6, 10)}`
           : "—";
       },
     },
@@ -293,7 +178,7 @@ export const StudentTable = () => {
           <Checkbox
             checked={isRegistered}
             onCheckedChange={(checked: boolean) => {
-              updateMutation.mutate({
+              checkboxMutation.mutate({
                 id: student.id,
                 data: {
                   ...student,
@@ -301,7 +186,7 @@ export const StudentTable = () => {
                 },
               });
             }}
-            disabled={updateMutation.isPending}
+            disabled={checkboxMutation.isPending}
           />
         );
       },
@@ -310,7 +195,6 @@ export const StudentTable = () => {
 
   return (
     <div className="space-y-4">
-      {/* Table */}
       <TableTemplate
         data={students}
         columns={columns}
