@@ -16,7 +16,7 @@ export default function StaffPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="h-screen bg-background/10 flex flex-col">
       {/* Navbar */}
       <div className="w-full bg-[#6FB2DC] h-16 flex-shrink-0 flex items-center justify-between px-6">
         <div className="text-white font-semibold">Staff Portal</div>
@@ -36,13 +36,13 @@ export default function StaffPage() {
       </div>
 
       <div className="container mx-auto p-6">
-        <Tabs defaultValue="party">
+        <Tabs defaultValue="student">
           <TabsList>
-            <TabsTrigger value="party">Parties</TabsTrigger>
-            <TabsTrigger value="student">Students</TabsTrigger>
-            <TabsTrigger value="location">Locations</TabsTrigger>
+            <TabsTrigger value="student">Student</TabsTrigger>
+            <TabsTrigger value="party">Party</TabsTrigger>
+            <TabsTrigger value="location">Location</TabsTrigger>
             {role === "admin" && (
-              <TabsTrigger value="account">Accounts</TabsTrigger>
+              <TabsTrigger value="account">Admin</TabsTrigger>
             )}
           </TabsList>
           <TabsContent value="party">

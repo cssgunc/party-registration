@@ -256,19 +256,17 @@ export function TableTemplate<T extends object>({
       {(resourceName || onCreateNew) && (
         <div className="flex justify-between items-center">
           {(() => {
-            const lower = resourceName.toLowerCase();
-            const pluralResourceName =
-              lower.endsWith("y") &&
-              !["a", "e", "i", "o", "u"].includes(
-                lower.charAt(lower.length - 2)
-              )
-                ? resourceName.slice(0, -1) + "ies"
-                : resourceName + "s";
-
             return (
               <>
-                <h2 className="text-2xl font-bold">{pluralResourceName}</h2>
-
+                <div className="mb-2 bg-card w-lg h-9">
+                  <input
+                    type="text"
+                    value={globalFilter}
+                    onChange={(e) => setGlobalFilter(e.target.value)}
+                    placeholder="Search all columns..."
+                    className="w-full p-2 border rounded h-9"
+                  />
+                </div>
                 {onCreateNew && role === "admin" && (
                   <Button onClick={onCreateNew}>
                     <Plus className="mr-2 h-4 w-4" />
@@ -296,18 +294,8 @@ export function TableTemplate<T extends object>({
       {/* Table */}
       {!isLoading && !error && (
         <>
-          <div className="rounded-md border">
-            <div className="mb-2">
-              <input
-                type="text"
-                value={globalFilter}
-                onChange={(e) => setGlobalFilter(e.target.value)}
-                placeholder="Search all columns..."
-                className="w-full p-2 border rounded"
-              />
-            </div>
-
-            <Table>
+          <div className="rounded-md border bg-card">
+            <Table className="bg-card">
               <TableCaption>{tableDetails}</TableCaption>
               <TableHeader>
                 {table.getHeaderGroups().map((headerGroup) => (
