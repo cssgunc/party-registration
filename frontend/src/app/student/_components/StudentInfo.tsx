@@ -162,8 +162,8 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
   );
   if (!isEditing) {
     return (
-      <div className="bg-white rounded-lg p-12 w-full">
-        <div className="flex justify-between items-center mb-6">
+      <div className="bg-white rounded-lg py-16 px-20 w-full flex flex-col">
+        <div className="self-center gap-6 flex justify-between mb-16">
           <div className="text-[32px] font-semibold text-[#09294E]">
             Edit Profile Information
           </div>
@@ -172,7 +172,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
             className="p-2 hover:bg-gray-100 rounded-full transition-colors"
             aria-label="Edit profile"
           >
-            <Pencil className="w-6 h-6 text-[#09294E]" />
+            <Pencil className="w-6 h-6 text-[#09294E] cursor-pointer" />
           </button>
         </div>
 
@@ -224,10 +224,8 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
           {initialData.residence?.location.formatted_address}
         </div>
 
-        <div className="mt-8 flex justify-center">
-          <Button className="bg-[#09294E] text-white px-8 py-2 rounded-lg hover:bg-[#0a1f38]">
-            Log Out
-          </Button>
+        <div className="mt-16 flex justify-center">
+          <Button variant="default">Log Out</Button>
         </div>
       </div>
     );
@@ -289,7 +287,6 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
                 value={formData.phone_number}
                 onChange={(e) => updateField("phone_number", e.target.value)}
                 aria-invalid={!!errors.phone_number}
-                className="border-gray-300"
               />
               {errors.phone_number && (
                 <FieldError>{errors.phone_number}</FieldError>
@@ -309,10 +306,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
                   updateField("contact_preference", value)
                 }
               >
-                <SelectTrigger
-                  id="contact-preference"
-                  className="border-gray-300"
-                >
+                <SelectTrigger id="contact-preference">
                   <SelectValue placeholder="Select your preference" />
                 </SelectTrigger>
                 <SelectContent>
@@ -363,7 +357,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
           </div>
 
           {errors.submit && (
-            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg ">
               <FieldError className="text-red-600">{errors.submit}</FieldError>
             </div>
           )}
@@ -372,7 +366,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="bg-[#09294E] text-white px-8 py-2 rounded-lg hover:bg-[#0a1f38]"
+              className="bg-[#09294E] text-white px-8 py-2 rounded-lg hover:bg-[#0a1f38] "
             >
               {isSubmitting ? "Saving..." : "Save"}
             </Button>

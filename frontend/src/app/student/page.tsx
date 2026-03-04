@@ -93,6 +93,10 @@ export default function StudentDashboard() {
             {...studentQuery}
           />
         </div>
+
+        <div className="2xl:w-1/2">
+          {/* Place for future "About Party Registration and Party Smart section on Student Dashboard" */}
+        </div>
       </div>
     </div>
   );

@@ -7,6 +7,7 @@ from src.core.authentication import (
     authenticate_by_role,
     authenticate_police_or_admin,
     authenticate_staff_or_admin,
+    authenticate_student_or_admin,
     authenticate_user,
 )
 from src.core.exceptions import (
@@ -269,7 +270,7 @@ async def get_party(
 async def delete_party(
     party_id: int,
     party_service: PartyService = Depends(),
-    _=Depends(authenticate_admin),
+    user: AccountDto = Depends(authenticate_student_or_admin),
 ) -> PartyDto:
     """
     Deletes a party registration by ID.
@@ -283,4 +284,7 @@ async def delete_party(
     Raises:
     - 404: If party with the specified ID does not exist
     """
-    return await party_service.delete_party(party_id)
+    if user.role == AccountRole.STUDENT:
+        return await party_service.cancel_party_as_student(party_id, user.id)
+    else:
+        return await party_service.delete_party(party_id)

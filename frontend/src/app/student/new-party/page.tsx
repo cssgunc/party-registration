@@ -4,6 +4,7 @@ import PartyRegistrationForm, {
   PartyFormInitialValues,
   PartyFormValues,
 } from "@/app/student/_components/PartyRegistrationForm";
+import { Card } from "@/components/ui/card";
 import { LocationService } from "@/lib/api/location/location.service";
 import { useCreateParty } from "@/lib/api/party/party.queries";
 import { StudentCreatePartyDto } from "@/lib/api/party/party.types";
@@ -115,7 +116,7 @@ export default function RegistrationForm() {
   return (
     <div>
       <Header />
-      <div className="px-14 lg:px-48 pb-8">
+      <Card className="px-14 lg:px-48 pb-8">
         <Link className="py-8" href="/student">
           Back
         </Link>
@@ -130,7 +131,7 @@ export default function RegistrationForm() {
           studentPhoneNumber={studentQuery.data?.phone_number}
           studentResidence={studentQuery.data?.residence}
         />
-      </div>
+      </Card>
     </div>
   );
 }
