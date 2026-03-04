@@ -41,7 +41,7 @@ export default function RegistrationForm() {
         id: 1,
         incidents: [],
       },
-      residence_chosen_date: new Date(),
+      residence_chosen_date: new Date(2022, 5, 6),
     };
   }
 

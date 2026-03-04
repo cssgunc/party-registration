@@ -14,8 +14,6 @@ import { isFromThisSchoolYear } from "@/lib/utils";
 import Link from "next/link";
 import { useMemo } from "react";
 
-const locationService = new LocationService();
-
 export default function StudentDashboard() {
   const studentQuery = useCurrentStudent();
   // mocking

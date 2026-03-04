@@ -38,7 +38,7 @@ import { ResidenceDto } from "@/lib/api/student/student.types";
 import { isFromThisSchoolYear } from "@/lib/utils";
 import { addBusinessDays, format, isAfter, startOfDay } from "date-fns";
 import { CalendarIcon } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import * as z from "zod";
 
 const partyFormSchema = z.object({
@@ -124,7 +124,7 @@ export default function PartyRegistrationForm({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAddressConfirmation, setShowAddressConfirmation] = useState(false);
-  const [pendingSubmitData, setPendingSubmitData] = useState<{
+  const pendingSubmitRef = useRef<{
     data: PartyFormValues;
     placeId: string;
   } | null>(null);
@@ -194,7 +194,7 @@ export default function PartyRegistrationForm({
       !initialValues?.address || result.data.address !== initialValues.address;
 
     if (addressChanged) {
-      setPendingSubmitData({ data: result.data, placeId });
+      pendingSubmitRef.current = { data: result.data, placeId };
       setShowAddressConfirmation(true);
       return;
     }
@@ -221,9 +221,9 @@ export default function PartyRegistrationForm({
   };
 
   const currentDate = new Date();
-  var school_year = "";
-  var change_date = "";
-  if (currentDate < new Date("08-01")) {
+  let school_year = "";
+  let change_date = "";
+  if (currentDate > new Date(currentDate.getFullYear(), 7, 1)) {
     school_year =
       currentDate.getFullYear() + "-" + (currentDate.getFullYear() + 1);
     change_date = "August 1, " + (currentDate.getFullYear() + 1);
@@ -475,7 +475,7 @@ export default function PartyRegistrationForm({
           <DialogHeader>
             <DialogTitle>Confirm Address Change</DialogTitle>
             <DialogDescription>
-              You are changing your registered address. This will update your
+              You are changing your registered address. This will update your{" "}
               {school_year} residence on file. You will not be able to change it
               again until {change_date}.
             </DialogDescription>
@@ -484,7 +484,7 @@ export default function PartyRegistrationForm({
             <p className="text-sm">
               <span className="font-semibold">New Address:</span>
               <br />
-              {pendingSubmitData?.data.address}
+              {pendingSubmitRef.current?.data.address}
             </p>
           </div>
           <DialogFooter>
@@ -493,7 +493,7 @@ export default function PartyRegistrationForm({
               variant="outline"
               onClick={() => {
                 setShowAddressConfirmation(false);
-                setPendingSubmitData(null);
+                pendingSubmitRef.current = null;
               }}
             >
               Cancel
@@ -501,18 +501,15 @@ export default function PartyRegistrationForm({
             <Button
               type="button"
               onClick={async () => {
-                if (pendingSubmitData) {
-                  setShowAddressConfirmation(false);
-                  setIsSubmitting(true);
-                  try {
-                    await onSubmit(
-                      pendingSubmitData.data,
-                      pendingSubmitData.placeId
-                    );
-                  } finally {
-                    setIsSubmitting(false);
-                    setPendingSubmitData(null);
-                  }
+                setShowAddressConfirmation(false);
+                setIsSubmitting(true);
+                try {
+                  const { data, placeId: submitPlaceId } =
+                    pendingSubmitRef.current!;
+                  await onSubmit(data, submitPlaceId);
+                } finally {
+                  setIsSubmitting(false);
+                  pendingSubmitRef.current = null;
                 }
               }}
             >

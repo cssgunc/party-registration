@@ -15,9 +15,9 @@ export function isFromThisSchoolYear(date: Date | null | undefined): boolean {
 
   const now = new Date();
   const currentYear = now.getFullYear();
-  const augustFirst = new Date(currentYear, 8, 1);
+  const augustFirst = new Date(currentYear, 7, 1);
   const mostRecentAugust1 = isBefore(now, augustFirst)
-    ? new Date(currentYear - 1, 8, 1)
+    ? new Date(currentYear - 1, 7, 1)
     : augustFirst;
 
   return isAfter(startOfDay(date), startOfDay(mostRecentAugust1));
