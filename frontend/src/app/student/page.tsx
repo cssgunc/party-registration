@@ -4,7 +4,6 @@ import Header from "@/app/student/_components/Header";
 import RegistrationTracker from "@/app/student/_components/RegistrationTracker";
 import StatusComponent from "@/app/student/_components/StatusComponent";
 import { Button } from "@/components/ui/button";
-import { LocationService } from "@/lib/api/location/location.service";
 import {
   useCurrentStudent,
   useMyParties,
