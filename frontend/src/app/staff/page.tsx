@@ -13,10 +13,10 @@ export default function StaffPage() {
 
   return (
     <div className="h-screen bg-background/10 flex flex-col">
-      <Header />
+      <Header className="h-20 md:h-24 lg:h-26" />
 
       <div className="flex-1 overflow-auto flex flex-col">
-        <div className="container mx-auto p-4 pt-2 md:p-5 lg:px-0 lg:py-8 flex-1 flex flex-col">
+        <div className="container mx-auto p-4 py-2 md:p-5 lg:px-0 lg:py-6 flex-1 flex flex-col">
           <Tabs defaultValue="student">
             <TabsList className="-ml-3 sm:-mb-2 lg:mb-0 ">
               <TabsTrigger

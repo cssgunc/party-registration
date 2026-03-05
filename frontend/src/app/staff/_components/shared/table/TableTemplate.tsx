@@ -78,6 +78,7 @@ export type TableProps<T> = {
   isDeleting?: boolean;
   initialSort?: SortingState;
   sortBy?: (a: T, b: T) => number;
+  pageSize?: number;
 };
 
 export function TableTemplate<T extends object>({
@@ -94,6 +95,7 @@ export function TableTemplate<T extends object>({
   isDeleting,
   initialSort = [],
   sortBy,
+  pageSize = 8,
 }: TableProps<T>) {
   const { isOpen } = useSidebar();
   const { role } = useRole();
@@ -104,7 +106,7 @@ export function TableTemplate<T extends object>({
   );
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
-    pageSize: 8,
+    pageSize,
   });
   const [sorting, setSorting] = useState<SortingState>(initialSort);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -292,14 +294,14 @@ export function TableTemplate<T extends object>({
                     value={globalFilter}
                     onChange={(e) => setGlobalFilter(e.target.value)}
                     placeholder="Search all columns..."
-                    className="w-full p-2 border h-9 rounded-md"
+                    className="w-full p-2 pl-3 border h-9 rounded-md"
                   />
                 </div>
                 <div>
                   {onCreateNew && role === "admin" && (
-                    <Button onClick={onCreateNew} className="h-9">
-                      <Plus className="mr-2 h-4 w-4" />
-                      New row
+                    <Button onClick={onCreateNew} className="h-">
+                      <Plus className="mr-1" />
+                      <p>New row</p>
                     </Button>
                   )}
                 </div>
@@ -315,7 +317,7 @@ export function TableTemplate<T extends object>({
 
       {error && (
         <div className="text-center py-8 text-destructive">
-          Error: {error.message}
+          <p>Error: {error.message}</p>
         </div>
       )}
 
@@ -411,7 +413,7 @@ export function TableTemplate<T extends object>({
           </div>
 
           {/* Pagination Controls */}
-          <div className="flex flex-col items-center p-2 gap-2 mt-4">
+          <div className="flex flex-col items-center p-2 gap-2 lg:mt-4">
             <Pagination>
               <PaginationContent>
                 <PaginationItem>
@@ -469,7 +471,7 @@ export function TableTemplate<T extends object>({
                 </PaginationItem>
               </PaginationContent>
             </Pagination>
-            <div className="flex items-center gap-30 text-sm text-muted-foreground">
+            <div className="flex items-center gap-12 md:gap-20 lg:gap-30 text-sm text-muted-foreground">
               <span>
                 Results{" "}
                 {table.getState().pagination.pageIndex *

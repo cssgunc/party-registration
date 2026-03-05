@@ -7,13 +7,19 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
 import PartySmartLogo from "./PartySmartLogo";
 
-export default function Header() {
+export default function Header({ className }: { className?: string }) {
   return (
-    <div className="bg-primary py-4 px-6 w-full flex justify-between items-center h-">
+    <div
+      className={cn(
+        "bg-primary py-4 px-6 w-full flex justify-between items-center",
+        className
+      )}
+    >
       <PartySmartLogo />
 
       <DropdownMenu>

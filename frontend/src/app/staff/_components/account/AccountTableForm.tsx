@@ -124,19 +124,6 @@ export default function AccountTableForm({
             {errors.email && <FieldError>{errors.email}</FieldError>}
           </Field>
 
-          <Field data-invalid={!!errors.pid}>
-            <FieldLabel htmlFor="pid">PID</FieldLabel>
-            <Input
-              id="first-name"
-              placeholder="123456789"
-              value={formData.pid}
-              onChange={(e) => updateField("pid", e.target.value)}
-              aria-invalid={!!errors.pid}
-              disabled={isPIDEditMode}
-            />
-            {errors.pid && <FieldError>{errors.pid}</FieldError>}
-          </Field>
-
           <Field data-invalid={!!errors.first_name}>
             <FieldLabel htmlFor="first-name">First name</FieldLabel>
             <Input
