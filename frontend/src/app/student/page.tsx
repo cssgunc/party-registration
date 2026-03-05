@@ -1,8 +1,8 @@
 "use client";
 
-import Header from "@/app/student/_components/Header";
 import RegistrationTracker from "@/app/student/_components/RegistrationTracker";
 import StatusComponent from "@/app/student/_components/StatusComponent";
+import Header from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import {
   useCurrentStudent,

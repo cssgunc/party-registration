@@ -270,7 +270,7 @@ export const StudentTable = () => {
     },
     {
       accessorKey: "contact_preference",
-      header: "Contact Preference",
+      header: "Call/Text",
       enableColumnFilter: true,
       meta: {
         filterType: "select",

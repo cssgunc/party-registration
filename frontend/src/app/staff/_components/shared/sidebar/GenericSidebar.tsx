@@ -1,6 +1,7 @@
 "use client";
 import { useSidebar } from "@/app/staff/_components/shared/sidebar/SidebarContext";
 import { Button } from "@/components/ui/button";
+import { XIcon } from "lucide-react";
 
 function GenericSidebar() {
   const { isOpen, closeSidebar, content } = useSidebar();
@@ -22,8 +23,11 @@ function GenericSidebar() {
         }`}
       >
         <div className="p-6">
-          <Button className="mb-6" onClick={closeSidebar}>
-            Close
+          <Button
+            className="bg-card pb-10 hover:bg-card"
+            onClick={closeSidebar}
+          >
+            <XIcon className="text-muted-foreground size-6 -m-8" />
           </Button>
           <div className="space-y-4">{content}</div>
         </div>

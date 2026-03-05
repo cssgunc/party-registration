@@ -10,7 +10,6 @@ import {
 import {
   Table,
   TableBody,
-  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -98,7 +97,7 @@ export function TableTemplate<T extends object>({
   );
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
-    pageSize: 25,
+    pageSize: 9,
   });
   const [sorting, setSorting] = useState<SortingState>(initialSort);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -258,19 +257,19 @@ export function TableTemplate<T extends object>({
           {(() => {
             return (
               <>
-                <div className="mb-2 bg-card w-lg h-9">
+                <div className="mb-2 bg-card w-lg h-9 rounded-md">
                   <input
                     type="text"
                     value={globalFilter}
                     onChange={(e) => setGlobalFilter(e.target.value)}
                     placeholder="Search all columns..."
-                    className="w-full p-2 border rounded h-9"
+                    className="w-full p-2 border h-9 rounded-md"
                   />
                 </div>
                 {onCreateNew && role === "admin" && (
                   <Button onClick={onCreateNew}>
                     <Plus className="mr-2 h-4 w-4" />
-                    New {resourceName}
+                    New row
                   </Button>
                 )}
               </>
@@ -294,9 +293,8 @@ export function TableTemplate<T extends object>({
       {/* Table */}
       {!isLoading && !error && (
         <>
-          <div className="rounded-md border bg-card">
-            <Table className="bg-card">
-              <TableCaption>{tableDetails}</TableCaption>
+          <div className="rounded-sm border bg-card py-2 px-4">
+            <Table className="bg-card rounded-sm">
               <TableHeader>
                 {table.getHeaderGroups().map((headerGroup) => (
                   <TableRow key={headerGroup.id}>

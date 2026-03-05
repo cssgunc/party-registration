@@ -1,9 +1,9 @@
 "use client";
-import Header from "@/app/student/_components/Header";
 import PartyRegistrationForm, {
   PartyFormInitialValues,
   PartyFormValues,
 } from "@/app/student/_components/PartyRegistrationForm";
+import Header from "@/components/Header";
 import { Card } from "@/components/ui/card";
 import { LocationService } from "@/lib/api/location/location.service";
 import { useCreateParty } from "@/lib/api/party/party.queries";
