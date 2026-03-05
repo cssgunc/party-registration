@@ -368,7 +368,7 @@ export function TableTemplate<T extends object>({
                       key={row.id}
                       className={
                         row.getIsSelected()
-                          ? "bg-blue-100 hover:bg-blue-200"
+                          ? "bg-accent hover:bg-secondary"
                           : ""
                       }
                     >
@@ -376,7 +376,7 @@ export function TableTemplate<T extends object>({
                         <TableCell
                           key={cell.id}
                           className={
-                            cell.column.getIsFiltered() ? "bg-purple-50" : ""
+                            cell.column.getIsFiltered() ? "bg-card" : ""
                           }
                         >
                           {flexRender(

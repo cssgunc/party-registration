@@ -36,7 +36,7 @@ export function ColumnHeader<T>({
             variant="ghost"
             size="sm"
             className={`-ml-3 h-8 data-[state=open]:bg-accent ${
-              isFiltered ? "bg-purple-50" : ""
+              isFiltered ? "bg-card" : ""
             }`}
           >
             <span>{title}</span>
@@ -79,7 +79,7 @@ export function ColumnHeader<T>({
                     column.setFilterValue(undefined);
                     setOpen(false);
                   }}
-                  className="text-red-600"
+                  className="text-destructive"
                 >
                   <X className="mr-2 h-4 w-4" />
                   Clear Filter
