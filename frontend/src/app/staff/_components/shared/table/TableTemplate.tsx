@@ -8,6 +8,22 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -31,16 +47,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import {
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
-  MoreHorizontal,
-  Pencil,
-  Plus,
-  Trash2,
-} from "lucide-react";
+import { MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { DeleteConfirmDialog } from "../dialog/DeleteConfirmDialog";
 import { useSidebar } from "../sidebar/SidebarContext";
@@ -97,7 +104,7 @@ export function TableTemplate<T extends object>({
   );
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
-    pageSize: 9,
+    pageSize: 8,
   });
   const [sorting, setSorting] = useState<SortingState>(initialSort);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -249,15 +256,37 @@ export function TableTemplate<T extends object>({
     onRowSelectionChange: setRowSelection,
   });
 
+  const visibleRows = table.getRowModel().rows;
+  const renderedDataRowCount = visibleRows.length > 0 ? visibleRows.length : 1;
+  const fillerRowCount = Math.max(
+    pagination.pageSize - renderedDataRowCount,
+    0
+  );
+  const activePage = table.getState().pagination.pageIndex;
+  const pageCount = table.getPageCount();
+  const maxVisiblePages = 3;
+  const pageStart = Math.max(
+    0,
+    Math.min(
+      activePage - Math.floor(maxVisiblePages / 2),
+      pageCount - maxVisiblePages
+    )
+  );
+  const pageEnd = Math.min(pageStart + maxVisiblePages, pageCount);
+  const pageIndexes = Array.from(
+    { length: Math.max(pageEnd - pageStart, 0) },
+    (_, index) => pageStart + index
+  );
+
   return (
     <div className="space-y-4">
       {/* Header with Create Button */}
       {(resourceName || onCreateNew) && (
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center w-full">
           {(() => {
             return (
-              <>
-                <div className="mb-2 bg-card w-lg h-9 rounded-md">
+              <div className="flex justify-between w-full gap-4">
+                <div className="mb-small bg-card w-lg h-9 rounded-md">
                   <input
                     type="text"
                     value={globalFilter}
@@ -266,33 +295,32 @@ export function TableTemplate<T extends object>({
                     className="w-full p-2 border h-9 rounded-md"
                   />
                 </div>
-                {onCreateNew && role === "admin" && (
-                  <Button onClick={onCreateNew}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    New row
-                  </Button>
-                )}
-              </>
+                <div>
+                  {onCreateNew && role === "admin" && (
+                    <Button onClick={onCreateNew} className="h-9">
+                      <Plus className="mr-2 h-4 w-4" />
+                      New row
+                    </Button>
+                  )}
+                </div>
+              </div>
             );
           })()}
         </div>
       )}
 
-      {/* Loading State */}
       {isLoading && (
         <div className="text-center py-8 text-muted-foreground">Loading...</div>
       )}
 
-      {/* Error State */}
       {error && (
         <div className="text-center py-8 text-destructive">
           Error: {error.message}
         </div>
       )}
 
-      {/* Table */}
       {!isLoading && !error && (
-        <>
+        <div className="flex flex-col justify-between h-max">
           <div className="rounded-sm border bg-card py-2 px-4">
             <Table className="bg-card rounded-sm">
               <TableHeader>
@@ -332,8 +360,8 @@ export function TableTemplate<T extends object>({
                 ))}
               </TableHeader>
               <TableBody>
-                {table.getRowModel().rows?.length ? (
-                  table.getRowModel().rows.map((row) => (
+                {visibleRows.length ? (
+                  visibleRows.map((row) => (
                     <TableRow
                       key={row.id}
                       className={
@@ -361,61 +389,119 @@ export function TableTemplate<T extends object>({
                   <TableRow>
                     <TableCell
                       colSpan={columnsWithActions.length}
-                      className="h-24 text-center"
+                      className="h-12 text-center"
                     >
                       No results.
                     </TableCell>
                   </TableRow>
                 )}
+                {Array.from({ length: fillerRowCount }).map((_, index) => (
+                  <TableRow
+                    key={`filler-row-${index}`}
+                    className="pointer-events-none"
+                  >
+                    <TableCell
+                      colSpan={columnsWithActions.length}
+                      className="h-12.25"
+                    />
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           </div>
 
           {/* Pagination Controls */}
-          <div className="flex items-center justify-between px-2">
-            <div className="text-sm text-muted-foreground">
-              Page {table.getState().pagination.pageIndex + 1} of{" "}
-              {table.getPageCount()} (Total: {data.length} records)
-            </div>
-            <div className="flex items-center space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.setPageIndex(0)}
-                disabled={!table.getCanPreviousPage()}
-                className="cursor-pointer"
+          <div className="flex flex-col items-center p-2 gap-2 mt-4">
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      table.previousPage();
+                    }}
+                    className={
+                      !table.getCanPreviousPage()
+                        ? "pointer-events-none opacity-50"
+                        : "cursor-pointer"
+                    }
+                  />
+                </PaginationItem>
+                {pageStart > 0 && (
+                  <PaginationItem>
+                    <PaginationEllipsis />
+                  </PaginationItem>
+                )}
+                {pageIndexes.map((pageIndex) => (
+                  <PaginationItem key={pageIndex}>
+                    <PaginationLink
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        table.setPageIndex(pageIndex);
+                      }}
+                      isActive={activePage === pageIndex}
+                      className="cursor-pointer"
+                    >
+                      {pageIndex + 1}
+                    </PaginationLink>
+                  </PaginationItem>
+                ))}
+                {pageEnd < pageCount && (
+                  <PaginationItem>
+                    <PaginationEllipsis />
+                  </PaginationItem>
+                )}
+                <PaginationItem>
+                  <PaginationNext
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      table.nextPage();
+                    }}
+                    className={
+                      !table.getCanNextPage()
+                        ? "pointer-events-none opacity-50"
+                        : "cursor-pointer"
+                    }
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+            <div className="flex items-center gap-30 text-sm text-muted-foreground">
+              <span>
+                Results{" "}
+                {table.getState().pagination.pageIndex *
+                  table.getState().pagination.pageSize +
+                  1}{" "}
+                -{" "}
+                {data.length <
+                (table.getState().pagination.pageIndex + 1) *
+                  table.getState().pagination.pageSize
+                  ? data.length
+                  : (table.getState().pagination.pageIndex + 1) *
+                    table.getState().pagination.pageSize}{" "}
+                of {data.length}
+              </span>
+              <Select
+                value={String(activePage)}
+                onValueChange={(value) => table.setPageIndex(Number(value))}
               >
-                <ChevronsLeft className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage()}
-                className="cursor-pointer"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage()}
-                className="cursor-pointer"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-                disabled={!table.getCanNextPage()}
-                className="cursor-pointer"
-              >
-                <ChevronsRight className="h-4 w-4" />
-              </Button>
+                <SelectTrigger className="bg-card">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="max-h-40 overflow-y-auto ">
+                  {Array.from({ length: pageCount }, (_, i) => (
+                    <SelectItem key={i} value={String(i)}>
+                      {i + 1}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
+
           {/* Mock Sidebar Section */}
           {activeFilterColumn && (
             <div className="border-t pt-4">
@@ -433,7 +519,7 @@ export function TableTemplate<T extends object>({
               />
             </div>
           )}
-        </>
+        </div>
       )}
 
       {/* Delete Confirmation Dialog */}

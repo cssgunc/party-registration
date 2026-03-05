@@ -13,7 +13,7 @@ import PartySmartLogo from "./PartySmartLogo";
 
 export default function Header() {
   return (
-    <div className="bg-primary p-4 w-full flex justify-between items-center h-">
+    <div className="bg-primary py-4 px-6 w-full flex justify-between items-center h-">
       <PartySmartLogo />
 
       <DropdownMenu>

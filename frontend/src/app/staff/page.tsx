@@ -16,14 +16,34 @@ export default function StaffPage() {
       <Header />
 
       <div className="flex-1 overflow-auto flex flex-col">
-        <div className="container mx-auto p-6 flex-1 flex flex-col">
+        <div className="container mx-auto p-4 pt-2 md:p-5 lg:px-0 lg:py-8 flex-1 flex flex-col">
           <Tabs defaultValue="student">
-            <TabsList className="-ml-3">
-              <TabsTrigger value="student">Student</TabsTrigger>
-              <TabsTrigger value="party">Party</TabsTrigger>
-              <TabsTrigger value="location">Location</TabsTrigger>
+            <TabsList className="-ml-3 sm:-mb-2 lg:mb-0 ">
+              <TabsTrigger
+                value="student"
+                className="text-md md:text-xl lg:text-xl"
+              >
+                Student
+              </TabsTrigger>
+              <TabsTrigger
+                value="party"
+                className="text-md md:text-lg lg:text-xl"
+              >
+                Party
+              </TabsTrigger>
+              <TabsTrigger
+                value="location"
+                className="text-md md:text-lg lg:text-xl"
+              >
+                Location
+              </TabsTrigger>
               {role === "admin" && (
-                <TabsTrigger value="account">Admin</TabsTrigger>
+                <TabsTrigger
+                  value="account"
+                  className="text-md md:text-lg lg:text-xl"
+                >
+                  Admin
+                </TabsTrigger>
               )}
             </TabsList>
             <TabsContent value="party">
