@@ -3,13 +3,13 @@
 import { DeletePartyDialog } from "@/app/student/_components/DeletePartyDialog";
 import { EditPartyDialog } from "@/app/student/_components/EditPartyDialog";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { IncidentDto } from "@/lib/api/location/location.types";
 import { PartyDto } from "@/lib/api/party/party.types";
@@ -100,14 +100,14 @@ export default function RegistrationTracker({
 
     return Object.entries(groups);
   }, [sortedIncidents]);
-  
+
   const PartyCard = ({
-      party,
-      showActions,
-    }: {
-      party: PartyDto;
-      showActions?: boolean;
-    }) => (
+    party,
+    showActions,
+  }: {
+    party: PartyDto;
+    showActions?: boolean;
+  }) => (
     <Card className="px-4 py-4 border-b border-gray-100 last:border-b-0">
       <div className="space-y-2">
         <div className="flex items-start justify-between">
