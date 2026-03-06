@@ -9,7 +9,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { IncidentDto } from "@/lib/api/location/location.types";
 import { PartyDto } from "@/lib/api/party/party.types";
 import { format } from "date-fns";
 import { MoreVertical, Pencil, Trash2 } from "lucide-react";
@@ -19,6 +21,7 @@ interface RegistrationTrackerProps {
   data: PartyDto[] | undefined;
   isPending?: boolean;
   error?: Error | null;
+  incidents?: IncidentDto[];
 }
 
 const formatPhoneNumber = (phone: string | undefined): string => {
@@ -36,8 +39,11 @@ export default function RegistrationTracker({
   data: parties = [],
   isPending = false,
   error = null,
+  incidents = [],
 }: RegistrationTrackerProps) {
-  const [activeTab, setActiveTab] = useState<"active" | "past">("active");
+  const [activeTab, setActiveTab] = useState<"active" | "past" | "incidents">(
+    "active"
+  );
   const [editParty, setEditParty] = useState<PartyDto | null>(null);
   const [deleteParty, setDeleteParty] = useState<PartyDto | null>(null);
 
@@ -73,14 +79,36 @@ export default function RegistrationTracker({
     return { activeParties: active, pastParties: past };
   }, [parties]);
 
+  const sortedIncidents = useMemo(() => {
+    return [...incidents].sort(
+      (a, b) =>
+        new Date(b.incident_datetime).getTime() -
+        new Date(a.incident_datetime).getTime()
+    );
+  }, [incidents]);
+
+  const groupedIncidents = useMemo(() => {
+    const groups: Record<string, IncidentDto[]> = {};
+
+    sortedIncidents.forEach((incident) => {
+      const dateKey = format(incident.incident_datetime, "PPP");
+      if (!groups[dateKey]) {
+        groups[dateKey] = [];
+      }
+      groups[dateKey].push(incident);
+    });
+
+    return Object.entries(groups);
+  }, [sortedIncidents]);
+  
   const PartyCard = ({
-    party,
-    showActions,
-  }: {
-    party: PartyDto;
-    showActions?: boolean;
-  }) => (
-    <div className="px-4 py-4 border-b border-gray-100 last:border-b-0">
+      party,
+      showActions,
+    }: {
+      party: PartyDto;
+      showActions?: boolean;
+    }) => (
+    <Card className="px-4 py-4 border-b border-gray-100 last:border-b-0">
       <div className="space-y-2">
         <div className="flex items-start justify-between">
           <div>
@@ -165,6 +193,33 @@ export default function RegistrationTracker({
           </div>
         </div>
       </div>
+    </Card>
+  );
+
+  const IncidentCard = ({
+    date,
+    incidents,
+  }: {
+    date: String;
+    incidents: IncidentDto[];
+  }) => (
+    <div className="px-4 py-4 border-b border-gray-100 last:border-b-0">
+      <div className="space-y-2">
+        <div className="text-sm text-gray-600 font-bold">{date}</div>
+        {incidents.map((incident) => (
+          <div key={incident.id} className="mt-3 gap-4 md:grid md:grid-cols-2">
+            <div>
+              <div className="text-sm text-gray-700">
+                {format(incident.incident_datetime, "p")} -{" "}
+                <span className="capitalize">{incident.severity}</span>
+              </div>
+              <div className="text-sm text-gray-700 ml-3">
+                {incident.description}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 
@@ -193,18 +248,23 @@ export default function RegistrationTracker({
     <div className="w-full">
       <Tabs
         value={activeTab}
-        onValueChange={(value) => setActiveTab(value as "active" | "past")}
+        onValueChange={(value) =>
+          setActiveTab(value as "active" | "past" | "incidents")
+        }
       >
-        <TabsList className="w-full grid grid-cols-2">
+        <TabsList className="w-fit my-2">
           <TabsTrigger value="active" className="cursor-pointer">
             Active
           </TabsTrigger>
           <TabsTrigger value="past" className="cursor-pointer">
             Past Events
           </TabsTrigger>
+          <TabsTrigger value="incidents" className="cursor-pointer">
+            Incidents
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="active" className="mt-4">
+        <TabsContent value="active">
           <div className="w-full bg-white border border-gray-200 rounded-md max-h-[600px] overflow-y-auto">
             {activeParties.length === 0 ? (
               <div className="text-center text-gray-400 py-8">
@@ -227,6 +287,17 @@ export default function RegistrationTracker({
             ) : (
               pastParties.map((party) => (
                 <PartyCard key={party.id} party={party} />
+              ))
+            )}
+          </div>
+        </TabsContent>
+        <TabsContent value="incidents" className="mt-4">
+          <div className="w-full bg-white border border-gray-200 rounded-md max-h-[600px] overflow-y-auto">
+            {sortedIncidents.length === 0 ? (
+              <div className="text-center text-gray-400 py-8">No incidents</div>
+            ) : (
+              groupedIncidents.map(([date, dayIncidents]) => (
+                <IncidentCard key={date} date={date} incidents={dayIncidents} />
               ))
             )}
           </div>

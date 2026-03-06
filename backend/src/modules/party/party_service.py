@@ -595,6 +595,7 @@ class PartyService:
             .where(
                 PartyEntity.party_datetime >= start_time,
                 PartyEntity.party_datetime <= end_time,
+                PartyEntity.status != PartyStatus.CANCELLED,
             )
         )
         parties = result.scalars().all()

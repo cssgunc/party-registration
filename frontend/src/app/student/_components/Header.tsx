@@ -1,4 +1,4 @@
-import OCSLLogo from "@/components/icons/OCSL_logo.svg";
+import OCSLLogo from "@/components/OCSLLogo";
 import logout from "@/components/icons/log-out.svg";
 import pfp from "@/components/icons/pfp_temp.svg";
 import user from "@/components/icons/user.svg";
@@ -13,19 +13,13 @@ import Link from "next/link";
 
 export default function Header() {
   return (
-    <div className="bg-[#6FB2DC] h-20 w-full flex justify-between items-center">
-      <Image src={OCSLLogo} alt="OCSL logo" className="pl-4 pt-7" />
+    <div className="bg-primary p-4 w-full flex justify-between items-center">
+      <OCSLLogo />
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button className="cursor-pointer">
-            <Image
-              src={pfp}
-              alt="pfp"
-              className="pr-4 pt-6"
-              width={60}
-              height={60}
-            />
+            <Image src={pfp} alt="pfp" width={60} height={60} />
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-60" align="end">
