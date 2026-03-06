@@ -68,6 +68,7 @@ const partyFormSchema = z.object({
 
 type PartyFormValues = z.infer<typeof partyFormSchema>;
 
+export { partyFormSchema };
 export type { PartyFormValues };
 
 /**
@@ -76,6 +77,8 @@ export type { PartyFormValues };
 export interface PartyFormInitialValues {
   address?: string;
   placeId?: string;
+  partyDate?: Date;
+  partyTime?: string;
   secondContactFirstName?: string;
   secondContactLastName?: string;
   phoneNumber?: string;
@@ -91,6 +94,8 @@ interface PartyRegistrationFormProps {
   studentEmail?: string;
   /** The authenticated student's phone number (contact one) for duplicate validation */
   studentPhoneNumber?: string;
+  /** Whether this form is used for creating or editing a party */
+  mode?: "create" | "edit";
   studentResidence?: ResidenceDto | null;
 }
 
@@ -105,12 +110,13 @@ export default function PartyRegistrationForm({
   initialValues,
   studentEmail,
   studentPhoneNumber,
+  mode = "create",
   studentResidence,
 }: PartyRegistrationFormProps) {
   const [formData, setFormData] = useState<Partial<PartyFormValues>>({
     address: initialValues?.address ?? "",
-    partyDate: undefined,
-    partyTime: DEFAULT_PARTY_TIME,
+    partyDate: initialValues?.partyDate ?? undefined,
+    partyTime: initialValues?.partyTime ?? DEFAULT_PARTY_TIME,
     phoneNumber: initialValues?.phoneNumber ?? "",
     secondContactFirstName: initialValues?.secondContactFirstName ?? "",
     secondContactLastName: initialValues?.secondContactLastName ?? "",
@@ -461,7 +467,11 @@ export default function PartyRegistrationForm({
                   : undefined
               }
             >
-              {isSubmitting ? "Submitting..." : "Register Party"}
+              {isSubmitting
+                ? "Submitting..."
+                : mode === "edit"
+                  ? "Save"
+                  : "Register Party"}
             </Button>
           </Field>
         </FieldSet>
