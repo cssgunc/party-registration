@@ -40,7 +40,7 @@ class StudentTestUtils(
         self,
         session: AsyncSession,
         account_utils: AccountTestUtils,
-        location_utils: LocationTestUtils | None = None,
+        location_utils: LocationTestUtils,
     ):
         super().__init__(
             session,
@@ -112,28 +112,6 @@ class StudentTestUtils(
             residence_id = location.id
         return StudentEntity.from_data(student_data, student_create.account_id, residence_id)
 
-    # ================================ Typing Overrides ================================
-
-    @override
-    def get_or_default(
-        self, overrides: StudentOverrides | None = None, fields: set[str] | None = None
-    ) -> dict:
-        return super().get_or_default(overrides, fields)
-
-    @override
-    async def next_data(self, **overrides: Unpack[StudentOverrides]) -> StudentData:
-        return await super().next_data(**overrides)
-
-    @override
-    async def create_many(
-        self, *, i: int, **overrides: Unpack[StudentOverrides]
-    ) -> list[StudentEntity]:
-        return await super().create_many(i=i, **overrides)
-
-    @override
-    async def create_one(self, **overrides: Unpack[StudentOverrides]) -> StudentEntity:
-        return await super().create_one(**overrides)
-
     async def create_student_with_old_party_smart(
         self, **overrides: Unpack[StudentOverrides]
     ) -> StudentEntity:
@@ -183,3 +161,25 @@ class StudentTestUtils(
         await self.session.commit()
         await self.session.refresh(student, ["residence"])
         return student
+
+    # ================================ Typing Overrides ================================
+
+    @override
+    def get_or_default(
+        self, overrides: StudentOverrides | None = None, fields: set[str] | None = None
+    ) -> dict:
+        return super().get_or_default(overrides, fields)
+
+    @override
+    async def next_data(self, **overrides: Unpack[StudentOverrides]) -> StudentData:
+        return await super().next_data(**overrides)
+
+    @override
+    async def create_many(
+        self, *, i: int, **overrides: Unpack[StudentOverrides]
+    ) -> list[StudentEntity]:
+        return await super().create_many(i=i, **overrides)
+
+    @override
+    async def create_one(self, **overrides: Unpack[StudentOverrides]) -> StudentEntity:
+        return await super().create_one(**overrides)

@@ -40,16 +40,16 @@ async def create_party(
     """
     Create a new party registration.
 
-    - Students: provide type="student", party_datetime, place_id, and contact_two (ContactDTO)
+    - Students: provide type="student", party_datetime, and contact_two (ContactDTO)
       - contact_one is auto-filled from the authenticated student
-    - Admins: provide type="admin", party_datetime, place_id, contact_one_email, and
+      - Party location is automatically derived from the student's residence
+    - Admins: provide type="admin", party_datetime, google_place_id, contact_one_email, and
       contact_two (ContactDTO)
       - contact_one_email identifies the first contact by email
       - contact_two is a ContactDTO with email, first_name, last_name, phone_number, and
         contact_preference
 
     The location will be automatically created if it doesn't exist in the database.
-    If contact_two's email doesn't exist in the system, a new student account will be created.
     """
     # Validate that the DTO type matches the user's role
     match party_data:
@@ -222,16 +222,16 @@ async def update_party(
     """
     Update an existing party registration.
 
-    - Students: provide type="student", party_datetime, place_id, and contact_two (ContactDTO)
+    - Students: provide type="student", party_datetime, and contact_two (ContactDTO)
       - contact_one is auto-filled from the authenticated student
-    - Admins: provide type="admin", party_datetime, place_id, contact_one_email, and
+      - Party location is automatically derived from the student's residence
+    - Admins: provide type="admin", party_datetime, google_place_id, contact_one_email, and
       contact_two (ContactDTO)
       - contact_one_email identifies the first contact by email
       - contact_two is a ContactDTO with email, first_name, last_name, phone_number, and
         contact_preference
 
     The location will be automatically created if it doesn't exist in the database.
-    If contact_two's email doesn't exist in the system, a new student account will be created.
     """
     # Validate that the DTO type matches the user's role
     match party_data:

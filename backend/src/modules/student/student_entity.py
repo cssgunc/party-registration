@@ -41,11 +41,6 @@ class StudentEntity(MappedAsDataclass, EntityBase):
 
     __table_args__ = (
         CheckConstraint(
-            "(last_registered IS NULL AND residence_id IS NULL "
-            "AND residence_chosen_date IS NULL) OR (last_registered IS NOT NULL)",
-            name="chk_no_residence_if_never_registered",
-        ),
-        CheckConstraint(
             "(residence_id IS NULL AND residence_chosen_date IS NULL) OR "
             "(residence_id IS NOT NULL AND residence_chosen_date IS NOT NULL)",
             name="chk_residence_consistency",

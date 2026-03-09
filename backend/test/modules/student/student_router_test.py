@@ -3,15 +3,14 @@ from datetime import UTC, datetime
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
-from src.core.exceptions import BadRequestException
 from src.modules.account.account_entity import AccountRole
 from src.modules.location.location_model import LocationDto
 from src.modules.party.party_model import PartyDto
 from src.modules.student.student_entity import StudentEntity
 from src.modules.student.student_model import (
     ContactPreference,
+    SelfUpdateStudentDto,
     StudentDto,
-    StudentSelfUpdateData,
 )
 from src.modules.student.student_service import (
     AccountNotFoundException,
@@ -564,7 +563,7 @@ class TestStudentMeRouter:
     @pytest.mark.asyncio
     async def test_update_me_success(self, current_student: StudentEntity):
         """Test updating current student's own information."""
-        updated_data = StudentSelfUpdateData(
+        updated_data = SelfUpdateStudentDto(
             contact_preference=ContactPreference.CALL,
             phone_number="9195559876",
         )
@@ -600,7 +599,7 @@ class TestStudentMeRouter:
     async def test_update_me_phone_conflict(self, current_student: StudentEntity):
         """Test updating me with phone number that already exists."""
         other_student = await self.student_utils.create_one()
-        updated_data = StudentSelfUpdateData(
+        updated_data = SelfUpdateStudentDto(
             contact_preference=ContactPreference.TEXT,
             phone_number=other_student.phone_number,
         )
@@ -704,7 +703,7 @@ class TestStudentResidenceRouter:
 
     @pytest.mark.asyncio
     async def test_update_residence_without_party_smart(self):
-        """Test that unregistered student cannot choose residence."""
+        """Test that unregistered student CAN choose residence."""
         # Create student without last_registered
         await self.account_utils.create_one(role=AccountRole.ADMIN.value)
         await self.account_utils.create_one(role=AccountRole.STAFF.value)
@@ -715,15 +714,18 @@ class TestStudentResidenceRouter:
         )
 
         location = await self.location_utils.create_one()
+        self.gmaps_utils.mock_place_details(
+            google_place_id=location.google_place_id,
+            formatted_address=location.formatted_address,
+            latitude=float(location.latitude),
+            longitude=float(location.longitude),
+        )
         payload = {"residence_place_id": location.google_place_id}
 
         response = await self.student_client.put("/api/students/me/residence", json=payload)
-        assert_res_failure(
-            response,
-            BadRequestException(
-                "Must complete Party Smart in the current academic year before choosing a residence"
-            ),
-        )
+        data = assert_res_success(response, LocationDto)
+        assert data.id == location.id
+        assert data.google_place_id == location.google_place_id
 
     @pytest.mark.asyncio
     async def test_update_residence_same_academic_year(self, current_student: StudentEntity):

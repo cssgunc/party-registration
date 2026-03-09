@@ -2,7 +2,6 @@ from datetime import UTC, datetime
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.core.exceptions import BadRequestException
 from src.modules.account.account_entity import AccountRole
 from src.modules.location.location_service import LocationService
 from src.modules.student.student_model import ContactPreference, StudentDto
@@ -302,17 +301,17 @@ class TestStudentResidenceService:
 
     @pytest.mark.asyncio
     async def test_update_residence_without_being_registered(self):
-        """Test that student cannot choose residence without being registered."""
+        """Test that student CAN choose residence without being registered."""
         # Create student without last_registered
         student_entity = await self.student_utils.create_one(last_registered=None)
         location = await self.location_utils.create_one()
 
-        # Should fail because student has not completed Party Smart
-        with pytest.raises(BadRequestException) as exc_info:
-            await self.student_service.update_residence(
-                student_entity.account_id, location.google_place_id
-            )
-        assert "Must complete Party Smart" in str(exc_info.value)
+        # Should succeed - students can set residence without Party Smart
+        result = await self.student_service.update_residence(
+            student_entity.account_id, location.google_place_id
+        )
+        assert result.id == location.id
+        assert result.google_place_id == location.google_place_id
 
     @pytest.mark.asyncio
     async def test_update_residence_same_academic_year_fails(self):

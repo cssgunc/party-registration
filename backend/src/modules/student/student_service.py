@@ -288,15 +288,6 @@ class StudentService:
         """Update student's residence. Can only be done once per academic year."""
         student_entity = await self._get_student_entity_by_account_id(account_id)
 
-        # Student must have completed Party Smart in current academic year
-        # before choosing a residence
-        if student_entity.last_registered is None or not is_same_academic_year(
-            student_entity.last_registered
-        ):
-            raise BadRequestException(
-                "Must complete Party Smart in the current academic year before choosing a residence"
-            )
-
         # Check if student has already chosen a residence this academic year
         if student_entity.residence_chosen_date is not None and is_same_academic_year(
             student_entity.residence_chosen_date
