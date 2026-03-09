@@ -1,0 +1,25 @@
+import Header from "@/app/student/_components/Header";
+import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
+import PartyRegistrationInfo from "../_components/PartyRegistrationInfo";
+
+export default function AboutPartyRegistration() {
+  
+  return (
+    <div className="flex flex-col items-center">
+      <Header />
+      
+      <main className="mx-4 mt-4 max-w-4xl">
+        <div className="flex items-center content">
+          <ArrowLeft className="h-4" />
+          <Link href="/student">
+             Back
+          </Link>
+        </div>
+        <div className="mx-8">
+          <PartyRegistrationInfo/>
+        </div>
+      </main>
+    </div>
+  );
+}

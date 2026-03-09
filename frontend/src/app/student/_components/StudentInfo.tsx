@@ -139,77 +139,87 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
 
   if (!isEditing) {
     return (
-      <div className="bg-white rounded-lg py-16 px-20 w-full flex flex-col">
-        <div className="self-center gap-6 flex justify-between mb-16">
-          <div className="text-[32px] font-semibold text-[#09294E]">
+      <main className="bg-white rounded-lg py-6 px-6 sm:px-10 w-full flex flex-col">
+        <div className="self-center gap-6 flex justify-between mb-4 sm:mb-7">
+          <h1 className="page-title">
             Edit Profile Information
-          </div>
+          </h1>
           <button
             onClick={() => setIsEditing(true)}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            className="hover:bg-gray-100 rounded-full transition-colors"
             aria-label="Edit profile"
           >
             <Pencil className="w-6 h-6 text-[#09294E] cursor-pointer" />
           </button>
         </div>
 
-        <div className="sm:grid sm:grid-cols-2 sm:gap-x-12 sm:gap-y-8">
-          <div>
-            <div className="text-[#09294E] font-semibold text-lg mb-2">
+        <section className="sm:grid sm:grid-cols-2">
+          <div className="sm:mt-0 sm:border-b mr-6">
+            <p className="subhead-content pb-1">
               First Name
-            </div>
-            <div className="text-gray-600 text-base border-b border-gray-300 pb-2">
+            </p>
+            <p className="content">
               {displayData.first_name}
-            </div>
+            </p>
           </div>
 
-          <div>
-            <div className="text-[#09294E] font-semibold text-lg mb-2 mt-5 sm:mt-0">
+          <div className="mt-3 sm:mt-0 sm:border-b mr-6">
+            <p className="subhead-content pb-1">
               Last Name
-            </div>
-            <div className="text-gray-600 text-base border-b border-gray-300 pb-2">
+            </p>
+            <p className="content">
               {displayData.last_name}
-            </div>
+            </p>
           </div>
 
-          <div>
-            <div className="text-[#09294E] font-semibold text-lg mb-2 mt-5 sm:mt-0">
+          <div className="mt-3 sm:mt-6 sm:border-b mr-6">
+            <p className="subhead-content pb-1">
               Phone Number
-            </div>
-            <div className="text-gray-600 text-base border-b border-gray-300 pb-2">
+            </p>
+            <p className="content">
               {displayData.phone_number}
-            </div>
+            </p>
           </div>
 
-          <div>
-            <div className="text-[#09294E] font-semibold text-lg mb-2 mt-5 sm:mt-0">
+          <div className="mt-3 sm:mt-6 sm:border-b mr-6">
+            <p className="subhead-content pb-1">
               Contact Method
-            </div>
-            <div className="text-gray-600 text-base border-b border-gray-300 pb-2">
+            </p>
+            <p className="content">
               {displayData.contact_preference
                 ? displayData.contact_preference.charAt(0).toUpperCase() +
                   displayData.contact_preference.slice(1)
                 : "Not set"}
-            </div>
+            </p>
           </div>
-        </div>
 
-        <div className="mt-16 flex justify-center">
+          <div className="mt-3 sm:mt-6 sm:border-b mr-6">
+            <p className="subhead-content pb-1">
+              2025-2026 Address
+            </p>
+            <p className="content"> {/* need to update */}
+              Address
+            </p>
+          </div>
+        </section>
+
+        <section className="mt-2 flex justify-center">
           <Button variant="default">Log Out</Button>
-        </div>
-      </div>
+        </section>
+      </main>
     );
   }
 
   return (
     <form onSubmit={handleSubmit} className="bg-white rounded-lg">
       <FieldGroup>
-        <FieldSet>
-          <div className="grid grid-cols-2 gap-x-12 gap-y-6">
+        <FieldSet className="rounded-lg py-4 px-6 w-full flex flex-col">
+         
+          <section className="sm:grid sm:grid-cols-2 sm:gap-x-12 sm:gap-y-8">
             <Field data-invalid={!!errors.first_name}>
               <FieldLabel
                 htmlFor="first-name"
-                className="text-[#09294E] font-semibold text-lg"
+                className="subhead-content"
               >
                 First Name
               </FieldLabel>
@@ -219,6 +229,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
                 value={formData.first_name}
                 onChange={(e) => updateField("first_name", e.target.value)}
                 aria-invalid={!!errors.first_name}
+                className="content"
               />
               {errors.first_name && (
                 <FieldError>{errors.first_name}</FieldError>
@@ -228,7 +239,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
             <Field data-invalid={!!errors.last_name}>
               <FieldLabel
                 htmlFor="last-name"
-                className="text-[#09294E] font-semibold text-lg"
+                className="subhead-content mt-3 sm:mt-0"
               >
                 Last Name
               </FieldLabel>
@@ -238,6 +249,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
                 value={formData.last_name}
                 onChange={(e) => updateField("last_name", e.target.value)}
                 aria-invalid={!!errors.last_name}
+                className="content"
               />
               {errors.last_name && <FieldError>{errors.last_name}</FieldError>}
             </Field>
@@ -245,7 +257,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
             <Field data-invalid={!!errors.phone_number}>
               <FieldLabel
                 htmlFor="phone-number"
-                className="text-[#09294E] font-semibold text-lg"
+                className="subhead-content mt-3 sm:mt-0"
               >
                 Phone Number
               </FieldLabel>
@@ -255,6 +267,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
                 value={formData.phone_number}
                 onChange={(e) => updateField("phone_number", e.target.value)}
                 aria-invalid={!!errors.phone_number}
+                className="content"
               />
               {errors.phone_number && (
                 <FieldError>{errors.phone_number}</FieldError>
@@ -264,7 +277,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
             <Field data-invalid={!!errors.contact_preference}>
               <FieldLabel
                 htmlFor="contact-preference"
-                className="text-[#09294E] font-semibold text-lg"
+                className="subhead-content mt-3 sm:mt-0"
               >
                 Contact Method
               </FieldLabel>
@@ -274,19 +287,29 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
                   updateField("contact_preference", value)
                 }
               >
-                <SelectTrigger id="contact-preference">
+                <SelectTrigger id="contact-preference" className="content">
                   <SelectValue placeholder="Select your preference" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="call">Call</SelectItem>
-                  <SelectItem value="text">Text</SelectItem>
+                  <SelectItem value="call" className="content">Call</SelectItem>
+                  <SelectItem value="text" className="content">Text</SelectItem>
                 </SelectContent>
               </Select>
               {errors.contact_preference && (
                 <FieldError>{errors.contact_preference}</FieldError>
               )}
             </Field>
-          </div>
+            <Field>
+              <FieldLabel
+                htmlFor="address"
+                className="subhead-content mt-3 sm:mt-0"
+              >
+                2025-2026 Address
+              </FieldLabel>
+              <Input className="content"/>
+          </Field>
+        </section>
+          
 
           {errors.submit && (
             <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg ">
@@ -294,11 +317,10 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
             </div>
           )}
 
-          <div className="mt-8 flex justify-center gap-4">
+          <div className="flex justify-center gap-4">
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="bg-[#09294E] text-white px-8 py-2 rounded-lg hover:bg-[#0a1f38] "
             >
               {isSubmitting ? "Saving..." : "Save"}
             </Button>
