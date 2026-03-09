@@ -6,7 +6,7 @@ function createLoginRequestUrl(): Promise<string> {
   return new Promise((resolve, reject) => {
     serviceProvider.create_login_request_url(
       identityProvider,
-      {},
+      { force_authn: process.env.NODE_ENV === "production" ? false : true }, // Forces users to re-authenticate on every login in development
       (error: Error | null, loginUrl: string) => {
         if (error) reject(error);
         else resolve(loginUrl);

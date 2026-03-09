@@ -46,10 +46,10 @@ const authOptions: NextAuthOptions = {
           return {
             id: user.name_id,
             name: user.name_id,
-            email: attrs.email?.[0] ?? null,
-            firstName: attrs.firstName?.[0],
-            lastName: attrs.lastName?.[0],
-            onyen: attrs.onyen?.[0],
+            email: attrs.mail?.[0] ?? null,
+            firstName: attrs.givenName?.[0],
+            lastName: attrs.sn?.[0],
+            onyen: attrs.uid?.[0],
             pid: attrs.pid?.[0],
           };
         } catch (error) {
