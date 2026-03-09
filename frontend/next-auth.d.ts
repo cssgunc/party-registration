@@ -5,12 +5,20 @@ declare module "next-auth" {
   interface Session {
     accessToken?: string;
     role?: "admin" | "staff";
+    firstName?: string;
+    lastName?: string;
+    onyen?: string;
+    pid?: string;
   }
 
   interface User {
     accessToken?: string;
     refreshToken?: string;
     role?: "admin" | "staff";
+    firstName?: string;
+    lastName?: string;
+    onyen?: string;
+    pid?: string;
   }
 }
 
@@ -21,5 +29,9 @@ declare module "next-auth/jwt" {
     refreshToken?: string;
     accessTokenExpires?: number; // ms epoch
     role?: "admin" | "staff";
+    firstName?: string;
+    lastName?: string;
+    onyen?: string;
+    pid?: string;
   }
 }

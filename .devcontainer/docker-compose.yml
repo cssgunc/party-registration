@@ -32,6 +32,8 @@ services:
     environment:
       - SIMPLESAMLPHP_SP_ENTITY_ID=next-auth-client
       - SIMPLESAMLPHP_SP_ASSERTION_CONSUMER_SERVICE=http://localhost:3000/api/auth/login/saml
+    volumes:
+      - ./saml-idp/authsources.php:/var/www/simplesamlphp/config/authsources.php
 
 volumes:
   party-reg-mssql:

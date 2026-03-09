@@ -42,10 +42,15 @@ const authOptions: NextAuthOptions = {
 
         try {
           const { user } = await postAssert(samlBody);
+          const attrs = (user.attributes ?? {}) as Record<string, string[]>;
           return {
             id: user.name_id,
             name: user.name_id,
-            email: user.email ?? null,
+            email: attrs.email?.[0] ?? null,
+            firstName: attrs.firstName?.[0],
+            lastName: attrs.lastName?.[0],
+            onyen: attrs.onyen?.[0],
+            pid: attrs.pid?.[0],
           };
         } catch (error) {
           console.error("SAML assertion failed:", error);
@@ -69,6 +74,10 @@ const authOptions: NextAuthOptions = {
         token.id = u.id;
         token.name = u.name;
         token.email = u.email;
+        token.firstName = u.firstName;
+        token.lastName = u.lastName;
+        token.onyen = u.onyen;
+        token.pid = u.pid;
 
         if (u.accessToken) token.accessToken = u.accessToken;
         if (u.refreshToken) token.refreshToken = u.refreshToken;
@@ -128,6 +137,11 @@ const authOptions: NextAuthOptions = {
         session.user.name = token.name ?? null;
         session.user.email = token.email ?? null;
       }
+
+      session.firstName = token.firstName;
+      session.lastName = token.lastName;
+      session.onyen = token.onyen;
+      session.pid = token.pid;
 
       // Add access token to session so that the Axios API client can automatically attach it to the request headers
       if (token.accessToken) {
