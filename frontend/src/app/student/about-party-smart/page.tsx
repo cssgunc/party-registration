@@ -1,4 +1,3 @@
-import Header from "@/app/student/_components/Header";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import PartySmartInfo from "../_components/PartySmartInfo";
@@ -7,7 +6,6 @@ export default function AboutPartySmart() {
   
   return (
     <div className="flex flex-col items-center">
-      <Header />
       <main className="px-4 py-4 w-full max-w-4xl">
         <div className="flex items-center content">
           <ArrowLeft className="h-4" />
