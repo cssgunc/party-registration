@@ -1,3 +1,5 @@
+"use client";
+
 import logout from "@/components/icons/log-out.svg";
 import pfp from "@/components/icons/pfp_temp.svg";
 import user from "@/components/icons/user.svg";
@@ -7,12 +9,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useRole } from "@/contexts/RoleContext";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
 import PartySmartLogo from "./PartySmartLogo";
 
 export default function Header({ className }: { className?: string }) {
+  const { role } = useRole();
+
   return (
     <div
       className={cn(
@@ -29,12 +34,14 @@ export default function Header({ className }: { className?: string }) {
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-60" align="end">
-          <Link href="/student/profile">
-            <DropdownMenuItem>
-              <Image src={user} alt="user" />
-              <span>Edit Profile Information</span>
-            </DropdownMenuItem>
-          </Link>
+          {role === "student" && (
+            <Link href="/student/profile">
+              <DropdownMenuItem>
+                <Image src={user} alt="user" />
+                <span>Edit Profile Information</span>
+              </DropdownMenuItem>
+            </Link>
+          )}
           <DropdownMenuItem>
             <Image src={logout} alt="logout" />
             <span>Logout</span>
