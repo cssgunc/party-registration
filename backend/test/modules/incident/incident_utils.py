@@ -1,9 +1,15 @@
 from datetime import UTC, datetime, timedelta
-from typing import Any, TypedDict, Unpack, override
+from typing import Any, TypedDict, Unpack, cast, override
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.modules.incident.incident_entity import IncidentEntity
-from src.modules.incident.incident_model import IncidentData, IncidentDto, IncidentSeverity
+from src.modules.incident.incident_model import (
+    IncidentCreateDto,
+    IncidentData,
+    IncidentDto,
+    IncidentSeverity,
+    IncidentUpdateDto,
+)
 from test.modules.location.location_utils import LocationTestUtils
 from test.utils.resource_test_utils import ResourceTestUtils
 
@@ -19,7 +25,7 @@ class IncidentTestUtils(
     ResourceTestUtils[
         IncidentEntity,
         IncidentData,
-        IncidentDto,
+        IncidentDto | IncidentCreateDto | IncidentUpdateDto,
     ]
 ):
     def __init__(self, session: AsyncSession, location_utils: LocationTestUtils):
@@ -49,6 +55,32 @@ class IncidentTestUtils(
         del data["location_id"]
         data["location_place_id"] = "ChIJSamplePlace0000"
         return data
+
+    @classmethod
+    def get_sample_update_data(cls) -> dict:
+        """Get sample data for IncidentUpdateDto (no location_place_id)."""
+        data = cls.generate_defaults(0)
+        del data["location_id"]
+        return data
+
+    async def next_create_dto(
+        self, *, location_place_id: str | None = None, **field_overrides: Any
+    ) -> IncidentCreateDto:
+        """Generate the next IncidentCreateDto, resolving or creating a location if needed."""
+        if location_place_id is None:
+            location = await self.location_utils.create_one()
+            location_place_id = location.google_place_id
+        fields = {"incident_datetime", "description", "severity"}
+        data = self.get_or_default(cast(IncidentOverrides, field_overrides), fields)
+        self.count += 1
+        return IncidentCreateDto(location_place_id=location_place_id, **data)
+
+    async def next_update_dto(self, **field_overrides: Any) -> IncidentUpdateDto:
+        """Generate the next IncidentUpdateDto."""
+        fields = {"incident_datetime", "description", "severity"}
+        data = self.get_or_default(cast(IncidentOverrides, field_overrides), fields)
+        self.count += 1
+        return IncidentUpdateDto(**data)
 
     @override
     async def next_dict(self, **overrides: Unpack[IncidentOverrides]) -> dict:

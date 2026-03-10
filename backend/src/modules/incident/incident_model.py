@@ -1,6 +1,6 @@
 from enum import Enum
 
-from pydantic import AwareDatetime, BaseModel
+from pydantic import AwareDatetime, BaseModel, Field
 
 
 class IncidentSeverity(Enum):
@@ -20,7 +20,7 @@ class IncidentUpdateDto(BaseModel):
 class IncidentCreateDto(BaseModel):
     """Request body for creating an incident (includes location_place_id)."""
 
-    location_place_id: str
+    location_place_id: str = Field(min_length=1)
     incident_datetime: AwareDatetime
     description: str = ""
     severity: IncidentSeverity

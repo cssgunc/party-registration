@@ -1,11 +1,10 @@
-from datetime import UTC, datetime
-
 import pytest
 from httpx import AsyncClient
 from src.modules.incident.incident_model import IncidentDto, IncidentSeverity
 from src.modules.incident.incident_service import IncidentNotFoundException
+from src.modules.location.location_service import PlaceNotFoundException
 from test.modules.incident.incident_utils import IncidentTestUtils
-from test.modules.location.location_utils import LocationTestUtils
+from test.modules.location.location_utils import GmapsMockUtils, LocationTestUtils
 from test.utils.http.assertions import (
     assert_res_failure,
     assert_res_success,
@@ -16,7 +15,7 @@ from test.utils.http.test_templates import generate_auth_required_tests
 test_incident_authentication = generate_auth_required_tests(
     ({"admin", "staff", "police"}, "GET", "/api/locations/1/incidents", None),
     ({"admin", "police"}, "POST", "/api/incidents", IncidentTestUtils.get_sample_create_data()),
-    ({"admin", "police"}, "PUT", "/api/incidents/1", IncidentTestUtils.get_sample_create_data()),
+    ({"admin", "police"}, "PUT", "/api/incidents/1", IncidentTestUtils.get_sample_update_data()),
     ({"admin", "police"}, "DELETE", "/api/incidents/1", None),
 )
 
@@ -27,16 +26,19 @@ class TestIncidentRouter:
     admin_client: AsyncClient
     incident_utils: IncidentTestUtils
     location_utils: LocationTestUtils
+    gmaps_utils: GmapsMockUtils
 
     @pytest.fixture(autouse=True)
     def _setup(
         self,
         incident_utils: IncidentTestUtils,
         location_utils: LocationTestUtils,
+        gmaps_utils: GmapsMockUtils,
         admin_client: AsyncClient,
     ):
         self.incident_utils = incident_utils
         self.location_utils = location_utils
+        self.gmaps_utils = gmaps_utils
         self.admin_client = admin_client
 
     @pytest.mark.asyncio
@@ -66,20 +68,50 @@ class TestIncidentRouter:
 
     @pytest.mark.asyncio
     async def test_create_incident_success(self) -> None:
-        """Test successfully creating an incident."""
+        """Test successfully creating an incident linked to an existing location."""
         location = await self.location_utils.create_one()
-        incident_data = await self.incident_utils.next_data(location_id=location.id)
-        request_body = {
-            "location_place_id": location.google_place_id,
-            "incident_datetime": incident_data.incident_datetime.isoformat(),
-            "description": incident_data.description,
-            "severity": incident_data.severity.value,
-        }
+        create_dto = await self.incident_utils.next_create_dto(
+            location_place_id=location.google_place_id
+        )
 
-        response = await self.admin_client.post("/api/incidents", json=request_body)
+        response = await self.admin_client.post(
+            "/api/incidents", json=create_dto.model_dump(mode="json")
+        )
         data = assert_res_success(response, IncidentDto, status=201)
 
-        self.incident_utils.assert_matches(incident_data, data)
+        self.incident_utils.assert_matches(data, create_dto)
+
+    @pytest.mark.asyncio
+    async def test_create_incident_auto_creates_location(self) -> None:
+        """Test creating an incident with a place ID not in DB auto-creates the location."""
+        location_data = await self.location_utils.next_data()
+        self.gmaps_utils.mock_place_details(**location_data.model_dump())
+
+        create_dto = await self.incident_utils.next_create_dto(
+            location_place_id=location_data.google_place_id
+        )
+
+        response = await self.admin_client.post(
+            "/api/incidents", json=create_dto.model_dump(mode="json")
+        )
+        data = assert_res_success(response, IncidentDto, status=201)
+
+        all_locations = await self.location_utils.get_all()
+        created_location = next((loc for loc in all_locations if loc.id == data.location_id), None)
+        assert created_location is not None
+        assert created_location.google_place_id == location_data.google_place_id
+
+    @pytest.mark.asyncio
+    async def test_create_incident_place_not_found(self) -> None:
+        """Test creating an incident with an invalid place ID returns 404."""
+        self.gmaps_utils.mock_place.return_value = {}  # No "result" key → PlaceNotFoundException
+
+        create_dto = await self.incident_utils.next_create_dto(location_place_id="invalid-place-id")
+        response = await self.admin_client.post(
+            "/api/incidents", json=create_dto.model_dump(mode="json")
+        )
+
+        assert_res_failure(response, PlaceNotFoundException("invalid-place-id"))
 
     @pytest.mark.asyncio
     async def test_create_incident_with_severity(self) -> None:
@@ -87,17 +119,12 @@ class TestIncidentRouter:
         location = await self.location_utils.create_one()
 
         for severity in IncidentSeverity:
-            incident_data = await self.incident_utils.next_data(
-                location_id=location.id, severity=severity
+            create_dto = await self.incident_utils.next_create_dto(
+                location_place_id=location.google_place_id, severity=severity
             )
-            request_body = {
-                "location_place_id": location.google_place_id,
-                "incident_datetime": incident_data.incident_datetime.isoformat(),
-                "description": incident_data.description,
-                "severity": severity.value,
-            }
-
-            response = await self.admin_client.post("/api/incidents", json=request_body)
+            response = await self.admin_client.post(
+                "/api/incidents", json=create_dto.model_dump(mode="json")
+            )
             data = assert_res_success(response, IncidentDto, status=201)
 
             assert data.severity == severity
@@ -106,15 +133,13 @@ class TestIncidentRouter:
     async def test_create_incident_with_empty_description(self) -> None:
         """Test creating an incident with empty description."""
         location = await self.location_utils.create_one()
-        incident_data = await self.incident_utils.next_data(location_id=location.id, description="")
-        request_body = {
-            "location_place_id": location.google_place_id,
-            "incident_datetime": incident_data.incident_datetime.isoformat(),
-            "description": "",
-            "severity": incident_data.severity.value,
-        }
+        create_dto = await self.incident_utils.next_create_dto(
+            location_place_id=location.google_place_id, description=""
+        )
 
-        response = await self.admin_client.post("/api/incidents", json=request_body)
+        response = await self.admin_client.post(
+            "/api/incidents", json=create_dto.model_dump(mode="json")
+        )
         data = assert_res_success(response, IncidentDto, status=201)
 
         assert data.description == ""
@@ -123,46 +148,50 @@ class TestIncidentRouter:
     async def test_create_incident_severity_required(self) -> None:
         """Test creating an incident without severity fails validation."""
         location = await self.location_utils.create_one()
-        incident_data = {
+        request_body = {
+            **IncidentTestUtils.get_sample_create_data(),
             "location_place_id": location.google_place_id,
-            "incident_datetime": "2025-11-18T20:30:00Z",
-            "description": "Noise incident",
         }
+        del request_body["severity"]
 
-        response = await self.admin_client.post("/api/incidents", json=incident_data)
+        response = await self.admin_client.post("/api/incidents", json=request_body)
 
         assert_res_validation_error(response, expected_fields=["severity"])
+
+    @pytest.mark.asyncio
+    async def test_create_incident_empty_place_id(self) -> None:
+        """Test creating an incident with empty place ID fails validation."""
+        request_body = {**IncidentTestUtils.get_sample_create_data(), "location_place_id": ""}
+
+        response = await self.admin_client.post("/api/incidents", json=request_body)
+
+        assert_res_validation_error(response, expected_fields=["location_place_id"])
 
     @pytest.mark.asyncio
     async def test_update_incident_success(self) -> None:
         """Test successfully updating an incident."""
         incident = await self.incident_utils.create_one()
-        request_body = {
-            "incident_datetime": datetime(2025, 11, 20, 23, 0, 0, tzinfo=UTC).isoformat(),
-            "description": "Updated description",
-            "severity": IncidentSeverity.WARNING.value,
-        }
+        update_dto = await self.incident_utils.next_update_dto(
+            description="Updated description", severity=IncidentSeverity.WARNING
+        )
 
         response = await self.admin_client.put(
             f"/api/incidents/{incident.id}",
-            json=request_body,
+            json=update_dto.model_dump(mode="json"),
         )
         data = assert_res_success(response, IncidentDto)
 
         assert data.id == incident.id
-        assert data.description == "Updated description"
-        assert data.severity == IncidentSeverity.WARNING
+        self.incident_utils.assert_matches(data, update_dto)
 
     @pytest.mark.asyncio
     async def test_update_incident_not_found(self) -> None:
         """Test updating a non-existent incident."""
-        request_body = {
-            "incident_datetime": "2025-11-20T23:00:00+00:00",
-            "description": "Updated description",
-            "severity": IncidentSeverity.WARNING.value,
-        }
+        update_dto = await self.incident_utils.next_update_dto()
 
-        response = await self.admin_client.put("/api/incidents/999", json=request_body)
+        response = await self.admin_client.put(
+            "/api/incidents/999", json=update_dto.model_dump(mode="json")
+        )
 
         assert_res_failure(response, IncidentNotFoundException(999))
 
