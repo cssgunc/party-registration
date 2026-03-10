@@ -35,7 +35,7 @@ export function GenericInfoChip({
     <Badge
       onClick={handleOpen}
       className={`cursor-pointer px-3 py-1 ${
-        isSelected ? "bg-blue-500 text-white" : "bg-gray-200 text-black"
+        isSelected ? "bg-primary text-card" : "bg-muted text-foreground"
       }`}
     >
       {shortName}

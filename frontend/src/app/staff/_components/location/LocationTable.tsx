@@ -226,9 +226,9 @@ export const LocationTable = () => {
         const holdDate = row.getValue("hold_expiration") as Date | null;
         if (holdDate) {
           const formattedDate = new Date(holdDate).toLocaleDateString();
-          return `until ${formattedDate}`;
+          return `Expires: ${formattedDate}`;
         }
-        return "no active hold";
+        return "No";
       },
 
       filterFn: (row, columnId, filterValue) => {

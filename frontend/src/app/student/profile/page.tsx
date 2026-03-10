@@ -1,6 +1,7 @@
 "use client";
 
 import StudentInfo from "@/app/student/_components/StudentInfo";
+import Header from "@/components/Header";
 import { Card, CardContent } from "@/components/ui/card";
 import { useCurrentStudent } from "@/lib/api/student/student.queries";
 
