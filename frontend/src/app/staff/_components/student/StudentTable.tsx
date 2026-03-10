@@ -10,6 +10,8 @@ import { isFromThisSchoolYear } from "@/lib/utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
+import LocationInfoChipDetails from "../party/details/LocationInfoChipDetails";
+import { GenericInfoChip } from "../shared/sidebar/GenericInfoChip";
 import { TableTemplate } from "../shared/table/TableTemplate";
 import StudentTableForm from "./StudentTableForm";
 
@@ -280,6 +282,33 @@ export const StudentTable = () => {
         const preference =
           row.getValue<StudentDto["contact_preference"]>("contact_preference");
         return preference === "call" ? "Call" : "Text";
+      },
+    },
+    {
+      id: "residence",
+      header: "Residence",
+      enableColumnFilter: false,
+      cell: ({ row }) => {
+        const student = row.original;
+        const hasValidResidence =
+          student.residence &&
+          isFromThisSchoolYear(student.residence.residence_chosen_date);
+        if (!hasValidResidence || !student.residence) {
+          return "—";
+        }
+        const location = student.residence.location;
+        const shortName = [location.street_number, location.street_name]
+          .filter(Boolean)
+          .join(" ");
+        return (
+          <GenericInfoChip
+            chipKey={`student-${student.id}-residence`}
+            title="Residence Information"
+            description="Detailed information about the student's residence"
+            shortName={shortName || location.formatted_address}
+            sidebarContent={<LocationInfoChipDetails data={location} />}
+          />
+        );
       },
     },
     {
