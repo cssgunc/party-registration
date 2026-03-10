@@ -1,5 +1,4 @@
 "use client";
-import Header from "@/app/student/_components/Header";
 import PartyRegistrationForm, {
   PartyFormInitialValues,
   PartyFormValues,
@@ -116,7 +115,6 @@ export default function RegistrationForm() {
 
   return (
     <div>
-      <Header />
       <main className="mx-4 mt-4">
         <div className="flex items-center content pb-2 lg:hidden">
           <ArrowLeft className="h-4" />

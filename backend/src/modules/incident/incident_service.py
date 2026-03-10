@@ -1,13 +1,12 @@
 from fastapi import Depends
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.database import get_session
 from src.core.exceptions import NotFoundException
-from src.modules.location.location_service import LocationNotFoundException
+from src.modules.location.location_service import LocationService
 
 from .incident_entity import IncidentEntity
-from .incident_model import IncidentCreateDto, IncidentDto
+from .incident_model import IncidentCreateDto, IncidentDto, IncidentUpdateDto
 
 
 class IncidentNotFoundException(NotFoundException):
@@ -19,8 +18,10 @@ class IncidentService:
     def __init__(
         self,
         session: AsyncSession = Depends(get_session),
+        location_service: LocationService = Depends(),
     ):
         self.session = session
+        self.location_service = location_service
 
     async def _get_incident_entity_by_id(self, incident_id: int) -> IncidentEntity:
         result = await self.session.execute(
@@ -46,44 +47,28 @@ class IncidentService:
         incident_entity = await self._get_incident_entity_by_id(incident_id)
         return incident_entity.to_dto()
 
-    async def create_incident(self, location_id: int, data: IncidentCreateDto) -> IncidentDto:
-        """Create a new incident."""
+    async def create_incident(self, data: IncidentCreateDto) -> IncidentDto:
+        """Create a new incident, resolving or creating the location by place ID."""
+        location = await self.location_service.get_or_create_location(data.location_place_id)
         new_incident = IncidentEntity(
-            location_id=location_id,
+            location_id=location.id,
             incident_datetime=data.incident_datetime,
             description=data.description,
             severity=data.severity,
         )
-        try:
-            self.session.add(new_incident)
-            await self.session.commit()
-        except IntegrityError as e:
-            # Foreign key constraint violation indicates location doesn't exist
-            if "locations" in str(e).lower() or "foreign key" in str(e).lower():
-                raise LocationNotFoundException(location_id) from e
-            raise
+        self.session.add(new_incident)
+        await self.session.commit()
         await self.session.refresh(new_incident)
         return new_incident.to_dto()
 
-    async def update_incident(
-        self, incident_id: int, location_id: int, data: IncidentCreateDto
-    ) -> IncidentDto:
-        """Update an existing incident."""
+    async def update_incident(self, incident_id: int, data: IncidentUpdateDto) -> IncidentDto:
+        """Update an existing incident's datetime, description, and severity."""
         incident_entity = await self._get_incident_entity_by_id(incident_id)
-
-        incident_entity.location_id = location_id
         incident_entity.incident_datetime = data.incident_datetime
         incident_entity.description = data.description
         incident_entity.severity = data.severity
-
-        try:
-            self.session.add(incident_entity)
-            await self.session.commit()
-        except IntegrityError as e:
-            # Foreign key constraint violation indicates location doesn't exist
-            if "locations" in str(e).lower() or "foreign key" in str(e).lower():
-                raise LocationNotFoundException(location_id) from e
-            raise
+        self.session.add(incident_entity)
+        await self.session.commit()
         await self.session.refresh(incident_entity)
         return incident_entity.to_dto()
 
