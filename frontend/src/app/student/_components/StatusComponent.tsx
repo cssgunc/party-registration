@@ -1,7 +1,7 @@
 import alertTriangleIcon from "@/components/icons/alert-triangle.svg";
 import checkIcon from "@/components/icons/check-circle.svg";
 import { Card, CardContent } from "@/components/ui/card";
-import { isCourseCompleted } from "@/lib/utils";
+import { isFromThisSchoolYear } from "@/lib/utils";
 import Image from "next/image";
 
 type CompletionCardProps = {
@@ -40,7 +40,7 @@ export default function StatusComponent({
     );
   }
 
-  const isCompleted = isCourseCompleted(last_registered);
+  const isCompleted = isFromThisSchoolYear(last_registered);
 
   return (
     <Card className="p-4 rounded-md shadow-sm w-full bg-white">

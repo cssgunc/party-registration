@@ -1,10 +1,20 @@
 "use client";
 
+import { DeletePartyDialog } from "@/app/student/_components/DeletePartyDialog";
+import { EditPartyDialog } from "@/app/student/_components/EditPartyDialog";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { IncidentDto } from "@/lib/api/location/location.types";
 import { PartyDto } from "@/lib/api/party/party.types";
 import { format } from "date-fns";
+import { MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 
 interface RegistrationTrackerProps {
@@ -34,6 +44,8 @@ export default function RegistrationTracker({
   const [activeTab, setActiveTab] = useState<"active" | "past" | "incidents">(
     "active"
   );
+  const [editParty, setEditParty] = useState<PartyDto | null>(null);
+  const [deleteParty, setDeleteParty] = useState<PartyDto | null>(null);
 
   const { activeParties, pastParties } = useMemo(() => {
     const now = new Date();
@@ -88,18 +100,54 @@ export default function RegistrationTracker({
 
     return Object.entries(groups);
   }, [sortedIncidents]);
-  const PartyCard = ({ party }: { party: PartyDto }) => (
+
+  const PartyCard = ({
+    party,
+    showActions,
+  }: {
+    party: PartyDto;
+    showActions?: boolean;
+  }) => (
     <Card className="px-4 py-4 border-b border-gray-100 rounded-none last:border-b-0">
       <div className="space-y-2">
-        {/* Address and Date/Time */}
-        <div>
-          <h2 className="content-bold">
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="content-bold">
             {party.location.formatted_address}
-          </h2>
-          <p className="content-sub">
+            </h2>
+            <p className="content-sub">
             {format(party.party_datetime, "PPP")} at{" "}
             {format(party.party_datetime, "p")}
           </p>
+          </div>
+
+          {showActions && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                  <span className="sr-only">Party actions</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setEditParty(party)}>
+                  <Pencil className="h-4 w-4" />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  variant="destructive"
+                  onClick={() => setDeleteParty(party)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
 
         {/* Contacts Side by Side */}
@@ -200,7 +248,7 @@ export default function RegistrationTracker({
                   </p>
                 ) : (
                   activeParties.map((party) => (
-                    <PartyCard key={party.id} party={party} />
+                    <PartyCard key={party.id} party={party} showActions />
                   ))
                 )}
                 </div>
@@ -214,6 +262,7 @@ export default function RegistrationTracker({
                   <p className="text-center content-sub py-8">
                     No past registrations
                   </p>
+                
                 ) : (
                   pastParties.map((party) => (
                     <PartyCard key={party.id} party={party} />
@@ -222,7 +271,8 @@ export default function RegistrationTracker({
                 </div>
               </div>
             </TabsContent>
-            <TabsContent value="incidents" className="">
+
+            <TabsContent value="incidents" className="mt-4">
               <div className="w-full bg-white rounded-md overflow-hidden">
                 <div className="max-h-[calc(100vh-28rem)] overflow-y-auto">
                 {sortedIncidents.length === 0 ? (
@@ -239,8 +289,26 @@ export default function RegistrationTracker({
             </TabsContent>
           </Card>
         </Tabs>
-     
+
+      {editParty && (
+        <EditPartyDialog
+          party={editParty}
+          open={!!editParty}
+          onOpenChange={(open) => {
+            if (!open) setEditParty(null);
+          }}
+        />
+      )}
+
+      {deleteParty && (
+        <DeletePartyDialog
+          party={deleteParty}
+          open={!!deleteParty}
+          onOpenChange={(open) => {
+            if (!open) setDeleteParty(null);
+          }}
+        />
+      )}
     </div>
-    
   );
 }
