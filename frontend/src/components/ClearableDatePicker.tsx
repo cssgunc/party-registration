@@ -16,6 +16,8 @@ interface ClearableDatePickerProps {
   disabled?: (date: Date) => boolean;
   placeholder?: string;
   id?: string;
+  dateFormat?: string;
+  "aria-invalid"?: boolean;
 }
 
 export default function ClearableDatePicker({
@@ -24,6 +26,8 @@ export default function ClearableDatePicker({
   disabled,
   placeholder = "Pick a date",
   id,
+  dateFormat = "PPP",
+  "aria-invalid": ariaInvalid,
 }: ClearableDatePickerProps) {
   return (
     <Popover>
@@ -31,11 +35,12 @@ export default function ClearableDatePicker({
         <Button
           id={id}
           variant="outline"
+          aria-invalid={ariaInvalid}
           className={`w-full justify-start text-left font-normal ${
             !value && "text-muted-foreground"
           }`}
         >
-          {value ? format(value, "PPP") : <span>{placeholder}</span>}
+          {value ? format(value, dateFormat) : <span>{placeholder}</span>}
           {value ? (
             <span
               role="button"

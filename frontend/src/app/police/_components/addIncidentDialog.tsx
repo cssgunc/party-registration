@@ -1,5 +1,5 @@
+import ClearableDatePicker from "@/components/ClearableDatePicker";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
 import {
   Dialog,
   DialogClose,
@@ -12,14 +12,8 @@ import {
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { PartyDto } from "@/lib/api/party/party.types";
 import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export interface AddIncidentDialogProps {
@@ -89,31 +83,12 @@ export default function AddIncidentDialog({
           <div className="grid grid-cols-2 gap-4">
             <Field>
               <FieldLabel htmlFor="party-date">Party Date</FieldLabel>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    id="party-date"
-                    variant="outline"
-                    className={`w-full justify-start text-left font-normal ${
-                      !formData.partyDate && "text-muted-foreground"
-                    }`}
-                  >
-                    {formData.partyDate ? (
-                      format(formData.partyDate, "MM/dd/yy")
-                    ) : (
-                      <span>Pick a date</span>
-                    )}
-                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={formData.partyDate ?? undefined}
-                    onSelect={(date) => updateField("partyDate", date as Date)}
-                  />
-                </PopoverContent>
-              </Popover>
+              <ClearableDatePicker
+                id="party-date"
+                dateFormat="MM/dd/yy"
+                value={formData.partyDate}
+                onChange={(date) => updateField("partyDate", date)}
+              />
             </Field>
 
             <Field>
