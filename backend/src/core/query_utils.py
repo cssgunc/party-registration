@@ -18,7 +18,15 @@ from pydantic_core import ValidationError as PydanticValidationError
 from sqlalchemy import Select, asc, desc, func, inspect, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import DeclarativeMeta
-from src.core.models import PaginatedResponse
+
+
+class PaginatedResponse[T](BaseModel):
+    items: list[T]
+    total_records: int
+    page_size: int
+    page_number: int
+    total_pages: int
+
 
 __all__ = [
     "PAGINATED_OPENAPI_PARAMS",
@@ -191,6 +199,7 @@ def apply_sorting[ModelType: DeclarativeMeta](
     model: type[ModelType],
     sort_params: list[SortParam] | None = None,
     allowed_fields: list[str] | None = None,
+    nested_field_columns: dict[str, Any] | None = None,
 ) -> Select:
     """
     Apply sorting to a SQLAlchemy query.
@@ -200,6 +209,7 @@ def apply_sorting[ModelType: DeclarativeMeta](
         model: The SQLAlchemy model class
         sort_params: List of sorting parameters
         allowed_fields: Optional list of fields that can be sorted on
+        nested_field_columns: Optional mapping of field names to joined column refs
 
     Returns:
         Modified query with ORDER BY applied
@@ -211,15 +221,16 @@ def apply_sorting[ModelType: DeclarativeMeta](
         return query
 
     for sort_param in sort_params:
-        # Validate field exists and is allowed
-        if not hasattr(model, sort_param.field):
-            raise ValueError(f"Field '{sort_param.field}' does not exist on model")
-
-        if allowed_fields and sort_param.field not in allowed_fields:
-            raise ValueError(f"Sorting on field '{sort_param.field}' is not allowed")
-
-        # Get the model attribute
-        field = getattr(model, sort_param.field)
+        if nested_field_columns and sort_param.field in nested_field_columns:
+            if allowed_fields and sort_param.field not in allowed_fields:
+                raise ValueError(f"Sorting on field '{sort_param.field}' is not allowed")
+            field = nested_field_columns[sort_param.field]
+        else:
+            if not hasattr(model, sort_param.field):
+                raise ValueError(f"Field '{sort_param.field}' does not exist on model")
+            if allowed_fields and sort_param.field not in allowed_fields:
+                raise ValueError(f"Sorting on field '{sort_param.field}' is not allowed")
+            field = getattr(model, sort_param.field)
 
         # Apply sort order
         if sort_param.order == SortOrder.DESC:
@@ -248,6 +259,7 @@ def apply_filters[ModelType: DeclarativeMeta](
     model: type[ModelType],
     filter_params: list[FilterParam] | None = None,
     allowed_fields: list[str] | None = None,
+    nested_field_columns: dict[str, Any] | None = None,
 ) -> Select:
     """
     Apply filters to a SQLAlchemy query.
@@ -257,6 +269,7 @@ def apply_filters[ModelType: DeclarativeMeta](
         model: The SQLAlchemy model class
         filter_params: List of filter parameters
         allowed_fields: Optional list of fields that can be filtered on
+        nested_field_columns: Optional mapping of field names to joined column refs
 
     Returns:
         Modified query with WHERE clauses applied
@@ -268,15 +281,16 @@ def apply_filters[ModelType: DeclarativeMeta](
         return query
 
     for filter_param in filter_params:
-        # Validate field exists and is allowed
-        if not hasattr(model, filter_param.field):
-            raise ValueError(f"Field '{filter_param.field}' does not exist on model")
-
-        if allowed_fields and filter_param.field not in allowed_fields:
-            raise ValueError(f"Filtering on field '{filter_param.field}' is not allowed")
-
-        # Get the model attribute
-        field = getattr(model, filter_param.field)
+        if nested_field_columns and filter_param.field in nested_field_columns:
+            if allowed_fields and filter_param.field not in allowed_fields:
+                raise ValueError(f"Filtering on field '{filter_param.field}' is not allowed")
+            field = nested_field_columns[filter_param.field]
+        else:
+            if not hasattr(model, filter_param.field):
+                raise ValueError(f"Field '{filter_param.field}' does not exist on model")
+            if allowed_fields and filter_param.field not in allowed_fields:
+                raise ValueError(f"Filtering on field '{filter_param.field}' is not allowed")
+            field = getattr(model, filter_param.field)
 
         # Convert value to enum if needed
         value = _convert_enum_value(field, filter_param.value)
@@ -315,6 +329,7 @@ def apply_query_params[ModelType: DeclarativeMeta](
     params: ListQueryParam | None = None,
     allowed_sort_fields: list[str] | None = None,
     allowed_filter_fields: list[str] | None = None,
+    nested_field_columns: dict[str, Any] | None = None,
 ) -> tuple[Select, PaginationParams | None]:
     """
     Apply all query parameters (filtering, sorting, pagination) to a query.
@@ -327,6 +342,7 @@ def apply_query_params[ModelType: DeclarativeMeta](
         params: Combined query parameters
         allowed_sort_fields: Optional list of fields that can be sorted on
         allowed_filter_fields: Optional list of fields that can be filtered on
+        nested_field_columns: Optional mapping of field names to joined column refs
 
     Returns:
         Tuple of (modified query, pagination params used)
@@ -336,11 +352,13 @@ def apply_query_params[ModelType: DeclarativeMeta](
 
     # Apply filters first (narrows down the dataset)
     if params.filters:
-        query = apply_filters(query, model, params.filters, allowed_filter_fields)
+        query = apply_filters(
+            query, model, params.filters, allowed_filter_fields, nested_field_columns
+        )
 
     # Apply sorting (before pagination to ensure consistent ordering)
     if params.sort:
-        query = apply_sorting(query, model, params.sort, allowed_sort_fields)
+        query = apply_sorting(query, model, params.sort, allowed_sort_fields, nested_field_columns)
     elif params.pagination and (params.pagination.skip > 0 or params.pagination.limit is not None):
         # MSSQL requires ORDER BY when using OFFSET or LIMIT
         # Default to sorting by primary key if no explicit sort is provided and pagination is active
@@ -490,6 +508,7 @@ async def get_paginated_results[ModelType](
     query_params: ListQueryParam,
     allowed_sort_fields: list[str],
     allowed_filter_fields: list[str],
+    nested_field_columns: dict[str, Any] | None = None,
 ) -> PaginatedResponse[ModelType]:
     """
     Generic function to apply filters, sorting, pagination and return paginated results.
@@ -502,6 +521,7 @@ async def get_paginated_results[ModelType](
         query_params: Query parameters (filters, sort, pagination)
         allowed_sort_fields: Whitelist of fields allowed for sorting
         allowed_filter_fields: Whitelist of fields allowed for filtering
+        nested_field_columns: Optional mapping of field names to joined column refs
 
     Returns:
         PaginatedResponse with items and metadata
@@ -513,6 +533,7 @@ async def get_paginated_results[ModelType](
         ListQueryParam(filters=query_params.filters, sort=query_params.sort),
         allowed_sort_fields=allowed_sort_fields,
         allowed_filter_fields=allowed_filter_fields,
+        nested_field_columns=nested_field_columns,
     )
 
     # Get total count after filters but before pagination

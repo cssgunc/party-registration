@@ -1,7 +1,7 @@
 import enum
 
 from pydantic import AwareDatetime, BaseModel, EmailStr, Field
-from src.core.models import PaginatedResponse
+from src.core.query_utils import PaginatedResponse
 
 
 class ContactPreference(enum.Enum):

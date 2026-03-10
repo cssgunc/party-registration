@@ -19,10 +19,12 @@ from src.core.exceptions import (
     NotFoundException,
 )
 from src.core.query_utils import get_paginated_results, parse_pagination_params
+from src.modules.account.account_entity import AccountEntity
 from src.modules.location.location_model import LocationDto
 from src.modules.student.student_service import StudentNotFoundException, StudentService
 
 from ..account.account_service import AccountByEmailNotFoundException, AccountService
+from ..location.location_entity import LocationEntity
 from ..location.location_service import LocationService
 from ..student.student_entity import StudentEntity
 from .party_entity import PartyEntity
@@ -271,6 +273,12 @@ class PartyService:
             "contact_two_phone_number",
             "contact_two_contact_preference",
             "status",
+            "contact_one.first_name",
+            "contact_one.last_name",
+            "contact_one.email",
+            "contact_one.phone_number",
+            "location.google_place_id",
+            "location.formatted_address",
         ]
         allowed_filter_fields = [
             "id",
@@ -283,7 +291,22 @@ class PartyService:
             "contact_two_phone_number",
             "contact_two_contact_preference",
             "status",
+            "contact_one.first_name",
+            "contact_one.last_name",
+            "contact_one.email",
+            "contact_one.phone_number",
+            "location.google_place_id",
+            "location.formatted_address",
         ]
+
+        nested_field_columns = {
+            "contact_one.first_name": AccountEntity.first_name,
+            "contact_one.last_name": AccountEntity.last_name,
+            "contact_one.email": AccountEntity.email,
+            "contact_one.phone_number": StudentEntity.phone_number,
+            "location.google_place_id": LocationEntity.google_place_id,
+            "location.formatted_address": LocationEntity.formatted_address,
+        }
 
         # Parse query params from request
         query_params = parse_pagination_params(
@@ -292,10 +315,16 @@ class PartyService:
             allowed_filter_fields=allowed_filter_fields,
         )
 
-        # Build base query with eager loading
-        base_query = select(PartyEntity).options(
-            selectinload(PartyEntity.location),
-            selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
+        # Build base query with JOINs for filter/sort and eager loading for hydration
+        base_query = (
+            select(PartyEntity)
+            .join(LocationEntity, PartyEntity.location_id == LocationEntity.id)
+            .join(StudentEntity, PartyEntity.contact_one_id == StudentEntity.account_id)
+            .join(AccountEntity, StudentEntity.account_id == AccountEntity.id)
+            .options(
+                selectinload(PartyEntity.location),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
+            )
         )
 
         # Use the generic pagination utility
@@ -307,6 +336,7 @@ class PartyService:
             query_params=query_params,
             allowed_sort_fields=allowed_sort_fields,
             allowed_filter_fields=allowed_filter_fields,
+            nested_field_columns=nested_field_columns,
         )
 
     async def get_party_by_id(self, party_id: int) -> PartyDto:
