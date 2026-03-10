@@ -3,17 +3,20 @@ import { AddressData } from "@/lib/api/location/location.types";
 import getMockClient from "@/lib/network/mockClient";
 import { UseQueryOptions, useQuery } from "@tanstack/react-query";
 import { PartyService } from "./party.service";
-import { PartyDto } from "./party.types";
+import { PARTIES_KEY, PartyDto } from "./party.types";
 
 const policeLocationService = new LocationService(getMockClient("police"));
 const partyService = new PartyService(getMockClient("police"));
+
+// Query key constants for police queries
+const PLACE_DETAILS_KEY = ["place-details"] as const;
 
 export function usePlaceDetails(
   placeId: string | undefined,
   options?: UseQueryOptions<AddressData>
 ) {
   return useQuery({
-    queryKey: ["place-details", placeId],
+    queryKey: [...PLACE_DETAILS_KEY, placeId],
     queryFn: () => policeLocationService.getPlaceDetails(placeId!),
     enabled: !!placeId,
     ...options,
@@ -25,7 +28,7 @@ export function usePoliceParties(
   options?: UseQueryOptions<PartyDto[]>
 ) {
   return useQuery({
-    queryKey: ["parties", startDate, endDate],
+    queryKey: [...PARTIES_KEY, startDate, endDate],
     queryFn: async () => {
       const page = await partyService.listParties({ startDate, endDate });
       return page.items;
@@ -44,7 +47,7 @@ export function usePartiesNearby(
   options?: UseQueryOptions<PartyDto[]>
 ) {
   return useQuery({
-    queryKey: ["parties-nearby", placeId, startDate, endDate],
+    queryKey: [...PARTIES_KEY, "nearby", placeId, startDate, endDate],
     queryFn: () =>
       partyService.getPartiesNearby(placeId!, startDate!, endDate!),
     enabled: !!placeId && !!startDate && !!endDate,

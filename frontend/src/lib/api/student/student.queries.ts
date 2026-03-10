@@ -1,6 +1,11 @@
-import { PartyDto } from "@/lib/api/party/party.types";
+import { MY_PARTIES_KEY, PartyDto } from "@/lib/api/party/party.types";
 import StudentService from "@/lib/api/student/student.service";
-import { StudentData, StudentDto } from "@/lib/api/student/student.types";
+import {
+  CURRENT_STUDENT_KEY,
+  STUDENTS_KEY,
+  StudentData,
+  StudentDto,
+} from "@/lib/api/student/student.types";
 import { OptimisticMutationOptions } from "@/lib/shared";
 import {
   UseQueryOptions,
@@ -11,14 +16,15 @@ import {
 
 const studentService = new StudentService();
 
-export const CURRENT_STUDENT_KEY = ["student", "me"] as const;
-export const STUDENT_PARTIES_KEY = ["student", "me", "parties"] as const;
+// Unique fields that might cause server errors if duplicated
+const UNIQUE_STUDENT_FIELDS = [
+  "phone_number",
+] as const satisfies (keyof StudentData)[];
 
 export function useCurrentStudent(options?: UseQueryOptions<StudentDto>) {
   return useQuery<StudentDto, Error>({
     queryKey: CURRENT_STUDENT_KEY,
     queryFn: () => studentService.getCurrentStudent(),
-    retry: 1,
     ...options,
   });
 }
@@ -28,21 +34,54 @@ export function useUpdateStudent(
 ) {
   const queryClient = useQueryClient();
 
-  return useMutation<StudentDto, Error, StudentData>({
+  return useMutation({
     ...options,
     mutationFn: (data: StudentData) => studentService.updateMe(data),
-    onSuccess: (updatedStudent, ...rest) => {
-      queryClient.invalidateQueries({ queryKey: CURRENT_STUDENT_KEY });
-      options?.onSuccess?.(updatedStudent, ...rest);
+
+    onMutate: async (data, context) => {
+      await queryClient.cancelQueries({ queryKey: STUDENTS_KEY });
+
+      const previous =
+        queryClient.getQueryData<StudentDto>(CURRENT_STUDENT_KEY);
+
+      // Only optimistically update if no unique fields are changing
+      const hasUniqueFieldChange = UNIQUE_STUDENT_FIELDS.some(
+        (field) => previous?.[field] !== data[field]
+      );
+
+      if (!hasUniqueFieldChange && previous) {
+        // Safe to optimistically update - only non-unique fields changed
+        queryClient.setQueryData<StudentDto>(CURRENT_STUDENT_KEY, {
+          ...previous,
+          ...data,
+        });
+        options?.onOptimisticUpdate?.(data);
+      }
+
+      await options?.onMutate?.(data, context);
+      return { previous };
+    },
+
+    onError: (error, data, onMutateResult, context) => {
+      if (onMutateResult?.previous) {
+        queryClient.setQueryData(CURRENT_STUDENT_KEY, onMutateResult.previous);
+      }
+      options?.onError?.(error, data, onMutateResult, context);
+    },
+
+    onSuccess: (...params) => {
+      // Invalidate all student queries using prefix matching
+      // This will invalidate both ["students"] and ["students", "me"]
+      queryClient.invalidateQueries({ queryKey: STUDENTS_KEY });
+      options?.onSuccess?.(...params);
     },
   });
 }
 
 export function useMyParties(options?: UseQueryOptions<PartyDto[]>) {
   return useQuery<PartyDto[], Error>({
-    queryKey: STUDENT_PARTIES_KEY,
+    queryKey: MY_PARTIES_KEY,
     queryFn: () => studentService.getMyParties(),
-    retry: 1,
     ...options,
   });
 }

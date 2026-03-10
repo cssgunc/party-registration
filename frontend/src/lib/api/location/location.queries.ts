@@ -23,7 +23,6 @@ export function useLocations(
   return useQuery({
     queryKey: LOCATIONS_KEY,
     queryFn: () => locationService.getLocations(),
-    retry: 1,
     ...options,
   });
 }
@@ -94,9 +93,9 @@ export function useDeleteLocation(
       options?.onError?.(error, id, onMutateResult, context);
     },
 
-    onSettled: (...params) => {
+    onSuccess: (...params) => {
       queryClient.invalidateQueries({ queryKey: LOCATIONS_KEY });
-      options?.onSettled?.(...params);
+      options?.onSuccess?.(...params);
     },
   });
 }

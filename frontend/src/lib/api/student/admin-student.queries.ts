@@ -7,12 +7,10 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { AdminStudentService } from "./admin-student.service";
-import { StudentDto } from "./student.types";
+import { STUDENTS_KEY, StudentDto } from "./student.types";
 
 const studentService = new AdminStudentService();
 const accountService = new AccountService();
-
-export const STUDENTS_KEY = ["students"] as const;
 
 // Used to determine whether to optimistically update the cache on updates
 const UNIQUE_STUDENT_FIELDS = [
@@ -35,7 +33,6 @@ export function useStudents(
   return useQuery({
     queryKey: STUDENTS_KEY,
     queryFn: () => studentService.listStudents(),
-    retry: 1,
     ...options,
   });
 }
@@ -147,9 +144,9 @@ export function useDeleteStudent(
       options?.onError?.(error, id, onMutateResult, context);
     },
 
-    onSettled: (...params) => {
+    onSuccess: (...params) => {
       queryClient.invalidateQueries({ queryKey: STUDENTS_KEY });
-      options?.onSettled?.(...params);
+      options?.onSuccess?.(...params);
     },
   });
 }

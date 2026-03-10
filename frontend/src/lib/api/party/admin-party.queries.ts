@@ -6,11 +6,9 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { PartyService } from "./party.service";
-import { AdminCreatePartyDto, PartyDto } from "./party.types";
+import { AdminCreatePartyDto, PARTIES_KEY, PartyDto } from "./party.types";
 
 const partyService = new PartyService();
-
-export const PARTIES_KEY = ["parties"] as const;
 
 type UpdatePartyVars = {
   id: number;
@@ -23,7 +21,6 @@ export function useAdminParties(
   return useQuery({
     queryKey: PARTIES_KEY,
     queryFn: () => partyService.listParties(),
-    retry: 1,
     ...options,
   });
 }
@@ -55,9 +52,9 @@ export function useUpdateAdminParty(
     mutationFn: ({ id, payload }: UpdatePartyVars) =>
       partyService.updateParty(id, payload),
 
-    onSettled: (...params) => {
+    onSuccess: (...params) => {
       queryClient.invalidateQueries({ queryKey: PARTIES_KEY });
-      options?.onSettled?.(...params);
+      options?.onSuccess?.(...params);
     },
   });
 }
@@ -95,9 +92,9 @@ export function useDeleteAdminParty(
       options?.onError?.(error, id, onMutateResult, context);
     },
 
-    onSettled: (...params) => {
+    onSuccess: (...params) => {
       queryClient.invalidateQueries({ queryKey: PARTIES_KEY });
-      options?.onSettled?.(...params);
+      options?.onSuccess?.(...params);
     },
   });
 }

@@ -21,7 +21,6 @@ export function useAccounts(options?: UseQueryOptions<AccountDto[]>) {
   return useQuery({
     queryKey: ACCOUNTS_KEY,
     queryFn: () => accountService.listAccounts(["admin", "staff"]),
-    retry: 1,
     ...options,
   });
 }
@@ -89,9 +88,9 @@ export function useDeleteAccount(
       options?.onError?.(error, id, onMutateResult, context);
     },
 
-    onSettled: (...params) => {
+    onSuccess: (...params) => {
       queryClient.invalidateQueries({ queryKey: ACCOUNTS_KEY });
-      options?.onSettled?.(...params);
+      options?.onSuccess?.(...params);
     },
   });
 }
