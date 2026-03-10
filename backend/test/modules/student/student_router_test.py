@@ -331,9 +331,7 @@ class TestStudentCRUDRouter:
         )
         data = assert_res_success(response, StudentDto, status=201)
 
-        assert data.residence is not None
-        assert data.residence.location.id == location.id
-        assert data.residence.residence_chosen_date is not None
+        self.student_utils.assert_residence(data, location)
 
     @pytest.mark.asyncio
     async def test_get_student_success(self):
@@ -699,7 +697,7 @@ class TestStudentResidenceRouter:
         response = await self.student_client.put("/api/students/me/residence", json=payload)
         data = assert_res_success(response, LocationDto)
 
-        assert data.id == location.id
+        self.location_utils.assert_matches(data, location)
 
     @pytest.mark.asyncio
     async def test_update_residence_without_party_smart(self):
@@ -724,8 +722,7 @@ class TestStudentResidenceRouter:
 
         response = await self.student_client.put("/api/students/me/residence", json=payload)
         data = assert_res_success(response, LocationDto)
-        assert data.id == location.id
-        assert data.google_place_id == location.google_place_id
+        self.location_utils.assert_matches(data, location)
 
     @pytest.mark.asyncio
     async def test_update_residence_same_academic_year(self, current_student: StudentEntity):
@@ -780,4 +777,4 @@ class TestStudentResidenceRouter:
         payload = {"residence_place_id": location2.google_place_id}
         response = await self.student_client.put("/api/students/me/residence", json=payload)
         data = assert_res_success(response, LocationDto)
-        assert data.id == location2.id
+        self.location_utils.assert_matches(data, location2)

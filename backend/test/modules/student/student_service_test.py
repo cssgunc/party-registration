@@ -264,9 +264,7 @@ class TestStudentResidenceService:
 
         student = await self.student_service.create_student(data, account_id=account.id)
 
-        assert student.residence is not None
-        assert student.residence.location.id == location.id
-        assert student.residence.residence_chosen_date is not None
+        self.student_utils.assert_residence(student, location)
 
     @pytest.mark.asyncio
     async def test_admin_update_student_with_residence(self):
@@ -284,8 +282,7 @@ class TestStudentResidenceService:
         updated1 = await self.student_service.update_student(
             student_entity.account_id, update_data1
         )
-        assert updated1.residence is not None
-        assert updated1.residence.location.id == location1.id
+        self.student_utils.assert_residence(updated1, location1)
 
         # Admin should be able to change residence in same academic year
         location2 = await self.location_utils.create_one()
@@ -296,8 +293,7 @@ class TestStudentResidenceService:
         updated2 = await self.student_service.update_student(
             student_entity.account_id, update_data2
         )
-        assert updated2.residence is not None
-        assert updated2.residence.location.id == location2.id
+        self.student_utils.assert_residence(updated2, location2)
 
     @pytest.mark.asyncio
     async def test_update_residence_without_being_registered(self):
@@ -310,8 +306,7 @@ class TestStudentResidenceService:
         result = await self.student_service.update_residence(
             student_entity.account_id, location.google_place_id
         )
-        assert result.id == location.id
-        assert result.google_place_id == location.google_place_id
+        self.location_utils.assert_matches(result, location)
 
     @pytest.mark.asyncio
     async def test_update_residence_same_academic_year_fails(self):
@@ -357,7 +352,7 @@ class TestStudentResidenceService:
             student_entity.account_id, location2.google_place_id
         )
 
-        assert updated.id == location2.id
+        self.location_utils.assert_matches(updated, location2)
 
     @pytest.mark.asyncio
     async def test_update_residence_creates_new_location(self):
@@ -374,7 +369,7 @@ class TestStudentResidenceService:
             student_entity.account_id, new_place_id
         )
 
-        assert updated_location.google_place_id == new_place_id
+        self.location_utils.assert_matches(updated_location, location_data)
 
     @pytest.mark.asyncio
     async def test_get_student_with_residence(self):
@@ -391,6 +386,4 @@ class TestStudentResidenceService:
         # Get student
         student_dto = await self.student_service.get_student_by_id(student_entity.account_id)
 
-        assert student_dto.residence is not None
-        assert student_dto.residence.location.id == location.id
-        assert student_dto.residence.residence_chosen_date is not None
+        self.student_utils.assert_residence(student_dto, location)
