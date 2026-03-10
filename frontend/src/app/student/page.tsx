@@ -12,6 +12,9 @@ import { LOCATIONS } from "@/lib/mockData";
 import { isFromThisSchoolYear } from "@/lib/utils";
 import Link from "next/link";
 import { useMemo } from "react";
+import PartyRegistrationInfo from "./_components/PartyRegistrationInfo";
+import PartySmartInfo from "./_components/PartySmartInfo";
+import { Info } from "lucide-react";
 
 export default function StudentDashboard() {
   const studentQuery = useCurrentStudent();
@@ -57,44 +60,65 @@ export default function StudentDashboard() {
     <div className="flex flex-col items-center">
       <Header />
 
-      <div className="px-14 md:px-12 pb-12 pt-6 flex flex-col 2xl:flex-row gap-4 max-w-4xl w-full 2xl:max-w-7xl">
+      <div className="px-14 md:px-12 pb-12 pt-6 flex flex-col 2xl:flex-row gap-4 max-w-4xl w-full 2xl:max-w-11/12 2xl:gap-24">
         <div className="2xl:w-1/2">
-          <div className="flex justify-between items-center">
-            <div className="font-semibold text-2xl">Events</div>
-            {validResidence && (
-              <div>
-                {studentQuery?.data?.residence?.location.street_number}{" "}
-                {studentQuery?.data?.residence?.location.street_name}{" "}
-                {studentQuery?.data?.residence?.location.unit}
-              </div>
-            )}
-          </div>
-          {courseCompleted ? (
+          <div>
+            <div className="flex justify-between items-center">
+            <h1 className="page-title w-1/2">Events</h1>
+            <div className="content text-wrap text-endw-1/2">
+              {validResidence && (
+                <div>
+                  {studentQuery?.data?.residence?.location.street_number}{" "}
+                  {studentQuery?.data?.residence?.location.street_name}{" "}
+                  {studentQuery?.data?.residence?.location.unit}
+                </div>
+              )}
+            </div>
+            
+            </div>
+            <div className="flex justify-end mt-2">
+           {courseCompleted ? (
             <Link href="/student/new-party">
-              <Button className="px-4 py-2 rounded-lg bg-[#09294E] text-white">
+              <Button className="px-4 py-2">
                 Registration Form
               </Button>
             </Link>
           ) : (
             <Button
-              className="px-4 py-2 rounded-lg bg-[#09294E] text-white"
+              className="px-4 py-2"
               disabled
               title="Complete the Party Smart Course to register a party"
             >
               Registration Form
             </Button>
           )}
-
-          <RegistrationTracker {...partiesQuery} incidents={mockIncidents} />
-          <div className="text-[24px] font-semibold">Party Smart Course </div>
-          <StatusComponent
-            last_registered={studentQuery.data?.last_registered}
-            {...studentQuery}
-          />
+          </div>
         </div>
 
-        <div className="2xl:w-1/2">
-          {/* Place for future "About Party Registration and Party Smart section on Student Dashboard" */}
+          <RegistrationTracker
+            data={partiesQuery.data}
+            incidents={mockIncidents}
+            isPending={partiesQuery.isPending}
+            error={partiesQuery.error}
+          />
+          <div className="mt-6">
+            <h2 className="page-title mb-2">Party Smart Course </h2>
+            <Link href="/student/about-party-smart" className="content flex items-center mb-2">
+              <Info className="h-4 w-4 inline-block mr-1" />
+              <p className="underline">Learn About Party Smart</p>
+            </Link>
+            <StatusComponent
+              last_registered={studentQuery.data?.last_registered}
+              isPending={studentQuery.isPending}
+              error={studentQuery.error}
+            />
+          </div>
+         
+        </div>
+
+        <div className="hidden 2xl:flex 2xl:flex-col 2xl:w-1/2">
+            <PartyRegistrationInfo />
+            <PartySmartInfo />
         </div>
       </div>
     </div>

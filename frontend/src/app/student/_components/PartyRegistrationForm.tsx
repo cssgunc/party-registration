@@ -302,7 +302,9 @@ export default function PartyRegistrationForm({
               </Field>
           {!validResidence && (
             <Field data-invalid={!!errors.address}>
-              <FieldLabel htmlFor="party-address">Party Address</FieldLabel>
+              <FieldLabel htmlFor="party-address" className="content-bold">
+                Party Address
+              </FieldLabel>
               <AddressSearch
                 value={formData.address}
                 onSelect={handleAddressSelect}
@@ -312,7 +314,7 @@ export default function PartyRegistrationForm({
                 error={errors.address}
                 initialSelection={initialAddress}
               />
-              <FieldDescription className="italics">
+              <FieldDescription className="content-sub">
                 This will be added to your profile as your {school_year}{" "}
                 location. You may change it after {change_date}.
               </FieldDescription>
@@ -321,18 +323,18 @@ export default function PartyRegistrationForm({
           )}
           {validResidence && (
             <div className="col-span-2">
-              <div className="text-[#09294E] font-semibold text-sm mb-2">
+              <p className="content-bold mb-2">
                 Party Address
-              </div>
-              <div className="text-gray-600 text-base pb-3">
+              </p>
+              <p className="content pb-3">
                 {studentResidence?.location.formatted_address}
-              </div>
+              </p>
 
               <div className="flex flex-row gap-4">
-                <div className="text-gray-600 text-base italic flex-1">
+                <p className="content-sub flex-1">
                   You cannot change your address until {change_date}. If you are
                   experiencing hardship, contact [email] for changes
-                </div>
+                </p>
               </div>
             </div>
           )}

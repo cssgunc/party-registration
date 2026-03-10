@@ -163,21 +163,21 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
   if (!isEditing) {
     return (
       <main className="bg-white rounded-lg py-6 px-6 sm:px-10 w-full flex flex-col">
-        <div className="self-center gap-6 flex justify-between mb-4 sm:mb-7">
+        <div className="self-center gap-6 flex justify-around mr-4 sm:mr-0 sm:mt-4">
           <h1 className="page-title">
             Edit Profile Information
           </h1>
           <button
             onClick={() => setIsEditing(true)}
-            className="hover:bg-gray-100 rounded-full transition-colors"
+            className="bg-transparent"
             aria-label="Edit profile"
           >
-            <Pencil className="w-6 h-6 text-[#09294E] cursor-pointer" />
+            <Pencil className=" content cursor-pointer" />
           </button>
         </div>
 
-        <section className="sm:grid sm:grid-cols-2">
-          <div className="sm:mt-0 sm:border-b mr-6">
+        <section className="my-4 sm:my-8 sm:grid sm:grid-cols-2 sm:gap-y-2 sm:gap-x-12">
+          <div className="sm:mt-0 sm:border-b">
             <p className="subhead-content pb-1">
               First Name
             </p>
@@ -186,7 +186,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
             </p>
           </div>
 
-          <div className="mt-3 sm:mt-0 sm:border-b mr-6">
+          <div className="mt-3 sm:mt-0 sm:border-b">
             <p className="subhead-content pb-1">
               Last Name
             </p>
@@ -195,7 +195,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
             </p>
           </div>
 
-          <div className="mt-3 sm:mt-6 sm:border-b mr-6">
+          <div className="mt-3 sm:mt-6 sm:border-b">
             <p className="subhead-content pb-1">
               Phone Number
             </p>
@@ -204,7 +204,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
             </p>
           </div>
 
-          <div className="mt-3 sm:mt-6 sm:border-b mr-6">
+          <div className="mt-3 sm:mt-6 sm:border-b">
             <p className="subhead-content pb-1">
               Contact Method
             </p>
@@ -215,7 +215,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
                 : "Not set"}
             </p>
           </div>
-          <div className="mt-3 sm:mt-6 sm:border-b mr-6">
+          <div className="mt-3 sm:mt-6 sm:border-b">
             <p className="subhead-content pb-1">
               {school_year} Address
             </p>
@@ -225,7 +225,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
           </div>
         </section>
 
-        <section className="mt-2 flex justify-center">
+        <section className="sm:mb-4 flex justify-center">
           <Button variant="default">Log Out</Button>
         </section>
       </main>
@@ -233,24 +233,18 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded-lg p-12 w-full">
+    <form onSubmit={handleSubmit} className="bg-white rounded-lg w-full p-6">
       <div className="flex justify-between items-center mb-6">
-        <div className="text-[32px] font-semibold text-[#09294E]">
+        <div className="page-title">
           Edit Profile Information
         </div>
-        <button
-          onClick={() => setIsEditing(true)}
-          className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-          aria-label="Edit profile"
-        >
-          <Pencil className="w-6 h-6 text-[#09294E]" />
-        </button>
       </div>
       <FieldGroup>
-        <FieldSet className="rounded-lg py-4 px-6 w-full flex flex-col">
+        <FieldSet className="rounded-lg w-full flex flex-col sm:py-4 sm:px-6">
          
           <section className="sm:grid sm:grid-cols-2 sm:gap-x-12 sm:gap-y-8">
-            <div>
+            <div className="grid grid-cols-2">
+              <div>
               <p className="subhead-content mb-2">
                 First Name
               </p>
@@ -267,11 +261,12 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
                 {displayData.last_name}
               </div>
             </div>
+            </div>
             <div className="flex flex-row gap-2">
-              <TriangleAlert />
-              <div className="content-sub flex-1">
+              <TriangleAlert className="w-4 h-4 content"/>
+              <p className="content-sub italic flex-1">
                 Your name is associated with your Onyen
-              </div>
+              </p>
             </div>
 
             <Field data-invalid={!!errors.phone_number}>
@@ -339,16 +334,16 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
             )}
             {validAddress && (
               <div className="col-span-2">
-                <div className="text-[#09294E] font-semibold text-lg mb-2">
+                <p className="subhead-content mt-3 sm:mt-0">
                   {school_year} Address
-                </div>
-                <div className="text-gray-600 text-base pb-3">
+                </p>
+                <p className="content">
                   {initialData.residence?.location.formatted_address}
-                </div>
+                </p>
 
-                <div className="flex flex-row gap-4">
+                <div className="flex flex-row">
                   <TriangleAlert />
-                  <p className="text-gray-600 text-base italic flex-1">
+                  <p className="content-sub italic flex-1">
                     You cannot change your address until {change_date}. If you
                     are experiencing hardship, contact [email] for changes
                   </p>
@@ -358,7 +353,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
           </section>
 
           {errors.submit && (
-            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg ">
+            <div className="p-4 bg-red-50 border border-red-200 rounded-md text-center">
               <FieldError className="text-red-600">{errors.submit}</FieldError>
             </div>
           )}
