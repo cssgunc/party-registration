@@ -229,8 +229,8 @@ class TestPartyListFiltering:
         _party2 = await self.party_utils.create_one()
         party3 = await self.party_utils.create_one(location_id=party1.location_id)
 
-        # Filter by location_id
-        response = await self.admin_client.get(f"/api/parties?location_id={party1.location_id}")
+        # Filter by location.id
+        response = await self.admin_client.get(f"/api/parties?location.id={party1.location_id}")
         paginated = assert_res_paginated(response, PartyDto, total_records=2)
 
         # Should return party1 and party3
@@ -245,9 +245,9 @@ class TestPartyListFiltering:
         _party2 = await self.party_utils.create_one()
         party3 = await self.party_utils.create_one(contact_one_id=party1.contact_one_id)
 
-        # Filter by contact_one_id
+        # Filter by contact_one.id
         response = await self.admin_client.get(
-            f"/api/parties?contact_one_id={party1.contact_one_id}"
+            f"/api/parties?contact_one.id={party1.contact_one_id}"
         )
         paginated = assert_res_paginated(response, PartyDto, total_records=2)
 
@@ -267,7 +267,7 @@ class TestPartyListFiltering:
 
         # Filter by both location and contact
         response = await self.admin_client.get(
-            f"/api/parties?location_id={party1.location_id}&contact_one_id={party1.contact_one_id}"
+            f"/api/parties?location.id={party1.location_id}&contact_one.id={party1.contact_one_id}"
         )
         paginated = assert_res_paginated(response, PartyDto, total_records=2)
 
@@ -282,7 +282,7 @@ class TestPartyListFiltering:
             await self.party_utils.create_one()
 
         # Filter by non-existent location
-        response = await self.admin_client.get("/api/parties?location_id=99999")
+        response = await self.admin_client.get("/api/parties?location.id=99999")
         paginated = assert_res_paginated(response, PartyDto, total_records=0)
         assert len(paginated.items) == 0
 
@@ -318,7 +318,7 @@ class TestPartyListCombined:
 
         # Filter by location, sort by datetime desc, paginate
         response = await self.admin_client.get(
-            f"/api/parties?location_id={location_id}&sort_by=party_datetime"
+            f"/api/parties?location.id={location_id}&sort_by=party_datetime"
             "&sort_order=desc&page_number=1&page_size=5"
         )
         paginated = assert_res_paginated(
@@ -350,7 +350,7 @@ class TestPartyListCombined:
 
         # Filter for location 1 with pagination
         response = await self.admin_client.get(
-            f"/api/parties?location_id={location1.location_id}&page_size=10"
+            f"/api/parties?location.id={location1.location_id}&page_size=10"
         )
         paginated = assert_res_paginated(
             response, PartyDto, total_records=20, page_size=10, total_pages=2
@@ -404,3 +404,76 @@ class TestPartyListCombined:
             sort_field="party_datetime",
             get_sort_value=lambda x: x.party_datetime,
         )
+
+
+class TestPartyListNestedFiltering:
+    """Tests for nested field filter/sort on GET /api/parties/ endpoint."""
+
+    admin_client: AsyncClient
+    party_utils: PartyTestUtils
+
+    @pytest.fixture(autouse=True)
+    def _setup(self, party_utils: PartyTestUtils, admin_client: AsyncClient):
+        self.party_utils = party_utils
+        self.admin_client = admin_client
+
+    @pytest.mark.asyncio
+    async def test_filter_by_contact_one_first_name_contains(self):
+        """Test filtering parties by contact_one.first_name using contains operator."""
+        student1 = await self.party_utils.student_utils.create_one(first_name="Alice")
+        student2 = await self.party_utils.student_utils.create_one(first_name="Bob")
+        party1 = await self.party_utils.create_one(contact_one_id=student1.account_id)
+        _party2 = await self.party_utils.create_one(contact_one_id=student2.account_id)
+
+        response = await self.admin_client.get("/api/parties?contact_one.first_name_contains=Ali")
+        paginated = assert_res_paginated(response, PartyDto, total_records=1)
+        assert paginated.items[0].id == party1.id
+
+    @pytest.mark.asyncio
+    async def test_sort_by_contact_one_last_name(self):
+        """Test sorting parties by contact_one.last_name ascending."""
+        student_a = await self.party_utils.student_utils.create_one(last_name="AAA")
+        student_z = await self.party_utils.student_utils.create_one(last_name="ZZZ")
+        party_z = await self.party_utils.create_one(contact_one_id=student_z.account_id)
+        party_a = await self.party_utils.create_one(contact_one_id=student_a.account_id)
+
+        response = await self.admin_client.get(
+            "/api/parties?sort_by=contact_one.last_name&sort_order=asc"
+        )
+        paginated = assert_res_paginated(response, PartyDto, total_records=2)
+        assert paginated.items[0].id == party_a.id
+        assert paginated.items[1].id == party_z.id
+
+    @pytest.mark.asyncio
+    async def test_filter_by_contact_two_email(self):
+        """Test filtering parties by exact contact_two.email."""
+        party1 = await self.party_utils.create_one(contact_two_email="unique@test.com")
+        _party2 = await self.party_utils.create_one()
+
+        response = await self.admin_client.get("/api/parties?contact_two.email=unique@test.com")
+        paginated = assert_res_paginated(response, PartyDto, total_records=1)
+        assert paginated.items[0].id == party1.id
+
+    @pytest.mark.asyncio
+    async def test_filter_by_location_formatted_address_contains(self):
+        """Test filtering parties by location.formatted_address using contains."""
+        loc_main = await self.party_utils.location_utils.create_one(
+            formatted_address="123 Main St, Chapel Hill, NC 27514, US"
+        )
+        loc_oak = await self.party_utils.location_utils.create_one(
+            formatted_address="456 Oak Ave, Durham, NC 27701, US"
+        )
+        party1 = await self.party_utils.create_one(location_id=loc_main.id)
+        _party2 = await self.party_utils.create_one(location_id=loc_oak.id)
+
+        response = await self.admin_client.get(
+            "/api/parties?location.formatted_address_contains=Main"
+        )
+        paginated = assert_res_paginated(response, PartyDto, total_records=1)
+        assert paginated.items[0].id == party1.id
+
+    @pytest.mark.asyncio
+    async def test_string_comparison_operator_returns_400(self):
+        """Test that using a comparison operator on a string field returns HTTP 400."""
+        response = await self.admin_client.get("/api/parties?location.formatted_address_gte=Z")
+        assert response.status_code == 400

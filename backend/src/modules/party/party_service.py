@@ -261,52 +261,28 @@ class PartyService:
         Returns:
             PaginatedPartiesResponse with items and metadata
         """
-        # Define allowed fields for sorting and filtering
-        allowed_sort_fields = [
-            "id",
-            "party_datetime",
-            "location_id",
-            "contact_one_id",
-            "contact_two_email",
-            "contact_two_first_name",
-            "contact_two_last_name",
-            "contact_two_phone_number",
-            "contact_two_contact_preference",
-            "status",
-            "contact_one.first_name",
-            "contact_one.last_name",
-            "contact_one.email",
-            "contact_one.phone_number",
-            "location.google_place_id",
-            "location.formatted_address",
-        ]
-        allowed_filter_fields = [
-            "id",
-            "party_datetime",
-            "location_id",
-            "contact_one_id",
-            "contact_two_email",
-            "contact_two_first_name",
-            "contact_two_last_name",
-            "contact_two_phone_number",
-            "contact_two_contact_preference",
-            "status",
-            "contact_one.first_name",
-            "contact_one.last_name",
-            "contact_one.email",
-            "contact_one.phone_number",
-            "location.google_place_id",
-            "location.formatted_address",
-        ]
-
         nested_field_columns = {
+            "contact_one.id": PartyEntity.contact_one_id,
             "contact_one.first_name": AccountEntity.first_name,
             "contact_one.last_name": AccountEntity.last_name,
             "contact_one.email": AccountEntity.email,
             "contact_one.phone_number": StudentEntity.phone_number,
+            "contact_one.onyen": AccountEntity.onyen,
+            "contact_one.pid": AccountEntity.pid,
+            "contact_two.email": PartyEntity.contact_two_email,
+            "contact_two.first_name": PartyEntity.contact_two_first_name,
+            "contact_two.last_name": PartyEntity.contact_two_last_name,
+            "contact_two.phone_number": PartyEntity.contact_two_phone_number,
+            "contact_two.contact_preference": PartyEntity.contact_two_contact_preference,
+            "location.id": PartyEntity.location_id,
             "location.google_place_id": LocationEntity.google_place_id,
             "location.formatted_address": LocationEntity.formatted_address,
+            "location.hold_expiration": LocationEntity.hold_expiration,
         }
+
+        _base_allowed_fields = ["id", "party_datetime", "status"]
+        allowed_sort_fields = [*_base_allowed_fields, *nested_field_columns.keys()]
+        allowed_filter_fields = list(allowed_sort_fields)
 
         # Parse query params from request
         query_params = parse_pagination_params(

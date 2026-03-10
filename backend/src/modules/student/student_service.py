@@ -126,37 +126,18 @@ class StudentService:
         Returns:
             PaginatedStudentsResponse with items and metadata
         """
-        # Define allowed fields for sorting and filtering
-        allowed_sort_fields = [
-            "account_id",
-            "phone_number",
-            "contact_preference",
-            "last_registered",
-            "first_name",
-            "last_name",
-            "email",
-            "onyen",
-            "pid",
-        ]
-        allowed_filter_fields = [
-            "account_id",
-            "phone_number",
-            "contact_preference",
-            "last_registered",
-            "first_name",
-            "last_name",
-            "email",
-            "onyen",
-            "pid",
-        ]
-
         nested_field_columns = {
+            "id": AccountEntity.id,
             "first_name": AccountEntity.first_name,
             "last_name": AccountEntity.last_name,
             "email": AccountEntity.email,
             "onyen": AccountEntity.onyen,
             "pid": AccountEntity.pid,
         }
+
+        _base_allowed_fields = ["phone_number", "contact_preference", "last_registered"]
+        allowed_sort_fields = [*_base_allowed_fields, *nested_field_columns.keys()]
+        allowed_filter_fields = list(allowed_sort_fields)
 
         # Build base query with JOIN for filter/sort and eager loading for hydration
         base_query = (

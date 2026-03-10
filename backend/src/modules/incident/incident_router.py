@@ -1,12 +1,34 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 from src.core.authentication import authenticate_police_or_admin, authenticate_police_staff_or_admin
+from src.core.query_utils import PAGINATED_OPENAPI_PARAMS
 from src.modules.account.account_model import AccountDto
 from src.modules.police.police_model import PoliceAccountDto
 
-from .incident_model import IncidentCreateDto, IncidentDto, IncidentUpdateDto
+from .incident_model import (
+    IncidentCreateDto,
+    IncidentDto,
+    IncidentUpdateDto,
+    PaginatedIncidentsResponse,
+)
 from .incident_service import IncidentService
 
 incident_router = APIRouter(prefix="/api", tags=["incidents"])
+
+
+@incident_router.get(
+    "/incidents",
+    response_model=PaginatedIncidentsResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get all incidents (paginated)",
+    description="Returns paginated incidents. Police, staff, or admin only.",
+    openapi_extra=PAGINATED_OPENAPI_PARAMS,
+)
+async def get_incidents_paginated(
+    request: Request,
+    incident_service: IncidentService = Depends(),
+    _: AccountDto | PoliceAccountDto = Depends(authenticate_police_staff_or_admin),
+) -> PaginatedIncidentsResponse:
+    return await incident_service.get_incidents_paginated(request)
 
 
 @incident_router.get(
