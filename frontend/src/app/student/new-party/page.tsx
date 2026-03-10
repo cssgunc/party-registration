@@ -1,5 +1,4 @@
 "use client";
-import Header from "@/app/student/_components/Header";
 import PartyRegistrationForm, {
   PartyFormInitialValues,
   PartyFormValues,
@@ -115,7 +114,6 @@ export default function RegistrationForm() {
 
   return (
     <div>
-      <Header />
       <Card className="px-14 lg:px-48 pb-8">
         <Link className="py-8" href="/student">
           Back

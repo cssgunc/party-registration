@@ -1,9 +1,9 @@
 "use client";
 
-import Header from "@/app/student/_components/Header";
 import RegistrationTracker from "@/app/student/_components/RegistrationTracker";
 import StatusComponent from "@/app/student/_components/StatusComponent";
 import { Button } from "@/components/ui/button";
+import { useRole } from "@/contexts/RoleContext";
 import {
   useCurrentStudent,
   useMyParties,
@@ -11,9 +11,15 @@ import {
 import { LOCATIONS } from "@/lib/mockData";
 import { isFromThisSchoolYear } from "@/lib/utils";
 import Link from "next/link";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
 export default function StudentDashboard() {
+  const { setRole } = useRole();
+
+  useEffect(() => {
+    setRole("student");
+  }, [setRole]);
+
   const studentQuery = useCurrentStudent();
   // mocking
   if (studentQuery?.data) {
@@ -53,10 +59,9 @@ export default function StudentDashboard() {
   const validResidence = isFromThisSchoolYear(
     studentQuery?.data?.residence?.residence_chosen_date
   );
+
   return (
     <div className="flex flex-col items-center">
-      <Header />
-
       <div className="px-14 md:px-12 pb-12 pt-6 flex flex-col 2xl:flex-row gap-4 max-w-4xl w-full 2xl:max-w-7xl">
         <div className="2xl:w-1/2">
           <div className="flex justify-between items-center">
