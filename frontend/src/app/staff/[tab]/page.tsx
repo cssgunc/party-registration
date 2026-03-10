@@ -7,7 +7,7 @@ import { StudentTable } from "@/app/staff/_components/student/StudentTable";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useRole } from "@/contexts/RoleContext";
-import { notFound, useParams, useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import {
   DEFAULT_TAB,
@@ -39,7 +39,8 @@ export default function StaffTabPage() {
   }, [config, role, router]);
 
   if (!isValidTab) {
-    notFound();
+    router.replace(`/staff/${DEFAULT_TAB}`);
+    return null;
   }
 
   if (config!.adminOnly && role !== "admin") {
