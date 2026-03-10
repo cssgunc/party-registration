@@ -151,11 +151,14 @@
   .subhead-title {
     @apply text-xl font-semibold;
   }
-  .subhead-title {
-    @apply text-lg font-medium;
+  .subhead-content {
+    @apply text-lg font-normal;
   }
   .content {
     @apply text-sm font-normal;
+  }
+  .content-bold {
+    @apply text-sm font-medium;
   }
 }
 

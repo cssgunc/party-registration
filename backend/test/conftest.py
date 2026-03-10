@@ -207,8 +207,8 @@ def location_service(test_session: AsyncSession, mock_gmaps: MagicMock):
 
 
 @pytest.fixture()
-def incident_service(test_session: AsyncSession):
-    return IncidentService(session=test_session)
+def incident_service(test_session: AsyncSession, location_service: LocationService):
+    return IncidentService(session=test_session, location_service=location_service)
 
 
 @pytest.fixture()
