@@ -80,21 +80,6 @@ export default function StudentDashboard() {
                 )}
               </div>
             </div>
-            <div className="flex justify-end mt-2">
-              {courseCompleted ? (
-                <Link href="/student/new-party">
-                  <Button className="px-4 py-2">Registration Form</Button>
-                </Link>
-              ) : (
-                <Button
-                  className="px-4 py-2"
-                  disabled
-                  title="Complete the Party Smart Course to register a party"
-                >
-                  Registration Form
-                </Button>
-              )}
-            </div>
           </div>
 
           <RegistrationTracker
@@ -107,7 +92,7 @@ export default function StudentDashboard() {
             <h2 className="page-title mb-2">Party Smart Course </h2>
             <Link
               href="/student/about-party-smart"
-              className="content flex items-center mb-2"
+              className="content flex items-center mb-2 2xl:hidden"
             >
               <Info className="h-4 w-4 inline-block mr-1" />
               <p className="underline">Learn About Party Smart</p>

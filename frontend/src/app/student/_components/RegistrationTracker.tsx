@@ -249,15 +249,21 @@ export default function RegistrationTracker({
       >
         <div className="flex justify-between items-center mt-2">
           <TabsList className="w-fit flex gap-4">
-            <TabsTrigger value="active" className="px-0 content cursor-pointer">
+            <TabsTrigger
+              value="active"
+              className="px-0 subhead-content cursor-pointer"
+            >
               Active
             </TabsTrigger>
-            <TabsTrigger value="past" className="px-0 content cursor-pointer">
+            <TabsTrigger
+              value="past"
+              className="px-0 subhead-content cursor-pointer"
+            >
               Past Events
             </TabsTrigger>
             <TabsTrigger
               value="incidents"
-              className="px-0 content cursor-pointer"
+              className="px-0 subhead-content cursor-pointer"
             >
               Incidents
             </TabsTrigger>
@@ -276,7 +282,7 @@ export default function RegistrationTracker({
                 disabled
                 title="Complete the Party Smart Course to register a party"
               >
-                Registration Form
+                New Party
               </Button>
             )}
           </div>
