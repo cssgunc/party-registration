@@ -13,14 +13,12 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { IncidentDto } from "@/lib/api/location/location.types";
 import { PartyDto } from "@/lib/api/party/party.types";
+import { useCurrentStudent } from "@/lib/api/student/student.queries";
+import { isFromThisSchoolYear } from "@/lib/utils";
 import { format } from "date-fns";
 import { MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
 import Link from "next/link";
-import { isFromThisSchoolYear } from "@/lib/utils";
-import {
-  useCurrentStudent
-} from "@/lib/api/student/student.queries";
+import { useMemo, useState } from "react";
 
 interface RegistrationTrackerProps {
   data: PartyDto[] | undefined;
@@ -54,7 +52,9 @@ export default function RegistrationTracker({
 
   const studentQuery = useCurrentStudent();
   const student = studentQuery.data;
-  const courseCompleted = student ? isFromThisSchoolYear(student.last_registered) : false;
+  const courseCompleted = student
+    ? isFromThisSchoolYear(student.last_registered)
+    : false;
 
   const { activeParties, pastParties } = useMemo(() => {
     const now = new Date();
@@ -121,13 +121,11 @@ export default function RegistrationTracker({
       <div className="space-y-2">
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="content-bold">
-            {party.location.formatted_address}
-            </h2>
+            <h2 className="content-bold">{party.location.formatted_address}</h2>
             <p className="content-sub">
-            {format(party.party_datetime, "PPP")} at{" "}
-            {format(party.party_datetime, "p")}
-          </p>
+              {format(party.party_datetime, "PPP")} at{" "}
+              {format(party.party_datetime, "p")}
+            </p>
           </div>
 
           {showActions && (
@@ -139,8 +137,10 @@ export default function RegistrationTracker({
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setEditParty(party)}
-                  className="content">
+                <DropdownMenuItem
+                  onClick={() => setEditParty(party)}
+                  className="content"
+                >
                   <Pencil className="h-4 w-4" />
                   Edit
                 </DropdownMenuItem>
@@ -159,24 +159,36 @@ export default function RegistrationTracker({
         {/* Contacts Side by Side */}
         <div className="mt-3 gap-4 sm:grid sm:grid-cols-2">
           {/* Contact One */}
-          
-            <div className="content ml-3">
-              <p>
-                {party.contact_one.first_name} {party.contact_one.last_name}
-              </p>
-              <p>{formatPhoneNumber(party.contact_one.phone_number)}</p>
-              <p>Preference: 
-                <span className="capitalize"> {party.contact_one.contact_preference}</span>s</p>
-            </div>
+
+          <div className="content ml-3">
+            <p>
+              {party.contact_one.first_name} {party.contact_one.last_name}
+            </p>
+            <p>{formatPhoneNumber(party.contact_one.phone_number)}</p>
+            <p>
+              Preference:
+              <span className="capitalize">
+                {" "}
+                {party.contact_one.contact_preference}
+              </span>
+              s
+            </p>
+          </div>
 
           {/* Contact Two */}
           <div className="ml-3 mt-2 sm:ml-0 sm:mt-0 content">
-              <p>
-                {party.contact_two.first_name} {party.contact_two.last_name}
-              </p>
-              <p>{formatPhoneNumber(party.contact_two.phone_number)}</p>
-              <p>Preference:
-                <span className="capitalize"> {party.contact_two.contact_preference}</span>s</p>
+            <p>
+              {party.contact_two.first_name} {party.contact_two.last_name}
+            </p>
+            <p>{formatPhoneNumber(party.contact_two.phone_number)}</p>
+            <p>
+              Preference:
+              <span className="capitalize">
+                {" "}
+                {party.contact_two.contact_preference}
+              </span>
+              s
+            </p>
           </div>
         </div>
       </div>
@@ -195,13 +207,11 @@ export default function RegistrationTracker({
         <h2 className="content-bold">{date}</h2>
         {incidents.map((incident) => (
           <div key={incident.id} className="mt-3 gap-4 md:grid md:grid-cols-2">
-              <p className="content">
-                {format(incident.incident_datetime, "p")} - {" "}
-                <span className="capitalize">{incident.severity}</span>
-              </p>
-              <p className="content ml-3">
-                {incident.description}
-              </p>
+            <p className="content">
+              {format(incident.incident_datetime, "p")} -{" "}
+              <span className="capitalize">{incident.severity}</span>
+            </p>
+            <p className="content ml-3">{incident.description}</p>
           </div>
         ))}
       </div>
@@ -230,27 +240,30 @@ export default function RegistrationTracker({
   }
 
   return (
-      <div>
-        <Tabs
-          value={activeTab}
-          onValueChange={(value) =>
-            setActiveTab(value as "active" | "past" | "incidents")
-          }
-        >
-          <div className="flex justify-between items-center mt-2">
-            <TabsList className="w-fit flex gap-4">
-              <TabsTrigger value="active" className="px-0 content cursor-pointer">
-                Active
-              </TabsTrigger>
-              <TabsTrigger value="past" className="px-0 content cursor-pointer">
-                Past Events
-              </TabsTrigger>
-              <TabsTrigger value="incidents" className="px-0 content cursor-pointer">
-                Incidents
-              </TabsTrigger>
-            </TabsList>
-            <div>
-          {courseCompleted ? (
+    <div>
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) =>
+          setActiveTab(value as "active" | "past" | "incidents")
+        }
+      >
+        <div className="flex justify-between items-center mt-2">
+          <TabsList className="w-fit flex gap-4">
+            <TabsTrigger value="active" className="px-0 content cursor-pointer">
+              Active
+            </TabsTrigger>
+            <TabsTrigger value="past" className="px-0 content cursor-pointer">
+              Past Events
+            </TabsTrigger>
+            <TabsTrigger
+              value="incidents"
+              className="px-0 content cursor-pointer"
+            >
+              Incidents
+            </TabsTrigger>
+          </TabsList>
+          <div>
+            {courseCompleted ? (
               <Link href="/student/new-party">
                 <Button className="px-4 py-2">
                   <Plus className="h-4 w-4 inline-block" />
@@ -266,13 +279,13 @@ export default function RegistrationTracker({
                 Registration Form
               </Button>
             )}
-            </div>
           </div>
-          
-          <Card className="w-full">
-            <TabsContent value="active">
-              <div className="w-full bg-white rounded-md overflow-hidden">
-                <div className="max-h-[calc(100vh-28rem)] overflow-y-auto">
+        </div>
+
+        <Card className="w-full">
+          <TabsContent value="active">
+            <div className="w-full bg-white rounded-md overflow-hidden">
+              <div className="max-h-[calc(100vh-28rem)] overflow-y-auto">
                 {activeParties.length === 0 ? (
                   <p className="text-center content-sub py-8">
                     No active registrations
@@ -282,44 +295,45 @@ export default function RegistrationTracker({
                     <PartyCard key={party.id} party={party} showActions />
                   ))
                 )}
-                </div>
               </div>
-            </TabsContent>
+            </div>
+          </TabsContent>
 
-            <TabsContent value="past" className="">
-              <div className="w-full bg-white rounded-md overflow-hidden">
-                <div className="max-h-[calc(100vh-28rem)] overflow-y-auto">
+          <TabsContent value="past" className="">
+            <div className="w-full bg-white rounded-md overflow-hidden">
+              <div className="max-h-[calc(100vh-28rem)] overflow-y-auto">
                 {pastParties.length === 0 ? (
                   <p className="text-center content-sub py-8">
                     No past registrations
                   </p>
-                
                 ) : (
                   pastParties.map((party) => (
                     <PartyCard key={party.id} party={party} />
                   ))
                 )}
-                </div>
               </div>
-            </TabsContent>
+            </div>
+          </TabsContent>
 
-            <TabsContent value="incidents">
-              <div className="w-full bg-white rounded-md overflow-hidden">
-                <div className="max-h-[calc(100vh-28rem)] overflow-y-auto">
+          <TabsContent value="incidents">
+            <div className="w-full bg-white rounded-md overflow-hidden">
+              <div className="max-h-[calc(100vh-28rem)] overflow-y-auto">
                 {sortedIncidents.length === 0 ? (
-                  <p className="text-center content-sub py-8">
-                    No incidents
-                  </p>
+                  <p className="text-center content-sub py-8">No incidents</p>
                 ) : (
                   groupedIncidents.map(([date, dayIncidents]) => (
-                    <IncidentCard key={date} date={date} incidents={dayIncidents} />
+                    <IncidentCard
+                      key={date}
+                      date={date}
+                      incidents={dayIncidents}
+                    />
                   ))
                 )}
-                </div>
               </div>
-            </TabsContent>
-          </Card>
-        </Tabs>
+            </div>
+          </TabsContent>
+        </Card>
+      </Tabs>
 
       {editParty && (
         <EditPartyDialog

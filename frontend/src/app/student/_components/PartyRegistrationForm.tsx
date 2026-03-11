@@ -265,7 +265,9 @@ export default function PartyRegistrationForm({
           <div className="flex flex-col gap-4 lg:gap-6">
             <div className="grid grid-cols-2 gap-6 lg:gap-8 mt-2">
               <Field data-invalid={!!errors.partyDate}>
-                <FieldLabel htmlFor="party-date" className="content-bold">Event Date</FieldLabel>
+                <FieldLabel htmlFor="party-date" className="content-bold">
+                  Event Date
+                </FieldLabel>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
@@ -288,7 +290,9 @@ export default function PartyRegistrationForm({
                     <Calendar
                       mode="single"
                       selected={formData.partyDate}
-                      onSelect={(date) => updateField("partyDate", date as Date)}
+                      onSelect={(date) =>
+                        updateField("partyDate", date as Date)
+                      }
                       disabled={(date) =>
                         !isAfter(
                           startOfDay(date),
@@ -298,46 +302,46 @@ export default function PartyRegistrationForm({
                     />
                   </PopoverContent>
                 </Popover>
-                {errors.partyDate && <FieldError>{errors.partyDate}</FieldError>}
+                {errors.partyDate && (
+                  <FieldError>{errors.partyDate}</FieldError>
+                )}
               </Field>
-          {!validResidence && (
-            <Field data-invalid={!!errors.address}>
-              <FieldLabel htmlFor="party-address" className="content-bold">
-                Party Address
-              </FieldLabel>
-              <AddressSearch
-                value={formData.address}
-                onSelect={handleAddressSelect}
-                locationService={locationService}
-                placeholder="Search for the party address..."
-                className="w-full"
-                error={errors.address}
-                initialSelection={initialAddress}
-              />
-              <FieldDescription className="content-sub">
-                This will be added to your profile as your {school_year}{" "}
-                location. You may change it after {change_date}.
-              </FieldDescription>
-              {errors.address && <FieldError>{errors.address}</FieldError>}
-            </Field>
-          )}
-          {validResidence && (
-            <div className="col-span-2">
-              <p className="content-bold mb-2">
-                Party Address
-              </p>
-              <p className="content pb-3">
-                {studentResidence?.location.formatted_address}
-              </p>
+              {!validResidence && (
+                <Field data-invalid={!!errors.address}>
+                  <FieldLabel htmlFor="party-address" className="content-bold">
+                    Party Address
+                  </FieldLabel>
+                  <AddressSearch
+                    value={formData.address}
+                    onSelect={handleAddressSelect}
+                    locationService={locationService}
+                    placeholder="Search for the party address..."
+                    className="w-full"
+                    error={errors.address}
+                    initialSelection={initialAddress}
+                  />
+                  <FieldDescription className="content-sub">
+                    This will be added to your profile as your {school_year}{" "}
+                    location. You may change it after {change_date}.
+                  </FieldDescription>
+                  {errors.address && <FieldError>{errors.address}</FieldError>}
+                </Field>
+              )}
+              {validResidence && (
+                <div className="col-span-2">
+                  <p className="content-bold mb-2">Party Address</p>
+                  <p className="content pb-3">
+                    {studentResidence?.location.formatted_address}
+                  </p>
 
-              <div className="flex flex-row gap-4">
-                <p className="content-sub flex-1">
-                  You cannot change your address until {change_date}. If you are
-                  experiencing hardship, contact [email] for changes
-                </p>
-              </div>
-            </div>
-          )}
+                  <div className="flex flex-row gap-4">
+                    <p className="content-sub flex-1">
+                      You cannot change your address until {change_date}. If you
+                      are experiencing hardship, contact [email] for changes
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <Field data-invalid={!!errors.partyTime}>
                 <FieldLabel htmlFor="party-time" className="content-bold">
@@ -351,7 +355,9 @@ export default function PartyRegistrationForm({
                   aria-invalid={!!errors.partyTime}
                   className="content bg-white"
                 />
-                {errors.partyTime && <FieldError>{errors.partyTime}</FieldError>}
+                {errors.partyTime && (
+                  <FieldError>{errors.partyTime}</FieldError>
+                )}
               </Field>
             </div>
 
@@ -371,12 +377,16 @@ export default function PartyRegistrationForm({
               {errors.address && <FieldError>{errors.address}</FieldError>}
             </Field>
           </div>
-          
+
           <div className="flex flex-col gap-4 lg:gap-6">
-            <h2 className="subhead-content"> {/* Need to add this information */}
+            <h2 className="subhead-content">
+              {" "}
+              {/* Need to add this information */}
               Your Contact Information
             </h2>
-            <p className="content italic opacity-50">You can edit preferences in your Account Settings</p>
+            <p className="content italic opacity-50">
+              You can edit preferences in your Account Settings
+            </p>
             <div className="flex flex-row gap-6 lg:gap-8">
               <Field>
                 <FieldLabel className="content-bold">First Name</FieldLabel>
@@ -392,7 +402,9 @@ export default function PartyRegistrationForm({
               <p className="content"></p>
             </Field>
             <Field>
-              <FieldLabel className="content-bold">Contact Preference</FieldLabel>
+              <FieldLabel className="content-bold">
+                Contact Preference
+              </FieldLabel>
               <p className="content"></p>
             </Field>
             <Field>
@@ -400,14 +412,15 @@ export default function PartyRegistrationForm({
               <p className="content"></p>
             </Field>
           </div>
-          
+
           <div className="flex flex-col gap-4 lg:gap-6">
-            <h2 className="subhead-content">
-              Second Contact Information
-            </h2>
+            <h2 className="subhead-content">Second Contact Information</h2>
             <div className="flex flex-row gap-6 lg:gap-8">
               <Field data-invalid={!!errors.secondContactFirstName}>
-                <FieldLabel htmlFor="second-contact-first-name" className="content-bold">
+                <FieldLabel
+                  htmlFor="second-contact-first-name"
+                  className="content-bold"
+                >
                   First Name
                 </FieldLabel>
                 <Input
@@ -426,7 +439,10 @@ export default function PartyRegistrationForm({
               </Field>
 
               <Field data-invalid={!!errors.secondContactLastName}>
-                <FieldLabel htmlFor="second-contact-last-name" className="content-bold">
+                <FieldLabel
+                  htmlFor="second-contact-last-name"
+                  className="content-bold"
+                >
                   Last Name
                 </FieldLabel>
                 <Input
@@ -512,19 +528,23 @@ export default function PartyRegistrationForm({
           </div>
 
           <Field className="flex flex-col items-center">
-              <p className="content text-center my-2 lg:my-4">Please ensure all information provided is correct before submitting. After submitting, all contacts will receive email confirmation for your event</p>
-              <Button
-                type="submit"
-                disabled={isSubmitting || !isFormComplete}
-                title={
-                  !isFormComplete
-                    ? "Please fill in all required fields"
-                    : undefined
-                }
-                className="!w-fit"
-              >
-                {isSubmitting ? "Submitting..." : "Submit Event"}
-              </Button>
+            <p className="content text-center my-2 lg:my-4">
+              Please ensure all information provided is correct before
+              submitting. After submitting, all contacts will receive email
+              confirmation for your event
+            </p>
+            <Button
+              type="submit"
+              disabled={isSubmitting || !isFormComplete}
+              title={
+                !isFormComplete
+                  ? "Please fill in all required fields"
+                  : undefined
+              }
+              className="!w-fit"
+            >
+              {isSubmitting ? "Submitting..." : "Submit Event"}
+            </Button>
           </Field>
 
           <Field data-invalid={!!errors.contactTwoEmail}>

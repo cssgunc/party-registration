@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { isFromThisSchoolYear } from "@/lib/utils";
-import { AlertTriangleIcon, ExternalLink, CheckCircle } from 'lucide-react';
+import { AlertTriangleIcon, CheckCircle, ExternalLink } from "lucide-react";
 import Link from "next/link";
 
 type CompletionCardProps = {
@@ -50,22 +50,28 @@ export default function StatusComponent({
               <CheckCircle className="w-4 h-4" />
               <p className="content">
                 Completed on{" "}
-                <span className="content-bold">{last_registered?.toLocaleDateString()}</span>
+                <span className="content-bold">
+                  {last_registered?.toLocaleDateString()}
+                </span>
               </p>
             </div>
 
             <div className="italic content">Expires August 1st</div>
           </>
-        ) : ( 
+        ) : (
           <div className="content">
             <div className="flex items-center gap-2 mb-1">
-              <AlertTriangleIcon className="w-4 h-4"/>
+              <AlertTriangleIcon className="w-4 h-4" />
               <p>Course not completed</p>
             </div>
             <div className="flex items-center">
-              <a href="#" className="content underline ml-6">Schedule a meeting</a>
-              <Link href="/"> {/*change*/}
-                <ExternalLink className="w-4 h-4 ml-2"/>
+              <a href="#" className="content underline ml-6">
+                Schedule a meeting
+              </a>
+              <Link href="/">
+                {" "}
+                {/*change*/}
+                <ExternalLink className="w-4 h-4 ml-2" />
               </Link>
             </div>
           </div>

@@ -164,9 +164,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
     return (
       <main className="bg-white rounded-lg py-6 px-6 sm:px-10 w-full flex flex-col">
         <div className="self-center gap-6 flex justify-around mr-4 sm:mr-0 sm:mt-4">
-          <h1 className="page-title">
-            Edit Profile Information
-          </h1>
+          <h1 className="page-title">Edit Profile Information</h1>
           <button
             onClick={() => setIsEditing(true)}
             className="bg-transparent"
@@ -178,36 +176,22 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
 
         <section className="my-4 sm:my-8 sm:grid sm:grid-cols-2 sm:gap-y-2 sm:gap-x-12">
           <div className="sm:mt-0 sm:border-b">
-            <p className="subhead-content pb-1">
-              First Name
-            </p>
-            <p className="content">
-              {displayData.first_name}
-            </p>
+            <p className="subhead-content pb-1">First Name</p>
+            <p className="content">{displayData.first_name}</p>
           </div>
 
           <div className="mt-3 sm:mt-0 sm:border-b">
-            <p className="subhead-content pb-1">
-              Last Name
-            </p>
-            <p className="content">
-              {displayData.last_name}
-            </p>
+            <p className="subhead-content pb-1">Last Name</p>
+            <p className="content">{displayData.last_name}</p>
           </div>
 
           <div className="mt-3 sm:mt-6 sm:border-b">
-            <p className="subhead-content pb-1">
-              Phone Number
-            </p>
-            <p className="content">
-              {displayData.phone_number}
-            </p>
+            <p className="subhead-content pb-1">Phone Number</p>
+            <p className="content">{displayData.phone_number}</p>
           </div>
 
           <div className="mt-3 sm:mt-6 sm:border-b">
-            <p className="subhead-content pb-1">
-              Contact Method
-            </p>
+            <p className="subhead-content pb-1">Contact Method</p>
             <p className="content">
               {displayData.contact_preference
                 ? displayData.contact_preference.charAt(0).toUpperCase() +
@@ -216,10 +200,8 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
             </p>
           </div>
           <div className="mt-3 sm:mt-6 sm:border-b">
-            <p className="subhead-content pb-1">
-              {school_year} Address
-            </p>
-            <p className="content"> 
+            <p className="subhead-content pb-1">{school_year} Address</p>
+            <p className="content">
               {initialData.residence?.location.formatted_address}
             </p>
           </div>
@@ -235,35 +217,24 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
   return (
     <form onSubmit={handleSubmit} className="bg-white rounded-lg w-full p-6">
       <div className="flex justify-between items-center mb-6">
-        <div className="page-title">
-          Edit Profile Information
-        </div>
+        <div className="page-title">Edit Profile Information</div>
       </div>
       <FieldGroup>
         <FieldSet className="rounded-lg w-full flex flex-col sm:py-4 sm:px-6">
-         
           <section className="sm:grid sm:grid-cols-2 sm:gap-x-12 sm:gap-y-8">
             <div className="grid grid-cols-2">
               <div>
-              <p className="subhead-content mb-2">
-                First Name
-              </p>
-              <p className="content pb-2">
-                {displayData.first_name}
-              </p>
-            </div>
+                <p className="subhead-content mb-2">First Name</p>
+                <p className="content pb-2">{displayData.first_name}</p>
+              </div>
 
-            <div>
-              <p className="subhead-content mb-2">
-                Last Name
-              </p>
-              <div className="content pb-2">
-                {displayData.last_name}
+              <div>
+                <p className="subhead-content mb-2">Last Name</p>
+                <div className="content pb-2">{displayData.last_name}</div>
               </div>
             </div>
-            </div>
             <div className="flex flex-row gap-2">
-              <TriangleAlert className="w-4 h-4 content"/>
+              <TriangleAlert className="w-4 h-4 content" />
               <p className="content-sub italic flex-1">
                 Your name is associated with your Onyen
               </p>
@@ -306,8 +277,12 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
                   <SelectValue placeholder="Select your preference" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="call" className="content">Call</SelectItem>
-                  <SelectItem value="text" className="content">Text</SelectItem>
+                  <SelectItem value="call" className="content">
+                    Call
+                  </SelectItem>
+                  <SelectItem value="text" className="content">
+                    Text
+                  </SelectItem>
                 </SelectContent>
               </Select>
               {errors.contact_preference && (
@@ -359,10 +334,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
           )}
 
           <div className="flex justify-center gap-4">
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-            >
+            <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Saving..." : "Save"}
             </Button>
           </div>
