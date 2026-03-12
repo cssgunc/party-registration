@@ -238,8 +238,8 @@ def auth_service(
 
 
 @pytest.fixture()
-def student_service(test_session: AsyncSession):
-    return StudentService(session=test_session)
+def student_service(test_session: AsyncSession, location_service: LocationService):
+    return StudentService(session=test_session, location_service=location_service)
 
 
 @pytest.fixture(autouse=True)
@@ -267,8 +267,8 @@ def location_service(test_session: AsyncSession, mock_gmaps: MagicMock):
 
 
 @pytest.fixture()
-def incident_service(test_session: AsyncSession):
-    return IncidentService(session=test_session)
+def incident_service(test_session: AsyncSession, location_service: LocationService):
+    return IncidentService(session=test_session, location_service=location_service)
 
 
 @pytest.fixture()
@@ -299,14 +299,28 @@ async def auth_utils(test_session: AsyncSession):
     return AuthTestUtils(test_session)
 
 
+@pytest_asyncio.fixture()
+async def setup_test_accounts(account_utils: AccountTestUtils):
+    """
+    Create dummy admin and staff accounts so student accounts will have ID=3.
+    This is required because mock_authenticate assigns student role to ID 3.
+    """
+    await account_utils.create_one(role=AccountRole.ADMIN.value)
+    await account_utils.create_one(role=AccountRole.STAFF.value)
+
+
 @pytest.fixture()
 def police_utils(test_session: AsyncSession):
     return PoliceTestUtils(session=test_session)
 
 
 @pytest.fixture()
-def student_utils(test_session: AsyncSession, account_utils: AccountTestUtils):
-    return StudentTestUtils(session=test_session, account_utils=account_utils)
+def student_utils(
+    test_session: AsyncSession, account_utils: AccountTestUtils, location_utils: LocationTestUtils
+):
+    return StudentTestUtils(
+        session=test_session, account_utils=account_utils, location_utils=location_utils
+    )
 
 
 @pytest.fixture()
