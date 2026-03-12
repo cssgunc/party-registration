@@ -1,5 +1,5 @@
 from datetime import UTC, datetime
-from typing import Any, TypedDict, Unpack, override
+from typing import TYPE_CHECKING, Any, TypedDict, Unpack, override
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.modules.account.account_entity import AccountRole
@@ -15,6 +15,9 @@ from src.modules.student.student_model import (
 from test.modules.account.account_utils import AccountTestUtils
 from test.modules.location.location_utils import LocationTestUtils
 from test.utils.resource_test_utils import ResourceTestUtils
+
+if TYPE_CHECKING:
+    from src.modules.location.location_entity import LocationEntity
 
 
 class StudentOverrides(TypedDict, total=False):
@@ -105,7 +108,7 @@ class StudentTestUtils(
             phone_number=student_create.data.phone_number,
         )
         residence_id = None
-        if student_create.data.residence_place_id and self.location_utils is not None:
+        if student_create.data.residence_place_id:
             location = await self.location_utils.create_one(
                 google_place_id=student_create.data.residence_place_id
             )
@@ -161,6 +164,23 @@ class StudentTestUtils(
         await self.session.commit()
         await self.session.refresh(student, ["residence"])
         return student
+
+    def assert_residence(
+        self, student_dto: StudentDto, expected_location: "LocationEntity"
+    ) -> None:
+        """Assert that a student has a valid residence matching the expected location.
+
+        Args:
+            student_dto: The student DTO to check
+            expected_location: The expected location entity for the residence
+        """
+        assert student_dto.residence is not None, (
+            "Expected student to have a residence, but residence is None"
+        )
+        assert student_dto.residence.residence_chosen_date is not None, (
+            "Expected residence_chosen_date to be set, but it is None"
+        )
+        self.location_utils.assert_matches(student_dto.residence.location, expected_location)
 
     # ================================ Typing Overrides ================================
 
