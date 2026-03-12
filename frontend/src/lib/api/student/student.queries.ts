@@ -2,7 +2,7 @@ import { LocationDto } from "@/lib/api/location/location.types";
 import { PartyDto } from "@/lib/api/party/party.types";
 import StudentService from "@/lib/api/student/student.service";
 import {
-  ResidenceUpdateDto,
+  ResidenceUpdateWithDisplayDto,
   StudentData,
   StudentDto,
 } from "@/lib/api/student/student.types";
@@ -35,14 +35,41 @@ export function useUpdateResidence() {
   return useMutation<
     LocationDto,
     Error,
-    ResidenceUpdateDto,
+    ResidenceUpdateWithDisplayDto,
     { previous: StudentDto | undefined }
   >({
-    mutationFn: (data: ResidenceUpdateDto) =>
-      studentService.updateResidence(data),
-    onMutate: async () => {
+    mutationFn: ({ residence_place_id }) =>
+      studentService.updateResidence({ residence_place_id }),
+    onMutate: async (variables) => {
       await queryClient.cancelQueries({ queryKey: ["student", "me"] });
       const previous = queryClient.getQueryData<StudentDto>(["student", "me"]);
+      queryClient.setQueryData<StudentDto>(["student", "me"], (old) =>
+        old
+          ? {
+              ...old,
+              residence: {
+                location: {
+                  google_place_id: variables.residence_place_id,
+                  formatted_address: variables.formatted_address,
+                  id: old.residence?.location.id ?? 0,
+                  latitude: old.residence?.location.latitude ?? 0,
+                  longitude: old.residence?.location.longitude ?? 0,
+                  street_number: null,
+                  street_name: null,
+                  unit: null,
+                  city: null,
+                  county: null,
+                  state: null,
+                  country: null,
+                  zip_code: null,
+                  hold_expiration: null,
+                  incidents: [],
+                },
+                residence_chosen_date: new Date(),
+              },
+            }
+          : old
+      );
       return { previous };
     },
     onError: (_error, _variables, context) => {
@@ -50,18 +77,7 @@ export function useUpdateResidence() {
         queryClient.setQueryData(["student", "me"], context.previous);
       }
     },
-    onSuccess: (location) => {
-      queryClient.setQueryData<StudentDto>(["student", "me"], (old) =>
-        old
-          ? {
-              ...old,
-              residence: {
-                location,
-                residence_chosen_date: new Date(),
-              },
-            }
-          : old
-      );
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["student", "me"] });
     },
   });

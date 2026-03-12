@@ -12,7 +12,7 @@ type StudentData = {
   phone_number: string;
 };
 
-type StudentDataWithNames = StudentData & {
+type StudentUpdateDto = StudentData & {
   first_name: string;
   last_name: string;
   residence_place_id?: string | null;
@@ -50,6 +50,10 @@ type ResidenceUpdateDto = {
   residence_place_id: string;
 };
 
+type ResidenceUpdateWithDisplayDto = ResidenceUpdateDto & {
+  formatted_address: string;
+};
+
 function convertStudent(backend: StudentDtoBackend): StudentDto {
   return {
     ...backend,
@@ -67,9 +71,9 @@ function convertStudent(backend: StudentDtoBackend): StudentDto {
   };
 }
 
-type StudentCreate = {
+type StudentCreateDto = {
   account_id: number;
-  data: StudentDataWithNames;
+  data: StudentUpdateDto;
 };
 
 type IsRegisteredUpdate = {
@@ -81,9 +85,10 @@ export type {
   IsRegisteredUpdate,
   ResidenceDto,
   ResidenceUpdateDto,
-  StudentCreate,
+  ResidenceUpdateWithDisplayDto,
+  StudentCreateDto,
   StudentData,
-  StudentDataWithNames,
+  StudentUpdateDto,
   StudentDto,
   StudentDtoBackend,
 };

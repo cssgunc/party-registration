@@ -1,8 +1,43 @@
 import { PartyService } from "@/lib/api/party/party.service";
-import { CreatePartyDto, PartyDto } from "@/lib/api/party/party.types";
+import {
+  CreatePartyDto,
+  PartyDto,
+  StudentCreatePartyDto,
+} from "@/lib/api/party/party.types";
+import StudentService from "@/lib/api/student/student.service";
 import getMockClient from "@/lib/network/mockClient";
 import { StringRole } from "@/lib/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+
+type RegisterPartyInput = {
+  partyData: StudentCreatePartyDto;
+  residencePlaceId?: string;
+};
+
+/**
+ * Hook to register a party, optionally setting residence first if the student
+ * doesn't have one set for this academic year.
+ */
+export function useRegisterParty() {
+  const studentService = new StudentService(getMockClient("student"));
+  const partyService = new PartyService(getMockClient("student"));
+  const queryClient = useQueryClient();
+
+  return useMutation<PartyDto, Error, RegisterPartyInput>({
+    mutationFn: async ({ partyData, residencePlaceId }) => {
+      if (residencePlaceId) {
+        await studentService.updateResidence({
+          residence_place_id: residencePlaceId,
+        });
+      }
+      return partyService.createParty(partyData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["student", "me", "parties"] });
+      queryClient.invalidateQueries({ queryKey: ["student", "me"] });
+    },
+  });
+}
 
 /**
  * Hook to create a new party registration

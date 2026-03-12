@@ -18,6 +18,11 @@ import StudentTableForm from "./StudentTableForm";
 const studentService = new AdminStudentService();
 const accountService = new AccountService();
 
+const toEditData = (student: StudentDto) => ({
+  ...student,
+  residence_place_id: student.residence?.location.google_place_id ?? null,
+});
+
 export const StudentTable = () => {
   const queryClient = useQueryClient();
   const { openSidebar, closeSidebar } = useSidebar();
@@ -88,7 +93,7 @@ export const StudentTable = () => {
           title="Edit Student"
           onSubmit={(data) => handleEditSubmit(editTarget, data)}
           submissionError={`Failed to update student: ${error.message}`}
-          editData={editTarget}
+          editData={toEditData(editTarget)}
         />
       );
     },
@@ -195,7 +200,7 @@ export const StudentTable = () => {
       <StudentTableForm
         title="Edit Student"
         onSubmit={(data) => handleEditSubmit(student, data)}
-        editData={student}
+        editData={toEditData(student)}
       />
     );
   };

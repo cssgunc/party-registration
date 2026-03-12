@@ -5,19 +5,20 @@ import PartyRegistrationForm, {
 } from "@/app/student/_components/PartyRegistrationForm";
 import { Card } from "@/components/ui/card";
 import { LocationService } from "@/lib/api/location/location.service";
-import { useCreateParty } from "@/lib/api/party/party.queries";
+import { useRegisterParty } from "@/lib/api/party/party.queries";
 import { StudentCreatePartyDto } from "@/lib/api/party/party.types";
 import {
   useCurrentStudent,
   useMyParties,
 } from "@/lib/api/student/student.queries";
 import getMockClient from "@/lib/network/mockClient";
+import { isFromThisSchoolYear } from "@/lib/utils";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 
 export default function RegistrationForm() {
-  const createPartyMutation = useCreateParty();
+  const registerPartyMutation = useRegisterParty();
   const partiesQuery = useMyParties();
   const studentQuery = useCurrentStudent();
   const router = useRouter();
@@ -80,7 +81,13 @@ export default function RegistrationForm() {
   const handleSubmit = async (values: PartyFormValues, placeId: string) => {
     try {
       const partyData = formToData(values, placeId);
-      await createPartyMutation.mutateAsync(partyData);
+      const hasValidResidence = isFromThisSchoolYear(
+        studentQuery.data?.residence?.residence_chosen_date
+      );
+      await registerPartyMutation.mutateAsync({
+        partyData,
+        residencePlaceId: hasValidResidence ? undefined : placeId,
+      });
       alert("Party created successfully!");
       router.push("/student");
     } catch (err) {
