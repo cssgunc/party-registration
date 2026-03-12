@@ -27,6 +27,10 @@ function postAssert(samlBody: Record<string, unknown>): Promise<{
   });
 }
 
+// Dummy police credentials — replace with real backend validation when ready
+const DUMMY_POLICE_USERNAME = "officer";
+const DUMMY_POLICE_PASSWORD = "password";
+
 const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -34,28 +38,60 @@ const authOptions: NextAuthOptions = {
       name: "SAML",
       credentials: {
         samlBody: { type: "hidden" },
+        role: { type: "hidden" },
       },
       async authorize(credentials) {
         if (!credentials?.samlBody) return null;
 
         const samlBody = JSON.parse(decodeURIComponent(credentials.samlBody));
 
+        const role = (credentials.role as User["role"]) ?? undefined;
+
         try {
           const { user } = await postAssert(samlBody);
           const attrs = (user.attributes ?? {}) as Record<string, string[]>;
           return {
             id: user.name_id,
-            name: user.name_id,
+            name: `${attrs.givenName?.[0]} ${attrs.sn?.[0]}`,
             email: attrs.mail?.[0] ?? null,
             firstName: attrs.givenName?.[0],
             lastName: attrs.sn?.[0],
             onyen: attrs.uid?.[0],
             pid: attrs.pid?.[0],
+            role,
           };
         } catch (error) {
           console.error("SAML assertion failed:", error);
           return null;
         }
+      },
+    }),
+    CredentialsProvider({
+      id: "police-credentials",
+      name: "Police",
+      credentials: {
+        username: { label: "Username", type: "text" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(credentials) {
+        if (!credentials?.username || !credentials?.password) return null;
+
+        if (
+          credentials.username !== DUMMY_POLICE_USERNAME ||
+          credentials.password !== DUMMY_POLICE_PASSWORD
+        ) {
+          return null;
+        }
+
+        // TODO: replace with real backend call when police auth endpoint is ready
+        return {
+          id: "police-dummy-id",
+          name: "Officer Dummy",
+          email: "officer@unc.edu",
+          firstName: "Officer",
+          lastName: "Dummy",
+          role: "police" as const,
+        };
       },
     }),
   ],
@@ -78,6 +114,7 @@ const authOptions: NextAuthOptions = {
         token.lastName = u.lastName;
         token.onyen = u.onyen;
         token.pid = u.pid;
+        token.role = u.role;
 
         if (u.accessToken) token.accessToken = u.accessToken;
         if (u.refreshToken) token.refreshToken = u.refreshToken;
@@ -138,10 +175,12 @@ const authOptions: NextAuthOptions = {
         session.user.email = token.email ?? null;
       }
 
+      session.id = token.id;
       session.firstName = token.firstName;
       session.lastName = token.lastName;
       session.onyen = token.onyen;
       session.pid = token.pid;
+      session.role = token.role;
 
       // Add access token to session so that the Axios API client can automatically attach it to the request headers
       if (token.accessToken) {

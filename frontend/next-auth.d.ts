@@ -4,7 +4,8 @@ import "next-auth/jwt";
 declare module "next-auth" {
   interface Session {
     accessToken?: string;
-    role?: "admin" | "staff";
+    id?: string;
+    role?: "admin" | "staff" | "student" | "police";
     firstName?: string;
     lastName?: string;
     onyen?: string;
@@ -14,7 +15,7 @@ declare module "next-auth" {
   interface User {
     accessToken?: string;
     refreshToken?: string;
-    role?: "admin" | "staff";
+    role?: "admin" | "staff" | "student" | "police";
     firstName?: string;
     lastName?: string;
     onyen?: string;
@@ -28,7 +29,8 @@ declare module "next-auth/jwt" {
     accessToken?: string;
     refreshToken?: string;
     accessTokenExpires?: number; // ms epoch
-    role?: "admin" | "staff";
+    id?: string;
+    role?: "admin" | "staff" | "student" | "police";
     firstName?: string;
     lastName?: string;
     onyen?: string;
