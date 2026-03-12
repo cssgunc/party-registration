@@ -1,6 +1,7 @@
 "use client";
 
 import { StudentDto } from "@/lib/api/student/student.types";
+import { isFromThisSchoolYear } from "@/lib/utils";
 import { GenericChipDetails } from "../../shared/sidebar/GenericChipDetails";
 
 interface StudentInfoChipDetailsProps {
@@ -47,6 +48,15 @@ export function StudentInfoChipDetails({ data }: StudentInfoChipDetailsProps) {
           <div>
             <label className="block text-sm font-medium">Email</label>
             <p className="p-2 border rounded">{d.email}</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium">Residence</label>
+            <p className="p-2 border rounded">
+              {d.residence &&
+              isFromThisSchoolYear(d.residence.residence_chosen_date)
+                ? d.residence.location.formatted_address
+                : "—"}
+            </p>
           </div>
           <div>
             <label className="block text-sm font-medium">

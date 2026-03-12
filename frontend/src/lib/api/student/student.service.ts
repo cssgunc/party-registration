@@ -1,22 +1,22 @@
 import getMockClient from "@/lib/network/mockClient";
 import { AxiosInstance } from "axios";
+import {
+  LocationDto,
+  LocationDtoBackend,
+  convertLocation,
+} from "../location/location.types";
 import { PartyDto, PartyDtoBackend, convertParty } from "../party/party.types";
 import {
+  ResidenceUpdateDto,
   StudentData,
   StudentDto,
   StudentDtoBackend,
   convertStudent,
 } from "./student.types";
 
-/**
- * Service class for student-related operations
- */
 export class StudentService {
   constructor(private client: AxiosInstance = getMockClient("student")) {}
 
-  /**
-   * Get current authenticated student (GET /api/students/me)
-   */
   async getCurrentStudent(): Promise<StudentDto> {
     try {
       const response = await this.client.get<StudentDtoBackend>("/students/me");
@@ -27,9 +27,6 @@ export class StudentService {
     }
   }
 
-  /**
-   * Update current authenticated student (PUT /api/students/me)
-   */
   async updateMe(data: StudentData): Promise<StudentDto> {
     try {
       const response = await this.client.put<StudentDtoBackend>(
@@ -43,9 +40,19 @@ export class StudentService {
     }
   }
 
-  /**
-   * Get all parties for current authenticated student (GET /api/students/me/parties)
-   */
+  async updateResidence(data: ResidenceUpdateDto): Promise<LocationDto> {
+    try {
+      const response = await this.client.put<LocationDtoBackend>(
+        "/students/me/residence",
+        data
+      );
+      return convertLocation(response.data);
+    } catch (error) {
+      console.error("Failed to update residence:", error);
+      throw new Error("Failed to update residence");
+    }
+  }
+
   async getMyParties(): Promise<PartyDto[]> {
     try {
       const response = await this.client.get<PartyDtoBackend[]>(
