@@ -1,5 +1,4 @@
 import { identityProvider, serviceProvider } from "@/lib/saml";
-import axios from "axios";
 import NextAuth, {
   type NextAuthOptions,
   type Session,
@@ -26,10 +25,6 @@ function postAssert(samlBody: Record<string, unknown>): Promise<{
     );
   });
 }
-
-// Dummy police credentials — replace with real backend validation when ready
-const DUMMY_POLICE_USERNAME = "officer";
-const DUMMY_POLICE_PASSWORD = "password";
 
 const authOptions: NextAuthOptions = {
   providers: [
@@ -66,102 +61,47 @@ const authOptions: NextAuthOptions = {
         }
       },
     }),
-    CredentialsProvider({
-      id: "police-credentials",
-      name: "Police",
-      credentials: {
-        username: { label: "Username", type: "text" },
-        password: { label: "Password", type: "password" },
-      },
-      async authorize(credentials) {
-        if (!credentials?.username || !credentials?.password) return null;
-
-        if (
-          credentials.username !== DUMMY_POLICE_USERNAME ||
-          credentials.password !== DUMMY_POLICE_PASSWORD
-        ) {
-          return null;
-        }
-
-        // TODO: replace with real backend call when police auth endpoint is ready
-        return {
-          id: "police-dummy-id",
-          name: "Officer Dummy",
-          email: "officer@unc.edu",
-          firstName: "Officer",
-          lastName: "Dummy",
-          role: "police" as const,
-        };
-      },
-    }),
   ],
   session: {
     strategy: "jwt",
   },
   callbacks: {
     async jwt({ token, user }) {
-      // On initial sign-in, persist tokens to the JWT. JWT is stored as HTTP-only cookie by default in NextAuth
+      // On initial sign-in, persist identity and access token to the JWT.
+      // NOTE: The refresh token is never stored here — it lives in its own
+      // path-restricted httpOnly cookie managed by /api/auth/token/refresh.
       if (user) {
-        const u = user as User & {
-          accessToken?: string;
-          refreshToken?: string;
-        };
+        token.id = user.id;
+        token.name = user.name;
+        token.email = user.email;
+        token.firstName = user.firstName;
+        token.lastName = user.lastName;
+        token.onyen = user.onyen;
+        token.pid = user.pid;
+        token.role = user.role;
 
-        token.id = u.id;
-        token.name = u.name;
-        token.email = u.email;
-        token.firstName = u.firstName;
-        token.lastName = u.lastName;
-        token.onyen = u.onyen;
-        token.pid = u.pid;
-        token.role = u.role;
-
-        if (u.accessToken) token.accessToken = u.accessToken;
-        if (u.refreshToken) token.refreshToken = u.refreshToken;
-
-        if ((u.accessToken || u.refreshToken) && !token.accessTokenExpires) {
-          token.accessTokenExpires = Date.now() + 60 * 60 * 1000;
-        }
+        if (user.accessToken) token.accessToken = user.accessToken;
+        if (user.accessTokenExpires)
+          token.accessTokenExpires = user.accessTokenExpires;
+        if (user.refreshTokenExpires)
+          token.refreshTokenExpires = user.refreshTokenExpires;
 
         return token;
       }
 
-      // If we never had any tokens, there's nothing to refresh (SAML-only login still works)
-      if (!token.accessToken && !token.refreshToken) {
-        return token;
-      }
-
-      // If token still valid, return as-is
+      // If the refresh token window has closed, invalidate the session immediately
+      // so the client is forced to re-authenticate rather than trying to refresh.
       if (
-        token.accessToken &&
-        token.accessTokenExpires &&
-        Date.now() < token.accessTokenExpires
+        token.refreshTokenExpires &&
+        Date.now() >= token.refreshTokenExpires
       ) {
+        delete token.accessToken;
+        delete token.accessTokenExpires;
+        delete token.refreshTokenExpires;
         return token;
       }
 
-      // Refresh using refreshToken stored on JWT. Since we always pull latest session data in the API client, the jwt()
-      // callback will be called again and refresh the token if needed before it is used by the API client.
-      try {
-        const base =
-          process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api";
-        const resp = await axios.post(
-          `${base}/auth/refresh`,
-          {},
-          { withCredentials: true }
-        );
-        const data = resp.data || {};
-        if (data.accessToken) token.accessToken = data.accessToken as string;
-        if (data.refreshToken) token.refreshToken = data.refreshToken as string;
-        token.accessTokenExpires = Date.now() + 60 * 60 * 1000;
-        return token;
-      } catch {
-        // Invalidate tokens on failure
-        delete token.accessToken;
-        delete token.refreshToken;
-        delete token.accessTokenExpires;
-        return token;
-      }
+      return token;
     },
     async session({
       session,

@@ -1,6 +1,6 @@
 "use client";
 
-import { SessionProvider, signIn, signOut, useSession } from "next-auth/react";
+import { SessionProvider, signOut, useSession } from "next-auth/react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -16,20 +16,20 @@ export default function AuthTestWrapper() {
 function AuthTest() {
   const { data: session } = useSession();
   const [showPoliceForm, setShowPoliceForm] = useState(false);
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [policeError, setPoliceError] = useState("");
 
   async function handlePoliceSignIn(e: React.FormEvent) {
     e.preventDefault();
     setPoliceError("");
-    const result = await signIn("police-credentials", {
-      username,
-      password,
-      redirect: false,
+    const res = await fetch("/api/auth/police/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
     });
-    if (result?.error) {
-      setPoliceError("Invalid username or password.");
+    if (!res.ok) {
+      setPoliceError("Invalid email or password.");
     } else {
       window.location.reload();
     }
@@ -112,10 +112,10 @@ function AuthTest() {
               className="mt-4 flex flex-col items-center gap-2"
             >
               <input
-                type="text"
-                placeholder="Username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="border rounded px-3 py-1.5 text-sm w-48"
               />
               <input
