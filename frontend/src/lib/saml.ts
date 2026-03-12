@@ -34,3 +34,27 @@ export const identityProvider = new saml2.IdentityProvider({
     process.env.SAML_ALLOW_UNENCRYPTED_ASSERTION !== "false",
   certificates: [process.env.SAML_IDP_CERT!],
 });
+
+/** Parse and validate an incoming SAML POST assertion. */
+export function postAssert(samlBody: Record<string, unknown>): Promise<{
+  user: { name_id: string; attributes?: Record<string, string | string[]> };
+}> {
+  return new Promise((resolve, reject) => {
+    serviceProvider.post_assert(
+      identityProvider,
+      { request_body: samlBody },
+      (
+        error: Error | null,
+        response: {
+          user: {
+            name_id: string;
+            attributes?: Record<string, string | string[]>;
+          };
+        }
+      ) => {
+        if (error) reject(error);
+        else resolve(response);
+      }
+    );
+  });
+}

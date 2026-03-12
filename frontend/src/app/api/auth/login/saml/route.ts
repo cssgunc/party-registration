@@ -1,5 +1,6 @@
-import { identityProvider, serviceProvider } from "@/lib/saml";
-import axios from "axios";
+import { identityProvider, postAssert, serviceProvider } from "@/lib/saml";
+import axios, { AxiosError } from "axios";
+import { encode } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
 
 interface SamlRelayState {
@@ -30,6 +31,12 @@ function isSamlRole(value: unknown): value is SamlRole {
   return SAML_ROLES.includes(value as SamlRole);
 }
 
+function getSessionCookieName() {
+  return process.env.NEXTAUTH_URL?.startsWith("https://")
+    ? "__Secure-next-auth.session-token"
+    : "next-auth.session-token";
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const callbackUrl = searchParams.get("callbackUrl") ?? undefined;
@@ -48,7 +55,14 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const formData = await req.formData();
-  const body = Object.fromEntries(formData);
+  const body = Object.fromEntries(formData) as Record<string, unknown>;
+
+  const origin = process.env.NEXTAUTH_URL ?? new URL(req.url).origin;
+  const errorUrl = (msg: string) =>
+    NextResponse.redirect(
+      new URL(`/api/auth/error?error=${encodeURIComponent(msg)}`, origin),
+      { status: 303 }
+    );
 
   // Parse relay state passed back by the IdP unchanged
   let callbackUrl = "/";
@@ -64,48 +78,107 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Grab the CSRF token from the API endpoint
-  let headers, csrfToken, encodedSAMLBody;
+  if (!role) {
+    return errorUrl("MissingRole");
+  }
+
+  // Validate the SAML assertion
+  let samlUser: {
+    name_id: string;
+    attributes?: Record<string, string | string[]>;
+  };
   try {
-    const appBaseUrl = process.env.NEXTAUTH_URL ?? new URL(req.url).origin;
-    const res = await axios.get(`${appBaseUrl}/api/auth/csrf`);
-    headers = res.headers;
-    csrfToken = res.data?.csrfToken;
-    encodedSAMLBody = encodeURIComponent(JSON.stringify(body));
+    const result = await postAssert(body);
+    samlUser = result.user;
   } catch (error) {
-    console.error("Failed to fetch CSRF token:", error);
-    return NextResponse.json(
-      {
-        error:
-          "Failed to fetch CSRF token. Please check that NEXTAUTH_URL is set correctly and points to this app (e.g. http://localhost:3000 in development).",
-      },
-      { status: 500 }
+    console.error("SAML assertion failed:", error);
+    return errorUrl("SAMLAssertionFailed");
+  }
+
+  const attrs = samlUser.attributes ?? {};
+  // SAML attribute values can be a single string or an array of strings
+  const attr = (key: string) => {
+    const val = attrs[key];
+    return Array.isArray(val) ? val[0] : val;
+  };
+  const email = attr("mail");
+  const firstName = attr("givenName") ?? "";
+  const lastName = attr("sn") ?? "";
+  const onyen = attr("uid") ?? "";
+  const pid = attr("pid") ?? "";
+
+  if (!email) {
+    return errorUrl("MissingEmail");
+  }
+
+  // Exchange the verified identity for backend tokens
+  const base =
+    process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api";
+
+  let tokens: {
+    access_token: string;
+    access_token_expires: string;
+    refresh_token: string;
+    refresh_token_expires: string;
+  };
+  try {
+    const resp = await axios.post(
+      `${base}/auth/exchange`,
+      { email, first_name: firstName, last_name: lastName, pid, onyen, role },
+      { headers: { "X-Internal-Secret": process.env.INTERNAL_API_SECRET } }
     );
+    tokens = resp.data as typeof tokens;
+  } catch (error) {
+    const status = (error as AxiosError)?.response?.status;
+    console.error("Backend token exchange failed:", error);
+    return errorUrl(status === 403 ? "AccessDenied" : "ExchangeFailed");
   }
 
-  // Create a form that instantly submits to the SAML IdP so that the CSRF token is included in the request.
-  // This is required by Next-Auth. Method derived from https://github.com/Jenyus-Org/next-auth-saml?tab=readme-ov-file#customizing
-  const setCookie = headers["set-cookie"];
-  const res = new NextResponse(
-    `<html>
-      <body>
-        <form action="/api/auth/callback/saml" method="POST">
-          <input type="hidden" name="csrfToken" value="${csrfToken}"/>
-          <input type="hidden" name="samlBody" value="${encodedSAMLBody}"/>
-          <input type="hidden" name="callbackUrl" value="${callbackUrl}"/>
-          ${role ? `<input type="hidden" name="role" value="${role}"/>` : ""}
-        </form>
-        <script>document.forms[0].submit();</script>
-      </body>
-    </html>`,
-    { headers: { "Content-Type": "text/html" } }
-  );
+  const accessTokenExpires = new Date(tokens.access_token_expires).getTime();
+  const refreshTokenExpires = new Date(tokens.refresh_token_expires).getTime();
+  const refreshMaxAge = Math.floor((refreshTokenExpires - Date.now()) / 1000);
+  const isSecure = process.env.NEXTAUTH_URL?.startsWith("https://");
 
-  if (setCookie) {
-    for (const cookie of Array.isArray(setCookie) ? setCookie : [setCookie]) {
-      res.headers.append("set-cookie", cookie);
-    }
-  }
+  // Encode the NextAuth session JWT — identity + access token, no refresh token
+  const sessionToken = await encode({
+    token: {
+      sub: samlUser.name_id,
+      id: samlUser.name_id,
+      email,
+      name: `${firstName} ${lastName}`.trim(),
+      firstName,
+      lastName,
+      onyen,
+      pid,
+      role,
+      accessToken: tokens.access_token,
+      accessTokenExpires,
+      refreshTokenExpires,
+    },
+    secret: process.env.NEXTAUTH_SECRET!,
+    maxAge: refreshMaxAge,
+  });
+
+  const res = NextResponse.redirect(new URL(callbackUrl, origin));
+
+  // Session cookie — carries identity and the short-lived access token
+  res.cookies.set(getSessionCookieName(), sessionToken, {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: refreshMaxAge,
+    secure: !!isSecure,
+  });
+
+  // Refresh token cookie — path-restricted so the browser can only send it
+  // to /api/auth/token/refresh and no other endpoint
+  res.cookies.set("refresh_token", tokens.refresh_token, {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/api/auth/token/refresh",
+    maxAge: refreshMaxAge,
+    secure: !!isSecure,
+  });
 
   return res;
 }
