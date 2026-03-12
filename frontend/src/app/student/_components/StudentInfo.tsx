@@ -1,5 +1,4 @@
 "use client";
-
 import { Button } from "@/components/ui/button";
 import {
   Field,
@@ -18,7 +17,8 @@ import {
 } from "@/components/ui/select";
 import { useUpdateStudent } from "@/lib/api/student/student.queries";
 import { StudentDto } from "@/lib/api/student/student.types";
-import { Pencil } from "lucide-react";
+import { isFromThisSchoolYear } from "@/lib/utils";
+import { Pencil, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import * as z from "zod";
 
@@ -35,6 +35,7 @@ const studentInfoSchema = z.object({
   contact_preference: z.enum(["call", "text"], {
     message: "Please select a contact preference",
   }),
+  address: z.string().min(1, "Address is required"),
 });
 
 // Grab the type of the form data from the schema so we can use it in the component
@@ -47,7 +48,13 @@ interface StudentInfoProps {
 export default function StudentInfo({ initialData }: StudentInfoProps) {
   const updateStudentMutation = useUpdateStudent();
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState<StudentInfoValues>(initialData);
+  const [formData, setFormData] = useState<StudentInfoValues>({
+    first_name: initialData.first_name,
+    last_name: initialData.last_name,
+    phone_number: initialData.phone_number,
+    contact_preference: initialData.contact_preference,
+    address: initialData.residence?.location.formatted_address ?? "",
+  });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -137,10 +144,26 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
       undefined,
   };
 
+  const currentDate = new Date();
+  var school_year = "";
+  var change_date = "";
+  if (currentDate < new Date("08-01")) {
+    school_year =
+      currentDate.getFullYear() + "-" + (currentDate.getFullYear() + 1);
+    change_date = "August 1, " + (currentDate.getFullYear() + 1);
+  } else {
+    school_year =
+      currentDate.getFullYear() - 1 + "-" + currentDate.getFullYear();
+    change_date = "August 1, " + currentDate.getFullYear();
+  }
+
+  const validAddress = isFromThisSchoolYear(
+    initialData.residence?.residence_chosen_date
+  );
   if (!isEditing) {
     return (
-      <div className="bg-white rounded-lg p-12 w-full">
-        <div className="flex justify-between items-center mb-6">
+      <div className="bg-white rounded-lg py-16 px-20 w-full flex flex-col">
+        <div className="self-center gap-6 flex justify-between mb-16">
           <div className="text-[32px] font-semibold text-[#09294E]">
             Edit Profile Information
           </div>
@@ -149,7 +172,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
             className="p-2 hover:bg-gray-100 rounded-full transition-colors"
             aria-label="Edit profile"
           >
-            <Pencil className="w-6 h-6 text-[#09294E]" />
+            <Pencil className="w-6 h-6 text-[#09294E] cursor-pointer" />
           </button>
         </div>
 
@@ -193,59 +216,64 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
             </div>
           </div>
         </div>
+        <div className="text-[#09294E] font-semibold text-lg mb-2 mt-5 sm:mt-0 pt-4">
+          {school_year} Address
+        </div>
 
-        <div className="mt-8 flex justify-center">
-          <Button className="bg-[#09294E] text-white px-8 py-2 rounded-lg hover:bg-[#0a1f38]">
-            Log Out
-          </Button>
+        <div className="text-gray-600 text-base border-b border-gray-300 pb-2">
+          {initialData.residence?.location.formatted_address}
+        </div>
+
+        <div className="mt-16 flex justify-center">
+          <Button variant="default">Log Out</Button>
         </div>
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded-lg">
+    <form onSubmit={handleSubmit} className="bg-white rounded-lg p-12 w-full">
+      <div className="flex justify-between items-center mb-6">
+        <div className="text-[32px] font-semibold text-[#09294E]">
+          Edit Profile Information
+        </div>
+        <button
+          onClick={() => setIsEditing(true)}
+          className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+          aria-label="Edit profile"
+        >
+          <Pencil className="w-6 h-6 text-[#09294E]" />
+        </button>
+      </div>
       <FieldGroup>
         <FieldSet>
           <div className="grid grid-cols-2 gap-x-12 gap-y-6">
-            <Field data-invalid={!!errors.first_name}>
-              <FieldLabel
-                htmlFor="first-name"
-                className="text-[#09294E] font-semibold text-lg"
-              >
+            <div>
+              <div className="text-[#09294E] font-semibold text-lg mb-2">
                 First Name
-              </FieldLabel>
-              <Input
-                id="first-name"
-                placeholder="John"
-                value={formData.first_name}
-                onChange={(e) => updateField("first_name", e.target.value)}
-                aria-invalid={!!errors.first_name}
-                className="border-gray-300"
-              />
-              {errors.first_name && (
-                <FieldError>{errors.first_name}</FieldError>
-              )}
-            </Field>
+              </div>
+              <div className="text-gray-600 text-base border-b border-gray-300 pb-2">
+                {displayData.first_name}
+              </div>
+            </div>
 
-            <Field data-invalid={!!errors.last_name}>
-              <FieldLabel
-                htmlFor="last-name"
-                className="text-[#09294E] font-semibold text-lg"
-              >
+            <div>
+              <div className="text-[#09294E] font-semibold text-lg mb-2 mt-5 sm:mt-0">
                 Last Name
-              </FieldLabel>
-              <Input
-                id="last-name"
-                placeholder="Doe"
-                value={formData.last_name}
-                onChange={(e) => updateField("last_name", e.target.value)}
-                aria-invalid={!!errors.last_name}
-                className="border-gray-300"
-              />
-              {errors.last_name && <FieldError>{errors.last_name}</FieldError>}
-            </Field>
+              </div>
+              <div className="text-gray-600 text-base border-b border-gray-300 pb-2">
+                {displayData.last_name}
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-row gap-2">
+            <TriangleAlert />
+            <div className="text-gray-600 text-base italic flex-1">
+              Your name is associated with your Onyen
+            </div>
+          </div>
 
+          <div className="grid grid-cols-2 gap-x-12 gap-y-6">
             <Field data-invalid={!!errors.phone_number}>
               <FieldLabel
                 htmlFor="phone-number"
@@ -259,7 +287,6 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
                 value={formData.phone_number}
                 onChange={(e) => updateField("phone_number", e.target.value)}
                 aria-invalid={!!errors.phone_number}
-                className="border-gray-300"
               />
               {errors.phone_number && (
                 <FieldError>{errors.phone_number}</FieldError>
@@ -279,10 +306,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
                   updateField("contact_preference", value)
                 }
               >
-                <SelectTrigger
-                  id="contact-preference"
-                  className="border-gray-300"
-                >
+                <SelectTrigger id="contact-preference">
                   <SelectValue placeholder="Select your preference" />
                 </SelectTrigger>
                 <SelectContent>
@@ -294,10 +318,46 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
                 <FieldError>{errors.contact_preference}</FieldError>
               )}
             </Field>
+            {!validAddress && (
+              <Field data-invalid={!!errors.address}>
+                <FieldLabel
+                  htmlFor="address"
+                  className="text-[#09294E] font-semibold text-lg mb-2 mt-5 sm:mt-0"
+                >
+                  {school_year} Address
+                </FieldLabel>
+                <Input
+                  id="address"
+                  placeholder="123 Main St, Chapel Hill NC 27514"
+                  value={formData.address}
+                  onChange={(e) => updateField("address", e.target.value)}
+                  className="border-gray-300"
+                />
+                {errors.address && <FieldError>{errors.address}</FieldError>}
+              </Field>
+            )}
+            {validAddress && (
+              <div className="col-span-2">
+                <div className="text-[#09294E] font-semibold text-lg mb-2">
+                  {school_year} Address
+                </div>
+                <div className="text-gray-600 text-base pb-3">
+                  {initialData.residence?.location.formatted_address}
+                </div>
+
+                <div className="flex flex-row gap-4">
+                  <TriangleAlert />
+                  <div className="text-gray-600 text-base italic flex-1">
+                    You cannot change your address until {change_date}. If you
+                    are experiencing hardship, contact [email] for changes
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {errors.submit && (
-            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg ">
               <FieldError className="text-red-600">{errors.submit}</FieldError>
             </div>
           )}
@@ -306,7 +366,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="bg-[#09294E] text-white px-8 py-2 rounded-lg hover:bg-[#0a1f38]"
+              className="bg-[#09294E] text-white px-8 py-2 rounded-lg hover:bg-[#0a1f38] "
             >
               {isSubmitting ? "Saving..." : "Save"}
             </Button>

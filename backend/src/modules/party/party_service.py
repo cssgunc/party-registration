@@ -12,9 +12,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from src.core.config import env
 from src.core.database import get_session
-from src.core.exceptions import BadRequestException, ConflictException, NotFoundException
+from src.core.date_utils import is_same_academic_year
+from src.core.exceptions import (
+    BadRequestException,
+    ConflictException,
+    ForbiddenException,
+    NotFoundException,
+)
 from src.core.query_utils import get_paginated_results, parse_pagination_params
 from src.modules.location.location_model import LocationDto
+from src.modules.student.student_model import StudentDto
 from src.modules.student.student_service import StudentNotFoundException, StudentService
 
 from ..account.account_service import AccountByEmailNotFoundException, AccountService
@@ -27,6 +34,7 @@ from .party_model import (
     PaginatedPartiesResponse,
     PartyData,
     PartyDto,
+    PartyStatus,
     StudentCreatePartyDto,
 )
 
@@ -52,10 +60,33 @@ class PartyDateTooSoonException(BadRequestException):
 
 
 class PartySmartNotCompletedException(BadRequestException):
-    def __init__(self, student_id: int):
-        super().__init__(
-            f"Student {student_id} must complete Party Smart before registering a party"
-        )
+    def __init__(self):
+        super().__init__("You must complete Party Smart before registering a party")
+
+
+class NoResidenceException(BadRequestException):
+    def __init__(self):
+        super().__init__("Student must choose a residence before registering a party")
+
+
+class UnauthorizedPartyAccessException(ForbiddenException):
+    def __init__(self):
+        super().__init__("Student can only modify their own parties")
+
+
+class PartyNotOwnedByStudentException(ForbiddenException):
+    def __init__(self, party_id: int):
+        super().__init__(f"Student does not own party with ID {party_id}")
+
+
+class PartyCancelledException(BadRequestException):
+    def __init__(self, party_id: int):
+        super().__init__(f"Party with ID {party_id} has already been cancelled")
+
+
+class PartyInPastException(BadRequestException):
+    def __init__(self):
+        super().__init__("Cannot modify a party that has already occurred")
 
 
 class PartyService:
@@ -116,35 +147,15 @@ class PartyService:
             raise PartyDateTooSoonException()
 
     async def _validate_party_smart_attendance(self, student_id: int) -> None:
-        """Validate that student has completed Party Smart after the most recent August 1st."""
+        """Validate that student has completed Party Smart in the current academic year."""
         student = await self.student_service.get_student_by_id(student_id)
 
         if student.last_registered is None:
-            raise PartySmartNotCompletedException(student_id)
+            raise PartySmartNotCompletedException()
 
-        # Calculate the most recent August 1st
-        now = datetime.now(UTC)
-        current_year = now.year
-
-        # August 1st of the current year (UTC)
-        august_first_this_year = datetime(current_year, 8, 1, 0, 0, 0, tzinfo=UTC)
-
-        # If today is before August 1st, use last year's August 1st
-        # Otherwise, use this year's August 1st
-        if now < august_first_this_year:
-            most_recent_august_first = datetime(current_year - 1, 8, 1, 0, 0, 0, tzinfo=UTC)
-        else:
-            most_recent_august_first = august_first_this_year
-
-        # Check if last_registered is after the most recent August 1st
-        if student.last_registered < most_recent_august_first:
-            raise PartySmartNotCompletedException(student_id)
-
-    async def _validate_and_get_location(self, place_id: str) -> LocationDto:
-        """Get or create location and validate it has no active hold."""
-        location = await self.location_service.get_or_create_location(place_id)
-        self.location_service.assert_valid_location_hold(location)
-        return location
+        # Check if last_registered is in the current academic year
+        if not is_same_academic_year(student.last_registered):
+            raise PartySmartNotCompletedException()
 
     def _validate_contact_two_differs_from_contact_one(
         self, contact_one_email: str, contact_one_phone: str, contact_two: ContactDto
@@ -157,6 +168,26 @@ class PartyService:
         c2_phone_digits = "".join(filter(str.isdigit, contact_two.phone_number))
         if c1_phone_digits == c2_phone_digits:
             raise ContactTwoMatchesContactOneException("phone number")
+
+    def _validate_party_not_cancelled(self, party_entity: PartyEntity) -> None:
+        """Validate that the party has not been cancelled."""
+        if party_entity.status == PartyStatus.CANCELLED:
+            raise PartyCancelledException(party_entity.id)
+
+    def _validate_party_belongs_to_student(
+        self, party_entity: PartyEntity, student_id: int
+    ) -> None:
+        """Validate that the party belongs to the specified student."""
+        if party_entity.contact_one_id != student_id:
+            raise PartyNotOwnedByStudentException(party_entity.id)
+
+    def _validate_party_in_future(self, party_entity: PartyEntity) -> None:
+        """Validate that the party is scheduled for a future date."""
+        party_dt = party_entity.party_datetime
+        if party_dt.tzinfo is None:
+            party_dt = party_dt.replace(tzinfo=UTC)
+        if party_dt <= datetime.now(UTC):
+            raise PartyInPastException()
 
     async def _validate_student_party_prerequisites(
         self, student_id: int, party_datetime: datetime
@@ -232,6 +263,7 @@ class PartyService:
             "contact_two_last_name",
             "contact_two_phone_number",
             "contact_two_contact_preference",
+            "status",
         ]
         allowed_filter_fields = [
             "id",
@@ -243,6 +275,7 @@ class PartyService:
             "contact_two_last_name",
             "contact_two_phone_number",
             "contact_two_contact_preference",
+            "status",
         ]
 
         # Parse query params from request
@@ -290,7 +323,10 @@ class PartyService:
         """Get all parties for a specific student (no pagination)."""
         result = await self.session.execute(
             select(PartyEntity)
-            .where(PartyEntity.contact_one_id == student_id)
+            .where(
+                PartyEntity.contact_one_id == student_id,
+                PartyEntity.status != PartyStatus.CANCELLED,
+            )
             .options(
                 selectinload(PartyEntity.location),
                 selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
@@ -307,6 +343,7 @@ class PartyService:
             .where(
                 PartyEntity.party_datetime >= start_date,
                 PartyEntity.party_datetime <= end_date,
+                PartyEntity.status != PartyStatus.CANCELLED,
             )
             .options(
                 selectinload(PartyEntity.location),
@@ -353,21 +390,44 @@ class PartyService:
 
         return await party_entity.load_dto(self.session)
 
+    async def _validate_student_party_and_get_location(
+        self, student_account_id: int, party_datetime: datetime
+    ) -> tuple[LocationDto, StudentDto]:
+        """
+        Validate student can register a party and get their residence location.
+        Returns tuple of (location, student).
+        """
+        # Validate student party prerequisites (date and Party Smart)
+        await self._validate_student_party_prerequisites(student_account_id, party_datetime)
+
+        # Get student and validate they have a residence
+        student = await self.student_service.get_student_by_id(student_account_id)
+        if student.residence is None:
+            raise NoResidenceException()
+
+        # Use student's residence as the party location
+        location = student.residence.location
+
+        # Validate location has no active hold
+        self.location_service.assert_valid_location_hold(location)
+
+        return location, student
+
     async def create_party_from_student_dto(
         self, dto: StudentCreatePartyDto, student_account_id: int
     ) -> PartyDto:
-        """Create a party registration from a student. contact_one is auto-filled."""
-        # Validate student party prerequisites (date and Party Smart)
-        await self._validate_student_party_prerequisites(student_account_id, dto.party_datetime)
+        """
+        Create a party registration from a student.
+        contact_one is auto-filled, location from residence.
+        """
+        location, student = await self._validate_student_party_and_get_location(
+            student_account_id, dto.party_datetime
+        )
 
-        # Validate contact two differs from contact one (the student)
-        student = await self.student_service.get_student_by_id(student_account_id)
+        # Validate contact two differs from contact one
         self._validate_contact_two_differs_from_contact_one(
             student.email, student.phone_number, dto.contact_two
         )
-
-        # Get/create location and validate no hold
-        location = await self._validate_and_get_location(dto.google_place_id)
 
         # Create party data with contact_two information directly
         party_data = PartyData(
@@ -384,25 +444,39 @@ class PartyService:
 
         return await new_party.load_dto(self.session)
 
-    async def create_party_from_admin_dto(self, dto: AdminCreatePartyDto) -> PartyDto:
-        """Create a party registration from an admin. Both contacts must be specified."""
-        # Get/create location and validate no hold
-        location = await self._validate_and_get_location(dto.google_place_id)
+    async def _validate_admin_party_and_get_details(
+        self, google_place_id: str, contact_one_email: str
+    ) -> tuple[LocationDto, StudentDto]:
+        """
+        Validate admin party data and get location and contact_one entity.
+        Returns tuple of (location, contact_one).
+        Admins skip hold validation.
+        """
+        # Get/create location (skip hold validation for admins)
+        location = await self.location_service.get_or_create_location(google_place_id)
 
         # Get contact_one by email
-        contact_one = await self._get_student_by_email(dto.contact_one_email)
+        contact_one = await self._get_student_by_email(contact_one_email)
+        contact_one_dto = await contact_one.load_dto(self.session)
+
+        return location, contact_one_dto
+
+    async def create_party_from_admin_dto(self, dto: AdminCreatePartyDto) -> PartyDto:
+        """Create a party registration from an admin. Both contacts must be specified."""
+        location, contact_one = await self._validate_admin_party_and_get_details(
+            dto.google_place_id, dto.contact_one_email
+        )
 
         # Validate contact two differs from contact one
-        contact_one_dto = contact_one.to_dto()
         self._validate_contact_two_differs_from_contact_one(
-            contact_one_dto.email, contact_one_dto.phone_number, dto.contact_two
+            contact_one.email, contact_one.phone_number, dto.contact_two
         )
 
         # Create party data with contact_two information directly
         party_data = PartyData(
             party_datetime=dto.party_datetime,
             location_id=location.id,
-            contact_one_id=contact_one.account_id,
+            contact_one_id=contact_one.id,
             contact_two=dto.contact_two,
         )
 
@@ -416,24 +490,27 @@ class PartyService:
     async def update_party_from_student_dto(
         self, party_id: int, dto: StudentCreatePartyDto, student_account_id: int
     ) -> PartyDto:
-        """Update a party registration from a student. contact_one is auto-filled."""
+        """
+        Update a party registration from a student.
+        contact_one is auto-filled, location from residence.
+        """
         # Get existing party
         party_entity = await self._get_party_entity_by_id(party_id)
 
-        # Validate student party prerequisites (date and Party Smart)
-        await self._validate_student_party_prerequisites(student_account_id, dto.party_datetime)
+        # Validate ownership, status, and timing
+        self._validate_party_belongs_to_student(party_entity, student_account_id)
+        self._validate_party_not_cancelled(party_entity)
+        self._validate_party_in_future(party_entity)
 
-        # Validate contact two differs from contact one (the student)
-        student = await self.student_service.get_student_by_id(student_account_id)
+        # Validate student can create party and get location
+        location, student = await self._validate_student_party_and_get_location(
+            student_account_id, dto.party_datetime
+        )
+
+        # Validate contact two differs from contact one
         self._validate_contact_two_differs_from_contact_one(
             student.email, student.phone_number, dto.contact_two
         )
-
-        # Get/create location and validate no hold
-        location = await self._validate_and_get_location(dto.google_place_id)
-
-        # Validate contact_one (student) exists
-        await self.student_service.assert_student_exists(student_account_id)
 
         # Update party fields
         party_entity.party_datetime = dto.party_datetime
@@ -457,23 +534,20 @@ class PartyService:
         # Get existing party
         party_entity = await self._get_party_entity_by_id(party_id)
 
-        # Get/create location and validate no hold
-        location = await self._validate_and_get_location(dto.google_place_id)
-
-        # Get contact_one by email
-        contact_one_student = await self._get_student_by_email(dto.contact_one_email)
-        contact_one_id = contact_one_student.account_id
+        # Validate and get location and contact_one details
+        location, contact_one = await self._validate_admin_party_and_get_details(
+            dto.google_place_id, dto.contact_one_email
+        )
 
         # Validate contact two differs from contact one
-        contact_one_dto = contact_one_student.to_dto()
         self._validate_contact_two_differs_from_contact_one(
-            contact_one_dto.email, contact_one_dto.phone_number, dto.contact_two
+            contact_one.email, contact_one.phone_number, dto.contact_two
         )
 
         # Update party fields
         party_entity.party_datetime = dto.party_datetime
         party_entity.location_id = location.id
-        party_entity.contact_one_id = contact_one_id
+        party_entity.contact_one_id = contact_one.id
         party_entity.contact_two_email = dto.contact_two.email
         party_entity.contact_two_first_name = dto.contact_two.first_name
         party_entity.contact_two_last_name = dto.contact_two.last_name
@@ -484,6 +558,21 @@ class PartyService:
         await self.session.commit()
 
         return await party_entity.load_dto(self.session)
+
+    async def cancel_party_as_student(self, party_id: int, student_account_id: int) -> PartyDto:
+        """Cancel a party as a student. Only the party owner can cancel their party."""
+        party_entity = await self._get_party_entity_by_id(party_id)
+
+        # Validate ownership, status, and timing
+        self._validate_party_belongs_to_student(party_entity, student_account_id)
+        self._validate_party_not_cancelled(party_entity)
+        self._validate_party_in_future(party_entity)
+
+        party_entity.status = PartyStatus.CANCELLED
+        self.session.add(party_entity)
+        await self.session.commit()
+
+        return party_entity.to_dto()
 
     async def delete_party(self, party_id: int) -> PartyDto:
         party_entity = await self._get_party_entity_by_id(party_id)
@@ -536,6 +625,7 @@ class PartyService:
             .where(
                 PartyEntity.party_datetime >= start_time,
                 PartyEntity.party_datetime <= end_time,
+                PartyEntity.status != PartyStatus.CANCELLED,
             )
         )
         parties = result.scalars().all()
@@ -585,6 +675,7 @@ class PartyService:
             .where(
                 PartyEntity.party_datetime >= start_date,
                 PartyEntity.party_datetime <= end_date,
+                PartyEntity.status != PartyStatus.CANCELLED,
             )
         )
         parties = result.scalars().all()
