@@ -86,6 +86,8 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  --sub-text: oklch(0.281 0.0773 254.77 / 0.7);
+  --text: oklch(0.281 0.0773 254.77);
 }
 
 .dark {
@@ -147,18 +149,27 @@
   }
   .page-title {
     @apply text-2xl font-semibold;
+    color: var(--text);
   }
   .subhead-title {
     @apply text-xl font-semibold;
+    color: var(--text);
   }
   .subhead-content {
-    @apply text-lg font-normal;
+    @apply text-lg font-bold;
+    color: var(--text);
   }
   .content {
-    @apply text-sm font-normal;
+    @apply text-base font-normal;
+    color: var(--text);
   }
   .content-bold {
-    @apply text-sm font-medium;
+    @apply text-base font-bold;
+    color: var(--text);
+  }
+  .content-sub {
+    @apply text-sm font-normal;
+    color: var(--sub-text);
   }
 }
 

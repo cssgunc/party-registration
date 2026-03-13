@@ -262,181 +262,289 @@ export default function PartyRegistrationForm({
     <form onSubmit={handleSubmit}>
       <FieldGroup>
         <FieldSet>
-          {!validResidence && (
+          <div className="flex flex-col gap-4 lg:gap-6">
+            <div className="grid grid-cols-2 gap-6 lg:gap-8 mt-2">
+              <Field data-invalid={!!errors.partyDate}>
+                <FieldLabel htmlFor="party-date" className="content-bold">
+                  Event Date
+                </FieldLabel>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      id="party-date"
+                      variant="outline"
+                      aria-invalid={!!errors.partyDate}
+                      className={`w-full justify-between items-center content bg-white ${
+                        !formData.partyDate && "text-muted-foreground"
+                      }`}
+                    >
+                      {formData.partyDate ? (
+                        format(formData.partyDate, "PPP")
+                      ) : (
+                        <span>Pick a date</span>
+                      )}
+                      <CalendarIcon className="h-4 w-4 text-black shrink-0" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={formData.partyDate}
+                      onSelect={(date) =>
+                        updateField("partyDate", date as Date)
+                      }
+                      disabled={(date) =>
+                        !isAfter(
+                          startOfDay(date),
+                          addBusinessDays(startOfDay(new Date()), 1)
+                        )
+                      }
+                    />
+                  </PopoverContent>
+                </Popover>
+                {errors.partyDate && (
+                  <FieldError>{errors.partyDate}</FieldError>
+                )}
+              </Field>
+              {!validResidence && (
+                <Field data-invalid={!!errors.address}>
+                  <FieldLabel htmlFor="party-address" className="content-bold">
+                    Party Address
+                  </FieldLabel>
+                  <AddressSearch
+                    value={formData.address}
+                    onSelect={handleAddressSelect}
+                    locationService={locationService}
+                    placeholder="Search for the party address..."
+                    className="w-full"
+                    error={errors.address}
+                    initialSelection={initialAddress}
+                  />
+                  <FieldDescription className="content-sub">
+                    This will be added to your profile as your {school_year}{" "}
+                    location. You may change it after {change_date}.
+                  </FieldDescription>
+                  {errors.address && <FieldError>{errors.address}</FieldError>}
+                </Field>
+              )}
+              {validResidence && (
+                <div className="col-span-2">
+                  <p className="content-bold mb-2">Party Address</p>
+                  <p className="content pb-3">
+                    {studentResidence?.location.formatted_address}
+                  </p>
+
+                  <div className="flex flex-row gap-4">
+                    <p className="content-sub flex-1">
+                      You cannot change your address until {change_date}. If you
+                      are experiencing hardship, contact [email] for changes
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <Field data-invalid={!!errors.partyTime}>
+                <FieldLabel htmlFor="party-time" className="content-bold">
+                  Event Time
+                </FieldLabel>
+                <Input
+                  id="party-time"
+                  type="time"
+                  value={formData.partyTime}
+                  onChange={(e) => updateField("partyTime", e.target.value)}
+                  aria-invalid={!!errors.partyTime}
+                  className="content bg-white"
+                />
+                {errors.partyTime && (
+                  <FieldError>{errors.partyTime}</FieldError>
+                )}
+              </Field>
+            </div>
+
             <Field data-invalid={!!errors.address}>
-              <FieldLabel htmlFor="party-address">Party Address</FieldLabel>
+              <FieldLabel htmlFor="party-address" className="content-bold">
+                Event Address
+              </FieldLabel>
               <AddressSearch
                 value={formData.address}
                 onSelect={handleAddressSelect}
                 locationService={locationService}
                 placeholder="Search for the party address..."
-                className="w-full"
+                className="w-full content"
                 error={errors.address}
                 initialSelection={initialAddress}
               />
-              <FieldDescription className="italics">
-                This will be added to your profile as your {school_year}{" "}
-                location. You may change it after {change_date}.
-              </FieldDescription>
               {errors.address && <FieldError>{errors.address}</FieldError>}
             </Field>
-          )}
-          {validResidence && (
-            <div className="col-span-2">
-              <div className="text-[#09294E] font-semibold text-sm mb-2">
-                Party Address
-              </div>
-              <div className="text-gray-600 text-base pb-3">
-                {studentResidence?.location.formatted_address}
-              </div>
+          </div>
 
-              <div className="flex flex-row gap-4">
-                <div className="text-gray-600 text-base italic flex-1">
-                  You cannot change your address until {change_date}. If you are
-                  experiencing hardship, contact [email] for changes
-                </div>
-              </div>
+          <div className="flex flex-col gap-4 lg:gap-6">
+            <h2 className="subhead-content">
+              {" "}
+              {/* Need to add this information */}
+              Your Contact Information
+            </h2>
+            <p className="content italic opacity-50">
+              You can edit preferences in your Account Settings
+            </p>
+            <div className="flex flex-row gap-6 lg:gap-8">
+              <Field>
+                <FieldLabel className="content-bold">First Name</FieldLabel>
+                <p className="content"></p>
+              </Field>
+              <Field>
+                <FieldLabel className="content-bold">Last Name</FieldLabel>
+                <p className="content"></p>
+              </Field>
             </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-4">
-            <Field data-invalid={!!errors.partyDate}>
-              <FieldLabel htmlFor="party-date">Party Date</FieldLabel>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    id="party-date"
-                    variant="outline"
-                    aria-invalid={!!errors.partyDate}
-                    className={`w-full justify-start text-left font-normal ${
-                      !formData.partyDate && "text-muted-foreground"
-                    }`}
-                  >
-                    {formData.partyDate ? (
-                      format(formData.partyDate, "PPP")
-                    ) : (
-                      <span>Pick a date</span>
-                    )}
-                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={formData.partyDate}
-                    onSelect={(date) => updateField("partyDate", date as Date)}
-                    disabled={(date) =>
-                      !isAfter(
-                        startOfDay(date),
-                        addBusinessDays(startOfDay(new Date()), 1)
-                      )
-                    }
-                  />
-                </PopoverContent>
-              </Popover>
-              <FieldDescription>
-                Must be at least 2 business days from today
-              </FieldDescription>
-              {errors.partyDate && <FieldError>{errors.partyDate}</FieldError>}
+            <Field>
+              <FieldLabel className="content-bold">Phone Number</FieldLabel>
+              <p className="content"></p>
             </Field>
-
-            <Field data-invalid={!!errors.partyTime}>
-              <FieldLabel htmlFor="party-time">Party Time</FieldLabel>
-              <Input
-                id="party-time"
-                type="time"
-                value={formData.partyTime}
-                onChange={(e) => updateField("partyTime", e.target.value)}
-                aria-invalid={!!errors.partyTime}
-              />
-              <FieldDescription>Select the start time</FieldDescription>
-              {errors.partyTime && <FieldError>{errors.partyTime}</FieldError>}
+            <Field>
+              <FieldLabel className="content-bold">
+                Contact Preference
+              </FieldLabel>
+              <p className="content"></p>
+            </Field>
+            <Field>
+              <FieldLabel className="content-bold">Email</FieldLabel>
+              <p className="content"></p>
             </Field>
           </div>
-          <div className="font-semibold text-lg">
-            Second Contact Information
-          </div>
-          <div className="flex flex-row gap-6">
-            <Field data-invalid={!!errors.secondContactFirstName}>
-              <FieldLabel htmlFor="second-contact-first-name">
-                First Name
+
+          <div className="flex flex-col gap-4 lg:gap-6">
+            <h2 className="subhead-content">Second Contact Information</h2>
+            <div className="flex flex-row gap-6 lg:gap-8">
+              <Field data-invalid={!!errors.secondContactFirstName}>
+                <FieldLabel
+                  htmlFor="second-contact-first-name"
+                  className="content-bold"
+                >
+                  First Name
+                </FieldLabel>
+                <Input
+                  id="second-contact-first-name"
+                  placeholder=""
+                  value={formData.secondContactFirstName}
+                  onChange={(e) =>
+                    updateField("secondContactFirstName", e.target.value)
+                  }
+                  aria-invalid={!!errors.secondContactFirstName}
+                  className="content"
+                />
+                {errors.secondContactFirstName && (
+                  <FieldError>{errors.secondContactFirstName}</FieldError>
+                )}
+              </Field>
+
+              <Field data-invalid={!!errors.secondContactLastName}>
+                <FieldLabel
+                  htmlFor="second-contact-last-name"
+                  className="content-bold"
+                >
+                  Last Name
+                </FieldLabel>
+                <Input
+                  id="second-contact-last-name"
+                  placeholder=""
+                  value={formData.secondContactLastName}
+                  onChange={(e) =>
+                    updateField("secondContactLastName", e.target.value)
+                  }
+                  aria-invalid={!!errors.secondContactLastName}
+                  className="content"
+                />
+                {errors.secondContactLastName && (
+                  <FieldError>{errors.secondContactLastName}</FieldError>
+                )}
+              </Field>
+            </div>
+            <Field data-invalid={!!errors.phoneNumber}>
+              <FieldLabel htmlFor="phone-number" className="content-bold">
+                Phone Number
               </FieldLabel>
               <Input
-                id="second-contact-first-name"
-                placeholder=""
-                value={formData.secondContactFirstName}
-                onChange={(e) =>
-                  updateField("secondContactFirstName", e.target.value)
-                }
-                aria-invalid={!!errors.secondContactFirstName}
+                id="phone-number"
+                placeholder="(123) 456-7890"
+                value={formData.phoneNumber}
+                onChange={(e) => updateField("phoneNumber", e.target.value)}
+                aria-invalid={!!errors.phoneNumber}
+                className="content"
               />
-              {errors.secondContactFirstName && (
-                <FieldError>{errors.secondContactFirstName}</FieldError>
+              {errors.phoneNumber && (
+                <FieldError>{errors.phoneNumber}</FieldError>
               )}
             </Field>
 
-            <Field data-invalid={!!errors.secondContactLastName}>
-              <FieldLabel htmlFor="second-contact-last-name">
-                Last Name
+            <Field data-invalid={!!errors.contactPreference}>
+              <FieldLabel htmlFor="contact-preference" className="content-bold">
+                Contact Preference
               </FieldLabel>
-              <Input
-                id="second-contact-last-name"
-                placeholder=""
-                value={formData.secondContactLastName}
-                onChange={(e) =>
-                  updateField("secondContactLastName", e.target.value)
+              <Select
+                value={formData.contactPreference}
+                onValueChange={(value) =>
+                  updateField("contactPreference", value as "call" | "text")
                 }
-                aria-invalid={!!errors.secondContactLastName}
-              />
-              {errors.secondContactLastName && (
-                <FieldError>{errors.secondContactLastName}</FieldError>
-              )}
-            </Field>
-          </div>
-          <Field data-invalid={!!errors.phoneNumber}>
-            <FieldLabel htmlFor="phone-number">Phone Number</FieldLabel>
-            <Input
-              id="phone-number"
-              placeholder="(123) 456-7890"
-              value={formData.phoneNumber}
-              onChange={(e) => updateField("phoneNumber", e.target.value)}
-              aria-invalid={!!errors.phoneNumber}
-            />
-            <FieldDescription>
-              We will use this to contact Contact two about the party
-            </FieldDescription>
-            {errors.phoneNumber && (
-              <FieldError>{errors.phoneNumber}</FieldError>
-            )}
-          </Field>
-
-          <Field data-invalid={!!errors.contactPreference}>
-            <FieldLabel htmlFor="contact-preference">
-              Contact Preference
-            </FieldLabel>
-            <Select
-              value={formData.contactPreference}
-              onValueChange={(value) =>
-                updateField("contactPreference", value as "call" | "text")
-              }
-            >
-              <SelectTrigger
-                id="contact-preference"
-                aria-invalid={!!errors.contactPreference}
               >
-                <SelectValue placeholder="Select your preference" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="call">Call</SelectItem>
-                <SelectItem value="text">Text</SelectItem>
-              </SelectContent>
-            </Select>
-            <FieldDescription>
-              How should we contact the second contact?
-            </FieldDescription>
-            {errors.contactPreference && (
-              <FieldError>{errors.contactPreference}</FieldError>
-            )}
+                <SelectTrigger
+                  id="contact-preference"
+                  aria-invalid={!!errors.contactPreference}
+                  className="content"
+                >
+                  <SelectValue placeholder="Select your preference" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="call" className="content">
+                    Call
+                  </SelectItem>
+                  <SelectItem value="text" className="content">
+                    Text
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.contactPreference && (
+                <FieldError>{errors.contactPreference}</FieldError>
+              )}
+            </Field>
+
+            <Field data-invalid={!!errors.contactTwoEmail}>
+              <FieldLabel htmlFor="contact-email" className="content-bold">
+                Contact Email
+              </FieldLabel>
+              <Input
+                id="contact-email"
+                type="email"
+                placeholder="student@unc.edu"
+                value={formData.contactTwoEmail}
+                onChange={(e) => updateField("contactTwoEmail", e.target.value)}
+                aria-invalid={!!errors.contactTwoEmail}
+                className="content"
+              />
+              {errors.contactTwoEmail && (
+                <FieldError>{errors.contactTwoEmail}</FieldError>
+              )}
+            </Field>
+          </div>
+
+          <Field className="flex flex-col items-center">
+            <p className="content text-center my-2 lg:my-4">
+              Please ensure all information provided is correct before
+              submitting. After submitting, all contacts will receive email
+              confirmation for your event
+            </p>
+            <Button
+              type="submit"
+              disabled={isSubmitting || !isFormComplete}
+              title={
+                !isFormComplete
+                  ? "Please fill in all required fields"
+                  : undefined
+              }
+              className="!w-fit"
+            >
+              {isSubmitting ? "Submitting..." : "Submit Event"}
+            </Button>
           </Field>
 
           <Field data-invalid={!!errors.contactTwoEmail}>

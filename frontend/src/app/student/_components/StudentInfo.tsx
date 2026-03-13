@@ -162,122 +162,88 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
   );
   if (!isEditing) {
     return (
-      <div className="bg-white rounded-lg py-16 px-20 w-full flex flex-col">
-        <div className="self-center gap-6 flex justify-between mb-16">
-          <div className="text-[32px] font-semibold text-[#09294E]">
-            Edit Profile Information
-          </div>
+      <main className="bg-white rounded-lg py-6 px-6 sm:px-10 w-full flex flex-col">
+        <div className="self-center gap-6 flex justify-around mr-4 sm:mr-0 sm:mt-4">
+          <h1 className="page-title">Edit Profile Information</h1>
           <button
             onClick={() => setIsEditing(true)}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            className="bg-transparent"
             aria-label="Edit profile"
           >
-            <Pencil className="w-6 h-6 text-[#09294E] cursor-pointer" />
+            <Pencil className=" content cursor-pointer" />
           </button>
         </div>
 
-        <div className="sm:grid sm:grid-cols-2 sm:gap-x-12 sm:gap-y-8">
-          <div>
-            <div className="text-[#09294E] font-semibold text-lg mb-2">
-              First Name
-            </div>
-            <div className="text-gray-600 text-base border-b border-gray-300 pb-2">
-              {displayData.first_name}
-            </div>
+        <section className="my-4 sm:my-8 sm:grid sm:grid-cols-2 sm:gap-y-2 sm:gap-x-12">
+          <div className="sm:mt-0 sm:border-b">
+            <p className="subhead-content pb-1">First Name</p>
+            <p className="content">{displayData.first_name}</p>
           </div>
 
-          <div>
-            <div className="text-[#09294E] font-semibold text-lg mb-2 mt-5 sm:mt-0">
-              Last Name
-            </div>
-            <div className="text-gray-600 text-base border-b border-gray-300 pb-2">
-              {displayData.last_name}
-            </div>
+          <div className="mt-3 sm:mt-0 sm:border-b">
+            <p className="subhead-content pb-1">Last Name</p>
+            <p className="content">{displayData.last_name}</p>
           </div>
 
-          <div>
-            <div className="text-[#09294E] font-semibold text-lg mb-2 mt-5 sm:mt-0">
-              Phone Number
-            </div>
-            <div className="text-gray-600 text-base border-b border-gray-300 pb-2">
-              {displayData.phone_number}
-            </div>
+          <div className="mt-3 sm:mt-6 sm:border-b">
+            <p className="subhead-content pb-1">Phone Number</p>
+            <p className="content">{displayData.phone_number}</p>
           </div>
 
-          <div>
-            <div className="text-[#09294E] font-semibold text-lg mb-2 mt-5 sm:mt-0">
-              Contact Method
-            </div>
-            <div className="text-gray-600 text-base border-b border-gray-300 pb-2">
+          <div className="mt-3 sm:mt-6 sm:border-b">
+            <p className="subhead-content pb-1">Contact Method</p>
+            <p className="content">
               {displayData.contact_preference
                 ? displayData.contact_preference.charAt(0).toUpperCase() +
                   displayData.contact_preference.slice(1)
                 : "Not set"}
-            </div>
+            </p>
           </div>
-        </div>
-        <div className="text-[#09294E] font-semibold text-lg mb-2 mt-5 sm:mt-0 pt-4">
-          {school_year} Address
-        </div>
+          <div className="mt-3 sm:mt-6 sm:border-b">
+            <p className="subhead-content pb-1">{school_year} Address</p>
+            <p className="content">
+              {initialData.residence?.location.formatted_address}
+            </p>
+          </div>
+        </section>
 
-        <div className="text-gray-600 text-base border-b border-gray-300 pb-2">
-          {initialData.residence?.location.formatted_address}
-        </div>
-
-        <div className="mt-16 flex justify-center">
+        <section className="sm:mb-4 flex justify-center">
           <Button variant="default">Log Out</Button>
-        </div>
-      </div>
+        </section>
+      </main>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded-lg p-12 w-full">
+    <form onSubmit={handleSubmit} className="bg-white rounded-lg w-full p-6">
       <div className="flex justify-between items-center mb-6">
-        <div className="text-[32px] font-semibold text-[#09294E]">
-          Edit Profile Information
-        </div>
-        <button
-          onClick={() => setIsEditing(true)}
-          className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-          aria-label="Edit profile"
-        >
-          <Pencil className="w-6 h-6 text-[#09294E]" />
-        </button>
+        <div className="page-title">Edit Profile Information</div>
       </div>
       <FieldGroup>
-        <FieldSet>
-          <div className="grid grid-cols-2 gap-x-12 gap-y-6">
-            <div>
-              <div className="text-[#09294E] font-semibold text-lg mb-2">
-                First Name
+        <FieldSet className="rounded-lg w-full flex flex-col sm:py-4 sm:px-6">
+          <section className="sm:grid sm:grid-cols-2 sm:gap-x-12 sm:gap-y-8">
+            <div className="grid grid-cols-2">
+              <div>
+                <p className="subhead-content mb-2">First Name</p>
+                <p className="content pb-2">{displayData.first_name}</p>
               </div>
-              <div className="text-gray-600 text-base border-b border-gray-300 pb-2">
-                {displayData.first_name}
+
+              <div>
+                <p className="subhead-content mb-2">Last Name</p>
+                <div className="content pb-2">{displayData.last_name}</div>
               </div>
+            </div>
+            <div className="flex flex-row gap-2">
+              <TriangleAlert className="w-4 h-4 content" />
+              <p className="content-sub italic flex-1">
+                Your name is associated with your Onyen
+              </p>
             </div>
 
-            <div>
-              <div className="text-[#09294E] font-semibold text-lg mb-2 mt-5 sm:mt-0">
-                Last Name
-              </div>
-              <div className="text-gray-600 text-base border-b border-gray-300 pb-2">
-                {displayData.last_name}
-              </div>
-            </div>
-          </div>
-          <div className="flex flex-row gap-2">
-            <TriangleAlert />
-            <div className="text-gray-600 text-base italic flex-1">
-              Your name is associated with your Onyen
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-x-12 gap-y-6">
             <Field data-invalid={!!errors.phone_number}>
               <FieldLabel
                 htmlFor="phone-number"
-                className="text-[#09294E] font-semibold text-lg"
+                className="subhead-content mt-3 sm:mt-0"
               >
                 Phone Number
               </FieldLabel>
@@ -287,6 +253,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
                 value={formData.phone_number}
                 onChange={(e) => updateField("phone_number", e.target.value)}
                 aria-invalid={!!errors.phone_number}
+                className="content"
               />
               {errors.phone_number && (
                 <FieldError>{errors.phone_number}</FieldError>
@@ -296,7 +263,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
             <Field data-invalid={!!errors.contact_preference}>
               <FieldLabel
                 htmlFor="contact-preference"
-                className="text-[#09294E] font-semibold text-lg"
+                className="subhead-content mt-3 sm:mt-0"
               >
                 Contact Method
               </FieldLabel>
@@ -306,12 +273,16 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
                   updateField("contact_preference", value)
                 }
               >
-                <SelectTrigger id="contact-preference">
+                <SelectTrigger id="contact-preference" className="content">
                   <SelectValue placeholder="Select your preference" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="call">Call</SelectItem>
-                  <SelectItem value="text">Text</SelectItem>
+                  <SelectItem value="call" className="content">
+                    Call
+                  </SelectItem>
+                  <SelectItem value="text" className="content">
+                    Text
+                  </SelectItem>
                 </SelectContent>
               </Select>
               {errors.contact_preference && (
@@ -322,7 +293,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
               <Field data-invalid={!!errors.address}>
                 <FieldLabel
                   htmlFor="address"
-                  className="text-[#09294E] font-semibold text-lg mb-2 mt-5 sm:mt-0"
+                  className="subhead-content mt-3 sm:mt-0"
                 >
                   {school_year} Address
                 </FieldLabel>
@@ -331,43 +302,39 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
                   placeholder="123 Main St, Chapel Hill NC 27514"
                   value={formData.address}
                   onChange={(e) => updateField("address", e.target.value)}
-                  className="border-gray-300"
+                  className="content"
                 />
                 {errors.address && <FieldError>{errors.address}</FieldError>}
               </Field>
             )}
             {validAddress && (
               <div className="col-span-2">
-                <div className="text-[#09294E] font-semibold text-lg mb-2">
+                <p className="subhead-content mt-3 sm:mt-0">
                   {school_year} Address
-                </div>
-                <div className="text-gray-600 text-base pb-3">
+                </p>
+                <p className="content">
                   {initialData.residence?.location.formatted_address}
-                </div>
+                </p>
 
-                <div className="flex flex-row gap-4">
+                <div className="flex flex-row">
                   <TriangleAlert />
-                  <div className="text-gray-600 text-base italic flex-1">
+                  <p className="content-sub italic flex-1">
                     You cannot change your address until {change_date}. If you
                     are experiencing hardship, contact [email] for changes
-                  </div>
+                  </p>
                 </div>
               </div>
             )}
-          </div>
+          </section>
 
           {errors.submit && (
-            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg ">
+            <div className="p-4 bg-red-50 border border-red-200 rounded-md text-center">
               <FieldError className="text-red-600">{errors.submit}</FieldError>
             </div>
           )}
 
-          <div className="mt-8 flex justify-center gap-4">
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-              className="bg-[#09294E] text-white px-8 py-2 rounded-lg hover:bg-[#0a1f38] "
-            >
+          <div className="flex justify-center gap-4">
+            <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Saving..." : "Save"}
             </Button>
           </div>
