@@ -7,6 +7,30 @@ from httpx import AsyncClient
 from src.modules.incident.incident_model import IncidentDto, IncidentSeverity
 from test.modules.incident.incident_utils import IncidentTestUtils
 from test.utils.http.assertions import assert_res_paginated
+from test.utils.http.test_templates import generate_filter_sort_tests
+
+test_incident_sort, test_incident_filter = generate_filter_sort_tests(
+    "/api/incidents",
+    IncidentDto,
+    sort_fields=[
+        "id",
+        "incident_datetime",
+        "severity",
+        "description",
+        "location.id",
+        "location.google_place_id",
+        "location.formatted_address",
+        "location.hold_expiration",
+    ],
+    filter_cases=[
+        ("id", 0),
+        ("severity", "complaint"),
+        ("description_contains", "xyz"),
+        ("location.id", 0),
+        ("location.google_place_id", "nonexistent"),
+        ("location.formatted_address_contains", "xyz"),
+    ],
+)
 
 
 class TestIncidentListPagination:
@@ -88,9 +112,9 @@ class TestIncidentListSorting:
             "/api/incidents?sort_by=incident_datetime&sort_order=asc"
         )
         paginated = assert_res_paginated(response, IncidentDto, total_records=3)
-        assert paginated.items[0].id == incident1.id
-        assert paginated.items[1].id == incident2.id
-        assert paginated.items[2].id == incident3.id
+        self.incident_utils.assert_matches(paginated.items[0], incident1.to_dto())
+        self.incident_utils.assert_matches(paginated.items[1], incident2.to_dto())
+        self.incident_utils.assert_matches(paginated.items[2], incident3.to_dto())
 
     @pytest.mark.asyncio
     async def test_sort_by_incident_datetime_desc(self):
@@ -108,9 +132,9 @@ class TestIncidentListSorting:
             "/api/incidents?sort_by=incident_datetime&sort_order=desc"
         )
         paginated = assert_res_paginated(response, IncidentDto, total_records=3)
-        assert paginated.items[0].id == incident3.id
-        assert paginated.items[1].id == incident2.id
-        assert paginated.items[2].id == incident1.id
+        self.incident_utils.assert_matches(paginated.items[0], incident3.to_dto())
+        self.incident_utils.assert_matches(paginated.items[1], incident2.to_dto())
+        self.incident_utils.assert_matches(paginated.items[2], incident1.to_dto())
 
     @pytest.mark.asyncio
     async def test_sort_by_severity(self):
@@ -147,8 +171,9 @@ class TestIncidentListFiltering:
             f"/api/incidents?severity={IncidentSeverity.COMPLAINT.value}"
         )
         paginated = assert_res_paginated(response, IncidentDto, total_records=2)
-        returned_ids = {item.id for item in paginated.items}
-        assert returned_ids == {incident1.id, incident3.id}
+        returned = {item.id: item for item in paginated.items}
+        self.incident_utils.assert_matches(returned[incident1.id], incident1.to_dto())
+        self.incident_utils.assert_matches(returned[incident3.id], incident3.to_dto())
 
     @pytest.mark.asyncio
     async def test_filter_by_location_id(self):
@@ -161,8 +186,9 @@ class TestIncidentListFiltering:
             f"/api/incidents?location.id={incident1.location_id}"
         )
         paginated = assert_res_paginated(response, IncidentDto, total_records=2)
-        returned_ids = {item.id for item in paginated.items}
-        assert returned_ids == {incident1.id, incident3.id}
+        returned = {item.id: item for item in paginated.items}
+        self.incident_utils.assert_matches(returned[incident1.id], incident1.to_dto())
+        self.incident_utils.assert_matches(returned[incident3.id], incident3.to_dto())
 
 
 class TestIncidentListNestedFiltering:
@@ -189,8 +215,9 @@ class TestIncidentListNestedFiltering:
             f"/api/incidents?location.google_place_id={loc1.google_place_id}"
         )
         paginated = assert_res_paginated(response, IncidentDto, total_records=2)
-        returned_ids = {item.id for item in paginated.items}
-        assert returned_ids == {incident1.id, incident3.id}
+        returned = {item.id: item for item in paginated.items}
+        self.incident_utils.assert_matches(returned[incident1.id], incident1.to_dto())
+        self.incident_utils.assert_matches(returned[incident3.id], incident3.to_dto())
 
     @pytest.mark.asyncio
     async def test_filter_by_location_formatted_address_contains(self):
@@ -208,4 +235,4 @@ class TestIncidentListNestedFiltering:
             "/api/incidents?location.formatted_address_contains=Main"
         )
         paginated = assert_res_paginated(response, IncidentDto, total_records=1)
-        assert paginated.items[0].id == incident1.id
+        self.incident_utils.assert_matches(paginated.items[0], incident1.to_dto())

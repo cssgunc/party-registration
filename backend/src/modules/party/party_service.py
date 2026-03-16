@@ -269,6 +269,8 @@ class PartyService:
             "contact_one.phone_number": StudentEntity.phone_number,
             "contact_one.onyen": AccountEntity.onyen,
             "contact_one.pid": AccountEntity.pid,
+            "contact_one.contact_preference": StudentEntity.contact_preference,
+            "contact_one.last_registered": StudentEntity.last_registered,
             "contact_two.email": PartyEntity.contact_two_email,
             "contact_two.first_name": PartyEntity.contact_two_first_name,
             "contact_two.last_name": PartyEntity.contact_two_last_name,

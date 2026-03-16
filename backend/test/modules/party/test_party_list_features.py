@@ -16,7 +16,40 @@ from httpx import AsyncClient
 from src.modules.party.party_model import PartyDto
 from test.modules.party.party_utils import PartyTestUtils, get_valid_party_datetime
 from test.utils.http.assertions import assert_res_paginated
+from test.utils.http.test_templates import generate_filter_sort_tests
 from test.utils.pagination_test_utils import assert_basic_pagination, assert_sorting
+
+test_party_sort, test_party_filter = generate_filter_sort_tests(
+    "/api/parties",
+    PartyDto,
+    sort_fields=[
+        "id",
+        "party_datetime",
+        "status",
+        "contact_one.id",
+        "contact_one.first_name",
+        "contact_one.last_name",
+        "contact_one.email",
+        "contact_one.phone_number",
+        "contact_two.email",
+        "contact_two.first_name",
+        "contact_two.last_name",
+        "location.id",
+        "location.google_place_id",
+        "location.formatted_address",
+        "location.hold_expiration",
+    ],
+    filter_cases=[
+        ("id", 0),
+        ("status", "pending"),
+        ("location.id", 0),
+        ("location.google_place_id", "nonexistent"),
+        ("location.formatted_address_contains", "xyz"),
+        ("contact_one.id", 0),
+        ("contact_one.first_name_contains", "xyz"),
+        ("contact_two.email_contains", "xyz"),
+    ],
+)
 
 
 class TestPartyListPagination:
@@ -141,9 +174,9 @@ class TestPartyListSorting:
         paginated = assert_res_paginated(response, PartyDto, total_records=3)
 
         # Check order
-        assert paginated.items[0].id == party1.id
-        assert paginated.items[1].id == party2.id
-        assert paginated.items[2].id == party3.id
+        self.party_utils.assert_matches(paginated.items[0], party1)
+        self.party_utils.assert_matches(paginated.items[1], party2)
+        self.party_utils.assert_matches(paginated.items[2], party3)
 
     @pytest.mark.asyncio
     async def test_list_parties_sort_by_datetime_desc(self):
@@ -161,9 +194,9 @@ class TestPartyListSorting:
         paginated = assert_res_paginated(response, PartyDto, total_records=3)
 
         # Check order (reversed)
-        assert paginated.items[0].id == party3.id
-        assert paginated.items[1].id == party2.id
-        assert paginated.items[2].id == party1.id
+        self.party_utils.assert_matches(paginated.items[0], party3)
+        self.party_utils.assert_matches(paginated.items[1], party2)
+        self.party_utils.assert_matches(paginated.items[2], party1)
 
     @pytest.mark.asyncio
     async def test_list_parties_sort_by_id(self):
@@ -427,7 +460,7 @@ class TestPartyListNestedFiltering:
 
         response = await self.admin_client.get("/api/parties?contact_one.first_name_contains=Ali")
         paginated = assert_res_paginated(response, PartyDto, total_records=1)
-        assert paginated.items[0].id == party1.id
+        self.party_utils.assert_matches(paginated.items[0], party1)
 
     @pytest.mark.asyncio
     async def test_sort_by_contact_one_last_name(self):
@@ -441,8 +474,8 @@ class TestPartyListNestedFiltering:
             "/api/parties?sort_by=contact_one.last_name&sort_order=asc"
         )
         paginated = assert_res_paginated(response, PartyDto, total_records=2)
-        assert paginated.items[0].id == party_a.id
-        assert paginated.items[1].id == party_z.id
+        self.party_utils.assert_matches(paginated.items[0], party_a)
+        self.party_utils.assert_matches(paginated.items[1], party_z)
 
     @pytest.mark.asyncio
     async def test_filter_by_contact_two_email(self):
@@ -452,7 +485,7 @@ class TestPartyListNestedFiltering:
 
         response = await self.admin_client.get("/api/parties?contact_two.email=unique@test.com")
         paginated = assert_res_paginated(response, PartyDto, total_records=1)
-        assert paginated.items[0].id == party1.id
+        self.party_utils.assert_matches(paginated.items[0], party1)
 
     @pytest.mark.asyncio
     async def test_filter_by_location_formatted_address_contains(self):
@@ -470,7 +503,7 @@ class TestPartyListNestedFiltering:
             "/api/parties?location.formatted_address_contains=Main"
         )
         paginated = assert_res_paginated(response, PartyDto, total_records=1)
-        assert paginated.items[0].id == party1.id
+        self.party_utils.assert_matches(paginated.items[0], party1)
 
     @pytest.mark.asyncio
     async def test_string_comparison_operator_returns_400(self):

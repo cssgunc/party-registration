@@ -27,7 +27,31 @@ from test.utils.http.assertions import (
     assert_res_success,
     assert_res_validation_error,
 )
-from test.utils.http.test_templates import generate_auth_required_tests
+from test.utils.http.test_templates import generate_auth_required_tests, generate_filter_sort_tests
+
+test_student_sort, test_student_filter = generate_filter_sort_tests(
+    "/api/students",
+    StudentDto,
+    sort_fields=[
+        "id",
+        "first_name",
+        "last_name",
+        "email",
+        "onyen",
+        "pid",
+        "phone_number",
+        "contact_preference",
+        "last_registered",
+    ],
+    filter_cases=[
+        ("id", 0),
+        ("first_name_contains", "xyz"),
+        ("last_name_contains", "xyz"),
+        ("email_contains", "xyz"),
+        ("contact_preference", "text"),
+        ("phone_number_contains", "555"),
+    ],
+)
 
 test_student_authentication = generate_auth_required_tests(
     ({"admin", "staff"}, "GET", "/api/students", None),

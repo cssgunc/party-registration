@@ -11,14 +11,16 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from fastapi import HTTPException, Request
+from fastapi import Request
 from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel, Field, ValidationError, field_validator
 from pydantic_core import ValidationError as PydanticValidationError
+from sqlalchemy import Enum as SAEnum
 from sqlalchemy import Select, asc, desc, func, inspect, select
 from sqlalchemy import String as SAString
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import DeclarativeMeta
+from src.core.exceptions import BadRequestException
 
 
 class PaginatedResponse[T](BaseModel):
@@ -216,7 +218,7 @@ def apply_sorting[ModelType: DeclarativeMeta](
         Modified query with ORDER BY applied
 
     Raises:
-        HTTPException: If attempting to sort on a disallowed or non-existent field
+        BadRequestException: If attempting to sort on a disallowed or non-existent field
     """
     if not sort_params:
         return query
@@ -224,22 +226,13 @@ def apply_sorting[ModelType: DeclarativeMeta](
     for sort_param in sort_params:
         if nested_field_columns and sort_param.field in nested_field_columns:
             if allowed_fields and sort_param.field not in allowed_fields:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Sorting on field '{sort_param.field}' is not allowed",
-                )
+                raise BadRequestException(f"Sorting on field '{sort_param.field}' is not allowed")
             field = nested_field_columns[sort_param.field]
         else:
             if not hasattr(model, sort_param.field):
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Field '{sort_param.field}' does not exist on model",
-                )
+                raise BadRequestException(f"Field '{sort_param.field}' does not exist on model")
             if allowed_fields and sort_param.field not in allowed_fields:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Sorting on field '{sort_param.field}' is not allowed",
-                )
+                raise BadRequestException(f"Sorting on field '{sort_param.field}' is not allowed")
             field = getattr(model, sort_param.field)
 
         # Apply sort order
@@ -265,26 +258,23 @@ def _convert_enum_value(field_column: Any, value: Any) -> Any:
 
 
 def _validate_operator_for_field_type(field: Any, operator: FilterOperator) -> None:
-    """Raise HTTPException 400 if operator is incompatible with the field's column type."""
+    """Raise BadRequestException if operator is incompatible with the field's column type."""
     if not hasattr(field, "type"):
         return
     is_string = isinstance(field.type, SAString)
+    is_enum = isinstance(field.type, SAEnum)
     comparison_ops = {
         FilterOperator.GREATER_THAN,
         FilterOperator.GREATER_THAN_OR_EQUAL,
         FilterOperator.LESS_THAN,
         FilterOperator.LESS_THAN_OR_EQUAL,
     }
-    if is_string and operator in comparison_ops:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Operator '{operator.value}' is not supported for string fields",
+    if (is_string or is_enum) and operator in comparison_ops:
+        raise BadRequestException(
+            f"Operator '{operator.value}' is not supported for string/enum fields"
         )
     if not is_string and operator == FilterOperator.CONTAINS:
-        raise HTTPException(
-            status_code=400,
-            detail="Operator 'contains' is only supported for string fields",
-        )
+        raise BadRequestException("Operator 'contains' is only supported for string fields")
 
 
 def apply_filters[ModelType: DeclarativeMeta](
@@ -308,7 +298,7 @@ def apply_filters[ModelType: DeclarativeMeta](
         Modified query with WHERE clauses applied
 
     Raises:
-        HTTPException: If attempting to filter on a disallowed or non-existent field
+        BadRequestException: If attempting to filter on a disallowed or non-existent field
     """
     if not filter_params:
         return query
@@ -316,21 +306,16 @@ def apply_filters[ModelType: DeclarativeMeta](
     for filter_param in filter_params:
         if nested_field_columns and filter_param.field in nested_field_columns:
             if allowed_fields and filter_param.field not in allowed_fields:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Filtering on field '{filter_param.field}' is not allowed",
+                raise BadRequestException(
+                    f"Filtering on field '{filter_param.field}' is not allowed"
                 )
             field = nested_field_columns[filter_param.field]
         else:
             if not hasattr(model, filter_param.field):
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Field '{filter_param.field}' does not exist on model",
-                )
+                raise BadRequestException(f"Field '{filter_param.field}' does not exist on model")
             if allowed_fields and filter_param.field not in allowed_fields:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Filtering on field '{filter_param.field}' is not allowed",
+                raise BadRequestException(
+                    f"Filtering on field '{filter_param.field}' is not allowed"
                 )
             field = getattr(model, filter_param.field)
 
@@ -410,7 +395,9 @@ def apply_query_params[ModelType: DeclarativeMeta](
         # Get the primary key column(s) from the model's mapper
         mapper = inspect(model)
         if mapper is None:
-            raise ValueError(f"Cannot inspect model {model.__name__}: not a valid SQLAlchemy model")
+            raise BadRequestException(
+                f"Cannot inspect model {model.__name__}: not a valid SQLAlchemy model"
+            )
 
         primary_key_columns = list(mapper.primary_key)
         if primary_key_columns:
