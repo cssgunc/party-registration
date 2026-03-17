@@ -1,5 +1,8 @@
 import { AccountRole } from "@/lib/api/account/account.types";
-import { exchangeToken } from "@/lib/api/auth/auth.service";
+import {
+  exchangeToken,
+  getSessionCookieName,
+} from "@/lib/api/auth/auth.service";
 import { identityProvider, postAssert, serviceProvider } from "@/lib/saml";
 import { AxiosError } from "axios";
 import { encode } from "next-auth/jwt";
@@ -30,12 +33,6 @@ const ACCOUNT_ROLES: AccountRole[] = ["student", "staff", "admin"];
 
 function isAccountRole(value: unknown): value is AccountRole {
   return ACCOUNT_ROLES.includes(value as AccountRole);
-}
-
-function getSessionCookieName() {
-  return process.env.NEXTAUTH_URL?.startsWith("https://")
-    ? "__Secure-next-auth.session-token"
-    : "next-auth.session-token";
 }
 
 /**

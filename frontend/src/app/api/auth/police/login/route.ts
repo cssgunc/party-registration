@@ -1,13 +1,6 @@
-import { policeLogin } from "@/lib/api/auth/auth.service";
+import { getSessionCookieName, policeLogin } from "@/lib/api/auth/auth.service";
 import { encode } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
-
-// The cookie name NextAuth uses depends on whether the site is served over HTTPS.
-function getSessionCookieName() {
-  return process.env.NEXTAUTH_URL?.startsWith("https://")
-    ? "__Secure-next-auth.session-token"
-    : "next-auth.session-token";
-}
 
 export async function POST(req: NextRequest) {
   const { email, password } = (await req.json()) as {

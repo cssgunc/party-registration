@@ -1,16 +1,21 @@
-import { refreshToken as exchangeRefreshToken } from "@/lib/api/auth/auth.service";
+import {
+  refreshToken as exchangeRefreshToken,
+  getSessionCookieName,
+} from "@/lib/api/auth/auth.service";
 import { encode } from "next-auth/jwt";
 import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
 
-function getSessionCookieName() {
-  return process.env.NEXTAUTH_URL?.startsWith("https://")
-    ? "__Secure-next-auth.session-token"
-    : "next-auth.session-token";
-}
-
-// The refresh_token cookie is path-restricted to this route, so the browser
-// only sends it here and nowhere else.
+/**
+ * Refreshes an expired access token. Called by the frontend's axios
+ * interceptor when the current access token has expired but the
+ * longer-lived refresh token is still valid.
+ *
+ * The refresh_token cookie is path-restricted to this route, so the
+ * browser only sends it here and nowhere else. On success, a new
+ * session JWT with the fresh access token is written back to the
+ * session cookie.
+ */
 export async function POST(req: NextRequest) {
   const refreshToken = req.cookies.get("refresh_token")?.value;
 

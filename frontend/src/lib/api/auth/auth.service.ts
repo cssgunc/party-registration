@@ -15,6 +15,12 @@ function internalHeaders() {
   return { "X-Internal-Secret": process.env.INTERNAL_API_SECRET };
 }
 
+export function getSessionCookieName() {
+  return process.env.NEXTAUTH_URL?.startsWith("https://")
+    ? "__Secure-next-auth.session-token"
+    : "next-auth.session-token";
+}
+
 export async function exchangeToken(
   data: ExchangeTokenRequest
 ): Promise<ExchangeTokenResponse> {
