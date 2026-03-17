@@ -1,4 +1,4 @@
-import axios from "axios";
+import { refreshToken as exchangeRefreshToken } from "@/lib/api/auth/auth.service";
 import { encode } from "next-auth/jwt";
 import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
@@ -31,20 +31,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Session expired" }, { status: 401 });
   }
 
-  const base =
-    process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api";
-
   try {
-    const resp = await axios.post(
-      `${base}/auth/refresh`,
-      { refresh_token: refreshToken },
-      { headers: { "X-Internal-Secret": process.env.INTERNAL_API_SECRET } }
-    );
-
-    const data = resp.data as {
-      access_token: string;
-      access_token_expires: string;
-    };
+    const data = await exchangeRefreshToken({
+      refresh_token: refreshToken,
+    });
 
     const accessTokenExpires = new Date(data.access_token_expires).getTime();
     const refreshTokenExpires = token.refreshTokenExpires as number;

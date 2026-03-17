@@ -1,5 +1,6 @@
+import { exchangeToken } from "@/lib/api/auth/auth.service";
 import { identityProvider, postAssert, serviceProvider } from "@/lib/saml";
-import axios, { AxiosError } from "axios";
+import { AxiosError } from "axios";
 import { encode } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -112,22 +113,16 @@ export async function POST(req: NextRequest) {
   }
 
   // Exchange the verified identity for backend tokens
-  const base =
-    process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api";
-
-  let tokens: {
-    access_token: string;
-    access_token_expires: string;
-    refresh_token: string;
-    refresh_token_expires: string;
-  };
+  let tokens;
   try {
-    const resp = await axios.post(
-      `${base}/auth/exchange`,
-      { email, first_name: firstName, last_name: lastName, pid, onyen, role },
-      { headers: { "X-Internal-Secret": process.env.INTERNAL_API_SECRET } }
-    );
-    tokens = resp.data as typeof tokens;
+    tokens = await exchangeToken({
+      email,
+      first_name: firstName,
+      last_name: lastName,
+      pid,
+      onyen,
+      role,
+    });
   } catch (error) {
     const status = (error as AxiosError)?.response?.status;
     console.error("Backend token exchange failed:", error);
