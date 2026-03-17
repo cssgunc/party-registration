@@ -6,6 +6,9 @@
  * Attribute names mirror the university's real IdP (LDAP variables).
  * The application consumes: givenName, sn, uid (Onyen), pid, mail.
  *
+ * These accounts match frontend/shared/mock_data.json so that the
+ * SAML login flow produces identities the backend already recognises.
+ *
  * Roles (student, staff, admin) are assigned within the application,
  * NOT derived from the SAML assertion. The users below are grouped
  * by their *intended* test role for developer convenience.
@@ -24,90 +27,66 @@ $config = [
         // ── Students ────────────────────────────────────────────
 
         'student1:student1pass' => [
-            'uid'                  => ['adlov'],
-            'givenName'            => ['Ada'],
-            'sn'                   => ['Lovelace'],
-            'displayName'          => ['Ada Lovelace'],
-            'mail'                 => ['adlov@ad.unc.edu'],
-            'pid'                  => ['730100001'],
-            'eduPersonNickname'    => ['Ada'],
-            'uncPreferredSurname'  => ['Lovelace'],
+            'uid'                  => ['stevenmorrison'],
+            'givenName'            => ['Steven'],
+            'sn'                   => ['Morrison'],
+            'displayName'          => ['Steven Morrison'],
+            'mail'                 => ['stevenmorrison@unc.edu'],
+            'pid'                  => ['730523620'],
+            'eduPersonNickname'    => ['Steven'],
+            'uncPreferredSurname'  => ['Morrison'],
             'affiliation'          => ['student'],
         ],
 
         'student2:student2pass' => [
-            'uid'                  => ['altur'],
-            'givenName'            => ['Alan'],
-            'sn'                   => ['Turing'],
-            'displayName'          => ['Alan Turing'],
-            'mail'                 => ['altur@ad.unc.edu'],
-            'pid'                  => ['730100002'],
-            'eduPersonNickname'    => ['Alan'],
-            'uncPreferredSurname'  => ['Turing'],
+            'uid'                  => ['monicamalone'],
+            'givenName'            => ['Monica'],
+            'sn'                   => ['Malone'],
+            'displayName'          => ['Monica Malone'],
+            'mail'                 => ['monicamalone@unc.edu'],
+            'pid'                  => ['730871361'],
+            'eduPersonNickname'    => ['Monica'],
+            'uncPreferredSurname'  => ['Malone'],
             'affiliation'          => ['student'],
         ],
 
         'student3:student3pass' => [
-            'uid'                  => ['grhop'],
-            'givenName'            => ['Grace'],
-            'sn'                   => ['Hopper'],
-            'displayName'          => ['Grace Hopper'],
-            'mail'                 => ['grhop@ad.unc.edu'],
-            'pid'                  => ['730100003'],
-            'eduPersonNickname'    => ['Grace'],
-            'uncPreferredSurname'  => ['Hopper'],
+            'uid'                  => ['lauragonzales'],
+            'givenName'            => ['Laura'],
+            'sn'                   => ['Gonzales'],
+            'displayName'          => ['Laura Gonzales'],
+            'mail'                 => ['lauragonzales@unc.edu'],
+            'pid'                  => ['730925227'],
+            'eduPersonNickname'    => ['Laura'],
+            'uncPreferredSurname'  => ['Gonzales'],
             'affiliation'          => ['student'],
         ],
 
         // ── Staff ───────────────────────────────────────────────
 
         'staff1:staff1pass' => [
-            'uid'                  => ['macur'],
-            'givenName'            => ['Marie'],
-            'sn'                   => ['Curie'],
-            'displayName'          => ['Marie Curie'],
-            'mail'                 => ['macur@ad.unc.edu'],
-            'pid'                  => ['730200001'],
-            'eduPersonNickname'    => ['Marie'],
-            'uncPreferredSurname'  => ['Curie'],
-            'affiliation'          => ['staff'],
-        ],
-
-        'staff2:staff2pass' => [
-            'uid'                  => ['nites'],
-            'givenName'            => ['Nikola'],
-            'sn'                   => ['Tesla'],
-            'displayName'          => ['Nikola Tesla'],
-            'mail'                 => ['nites@ad.unc.edu'],
-            'pid'                  => ['730200002'],
-            'eduPersonNickname'    => ['Nikola'],
-            'uncPreferredSurname'  => ['Tesla'],
+            'uid'                  => ['janesmith'],
+            'givenName'            => ['Jane'],
+            'sn'                   => ['Smith'],
+            'displayName'          => ['Jane Smith'],
+            'mail'                 => ['janesmith@unc.edu'],
+            'pid'                  => ['730737926'],
+            'eduPersonNickname'    => ['Jane'],
+            'uncPreferredSurname'  => ['Smith'],
             'affiliation'          => ['staff'],
         ],
 
         // ── Admins ──────────────────────────────────────────────
 
         'admin1:admin1pass' => [
-            'uid'                  => ['alein'],
-            'givenName'            => ['Albert'],
-            'sn'                   => ['Einstein'],
-            'displayName'          => ['Albert Einstein'],
-            'mail'                 => ['alein@ad.unc.edu'],
-            'pid'                  => ['730300001'],
-            'eduPersonNickname'    => ['Albert'],
-            'uncPreferredSurname'  => ['Einstein'],
-            'affiliation'          => ['staff'],
-        ],
-
-        'admin2:admin2pass' => [
-            'uid'                  => ['rofra'],
-            'givenName'            => ['Rosalind'],
-            'sn'                   => ['Franklin'],
-            'displayName'          => ['Rosalind Franklin'],
-            'mail'                 => ['rofra@ad.unc.edu'],
-            'pid'                  => ['730300002'],
-            'eduPersonNickname'    => ['Rosalind'],
-            'uncPreferredSurname'  => ['Franklin'],
+            'uid'                  => ['johndoe'],
+            'givenName'            => ['John'],
+            'sn'                   => ['Doe'],
+            'displayName'          => ['John Doe'],
+            'mail'                 => ['johndoe@unc.edu'],
+            'pid'                  => ['730737345'],
+            'eduPersonNickname'    => ['John'],
+            'uncPreferredSurname'  => ['Doe'],
             'affiliation'          => ['staff'],
         ],
     ],
