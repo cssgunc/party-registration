@@ -1,3 +1,4 @@
+import { AccountRole } from "@/lib/api/account/account.types";
 import { exchangeToken } from "@/lib/api/auth/auth.service";
 import { identityProvider, postAssert, serviceProvider } from "@/lib/saml";
 import { AxiosError } from "axios";
@@ -25,11 +26,10 @@ function createLoginRequestUrl(relayState?: string): Promise<string> {
   });
 }
 
-const SAML_ROLES = ["student", "staff", "admin"] as const;
-type SamlRole = (typeof SAML_ROLES)[number];
+const ACCOUNT_ROLES: AccountRole[] = ["student", "staff", "admin"];
 
-function isSamlRole(value: unknown): value is SamlRole {
-  return SAML_ROLES.includes(value as SamlRole);
+function isAccountRole(value: unknown): value is AccountRole {
+  return ACCOUNT_ROLES.includes(value as AccountRole);
 }
 
 function getSessionCookieName() {
@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
 
   const relayState: SamlRelayState = {};
   if (callbackUrl) relayState.callbackUrl = callbackUrl;
-  if (isSamlRole(role)) relayState.role = role;
+  if (isAccountRole(role)) relayState.role = role;
 
   const encodedRelayState =
     Object.keys(relayState).length > 0 ? JSON.stringify(relayState) : undefined;
@@ -67,13 +67,13 @@ export async function POST(req: NextRequest) {
 
   // Parse relay state passed back by the IdP unchanged
   let callbackUrl = "/";
-  let role: SamlRole | undefined;
+  let role: AccountRole | undefined;
   const rawRelayState = body.RelayState as string | undefined;
   if (rawRelayState) {
     try {
       const relayState = JSON.parse(rawRelayState) as SamlRelayState;
       if (relayState.callbackUrl) callbackUrl = relayState.callbackUrl;
-      if (isSamlRole(relayState.role)) role = relayState.role;
+      if (isAccountRole(relayState.role)) role = relayState.role;
     } catch {
       console.error("Failed to parse SAML RelayState:", rawRelayState);
     }
