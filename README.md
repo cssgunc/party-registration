@@ -112,7 +112,19 @@ The development IdP certificate (`SAML_IDP_CERT`) is already populated in `front
 
 - [https://github.com/kristophjunge/docker-test-saml-idp/blob/master/config/simplesamlphp/server.crt](https://github.com/kristophjunge/docker-test-saml-idp/blob/master/config/simplesamlphp/server.crt)
 
-Default credentials for the example IdP: **username** `user1`, **password** `user1pass`.
+### Dev IdP Test Accounts
+
+The mock IdP users are defined in `.devcontainer/saml-idp/authsources.php` and match the accounts in `frontend/shared/mock_data.json`. Credentials follow the pattern `<username>:<username>pass`.
+
+| Credential                  | Name            | Role    | Email                  |
+| --------------------------- | --------------- | ------- | ---------------------- |
+| `student1` / `student1pass` | Steven Morrison | student | stevenmorrison@unc.edu |
+| `student2` / `student2pass` | Monica Malone   | student | monicamalone@unc.edu   |
+| `student3` / `student3pass` | Laura Gonzales  | student | lauragonzales@unc.edu  |
+| `staff1` / `staff1pass`     | Jane Smith      | staff   | janesmith@unc.edu      |
+| `admin1` / `admin1pass`     | John Doe        | admin   | johndoe@unc.edu        |
+
+For police login, use the credentials in `frontend/shared/mock_data.json` (`police@example.com` / `securepassword`) via the separate police login form.
 
 ## Running Backend Tests
 
