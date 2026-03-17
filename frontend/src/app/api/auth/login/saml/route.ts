@@ -38,6 +38,18 @@ function getSessionCookieName() {
     : "next-auth.session-token";
 }
 
+/**
+ * Initiates the SAML login flow. Called by the frontend (e.g. a "Sign in"
+ * link) to redirect the user to the Identity Provider (IdP) for
+ * authentication.
+ *
+ * Query params:
+ *  - callbackUrl: where to send the user after login completes
+ *  - role: the account role to log in as ("student", "staff", "admin")
+ *
+ * Both values are round-tripped through the SAML RelayState so they
+ * survive the redirect to the IdP and back.
+ */
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const callbackUrl = searchParams.get("callbackUrl") ?? undefined;
@@ -54,6 +66,18 @@ export async function GET(req: NextRequest) {
   return NextResponse.redirect(loginUrl);
 }
 
+/**
+ * Assertion Consumer Service (ACS) endpoint. Called by the IdP — not by
+ * our own frontend — after the user authenticates. The IdP POSTs a signed
+ * SAML assertion containing the user's identity attributes.
+ *
+ * This handler:
+ *  1. Validates the SAML assertion signature
+ *  2. Extracts identity attributes (email, name, PID, Onyen)
+ *  3. Exchanges them with the backend for access/refresh tokens
+ *  4. Encodes a NextAuth session JWT and sets session + refresh cookies
+ *  5. Redirects the user to the original callbackUrl
+ */
 export async function POST(req: NextRequest) {
   const formData = await req.formData();
   const body = Object.fromEntries(formData) as Record<string, unknown>;
