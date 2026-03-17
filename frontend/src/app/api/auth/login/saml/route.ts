@@ -1,11 +1,7 @@
 import { AccountRole } from "@/lib/api/account/account.types";
-import {
-  exchangeToken,
-  getSessionCookieName,
-} from "@/lib/api/auth/auth.service";
+import { exchangeToken, setAuthCookies } from "@/lib/api/auth/auth.service";
 import { identityProvider, postAssert, serviceProvider } from "@/lib/saml";
 import { AxiosError } from "axios";
-import { encode } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
 
 interface SamlRelayState {
@@ -150,50 +146,18 @@ export async function POST(req: NextRequest) {
     return errorUrl(status === 403 ? "AccessDenied" : "ExchangeFailed");
   }
 
-  const accessTokenExpires = new Date(tokens.access_token_expires).getTime();
-  const refreshTokenExpires = new Date(tokens.refresh_token_expires).getTime();
-  const refreshMaxAge = Math.floor((refreshTokenExpires - Date.now()) / 1000);
-  const isSecure = process.env.NEXTAUTH_URL?.startsWith("https://");
-
-  // Encode the NextAuth session JWT — identity + access token, no refresh token
-  const sessionToken = await encode({
-    token: {
-      sub: samlUser.name_id,
-      id: samlUser.name_id,
-      email,
-      name: `${firstName} ${lastName}`.trim(),
-      firstName,
-      lastName,
-      onyen,
-      pid,
-      role,
-      accessToken: tokens.access_token,
-      accessTokenExpires,
-      refreshTokenExpires,
-    },
-    secret: process.env.NEXTAUTH_SECRET!,
-    maxAge: refreshMaxAge,
-  });
-
   const res = NextResponse.redirect(new URL(callbackUrl, origin));
 
-  // Session cookie — carries identity and the short-lived access token
-  res.cookies.set(getSessionCookieName(), sessionToken, {
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-    maxAge: refreshMaxAge,
-    secure: !!isSecure,
-  });
-
-  // Refresh token cookie — path-restricted so the browser can only send it
-  // to /api/auth/token/refresh and no other endpoint
-  res.cookies.set("refresh_token", tokens.refresh_token, {
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/api/auth/token/refresh",
-    maxAge: refreshMaxAge,
-    secure: !!isSecure,
+  await setAuthCookies(res, tokens, {
+    sub: samlUser.name_id,
+    id: samlUser.name_id,
+    email,
+    name: `${firstName} ${lastName}`.trim(),
+    firstName,
+    lastName,
+    onyen,
+    pid,
+    role,
   });
 
   return res;
