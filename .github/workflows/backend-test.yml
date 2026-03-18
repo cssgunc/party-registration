@@ -60,6 +60,9 @@ jobs:
           MSSQL_DRIVER: ODBC Driver 18 for SQL Server
           MSSQL_TRUST_SERVER_CERTIFICATE: "yes"
           GOOGLE_MAPS_API_KEY: "test_api_key_not_used"
+          JWT_SECRET_KEY: "test-jwt-secret-for-ci"
+          REFRESH_TOKEN_SECRET_KEY: "test-refresh-secret-for-ci"
+          INTERNAL_API_SECRET: "test-internal-secret-for-ci"
         run: PYTHONPATH=backend python -m script.create_test_db
 
       - name: Run pytest
@@ -73,6 +76,9 @@ jobs:
           MSSQL_DATABASE: ocsl_test
           MSSQL_DRIVER: ODBC Driver 18 for SQL Server
           MSSQL_TRUST_SERVER_CERTIFICATE: "yes"
+          JWT_SECRET_KEY: "test-jwt-secret-for-ci"
+          REFRESH_TOKEN_SECRET_KEY: "test-refresh-secret-for-ci"
+          INTERNAL_API_SECRET: "test-internal-secret-for-ci"
 
       - name: Publish Test Results
         uses: EnricoMi/publish-unit-test-result-action@v2
