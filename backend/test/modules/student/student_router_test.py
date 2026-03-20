@@ -629,20 +629,12 @@ class TestStudentResidenceRouter:
     gmaps_utils: GmapsMockUtils
 
     @pytest_asyncio.fixture
-    async def current_student(self) -> StudentEntity:
+    async def current_student(self, student_account: AccountEntity) -> StudentEntity:
         """Create a student for the current authenticated user with last_registered set."""
-        # The student_client from conftest uses id=3 for students
-        await self.account_utils.create_one(role=AccountRole.ADMIN.value)
-        await self.account_utils.create_one(role=AccountRole.STAFF.value)
-        account = await self.account_utils.create_one(role=AccountRole.STUDENT.value)
-        assert account.id == 3
-
-        # Create student with last_registered to allow residence selection
-        student = await self.student_utils.create_one(
-            account_id=account.id,
+        return await self.student_utils.create_one(
+            account_id=student_account.id,
             last_registered=datetime.now(UTC),
         )
-        return student
 
     @pytest.fixture(autouse=True)
     def _setup(
@@ -677,14 +669,11 @@ class TestStudentResidenceRouter:
         self.location_utils.assert_matches(data, location)
 
     @pytest.mark.asyncio
-    async def test_update_residence_without_party_smart(self):
+    async def test_update_residence_without_party_smart(self, student_account: AccountEntity):
         """Test that unregistered student CAN choose residence."""
         # Create student without last_registered
-        await self.account_utils.create_one(role=AccountRole.ADMIN.value)
-        await self.account_utils.create_one(role=AccountRole.STAFF.value)
-        account = await self.account_utils.create_one(role=AccountRole.STUDENT.value)
         await self.student_utils.create_one(
-            account_id=account.id,
+            account_id=student_account.id,
             last_registered=None,
         )
 
@@ -725,7 +714,7 @@ class TestStudentResidenceRouter:
         assert_res_failure(response, ResidenceAlreadyChosenException())
 
     @pytest.mark.asyncio
-    async def test_update_residence_new_academic_year(self):
+    async def test_update_residence_new_academic_year(self, student_account: AccountEntity):
         """Test that student can change residence in a new academic year."""
         # Create student with old residence from previous academic year
         # The key is: residence_chosen_date is from last year, but last_registered is current year
@@ -733,13 +722,9 @@ class TestStudentResidenceRouter:
         now = datetime.now(UTC)
         old_residence_date = self.student_utils.get_old_academic_year_date()
 
-        await self.account_utils.create_one(role=AccountRole.ADMIN.value)
-        await self.account_utils.create_one(role=AccountRole.STAFF.value)
-        account = await self.account_utils.create_one(role=AccountRole.STUDENT.value)
-
         location1 = await self.location_utils.create_one()
         student = await self.student_utils.create_one(
-            account_id=account.id,
+            account_id=student_account.id,
             last_registered=now,  # Completed Party Smart this year
         )
         student.residence_id = location1.id

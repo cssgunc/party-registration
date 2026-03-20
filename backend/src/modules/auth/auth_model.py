@@ -25,7 +25,7 @@ class AccountAccessTokenPayload(BaseModel):
 class PoliceAccessTokenPayload(BaseModel):
     """JWT payload for police access tokens."""
 
-    sub: Literal["police"]
+    sub: int  # Police account ID
     email: str
     role: Literal["police"]
     exp: AwareDatetime

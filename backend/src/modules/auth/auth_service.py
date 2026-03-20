@@ -1,6 +1,5 @@
 import hashlib
 from datetime import UTC, datetime, timedelta
-from typing import Literal
 from uuid import uuid4
 
 import jwt
@@ -53,25 +52,12 @@ class AuthService:
     # Helper Methods
     @staticmethod
     def _hash_token_id(jti: str) -> str:
-        """
-        Hash a JWT token ID (jti) using SHA256.
-
-        Args:
-            jti: The JWT token ID to hash
-
-        Returns:
-            str: Hexadecimal SHA256 hash of the jti
-        """
+        """Hash a JWT token ID (jti) using SHA256."""
         return hashlib.sha256(jti.encode()).hexdigest()
 
     # JWT Operations (instance methods)
     def create_account_access_token(self, account: AccountDto) -> tuple[str, datetime]:
-        """
-        Create a JWT access token for a university account.
-
-        Returns:
-            tuple[str, datetime]: (token, expiration_time)
-        """
+        """Create a JWT access token for a university account."""
         expires_delta = timedelta(minutes=env.ACCESS_TOKEN_EXPIRE_MINUTES)
         expires_at = datetime.now(UTC) + expires_delta
 
@@ -91,17 +77,12 @@ class AuthService:
         return token, expires_at
 
     def create_police_access_token(self, police: PoliceAccountDto) -> tuple[str, datetime]:
-        """
-        Create a JWT access token for a police account.
-
-        Returns:
-            tuple[str, datetime]: (token, expiration_time)
-        """
+        """Create a JWT access token for a police account."""
         expires_delta = timedelta(minutes=env.ACCESS_TOKEN_EXPIRE_MINUTES)
         expires_at = datetime.now(UTC) + expires_delta
 
         payload = PoliceAccessTokenPayload(
-            sub="police",
+            sub=police.id,
             email=police.email,
             role="police",
             exp=expires_at,
@@ -114,18 +95,7 @@ class AuthService:
     def decode_access_token(
         self, token: str
     ) -> AccountAccessTokenPayload | PoliceAccessTokenPayload:
-        """
-        Decode and validate a JWT access token.
-
-        Args:
-            token: The JWT token to decode
-
-        Returns:
-            AccountAccessTokenPayload | PoliceAccessTokenPayload: The validated token payload
-
-        Raises:
-            CredentialsException: If token is invalid, expired, or malformed
-        """
+        """Decode and validate a JWT access token."""
         try:
             payload = jwt.decode(
                 token,
@@ -139,33 +109,27 @@ class AuthService:
         except jwt.InvalidTokenError as e:
             raise CredentialsException() from e
         except Exception as e:
-            # Catch Pydantic validation errors
             raise CredentialsException() from e
 
     # Refresh Token Management (async methods)
     async def create_refresh_token(
-        self, account_id: int | Literal["police"]
+        self, *, account_id: int | None = None, police_id: int | None = None
     ) -> tuple[str, datetime]:
         """
         Create a refresh token and store its hash in the database.
 
-        Args:
-            account_id: Account ID or "police" sentinel for police tokens
-
-        Returns:
-            tuple[str, datetime]: (token, expiration_time)
+        Exactly one of account_id or police_id must be provided.
+        JWT sub is str(account_id) for accounts and "police" for police tokens.
         """
         expires_delta = timedelta(days=env.REFRESH_TOKEN_EXPIRE_DAYS)
         expires_at = datetime.now(UTC) + expires_delta
         jti = str(uuid4())
 
-        # Map "police" sentinel to None for DB storage
-        db_account_id = None if account_id == "police" else account_id
+        sub = str(account_id) if account_id is not None else "police"
 
-        # JWT sub must be a string; use "police" sentinel for police tokens
         payload = RefreshTokenPayload(
             jti=jti,
-            sub=str(account_id) if isinstance(account_id, int) else "police",
+            sub=sub,
             exp=expires_at,
             iat=datetime.now(UTC),
         )
@@ -174,11 +138,11 @@ class AuthService:
             payload.model_dump(), env.REFRESH_TOKEN_SECRET_KEY, algorithm=env.JWT_ALGORITHM
         )
 
-        # Hash the jti and store in database
         token_hash = self._hash_token_id(jti)
         refresh_token_entity = RefreshTokenEntity(
-            account_id=db_account_id,
             token_hash=token_hash,
+            account_id=account_id,
+            police_id=police_id,
             expires_at=expires_at,
         )
 
@@ -187,21 +151,15 @@ class AuthService:
 
         return token, expires_at
 
-    async def validate_refresh_token(self, token: str) -> int | None:
+    async def validate_refresh_token(self, token: str) -> tuple[int | None, int | None]:
         """
         Validate a refresh token against the database allow-list.
 
-        Args:
-            token: The refresh token to validate
-
         Returns:
-            int | None: Account ID (None for police tokens)
+            tuple[int | None, int | None]: (account_id, police_id)
 
         Raises:
             InvalidRefreshTokenException: If token is invalid or not in allow-list
-
-        Note:
-            Expired tokens are automatically deleted from the database
         """
         try:
             payload = jwt.decode(
@@ -216,7 +174,6 @@ class AuthService:
         if not jti:
             raise InvalidRefreshTokenException()
 
-        # Hash the jti and look it up in the database
         token_hash = self._hash_token_id(jti)
         result = await self.session.execute(
             select(RefreshTokenEntity).where(RefreshTokenEntity.token_hash == token_hash)
@@ -226,24 +183,15 @@ class AuthService:
         if refresh_token_entity is None:
             raise InvalidRefreshTokenException()
 
-        # Check if token is expired and clean up if so
         if refresh_token_entity.expires_at < datetime.now(UTC):
             await self.session.delete(refresh_token_entity)
             await self.session.commit()
             raise InvalidRefreshTokenException()
 
-        return refresh_token_entity.account_id
+        return refresh_token_entity.account_id, refresh_token_entity.police_id
 
     async def revoke_refresh_token(self, token: str) -> None:
-        """
-        Revoke a refresh token by removing it from the database allow-list.
-
-        Args:
-            token: The refresh token to revoke
-
-        Note:
-            Silently succeeds if token doesn't exist or is invalid
-        """
+        """Revoke a refresh token by removing it from the database allow-list."""
         try:
             payload = jwt.decode(
                 token,
@@ -262,22 +210,13 @@ class AuthService:
                     await self.session.delete(refresh_token_entity)
                     await self.session.commit()
         except jwt.InvalidTokenError:
-            # Silently fail for invalid tokens
             pass
 
     # High-Level Operations
     async def exchange_account_for_tokens(self, account: AccountDto) -> TokensDto:
-        """
-        Exchange an account for a token pair (access + refresh).
-
-        Args:
-            account: The account to create tokens for
-
-        Returns:
-            TokensDto: Token pair with expiration times
-        """
+        """Exchange an account for a token pair (access + refresh)."""
         access_token, access_expires = self.create_account_access_token(account)
-        refresh_token, refresh_expires = await self.create_refresh_token(account.id)
+        refresh_token, refresh_expires = await self.create_refresh_token(account_id=account.id)
 
         return TokensDto(
             access_token=access_token,
@@ -287,17 +226,9 @@ class AuthService:
         )
 
     async def exchange_police_for_tokens(self, police: PoliceAccountDto) -> TokensDto:
-        """
-        Exchange a police account for a token pair (access + refresh).
-
-        Args:
-            police: The police account to create tokens for
-
-        Returns:
-            TokensDto: Token pair with expiration times
-        """
+        """Exchange a police account for a token pair (access + refresh)."""
         access_token, access_expires = self.create_police_access_token(police)
-        refresh_token, refresh_expires = await self.create_refresh_token("police")
+        refresh_token, refresh_expires = await self.create_refresh_token(police_id=police.id)
 
         return TokensDto(
             access_token=access_token,
@@ -307,28 +238,14 @@ class AuthService:
         )
 
     async def refresh_access_token(self, refresh_token: str) -> AccessTokenDto:
-        """
-        Refresh an access token using a valid refresh token.
+        """Refresh an access token using a valid refresh token."""
+        account_id, police_id = await self.validate_refresh_token(refresh_token)
 
-        Args:
-            refresh_token: The refresh token
-
-        Returns:
-            AccessTokenDto: New access token with expiration
-
-        Raises:
-            InvalidRefreshTokenException: If refresh token is invalid
-        """
-        account_id = await self.validate_refresh_token(refresh_token)
-
-        if account_id is None:
-            # Police token
-            police = await self.police_service.get_police()
-            police_dto = police.to_dto()
-            access_token, access_expires = self.create_police_access_token(police_dto)
+        if police_id is not None:
+            police = await self.police_service.get_police_by_id(police_id)
+            access_token, access_expires = self.create_police_access_token(police)
         else:
-            # Account token
-            account = await self.account_service.get_account_by_id(account_id)
+            account = await self.account_service.get_account_by_id(account_id)  # type: ignore[arg-type]
             access_token, access_expires = self.create_account_access_token(account)
 
         return AccessTokenDto(access_token=access_token, access_token_expires=access_expires)

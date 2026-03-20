@@ -141,7 +141,7 @@ class TestAuthRouter:
 
         payload = self.auth_utils.decode_token(data.access_token)
         self.auth_utils.assert_police_token_payload(
-            payload, PoliceAccountDto(email=police_entity.email)
+            payload, PoliceAccountDto(id=police_entity.id, email=police_entity.email)
         )
 
     @pytest.mark.asyncio
@@ -209,7 +209,7 @@ class TestAuthRouter:
         account_entity = await account_utils.create_one()
         account = account_entity.to_dto()
 
-        refresh_token, _ = await auth_service.create_refresh_token(account.id)
+        refresh_token, _ = await auth_service.create_refresh_token(account_id=account.id)
 
         response = await self.unauthenticated_client.post(
             "/api/auth/refresh",
@@ -240,7 +240,7 @@ class TestAuthRouter:
         account_entity = await account_utils.create_one()
         account = account_entity.to_dto()
 
-        refresh_token, _ = await auth_service.create_refresh_token(account.id)
+        refresh_token, _ = await auth_service.create_refresh_token(account_id=account.id)
 
         # Revoke the token
         await auth_service.revoke_refresh_token(refresh_token)
@@ -260,7 +260,7 @@ class TestAuthRouter:
     ) -> None:
         """Test refresh without internal secret returns 422."""
         account_entity = await account_utils.create_one()
-        refresh_token, _ = await auth_service.create_refresh_token(account_entity.id)
+        refresh_token, _ = await auth_service.create_refresh_token(account_id=account_entity.id)
 
         response = await self.unauthenticated_client.post(
             "/api/auth/refresh",
@@ -300,7 +300,7 @@ class TestAuthRouter:
     ) -> None:
         """Test logout without access token fails."""
         account_entity = await account_utils.create_one()
-        refresh_token, _ = await auth_service.create_refresh_token(account_entity.id)
+        refresh_token, _ = await auth_service.create_refresh_token(account_id=account_entity.id)
 
         response = await self.unauthenticated_client.post(
             "/api/auth/logout",
