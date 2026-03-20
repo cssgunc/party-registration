@@ -20,7 +20,7 @@ import {
 import { PartyDto } from "@/lib/api/party/party.types";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 export interface AddIncidentDialogProps {
   open: boolean;
@@ -61,10 +61,6 @@ export default function AddIncidentDialog({
   const [formData, setFormData] = useState<IncidentFormValues>(() =>
     getInitialValues(party)
   );
-
-  useEffect(() => {
-    setFormData(getInitialValues(party));
-  }, [party]);
 
   const updateField = <K extends keyof IncidentFormValues>(
     field: K,

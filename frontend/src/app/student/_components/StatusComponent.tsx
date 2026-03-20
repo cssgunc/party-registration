@@ -1,7 +1,7 @@
 import alertTriangleIcon from "@/components/icons/alert-triangle.svg";
 import checkIcon from "@/components/icons/check-circle.svg";
 import { Card, CardContent } from "@/components/ui/card";
-import { isCourseCompleted } from "@/lib/utils";
+import { isFromThisSchoolYear } from "@/lib/utils";
 import Image from "next/image";
 
 type CompletionCardProps = {
@@ -17,7 +17,7 @@ export default function StatusComponent({
 }: CompletionCardProps) {
   if (error) {
     return (
-      <Card className="p-4 rounded-2xl shadow-sm w-full bg-white">
+      <Card className="p-4 rounded-md shadow-sm w-full bg-white">
         <CardContent className="p-0">
           <div className="text-center text-destructive py-4">
             <p className="font-semibold mb-1">Error loading course status</p>
@@ -30,7 +30,7 @@ export default function StatusComponent({
 
   if (isPending) {
     return (
-      <Card className="p-4 rounded-2xl shadow-sm w-full bg-white">
+      <Card className="p-4 rounded-md shadow-sm w-full bg-white">
         <CardContent className="p-0">
           <div className="text-center text-muted-foreground py-4">
             <p>Loading course status...</p>
@@ -40,10 +40,10 @@ export default function StatusComponent({
     );
   }
 
-  const isCompleted = isCourseCompleted(last_registered);
+  const isCompleted = isFromThisSchoolYear(last_registered);
 
   return (
-    <Card className="p-4 rounded-2xl shadow-sm w-full bg-white">
+    <Card className="p-4 rounded-md shadow-sm w-full bg-white">
       <CardContent className="p-0 flex flex-col gap-1 text-sm">
         {isCompleted ? (
           <>

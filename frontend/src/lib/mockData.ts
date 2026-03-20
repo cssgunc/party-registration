@@ -75,6 +75,7 @@ export const STUDENTS: StudentDto[] = mockData.students.map((student) => ({
   last_registered: student.last_registered
     ? parseRelativeDate(student.last_registered)
     : null,
+  residence: null,
 }));
 
 // Parse Incidents

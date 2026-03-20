@@ -1,9 +1,20 @@
 "use client";
 
+import { DeletePartyDialog } from "@/app/student/_components/DeletePartyDialog";
+import { EditPartyDialog } from "@/app/student/_components/EditPartyDialog";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { IncidentDto } from "@/lib/api/location/location.types";
 import { PartyDto } from "@/lib/api/party/party.types";
 import { format } from "date-fns";
+import { MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 
 interface RegistrationTrackerProps {
@@ -33,6 +44,8 @@ export default function RegistrationTracker({
   const [activeTab, setActiveTab] = useState<"active" | "past" | "incidents">(
     "active"
   );
+  const [editParty, setEditParty] = useState<PartyDto | null>(null);
+  const [deleteParty, setDeleteParty] = useState<PartyDto | null>(null);
 
   const { activeParties, pastParties } = useMemo(() => {
     const now = new Date();
@@ -88,18 +101,53 @@ export default function RegistrationTracker({
     return Object.entries(groups);
   }, [sortedIncidents]);
 
-  const PartyCard = ({ party }: { party: PartyDto }) => (
-    <div className="px-4 py-4 border-b border-gray-100 last:border-b-0">
+  const PartyCard = ({
+    party,
+    showActions,
+  }: {
+    party: PartyDto;
+    showActions?: boolean;
+  }) => (
+    <Card className="px-4 py-4 border-b border-gray-100 last:border-b-0">
       <div className="space-y-2">
-        {/* Address and Date/Time */}
-        <div>
-          <div className="font-semibold">
-            {party.location.formatted_address}
+        <div className="flex items-start justify-between">
+          <div>
+            <div className="font-semibold">
+              {party.location.formatted_address}
+            </div>
+            <div className="text-sm text-gray-600">
+              {format(party.party_datetime, "PPP")} at{" "}
+              {format(party.party_datetime, "p")}
+            </div>
           </div>
-          <div className="text-sm text-gray-600">
-            {format(party.party_datetime, "PPP")} at{" "}
-            {format(party.party_datetime, "p")}
-          </div>
+
+          {showActions && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                  <span className="sr-only">Party actions</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setEditParty(party)}>
+                  <Pencil className="h-4 w-4" />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  variant="destructive"
+                  onClick={() => setDeleteParty(party)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
 
         {/* Contacts Side by Side */}
@@ -145,14 +193,14 @@ export default function RegistrationTracker({
           </div>
         </div>
       </div>
-    </div>
+    </Card>
   );
 
   const IncidentCard = ({
     date,
     incidents,
   }: {
-    date: String;
+    date: string;
     incidents: IncidentDto[];
   }) => (
     <div className="px-4 py-4 border-b border-gray-100 last:border-b-0">
@@ -204,7 +252,7 @@ export default function RegistrationTracker({
           setActiveTab(value as "active" | "past" | "incidents")
         }
       >
-        <TabsList className="w-full grid grid-cols-3">
+        <TabsList className="w-fit my-2">
           <TabsTrigger value="active" className="cursor-pointer">
             Active
           </TabsTrigger>
@@ -216,7 +264,7 @@ export default function RegistrationTracker({
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="active" className="mt-4">
+        <TabsContent value="active">
           <div className="w-full bg-white border border-gray-200 rounded-md max-h-[600px] overflow-y-auto">
             {activeParties.length === 0 ? (
               <div className="text-center text-gray-400 py-8">
@@ -224,7 +272,7 @@ export default function RegistrationTracker({
               </div>
             ) : (
               activeParties.map((party) => (
-                <PartyCard key={party.id} party={party} />
+                <PartyCard key={party.id} party={party} showActions />
               ))
             )}
           </div>
@@ -255,6 +303,26 @@ export default function RegistrationTracker({
           </div>
         </TabsContent>
       </Tabs>
+
+      {editParty && (
+        <EditPartyDialog
+          party={editParty}
+          open={!!editParty}
+          onOpenChange={(open) => {
+            if (!open) setEditParty(null);
+          }}
+        />
+      )}
+
+      {deleteParty && (
+        <DeletePartyDialog
+          party={deleteParty}
+          open={!!deleteParty}
+          onOpenChange={(open) => {
+            if (!open) setDeleteParty(null);
+          }}
+        />
+      )}
     </div>
   );
 }
