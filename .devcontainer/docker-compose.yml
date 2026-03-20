@@ -24,6 +24,15 @@ services:
         limits:
           memory: 2G
 
+  saml-idp:
+    image: kristophjunge/test-saml-idp
+    ports:
+      - "8080:8080"
+      - "8443:8443"
+    environment:
+      - SIMPLESAMLPHP_SP_ENTITY_ID=next-auth-client
+      - SIMPLESAMLPHP_SP_ASSERTION_CONSUMER_SERVICE=http://localhost:3000/api/auth/login/saml
+
 volumes:
   party-reg-mssql:
   party-reg-node-modules:

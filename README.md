@@ -104,6 +104,16 @@ npm run dev
 
 Navigate to [http://localhost:3000]() to view the website
 
+## SAML Dev Setup
+
+When you open this project in the Dev Container, the post-create script will automatically generate the Service Provider (SP) certs used by `saml2-js` in `frontend/certs` (`key.pem` and `cert.pem`).
+
+The development IdP certificate (`SAML_IDP_CERT`) is already populated in `frontend/.env.template` using the test IdP cert published by `kristophjunge/test-saml-idp`:
+
+- [https://github.com/kristophjunge/docker-test-saml-idp/blob/master/config/simplesamlphp/server.crt](https://github.com/kristophjunge/docker-test-saml-idp/blob/master/config/simplesamlphp/server.crt)
+
+Default credentials for the example IdP: **username** `user1`, **password** `user1pass`.
+
 ## Running Backend Tests
 
 ### Manual Testing
@@ -125,7 +135,7 @@ pytest
 
 - Navigate to the SQL Server tab on the sidebar in VSCode (provided by the "SQL Server (mssql)" extension)
 - Click the plus icon in the top right to add a new connection
-  - *It may take a long time to initialize on the first boot up*
+  - _It may take a long time to initialize on the first boot up_
 - Enter these values as you are prompted
   - Server Name: db
   - Authentication Type: SQL Login

@@ -1,14 +1,22 @@
 from pydantic import BaseModel, EmailStr
+from src.core.models import PaginatedResponse
 
 
 class PoliceAccountDto(BaseModel):
-    """DTO for Police Account responses (email only, no password exposed)."""
+    """DTO for Police Account responses."""
 
+    id: int
     email: EmailStr
 
 
 class PoliceAccountUpdate(BaseModel):
-    """DTO for updating Police credentials."""
+    """DTO for creating or updating Police credentials."""
 
     email: EmailStr
     password: str
+
+
+class PaginatedPoliceResponse(PaginatedResponse["PoliceAccountDto"]):
+    """Paginated response for police accounts."""
+
+    pass

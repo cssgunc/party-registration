@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
-from src.modules.account.account_entity import AccountRole
+from src.modules.account.account_entity import AccountEntity, AccountRole
 from src.modules.location.location_model import LocationDto
 from src.modules.party.party_model import PartyDto
 from src.modules.student.student_entity import StudentEntity
@@ -502,39 +502,21 @@ class TestStudentMeRouter:
 
     student_client: AsyncClient
     student_utils: StudentTestUtils
-    account_utils: AccountTestUtils
     party_utils: PartyTestUtils
 
     @pytest_asyncio.fixture
-    async def current_student(self) -> StudentEntity:
-        """Create a student for the current authenticated user.
-
-        Note: student_client authenticates as user with id=3 (from mock_authenticate in
-        authentication.py) so we need to ensure the account has id=3.
-        """
-        # The student_client from conftest uses id=3 for students in mock_authenticate
-        # We need to create dummy accounts for IDs 1 and 2 first
-        await self.account_utils.create_one(role=AccountRole.ADMIN.value)
-        await self.account_utils.create_one(role=AccountRole.STAFF.value)
-
-        account = await self.account_utils.create_one(role=AccountRole.STUDENT.value)
-
-        # Verify we got ID 3
-        assert account.id == 3, f"Expected account.id=3, got {account.id}"
-
-        student = await self.student_utils.create_one(account_id=account.id)
-        return student
+    async def current_student(self, student_account: AccountEntity) -> StudentEntity:
+        """Create a student record for the authenticated student client's account."""
+        return await self.student_utils.create_one(account_id=student_account.id)
 
     @pytest.fixture(autouse=True)
     def _setup(
         self,
         student_utils: StudentTestUtils,
-        account_utils: AccountTestUtils,
         party_utils: PartyTestUtils,
         student_client: AsyncClient,
     ):
         self.student_utils = student_utils
-        self.account_utils = account_utils
         self.party_utils = party_utils
         self.student_client = student_client
 
@@ -547,16 +529,11 @@ class TestStudentMeRouter:
         self.student_utils.assert_matches(current_student, data)
 
     @pytest.mark.asyncio
-    async def test_get_me_not_found(self):
-        """Test get me when student record doesn't exist (but account with id=3 does)."""
-        # Create dummy accounts for IDs 1 and 2 to ensure next account gets ID 3
-        await self.account_utils.create_one(role=AccountRole.ADMIN.value)
-        await self.account_utils.create_one(role=AccountRole.STAFF.value)
-
-        # Create account with ID 3 but no student record
-        await self.account_utils.create_one(role=AccountRole.STUDENT.value)
+    async def test_get_me_not_found(self, student_account: AccountEntity):
+        """Test get me when student record doesn't exist for the authenticated account."""
+        # student_client JWT has student_account.id; no student record exists for it
         response = await self.student_client.get("/api/students/me")
-        assert_res_failure(response, StudentNotFoundException(3))
+        assert_res_failure(response, StudentNotFoundException(student_account.id))
 
     @pytest.mark.asyncio
     async def test_update_me_success(self, current_student: StudentEntity):
@@ -652,20 +629,12 @@ class TestStudentResidenceRouter:
     gmaps_utils: GmapsMockUtils
 
     @pytest_asyncio.fixture
-    async def current_student(self) -> StudentEntity:
+    async def current_student(self, student_account: AccountEntity) -> StudentEntity:
         """Create a student for the current authenticated user with last_registered set."""
-        # The student_client from conftest uses id=3 for students
-        await self.account_utils.create_one(role=AccountRole.ADMIN.value)
-        await self.account_utils.create_one(role=AccountRole.STAFF.value)
-        account = await self.account_utils.create_one(role=AccountRole.STUDENT.value)
-        assert account.id == 3
-
-        # Create student with last_registered to allow residence selection
-        student = await self.student_utils.create_one(
-            account_id=account.id,
+        return await self.student_utils.create_one(
+            account_id=student_account.id,
             last_registered=datetime.now(UTC),
         )
-        return student
 
     @pytest.fixture(autouse=True)
     def _setup(
@@ -700,14 +669,11 @@ class TestStudentResidenceRouter:
         self.location_utils.assert_matches(data, location)
 
     @pytest.mark.asyncio
-    async def test_update_residence_without_party_smart(self):
+    async def test_update_residence_without_party_smart(self, student_account: AccountEntity):
         """Test that unregistered student CAN choose residence."""
         # Create student without last_registered
-        await self.account_utils.create_one(role=AccountRole.ADMIN.value)
-        await self.account_utils.create_one(role=AccountRole.STAFF.value)
-        account = await self.account_utils.create_one(role=AccountRole.STUDENT.value)
         await self.student_utils.create_one(
-            account_id=account.id,
+            account_id=student_account.id,
             last_registered=None,
         )
 
@@ -748,7 +714,7 @@ class TestStudentResidenceRouter:
         assert_res_failure(response, ResidenceAlreadyChosenException())
 
     @pytest.mark.asyncio
-    async def test_update_residence_new_academic_year(self):
+    async def test_update_residence_new_academic_year(self, student_account: AccountEntity):
         """Test that student can change residence in a new academic year."""
         # Create student with old residence from previous academic year
         # The key is: residence_chosen_date is from last year, but last_registered is current year
@@ -756,13 +722,9 @@ class TestStudentResidenceRouter:
         now = datetime.now(UTC)
         old_residence_date = self.student_utils.get_old_academic_year_date()
 
-        await self.account_utils.create_one(role=AccountRole.ADMIN.value)
-        await self.account_utils.create_one(role=AccountRole.STAFF.value)
-        account = await self.account_utils.create_one(role=AccountRole.STUDENT.value)
-
         location1 = await self.location_utils.create_one()
         student = await self.student_utils.create_one(
-            account_id=account.id,
+            account_id=student_account.id,
             last_registered=now,  # Completed Party Smart this year
         )
         student.residence_id = location1.id
