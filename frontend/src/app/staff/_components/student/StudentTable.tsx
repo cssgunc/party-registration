@@ -317,7 +317,7 @@ export const StudentTable = () => {
         resourceName="Student"
         onEdit={handleEdit}
         onDelete={handleDelete}
-        onCreateNew={handleCreate}
+        onCreateNewRow={handleCreate}
         isLoading={studentsQuery.isLoading}
         error={studentsQuery.error}
         getDeleteDescription={(student: StudentDto) =>

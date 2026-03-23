@@ -230,7 +230,7 @@ export const AccountTable = () => {
         resourceName="Account"
         onEdit={handleEdit}
         onDelete={handleDelete}
-        onCreateNew={handleCreate}
+        onCreateNewRow={handleCreate}
         isLoading={accountsQuery.isLoading}
         error={accountsQuery.error as Error | null}
         getDeleteDescription={(account: AccountDto) =>

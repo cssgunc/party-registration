@@ -251,7 +251,7 @@ export const LocationTable = () => {
         resourceName="Location"
         onEdit={handleEdit}
         onDelete={handleDelete}
-        onCreateNew={handleCreate}
+        onCreateNewRow={handleCreate}
         isLoading={locationsQuery.isLoading}
         error={locationsQuery.error as Error | null}
         getDeleteDescription={(location: LocationDto) =>

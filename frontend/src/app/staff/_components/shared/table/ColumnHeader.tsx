@@ -8,6 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 import { Column } from "@tanstack/react-table";
 import { ArrowDown, ArrowUp, ChevronDown, Filter, X } from "lucide-react";
 import { useState } from "react";
@@ -35,9 +36,10 @@ export function ColumnHeader<T>({
           <Button
             variant="ghost"
             size="sm"
-            className={`-ml-3 h-8 data-[state=open]:bg-accent ${
+            className={cn(
+              "-ml-3 h-8 data-[state=open]:bg-accent",
               isFiltered ? "bg-card" : ""
-            }`}
+            )}
           >
             <span>{title}</span>
             {isSorted === "asc" && <ArrowUp className="ml-2 h-4 w-4" />}

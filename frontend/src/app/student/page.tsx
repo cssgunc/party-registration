@@ -2,7 +2,6 @@
 
 import RegistrationTracker from "@/app/student/_components/RegistrationTracker";
 import StatusComponent from "@/app/student/_components/StatusComponent";
-import Header from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { useRole } from "@/contexts/RoleContext";
 import {

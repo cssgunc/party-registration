@@ -320,7 +320,7 @@ export const PartyTable = () => {
         const party_datetime = row.original.party_datetime;
         const date = new Date(party_datetime);
         return date.toLocaleTimeString([], {
-          hour: "2-digit",
+          hour: "numeric",
           minute: "2-digit",
         });
       },
@@ -415,7 +415,7 @@ export const PartyTable = () => {
         initialSort={[{ id: "party_datetime", desc: true }]}
         onEdit={handleEdit}
         onDelete={handleDelete}
-        onCreateNew={handleCreate}
+        onCreateNewRow={handleCreate}
         isLoading={partiesQuery.isLoading}
         error={partiesQuery.error as Error | null}
         getDeleteDescription={(party: PartyDto) =>

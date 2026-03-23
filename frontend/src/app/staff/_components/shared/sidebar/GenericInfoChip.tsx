@@ -2,6 +2,7 @@
 
 import { useSidebar } from "@/app/staff/_components/shared/sidebar/SidebarContext";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { ReactNode } from "react";
 
 interface GenericInfoChipProps {
@@ -34,9 +35,10 @@ export function GenericInfoChip({
   return (
     <Badge
       onClick={handleOpen}
-      className={`cursor-pointer px-3 py-1 ${
+      className={cn(
+        "cursor-pointer px-3 py-1",
         isSelected ? "bg-primary text-card" : "bg-muted text-foreground"
-      }`}
+      )}
     >
       {shortName}
     </Badge>

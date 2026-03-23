@@ -71,7 +71,7 @@ export type TableProps<T> = {
   details?: string;
   onEdit?: (row: T) => void;
   onDelete?: (row: T) => void;
-  onCreateNew?: () => void;
+  onCreateNewRow?: () => void;
   isLoading?: boolean;
   error?: Error | null;
   getDeleteDescription?: (row: T) => string;
@@ -88,7 +88,7 @@ export function TableTemplate<T extends object>({
   details,
   onEdit,
   onDelete,
-  onCreateNew,
+  onCreateNewRow,
   isLoading,
   error,
   getDeleteDescription,
@@ -283,12 +283,12 @@ export function TableTemplate<T extends object>({
   return (
     <div className="space-y-4">
       {/* Header with Create Button */}
-      {(resourceName || onCreateNew) && (
+      {(resourceName || onCreateNewRow) && (
         <div className="flex justify-between items-center w-full">
           {(() => {
             return (
               <div className="flex justify-between w-full gap-4">
-                <div className="mb-small bg-card w-lg h-9 rounded-md">
+                <div className="bg-card h-9 rounded-md">
                   <input
                     type="text"
                     value={globalFilter}
@@ -298,8 +298,8 @@ export function TableTemplate<T extends object>({
                   />
                 </div>
                 <div>
-                  {onCreateNew && role === "admin" && (
-                    <Button onClick={onCreateNew} className="h-">
+                  {onCreateNewRow && role === "admin" && (
+                    <Button onClick={onCreateNewRow} className="h-">
                       <Plus className="mr-1" />
                       <p>New row</p>
                     </Button>
@@ -312,13 +312,15 @@ export function TableTemplate<T extends object>({
       )}
 
       {isLoading && (
-        <div className="text-center py-8 text-muted-foreground">Loading...</div>
+        <span className="text-center py-8 text-muted-foreground">
+          Loading...
+        </span>
       )}
 
       {error && (
-        <div className="text-center py-8 text-destructive">
+        <span className="text-center py-8 text-destructive">
           <p>Error: {error.message}</p>
-        </div>
+        </span>
       )}
 
       {!isLoading && !error && (

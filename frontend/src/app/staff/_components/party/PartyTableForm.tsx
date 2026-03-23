@@ -32,6 +32,15 @@ import { CalendarIcon } from "lucide-react";
 import { useState } from "react";
 import * as z from "zod";
 
+// Format phone number as XXX-XXX-XXXX
+const formatPhoneNumber = (value: string): string => {
+  const digits = value.replace(/\D/g, "");
+  if (digits.length === 0) return "";
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+  return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
+};
+
 export const createPartyTableFormSchema = (isAdmin: boolean) => {
   const partyDateSchema = isAdmin
     ? z.date({
@@ -300,7 +309,7 @@ export default function PartyTableForm({
             )}
           </Field>
 
-          <div className="font-bold">Second contact information </div>
+          <span className="font-bold">Second contact information </span>
 
           <Field data-invalid={!!errors.contactTwoEmail}>
             <FieldLabel htmlFor="contact-two-email">Contact Email</FieldLabel>
@@ -316,40 +325,43 @@ export default function PartyTableForm({
               <FieldError>{errors.contactTwoEmail}</FieldError>
             )}
           </Field>
+          <div className="grid grid-cols-2 gap-4">
+            <Field data-invalid={!!errors.contactTwoFirstName}>
+              <FieldLabel htmlFor="contact-two-first-name">
+                First Name
+              </FieldLabel>
+              <Input
+                id="contact-two-first-name"
+                type="text"
+                placeholder="John"
+                value={formData.contactTwoFirstName}
+                onChange={(e) =>
+                  updateField("contactTwoFirstName", e.target.value)
+                }
+                aria-invalid={!!errors.contactTwoFirstName}
+              />
+              {errors.contactTwoFirstName && (
+                <FieldError>{errors.contactTwoFirstName}</FieldError>
+              )}
+            </Field>
 
-          <Field data-invalid={!!errors.contactTwoFirstName}>
-            <FieldLabel htmlFor="contact-two-first-name">First Name</FieldLabel>
-            <Input
-              id="contact-two-first-name"
-              type="text"
-              placeholder="John"
-              value={formData.contactTwoFirstName}
-              onChange={(e) =>
-                updateField("contactTwoFirstName", e.target.value)
-              }
-              aria-invalid={!!errors.contactTwoFirstName}
-            />
-            {errors.contactTwoFirstName && (
-              <FieldError>{errors.contactTwoFirstName}</FieldError>
-            )}
-          </Field>
-
-          <Field data-invalid={!!errors.contactTwoLastName}>
-            <FieldLabel htmlFor="contact-two-last-name">Last Name</FieldLabel>
-            <Input
-              id="contact-two-last-name"
-              type="text"
-              placeholder="Doe"
-              value={formData.contactTwoLastName}
-              onChange={(e) =>
-                updateField("contactTwoLastName", e.target.value)
-              }
-              aria-invalid={!!errors.contactTwoLastName}
-            />
-            {errors.contactTwoLastName && (
-              <FieldError>{errors.contactTwoLastName}</FieldError>
-            )}
-          </Field>
+            <Field data-invalid={!!errors.contactTwoLastName}>
+              <FieldLabel htmlFor="contact-two-last-name">Last Name</FieldLabel>
+              <Input
+                id="contact-two-last-name"
+                type="text"
+                placeholder="Doe"
+                value={formData.contactTwoLastName}
+                onChange={(e) =>
+                  updateField("contactTwoLastName", e.target.value)
+                }
+                aria-invalid={!!errors.contactTwoLastName}
+              />
+              {errors.contactTwoLastName && (
+                <FieldError>{errors.contactTwoLastName}</FieldError>
+              )}
+            </Field>
+          </div>
 
           <Field data-invalid={!!errors.contactTwoPhoneNumber}>
             <FieldLabel htmlFor="contact-two-phone-number">
@@ -358,8 +370,8 @@ export default function PartyTableForm({
             </FieldLabel>
             <Input
               id="contact-two-phone-number"
-              placeholder="(123) 456-7890"
-              value={formData.contactTwoPhoneNumber}
+              placeholder="123-456-7890"
+              value={formatPhoneNumber(formData.contactTwoPhoneNumber || "")}
               onChange={(e) =>
                 updateField("contactTwoPhoneNumber", e.target.value)
               }
