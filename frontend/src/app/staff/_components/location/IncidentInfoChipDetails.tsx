@@ -10,7 +10,7 @@ type IncidentSidebarProps = {
   onDelete: (incidentId: number) => void;
 };
 
-export default function IncidentSidebar({
+export default function IncidentInfoChipDetails({
   incidents,
   onDelete,
 }: IncidentSidebarProps) {

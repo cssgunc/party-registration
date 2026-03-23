@@ -14,7 +14,7 @@ import { useState } from "react";
 import { GenericInfoChip } from "../shared/sidebar/GenericInfoChip";
 import { useSidebar } from "../shared/sidebar/SidebarContext";
 import { TableTemplate } from "../shared/table/TableTemplate";
-import IncidentSidebar from "./IncidentInfoChipDetails";
+import IncidentInfoChipDetails from "./IncidentInfoChipDetails";
 import LocationTableForm from "./LocationTableForm";
 
 const locationService = new LocationService();
@@ -220,7 +220,10 @@ export const LocationTable = () => {
         `incidents-${selectedLocationId}`,
         "Incidents at Location",
         `Warnings & Citations go here`,
-        <IncidentSidebar incidents={updated} onDelete={handleDeleteIncident} />
+        <IncidentInfoChipDetails
+          incidents={updated}
+          onDelete={handleDeleteIncident}
+        />
       );
     }
   };
@@ -243,7 +246,7 @@ export const LocationTable = () => {
               title="Incidents at Location"
               description="Warnings & Citations go here"
               sidebarContent={
-                <IncidentSidebar
+                <IncidentInfoChipDetails
                   incidents={row.original.incidents}
                   onDelete={handleDeleteIncident}
                 />
