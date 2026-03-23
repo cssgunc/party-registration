@@ -1,3 +1,4 @@
+"use client";
 import { Button } from "@/components/ui/button";
 import { useRole } from "@/contexts/RoleContext";
 import { IncidentDto } from "@/lib/api/location/location.types";
@@ -6,12 +7,12 @@ import IncidentSidebarCard from "./IncidentSidebarCard";
 
 type IncidentSidebarProps = {
   incidents: IncidentDto[];
-  onDeleteIncidentAction: (incidentId: number) => void;
+  onDelete: (incidentId: number) => void;
 };
 
 export default function IncidentSidebar({
   incidents,
-  onDeleteIncidentAction,
+  onDelete,
 }: IncidentSidebarProps) {
   const { role } = useRole();
   const [localIncidents, setLocalIncidents] =
@@ -23,7 +24,7 @@ export default function IncidentSidebar({
 
   const handleDelete = (incidentId: number) => {
     setLocalIncidents((prev) => prev.filter((i) => i.id !== incidentId));
-    onDeleteIncidentAction(incidentId);
+    onDelete(incidentId);
   };
 
   return (
@@ -36,7 +37,7 @@ export default function IncidentSidebar({
         <IncidentSidebarCard
           incidents={incident}
           key={incident.id}
-          onDeleteIncidentAction={handleDelete}
+          onDelete={handleDelete}
         />
       ))}
       {role === "admin" && (

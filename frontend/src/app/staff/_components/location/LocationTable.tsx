@@ -1,6 +1,5 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
 import { LocationService } from "@/lib/api/location/location.service";
 import {
   IncidentDto,
@@ -12,9 +11,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
 import { AxiosError } from "axios";
 import { useState } from "react";
+import { GenericInfoChip } from "../shared/sidebar/GenericInfoChip";
 import { useSidebar } from "../shared/sidebar/SidebarContext";
 import { TableTemplate } from "../shared/table/TableTemplate";
-import IncidentSidebar from "./IncidentSidebar";
+import IncidentSidebar from "./IncidentInfoChipDetails";
 import LocationTableForm from "./LocationTableForm";
 
 const locationService = new LocationService();
@@ -220,10 +220,7 @@ export const LocationTable = () => {
         `incidents-${selectedLocationId}`,
         "Incidents at Location",
         `Warnings & Citations go here`,
-        <IncidentSidebar
-          incidents={updated}
-          onDeleteIncidentAction={handleDeleteIncident}
-        />
+        <IncidentSidebar incidents={updated} onDelete={handleDeleteIncident} />
       );
     }
   };
@@ -239,29 +236,19 @@ export const LocationTable = () => {
       cell: ({ row }) => {
         return (
           <div className="flex w-auto">
-            <Badge
-              variant="outline"
-              className="cursor-pointer"
-              onClick={() => {
-                const locIncidents = row.original.incidents;
-                setSelectedLocationId(row.original.id);
-                setIncidentList(locIncidents);
-                openSidebar(
-                  `incidents-${row.original.id}`,
-                  "Incidents at Location",
-                  `Warnings & Citations go here`,
-                  <IncidentSidebar
-                    incidents={locIncidents}
-                    onDeleteIncidentAction={handleDeleteIncident}
-                  />
-                );
-              }}
-            >
-              <span className="mr-1">
-                {row.original.incidents.length}{" "}
-                {row.original.incidents.length === 1 ? "incident" : "incidents"}
-              </span>
-            </Badge>
+            <GenericInfoChip
+              chipKey={`incidents-${row.original.id}`}
+              shortName={`${row.original.incidents.length}${" "}
+                ${row.original.incidents.length === 1 ? "incident" : "incidents"}`}
+              title="Incidents at Location"
+              description="Warnings & Citations go here"
+              sidebarContent={
+                <IncidentSidebar
+                  incidents={row.original.incidents}
+                  onDelete={handleDeleteIncident}
+                />
+              }
+            />
           </div>
         );
       },
