@@ -9,10 +9,7 @@ import {
   useUpdateStudent,
 } from "@/lib/api/student/admin-student.queries";
 import { StudentDto } from "@/lib/api/student/student.types";
-import { isCourseCompleted } from "@/lib/utils";
-import { PaginatedResponse } from "@/lib/shared";
 import { isFromThisSchoolYear } from "@/lib/utils";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
 import { TableTemplate } from "../shared/table/TableTemplate";
