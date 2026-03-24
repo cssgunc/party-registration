@@ -273,6 +273,7 @@ export default function PartyRegistrationForm({
                 className="w-full"
                 error={errors.address}
                 initialSelection={initialAddress}
+                chapelHillOnly
               />
               <FieldDescription className="italics">
                 This will be added to your profile as your {school_year}{" "}

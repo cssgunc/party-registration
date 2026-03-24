@@ -226,6 +226,7 @@ export default function PartyTableForm({
               placeholder="Search for the party address..."
               className="w-full"
               error={errors.address}
+              chapelHillOnly
             />
             {errors.address && <FieldError>{errors.address}</FieldError>}
           </Field>
