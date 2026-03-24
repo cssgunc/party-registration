@@ -17,7 +17,7 @@ import { ChevronDown, MoreHorizontal } from "lucide-react";
 type IncidentSidebarCardProps = {
   incidents: IncidentDto;
   onDeleteIncidentAction: (incidentId: number) => void;
-  onEditIncidentAction?: (incident: IncidentDto) => void;
+  onEditIncidentAction: (incident: IncidentDto) => void;
 };
 export default function IncidentSidebarCard({
   incidents,

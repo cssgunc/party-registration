@@ -20,9 +20,9 @@ export default function IncidentSidebar({
     useState<IncidentDto[]>(incidents);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
-  const [editingIncident, setEditingIncident] = useState<
-    IncidentDto | undefined
-  >(undefined);
+  const [editingIncident, setEditingIncident] = useState<IncidentDto | null>(
+    null
+  );
 
   useEffect(() => {
     setLocalIncidents(incidents);
@@ -56,7 +56,7 @@ export default function IncidentSidebar({
   };
 
   const handleAdd = () => {
-    setEditingIncident(undefined);
+    setEditingIncident(null);
     setModalMode("create");
     setModalOpen(true);
   };
@@ -126,7 +126,7 @@ export default function IncidentSidebar({
         open={modalOpen}
         onOpenChange={setModalOpen}
         mode={modalMode}
-        incident={editingIncident}
+        // incident={editingIncident}
         onSubmit={handleModalSubmit}
       />
     </div>
