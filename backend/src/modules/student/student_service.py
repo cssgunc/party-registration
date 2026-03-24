@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 
 from fastapi import Depends, Request
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -19,6 +19,7 @@ from .student_model import (
     SelfUpdateStudentDto,
     StudentData,
     StudentDto,
+    StudentSuggestionDto,
     StudentUpdateDto,
 )
 
@@ -314,6 +315,56 @@ class StudentService:
         await self.session.delete(student_entity)
         await self.session.commit()
         return student_dto
+
+    _AUTOCOMPLETE_LIMIT = 10
+
+    async def autocomplete_students(self, query: str) -> list[StudentSuggestionDto]:
+        """Return up to 10 students matching query against PID, email, onyen, or phone number."""
+        pattern = f"%{query}%"
+        result = await self.session.execute(
+            select(StudentEntity)
+            .join(AccountEntity, StudentEntity.account_id == AccountEntity.id)
+            .where(
+                or_(
+                    AccountEntity.pid.ilike(pattern),
+                    AccountEntity.email.ilike(pattern),
+                    AccountEntity.onyen.ilike(pattern),
+                    StudentEntity.phone_number.ilike(pattern),
+                )
+            )
+            .options(selectinload(StudentEntity.account))
+            .limit(self._AUTOCOMPLETE_LIMIT)
+        )
+        students = result.scalars().all()
+
+        suggestions = []
+        for student in students:
+            account = student.account
+            # Determine the first matching field (priority: pid, email, onyen, phone_number)
+            if account.pid.lower().find(query.lower()) != -1:
+                matched_field_name = "pid"
+                matched_field_value = account.pid
+            elif query.lower() in account.email.lower():
+                matched_field_name = "email"
+                matched_field_value = account.email
+            elif query.lower() in account.onyen.lower():
+                matched_field_name = "onyen"
+                matched_field_value = account.onyen
+            else:
+                matched_field_name = "phone_number"
+                matched_field_value = student.phone_number
+
+            suggestions.append(
+                StudentSuggestionDto(
+                    student_id=student.account_id,
+                    first_name=account.first_name,
+                    last_name=account.last_name,
+                    matched_field_name=matched_field_name,
+                    matched_field_value=matched_field_value,
+                )
+            )
+
+        return suggestions
 
     async def update_is_registered(self, account_id: int, is_registered: bool) -> StudentDto:
         """
