@@ -12,6 +12,9 @@ import getMockClient from "@/lib/network/mockClient";
 import { useQuery } from "@tanstack/react-query";
 import { startOfDay } from "date-fns";
 import { useEffect, useMemo, useState } from "react";
+import AdvancedPartySearch, {
+  AdvancedPartyFilters,
+} from "./_components/AdvancedPartySearch";
 import PartyCsvExportButton from "./_components/PartyCsvExportButton";
 
 const policeLocationService = new LocationService(getMockClient("police"));
@@ -25,6 +28,14 @@ export default function PolicePage() {
     null
   );
   const [activeParty, setActiveParty] = useState<PartyDto | undefined>();
+  const [advancedFilters, setAdvancedFilters] = useState<AdvancedPartyFilters>({
+    timeFilterType: "",
+    startTime: "",
+    name: "",
+    phone: "",
+    contactPreference: "",
+    citationType: "",
+  });
 
   // Fetch place details when address is selected
   const { data: placeDetails } = useQuery({
@@ -69,11 +80,82 @@ export default function PolicePage() {
   });
 
   // Use nearby parties if address search is active, otherwise use all parties
-  const filteredParties = useMemo(() => {
+  const baseParties = useMemo(() => {
     return searchAddress && nearbyParties !== undefined
       ? nearbyParties
       : allParties;
   }, [allParties, nearbyParties, searchAddress]);
+
+  const filteredParties = useMemo(() => {
+    function normalize(value: string): string {
+      return value.trim().toLowerCase();
+    }
+
+    function normalizePhone(value: string): string {
+      return value.replace(/\D/g, "");
+    }
+
+    function toMinutes(time: string): number | null {
+      const [h, m] = time.split(":").map(Number);
+      if (Number.isNaN(h) || Number.isNaN(m)) return null;
+      return h * 60 + m;
+    }
+
+    return baseParties.filter((party) => {
+      const contactOneName = `${party.contact_one.first_name} ${party.contact_one.last_name}`;
+      const contactTwoName = `${party.contact_two.first_name} ${party.contact_two.last_name}`;
+
+      if (advancedFilters.name) {
+        const nameQuery = normalize(advancedFilters.name);
+        const matchesName =
+          normalize(contactOneName).includes(nameQuery) ||
+          normalize(contactTwoName).includes(nameQuery);
+        if (!matchesName) return false;
+      }
+
+      if (advancedFilters.phone) {
+        const phoneQuery = normalizePhone(advancedFilters.phone);
+        const matchesPhone =
+          normalizePhone(party.contact_one.phone_number).includes(phoneQuery) ||
+          normalizePhone(party.contact_two.phone_number).includes(phoneQuery);
+        if (!matchesPhone) return false;
+      }
+
+      if (advancedFilters.contactPreference) {
+        const preference = advancedFilters.contactPreference;
+        const matchesPreference =
+          party.contact_one.contact_preference === preference ||
+          party.contact_two.contact_preference === preference;
+        if (!matchesPreference) return false;
+      }
+
+      if (advancedFilters.citationType) {
+        const hasCitationType = party.location.incidents.some(
+          (incident) => incident.severity === advancedFilters.citationType
+        );
+        if (!hasCitationType) return false;
+      }
+
+      if (advancedFilters.startTime) {
+        const filterTimeMinutes = toMinutes(advancedFilters.startTime);
+        if (filterTimeMinutes === null) return false;
+
+        const partyTimeMinutes =
+          party.party_datetime.getHours() * 60 +
+          party.party_datetime.getMinutes();
+
+        if (advancedFilters.timeFilterType === "before") {
+          if (!(partyTimeMinutes < filterTimeMinutes)) return false;
+        } else if (advancedFilters.timeFilterType === "after") {
+          if (!(partyTimeMinutes > filterTimeMinutes)) return false;
+        } else {
+          if (partyTimeMinutes !== filterTimeMinutes) return false;
+        }
+      }
+
+      return true;
+    });
+  }, [advancedFilters, baseParties]);
 
   // Handle party selection from the list
   function handleActiveParty(party: PartyDto | null): void {
@@ -95,10 +177,9 @@ export default function PolicePage() {
   return (
     <div className="h-screen bg-white flex flex-col overflow-hidden">
       {/* Navbar */}
-      <div className="w-full bg-[#6FB2DC] h-16 flex-shrink-0"></div>
       <div className="overflow-y-scroll md:flex flex-1 overflow-hidden">
         {/* Left Panel - Filters and Search */}
-        <div className=" md:w-1/3 border-r border-gray-200 flex flex-col overflow-hidden">
+        <div className="md:w-1/3 border-r border-gray-200 flex flex-col overflow-hidden">
           {/* Filter Between Section */}
           <div className="px-4 md:px-6 py-4 flex-shrink-0 border-b border-gray-200">
             <h2 className="text-2xl font-semibold mb-4 md:text-xl">
@@ -134,6 +215,10 @@ export default function PolicePage() {
                 </p>
               )}
             </div>
+            <AdvancedPartySearch
+              filters={advancedFilters}
+              onFiltersChange={setAdvancedFilters}
+            />
           </div>
 
           {/* Party List Section */}
