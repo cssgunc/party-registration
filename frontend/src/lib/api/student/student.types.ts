@@ -1,3 +1,5 @@
+import { LocationDto } from "../location/location.types";
+
 /**
  * Contact preference enum matching backend
  */
@@ -33,6 +35,15 @@ type StudentDto = {
   phone_number: string;
   contact_preference: ContactPreference;
   last_registered: Date | null;
+  residence: ResidenceDto | null;
+};
+
+/**
+ * Residence DTO
+ */
+type ResidenceDto = {
+  location: LocationDto;
+  residence_chosen_date: Date;
 };
 
 /**
@@ -84,6 +95,7 @@ export type {
   StudentDataWithNames,
   StudentDto,
   StudentDtoBackend,
+  ResidenceDto,
 };
 
 export { convertStudent };

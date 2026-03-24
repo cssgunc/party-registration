@@ -241,6 +241,7 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
         onOpenChange={setIncidentDialogOpen}
         incidentType={incidentType}
         party={selectedParty}
+        key={incidentDialogOpen ? selectedParty?.id : undefined}
       />
     </div>
   );

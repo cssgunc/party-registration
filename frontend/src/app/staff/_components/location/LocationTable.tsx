@@ -12,11 +12,16 @@ import {
   getCitationCount,
   getWarningCount,
 } from "@/lib/api/location/location.types";
+import { LocationCreate, LocationDto } from "@/lib/api/location/location.types";
+import { PaginatedResponse } from "@/lib/shared";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
 import { useState } from "react";
+import { GenericInfoChip } from "../shared/sidebar/GenericInfoChip";
 import { useSidebar } from "../shared/sidebar/SidebarContext";
 import { TableTemplate } from "../shared/table/TableTemplate";
+import IncidentInfoChipDetails from "./IncidentInfoChipDetails";
 import LocationTableForm from "./LocationTableForm";
 
 export const LocationTable = () => {
@@ -180,14 +185,31 @@ export const LocationTable = () => {
       header: "Address",
     },
     {
-      id: "warning_count",
-      header: "Warning Count",
-      accessorFn: (row) => getWarningCount(row),
-    },
-    {
-      id: "citation_count",
-      header: "Citation Count",
-      accessorFn: (row) => getCitationCount(row),
+      id: "incidents_info_chip",
+      header: "Incidents",
+      cell: ({ row }) => {
+        return (
+          <div className="flex w-auto">
+            <GenericInfoChip
+              chipKey={`incidents-${row.original.id}`}
+              shortName={`${row.original.incidents.length}${" "}
+                ${row.original.incidents.length === 1 ? "incident" : "incidents"}`}
+              title="Incidents at Location"
+              description="Warnings & Citations go here"
+              sidebarContent={
+                <IncidentInfoChipDetails
+                  key={`${row.original.id}-${JSON.stringify(
+                    row.original.incidents.map((i) => i.id)
+                  )}`}
+                  incidents={row.original.incidents}
+                  locationId={row.original.id}
+                />
+              }
+            />
+          </div>
+        );
+      },
+      enableColumnFilter: false,
     },
     {
       accessorKey: "hold_expiration",
@@ -213,7 +235,6 @@ export const LocationTable = () => {
       },
     },
   ];
-
   return (
     <div className="space-y-4">
       <TableTemplate

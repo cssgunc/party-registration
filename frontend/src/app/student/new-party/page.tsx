@@ -1,9 +1,9 @@
 "use client";
-import Header from "@/app/student/_components/Header";
 import PartyRegistrationForm, {
   PartyFormInitialValues,
   PartyFormValues,
 } from "@/app/student/_components/PartyRegistrationForm";
+import { Card } from "@/components/ui/card";
 import { LocationService } from "@/lib/api/location/location.service";
 import { useCreateParty } from "@/lib/api/party/party.queries";
 import { StudentCreatePartyDto } from "@/lib/api/party/party.types";
@@ -21,6 +21,29 @@ export default function RegistrationForm() {
   const partiesQuery = useMyParties();
   const studentQuery = useCurrentStudent();
   const router = useRouter();
+  // mocking
+  if (studentQuery?.data) {
+    studentQuery.data.residence = {
+      location: {
+        google_place_id: "ChIJqWQcpuXCrIkRqI-BGFaaqLw",
+        formatted_address: "408 Pittsboro St, Chapel Hill, NC 27516, USA",
+        latitude: 35.9059464,
+        longitude: -79.0553058,
+        street_number: "408",
+        street_name: "Pittsboro Street",
+        unit: null,
+        city: "Chapel Hill",
+        county: "Orange County",
+        state: "NC",
+        country: "US",
+        zip_code: "27516",
+        hold_expiration: null,
+        id: 1,
+        incidents: [],
+      },
+      residence_chosen_date: new Date(2022, 5, 6),
+    };
+  }
 
   /**
    * Get initial values from the student's most recent party (if they have one).
@@ -91,8 +114,7 @@ export default function RegistrationForm() {
 
   return (
     <div>
-      <Header />
-      <div className="px-14 lg:px-48 pb-8">
+      <Card className="px-14 lg:px-48 pb-8">
         <Link className="py-8" href="/student">
           Back
         </Link>
@@ -105,8 +127,9 @@ export default function RegistrationForm() {
           initialValues={initialValues}
           studentEmail={studentQuery.data?.email}
           studentPhoneNumber={studentQuery.data?.phone_number}
+          studentResidence={studentQuery.data?.residence}
         />
-      </div>
+      </Card>
     </div>
   );
 }

@@ -10,6 +10,9 @@ import {
 } from "@/lib/api/student/admin-student.queries";
 import { StudentDto } from "@/lib/api/student/student.types";
 import { isCourseCompleted } from "@/lib/utils";
+import { PaginatedResponse } from "@/lib/shared";
+import { isFromThisSchoolYear } from "@/lib/utils";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
 import { TableTemplate } from "../shared/table/TableTemplate";
@@ -173,7 +176,7 @@ export const StudentTable = () => {
       enableColumnFilter: false,
       cell: ({ row }) => {
         const student = row.original;
-        const isRegistered = isCourseCompleted(student.last_registered);
+        const isRegistered = isFromThisSchoolYear(student.last_registered);
         return (
           <Checkbox
             checked={isRegistered}
