@@ -5,6 +5,8 @@ services:
       dockerfile: .devcontainer/Dockerfile
     volumes:
       - ..:/workspace
+      - party-reg-node-modules:/workspace/frontend/node_modules
+      - party-reg-pre-commit-cache:/home/vscode/.cache/pre-commit
 
   db:
     image: mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04
@@ -24,3 +26,5 @@ services:
 
 volumes:
   party-reg-mssql:
+  party-reg-node-modules:
+  party-reg-pre-commit-cache:

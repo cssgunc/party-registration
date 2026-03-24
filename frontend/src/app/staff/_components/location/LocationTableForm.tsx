@@ -160,7 +160,7 @@ export default function LocationTableForm({
                   mode="single"
                   selected={formData.holdExpiration || undefined}
                   onSelect={(date) =>
-                    updateField("holdExpiration", date as Date)
+                    updateField("holdExpiration", date ?? null)
                   }
                   disabled={(date) =>
                     !isAfter(

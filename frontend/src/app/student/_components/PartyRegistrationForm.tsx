@@ -4,6 +4,14 @@ import AddressSearch from "@/components/AddressSearch";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Field,
   FieldDescription,
   FieldError,
@@ -26,9 +34,11 @@ import {
 } from "@/components/ui/select";
 import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
+import { ResidenceDto } from "@/lib/api/student/student.types";
+import { isFromThisSchoolYear } from "@/lib/utils";
 import { addBusinessDays, format, isAfter, startOfDay } from "date-fns";
 import { CalendarIcon } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import * as z from "zod";
 
 const partyFormSchema = z.object({
@@ -58,6 +68,7 @@ const partyFormSchema = z.object({
 
 type PartyFormValues = z.infer<typeof partyFormSchema>;
 
+export { partyFormSchema };
 export type { PartyFormValues };
 
 /**
@@ -66,6 +77,8 @@ export type { PartyFormValues };
 export interface PartyFormInitialValues {
   address?: string;
   placeId?: string;
+  partyDate?: Date;
+  partyTime?: string;
   secondContactFirstName?: string;
   secondContactLastName?: string;
   phoneNumber?: string;
@@ -77,6 +90,13 @@ interface PartyRegistrationFormProps {
   onSubmit: (data: PartyFormValues, placeId: string) => void | Promise<void>;
   locationService?: LocationService;
   initialValues?: PartyFormInitialValues;
+  /** The authenticated student's email (contact one) for duplicate validation */
+  studentEmail?: string;
+  /** The authenticated student's phone number (contact one) for duplicate validation */
+  studentPhoneNumber?: string;
+  /** Whether this form is used for creating or editing a party */
+  mode?: "create" | "edit";
+  studentResidence?: ResidenceDto | null;
 }
 
 // Default party time (e.g., 8:00 PM)
@@ -88,11 +108,15 @@ export default function PartyRegistrationForm({
   onSubmit,
   locationService = new LocationService(),
   initialValues,
+  studentEmail,
+  studentPhoneNumber,
+  mode = "create",
+  studentResidence,
 }: PartyRegistrationFormProps) {
   const [formData, setFormData] = useState<Partial<PartyFormValues>>({
     address: initialValues?.address ?? "",
-    partyDate: undefined,
-    partyTime: DEFAULT_PARTY_TIME,
+    partyDate: initialValues?.partyDate ?? undefined,
+    partyTime: initialValues?.partyTime ?? DEFAULT_PARTY_TIME,
     phoneNumber: initialValues?.phoneNumber ?? "",
     secondContactFirstName: initialValues?.secondContactFirstName ?? "",
     secondContactLastName: initialValues?.secondContactLastName ?? "",
@@ -105,6 +129,11 @@ export default function PartyRegistrationForm({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showAddressConfirmation, setShowAddressConfirmation] = useState(false);
+  const pendingSubmitRef = useRef<{
+    data: PartyFormValues;
+    placeId: string;
+  } | null>(null);
 
   // Check if the form is complete enough to enable the submit button
   const isFormComplete =
@@ -135,6 +164,29 @@ export default function PartyRegistrationForm({
       return;
     }
 
+    // Validate contact two differs from contact one (the student)
+    const contactTwoErrors: Record<string, string> = {};
+    if (
+      studentEmail &&
+      result.data.contactTwoEmail.trim().toLowerCase() ===
+        studentEmail.trim().toLowerCase()
+    ) {
+      contactTwoErrors.contactTwoEmail =
+        "Contact two email must be different from your email";
+    }
+    if (studentPhoneNumber) {
+      const c1Digits = studentPhoneNumber.replace(/\D/g, "");
+      const c2Digits = result.data.phoneNumber.replace(/\D/g, "");
+      if (c1Digits === c2Digits) {
+        contactTwoErrors.phoneNumber =
+          "Contact two phone number must be different from your phone number";
+      }
+    }
+    if (Object.keys(contactTwoErrors).length > 0) {
+      setErrors(contactTwoErrors);
+      return;
+    }
+
     // Only set the address error if it wasn't already set by Zod
     if (!placeId) {
       setErrors((prev) => ({
@@ -144,6 +196,16 @@ export default function PartyRegistrationForm({
       return;
     }
 
+    const addressChanged =
+      !initialValues?.address || result.data.address !== initialValues.address;
+
+    if (addressChanged) {
+      pendingSubmitRef.current = { data: result.data, placeId };
+      setShowAddressConfirmation(true);
+      return;
+    }
+
+    // Proceed with submission if address didn't change
     setIsSubmitting(true);
     try {
       await onSubmit(result.data, placeId); // ⭐ now sends placeId too
@@ -164,6 +226,19 @@ export default function PartyRegistrationForm({
     }
   };
 
+  const currentDate = new Date();
+  let school_year = "";
+  let change_date = "";
+  if (currentDate > new Date(currentDate.getFullYear(), 7, 1)) {
+    school_year =
+      currentDate.getFullYear() + "-" + (currentDate.getFullYear() + 1);
+    change_date = "August 1, " + (currentDate.getFullYear() + 1);
+  } else {
+    school_year =
+      currentDate.getFullYear() - 1 + "-" + currentDate.getFullYear();
+    change_date = "August 1, " + currentDate.getFullYear();
+  }
+
   /** ⭐ AddressSearch now sets BOTH address + placeId */
   const handleAddressSelect = (address: AutocompleteResult | null) => {
     updateField("address", address?.formatted_address || "");
@@ -179,27 +254,50 @@ export default function PartyRegistrationForm({
         }
       : undefined;
 
+  const validResidence = isFromThisSchoolYear(
+    studentResidence?.residence_chosen_date
+  );
+
   return (
     <form onSubmit={handleSubmit}>
       <FieldGroup>
         <FieldSet>
-          <Field data-invalid={!!errors.address}>
-            <FieldLabel htmlFor="party-address">Party Address</FieldLabel>
-            <AddressSearch
-              value={formData.address}
-              onSelect={handleAddressSelect}
-              locationService={locationService}
-              placeholder="Search for the party address..."
-              className="w-full"
-              error={errors.address}
-              initialSelection={initialAddress}
-            />
-            <FieldDescription>
-              Search and select the address where the party will be held. The
-              address will be locked after selection.
-            </FieldDescription>
-            {errors.address && <FieldError>{errors.address}</FieldError>}
-          </Field>
+          {!validResidence && (
+            <Field data-invalid={!!errors.address}>
+              <FieldLabel htmlFor="party-address">Party Address</FieldLabel>
+              <AddressSearch
+                value={formData.address}
+                onSelect={handleAddressSelect}
+                locationService={locationService}
+                placeholder="Search for the party address..."
+                className="w-full"
+                error={errors.address}
+                initialSelection={initialAddress}
+              />
+              <FieldDescription className="italics">
+                This will be added to your profile as your {school_year}{" "}
+                location. You may change it after {change_date}.
+              </FieldDescription>
+              {errors.address && <FieldError>{errors.address}</FieldError>}
+            </Field>
+          )}
+          {validResidence && (
+            <div className="col-span-2">
+              <div className="text-[#09294E] font-semibold text-sm mb-2">
+                Party Address
+              </div>
+              <div className="text-gray-600 text-base pb-3">
+                {studentResidence?.location.formatted_address}
+              </div>
+
+              <div className="flex flex-row gap-4">
+                <div className="text-gray-600 text-base italic flex-1">
+                  You cannot change your address until {change_date}. If you are
+                  experiencing hardship, contact [email] for changes
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <Field data-invalid={!!errors.partyDate}>
@@ -369,11 +467,67 @@ export default function PartyRegistrationForm({
                   : undefined
               }
             >
-              {isSubmitting ? "Submitting..." : "Register Party"}
+              {isSubmitting
+                ? "Submitting..."
+                : mode === "edit"
+                  ? "Save"
+                  : "Register Party"}
             </Button>
           </Field>
         </FieldSet>
       </FieldGroup>
+
+      <Dialog
+        open={showAddressConfirmation}
+        onOpenChange={setShowAddressConfirmation}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Address Change</DialogTitle>
+            <DialogDescription>
+              You are changing your registered address. This will update your{" "}
+              {school_year} residence on file. You will not be able to change it
+              again until {change_date}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="pt-2">
+            <p className="text-sm">
+              <span className="font-semibold">New Address:</span>
+              <br />
+              {pendingSubmitRef.current?.data.address}
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowAddressConfirmation(false);
+                pendingSubmitRef.current = null;
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={async () => {
+                setShowAddressConfirmation(false);
+                setIsSubmitting(true);
+                try {
+                  const { data, placeId: submitPlaceId } =
+                    pendingSubmitRef.current!;
+                  await onSubmit(data, submitPlaceId);
+                } finally {
+                  setIsSubmitting(false);
+                  pendingSubmitRef.current = null;
+                }
+              }}
+            >
+              Confirm Address Change
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </form>
   );
 }

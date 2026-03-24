@@ -12,9 +12,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
 import { AxiosError } from "axios";
 import { useState } from "react";
+import { GenericInfoChip } from "../shared/sidebar/GenericInfoChip";
 import { useSidebar } from "../shared/sidebar/SidebarContext";
 import { TableTemplate } from "../shared/table/TableTemplate";
-import IncidentSidebar from "./IncidentSidebar";
+import IncidentInfoChipDetails from "./IncidentInfoChipDetails";
 import LocationTableForm from "./LocationTableForm";
 
 const locationService = new LocationService();
@@ -22,7 +23,6 @@ const locationService = new LocationService();
 export const LocationTable = () => {
   const queryClient = useQueryClient();
   const { openSidebar, closeSidebar } = useSidebar();
-  const [sidebarMode, setSidebarMode] = useState<"create" | "edit">("create");
   const [editingLocation, setEditingLocation] = useState<LocationDto | null>(
     null
   );
@@ -58,7 +58,7 @@ export const LocationTable = () => {
         "Add a new location to the system",
         <LocationTableForm
           title="New Location"
-          onSubmit={handleFormSubmit}
+          onSubmit={handleCreateSubmit}
           submissionError={userMessage}
         />
       );
@@ -73,29 +73,39 @@ export const LocationTable = () => {
   const updateMutation = useMutation({
     mutationFn: ({ id, payload }: { id: number; payload: LocationCreate }) =>
       locationService.updateLocation(id, payload),
-    onError: (error: AxiosError<{ message: string }>) => {
+    onError: (
+      error: AxiosError<{ message: string }>,
+      variables: { id: number; payload: LocationCreate }
+    ) => {
       console.error("Failed to update location:", error);
       const errorMessage = error.response?.data?.message || error.message;
       const userMessage =
         error.status === 409 ? "This location already exists." : errorMessage;
 
-      if (editingLocation) {
-        openSidebar(
-          `edit-location-${editingLocation.id}`,
-          "Edit Location",
-          "Update location information",
-          <LocationTableForm
-            title="Edit Location"
-            onSubmit={handleFormSubmit}
-            editData={{
-              address: editingLocation.formatted_address || "",
-              placeId: editingLocation.google_place_id || "",
-              holdExpiration: editingLocation.hold_expiration || null,
-            }}
-            submissionError={userMessage}
-          />
-        );
+      const editTarget =
+        editingLocation && editingLocation.id === variables.id
+          ? editingLocation
+          : null;
+
+      if (!editTarget) {
+        return;
       }
+
+      openSidebar(
+        `edit-location-${editTarget.id}`,
+        "Edit Location",
+        "Update location information",
+        <LocationTableForm
+          title="Edit Location"
+          onSubmit={(data) => handleEditSubmit(editTarget.id, data)}
+          editData={{
+            address: editTarget.formatted_address || "",
+            placeId: editTarget.google_place_id || "",
+            holdExpiration: editTarget.hold_expiration || null,
+          }}
+          submissionError={userMessage}
+        />
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["locations"] });
@@ -139,7 +149,6 @@ export const LocationTable = () => {
 
   const handleEdit = (location: LocationDto) => {
     setEditingLocation(location);
-    setSidebarMode("edit");
 
     openSidebar(
       `edit-location-${location.id}`,
@@ -147,7 +156,7 @@ export const LocationTable = () => {
       "Update location information",
       <LocationTableForm
         title="Edit Location"
-        onSubmit={handleFormSubmit}
+        onSubmit={(data) => handleEditSubmit(location.id, data)}
         editData={{
           address: location.formatted_address || "",
           placeId: location.google_place_id || "",
@@ -163,16 +172,15 @@ export const LocationTable = () => {
 
   const handleCreate = () => {
     setEditingLocation(null);
-    setSidebarMode("create");
     openSidebar(
       "create-location",
       "New Location",
       "Add a new location to the system",
-      <LocationTableForm title="New Location" onSubmit={handleFormSubmit} />
+      <LocationTableForm title="New Location" onSubmit={handleCreateSubmit} />
     );
   };
 
-  const handleFormSubmit = async (data: {
+  const handleCreateSubmit = async (data: {
     address: string;
     placeId: string;
     holdExpiration: Date | null;
@@ -182,11 +190,23 @@ export const LocationTable = () => {
       hold_expiration: data.holdExpiration,
     };
 
-    if (sidebarMode === "edit" && editingLocation) {
-      updateMutation.mutate({ id: editingLocation.id, payload });
-    } else {
-      createMutation.mutate(payload);
+    createMutation.mutate(payload);
+  };
+
+  const handleEditSubmit = async (
+    locationId: number,
+    data: {
+      address: string;
+      placeId: string;
+      holdExpiration: Date | null;
     }
+  ) => {
+    const payload: LocationCreate = {
+      google_place_id: data.placeId,
+      hold_expiration: data.holdExpiration,
+    };
+
+    updateMutation.mutate({ id: locationId, payload });
   };
 
   const handleDeleteIncident = (incidentId: number) => {
@@ -239,29 +259,22 @@ export const LocationTable = () => {
       cell: ({ row }) => {
         return (
           <div className="flex w-auto">
-            <Badge
-              variant="outline"
-              className="cursor-pointer"
-              onClick={() => {
-                const locIncidents = row.original.incidents;
-                setSelectedLocationId(row.original.id);
-                setIncidentList(locIncidents);
-                openSidebar(
-                  `incidents-${row.original.id}`,
-                  "Incidents at Location",
-                  `Warnings & Citations go here`,
-                  <IncidentSidebar
-                    incidents={locIncidents}
-                    onDeleteIncidentAction={handleDeleteIncident}
-                  />
-                );
-              }}
-            >
-              <span className="mr-1">
-                {row.original.incidents.length}{" "}
-                {row.original.incidents.length === 1 ? "incident" : "incidents"}
-              </span>
-            </Badge>
+            <GenericInfoChip
+              chipKey={`incidents-${row.original.id}`}
+              shortName={`${row.original.incidents.length}${" "}
+                ${row.original.incidents.length === 1 ? "incident" : "incidents"}`}
+              title="Incidents at Location"
+              description="Warnings & Citations go here"
+              sidebarContent={
+                <IncidentInfoChipDetails
+                  key={`${row.original.id}-${JSON.stringify(
+                    row.original.incidents.map((i) => i.id)
+                  )}`}
+                  incidents={row.original.incidents}
+                  locationId={row.original.id}
+                />
+              }
+            />
           </div>
         );
       },
