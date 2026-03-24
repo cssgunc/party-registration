@@ -43,6 +43,7 @@
 }
 
 :root {
+  --app-header-height: 5rem;
   --radius: 0.625rem;
   --background: oklch(0.7349 0.0915 237.35 / 0.1);
   --background-gradient: linear-gradient(

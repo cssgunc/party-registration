@@ -309,7 +309,7 @@ export const StudentTable = () => {
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="h-full min-h-0 flex flex-col">
       {/* Table */}
       <TableTemplate
         data={students}

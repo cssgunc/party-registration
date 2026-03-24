@@ -79,6 +79,7 @@ export type TableProps<T> = {
   initialSort?: SortingState;
   sortBy?: (a: T, b: T) => number;
   pageSize?: number;
+  pageSizeOptions?: number[];
 };
 
 export function TableTemplate<T extends object>({
@@ -96,6 +97,7 @@ export function TableTemplate<T extends object>({
   initialSort = [],
   sortBy,
   pageSize = 8,
+  pageSizeOptions = [5, 8, 10, 20],
 }: TableProps<T>) {
   const { isOpen } = useSidebar();
   const { role } = useRole();
@@ -118,6 +120,14 @@ export function TableTemplate<T extends object>({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<T | null>(null);
   const [globalFilter, setGlobalFilter] = useState<string>("");
+
+  useEffect(() => {
+    setPagination((prev) => ({
+      ...prev,
+      pageSize,
+      pageIndex: 0,
+    }));
+  }, [pageSize]);
 
   useEffect(() => {
     if (!isOpen && Object.keys(rowSelection).length > 0) {
@@ -265,6 +275,8 @@ export function TableTemplate<T extends object>({
     0
   );
   const activePage = table.getState().pagination.pageIndex;
+  const activePageSize = table.getState().pagination.pageSize;
+  const filteredRowCount = table.getFilteredRowModel().rows.length;
   const pageCount = table.getPageCount();
   const maxVisiblePages = 3;
   const pageStart = Math.max(
@@ -281,7 +293,7 @@ export function TableTemplate<T extends object>({
   );
 
   return (
-    <div className="space-y-4">
+    <div className="h-full min-h-0 flex flex-col gap-4">
       {/* Header with Create Button */}
       {(resourceName || onCreateNewRow) && (
         <div className="flex justify-between items-center w-full">
@@ -324,94 +336,99 @@ export function TableTemplate<T extends object>({
       )}
 
       {!isLoading && !error && (
-        <div className="flex flex-col justify-between h-max">
-          <div className="rounded-sm border bg-card py-2 px-4">
-            <Table className="bg-card rounded-sm">
-              <TableHeader>
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => (
-                      <TableHead
-                        key={header.id}
-                        className={
-                          header.column.id === "actions" ? "w-0 text-right" : ""
-                        }
-                      >
-                        {header.isPlaceholder ? null : header.column.id ===
-                          "actions" ? null : (
-                          <ColumnHeader
-                            column={header.column}
-                            title={
-                              typeof header.column.columnDef.header === "string"
-                                ? header.column.columnDef.header
-                                : header.column.id
-                            }
-                            onFilterClick={() => {
-                              setActiveFilterColumn({
-                                column: header.column,
-                                name:
-                                  typeof header.column.columnDef.header ===
-                                  "string"
-                                    ? header.column.columnDef.header
-                                    : header.column.id,
-                              });
-                            }}
-                          />
-                        )}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableHeader>
-              <TableBody>
-                {visibleRows.length ? (
-                  visibleRows.map((row) => (
-                    <TableRow
-                      key={row.id}
-                      className={
-                        row.getIsSelected()
-                          ? "bg-accent hover:bg-secondary"
-                          : ""
-                      }
-                    >
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell
-                          key={cell.id}
+        <div className="flex min-h-0 h-full flex-col justify-between overflow-hidden">
+          <div className="flex-1 min-h-0 rounded-sm border bg-card py-2 px-4 overflow-hidden">
+            <div className="h-full overflow-y-auto">
+              <Table className="bg-card rounded-sm">
+                <TableHeader>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <TableRow key={headerGroup.id}>
+                      {headerGroup.headers.map((header) => (
+                        <TableHead
+                          key={header.id}
                           className={
-                            cell.column.getIsFiltered() ? "bg-card" : ""
+                            header.column.id === "actions"
+                              ? "w-0 text-right"
+                              : ""
                           }
                         >
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext()
+                          {header.isPlaceholder ? null : header.column.id ===
+                            "actions" ? null : (
+                            <ColumnHeader
+                              column={header.column}
+                              title={
+                                typeof header.column.columnDef.header ===
+                                "string"
+                                  ? header.column.columnDef.header
+                                  : header.column.id
+                              }
+                              onFilterClick={() => {
+                                setActiveFilterColumn({
+                                  column: header.column,
+                                  name:
+                                    typeof header.column.columnDef.header ===
+                                    "string"
+                                      ? header.column.columnDef.header
+                                      : header.column.id,
+                                });
+                              }}
+                            />
                           )}
-                        </TableCell>
+                        </TableHead>
                       ))}
                     </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell
-                      colSpan={columnsWithActions.length}
-                      className="h-12 text-center"
+                  ))}
+                </TableHeader>
+                <TableBody>
+                  {visibleRows.length ? (
+                    visibleRows.map((row) => (
+                      <TableRow
+                        key={row.id}
+                        className={
+                          row.getIsSelected()
+                            ? "bg-accent hover:bg-secondary"
+                            : ""
+                        }
+                      >
+                        {row.getVisibleCells().map((cell) => (
+                          <TableCell
+                            key={cell.id}
+                            className={
+                              cell.column.getIsFiltered() ? "bg-card" : ""
+                            }
+                          >
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext()
+                            )}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell
+                        colSpan={columnsWithActions.length}
+                        className="h-12 text-center"
+                      >
+                        No results.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {Array.from({ length: fillerRowCount }).map((_, index) => (
+                    <TableRow
+                      key={`filler-row-${index}`}
+                      className="pointer-events-none"
                     >
-                      No results.
-                    </TableCell>
-                  </TableRow>
-                )}
-                {Array.from({ length: fillerRowCount }).map((_, index) => (
-                  <TableRow
-                    key={`filler-row-${index}`}
-                    className="pointer-events-none"
-                  >
-                    <TableCell
-                      colSpan={columnsWithActions.length}
-                      className="h-12.25"
-                    />
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                      <TableCell
+                        colSpan={columnsWithActions.length}
+                        className="h-12.25"
+                      />
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </div>
 
           {/* Pagination Controls */}
@@ -480,25 +497,28 @@ export function TableTemplate<T extends object>({
                   table.getState().pagination.pageSize +
                   1}{" "}
                 -{" "}
-                {data.length <
+                {filteredRowCount <
                 (table.getState().pagination.pageIndex + 1) *
                   table.getState().pagination.pageSize
-                  ? data.length
+                  ? filteredRowCount
                   : (table.getState().pagination.pageIndex + 1) *
                     table.getState().pagination.pageSize}{" "}
-                of {data.length}
+                of {filteredRowCount}
               </span>
               <Select
-                value={String(activePage)}
-                onValueChange={(value) => table.setPageIndex(Number(value))}
+                value={String(activePageSize)}
+                onValueChange={(value) => {
+                  table.setPageSize(Number(value));
+                  table.setPageIndex(0);
+                }}
               >
                 <SelectTrigger className="bg-card">
-                  <SelectValue />
+                  <SelectValue placeholder="Rows" />
                 </SelectTrigger>
                 <SelectContent className="max-h-40 overflow-y-auto ">
-                  {Array.from({ length: pageCount }, (_, i) => (
-                    <SelectItem key={i} value={String(i)}>
-                      {i + 1}
+                  {pageSizeOptions.map((size) => (
+                    <SelectItem key={size} value={String(size)}>
+                      {size}
                     </SelectItem>
                   ))}
                 </SelectContent>

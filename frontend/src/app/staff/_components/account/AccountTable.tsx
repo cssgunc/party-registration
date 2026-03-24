@@ -223,7 +223,7 @@ export const AccountTable = () => {
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="h-full min-h-0 flex flex-col">
       <TableTemplate
         data={accounts}
         columns={columns}

@@ -244,7 +244,7 @@ export const LocationTable = () => {
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="h-full min-h-0 flex flex-col">
       <TableTemplate
         data={locations}
         columns={columns}

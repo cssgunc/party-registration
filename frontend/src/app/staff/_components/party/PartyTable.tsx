@@ -407,7 +407,7 @@ export const PartyTable = () => {
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="h-full min-h-0 flex flex-col">
       <TableTemplate
         data={parties}
         columns={columns}
