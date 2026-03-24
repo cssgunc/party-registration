@@ -1,8 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { useRole } from "@/contexts/RoleContext";
 import { IncidentDto } from "@/lib/api/location/location.types";
-import { useEffect, useState } from "react";
+import { LocationDto } from "@/lib/api/location/location.types";
+import { PaginatedResponse } from "@/lib/shared";
+import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { DeleteConfirmDialog } from "../shared/dialog/DeleteConfirmDialog";
+import { useSidebar } from "../shared/sidebar/SidebarContext";
 import IncidentModal from "./IncidentModal";
 import IncidentSidebarCard from "./IncidentSidebarCard";
 
@@ -16,17 +20,12 @@ export default function IncidentSidebar({
   onDeleteIncidentAction,
 }: IncidentSidebarProps) {
   const { role } = useRole();
-  const [localIncidents, setLocalIncidents] =
-    useState<IncidentDto[]>(incidents);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState<"create" | "edit">("create");
-  const [editingIncident, setEditingIncident] = useState<IncidentDto | null>(
-    null
-  );
-
-  useEffect(() => {
-    setLocalIncidents(incidents);
-  }, [incidents]);
+  type ModalState =
+    | { mode: "create" }
+    | { mode: "edit"; incident: IncidentDto }
+    | null;
+  const [modalState, setModalState] = useState<ModalState>(null);
+  const { openSidebar } = useSidebar();
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmingId, setConfirmingId] = useState<number | null>(null);
@@ -37,8 +36,45 @@ export default function IncidentSidebar({
   };
 
   const handleDelete = (incidentId: number) => {
-    setLocalIncidents((prev) => prev.filter((i) => i.id !== incidentId));
-    onDeleteIncidentAction(incidentId);
+    const incident = incidents.find((i) => i.id === incidentId);
+    if (!incident) return;
+
+    queryClient.setQueryData<PaginatedResponse<LocationDto> | undefined>(
+      ["locations"],
+      (old) =>
+        old
+          ? {
+              ...old,
+              items: old.items.map((loc) =>
+                loc.id === incident.location_id
+                  ? {
+                      ...loc,
+                      incidents: loc.incidents.filter(
+                        (inc) => inc.id !== incidentId
+                      ),
+                    }
+                  : loc
+              ),
+            }
+          : old
+    );
+    const updated = queryClient.getQueryData<PaginatedResponse<LocationDto>>([
+      "locations",
+    ]);
+
+    const location = updated?.items.find((l) => l.id === incident.location_id);
+
+    if (!location) return;
+
+    openSidebar(
+      `incidents-${location.id}`,
+      "Incidents at Location",
+      "Warnings & Citations go here",
+      <IncidentSidebar
+        incidents={location.incidents}
+        onDeleteIncidentAction={onDeleteIncidentAction}
+      />
+    );
   };
 
   const doDelete = () => {
@@ -50,49 +86,99 @@ export default function IncidentSidebar({
   };
 
   const handleEdit = (incident: IncidentDto) => {
-    setEditingIncident(incident);
-    setModalMode("edit");
-    setModalOpen(true);
+    setModalState({ mode: "edit", incident });
   };
 
   const handleAdd = () => {
-    setEditingIncident(null);
-    setModalMode("create");
-    setModalOpen(true);
+    setModalState({ mode: "create" });
   };
+  const closeModal = () => setModalState(null);
+  const queryClient = useQueryClient();
 
   const handleModalSubmit = (
-    data: Omit<IncidentDto, "id" | "location_id"> & { incident_datetime: Date }
+    data: Omit<IncidentDto, "id" | "location_id"> & {
+      incident_datetime: Date;
+    }
   ) => {
-    if (modalMode === "create") {
-      const nextId =
-        localIncidents.length > 0
-          ? Math.max(...localIncidents.map((i) => i.id)) + 1
-          : Date.now();
-      const locationId = localIncidents[0]?.location_id ?? 0;
+    if (modalState?.mode === "create") {
+      const locationId = incidents.length > 0 ? incidents[0].location_id : 0;
+
       const newIncident: IncidentDto = {
-        id: nextId,
+        id: Date.now(),
         location_id: locationId,
         incident_datetime: data.incident_datetime,
         description: data.description,
         severity: data.severity,
       };
-      setLocalIncidents((prev) => [newIncident, ...prev]);
-    } else if (modalMode === "edit" && editingIncident) {
-      setLocalIncidents((prev) =>
-        prev.map((inc) =>
-          inc.id === editingIncident.id
+
+      queryClient.setQueryData<PaginatedResponse<LocationDto> | undefined>(
+        ["locations"],
+        (old) =>
+          old
             ? {
-                ...inc,
-                incident_datetime: data.incident_datetime,
-                description: data.description,
-                severity: data.severity,
+                ...old,
+                items: old.items.map((loc) =>
+                  loc.id === locationId
+                    ? {
+                        ...loc,
+                        incidents: [newIncident, ...loc.incidents],
+                      }
+                    : loc
+                ),
               }
-            : inc
-        )
+            : old
+      );
+    } else if (modalState?.mode === "edit") {
+      const editingIncident = modalState.incident;
+
+      queryClient.setQueryData<PaginatedResponse<LocationDto> | undefined>(
+        ["locations"],
+        (old) =>
+          old
+            ? {
+                ...old,
+                items: old.items.map((loc) =>
+                  loc.id === editingIncident.location_id
+                    ? {
+                        ...loc,
+                        incidents: loc.incidents.map((inc) =>
+                          inc.id === editingIncident.id
+                            ? {
+                                ...inc,
+                                incident_datetime: data.incident_datetime,
+                                description: data.description,
+                                severity: data.severity,
+                              }
+                            : inc
+                        ),
+                      }
+                    : loc
+                ),
+              }
+            : old
+      );
+      const updated = queryClient.getQueryData<PaginatedResponse<LocationDto>>([
+        "locations",
+      ]);
+
+      const location = updated?.items.find(
+        (l) => l.id === editingIncident.location_id
+      );
+
+      if (!location) return;
+
+      openSidebar(
+        `incidents-${location.id}`,
+        "Incidents at Location",
+        "Warnings & Citations go here",
+        <IncidentSidebar
+          incidents={location.incidents}
+          onDeleteIncidentAction={onDeleteIncidentAction}
+        />
       );
     }
-    setModalOpen(false);
+
+    setModalState(null);
   };
 
   return (
@@ -101,7 +187,7 @@ export default function IncidentSidebar({
       <p className="text-sm text-gray-500">
         Manage the incidents for this location here.
       </p>
-      {localIncidents.map((incident) => (
+      {incidents.map((incident) => (
         <IncidentSidebarCard
           incidents={incident}
           key={incident.id}
@@ -123,10 +209,12 @@ export default function IncidentSidebar({
       )}
 
       <IncidentModal
-        open={modalOpen}
-        onOpenChange={setModalOpen}
-        mode={modalMode}
-        // incident={editingIncident}
+        open={modalState !== null}
+        onOpenChange={(open) => {
+          if (!open) closeModal();
+        }}
+        mode={modalState?.mode ?? "create"}
+        incident={modalState?.mode === "edit" ? modalState.incident : undefined}
         onSubmit={handleModalSubmit}
       />
     </div>
