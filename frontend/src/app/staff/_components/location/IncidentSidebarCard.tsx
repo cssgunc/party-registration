@@ -16,11 +16,11 @@ import { ChevronDown, MoreHorizontal } from "lucide-react";
 
 type IncidentSidebarCardProps = {
   incidents: IncidentDto;
-  onDelete: (incidentId: number) => void;
+  onDeleteAction: (incidentId: number) => void;
 };
 export default function IncidentSidebarCard({
   incidents,
-  onDelete,
+  onDeleteAction,
 }: IncidentSidebarCardProps) {
   const { role } = useRole();
   return (
@@ -51,7 +51,9 @@ export default function IncidentSidebarCard({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
                   <DropdownMenuItem>Edit</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onDelete(incidents.id)}>
+                  <DropdownMenuItem
+                    onClick={() => onDeleteAction(incidents.id)}
+                  >
                     Delete
                   </DropdownMenuItem>
                 </DropdownMenuContent>

@@ -7,12 +7,12 @@ import IncidentSidebarCard from "./IncidentSidebarCard";
 
 type IncidentSidebarProps = {
   incidents: IncidentDto[];
-  onDelete: (incidentId: number) => void;
+  onDeleteAction: (incidentId: number) => void;
 };
 
 export default function IncidentInfoChipDetails({
   incidents,
-  onDelete,
+  onDeleteAction,
 }: IncidentSidebarProps) {
   const { role } = useRole();
   const [localIncidents, setLocalIncidents] =
@@ -24,7 +24,7 @@ export default function IncidentInfoChipDetails({
 
   const handleDelete = (incidentId: number) => {
     setLocalIncidents((prev) => prev.filter((i) => i.id !== incidentId));
-    onDelete(incidentId);
+    onDeleteAction(incidentId);
   };
 
   return (
@@ -37,7 +37,7 @@ export default function IncidentInfoChipDetails({
         <IncidentSidebarCard
           incidents={incident}
           key={incident.id}
-          onDelete={handleDelete}
+          onDeleteAction={handleDelete}
         />
       ))}
       {role === "admin" && (
