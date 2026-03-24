@@ -116,38 +116,34 @@ export default function RegistrationForm() {
   return (
     <div>
       <main className="mx-4 mt-4">
-        <div className="flex items-center content pb-2 lg:hidden">
+        <nav className="flex items-center content pb-2 lg:hidden">
           <ArrowLeft className="h-4" />
           <Link href="/student">Back</Link>
-        </div>
+        </nav>
         <Card className="mb-12">
           <div>
-            <div className="hidden content lg:flex lg:items-center lg:px-8 lg:py-6">
+            <nav className="hidden content lg:flex lg:items-center lg:px-8 lg:py-6">
               <ArrowLeft className="h-4" />
               <Link href="/student">Back</Link>
-            </div>
-            <div className="px-8 py-6 lg:px-24 lg:py-0 lg:pb-12">
-              <h1 className="page-title max-w-md">
+            </nav>
+            <div className="px-8 py-6 lg:px-18 lg:py-0 lg:pb-12">
+              <h1 className="page-title max-w-md md:mb-4">
                 Off Campus Student Life Party Registration Form
               </h1>
 
               <Link
-                href="/student/about-party-registration"
-                className="flex items-center py-2 lg:hidden"
+                href="/student/about-party-smart"
+                className="flex items-center py-2 md:hidden"
               >
                 <Info className="h-4 mr-1 content" />
-                <p className="content underline">
-                  Learn About Party Registration
-                </p>
+                <p className="content underline">Learn About Party Smart</p>
               </Link>
 
               <PartyRegistrationForm
                 onSubmit={handleSubmit}
                 locationService={new LocationService(getMockClient("student"))}
                 initialValues={initialValues}
-                studentEmail={studentQuery.data?.email}
-                studentPhoneNumber={studentQuery.data?.phone_number}
-                studentResidence={studentQuery.data?.residence}
+                student={studentQuery.data}
               />
             </div>
           </div>

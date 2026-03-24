@@ -131,10 +131,10 @@ export default function RegistrationTracker({
           {showActions && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="shrink-0 bg-transparent">
-                  <MoreVertical className="h-4 w-4 content" />
-                  <span className="sr-only">Party actions</span>
-                </button>
+                <Button className="shrink-0 bg-transparent hover:bg-transparent">
+                  <MoreVertical className="h-4 w-4 content cursor-pointer" />
+                  <p className="sr-only">Party actions</p>
+                </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
@@ -171,8 +171,8 @@ export default function RegistrationTracker({
                 {" "}
                 {party.contact_one.contact_preference}
               </span>
-              s
             </p>
+            <p>{party.contact_one.email}</p>
           </div>
 
           {/* Contact Two */}
@@ -187,8 +187,8 @@ export default function RegistrationTracker({
                 {" "}
                 {party.contact_two.contact_preference}
               </span>
-              s
             </p>
+            <p>{party.contact_two.email}</p>
           </div>
         </div>
       </div>
@@ -199,7 +199,7 @@ export default function RegistrationTracker({
     date,
     incidents,
   }: {
-    date: String;
+    date: string;
     incidents: IncidentDto[];
   }) => (
     <Card className="px-4 py-4 border-b border-gray-100 rounded-none last:border-b-0">
@@ -220,22 +220,22 @@ export default function RegistrationTracker({
 
   if (error) {
     return (
-      <div className="w-full bg-white border border-gray-200 rounded-md p-4">
+      <Card className="w-full bg-card p-4">
         <div className="text-center text-red-600 py-8">
           <p className="font-semibold mb-2">Error loading registrations</p>
           <p className="text-sm">{error.message}</p>
         </div>
-      </div>
+      </Card>
     );
   }
 
   if (isPending) {
     return (
-      <div className="w-full bg-white border border-gray-200 rounded-md p-4">
-        <div className="text-center text-gray-600 py-8">
-          <p>Loading registrations...</p>
+      <Card className="w-full bg-card p-4">
+        <div className="text-center py-8">
+          <p className="content-sub">Loading registrations...</p>
         </div>
-      </div>
+      </Card>
     );
   }
 
@@ -259,7 +259,7 @@ export default function RegistrationTracker({
               value="past"
               className="px-0 subhead-content cursor-pointer"
             >
-              Past Events
+              Past
             </TabsTrigger>
             <TabsTrigger
               value="incidents"
@@ -290,7 +290,7 @@ export default function RegistrationTracker({
 
         <Card className="w-full">
           <TabsContent value="active">
-            <div className="w-full bg-white rounded-md overflow-hidden">
+            <div className="w-full bg-card rounded-md overflow-hidden">
               <div className="max-h-[calc(100vh-28rem)] overflow-y-auto">
                 {activeParties.length === 0 ? (
                   <p className="text-center content-sub py-8">
@@ -306,7 +306,7 @@ export default function RegistrationTracker({
           </TabsContent>
 
           <TabsContent value="past" className="">
-            <div className="w-full bg-white rounded-md overflow-hidden">
+            <div className="w-full bg-card rounded-md overflow-hidden">
               <div className="max-h-[calc(100vh-28rem)] overflow-y-auto">
                 {pastParties.length === 0 ? (
                   <p className="text-center content-sub py-8">
@@ -322,7 +322,7 @@ export default function RegistrationTracker({
           </TabsContent>
 
           <TabsContent value="incidents">
-            <div className="w-full bg-white rounded-md overflow-hidden">
+            <div className="w-full bg-card rounded-md overflow-hidden">
               <div className="max-h-[calc(100vh-28rem)] overflow-y-auto">
                 {sortedIncidents.length === 0 ? (
                   <p className="text-center content-sub py-8">No incidents</p>

@@ -35,6 +35,8 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-sub-text: var(--sub-text);
+  --color-text: var(--text);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -148,28 +150,22 @@
     background: var(--primary-background);
   }
   .page-title {
-    @apply text-2xl font-semibold;
-    color: var(--text);
+    @apply text-2xl font-semibold text-text;
   }
   .subhead-title {
-    @apply text-xl font-semibold;
-    color: var(--text);
+    @apply text-xl font-semibold text-text;
   }
   .subhead-content {
-    @apply text-lg font-bold;
-    color: var(--text);
+    @apply text-lg font-bold text-text;
   }
   .content {
-    @apply text-base font-normal;
-    color: var(--text);
+    @apply text-base font-normal text-text;
   }
   .content-bold {
-    @apply text-base font-bold;
-    color: var(--text);
+    @apply text-base font-bold text-text;
   }
   .content-sub {
-    @apply text-sm font-normal;
-    color: var(--sub-text);
+    @apply text-sm font-normal text-sub-text;
   }
 }
 

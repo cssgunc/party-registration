@@ -8,7 +8,7 @@ export default function AboutPartySmart() {
       <main className="px-4 py-4 w-full max-w-4xl">
         <div className="flex items-center content">
           <ArrowLeft className="h-4" />
-          <Link href="/student">Back</Link>
+          <Link href="/student/new-party">Back</Link>
         </div>
         <div className="mx-8">
           <PartySmartInfo />

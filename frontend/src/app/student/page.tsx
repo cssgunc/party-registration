@@ -2,7 +2,6 @@
 
 import RegistrationTracker from "@/app/student/_components/RegistrationTracker";
 import StatusComponent from "@/app/student/_components/StatusComponent";
-import { Button } from "@/components/ui/button";
 import { useRole } from "@/contexts/RoleContext";
 import {
   useCurrentStudent,
@@ -70,12 +69,14 @@ export default function StudentDashboard() {
           <div>
             <div className="flex justify-between items-center">
               <h1 className="page-title w-1/2">Events</h1>
-              <div className="content text-wrap text-endw-1/2">
+              <div className="content text-wrap text-end w-1/2">
                 {validResidence && (
-                  <div>
-                    {studentQuery?.data?.residence?.location.street_number}{" "}
-                    {studentQuery?.data?.residence?.location.street_name}{" "}
-                    {studentQuery?.data?.residence?.location.unit}
+                  <div className="flex justify-end">
+                    <p>
+                      {studentQuery?.data?.residence?.location.street_number}{" "}
+                      {studentQuery?.data?.residence?.location.street_name}{" "}
+                      {studentQuery?.data?.residence?.location.unit}
+                    </p>
                   </div>
                 )}
               </div>
@@ -91,11 +92,11 @@ export default function StudentDashboard() {
           <div className="mt-6">
             <h2 className="page-title mb-2">Party Smart Course </h2>
             <Link
-              href="/student/about-party-smart"
+              href="/student/about-party-registration"
               className="content flex items-center mb-2 2xl:hidden"
             >
               <Info className="h-4 w-4 inline-block mr-1" />
-              <p className="underline">Learn About Party Smart</p>
+              <p className="underline">Learn About Party Registration</p>
             </Link>
             <StatusComponent
               last_registered={studentQuery.data?.last_registered}

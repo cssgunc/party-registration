@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/select";
 import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
-import { ResidenceDto } from "@/lib/api/student/student.types";
+import { ResidenceDto, StudentDto } from "@/lib/api/student/student.types";
 import { isFromThisSchoolYear } from "@/lib/utils";
 import { addBusinessDays, format, isAfter, startOfDay } from "date-fns";
 import { CalendarIcon } from "lucide-react";
@@ -90,13 +90,10 @@ interface PartyRegistrationFormProps {
   onSubmit: (data: PartyFormValues, placeId: string) => void | Promise<void>;
   locationService?: LocationService;
   initialValues?: PartyFormInitialValues;
-  /** The authenticated student's email (contact one) for duplicate validation */
-  studentEmail?: string;
-  /** The authenticated student's phone number (contact one) for duplicate validation */
-  studentPhoneNumber?: string;
+  /** The authenticated student */
+  student?: StudentDto | null;
   /** Whether this form is used for creating or editing a party */
   mode?: "create" | "edit";
-  studentResidence?: ResidenceDto | null;
 }
 
 // Default party time (e.g., 8:00 PM)
@@ -108,10 +105,8 @@ export default function PartyRegistrationForm({
   onSubmit,
   locationService = new LocationService(),
   initialValues,
-  studentEmail,
-  studentPhoneNumber,
+  student,
   mode = "create",
-  studentResidence,
 }: PartyRegistrationFormProps) {
   const [formData, setFormData] = useState<Partial<PartyFormValues>>({
     address: initialValues?.address ?? "",
@@ -167,15 +162,15 @@ export default function PartyRegistrationForm({
     // Validate contact two differs from contact one (the student)
     const contactTwoErrors: Record<string, string> = {};
     if (
-      studentEmail &&
+      student?.email &&
       result.data.contactTwoEmail.trim().toLowerCase() ===
-        studentEmail.trim().toLowerCase()
+        student.email.trim().toLowerCase()
     ) {
       contactTwoErrors.contactTwoEmail =
         "Contact two email must be different from your email";
     }
-    if (studentPhoneNumber) {
-      const c1Digits = studentPhoneNumber.replace(/\D/g, "");
+    if (student?.phone_number) {
+      const c1Digits = student.phone_number.replace(/\D/g, "");
       const c2Digits = result.data.phoneNumber.replace(/\D/g, "");
       if (c1Digits === c2Digits) {
         contactTwoErrors.phoneNumber =
@@ -255,7 +250,7 @@ export default function PartyRegistrationForm({
       : undefined;
 
   const validResidence = isFromThisSchoolYear(
-    studentResidence?.residence_chosen_date
+    student?.residence?.residence_chosen_date
   );
 
   return (
@@ -263,7 +258,7 @@ export default function PartyRegistrationForm({
       <FieldGroup>
         <FieldSet>
           <div className="flex flex-col gap-4 lg:gap-6">
-            <div className="grid grid-cols-2 gap-6 lg:gap-8 mt-2">
+            <div className="sm:grid sm:grid-cols-2 sm:gap-6 lg:gap-8 mt-2">
               <Field data-invalid={!!errors.partyDate}>
                 <FieldLabel htmlFor="party-date" className="content-bold">
                   Event Date
@@ -274,7 +269,7 @@ export default function PartyRegistrationForm({
                       id="party-date"
                       variant="outline"
                       aria-invalid={!!errors.partyDate}
-                      className={`w-full justify-between items-center content bg-white ${
+                      className={`w-full justify-between items-center content bg-white input-shadow ${
                         !formData.partyDate && "text-muted-foreground"
                       }`}
                     >
@@ -306,45 +301,12 @@ export default function PartyRegistrationForm({
                   <FieldError>{errors.partyDate}</FieldError>
                 )}
               </Field>
-              {!validResidence && (
-                <Field data-invalid={!!errors.address}>
-                  <FieldLabel htmlFor="party-address" className="content-bold">
-                    Party Address
-                  </FieldLabel>
-                  <AddressSearch
-                    value={formData.address}
-                    onSelect={handleAddressSelect}
-                    locationService={locationService}
-                    placeholder="Search for the party address..."
-                    className="w-full"
-                    error={errors.address}
-                    initialSelection={initialAddress}
-                  />
-                  <FieldDescription className="content-sub">
-                    This will be added to your profile as your {school_year}{" "}
-                    location. You may change it after {change_date}.
-                  </FieldDescription>
-                  {errors.address && <FieldError>{errors.address}</FieldError>}
-                </Field>
-              )}
-              {validResidence && (
-                <div className="col-span-2">
-                  <p className="content-bold mb-2">Party Address</p>
-                  <p className="content pb-3">
-                    {studentResidence?.location.formatted_address}
-                  </p>
-
-                  <div className="flex flex-row gap-4">
-                    <p className="content-sub flex-1">
-                      You cannot change your address until {change_date}. If you
-                      are experiencing hardship, contact [email] for changes
-                    </p>
-                  </div>
-                </div>
-              )}
 
               <Field data-invalid={!!errors.partyTime}>
-                <FieldLabel htmlFor="party-time" className="content-bold">
+                <FieldLabel
+                  htmlFor="party-time"
+                  className="content-bold mt-4 sm:mt-0"
+                >
                   Event Time
                 </FieldLabel>
                 <Input
@@ -361,61 +323,80 @@ export default function PartyRegistrationForm({
               </Field>
             </div>
 
-            <Field data-invalid={!!errors.address}>
-              <FieldLabel htmlFor="party-address" className="content-bold">
-                Event Address
-              </FieldLabel>
-              <AddressSearch
-                value={formData.address}
-                onSelect={handleAddressSelect}
-                locationService={locationService}
-                placeholder="Search for the party address..."
-                className="w-full content"
-                error={errors.address}
-                initialSelection={initialAddress}
-              />
-              {errors.address && <FieldError>{errors.address}</FieldError>}
-            </Field>
+            {!validResidence && (
+              <Field data-invalid={!!errors.address}>
+                <FieldLabel htmlFor="party-address" className="content-bold">
+                  Party Address
+                </FieldLabel>
+                <AddressSearch
+                  value={formData.address}
+                  onSelect={handleAddressSelect}
+                  locationService={locationService}
+                  placeholder="Search for the party address..."
+                  className="w-full"
+                  error={errors.address}
+                  initialSelection={initialAddress}
+                />
+                <FieldDescription className="content-sub italic">
+                  This will be added to your profile as your {school_year}{" "}
+                  location. You may change it after {change_date}.
+                </FieldDescription>
+                {errors.address && <FieldError>{errors.address}</FieldError>}
+              </Field>
+            )}
+            {validResidence && (
+              <div className="col-span-2">
+                <p className="content-bold mb-2">Party Address</p>
+                <p className="content pb-3">
+                  {student?.residence?.location.formatted_address}
+                </p>
+
+                <div className="flex flex-row gap-4">
+                  <p className="content-sub italic">
+                    You cannot change your address until {change_date}. If you
+                    are experiencing hardship, contact [email] for changes
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col gap-4 lg:gap-6">
-            <h2 className="subhead-content">
-              {" "}
-              {/* Need to add this information */}
-              Your Contact Information
-            </h2>
-            <p className="content italic opacity-50">
-              You can edit preferences in your Account Settings
+            <h2 className="subhead-content">Your Contact Information</h2>
+            <p className="content-sub italic">
+              You can edit preferences in your Account Settings.
             </p>
-            <div className="flex flex-row gap-6 lg:gap-8">
-              <Field>
+            <div className="sm:grid sm:grid-cols-2 sm:gap-4">
+              <Field className="mb-4 sm:mb-2">
                 <FieldLabel className="content-bold">First Name</FieldLabel>
-                <p className="content"></p>
+                <p className="content">{student?.first_name}</p>
               </Field>
-              <Field>
+              <Field className="mb-4 sm:mb-2">
                 <FieldLabel className="content-bold">Last Name</FieldLabel>
-                <p className="content"></p>
+                <p className="content">{student?.last_name}</p>
+              </Field>
+              <Field className="mb-4 sm:mb-2">
+                <FieldLabel className="content-bold">Phone Number</FieldLabel>
+                <p className="content">{student?.phone_number}</p>
+              </Field>
+              <Field className="mb-4 sm:mb-2">
+                <FieldLabel className="content-bold">
+                  Contact Preference
+                </FieldLabel>
+                <p className="content capitalize">
+                  {student?.contact_preference}
+                </p>
+              </Field>
+              <Field className="sm:mb-2">
+                <FieldLabel className="content-bold">Email</FieldLabel>
+                <p className="content">{student?.email}</p>
               </Field>
             </div>
-            <Field>
-              <FieldLabel className="content-bold">Phone Number</FieldLabel>
-              <p className="content"></p>
-            </Field>
-            <Field>
-              <FieldLabel className="content-bold">
-                Contact Preference
-              </FieldLabel>
-              <p className="content"></p>
-            </Field>
-            <Field>
-              <FieldLabel className="content-bold">Email</FieldLabel>
-              <p className="content"></p>
-            </Field>
           </div>
 
           <div className="flex flex-col gap-4 lg:gap-6">
             <h2 className="subhead-content">Second Contact Information</h2>
-            <div className="flex flex-row gap-6 lg:gap-8">
+            <div className="lg:flex lg:flex-row lg:gap-8">
               <Field data-invalid={!!errors.secondContactFirstName}>
                 <FieldLabel
                   htmlFor="second-contact-first-name"
@@ -431,7 +412,7 @@ export default function PartyRegistrationForm({
                     updateField("secondContactFirstName", e.target.value)
                   }
                   aria-invalid={!!errors.secondContactFirstName}
-                  className="content"
+                  className="content mb-4 lg:mb-0"
                 />
                 {errors.secondContactFirstName && (
                   <FieldError>{errors.secondContactFirstName}</FieldError>
@@ -544,42 +525,6 @@ export default function PartyRegistrationForm({
               className="!w-fit"
             >
               {isSubmitting ? "Submitting..." : "Submit Event"}
-            </Button>
-          </Field>
-
-          <Field data-invalid={!!errors.contactTwoEmail}>
-            <FieldLabel htmlFor="contact-email">Contact Email</FieldLabel>
-            <Input
-              id="contact-email"
-              type="email"
-              placeholder="student@unc.edu"
-              value={formData.contactTwoEmail}
-              onChange={(e) => updateField("contactTwoEmail", e.target.value)}
-              aria-invalid={!!errors.contactTwoEmail}
-            />
-            <FieldDescription>
-              Email address of the second contact person
-            </FieldDescription>
-            {errors.contactTwoEmail && (
-              <FieldError>{errors.contactTwoEmail}</FieldError>
-            )}
-          </Field>
-
-          <Field orientation="horizontal">
-            <Button
-              type="submit"
-              disabled={isSubmitting || !isFormComplete}
-              title={
-                !isFormComplete
-                  ? "Please fill in all required fields"
-                  : undefined
-              }
-            >
-              {isSubmitting
-                ? "Submitting..."
-                : mode === "edit"
-                  ? "Save"
-                  : "Register Party"}
             </Button>
           </Field>
         </FieldSet>

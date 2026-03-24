@@ -36,11 +36,12 @@ export default function StudentProfilePage() {
   if (isLoading) {
     return (
       <div>
-        <div className="sm:px-14 pb-12 flex flex-col gap-4 max-w-4xl mx-auto w-full">
-          <Link className="py-8" href="/student">
-            Back
-          </Link>
-          <div className="text-center py-8">Loading...</div>
+        <div className="sm:px-14 pb-12 my-4 flex flex-col gap-4 max-w-4xl mx-auto w-full">
+          <div className="flex items-center content">
+            <ArrowLeft className="h-4" />
+            <Link href="/student">Back</Link>
+          </div>
+          <div className="text-center py-8 content">Loading...</div>
         </div>
       </div>
     );
@@ -49,7 +50,11 @@ export default function StudentProfilePage() {
   if (error) {
     return (
       <div>
-        <div className="sm:px-14 pb-12 flex flex-col gap-4 max-w-4xl mx-auto w-full">
+        <div className="sm:px-14 pb-12 my-4 flex flex-col gap-4 max-w-4xl mx-auto w-full">
+          <div className="flex items-center content">
+            <ArrowLeft className="h-4" />
+            <Link href="/student">Back</Link>
+          </div>
           <div className="text-center py-8 text-red-600">
             Error loading student data
           </div>
@@ -61,7 +66,7 @@ export default function StudentProfilePage() {
   return (
     <div className="flex flex-col items-center lg:flex lg:flex-col min-h-screen">
       <main className="w-5/6 mx-4 my-4 max-w-2xl flex flex-col">
-        <div className="flex items-center">
+        <div className="flex items-center content">
           <ArrowLeft className="h-4" />
           <Link href="/student">Back</Link>
         </div>

@@ -16,7 +16,7 @@ export default function StatusComponent({
 }: CompletionCardProps) {
   if (error) {
     return (
-      <Card className="p-4 rounded-md shadow-sm w-full bg-white">
+      <Card className="p-4 rounded-md shadow-sm w-full bg-card">
         <CardContent className="p-0">
           <div className="text-center text-destructive py-4">
             <p className="font-semibold mb-1">Error loading course status</p>
@@ -29,10 +29,10 @@ export default function StatusComponent({
 
   if (isPending) {
     return (
-      <Card className="p-4 rounded-md shadow-sm w-full bg-white">
+      <Card className="p-4 rounded-md shadow-sm w-full bg-card">
         <CardContent className="p-0">
           <div className="text-center text-muted-foreground py-4">
-            <p>Loading course status...</p>
+            <p className="content-sub">Loading course status...</p>
           </div>
         </CardContent>
       </Card>
@@ -42,7 +42,7 @@ export default function StatusComponent({
   const isCompleted = isFromThisSchoolYear(last_registered);
 
   return (
-    <Card className="p-4 rounded-md shadow-sm w-full bg-white">
+    <Card className="p-4 rounded-md shadow-sm w-full bg-card">
       <CardContent className="p-0 flex flex-col gap-1 text-sm">
         {isCompleted ? (
           <>
@@ -56,7 +56,7 @@ export default function StatusComponent({
               </p>
             </div>
 
-            <div className="italic content">Expires August 1st</div>
+            <p className="italic content">Expires August 1st</p>
           </>
         ) : (
           <div className="content">

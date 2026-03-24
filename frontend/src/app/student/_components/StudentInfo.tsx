@@ -162,7 +162,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
   );
   if (!isEditing) {
     return (
-      <main className="bg-white rounded-lg py-6 px-6 sm:px-10 w-full flex flex-col">
+      <div className="bg-card rounded-lg p-6 sm:px-10 sm:py-8 w-full flex flex-col">
         <div className="self-center gap-6 flex justify-around mr-4 sm:mr-0 sm:mt-4">
           <h1 className="page-title">Edit Profile Information</h1>
           <button
@@ -174,33 +174,35 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
           </button>
         </div>
 
-        <section className="my-4 sm:my-8 sm:grid sm:grid-cols-2 sm:gap-y-2 sm:gap-x-12">
-          <div className="sm:mt-0 sm:border-b">
-            <p className="subhead-content pb-1">First Name</p>
-            <p className="content">{displayData.first_name}</p>
-          </div>
+        <section>
+          <div className="my-4 sm:my-8 sm:grid sm:grid-cols-2 sm:gap-y-2 sm:gap-x-12">
+            <div className="sm:mt-0 sm:border-b">
+              <p className="subhead-content mb-2">First Name</p>
+              <p className="content">{displayData.first_name}</p>
+            </div>
 
-          <div className="mt-3 sm:mt-0 sm:border-b">
-            <p className="subhead-content pb-1">Last Name</p>
-            <p className="content">{displayData.last_name}</p>
-          </div>
+            <div className="mt-3 sm:mt-0 sm:border-b">
+              <p className="subhead-content mb-2">Last Name</p>
+              <p className="content">{displayData.last_name}</p>
+            </div>
 
-          <div className="mt-3 sm:mt-6 sm:border-b">
-            <p className="subhead-content pb-1">Phone Number</p>
-            <p className="content">{displayData.phone_number}</p>
-          </div>
+            <div className="mt-3 sm:mt-6 sm:border-b">
+              <p className="subhead-content mb-2">Phone Number</p>
+              <p className="content">{displayData.phone_number}</p>
+            </div>
 
-          <div className="mt-3 sm:mt-6 sm:border-b">
-            <p className="subhead-content pb-1">Contact Method</p>
-            <p className="content">
-              {displayData.contact_preference
-                ? displayData.contact_preference.charAt(0).toUpperCase() +
-                  displayData.contact_preference.slice(1)
-                : "Not set"}
-            </p>
+            <div className="mt-3 sm:mt-6 sm:border-b">
+              <p className="subhead-content mb-2">Contact Method</p>
+              <p className="content">
+                {displayData.contact_preference
+                  ? displayData.contact_preference.charAt(0).toUpperCase() +
+                    displayData.contact_preference.slice(1)
+                  : "Not set"}
+              </p>
+            </div>
           </div>
-          <div className="mt-3 sm:mt-6 sm:border-b">
-            <p className="subhead-content pb-1">{school_year} Address</p>
+          <div className="mt-3 mb-8 sm:mt-6 sm:border-b">
+            <p className="subhead-content mb-2">{school_year} Address</p>
             <p className="content">
               {initialData.residence?.location.formatted_address}
             </p>
@@ -210,114 +212,125 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
         <section className="sm:mb-4 flex justify-center">
           <Button variant="default">Log Out</Button>
         </section>
-      </main>
+      </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded-lg w-full p-6">
-      <div className="flex justify-between items-center mb-6">
-        <div className="page-title">Edit Profile Information</div>
+    <form
+      onSubmit={handleSubmit}
+      className="bg-card rounded-lg w-full p-6 sm:p-10"
+    >
+      <div className="text-center mb-6 sm:mb-2 sm:mt-2">
+        <h1 className="page-title self-center">Edit Profile Information</h1>
       </div>
       <FieldGroup>
-        <FieldSet className="rounded-lg w-full flex flex-col sm:py-4 sm:px-6">
-          <section className="sm:grid sm:grid-cols-2 sm:gap-x-12 sm:gap-y-8">
-            <div className="grid grid-cols-2">
-              <div>
-                <p className="subhead-content mb-2">First Name</p>
-                <p className="content pb-2">{displayData.first_name}</p>
-              </div>
+        <FieldSet className="rounded-lg w-full flex flex-col sm:py-4">
+          <section>
+            <div className="mb-2 sm:mb-6 sm:mt-2">
+              <div className="grid grid-cols-2 mb-2 gap-12">
+                <div>
+                  <p className="subhead-content mb-2">First Name</p>
+                  <p className="content pb-2">{displayData.first_name}</p>
+                </div>
 
-              <div>
-                <p className="subhead-content mb-2">Last Name</p>
-                <div className="content pb-2">{displayData.last_name}</div>
+                <div>
+                  <p className="subhead-content mb-2">Last Name</p>
+                  <p className="content pb-2">{displayData.last_name}</p>
+                </div>
+              </div>
+              <div className="flex flex-row gap-2">
+                <TriangleAlert className="w-4 h-4 content" />
+                <p className="content-sub italic flex-1">
+                  Your name is associated with your Onyen
+                </p>
               </div>
             </div>
-            <div className="flex flex-row gap-2">
-              <TriangleAlert className="w-4 h-4 content" />
-              <p className="content-sub italic flex-1">
-                Your name is associated with your Onyen
-              </p>
-            </div>
 
-            <Field data-invalid={!!errors.phone_number}>
-              <FieldLabel
-                htmlFor="phone-number"
-                className="subhead-content mt-3 sm:mt-0"
-              >
-                Phone Number
-              </FieldLabel>
-              <Input
-                id="phone-number"
-                placeholder="123-456-7890"
-                value={formData.phone_number}
-                onChange={(e) => updateField("phone_number", e.target.value)}
-                aria-invalid={!!errors.phone_number}
-                className="content"
-              />
-              {errors.phone_number && (
-                <FieldError>{errors.phone_number}</FieldError>
-              )}
-            </Field>
-
-            <Field data-invalid={!!errors.contact_preference}>
-              <FieldLabel
-                htmlFor="contact-preference"
-                className="subhead-content mt-3 sm:mt-0"
-              >
-                Contact Method
-              </FieldLabel>
-              <Select
-                value={formData.contact_preference}
-                onValueChange={(value: "call" | "text") =>
-                  updateField("contact_preference", value)
-                }
-              >
-                <SelectTrigger id="contact-preference" className="content">
-                  <SelectValue placeholder="Select your preference" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="call" className="content">
-                    Call
-                  </SelectItem>
-                  <SelectItem value="text" className="content">
-                    Text
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-              {errors.contact_preference && (
-                <FieldError>{errors.contact_preference}</FieldError>
-              )}
-            </Field>
-            {!validAddress && (
-              <Field data-invalid={!!errors.address}>
+            <div className="grid grid-cols-2 mb-2 gap-12">
+              <Field data-invalid={!!errors.phone_number} className="mb-2">
                 <FieldLabel
-                  htmlFor="address"
+                  htmlFor="phone-number"
                   className="subhead-content mt-3 sm:mt-0"
                 >
-                  {school_year} Address
+                  Phone Number
                 </FieldLabel>
                 <Input
-                  id="address"
-                  placeholder="123 Main St, Chapel Hill NC 27514"
-                  value={formData.address}
-                  onChange={(e) => updateField("address", e.target.value)}
+                  id="phone-number"
+                  placeholder="123-456-7890"
+                  value={formData.phone_number}
+                  onChange={(e) => updateField("phone_number", e.target.value)}
+                  aria-invalid={!!errors.phone_number}
                   className="content"
                 />
-                {errors.address && <FieldError>{errors.address}</FieldError>}
+                {errors.phone_number && (
+                  <FieldError>{errors.phone_number}</FieldError>
+                )}
               </Field>
-            )}
+
+              <Field
+                data-invalid={!!errors.contact_preference}
+                className="mb-4"
+              >
+                <FieldLabel
+                  htmlFor="contact-preference"
+                  className="subhead-content mt-3 sm:mt-0"
+                >
+                  Contact Method
+                </FieldLabel>
+                <Select
+                  value={formData.contact_preference}
+                  onValueChange={(value: "call" | "text") =>
+                    updateField("contact_preference", value)
+                  }
+                >
+                  <SelectTrigger id="contact-preference" className="content">
+                    <SelectValue placeholder="Select your preference" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="call" className="content">
+                      Call
+                    </SelectItem>
+                    <SelectItem value="text" className="content">
+                      Text
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                {errors.contact_preference && (
+                  <FieldError>{errors.contact_preference}</FieldError>
+                )}
+              </Field>
+              {!validAddress && (
+                <Field data-invalid={!!errors.address} className="mb-2">
+                  <FieldLabel
+                    htmlFor="address"
+                    className="subhead-content mt-3 sm:mt-0"
+                  >
+                    {school_year} Address
+                  </FieldLabel>
+                  <Input
+                    id="address"
+                    placeholder="123 Main St, Chapel Hill NC 27514"
+                    value={formData.address}
+                    onChange={(e) => updateField("address", e.target.value)}
+                    className="content"
+                  />
+                  {errors.address && <FieldError>{errors.address}</FieldError>}
+                </Field>
+              )}
+            </div>
+
             {validAddress && (
               <div className="col-span-2">
                 <p className="subhead-content mt-3 sm:mt-0">
                   {school_year} Address
                 </p>
-                <p className="content">
+                <p className="content my-2">
                   {initialData.residence?.location.formatted_address}
                 </p>
 
-                <div className="flex flex-row">
-                  <TriangleAlert />
+                <div className="flex flex-row mt-3 gap-2">
+                  <TriangleAlert className="w-4 h-4 content" />
                   <p className="content-sub italic flex-1">
                     You cannot change your address until {change_date}. If you
                     are experiencing hardship, contact [email] for changes
@@ -333,7 +346,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
             </div>
           )}
 
-          <div className="flex justify-center gap-4">
+          <div className="flex justify-center">
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Saving..." : "Save"}
             </Button>

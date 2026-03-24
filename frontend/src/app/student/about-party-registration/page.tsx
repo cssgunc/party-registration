@@ -6,10 +6,10 @@ export default function AboutPartyRegistration() {
   return (
     <div className="flex flex-col items-center">
       <main className="mx-4 mt-4 max-w-4xl">
-        <div className="flex items-center content">
+        <nav className="flex items-center content">
           <ArrowLeft className="h-4" />
           <Link href="/student">Back</Link>
-        </div>
+        </nav>
         <div className="mx-8">
           <PartyRegistrationInfo />
         </div>

@@ -89,8 +89,7 @@ export function EditPartyDialog({
           onSubmit={handleSubmit}
           locationService={new LocationService(getMockClient("student"))}
           initialValues={initialValues}
-          studentEmail={studentQuery.data?.email}
-          studentPhoneNumber={studentQuery.data?.phone_number}
+          student={studentQuery.data}
           mode="edit"
         />
       </DialogContent>
