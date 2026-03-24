@@ -20,6 +20,7 @@ import {
   getWarningCount,
 } from "@/lib/api/location/location.types";
 import { PartyDto } from "@/lib/api/party/party.types";
+import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { EllipsisVertical } from "lucide-react";
 import Image from "next/image";
@@ -33,17 +34,10 @@ interface PartyListProps {
 }
 
 const formatPhoneNumber = (phone: string): string => {
-  // Remove all non-digit characters
   const cleaned = phone.replace(/\D/g, "");
-
-  // Format as (XXX) XXX-XXXX
   if (cleaned.length === 10) {
-    return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(
-      6
-    )}`;
+    return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
   }
-
-  // Return original if not 10 digits
   return phone;
 };
 
@@ -56,8 +50,10 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
 
   if (parties.length === 0) {
     return (
-      <div className="w-full bg-white border border-gray-200 rounded-md p-4">
-        <div className="text-gray-400 text-center">No parties found</div>
+      <div className="w-full bg-card border border-border rounded-lg card-shadow p-4">
+        <div className="content text-muted-foreground text-center">
+          No parties found
+        </div>
       </div>
     );
   }
@@ -74,7 +70,7 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
   };
 
   return (
-    <div className="w-full bg-white border border-gray-200 rounded-md h-full overflow-y-auto [scroll-behavior:smooth] [transition:scroll_0.3s_ease-in-out]">
+    <div className="w-full bg-card border border-border rounded-lg card-shadow h-full overflow-y-auto [scroll-behavior:smooth] [transition:scroll_0.3s_ease-in-out]">
       {parties.map((party) =>
         (() => {
           const complaintCount = getComplaintCount(party.location);
@@ -86,146 +82,148 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
               key={party.id}
               data-party-id={party.id}
               onClick={() => onSelect?.(party)}
-              className={`px-4 py-4 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 cursor-pointer ${
-                activeParty?.id === party.id ? "bg-blue-100" : ""
-              }`}
+              className={cn(
+                "px-4 py-3 border-b border-border last:border-b-0 hover:bg-muted/50 cursor-pointer transition-colors",
+                activeParty?.id === party.id && "bg-primary/10"
+              )}
             >
               <div className="space-y-2">
-                {/* Address and Date/Time */}
-                <div>
-                  <div className="font-semibold flex flex-row justify-between">
+                {/* Address and menu */}
+                <div className="flex items-start justify-between gap-2">
+                  <p className="content-bold text-secondary leading-snug">
                     {party.location.formatted_address}
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <button
-                          type="button"
-                          onClick={(event) => event.stopPropagation()}
-                          className="rounded-md p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
-                        >
-                          <EllipsisVertical height={20} />
-                        </button>
-                      </PopoverTrigger>
-                      <PopoverContent className="!w-[180px]" align="end">
-                        <div className="flex flex-col">
-                          <div
-                            className="flex flex-row cursor-pointer"
-                            onClick={(event) =>
-                              openIncidentDialog(event, "complaint", party)
-                            }
-                          >
-                            <Image src={blackFlag} alt="complaints" />
-                            Add complaint
-                          </div>
-                          <div
-                            className="flex flex-row cursor-pointer"
-                            onClick={(event) =>
-                              openIncidentDialog(event, "warning", party)
-                            }
-                          >
-                            <Image src={yellowFlag} alt="warning" />
-                            Add warning
-                          </div>
-                          <div
-                            className="flex flex-row cursor-pointer"
-                            onClick={(event) =>
-                              openIncidentDialog(event, "citation", party)
-                            }
-                          >
-                            <Image src={redFlag} alt="citation" />
-                            Add citation
-                          </div>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                  <div className="text-sm text-gray-600">
-                    {format(party.party_datetime, "PPP")} at{" "}
-                    {format(party.party_datetime, "p")}
-                  </div>
+                  </p>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={(event) => event.stopPropagation()}
+                        className="flex-shrink-0 rounded p-1 hover:bg-muted transition-colors"
+                        aria-label="Party options"
+                      >
+                        <EllipsisVertical className="h-4 w-4 text-muted-foreground" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-44 p-1" align="end">
+                      <button
+                        type="button"
+                        className="flex items-center gap-2 w-full px-2 py-1.5 rounded content hover:bg-muted transition-colors"
+                        onClick={(event) =>
+                          openIncidentDialog(event, "complaint", party)
+                        }
+                      >
+                        <Image src={blackFlag} alt="" width={16} height={16} />
+                        Add complaint
+                      </button>
+                      <button
+                        type="button"
+                        className="flex items-center gap-2 w-full px-2 py-1.5 rounded content hover:bg-muted transition-colors"
+                        onClick={(event) =>
+                          openIncidentDialog(event, "warning", party)
+                        }
+                      >
+                        <Image src={yellowFlag} alt="" width={16} height={16} />
+                        Add warning
+                      </button>
+                      <button
+                        type="button"
+                        className="flex items-center gap-2 w-full px-2 py-1.5 rounded content hover:bg-muted transition-colors"
+                        onClick={(event) =>
+                          openIncidentDialog(event, "citation", party)
+                        }
+                      >
+                        <Image src={redFlag} alt="" width={16} height={16} />
+                        Add citation
+                      </button>
+                    </PopoverContent>
+                  </Popover>
                 </div>
 
-                {/* Contacts Side by Side */}
-                <div className="mt-3 grid grid-cols-2 gap-4">
+                {/* Date/Time */}
+                <p className="content text-muted-foreground">
+                  {format(party.party_datetime, "MM/dd/yyyy")} @{" "}
+                  {format(party.party_datetime, "h:mm a")}
+                </p>
+
+                {/* Contacts side by side */}
+                <div className="grid grid-cols-2 gap-4">
                   {/* Contact One */}
                   <div>
-                    <div className="text-sm font-medium text-gray-700">
-                      Contact 1:
-                    </div>
-                    <div className="text-sm ml-3">
-                      <div>
-                        {party.contact_one.first_name}{" "}
-                        {party.contact_one.last_name}
-                      </div>
-                      <div>
-                        {formatPhoneNumber(party.contact_one.phone_number)}
-                      </div>
-                      <div className="text-gray-600">
-                        Preference:{" "}
-                        {party.contact_one.contact_preference
-                          .charAt(0)
-                          .toUpperCase() +
-                          party.contact_one.contact_preference
-                            .slice(1)
-                            .toLowerCase()}
-                      </div>
-                    </div>
+                    <p className="content text-secondary">
+                      {party.contact_one.first_name}{" "}
+                      {party.contact_one.last_name}
+                    </p>
+                    <p className="content text-muted-foreground ml-4">
+                      {formatPhoneNumber(party.contact_one.phone_number)}
+                    </p>
+                    <p className="content text-muted-foreground ml-4 capitalize">
+                      {party.contact_one.contact_preference}
+                    </p>
                   </div>
 
                   {/* Contact Two */}
                   <div>
-                    <div className="text-sm font-medium text-gray-700">
-                      Contact 2:
-                    </div>
-                    <div className="text-sm ml-3">
-                      <div>
-                        {party.contact_two.first_name}{" "}
-                        {party.contact_two.last_name}
-                      </div>
-                      <div>
-                        {formatPhoneNumber(party.contact_two.phone_number)}
-                      </div>
-                      <div className="text-gray-600">
-                        Preference:{" "}
-                        {party.contact_two.contact_preference
-                          .charAt(0)
-                          .toUpperCase() +
-                          party.contact_two.contact_preference
-                            .slice(1)
-                            .toLowerCase()}
-                      </div>
-                    </div>
+                    <p className="content text-secondary">
+                      {party.contact_two.first_name}{" "}
+                      {party.contact_two.last_name}
+                    </p>
+                    <p className="content text-muted-foreground ml-4">
+                      {formatPhoneNumber(party.contact_two.phone_number)}
+                    </p>
+                    <p className="content text-muted-foreground ml-4 capitalize">
+                      {party.contact_two.contact_preference}
+                    </p>
                   </div>
-                  <div className="flex flex-row items-center gap-2">
+
+                  {/* Flags */}
+                  <div className="flex items-center gap-3 col-span-2">
                     <HoverCard openDelay={0} closeDelay={4}>
                       <HoverCardTrigger asChild>
-                        <div className="flex items-center gap-1 text-sm text-gray-700 font-bold">
+                        <div className="flex items-center gap-1 content-bold text-secondary cursor-default">
                           {complaintCount}
-                          <Image src={blackFlag} alt="complaints" />
+                          <Image
+                            src={blackFlag}
+                            alt="complaints"
+                            width={16}
+                            height={16}
+                          />
                         </div>
                       </HoverCardTrigger>
-                      <HoverCardContent className="w-64">
+                      <HoverCardContent className="w-32 content">
                         Complaints
                       </HoverCardContent>
                     </HoverCard>
+
                     <HoverCard openDelay={0} closeDelay={4}>
                       <HoverCardTrigger asChild>
-                        <div className="flex items-center gap-1 text-sm text-gray-700 font-bold">
+                        <div className="flex items-center gap-1 content-bold text-secondary cursor-default">
                           {warningCount}
-                          <Image src={yellowFlag} alt="warnings" />
+                          <Image
+                            src={yellowFlag}
+                            alt="warnings"
+                            width={16}
+                            height={16}
+                          />
                         </div>
                       </HoverCardTrigger>
-                      <HoverCardContent className="w-64">
+                      <HoverCardContent className="w-32 content">
                         Warnings
                       </HoverCardContent>
                     </HoverCard>
+
                     <HoverCard openDelay={0} closeDelay={4}>
                       <HoverCardTrigger asChild>
-                        <div className="flex items-center gap-1 text-sm text-gray-700 font-bold">
+                        <div className="flex items-center gap-1 content-bold text-secondary cursor-default">
                           {citationCount}
-                          <Image src={redFlag} alt="citations" />
+                          <Image
+                            src={redFlag}
+                            alt="citations"
+                            width={16}
+                            height={16}
+                          />
                         </div>
                       </HoverCardTrigger>
-                      <HoverCardContent className="w-64">
+                      <HoverCardContent className="w-32 content">
                         Citations
                       </HoverCardContent>
                     </HoverCard>
@@ -236,6 +234,7 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
           );
         })()
       )}
+
       <AddIncidentDialog
         open={incidentDialogOpen}
         onOpenChange={setIncidentDialogOpen}

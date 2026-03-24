@@ -11,13 +11,13 @@ import {
 } from "@/components/ui/dialog";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { PartyDto } from "@/lib/api/party/party.types";
+import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -75,13 +75,17 @@ export default function AddIncidentDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-sm">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Add {title}</DialogTitle>
-          <DialogDescription>
-            Record a {incidentType} for this location.
+          <DialogTitle className="text-center subhead-title">
+            Add {title}
+          </DialogTitle>
+          <DialogDescription className="text-center content text-muted-foreground">
+            {party?.location.formatted_address ??
+              "Record a incident for this location."}
           </DialogDescription>
         </DialogHeader>
+
         <form
           className="grid gap-4"
           onSubmit={(event) => event.preventDefault()}
@@ -94,9 +98,10 @@ export default function AddIncidentDialog({
                   <Button
                     id="party-date"
                     variant="outline"
-                    className={`w-full justify-start text-left font-normal ${
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
                       !formData.partyDate && "text-muted-foreground"
-                    }`}
+                    )}
                   >
                     {formData.partyDate ? (
                       format(formData.partyDate, "MM/dd/yy")
@@ -128,26 +133,32 @@ export default function AddIncidentDialog({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="incident-description">
+            <FieldLabel htmlFor="incident-description">
               Incident description (optional)
-            </Label>
+            </FieldLabel>
             <textarea
               id="incident-description"
-              className="min-h-24 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+              className="min-h-24 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] resize-none"
               value={formData.description}
               onChange={(event) =>
                 updateField("description", event.target.value)
               }
             />
           </div>
-          <DialogFooter>
+
+          <DialogFooter className="justify-center sm:justify-center">
             <DialogClose asChild>
               <Button type="button" variant="outline">
                 Cancel
               </Button>
             </DialogClose>
             <DialogClose asChild>
-              <Button type="submit">Save</Button>
+              <Button
+                type="submit"
+                className="bg-secondary text-primary-foreground hover:bg-secondary/90"
+              >
+                Save Changes
+              </Button>
             </DialogClose>
           </DialogFooter>
         </form>

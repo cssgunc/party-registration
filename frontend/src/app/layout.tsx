@@ -38,11 +38,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${avenirNext.variable} font-[family-name:var(--font-avenir-next)] antialiased`}
+        className={`${avenirNext.variable} font-[family-name:var(--font-avenir-next)] antialiased h-screen flex flex-col overflow-hidden`}
       >
         <Providers>
-          <Header />
-          {children}
+          <Header className="flex-shrink-0" />
+          <main className="flex-1 min-h-0 overflow-hidden">{children}</main>
         </Providers>
       </body>
     </html>
