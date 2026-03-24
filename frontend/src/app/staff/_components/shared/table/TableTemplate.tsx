@@ -69,7 +69,6 @@ export type TableProps<T> = {
   data: T[];
   columns: ColumnDef<T, unknown>[];
   resourceName?: string;
-  details?: string;
   onEdit?: (row: T) => void;
   onDelete?: (row: T) => void;
   onCreateNewRow?: () => void;
@@ -87,7 +86,6 @@ export function TableTemplate<T extends object>({
   data,
   columns,
   resourceName = "Item",
-  details,
   onEdit,
   onDelete,
   onCreateNewRow,
@@ -153,7 +151,6 @@ export function TableTemplate<T extends object>({
   };
 
   // Derive details from resourceName if not provided
-  const tableDetails = details || `${resourceName} table`;
 
   // Add actions column if handlers are provided and user is admin
   const columnsWithActions: ColumnDef<T, unknown>[] =
