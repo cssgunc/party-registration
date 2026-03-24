@@ -80,14 +80,34 @@ type IsRegisteredUpdate = {
   is_registered: boolean;
 };
 
+/**
+ * Input for student autocomplete search
+ */
+type StudentAutocompleteInput = {
+  query: string;
+};
+
+/**
+ * Student suggestion DTO returned by autocomplete
+ */
+type StudentSuggestionDto = {
+  student_id: number;
+  first_name: string;
+  last_name: string;
+  matched_field_name: string;
+  matched_field_value: string;
+};
+
 export type {
   ContactPreference,
   IsRegisteredUpdate,
+  StudentAutocompleteInput,
   StudentCreate,
   StudentData,
   StudentDataWithNames,
   StudentDto,
   StudentDtoBackend,
+  StudentSuggestionDto,
   ResidenceDto,
 };
 

@@ -2,10 +2,12 @@ import getMockClient from "@/lib/network/mockClient";
 import { PaginatedResponse } from "@/lib/shared";
 import { AxiosInstance } from "axios";
 import {
+  StudentAutocompleteInput,
   StudentCreate,
   StudentDataWithNames,
   StudentDto,
   StudentDtoBackend,
+  StudentSuggestionDto,
   convertStudent,
 } from "./student.types";
 
@@ -95,6 +97,24 @@ export class AdminStudentService {
     } catch (error) {
       console.error(`Failed to update student ${id}:`, error);
       throw new Error("Failed to update student");
+    }
+  }
+
+  /**
+   * Returns student autocomplete suggestions matching query against PID, email, onyen, or phone
+   * (POST /api/students/autocomplete)
+   */
+  async autocompleteStudents(query: string): Promise<StudentSuggestionDto[]> {
+    try {
+      const input: StudentAutocompleteInput = { query };
+      const response = await this.client.post<StudentSuggestionDto[]>(
+        "/students/autocomplete",
+        input
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Failed to fetch student autocomplete:", error);
+      throw new Error("Failed to fetch student suggestions");
     }
   }
 

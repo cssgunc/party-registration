@@ -1,6 +1,7 @@
 "use client";
 
 import AddressSearch from "@/components/AddressSearch";
+import StudentSearch from "@/components/StudentSearch";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -27,9 +28,11 @@ import { useRole } from "@/contexts/RoleContext";
 import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { PartyDto } from "@/lib/api/party/party.types";
+import { AdminStudentService } from "@/lib/api/student/admin-student.service";
+import { StudentSuggestionDto } from "@/lib/api/student/student.types";
 import { addBusinessDays, format, isAfter, startOfDay } from "date-fns";
 import { CalendarIcon } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import * as z from "zod";
 
 export const createPartyTableFormSchema = (isAdmin: boolean) => {
@@ -50,43 +53,33 @@ export const createPartyTableFormSchema = (isAdmin: boolean) => {
           "Party must be at least 2 business days in the future"
         );
 
-  return z
-    .object({
-      address: z.string().min(1, "Address is required"),
-      placeId: z
-        .string()
-        .min(1, "Please select an address from the search results"),
-      partyDate: partyDateSchema,
-      partyTime: z.string().min(1, "Party time is required"),
-      contactOneEmail: z
-        .email({ pattern: z.regexes.html5Email })
-        .min(1, "Contact email is required"),
-      contactTwoEmail: z
-        .email({ pattern: z.regexes.html5Email })
-        .min(1, "Contact email is required"),
-      contactTwoFirstName: z.string().min(1, "First name is required"),
-      contactTwoLastName: z.string().min(1, "Last name is required"),
-      contactTwoPhoneNumber: z
-        .string()
-        .min(1, "Phone number is required")
-        .refine(
-          (val) => val.replace(/\D/g, "").length >= 10,
-          "Phone number must be at least 10 digits"
-        )
-        .transform((val) => val.replace(/\D/g, "")),
-      contactTwoPreference: z.enum(["call", "text"], {
-        message: "Please select a contact preference",
-      }),
-    })
-    .refine(
-      (data) =>
-        data.contactTwoEmail.trim().toLowerCase() !==
-        data.contactOneEmail.trim().toLowerCase(),
-      {
-        message: "Contact two email must be different from contact one's email",
-        path: ["contactTwoEmail"],
-      }
-    );
+  return z.object({
+    address: z.string().min(1, "Address is required"),
+    placeId: z
+      .string()
+      .min(1, "Please select an address from the search results"),
+    partyDate: partyDateSchema,
+    partyTime: z.string().min(1, "Party time is required"),
+    contactOneStudentId: z
+      .number({ message: "Please select a student" })
+      .positive("Please select a student"),
+    contactTwoEmail: z
+      .email({ pattern: z.regexes.html5Email })
+      .min(1, "Contact email is required"),
+    contactTwoFirstName: z.string().min(1, "First name is required"),
+    contactTwoLastName: z.string().min(1, "Last name is required"),
+    contactTwoPhoneNumber: z
+      .string()
+      .min(1, "Phone number is required")
+      .refine(
+        (val) => val.replace(/\D/g, "").length >= 10,
+        "Phone number must be at least 10 digits"
+      )
+      .transform((val) => val.replace(/\D/g, "")),
+    contactTwoPreference: z.enum(["call", "text"], {
+      message: "Please select a contact preference",
+    }),
+  });
 };
 
 type PartyTableFormValues = z.infer<
@@ -108,7 +101,8 @@ export default function PartyTableForm({
 }: PartyTableFormProps) {
   const { role } = useRole();
   const isAdmin = role === "admin";
-  const locationService = new LocationService();
+  const locationService = useMemo(() => new LocationService(), []);
+  const adminStudentService = useMemo(() => new AdminStudentService(), []);
 
   const partyTableFormSchema = createPartyTableFormSchema(isAdmin);
 
@@ -119,7 +113,7 @@ export default function PartyTableForm({
     partyTime: editData?.party_datetime
       ? format(editData.party_datetime, "HH:mm")
       : "",
-    contactOneEmail: editData?.contact_one.email ?? "",
+    contactOneStudentId: editData?.contact_one.id ?? undefined,
     contactTwoEmail: editData?.contact_two.email ?? "",
     contactTwoFirstName: editData?.contact_two.first_name ?? "",
     contactTwoLastName: editData?.contact_two.last_name ?? "",
@@ -146,24 +140,25 @@ export default function PartyTableForm({
       return;
     }
 
-    // Validate contact two phone differs from contact one's phone (when available)
-    if (editData?.contact_one.phone_number) {
-      const c1Digits = editData.contact_one.phone_number.replace(/\D/g, "");
-      const c2Digits = result.data.contactTwoPhoneNumber.replace(/\D/g, "");
-      if (c1Digits === c2Digits) {
-        setErrors({
-          contactTwoPhoneNumber:
-            "Contact two phone number must be different from contact one's phone number",
-        });
-        return;
-      }
-    }
-
     setIsSubmitting(true);
     try {
       await onSubmit(result.data);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleStudentSelect = (student: StudentSuggestionDto | null) => {
+    setFormData((prev) => ({
+      ...prev,
+      contactOneStudentId: student?.student_id ?? undefined,
+    }));
+    if (errors.contactOneStudentId) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors.contactOneStudentId;
+        return newErrors;
+      });
     }
   };
 
@@ -283,20 +278,28 @@ export default function PartyTableForm({
             </Field>
           </div>
 
-          <Field data-invalid={!!errors.contactOneEmail}>
-            <FieldLabel htmlFor="contact-one-email">
-              First Contact Email
-            </FieldLabel>
-            <Input
-              id="contact-one-email"
-              type="email"
-              placeholder="student@unc.edu"
-              value={formData.contactOneEmail}
-              onChange={(e) => updateField("contactOneEmail", e.target.value)}
-              aria-invalid={!!errors.contactOneEmail}
+          <Field data-invalid={!!errors.contactOneStudentId}>
+            <FieldLabel htmlFor="contact-one-student">First Contact</FieldLabel>
+            <StudentSearch
+              initialSelection={
+                editData?.contact_one
+                  ? {
+                      student_id: editData.contact_one.id,
+                      first_name: editData.contact_one.first_name,
+                      last_name: editData.contact_one.last_name,
+                      matched_field_name: "email",
+                      matched_field_value: editData.contact_one.email,
+                    }
+                  : null
+              }
+              onSelect={handleStudentSelect}
+              adminStudentService={adminStudentService}
+              placeholder="Search by PID, email, onyen, or phone..."
+              className="w-full"
+              error={errors.contactOneStudentId}
             />
-            {errors.contactOneEmail && (
-              <FieldError>{errors.contactOneEmail}</FieldError>
+            {errors.contactOneStudentId && (
+              <FieldError>{errors.contactOneStudentId}</FieldError>
             )}
           </Field>
 

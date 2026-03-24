@@ -74,7 +74,7 @@ type AdminCreatePartyDto = {
   type: "admin";
   party_datetime: Date;
   google_place_id: string;
-  contact_one_email: string;
+  contact_one_student_id: number;
   contact_two: ContactDto;
 };
 
