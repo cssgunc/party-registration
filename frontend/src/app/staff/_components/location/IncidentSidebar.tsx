@@ -205,6 +205,11 @@ export default function IncidentSidebar({
       )}
 
       <IncidentModal
+        key={
+          modalState?.mode === "edit"
+            ? `edit-${modalState.incident.id}`
+            : "create"
+        }
         open={modalState !== null}
         onOpenChange={(open) => {
           if (!open) closeModal();

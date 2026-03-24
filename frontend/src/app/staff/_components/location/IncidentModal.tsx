@@ -31,7 +31,6 @@ import type {
   IncidentDto,
   IncidentSeverity,
 } from "@/lib/api/location/location.types";
-import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 
 function toLocalDatetimeString(date: Date) {
@@ -66,22 +65,6 @@ export default function IncidentModal({
       severity: incident?.severity ?? ("complaint" as IncidentSeverity),
     },
   });
-
-  useEffect(() => {
-    if (incident) {
-      form.reset({
-        incident_datetime: incident.incident_datetime,
-        description: incident.description,
-        severity: incident.severity,
-      });
-    } else {
-      form.reset({
-        incident_datetime: new Date(),
-        description: "",
-        severity: "complaint",
-      });
-    }
-  }, [incident, form]);
 
   const handleSubmit = (values: IncidentCreateDto) => {
     onSubmit(values);
