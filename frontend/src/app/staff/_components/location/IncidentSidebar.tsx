@@ -27,10 +27,12 @@ export default function IncidentSidebar({
   const [modalState, setModalState] = useState<ModalState>(null);
   const { openSidebar } = useSidebar();
 
-  const [confirmState, setConfirmState] = useState<number | null>(null);
+  const [confirmStateDelete, setConfirmStateDelete] = useState<number | null>(
+    null
+  );
 
   const requestDelete = (incidentId: number) => {
-    setConfirmState(incidentId);
+    setConfirmStateDelete(incidentId);
   };
 
   const handleDelete = (incidentId: number) => {
@@ -76,10 +78,10 @@ export default function IncidentSidebar({
   };
 
   const doDelete = () => {
-    if (confirmState !== null) {
-      handleDelete(confirmState);
+    if (confirmStateDelete !== null) {
+      handleDelete(confirmStateDelete);
     }
-    setConfirmState(null);
+    setConfirmStateDelete(null);
   };
 
   const handleEdit = (incident: IncidentDto) => {
@@ -193,10 +195,10 @@ export default function IncidentSidebar({
         />
       ))}
       <DeleteConfirmDialog
-        open={confirmState !== null}
+        open={confirmStateDelete !== null}
         onOpenChange={(open) => {
           if (!open) {
-            setConfirmState(null);
+            setConfirmStateDelete(null);
           }
         }}
         onConfirm={doDelete}
