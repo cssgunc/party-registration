@@ -1,5 +1,5 @@
-from datetime import datetime
-from typing import Any, TypedDict, Unpack, override
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any, TypedDict, Unpack, override
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.modules.account.account_entity import AccountRole
@@ -7,13 +7,17 @@ from src.modules.student.student_entity import StudentEntity
 from src.modules.student.student_model import (
     ContactPreference,
     DbStudent,
-    StudentCreate,
+    StudentCreateDto,
     StudentData,
-    StudentDataWithNames,
     StudentDto,
+    StudentUpdateDto,
 )
 from test.modules.account.account_utils import AccountTestUtils
+from test.modules.location.location_utils import LocationTestUtils
 from test.utils.resource_test_utils import ResourceTestUtils
+
+if TYPE_CHECKING:
+    from src.modules.location.location_entity import LocationEntity
 
 
 class StudentOverrides(TypedDict, total=False):
@@ -25,22 +29,29 @@ class StudentOverrides(TypedDict, total=False):
     last_name: str
     email: str
     pid: str
+    residence_place_id: str | None
 
 
 class StudentTestUtils(
     ResourceTestUtils[
         StudentEntity,
         StudentData,
-        StudentDto | StudentDataWithNames | DbStudent,
+        StudentDto | StudentUpdateDto | DbStudent,
     ]
 ):
-    def __init__(self, session: AsyncSession, account_utils: AccountTestUtils):
+    def __init__(
+        self,
+        session: AsyncSession,
+        account_utils: AccountTestUtils,
+        location_utils: LocationTestUtils,
+    ):
         super().__init__(
             session,
             entity_class=StudentEntity,
             data_class=StudentData,
         )
         self.account_utils = account_utils
+        self.location_utils = location_utils
 
     @override
     @staticmethod
@@ -52,6 +63,7 @@ class StudentTestUtils(
             "phone_number": f"919555{count:04d}",
             "first_name": f"FStudent{count}",
             "last_name": f"LStudent{count}",
+            "residence_place_id": None,
         }
 
     @staticmethod
@@ -67,29 +79,108 @@ class StudentTestUtils(
         self.count += 1
         return data
 
-    async def next_data_with_names(
-        self, **overrides: Unpack[StudentOverrides]
-    ) -> StudentDataWithNames:
-        student_data = await self.next_dict(**overrides)
-        return StudentDataWithNames(
-            **self.get_or_default(overrides, {"first_name", "last_name"}),
-            **student_data,
+    async def next_update_dto(self, **overrides: Unpack[StudentOverrides]) -> StudentUpdateDto:
+        """Generate StudentUpdateDto for admin create/update operations."""
+        # Increment count to ensure unique phone numbers
+        self.count += 1
+        result_data = self.get_or_default(
+            overrides,
+            {"contact_preference", "last_registered", "phone_number", "residence_place_id"},
         )
+        return StudentUpdateDto(**result_data)
 
-    async def next_student_create(self, **overrides: Unpack[StudentOverrides]) -> StudentCreate:
+    async def next_student_create(self, **overrides: Unpack[StudentOverrides]) -> StudentCreateDto:
         local_overrides: StudentOverrides = dict(overrides)  # type: ignore
         if "account_id" not in local_overrides:
             account = await self.account_utils.create_one(
                 role=AccountRole.STUDENT.value, **local_overrides
             )
             local_overrides["account_id"] = account.id
-        student_data = await self.next_data_with_names(**local_overrides)
-        return StudentCreate(account_id=local_overrides["account_id"], data=student_data)
+        student_data = await self.next_update_dto(**local_overrides)
+        return StudentCreateDto(account_id=local_overrides["account_id"], data=student_data)
 
     @override
     async def next_entity(self, **overrides: Unpack[StudentOverrides]) -> StudentEntity:
         student_create = await self.next_student_create(**overrides)
-        return StudentEntity.from_data(student_create.data, student_create.account_id)
+        student_data = StudentData(
+            contact_preference=student_create.data.contact_preference,
+            last_registered=student_create.data.last_registered,
+            phone_number=student_create.data.phone_number,
+        )
+        residence_id = None
+        if student_create.data.residence_place_id:
+            location = await self.location_utils.create_one(
+                google_place_id=student_create.data.residence_place_id
+            )
+            residence_id = location.id
+        return StudentEntity.from_data(student_data, student_create.account_id, residence_id)
+
+    async def create_student_with_old_party_smart(
+        self, **overrides: Unpack[StudentOverrides]
+    ) -> StudentEntity:
+        """Create a student with Party Smart completion from a previous academic year.
+
+        Useful for testing scenarios where students need to complete Party Smart again
+        in the current academic year.
+        """
+        old_date = self.get_old_academic_year_date()
+        local_overrides: StudentOverrides = dict(overrides)  # type: ignore
+        if "last_registered" not in local_overrides:
+            local_overrides["last_registered"] = old_date
+        return await self.create_one(**local_overrides)
+
+    def get_old_academic_year_date(self) -> datetime:
+        """Get a date from the previous academic year (before most recent August 1st).
+
+        Returns a date from July of the previous academic year.
+        """
+        now = datetime.now(UTC)
+        if now.month >= 8:
+            # We're in current academic year, so return last year before August
+            return datetime(now.year - 1, 7, 1, tzinfo=UTC)
+        else:
+            # We're before Aug 1, so return two years ago
+            return datetime(now.year - 2, 7, 1, tzinfo=UTC)
+
+    async def set_student_residence(
+        self, student: StudentEntity, location_id: int, chosen_date: datetime | None = None
+    ) -> StudentEntity:
+        """Set a student's residence and persist to database.
+
+        Args:
+            student: The student entity to update
+            location_id: The location ID for the residence
+            chosen_date: When the residence was chosen (defaults to now)
+
+        Returns:
+            The updated student entity with residence loaded
+        """
+        if chosen_date is None:
+            chosen_date = datetime.now(UTC)
+
+        student.residence_id = location_id
+        student.residence_chosen_date = chosen_date
+        self.session.add(student)
+        await self.session.commit()
+        await self.session.refresh(student, ["residence"])
+        return student
+
+    def assert_residence(
+        self, student_dto: StudentDto, expected_location: "LocationEntity"
+    ) -> None:
+        """Assert that a student has a valid residence matching the expected location.
+
+        Args:
+            student_dto: The student DTO to check
+            expected_location: The expected location entity for the residence
+        """
+        assert student_dto.residence is not None, (
+            "Expected student to have a residence, but residence is None"
+        )
+        assert student_dto.residence.residence_chosen_date is not None, (
+            "Expected residence_chosen_date to be set, but it is None"
+        )
+        self.location_utils.assert_matches(student_dto.residence.location, expected_location)
 
     # ================================ Typing Overrides ================================
 

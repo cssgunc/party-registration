@@ -36,6 +36,17 @@ repos:
         files: ^frontend/.*\.tsx?$
         pass_filenames: false
 
+  # JavaScript/TypeScript ESLint
+  - repo: local
+    hooks:
+      - id: eslint
+        name: eslint
+        # Runs eslint on staged files, removing the `frontend/` prefix to work with relative filepaths
+        entry: bash -c 'cd frontend && npx eslint --fix --max-warnings 0 "${@/#frontend\//}"' --
+        language: system
+        files: ^frontend/.*\.(js|jsx|ts|tsx)$
+        pass_filenames: true
+
   # JavaScript/TypeScript and other Prettier compatible files
   - repo: local
     hooks:
