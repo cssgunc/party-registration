@@ -120,7 +120,7 @@ class LocationService:
             PaginatedLocationResponse with items and metadata
         """
         # Define allowed fields for sorting and filtering
-        allowed_sort_fields = [
+        allowed_fields = [
             "id",
             "google_place_id",
             "formatted_address",
@@ -134,28 +134,9 @@ class LocationService:
             "state",
             "country",
             "zip_code",
-            "warning_count",
-            "citation_count",
             "hold_expiration",
         ]
-        allowed_filter_fields = [
-            "id",
-            "google_place_id",
-            "formatted_address",
-            "latitude",
-            "longitude",
-            "street_number",
-            "street_name",
-            "unit",
-            "city",
-            "county",
-            "state",
-            "country",
-            "zip_code",
-            "warning_count",
-            "citation_count",
-            "hold_expiration",
-        ]
+        allowed_sort_fields = allowed_filter_fields = allowed_fields
 
         # Build base query
         base_query = select(LocationEntity)

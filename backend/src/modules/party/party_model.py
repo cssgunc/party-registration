@@ -2,7 +2,7 @@ import enum
 from typing import Annotated, Literal
 
 from pydantic import AwareDatetime, BaseModel, EmailStr, Field
-from src.core.models import PaginatedResponse
+from src.core.query_utils import PaginatedResponse
 from src.modules.location.location_model import LocationDto
 from src.modules.student.student_model import ContactPreference, StudentDto
 

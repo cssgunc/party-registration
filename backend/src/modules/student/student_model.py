@@ -2,7 +2,7 @@ import enum
 from typing import TYPE_CHECKING
 
 from pydantic import AwareDatetime, BaseModel, EmailStr, Field
-from src.core.models import PaginatedResponse
+from src.core.query_utils import PaginatedResponse
 
 if TYPE_CHECKING:
     from src.modules.location.location_model import LocationDto
