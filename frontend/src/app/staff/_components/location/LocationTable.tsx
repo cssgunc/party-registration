@@ -9,12 +9,8 @@ import {
 import {
   LocationCreate,
   LocationDto,
-  getCitationCount,
-  getWarningCount,
 } from "@/lib/api/location/location.types";
 import { LocationCreate, LocationDto } from "@/lib/api/location/location.types";
-import { PaginatedResponse } from "@/lib/shared";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
 import { useState } from "react";
