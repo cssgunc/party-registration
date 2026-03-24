@@ -181,28 +181,6 @@ export const LocationTable = () => {
     }
   };
 
-  const handleDeleteIncident = (incidentId: number, locationId: number) => {
-    queryClient.setQueryData<PaginatedResponse<LocationDto> | undefined>(
-      ["locations"],
-      (old) =>
-        old
-          ? {
-              ...old,
-              items: old.items.map((loc) =>
-                loc.id === locationId
-                  ? {
-                      ...loc,
-                      incidents: loc.incidents.filter(
-                        (inc) => inc.id !== incidentId
-                      ),
-                    }
-                  : loc
-              ),
-            }
-          : old
-    );
-  };
-
   const columns: ColumnDef<LocationDto>[] = [
     {
       accessorKey: "formatted_address",
@@ -222,10 +200,11 @@ export const LocationTable = () => {
               description="Warnings & Citations go here"
               sidebarContent={
                 <IncidentInfoChipDetails
+                  key={`${row.original.id}-${JSON.stringify(
+                    row.original.incidents.map((i) => i.id)
+                  )}`}
                   incidents={row.original.incidents}
-                  onDeleteAction={(incidentId) =>
-                    handleDeleteIncident(incidentId, row.original.id)
-                  }
+                  locationId={row.original.id}
                 />
               }
             />
