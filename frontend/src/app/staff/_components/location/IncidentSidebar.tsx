@@ -27,12 +27,10 @@ export default function IncidentSidebar({
   const [modalState, setModalState] = useState<ModalState>(null);
   const { openSidebar } = useSidebar();
 
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [confirmingId, setConfirmingId] = useState<number | null>(null);
+  const [confirmState, setConfirmState] = useState<number | null>(null);
 
   const requestDelete = (incidentId: number) => {
-    setConfirmingId(incidentId);
-    setConfirmOpen(true);
+    setConfirmState(incidentId);
   };
 
   const handleDelete = (incidentId: number) => {
@@ -78,11 +76,10 @@ export default function IncidentSidebar({
   };
 
   const doDelete = () => {
-    if (confirmingId !== null) {
-      handleDelete(confirmingId);
+    if (confirmState !== null) {
+      handleDelete(confirmState);
     }
-    setConfirmOpen(false);
-    setConfirmingId(null);
+    setConfirmState(null);
   };
 
   const handleEdit = (incident: IncidentDto) => {
@@ -196,8 +193,12 @@ export default function IncidentSidebar({
         />
       ))}
       <DeleteConfirmDialog
-        open={confirmOpen}
-        onOpenChange={setConfirmOpen}
+        open={confirmState !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setConfirmState(null);
+          }
+        }}
         onConfirm={doDelete}
         title="Delete Incident"
         description="Are you sure you want to delete this incident? This action cannot be undone."
