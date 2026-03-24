@@ -1,12 +1,6 @@
 "use client";
-
-import { Badge } from "@/components/ui/badge";
 import { LocationService } from "@/lib/api/location/location.service";
-import {
-  IncidentDto,
-  LocationCreate,
-  LocationDto,
-} from "@/lib/api/location/location.types";
+import { LocationCreate, LocationDto } from "@/lib/api/location/location.types";
 import { PaginatedResponse } from "@/lib/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
@@ -24,10 +18,6 @@ export const LocationTable = () => {
   const queryClient = useQueryClient();
   const { openSidebar, closeSidebar } = useSidebar();
   const [editingLocation, setEditingLocation] = useState<LocationDto | null>(
-    null
-  );
-  const [incidentList, setIncidentList] = useState<IncidentDto[]>([]);
-  const [selectedLocationId, setSelectedLocationId] = useState<number | null>(
     null
   );
 
@@ -209,45 +199,6 @@ export const LocationTable = () => {
     updateMutation.mutate({ id: locationId, payload });
   };
 
-  const handleDeleteIncident = (incidentId: number) => {
-    const updated = incidentList.filter(
-      (incident) => incident.id !== incidentId
-    );
-    setIncidentList(updated);
-
-    queryClient.setQueryData<PaginatedResponse<LocationDto> | undefined>(
-      ["locations"],
-      (old) =>
-        old
-          ? {
-              ...old,
-              items: old.items.map((loc) =>
-                loc.id === selectedLocationId
-                  ? {
-                      ...loc,
-                      incidents: loc.incidents.filter(
-                        (inc) => inc.id !== incidentId
-                      ),
-                    }
-                  : loc
-              ),
-            }
-          : old
-    );
-
-    if (selectedLocationId !== null) {
-      openSidebar(
-        `incidents-${selectedLocationId}`,
-        "Incidents at Location",
-        `Warnings & Citations go here`,
-        <IncidentSidebar
-          incidents={updated}
-          onDeleteIncidentAction={handleDeleteIncident}
-        />
-      );
-    }
-  };
-
   const columns: ColumnDef<LocationDto>[] = [
     {
       accessorKey: "formatted_address",
@@ -271,7 +222,6 @@ export const LocationTable = () => {
                     row.original.incidents.map((i) => i.id)
                   )}`}
                   incidents={row.original.incidents}
-                  locationId={row.original.id}
                 />
               }
             />
