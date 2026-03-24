@@ -6,10 +6,6 @@ import {
   useLocations,
   useUpdateLocation,
 } from "@/lib/api/location/location.queries";
-import {
-  LocationCreate,
-  LocationDto,
-} from "@/lib/api/location/location.types";
 import { LocationCreate, LocationDto } from "@/lib/api/location/location.types";
 import { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
