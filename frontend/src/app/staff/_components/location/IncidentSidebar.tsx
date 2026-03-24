@@ -35,49 +35,50 @@ export default function IncidentSidebar({
     setConfirmStateDelete(incidentId);
   };
 
-  const handleDelete = (incidentId: number) => {
-    const incident = incidents.find((i) => i.id === incidentId);
-    if (!incident) return;
-
-    queryClient.setQueryData<PaginatedResponse<LocationDto> | undefined>(
-      ["locations"],
-      (old) =>
-        old
-          ? {
-              ...old,
-              items: old.items.map((loc) =>
-                loc.id === incident.location_id
-                  ? {
-                      ...loc,
-                      incidents: loc.incidents.filter(
-                        (inc) => inc.id !== incidentId
-                      ),
-                    }
-                  : loc
-              ),
-            }
-          : old
-    );
-    const updated = queryClient.getQueryData<PaginatedResponse<LocationDto>>([
-      "locations",
-    ]);
-
-    const location = updated?.items.find((l) => l.id === incident.location_id);
-
-    if (!location) return;
-
-    openSidebar(
-      `incidents-${location.id}`,
-      "Incidents at Location",
-      "Warnings & Citations go here",
-      <IncidentSidebar
-        incidents={location.incidents}
-        onDeleteIncidentAction={onDeleteIncidentAction}
-      />
-    );
-  };
-
   const doDelete = () => {
+    const handleDelete = (incidentId: number) => {
+      const incident = incidents.find((i) => i.id === incidentId);
+      if (!incident) return;
+
+      queryClient.setQueryData<PaginatedResponse<LocationDto> | undefined>(
+        ["locations"],
+        (old) =>
+          old
+            ? {
+                ...old,
+                items: old.items.map((loc) =>
+                  loc.id === incident.location_id
+                    ? {
+                        ...loc,
+                        incidents: loc.incidents.filter(
+                          (inc) => inc.id !== incidentId
+                        ),
+                      }
+                    : loc
+                ),
+              }
+            : old
+      );
+      const updated = queryClient.getQueryData<PaginatedResponse<LocationDto>>([
+        "locations",
+      ]);
+
+      const location = updated?.items.find(
+        (l) => l.id === incident.location_id
+      );
+
+      if (!location) return;
+
+      openSidebar(
+        `incidents-${location.id}`,
+        "Incidents at Location",
+        "Warnings & Citations go here",
+        <IncidentSidebar
+          incidents={location.incidents}
+          onDeleteIncidentAction={onDeleteIncidentAction}
+        />
+      );
+    };
     if (confirmStateDelete !== null) {
       handleDelete(confirmStateDelete);
     }
