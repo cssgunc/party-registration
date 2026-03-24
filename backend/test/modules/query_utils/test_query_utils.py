@@ -9,10 +9,11 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from httpx import AsyncClient
+from src.core.exceptions import BadRequestException
 from src.modules.incident.incident_model import IncidentDto, IncidentSeverity
 
 from test.modules.incident.incident_utils import IncidentTestUtils
-from test.utils.http.assertions import assert_res_paginated
+from test.utils.http.assertions import assert_res_failure, assert_res_paginated
 
 
 class TestQueryUtilsSorting:
@@ -204,27 +205,33 @@ class TestQueryUtilsTypeValidation:
     async def test_string_field_comparison_operator_returns_400(self):
         """Using GT/GTE/LT/LTE on a string field returns 400."""
         response = await self.admin_client.get("/api/incidents?location.formatted_address_gt=Z")
-        assert response.status_code == 400
+        assert_res_failure(
+            response, BadRequestException("Operator 'gt' is not supported for string/enum fields")
+        )
 
     @pytest.mark.asyncio
     async def test_string_field_gte_returns_400(self):
         """Using GTE on a string field returns 400."""
         response = await self.admin_client.get("/api/incidents?location.formatted_address_gte=Z")
-        assert response.status_code == 400
+        assert_res_failure(
+            response, BadRequestException("Operator 'gte' is not supported for string/enum fields")
+        )
 
     @pytest.mark.asyncio
     async def test_enum_field_comparison_operator_returns_400(self):
         """Using GT/GTE/LT/LTE on an enum field returns 400."""
         response = await self.admin_client.get("/api/incidents?severity_gt=complaint")
-        assert response.status_code == 400
+        assert_res_failure(
+            response, BadRequestException("Operator 'gt' is not supported for string/enum fields")
+        )
 
     @pytest.mark.asyncio
     async def test_non_string_field_contains_returns_400(self):
         """Using CONTAINS on a non-string field (id) returns 400."""
-        # id is not in allowed_filter_fields directly, but location.id is
-        # Use incident_datetime_contains which would be a non-string with CONTAINS
         response = await self.admin_client.get("/api/incidents?incident_datetime_contains=2026")
-        assert response.status_code == 400
+        assert_res_failure(
+            response, BadRequestException("Operator 'contains' is only supported for string fields")
+        )
 
 
 class TestQueryUtilsNestedFields:
