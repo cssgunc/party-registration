@@ -48,7 +48,6 @@ async def exchange_account_data_for_tokens(
     Requires internal API secret in X-Internal-Secret header.
     """
     if data.role == AccountRole.STUDENT:
-        # Student: upsert by onyen, overwrite IdP fields, never touch role
         try:
             account = await account_service.get_account_by_onyen(data.onyen)
             account_entity = await account_service._get_account_entity_by_id(account.id)
@@ -62,14 +61,13 @@ async def exchange_account_data_for_tokens(
             account = account_entity.to_dto()
         except NotFoundException:
             account = await account_service.create_account(data)
-        else:
-            # Staff/Admin: lookup only, 403 if not found or role mismatch
-            try:
-                account = await account_service.get_account_by_onyen(data.onyen)
-            except NotFoundException:
-                raise ForbiddenException(detail="No matching account found") from None
-            if account.role != data.role:
-                raise ForbiddenException(detail="Role mismatch")
+    else:
+        try:
+            account = await account_service.get_account_by_onyen(data.onyen)
+        except NotFoundException:
+            raise ForbiddenException(detail="No matching account found") from None
+        if account.role != data.role:
+            raise ForbiddenException(detail="Role mismatch")
 
     return await auth_service.exchange_account_for_tokens(account)
 

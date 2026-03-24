@@ -120,8 +120,27 @@ export default function AccountTableForm({
               onChange={(e) => updateField("email", e.target.value)}
               aria-invalid={!!errors.email}
               disabled={isPIDEditMode}
+              title={
+                isPIDEditMode ? "This field is managed by UNC SSO" : undefined
+              }
             />
             {errors.email && <FieldError>{errors.email}</FieldError>}
+          </Field>
+
+          <Field data-invalid={!!errors.pid}>
+            <FieldLabel htmlFor="pid">PID</FieldLabel>
+            <Input
+              id="first-name"
+              placeholder="123456789"
+              value={formData.pid}
+              onChange={(e) => updateField("pid", e.target.value)}
+              aria-invalid={!!errors.pid}
+              disabled={isPIDEditMode}
+              title={
+                isPIDEditMode ? "This field is managed by UNC SSO" : undefined
+              }
+            />
+            {errors.pid && <FieldError>{errors.pid}</FieldError>}
           </Field>
 
           <Field data-invalid={!!errors.first_name}>
@@ -132,6 +151,10 @@ export default function AccountTableForm({
               value={formData.first_name}
               onChange={(e) => updateField("first_name", e.target.value)}
               aria-invalid={!!errors.first_name}
+              disabled={isPIDEditMode}
+              title={
+                isPIDEditMode ? "This field is managed by UNC SSO" : undefined
+              }
             />
             {errors.first_name && <FieldError>{errors.first_name}</FieldError>}
           </Field>
@@ -144,6 +167,10 @@ export default function AccountTableForm({
               value={formData.last_name}
               onChange={(e) => updateField("last_name", e.target.value)}
               aria-invalid={!!errors.last_name}
+              disabled={isPIDEditMode}
+              title={
+                isPIDEditMode ? "This field is managed by UNC SSO" : undefined
+              }
             />
             {errors.last_name && <FieldError>{errors.last_name}</FieldError>}
           </Field>
@@ -157,6 +184,9 @@ export default function AccountTableForm({
               onChange={(e) => updateField("onyen", e.target.value)}
               aria-invalid={!!errors.onyen}
               disabled={isPIDEditMode}
+              title={
+                isPIDEditMode ? "This field is managed by UNC SSO" : undefined
+              }
             />
             {errors.onyen && <FieldError>{errors.onyen}</FieldError>}
           </Field>
