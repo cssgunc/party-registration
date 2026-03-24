@@ -137,7 +137,7 @@ export default function AddressSearch({
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [searchTerm, locationService, selectedAddress]);
+  }, [searchTerm, locationService, selectedAddress, chapelHillOnly]);
 
   /**
    * Handle address selection from dropdown
