@@ -15,7 +15,7 @@ from test.utils.http.assertions import (
     assert_res_success,
     assert_res_validation_error,
 )
-from test.utils.http.test_templates import generate_auth_required_tests
+from test.utils.http.test_templates import generate_auth_required_tests, generate_filter_sort_tests
 
 
 @pytest_asyncio.fixture
@@ -23,6 +23,27 @@ async def sample_police(police_utils: PoliceTestUtils) -> PoliceEntity:
     """Create sample police credentials for testing."""
     return await police_utils.create_one()
 
+
+test_account_sort, test_account_filter = generate_filter_sort_tests(
+    "/api/accounts",
+    AccountDto,
+    sort_fields=[
+        "id",
+        "email",
+        "first_name",
+        "last_name",
+        "pid",
+        "role",
+    ],
+    filter_cases=[
+        ("id", 0),
+        ("email", "nonexistent"),
+        ("first_name", "nonexistent"),
+        ("last_name", "nonexistent"),
+        ("pid", 0),
+        ("role", "admin"),
+    ],
+)
 
 test_account_authentication = generate_auth_required_tests(
     ({"admin"}, "GET", "/api/accounts", None),
@@ -129,6 +150,16 @@ class TestAccountRouter:
         response = await self.admin_client.post("/api/accounts", json=new_account)
         assert_res_failure(response, AccountConflictException(onyen=new_account["onyen"]))
 
+    @pytest.mark.asyncio
+    async def test_create_account_duplicate_pid(
+        self,
+        accounts_two_per_role: list[AccountEntity],
+    ):
+        """Test that creating an account with duplicate PID returns 409."""
+        new_account = await self.account_utils.next_dict(pid=accounts_two_per_role[0].pid)
+        response = await self.admin_client.post("/api/accounts", json=new_account)
+        assert_res_failure(response, AccountConflictException(pid=new_account["pid"]))
+
     @pytest.mark.parametrize(
         "invalid_data",
         [
@@ -189,6 +220,16 @@ class TestAccountRouter:
             f"/api/accounts/{account_to_update.id}", json=updated_data
         )
         assert_res_failure(response, AccountConflictException(onyen=updated_data["onyen"]))
+
+    @pytest.mark.asyncio
+    async def test_update_account_duplicate_pid(self, accounts_two_per_role: list[AccountEntity]):
+        """Test that updating to a PID that already exists returns 409."""
+        account_to_update = accounts_two_per_role[0]
+        updated_data = await self.account_utils.next_dict(pid=accounts_two_per_role[1].pid)
+        response = await self.admin_client.put(
+            f"/api/accounts/{account_to_update.id}", json=updated_data
+        )
+        assert_res_failure(response, AccountConflictException(pid=updated_data["pid"]))
 
     @pytest.mark.asyncio
     async def test_update_account_not_found(self):

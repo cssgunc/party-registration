@@ -23,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ResidenceDto } from "@/lib/api/student/student.types";
 import { addBusinessDays, format, isAfter, startOfDay } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { useState } from "react";
@@ -49,6 +50,7 @@ export const studentTableFormSchema = z.object({
     .regex(/^\d{9}$/, { message: "Please input a valid PID" })
     .min(1, "PID is required"),
   onyen: z.string().min(1, "Onyen is required"),
+  residence: z.custom<ResidenceDto | null>().default(null),
 });
 
 type StudentTableFormValues = z.infer<typeof studentTableFormSchema>;
@@ -75,6 +77,7 @@ export default function StudentTableForm({
     phone_number: editData?.phone_number ?? "",
     contact_preference: editData?.contact_preference ?? undefined,
     last_registered: editData?.last_registered ?? null,
+    residence: editData?.residence ?? null,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);

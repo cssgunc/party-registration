@@ -9,11 +9,10 @@ from src.core.database import EntityBase
 from src.modules.student.student_model import ContactPreference
 
 from ..student.student_entity import StudentEntity
-from .party_model import ContactDto, PartyData, PartyDto
+from .party_model import ContactDto, PartyData, PartyDto, PartyStatus
 
 if TYPE_CHECKING:
     from ..location.location_entity import LocationEntity
-    from ..student.student_entity import StudentEntity
 
 
 class PartyEntity(MappedAsDataclass, EntityBase):
@@ -34,6 +33,11 @@ class PartyEntity(MappedAsDataclass, EntityBase):
     contact_two_phone_number: Mapped[str] = mapped_column(String(20), nullable=False)
     contact_two_contact_preference: Mapped[ContactPreference] = mapped_column(
         Enum(ContactPreference, native_enum=False, length=20), nullable=False
+    )
+    status: Mapped[PartyStatus] = mapped_column(
+        Enum(PartyStatus, native_enum=False, length=20),
+        nullable=False,
+        default=PartyStatus.CONFIRMED,
     )
 
     # Relationships
@@ -76,6 +80,7 @@ class PartyEntity(MappedAsDataclass, EntityBase):
                 phone_number=self.contact_two_phone_number,
                 contact_preference=self.contact_two_contact_preference,
             ),
+            status=self.status,
         )
 
     async def load_dto(self, session: AsyncSession) -> PartyDto:
@@ -89,7 +94,10 @@ class PartyEntity(MappedAsDataclass, EntityBase):
             .where(self.__class__.id == self.id)
             .options(
                 selectinload(self.__class__.location),
-                selectinload(self.__class__.contact_one).selectinload(StudentEntity.account),
+                selectinload(self.__class__.contact_one).options(
+                    selectinload(StudentEntity.account),
+                    selectinload(StudentEntity.residence),
+                ),
             )
         )
         party_entity = result.scalar_one()
