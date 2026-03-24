@@ -4,6 +4,7 @@ from src.core.query_utils import PAGINATED_OPENAPI_PARAMS
 from src.modules.account.account_model import (
     AccountData,
     AccountDto,
+    AccountUpdateData,
     PaginatedAccountsResponse,
 )
 from src.modules.account.account_service import AccountService
@@ -53,7 +54,7 @@ async def create_account(
 @account_router.put("/{account_id}")
 async def update_account(
     account_id: int,
-    data: AccountData,
+    data: AccountUpdateData,
     account_service: AccountService = Depends(),
     _=Depends(authenticate_admin),
 ) -> AccountDto:

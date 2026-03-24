@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__claude_ai_Notion__notion-fetch",
+      "Bash(gh pr:*)",
+      "Bash(apt list:*)",
+      "Bash(find /workspace/backend -path */.venv -prune -o -name *test*.py -type f -print)"
+    ]
+  }
+}
