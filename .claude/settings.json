@@ -4,7 +4,9 @@
       "mcp__claude_ai_Notion__notion-fetch",
       "Bash(gh pr:*)",
       "Bash(apt list:*)",
-      "Bash(find /workspace/backend -path */.venv -prune -o -name *test*.py -type f -print)"
+      "Bash(find /workspace/backend -path */.venv -prune -o -name *test*.py -type f -print)",
+      "Bash(python -m pytest test/modules/account/account_router_test.py test/modules/account/account_service_test.py test/modules/auth/auth_router_test.py -x --tb=short)",
+      "Bash(python -m pytest test/modules/account/account_router_test.py test/modules/account/account_service_test.py test/modules/auth/auth_router_test.py --tb=short)"
     ]
   }
 }

@@ -52,7 +52,7 @@ test_account_authentication = generate_auth_required_tests(
         {"admin"},
         "PUT",
         "/api/accounts/12345",
-        AccountTestUtils.get_sample_data(),
+        {"role": "staff"},
     ),
     ({"admin"}, "DELETE", "/api/accounts/12345", None),
     ({"admin"}, "GET", "/api/accounts/police", None),
@@ -176,87 +176,38 @@ class TestAccountRouter:
         assert_res_validation_error(response, expected_fields=list(invalid_data.keys()))
 
     @pytest.mark.asyncio
-    async def test_update_account(self, accounts_two_per_role: list[AccountEntity]):
-        """Test updating an existing account."""
+    async def test_update_account_role(self, accounts_two_per_role: list[AccountEntity]) -> None:
+        """Test updating an account's role."""
         account_to_update = accounts_two_per_role[0]
-        updated_data = await self.account_utils.next_data()
         response = await self.admin_client.put(
             f"/api/accounts/{account_to_update.id}",
-            json=updated_data.model_dump(mode="json"),
+            json={"role": "admin"},
         )
         data = assert_res_success(response, AccountDto)
-        self.account_utils.assert_matches(updated_data, data)
         assert data.id == account_to_update.id
-
-    @pytest.mark.asyncio
-    async def test_update_account_change_email(self, accounts_two_per_role: list[AccountEntity]):
-        """Test changing an account's email successfully."""
-        account_to_update = accounts_two_per_role[0]
-        updated_data = account_to_update.to_dto()
-        updated_data.email = "newemail@example.com"
-        response = await self.admin_client.put(
-            f"/api/accounts/{account_to_update.id}",
-            json=updated_data.model_dump(mode="json", exclude={"id"}),
-        )
-        response_data = assert_res_success(response, AccountDto)
-        self.account_utils.assert_matches(updated_data, response_data)
-
-    @pytest.mark.asyncio
-    async def test_update_account_duplicate_email(self, accounts_two_per_role: list[AccountEntity]):
-        """Test that updating to an email that already exists returns 409."""
-        account_to_update = accounts_two_per_role[0]
-        updated_data = await self.account_utils.next_dict(email=accounts_two_per_role[1].email)
-        response = await self.admin_client.put(
-            f"/api/accounts/{account_to_update.id}", json=updated_data
-        )
-        assert_res_failure(response, AccountConflictException(email=updated_data["email"]))
-
-    @pytest.mark.asyncio
-    async def test_update_account_duplicate_onyen(self, accounts_two_per_role: list[AccountEntity]):
-        """Test that updating to an onyen that already exists returns 409."""
-        account_to_update = accounts_two_per_role[0]
-        updated_data = await self.account_utils.next_dict(onyen=accounts_two_per_role[1].onyen)
-        response = await self.admin_client.put(
-            f"/api/accounts/{account_to_update.id}", json=updated_data
-        )
-        assert_res_failure(response, AccountConflictException(onyen=updated_data["onyen"]))
-
-    @pytest.mark.asyncio
-    async def test_update_account_duplicate_pid(self, accounts_two_per_role: list[AccountEntity]):
-        """Test that updating to a PID that already exists returns 409."""
-        account_to_update = accounts_two_per_role[0]
-        updated_data = await self.account_utils.next_dict(pid=accounts_two_per_role[1].pid)
-        response = await self.admin_client.put(
-            f"/api/accounts/{account_to_update.id}", json=updated_data
-        )
-        assert_res_failure(response, AccountConflictException(pid=updated_data["pid"]))
+        assert data.role == AccountRole.ADMIN
+        # IdP fields should be unchanged
+        assert data.email == account_to_update.email
+        assert data.first_name == account_to_update.first_name
+        assert data.last_name == account_to_update.last_name
+        assert data.pid == account_to_update.pid
+        assert data.onyen == account_to_update.onyen
 
     @pytest.mark.asyncio
     async def test_update_account_not_found(self):
         """Test updating a non-existent account returns 404."""
-        updated_data = await self.account_utils.next_dict()
-        response = await self.admin_client.put("/api/accounts/99999", json=updated_data)
+        response = await self.admin_client.put("/api/accounts/99999", json={"role": "staff"})
         assert_res_failure(response, AccountNotFoundException(99999))
 
-    @pytest.mark.parametrize(
-        "invalid_data",
-        [
-            {"pid": "73012"},
-            {"pid": "73012345678"},
-            {"pid": "730abcdef"},
-            {"email": "invalid-email"},
-        ],
-    )
     @pytest.mark.asyncio
-    async def test_update_account_invalid_data(
-        self, invalid_data: dict, accounts_two_per_role: list[AccountEntity]
-    ):
+    async def test_update_account_invalid_role(self, accounts_two_per_role: list[AccountEntity]):
+        """Test that sending an invalid role returns 422."""
         account_to_update = accounts_two_per_role[0]
-        updated_account = await self.account_utils.next_dict(**invalid_data)
         response = await self.admin_client.put(
-            f"/api/accounts/{account_to_update.id}", json=updated_account
+            f"/api/accounts/{account_to_update.id}",
+            json={"role": "invalid_role"},
         )
-        assert_res_validation_error(response, expected_fields=list(invalid_data.keys()))
+        assert_res_validation_error(response, expected_fields=["role"])
 
     @pytest.mark.asyncio
     async def test_delete_account(self, accounts_two_per_role: list[AccountEntity]):
