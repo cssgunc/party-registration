@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/select";
 import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
-import { ResidenceDto, StudentDto } from "@/lib/api/student/student.types";
+import { StudentDto } from "@/lib/api/student/student.types";
 import { isFromThisSchoolYear } from "@/lib/utils";
 import { addBusinessDays, format, isAfter, startOfDay } from "date-fns";
 import { CalendarIcon } from "lucide-react";
@@ -106,7 +106,6 @@ export default function PartyRegistrationForm({
   locationService = new LocationService(),
   initialValues,
   student,
-  mode = "create",
 }: PartyRegistrationFormProps) {
   const [formData, setFormData] = useState<Partial<PartyFormValues>>({
     address: initialValues?.address ?? "",
@@ -361,7 +360,7 @@ export default function PartyRegistrationForm({
             )}
           </div>
 
-          <div className="flex flex-col gap-4 lg:gap-6">
+          <div className="flex flex-col gap-4">
             <h2 className="subhead-content">Your Contact Information</h2>
             <p className="content-sub italic">
               You can edit preferences in your Account Settings.

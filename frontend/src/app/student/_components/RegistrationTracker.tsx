@@ -248,7 +248,7 @@ export default function RegistrationTracker({
         }
       >
         <div className="flex justify-between items-center mt-2">
-          <TabsList className="w-fit flex gap-4">
+          <TabsList className="w-fit flex gap-2">
             <TabsTrigger
               value="active"
               className="px-0 subhead-content cursor-pointer"

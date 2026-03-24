@@ -55,16 +55,13 @@ export default function StudentDashboard() {
     );
     return locationWithIncidents?.incidents || [];
   }, []);
-  const courseCompleted = isFromThisSchoolYear(
-    studentQuery.data?.last_registered
-  );
   const validResidence = isFromThisSchoolYear(
     studentQuery?.data?.residence?.residence_chosen_date
   );
 
   return (
     <div className="flex flex-col items-center">
-      <div className="px-14 md:px-12 pb-12 pt-6 flex flex-col 2xl:flex-row gap-4 max-w-4xl w-full 2xl:max-w-11/12 2xl:gap-24">
+      <div className="px-4 sm:px-8 pb-12 pt-6 flex flex-col 2xl:flex-row gap-4 max-w-4xl w-full 2xl:max-w-11/12 2xl:gap-24">
         <div className="2xl:w-1/2">
           <div>
             <div className="flex justify-between items-center">
