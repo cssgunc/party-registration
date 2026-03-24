@@ -17,7 +17,7 @@ export default function PartySmartInfo() {
           <AccordionContent>
             <ul className="list-disc list-outside ml-5 space-y-1">
               <li>
-                Contact your neighbors in advance to let them know you'll be
+                Contact your neighbors in advance to let them know you will be
                 having guests over and ask if there is anything you can do as a
                 host to make it easier for them. Give them your phone number so
                 they can call you if problems arise. Remember: Informing your
@@ -45,12 +45,12 @@ export default function PartySmartInfo() {
                 chapter event.
               </li>
               <li>
-                Read your renter's insurance policy to understand any applicable
-                stipulations in the coverage.
+                Read your renter&apos;s insurance policy to understand any
+                applicable stipulations in the coverage.
               </li>
               <li>
-                Protect your items; lock rooms you don't want guests to have
-                access to; put away valuables, restrict access to candles,
+                Protect your items; lock rooms you don&apos;t want guests to
+                have access to; put away valuables, restrict access to candles,
                 fireworks and other flammable materials.
               </li>
             </ul>
@@ -73,7 +73,7 @@ export default function PartySmartInfo() {
                 you are likely facing an expensive citation.
               </li>
               <li>
-                Use your guest list and make sure the house isn't getting
+                Use your guest list and make sure the house is not getting
                 overcrowded.
               </li>
               <li>
@@ -98,8 +98,8 @@ export default function PartySmartInfo() {
               </li>
               <li>Do not permit illegal drug use.</li>
               <li>
-                Keep people off balcony's or porches that are not equipped to
-                handle large numbers of people.
+                Keep people off balcony&apos;s or porches that are not equipped
+                to handle large numbers of people.
               </li>
               <li>
                 Be aware of guests that may have had too much to drink and get
@@ -126,8 +126,8 @@ export default function PartySmartInfo() {
                 Ask your guests to respect your neighborhood as they leave: No
                 yelling, vandalism, open containers, littering, etc. Clean up
                 any mess your event creates - both inside and outside of your
-                house. Take a moment to make sure your neighbors' property was
-                unaffected by your party.
+                house. Take a moment to make sure your neighbors&apos; property
+                was unaffected by your party.
               </li>
             </ul>
           </AccordionContent>
@@ -139,14 +139,14 @@ export default function PartySmartInfo() {
           <AccordionContent>
             <ul className="list-disc list-outside ml-5 space-y-1">
               <li>
-                Don't let guests leave with an open container of alcohol in
+                Do not let guests leave with an open container of alcohol in
                 their hand.
               </li>
               <li>
-                Make sure everyone gets home safe; don't let folks wander off
+                Make sure everyone gets home safe; do not let people wander off
                 alone.
               </li>
-              <li>Clean up: Your house and the surrounding area outside.</li>
+              <li>Clean up your house and the surrounding area outside.</li>
             </ul>
           </AccordionContent>
         </AccordionItem>

@@ -4,7 +4,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { AlertTriangleIcon, ArrowLeft } from "lucide-react";
+import { AlertTriangleIcon } from "lucide-react";
 
 export default function PartyRegistrationInfo() {
   return (
@@ -58,9 +58,9 @@ export default function PartyRegistrationInfo() {
           <AccordionTrigger>Why register your party?</AccordionTrigger>
           <AccordionContent>
             Unlike a citation for a noise violation, registration is FREE. You
-            don't want the police officers to stop by - so limit your chance of
+            do not want the police officers to stop by - so limit your chance of
             that happening! It gives you an opportunity to take responsibility
-            (before the officers arrive). If you don't register your party, the
+            (before the officers arrive). If you do not register your party, the
             presumptive outcome of a noise complaint on your party is a
             citation. Chapel Hill police will, in most circumstances, no longer
             give warnings to loud parties that have not been registered.
@@ -77,7 +77,7 @@ export default function PartyRegistrationInfo() {
               </li>
               <li>
                 You MUST live at the house being registered. You cannot register
-                a friend's party.
+                a friend&apos;s party.
               </li>
               <li>
                 Party registration is for noise complaints only, and does not

@@ -3,7 +3,6 @@
 import StudentInfo from "@/app/student/_components/StudentInfo";
 import { Card, CardContent } from "@/components/ui/card";
 import { useCurrentStudent } from "@/lib/api/student/student.queries";
-import { STUDENTS } from "@/lib/mockData";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
