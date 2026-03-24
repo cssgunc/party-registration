@@ -1,8 +1,10 @@
-from fastapi import Depends
+from fastapi import Depends, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.database import get_session
 from src.core.exceptions import NotFoundException
+from src.core.query_utils import PaginatedResponse, get_paginated_results, parse_pagination_params
+from src.modules.location.location_entity import LocationEntity
 from src.modules.location.location_service import LocationService
 
 from .incident_entity import IncidentEntity
@@ -31,6 +33,39 @@ class IncidentService:
         if incident_entity is None:
             raise IncidentNotFoundException(incident_id)
         return incident_entity
+
+    async def get_incidents_paginated(self, request: Request) -> PaginatedResponse[IncidentDto]:
+        nested_field_columns = {
+            "location.id": IncidentEntity.location_id,
+            "location.google_place_id": LocationEntity.google_place_id,
+            "location.formatted_address": LocationEntity.formatted_address,
+            "location.hold_expiration": LocationEntity.hold_expiration,
+        }
+
+        _base_allowed_fields = ["id", "incident_datetime", "severity", "description"]
+        allowed_sort_fields = [*_base_allowed_fields, *nested_field_columns.keys()]
+        allowed_filter_fields = list(allowed_sort_fields)
+
+        base_query = select(IncidentEntity).join(
+            LocationEntity, IncidentEntity.location_id == LocationEntity.id
+        )
+
+        query_params = parse_pagination_params(
+            request,
+            allowed_sort_fields=allowed_sort_fields,
+            allowed_filter_fields=allowed_filter_fields,
+        )
+
+        return await get_paginated_results(
+            session=self.session,
+            base_query=base_query,
+            entity_class=IncidentEntity,
+            dto_converter=lambda entity: entity.to_dto(),
+            query_params=query_params,
+            allowed_sort_fields=allowed_sort_fields,
+            allowed_filter_fields=allowed_filter_fields,
+            nested_field_columns=nested_field_columns,
+        )
 
     async def get_incidents_by_location(self, location_id: int) -> list[IncidentDto]:
         """Get all incidents for a given location, ordered by incident datetime."""

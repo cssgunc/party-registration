@@ -2,7 +2,7 @@ import enum
 from typing import Annotated, Literal
 
 from pydantic import AwareDatetime, BaseModel, EmailStr, Field
-from src.core.models import PaginatedResponse
+from src.core.query_utils import PaginatedResponse
 from src.modules.location.location_model import LocationDto
 from src.modules.student.student_model import ContactPreference, StudentDto
 
@@ -44,11 +44,11 @@ class PartyDto(BaseModel):
 
 class StudentCreatePartyDto(BaseModel):
     """DTO for students creating a party registration.
+    Party location is derived from the student's residence.
     contact_one will be automatically set from the authenticated student."""
 
     type: Literal["student"] = Field("student", description="Request type discriminator")
     party_datetime: AwareDatetime = Field(..., description="Date and time of the party")
-    google_place_id: str = Field(..., description="Google Maps place ID of the location")
     contact_two: ContactDto = Field(..., description="Contact information for the second contact")
 
 
