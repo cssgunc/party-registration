@@ -36,36 +36,31 @@ export default function IncidentSidebar({
   };
 
   const doDelete = () => {
-    const handleDelete = (incidentId: number) => {
-      const incident = incidents.find((i) => i.id === incidentId);
-      if (!incident) return;
+    if (confirmStateDelete === null) return;
+    const incident = incidents.find((i) => i.id === confirmStateDelete);
+    if (!incident) return;
+    queryClient.setQueryData<PaginatedResponse<LocationDto> | undefined>(
+      ["locations"],
+      (old) =>
+        old
+          ? {
+              ...old,
+              items: old.items.map((loc) =>
+                loc.id === incident.location_id
+                  ? {
+                      ...loc,
+                      incidents: loc.incidents.filter(
+                        (inc) => inc.id !== confirmStateDelete
+                      ),
+                    }
+                  : loc
+              ),
+            }
+          : old
+    );
 
-      queryClient.setQueryData<PaginatedResponse<LocationDto> | undefined>(
-        ["locations"],
-        (old) =>
-          old
-            ? {
-                ...old,
-                items: old.items.map((loc) =>
-                  loc.id === incident.location_id
-                    ? {
-                        ...loc,
-                        incidents: loc.incidents.filter(
-                          (inc) => inc.id !== incidentId
-                        ),
-                      }
-                    : loc
-                ),
-              }
-            : old
-      );
-
-      if (confirmStateDelete !== null) {
-        handleDelete(confirmStateDelete);
-      }
-      refreshSidebar(incident.location_id);
-      setConfirmStateDelete(null);
-    };
+    refreshSidebar(incident.location_id);
+    setConfirmStateDelete(null);
   };
 
   const handleEdit = (incident: IncidentDto) => {
