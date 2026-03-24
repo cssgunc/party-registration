@@ -1,3 +1,11 @@
+import {
+  type IncidentCreateDto,
+  type IncidentDto,
+  type IncidentDtoBackend,
+  type IncidentSeverity,
+  convertIncident,
+} from "../incident/incident.types";
+
 /**
  * Input for address autocomplete
  */
@@ -39,49 +47,9 @@ type LocationData = AddressData & {
 };
 
 /**
- * Incident severity levels
- */
-type IncidentSeverity = "complaint" | "warning" | "citation";
-
-/**
- * Incident create DTO (for creating/updating)
- */
-type IncidentCreateDto = {
-  incident_datetime: Date;
-  description: string;
-  severity: IncidentSeverity;
-};
-
-/**
  * Incident data including location_id
  */
-type IncidentData = IncidentCreateDto & {
-  location_id: number;
-};
-
-/**
- * Incident DTO
- */
-type IncidentDto = IncidentData & {
-  id: number;
-};
-
-/**
- * Incident DTO (backend response format with string dates)
- */
-type IncidentDtoBackend = Omit<IncidentDto, "incident_datetime"> & {
-  incident_datetime: string;
-};
-
-/**
- * Convert incident from backend format (string dates) to frontend format (Date objects)
- */
-function convertIncident(backend: IncidentDtoBackend): IncidentDto {
-  return {
-    ...backend,
-    incident_datetime: new Date(backend.incident_datetime),
-  };
-}
+type IncidentData = IncidentCreateDto;
 
 /**
  * Location DTO
@@ -149,7 +117,7 @@ function countIncidentsBySeverity(
  * Get warning count for a location
  */
 function getWarningCount(location: LocationDto): number {
-  return countIncidentsBySeverity(location, "warning");
+  return countIncidentsBySeverity(location, "in_person_warning");
 }
 
 /**
@@ -163,7 +131,7 @@ function getCitationCount(location: LocationDto): number {
  * Get complaint count for a location
  */
 function getComplaintCount(location: LocationDto): number {
-  return countIncidentsBySeverity(location, "complaint");
+  return countIncidentsBySeverity(location, "remote_warning");
 }
 
 export {

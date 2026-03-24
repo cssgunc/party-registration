@@ -1,7 +1,8 @@
 "use client";
 import { Button } from "@/components/ui/button";
 import { useRole } from "@/contexts/RoleContext";
-import { IncidentDto, LocationDto } from "@/lib/api/location/location.types";
+import { IncidentDto } from "@/lib/api/incident/incident.types";
+import { LocationDto } from "@/lib/api/location/location.types";
 import { PaginatedResponse } from "@/lib/shared";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSidebar } from "../shared/sidebar/SidebarContext";

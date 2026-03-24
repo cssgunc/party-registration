@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useRole } from "@/contexts/RoleContext";
-import { IncidentDto } from "@/lib/api/location/location.types";
+import { IncidentDto } from "@/lib/api/incident/incident.types";
 import { ChevronDown, MoreHorizontal } from "lucide-react";
 
 type IncidentSidebarCardProps = {
@@ -72,6 +72,10 @@ export default function IncidentSidebarCard({
             {incidents.description || "No description provided."}
             <br></br>
             <strong>Severity:</strong> {incidents.severity || "N/A"}
+            <span>
+              <br></br>
+              <strong>Reference ID:</strong> {incidents.reference_id || "N/A"}
+            </span>
           </p>
         </CollapsibleContent>
       </Collapsible>
