@@ -23,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useRole } from "@/contexts/RoleContext";
 import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { PartyDto } from "@/lib/api/party/party.types";
@@ -31,43 +32,66 @@ import { CalendarIcon } from "lucide-react";
 import { useState } from "react";
 import * as z from "zod";
 
-export const partyTableFormSchema = z.object({
-  address: z.string().min(1, "Address is required"),
-  placeId: z
-    .string()
-    .min(1, "Please select an address from the search results"),
-  partyDate: z
-    .date({
-      message: "Party date is required",
+export const createPartyTableFormSchema = (isAdmin: boolean) => {
+  const partyDateSchema = isAdmin
+    ? z.date({
+        message: "Party date is required",
+      })
+    : z
+        .date({
+          message: "Party date is required",
+        })
+        .refine(
+          (date) =>
+            isAfter(
+              startOfDay(date),
+              addBusinessDays(startOfDay(new Date()), 1)
+            ),
+          "Party must be at least 2 business days in the future"
+        );
+
+  return z
+    .object({
+      address: z.string().min(1, "Address is required"),
+      placeId: z
+        .string()
+        .min(1, "Please select an address from the search results"),
+      partyDate: partyDateSchema,
+      partyTime: z.string().min(1, "Party time is required"),
+      contactOneEmail: z
+        .email({ pattern: z.regexes.html5Email })
+        .min(1, "Contact email is required"),
+      contactTwoEmail: z
+        .email({ pattern: z.regexes.html5Email })
+        .min(1, "Contact email is required"),
+      contactTwoFirstName: z.string().min(1, "First name is required"),
+      contactTwoLastName: z.string().min(1, "Last name is required"),
+      contactTwoPhoneNumber: z
+        .string()
+        .min(1, "Phone number is required")
+        .refine(
+          (val) => val.replace(/\D/g, "").length >= 10,
+          "Phone number must be at least 10 digits"
+        )
+        .transform((val) => val.replace(/\D/g, "")),
+      contactTwoPreference: z.enum(["call", "text"], {
+        message: "Please select a contact preference",
+      }),
     })
     .refine(
-      (date) =>
-        isAfter(startOfDay(date), addBusinessDays(startOfDay(new Date()), 1)),
-      "Party must be at least 2 business days in the future"
-    ),
-  partyTime: z.string().min(1, "Party time is required"),
-  contactOneEmail: z
-    .email({ pattern: z.regexes.html5Email })
-    .min(1, "Contact email is required"),
-  contactTwoEmail: z
-    .email({ pattern: z.regexes.html5Email })
-    .min(1, "Contact email is required"),
-  contactTwoFirstName: z.string().min(1, "First name is required"),
-  contactTwoLastName: z.string().min(1, "Last name is required"),
-  contactTwoPhoneNumber: z
-    .string()
-    .min(1, "Phone number is required")
-    .refine(
-      (val) => val.replace(/\D/g, "").length >= 10,
-      "Phone number must be at least 10 digits"
-    )
-    .transform((val) => val.replace(/\D/g, "")),
-  contactTwoPreference: z.enum(["call", "text"], {
-    message: "Please select a contact preference",
-  }),
-});
+      (data) =>
+        data.contactTwoEmail.trim().toLowerCase() !==
+        data.contactOneEmail.trim().toLowerCase(),
+      {
+        message: "Contact two email must be different from contact one's email",
+        path: ["contactTwoEmail"],
+      }
+    );
+};
 
-type PartyTableFormValues = z.infer<typeof partyTableFormSchema>;
+type PartyTableFormValues = z.infer<
+  ReturnType<typeof createPartyTableFormSchema>
+>;
 
 interface PartyTableFormProps {
   onSubmit: (data: PartyTableFormValues) => void | Promise<void>;
@@ -82,13 +106,19 @@ export default function PartyTableForm({
   submissionError,
   title,
 }: PartyTableFormProps) {
+  const { role } = useRole();
+  const isAdmin = role === "admin";
   const locationService = new LocationService();
+
+  const partyTableFormSchema = createPartyTableFormSchema(isAdmin);
 
   const [formData, setFormData] = useState<Partial<PartyTableFormValues>>({
     address: editData?.location.formatted_address ?? "",
     placeId: editData?.location.google_place_id ?? undefined,
     partyDate: editData?.party_datetime ?? undefined,
-    partyTime: editData?.party_datetime.toISOString().slice(11, 16) ?? "",
+    partyTime: editData?.party_datetime
+      ? format(editData.party_datetime, "HH:mm")
+      : "",
     contactOneEmail: editData?.contact_one.email ?? "",
     contactTwoEmail: editData?.contact_two.email ?? "",
     contactTwoFirstName: editData?.contact_two.first_name ?? "",
@@ -114,6 +144,19 @@ export default function PartyTableForm({
       });
       setErrors(fieldErrors);
       return;
+    }
+
+    // Validate contact two phone differs from contact one's phone (when available)
+    if (editData?.contact_one.phone_number) {
+      const c1Digits = editData.contact_one.phone_number.replace(/\D/g, "");
+      const c2Digits = result.data.contactTwoPhoneNumber.replace(/\D/g, "");
+      if (c1Digits === c2Digits) {
+        setErrors({
+          contactTwoPhoneNumber:
+            "Contact two phone number must be different from contact one's phone number",
+        });
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -212,11 +255,14 @@ export default function PartyTableForm({
                     mode="single"
                     selected={formData.partyDate}
                     onSelect={(date) => updateField("partyDate", date as Date)}
-                    disabled={(date) =>
-                      !isAfter(
-                        startOfDay(date),
-                        addBusinessDays(startOfDay(new Date()), 1)
-                      )
+                    disabled={
+                      isAdmin
+                        ? undefined
+                        : (date) =>
+                            !isAfter(
+                              startOfDay(date),
+                              addBusinessDays(startOfDay(new Date()), 1)
+                            )
                     }
                   />
                 </PopoverContent>

@@ -19,12 +19,17 @@ class AccountEntity(MappedAsDataclass, EntityBase):
             "LEN(pid) = 9 AND pid NOT LIKE '%[^0-9]%'",
             name="check_pid_format",
         ),
+        unique=True,
+        index=True,
         nullable=False,
     )
     onyen: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     role: Mapped[AccountRole] = mapped_column(
         Enum(AccountRole, native_enum=False, length=20), nullable=False
     )
+
+    # MSSQL uses case-insensitive collation by default (SQL_Latin1_General_CP1_CI_AS)
+    # The unique constraint on email column already provides case-insensitive uniqueness
 
     @classmethod
     def from_data(cls, data: "AccountData") -> Self:

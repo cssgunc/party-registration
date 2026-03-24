@@ -7,13 +7,11 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
- * Check if a student has completed the Party Smart Course.
- * Course completion expires on August 1st each year.
+ * Check if a date is before or after August 1st.
+ * Course completion and residence registration expires on August 1st each year.
  */
-export function isCourseCompleted(
-  lastRegistered: Date | null | undefined
-): boolean {
-  if (!lastRegistered) return false;
+export function isFromThisSchoolYear(date: Date | null | undefined): boolean {
+  if (!date) return false;
 
   const now = new Date();
   const currentYear = now.getFullYear();
@@ -22,5 +20,5 @@ export function isCourseCompleted(
     ? new Date(currentYear - 1, 7, 1)
     : augustFirst;
 
-  return isAfter(startOfDay(lastRegistered), startOfDay(mostRecentAugust1));
+  return isAfter(startOfDay(date), startOfDay(mostRecentAugust1));
 }
