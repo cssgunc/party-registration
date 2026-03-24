@@ -7,6 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import {
   Pagination,
   PaginationContent,
@@ -300,18 +301,18 @@ export function TableTemplate<T extends object>({
           {(() => {
             return (
               <div className="flex justify-between w-full gap-4">
-                <div className="bg-card h-9 rounded-md">
-                  <input
+                <div className="flex-1 min-w-sm max-w-lg bg-card rounded-md">
+                  <Input
                     type="text"
                     value={globalFilter}
                     onChange={(e) => setGlobalFilter(e.target.value)}
                     placeholder="Search all columns..."
-                    className="w-full p-2 pl-3 border h-9 rounded-md"
+                    className="p-2 pl-3 h-9 rounded-md "
                   />
                 </div>
-                <div>
+                <div className="shrink-0">
                   {onCreateNewRow && role === "admin" && (
-                    <Button onClick={onCreateNewRow} className="h-">
+                    <Button onClick={onCreateNewRow} className="h-9">
                       <Plus className="mr-1" />
                       <p>New row</p>
                     </Button>

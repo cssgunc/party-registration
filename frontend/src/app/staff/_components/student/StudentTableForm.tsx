@@ -53,6 +53,12 @@ export const studentTableFormSchema = z.object({
   residence: z.custom<ResidenceDto | null>().default(null),
 });
 
+const formatPhoneNumber = (value: string): string => {
+  return value
+    ? `(${value.slice(0, 3)}) ${value.slice(3, 6)}-${value.slice(6, 10)}`
+    : "—";
+};
+
 type StudentTableFormValues = z.infer<typeof studentTableFormSchema>;
 
 interface StudentTableFormProps {
@@ -147,6 +153,7 @@ export default function StudentTableForm({
             />
             {errors.pid && <FieldError>{errors.pid}</FieldError>}
           </Field>
+
           <Field data-invalid={!!errors.first_name}>
             <FieldLabel htmlFor="first-name">First name</FieldLabel>
             <Input
@@ -203,7 +210,7 @@ export default function StudentTableForm({
             <Input
               id="phone-number"
               placeholder="(123) 456-7890"
-              value={formData.phone_number}
+              value={formatPhoneNumber((formData.phone_number as string) || "")}
               onChange={(e) => updateField("phone_number", e.target.value)}
               aria-invalid={!!errors.phone_number}
             />

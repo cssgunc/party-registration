@@ -1,8 +1,10 @@
 "use client";
 
 import { useSidebar } from "@/app/staff/_components/shared/sidebar/SidebarContext";
+import info from "@/components/icons/info.svg";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 import { ReactNode } from "react";
 
 interface GenericInfoChipProps {
@@ -37,9 +39,10 @@ export function GenericInfoChip({
       onClick={handleOpen}
       className={cn(
         "cursor-pointer px-3 py-1",
-        isSelected ? "bg-primary text-card" : "bg-muted text-foreground"
+        isSelected ? "bg-primary text-card" : "bg-card text-foreground"
       )}
     >
+      <Image src={info} alt="info" className="mr-2" />
       {shortName}
     </Badge>
   );

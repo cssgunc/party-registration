@@ -32,13 +32,10 @@ import { CalendarIcon } from "lucide-react";
 import { useState } from "react";
 import * as z from "zod";
 
-// Format phone number as XXX-XXX-XXXX
 const formatPhoneNumber = (value: string): string => {
-  const digits = value.replace(/\D/g, "");
-  if (digits.length === 0) return "";
-  if (digits.length <= 3) return digits;
-  if (digits.length <= 6) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
-  return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
+  return value
+    ? `(${value.slice(0, 3)}) ${value.slice(3, 6)}-${value.slice(6, 10)}`
+    : "—";
 };
 
 export const createPartyTableFormSchema = (isAdmin: boolean) => {
@@ -325,7 +322,7 @@ export default function PartyTableForm({
               <FieldError>{errors.contactTwoEmail}</FieldError>
             )}
           </Field>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field data-invalid={!!errors.contactTwoFirstName}>
               <FieldLabel htmlFor="contact-two-first-name">
                 First Name
