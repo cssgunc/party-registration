@@ -1,5 +1,4 @@
 "use client";
-
 import { LocationService } from "@/lib/api/location/location.service";
 import { LocationCreate, LocationDto } from "@/lib/api/location/location.types";
 import { PaginatedResponse } from "@/lib/shared";
@@ -223,7 +222,6 @@ export const LocationTable = () => {
                     row.original.incidents.map((i) => i.id)
                   )}`}
                   incidents={row.original.incidents}
-                  locationId={row.original.id}
                 />
               }
             />
