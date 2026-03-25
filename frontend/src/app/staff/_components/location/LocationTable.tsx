@@ -194,7 +194,6 @@ export const LocationTable = () => {
                     row.original.incidents.map((i) => i.id)
                   )}`}
                   incidents={row.original.incidents}
-                  locationId={row.original.id}
                 />
               }
             />
