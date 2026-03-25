@@ -100,7 +100,7 @@ export default function RegistrationTracker({
     const groups: Record<string, IncidentDto[]> = {};
 
     sortedIncidents.forEach((incident) => {
-      const dateKey = format(incident.incident_datetime, "PPP");
+      const dateKey = format(incident.incident_datetime, "MM/dd/yyyy");
       if (!groups[dateKey]) {
         groups[dateKey] = [];
       }
@@ -113,19 +113,25 @@ export default function RegistrationTracker({
   const PartyCard = ({
     party,
     showActions,
+    showAddress,
   }: {
     party: PartyDto;
     showActions?: boolean;
+    showAddress?: boolean;
   }) => (
-    <Card className="px-4 py-4 border-b border-gray-100 rounded-none last:border-b-0">
-      <div className="space-y-2">
+    <div className="px-4 py-4 border-b border-gray-200 rounded-none">
+      <div>
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="content-bold">{party.location.formatted_address}</h2>
-            <p className="content-sub">
-              {format(party.party_datetime, "PPP")} at{" "}
-              {format(party.party_datetime, "p")}
-            </p>
+            <div className="flex content-bold gap-6">
+              <p>{format(party.party_datetime, "MM/dd/yyyy")}</p>
+              <p>Start: {format(party.party_datetime, "p")}</p>
+            </div>
+            {showAddress && (
+              <h2 className="content-bold my-2">
+                {party.location.formatted_address}
+              </h2>
+            )}
           </div>
 
           {showActions && (
@@ -157,7 +163,7 @@ export default function RegistrationTracker({
         </div>
 
         {/* Contacts Side by Side */}
-        <div className="mt-3 gap-4 sm:grid sm:grid-cols-2">
+        <div className="sm:grid sm:grid-cols-2">
           {/* Contact One */}
 
           <div className="content ml-3">
@@ -176,7 +182,7 @@ export default function RegistrationTracker({
           </div>
 
           {/* Contact Two */}
-          <div className="ml-3 mt-2 sm:ml-0 sm:mt-0 content">
+          <div className="ml-3 mt-6 sm:ml-0 sm:mt-0 content">
             <p>
               {party.contact_two.first_name} {party.contact_two.last_name}
             </p>
@@ -192,7 +198,7 @@ export default function RegistrationTracker({
           </div>
         </div>
       </div>
-    </Card>
+    </div>
   );
 
   const IncidentCard = ({
@@ -202,20 +208,20 @@ export default function RegistrationTracker({
     date: string;
     incidents: IncidentDto[];
   }) => (
-    <Card className="px-4 py-4 border-b border-gray-100 rounded-none last:border-b-0">
+    <div className="px-4 py-4 border-b border-gray-200 rounded-none">
       <div className="space-y-2">
         <h2 className="content-bold">{date}</h2>
         {incidents.map((incident) => (
-          <div key={incident.id} className="mt-3 gap-4 md:grid md:grid-cols-2">
+          <div key={incident.id} className="mt-3">
             <p className="content">
               {format(incident.incident_datetime, "p")} -{" "}
               <span className="capitalize">{incident.severity}</span>
             </p>
-            <p className="content ml-3">{incident.description}</p>
+            <p className="content ml-3 mt-1">{incident.description}</p>
           </div>
         ))}
       </div>
-    </Card>
+    </div>
   );
 
   if (error) {
@@ -248,7 +254,7 @@ export default function RegistrationTracker({
         }
       >
         <div className="flex justify-between items-center mt-2">
-          <TabsList className="w-fit flex gap-2">
+          <TabsList className="w-fit flex gap-4">
             <TabsTrigger
               value="active"
               className="px-0 subhead-content cursor-pointer"
@@ -291,7 +297,7 @@ export default function RegistrationTracker({
         <Card className="w-full">
           <TabsContent value="active">
             <div className="w-full bg-card rounded-md overflow-hidden">
-              <div className="max-h-[calc(100vh-28rem)] overflow-y-auto">
+              <div className="h-[calc(100vh-28rem)] overflow-y-auto">
                 {activeParties.length === 0 ? (
                   <p className="text-center content-sub py-8">
                     No active registrations
@@ -307,14 +313,14 @@ export default function RegistrationTracker({
 
           <TabsContent value="past" className="">
             <div className="w-full bg-card rounded-md overflow-hidden">
-              <div className="max-h-[calc(100vh-28rem)] overflow-y-auto">
+              <div className="h-[calc(100vh-28rem)] overflow-y-auto">
                 {pastParties.length === 0 ? (
                   <p className="text-center content-sub py-8">
                     No past registrations
                   </p>
                 ) : (
                   pastParties.map((party) => (
-                    <PartyCard key={party.id} party={party} />
+                    <PartyCard key={party.id} party={party} showAddress />
                   ))
                 )}
               </div>
@@ -323,7 +329,7 @@ export default function RegistrationTracker({
 
           <TabsContent value="incidents">
             <div className="w-full bg-card rounded-md overflow-hidden">
-              <div className="max-h-[calc(100vh-28rem)] overflow-y-auto">
+              <div className="h-[calc(100vh-28rem)] overflow-y-auto">
                 {sortedIncidents.length === 0 ? (
                   <p className="text-center content-sub py-8">No incidents</p>
                 ) : (

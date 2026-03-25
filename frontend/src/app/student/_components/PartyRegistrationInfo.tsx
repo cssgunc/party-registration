@@ -101,7 +101,7 @@ export default function PartyRegistrationInfo() {
           </AccordionContent>
         </AccordionItem>
       </Accordion>
-      <div className="flex flex-col items-center content 2xl:mt-8 2xl:mb-12">
+      <div className="flex flex-col items-center content 2xl:mt-20">
         <AlertTriangleIcon />
         <p className="text-center w-4/5 mt-2 mb-6 2xl:mb-0">
           Keep in mind that the party registration program only pertains to

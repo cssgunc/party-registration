@@ -60,33 +60,31 @@ export default function StudentDashboard() {
   );
 
   return (
-    <div className="flex flex-col items-center">
-      <div className="px-4 sm:px-8 pb-12 pt-6 flex flex-col 2xl:flex-row gap-4 max-w-4xl w-full 2xl:max-w-11/12 2xl:gap-24">
-        <div className="2xl:w-1/2">
+    <div className="flex flex-col items-center pt-6 mb-6">
+      <div className="px-4 sm:px-8 flex flex-col 2xl:flex-row gap-4 max-w-4xl w-full 2xl:max-w-11/12 2xl:gap-24 h-fit">
+        <div className="2xl:w-1/2 flex flex-col justify-between">
           <div>
-            <div className="flex justify-between items-center">
-              <h1 className="page-title w-1/2">Events</h1>
-              <div className="content text-wrap text-end w-1/2">
-                {validResidence && (
-                  <div className="flex justify-end">
-                    <p>
-                      {studentQuery?.data?.residence?.location.street_number}{" "}
-                      {studentQuery?.data?.residence?.location.street_name}{" "}
-                      {studentQuery?.data?.residence?.location.unit}
-                    </p>
-                  </div>
-                )}
-              </div>
+            <h1 className="page-title w-1/2">Events</h1>
+            <div className="content text-wrap text-end w-1/2">
+              {validResidence && (
+                <div className="flex justify-end">
+                  <p>
+                    {studentQuery?.data?.residence?.location.street_number}{" "}
+                    {studentQuery?.data?.residence?.location.street_name}{" "}
+                    {studentQuery?.data?.residence?.location.unit}
+                  </p>
+                </div>
+              )}
             </div>
+            <RegistrationTracker
+              data={partiesQuery.data}
+              incidents={mockIncidents}
+              isPending={partiesQuery.isPending}
+              error={partiesQuery.error}
+            />
           </div>
 
-          <RegistrationTracker
-            data={partiesQuery.data}
-            incidents={mockIncidents}
-            isPending={partiesQuery.isPending}
-            error={partiesQuery.error}
-          />
-          <div className="mt-6">
+          <div className="mt-8">
             <h2 className="page-title mb-2">Party Smart Course </h2>
             <Link
               href="/student/about-party-registration"
@@ -103,7 +101,7 @@ export default function StudentDashboard() {
           </div>
         </div>
 
-        <div className="hidden 2xl:flex 2xl:flex-col 2xl:w-1/2">
+        <div className="hidden 2xl:flex 2xl:flex-col 2xl:w-1/2 2xl:justify-between">
           <PartyRegistrationInfo />
           <PartySmartInfo />
         </div>

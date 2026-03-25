@@ -9,7 +9,7 @@ export default function PartySmartInfo() {
   return (
     <div className="mt-4 2xl:mt-0">
       <h1 className="page-title">About Party Smart</h1>
-      <Accordion type="single" collapsible className="my-5">
+      <Accordion type="single" collapsible className="mt-5">
         <AccordionItem value="1">
           <AccordionTrigger>
             How to reduce risk before the Party:
