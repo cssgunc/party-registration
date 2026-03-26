@@ -15,7 +15,7 @@ from test.utils.http.assertions import (
     assert_res_success,
     assert_res_validation_error,
 )
-from test.utils.http.test_templates import generate_auth_required_tests
+from test.utils.http.test_templates import generate_auth_required_tests, generate_filter_sort_tests
 
 
 @pytest_asyncio.fixture
@@ -23,6 +23,27 @@ async def sample_police(police_utils: PoliceTestUtils) -> PoliceEntity:
     """Create sample police credentials for testing."""
     return await police_utils.create_one()
 
+
+test_account_sort, test_account_filter = generate_filter_sort_tests(
+    "/api/accounts",
+    AccountDto,
+    sort_fields=[
+        "id",
+        "email",
+        "first_name",
+        "last_name",
+        "pid",
+        "role",
+    ],
+    filter_cases=[
+        ("id", 0),
+        ("email", "nonexistent"),
+        ("first_name", "nonexistent"),
+        ("last_name", "nonexistent"),
+        ("pid", 0),
+        ("role", "admin"),
+    ],
+)
 
 test_account_authentication = generate_auth_required_tests(
     ({"admin"}, "GET", "/api/accounts", None),

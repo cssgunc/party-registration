@@ -11,7 +11,44 @@ from src.modules.location.location_service import (
 )
 from test.modules.location.location_utils import GmapsMockUtils, LocationTestUtils
 from test.utils.http.assertions import assert_res_failure, assert_res_paginated, assert_res_success
-from test.utils.http.test_templates import generate_auth_required_tests
+from test.utils.http.test_templates import generate_auth_required_tests, generate_filter_sort_tests
+
+test_location_sort, test_location_filter = generate_filter_sort_tests(
+    "/api/locations",
+    LocationDto,
+    sort_fields=[
+        "id",
+        "google_place_id",
+        "formatted_address",
+        "latitude",
+        "longitude",
+        "street_number",
+        "street_name",
+        "unit",
+        "city",
+        "county",
+        "state",
+        "country",
+        "zip_code",
+        "hold_expiration",
+    ],
+    filter_cases=[
+        ("id", 0),
+        ("google_place_id", "nonexistent"),
+        ("formatted_address", "nonexistent"),
+        ("latitude", 0),
+        ("longitude", 0),
+        ("street_number", "nonexistent"),
+        ("street_name", "nonexistent"),
+        ("unit", "nonexistent"),
+        ("city", "nonexistent"),
+        ("county", "nonexistent"),
+        ("state", "NC"),
+        ("country", "US"),
+        ("zip_code", "00000"),
+        ("hold_expiration", "2026-01-01"),
+    ],
+)
 
 test_location_authentication = generate_auth_required_tests(
     ({"admin", "staff"}, "GET", "/api/locations", None),

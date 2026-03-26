@@ -7,17 +7,19 @@ import AddressSearch from "@/components/AddressSearch";
 import { Button } from "@/components/ui/button";
 import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
-import { PartyService } from "@/lib/api/party/party.service";
 import { PartyDto } from "@/lib/api/party/party.types";
+import {
+  usePartiesNearby,
+  usePlaceDetails,
+  usePoliceParties,
+} from "@/lib/api/party/police-party.queries";
 import getMockClient from "@/lib/network/mockClient";
-import { useQuery } from "@tanstack/react-query";
 import { startOfDay } from "date-fns";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import PartyCsvExportButton from "./_components/PartyCsvExportButton";
 
 const policeLocationService = new LocationService(getMockClient("police"));
-const partyService = new PartyService(getMockClient("police"));
 
 export default function PolicePage() {
   const today = startOfDay(new Date());
@@ -28,40 +30,22 @@ export default function PolicePage() {
   );
   const [activeParty, setActiveParty] = useState<PartyDto | undefined>();
 
-  const { data: placeDetails } = useQuery({
-    queryKey: ["place-details", searchAddress?.google_place_id],
-    queryFn: () =>
-      policeLocationService.getPlaceDetails(searchAddress!.google_place_id),
-    enabled: !!searchAddress?.google_place_id,
-  });
+  // Fetch place details when address is selected
+  const { data: placeDetails } = usePlaceDetails(
+    searchAddress?.google_place_id
+  );
 
   const {
     data: allParties = [],
     isLoading,
     error,
-  } = useQuery({
-    queryKey: ["parties", startDate, endDate],
-    queryFn: async () => {
-      const page = await partyService.listParties({ startDate, endDate });
-      return page.items;
-    },
-    enabled: !!startDate && !!endDate,
-  });
+  } = usePoliceParties({ startDate, endDate });
 
-  const { data: nearbyParties, isLoading: isLoadingNearby } = useQuery({
-    queryKey: [
-      "parties-nearby",
-      searchAddress?.google_place_id,
-      startDate,
-      endDate,
-    ],
-    queryFn: () =>
-      partyService.getPartiesNearby(
-        searchAddress!.google_place_id,
-        startDate!,
-        endDate!
-      ),
-    enabled: !!searchAddress?.google_place_id && !!startDate && !!endDate,
+  // Fetch nearby parties if address search is active
+  const { data: nearbyParties, isLoading: isLoadingNearby } = usePartiesNearby({
+    placeId: searchAddress?.google_place_id,
+    startDate,
+    endDate,
   });
 
   const filteredParties = useMemo(() => {
