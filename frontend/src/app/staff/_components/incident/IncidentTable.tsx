@@ -23,6 +23,7 @@ import { DateRange } from "react-day-picker";
 import LocationInfoChipDetails from "../party/details/LocationInfoChipDetails";
 import { GenericInfoChip } from "../shared/sidebar/GenericInfoChip";
 import { TableTemplate } from "../shared/table/TableTemplate";
+import IncidentDescriptionChipDetails from "./IncidentDescriptionChipDetails";
 import IncidentTableForm from "./IncidentTableForm";
 
 const incidentService = new IncidentService();
@@ -361,7 +362,23 @@ export const IncidentTable = () => {
       accessorKey: "description",
       header: "Description",
       enableColumnFilter: true,
-      cell: ({ row }) => truncateDescription(row.original.description),
+      cell: ({ row }) => {
+        const description = row.original.description;
+        if (!description) {
+          return "—";
+        }
+        return (
+          <GenericInfoChip
+            chipKey={`incident-${row.original.id}-description`}
+            title="Description"
+            description="View the full incident description"
+            shortName={truncateDescription(description)}
+            sidebarContent={
+              <IncidentDescriptionChipDetails data={row.original} />
+            }
+          />
+        );
+      },
     },
   ];
 
