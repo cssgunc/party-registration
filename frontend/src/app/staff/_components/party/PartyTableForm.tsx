@@ -251,7 +251,7 @@ export default function PartyTableForm({
                     {formData.partyDate ? (
                       format(formData.partyDate, "MM/dd/yy")
                     ) : (
-                      <span>Pick a date</span>
+                      <p>Pick a date</p>
                     )}
                     <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                   </Button>
@@ -306,7 +306,7 @@ export default function PartyTableForm({
             )}
           </Field>
 
-          <span className="font-bold">Second contact information </span>
+          <p className="font-bold">Second Contact Information </p>
 
           <Field data-invalid={!!errors.contactTwoEmail}>
             <FieldLabel htmlFor="contact-two-email">Contact Email</FieldLabel>

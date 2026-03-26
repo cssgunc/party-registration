@@ -52,9 +52,9 @@ export default function StaffTabPage() {
   };
 
   return (
-    <div className="h-[calc(100dvh-var(--app-header-height))] overflow-hidden bg-white flex flex-col">
+    <div className="h-[calc(100dvh-var(--app-header-height))] overflow-hidden  flex flex-col">
       {/* Navbar */}
-      <div className="w-full bg-[#6FB2DC] h-16 flex-shrink-0 flex items-center justify-between px-6">
+      <div className="w-full bg-primary h-16 flex-shrink-0 flex items-center justify-between px-6">
         <div className="text-white font-semibold">Staff Portal</div>
         <div className="flex items-center gap-4">
           <span className="text-white text-sm">
@@ -64,7 +64,7 @@ export default function StaffTabPage() {
             onClick={toggleRole}
             variant="secondary"
             size="sm"
-            className="bg-white hover:bg-gray-100 text-[#6FB2DC]"
+            className="bg-white hover:bg-gray-100 text-primary"
           >
             Switch to {role === "admin" ? "Staff" : "Admin"}
           </Button>

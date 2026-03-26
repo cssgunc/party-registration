@@ -335,7 +335,7 @@ export function TableTemplate<T extends object>({
 
       {!isLoading && !error && (
         <div className="flex min-h-0 h-full flex-col justify-between overflow-hidden">
-          <div className="flex-1 min-h-0 rounded-sm border bg-card py-2 px-4 overflow-hidden">
+          <div className="flex-1 min-h-0 rounded-sm border py-2 px-4 overflow-hidden shadow-lg bg-white">
             <div className="h-full overflow-y-auto">
               <Table className="bg-card rounded-sm">
                 <TableHeader>
