@@ -1,7 +1,7 @@
 import getMockClient from "@/lib/network/mockClient";
 import { PaginatedResponse } from "@/lib/shared";
 import { AxiosInstance } from "axios";
-import { endOfDay } from "date-fns";
+import { endOfDay, format } from "date-fns";
 import {
   AdminCreatePartyDto,
   PartyDto,
@@ -81,8 +81,8 @@ export class PartyService {
         {
           params: {
             place_id: placeId,
-            start_date: startDate.toISOString(),
-            end_date: endDate.toISOString(),
+            start_date: format(startDate, "yyyy-MM-dd"),
+            end_date: format(endDate, "yyyy-MM-dd"),
           },
         }
       );
