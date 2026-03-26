@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { useRole } from "@/contexts/RoleContext";
-import { IncidentDto } from "@/lib/api/location/location.types";
-import { LocationDto } from "@/lib/api/location/location.types";
+import { IncidentDto, LocationDto } from "@/lib/api/location/location.types";
 import { PaginatedResponse } from "@/lib/shared";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -36,36 +35,34 @@ export default function IncidentSidebar({
   };
 
   const doDelete = () => {
-    const handleDelete = (incidentId: number) => {
-      const incident = incidents.find((i) => i.id === incidentId);
-      if (!incident) return;
+    if (confirmStateDelete === null) return;
 
-      queryClient.setQueryData<PaginatedResponse<LocationDto> | undefined>(
-        ["locations"],
-        (old) =>
-          old
-            ? {
-                ...old,
-                items: old.items.map((loc) =>
-                  loc.id === incident.location_id
-                    ? {
-                        ...loc,
-                        incidents: loc.incidents.filter(
-                          (inc) => inc.id !== incidentId
-                        ),
-                      }
-                    : loc
-                ),
-              }
-            : old
-      );
+    const incident = incidents.find((i) => i.id === confirmStateDelete);
+    if (!incident) return;
 
-      if (confirmStateDelete !== null) {
-        handleDelete(confirmStateDelete);
-      }
-      refreshSidebar(incident.location_id);
-      setConfirmStateDelete(null);
-    };
+    queryClient.setQueryData<PaginatedResponse<LocationDto> | undefined>(
+      ["locations"],
+      (old) =>
+        old
+          ? {
+              ...old,
+              items: old.items.map((loc) =>
+                loc.id === incident.location_id
+                  ? {
+                      ...loc,
+                      incidents: loc.incidents.filter(
+                        (inc) => inc.id !== confirmStateDelete
+                      ),
+                    }
+                  : loc
+              ),
+            }
+          : old
+    );
+
+    onDeleteIncidentAction(confirmStateDelete);
+    refreshSidebar(incident.location_id);
+    setConfirmStateDelete(null);
   };
 
   const handleEdit = (incident: IncidentDto) => {
@@ -179,6 +176,11 @@ export default function IncidentSidebar({
       <p className="text-sm text-gray-500">
         Manage the incidents for this location here.
       </p>
+      {role === "admin" && (
+        <Button variant="default" className="mt-4" onClick={handleAdd}>
+          Add Incident
+        </Button>
+      )}
       {incidents.map((incident) => (
         <IncidentSidebarCard
           incidents={incident}
@@ -198,11 +200,6 @@ export default function IncidentSidebar({
         title="Delete Incident"
         description="Are you sure you want to delete this incident? This action cannot be undone."
       />
-      {role === "admin" && (
-        <Button variant="default" className="mt-4" onClick={handleAdd}>
-          Add Incident
-        </Button>
-      )}
 
       <IncidentModal
         key={

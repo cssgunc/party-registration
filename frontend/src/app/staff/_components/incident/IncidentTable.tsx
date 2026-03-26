@@ -1,6 +1,9 @@
 "use client";
 
 import { useSidebar } from "@/app/staff/_components/shared/sidebar/SidebarContext";
+import navyFlag from "@/components/icons/navyFlag.svg";
+import redFlag from "@/components/icons/redFlag.svg";
+import yellowFlag from "@/components/icons/yellowFlag.svg";
 import { IncidentService } from "@/lib/api/incident/incident.service";
 import {
   IncidentCreateDto,
@@ -14,8 +17,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
 import { AxiosError } from "axios";
 import { format, isWithinInterval, startOfDay } from "date-fns";
+import Image from "next/image";
 import { useMemo, useState } from "react";
 import { DateRange } from "react-day-picker";
+import LocationInfoChipDetails from "../party/details/LocationInfoChipDetails";
+import { GenericInfoChip } from "../shared/sidebar/GenericInfoChip";
 import { TableTemplate } from "../shared/table/TableTemplate";
 import IncidentTableForm from "./IncidentTableForm";
 
@@ -26,6 +32,21 @@ function severityLabel(severity: IncidentSeverity): string {
   if (severity === "remote_warning") return "Remote Warning";
   if (severity === "in_person_warning") return "In-Person Warning";
   return "Citation";
+}
+
+function getSeverityFlag(severity: IncidentSeverity) {
+  if (severity === "remote_warning") return navyFlag;
+  if (severity === "in_person_warning") return yellowFlag;
+  return redFlag;
+}
+
+function truncateDescription(
+  description: string | undefined,
+  limit: number = 50
+): string {
+  if (!description) return "-";
+  if (description.length <= limit) return description;
+  return description.substring(0, limit) + "...";
 }
 
 export const IncidentTable = () => {
@@ -61,6 +82,11 @@ export const IncidentTable = () => {
       new Map(
         locations.map((location) => [location.id, location.formatted_address])
       ),
+    [locations]
+  );
+
+  const locationById = useMemo(
+    () => new Map(locations.map((location) => [location.id, location])),
     [locations]
   );
 
@@ -229,6 +255,21 @@ export const IncidentTable = () => {
       meta: {
         filterType: "text",
       },
+      cell: ({ row }) => {
+        const location = locationById.get(row.original.location_id);
+        if (!location) {
+          return "—";
+        }
+        return (
+          <GenericInfoChip
+            chipKey={`incident-${row.original.id}-location`}
+            title="Location Information"
+            description="Detailed information about the selected location"
+            shortName={location.formatted_address}
+            sidebarContent={<LocationInfoChipDetails data={location} />}
+          />
+        );
+      },
     },
     {
       id: "incident_date",
@@ -298,7 +339,17 @@ export const IncidentTable = () => {
         filterType: "select",
         selectOptions: ["remote_warning", "in_person_warning", "citation"],
       },
-      cell: ({ row }) => severityLabel(row.original.severity),
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <Image
+            src={getSeverityFlag(row.original.severity)}
+            alt={row.original.severity}
+            width={16}
+            height={16}
+          />
+          {severityLabel(row.original.severity)}
+        </div>
+      ),
     },
     {
       accessorKey: "reference_id",
@@ -310,7 +361,7 @@ export const IncidentTable = () => {
       accessorKey: "description",
       header: "Description",
       enableColumnFilter: true,
-      cell: ({ row }) => row.original.description || "-",
+      cell: ({ row }) => truncateDescription(row.original.description),
     },
   ];
 
