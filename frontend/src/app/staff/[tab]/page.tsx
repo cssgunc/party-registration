@@ -1,6 +1,7 @@
 "use client";
 
 import { AccountTable } from "@/app/staff/_components/account/AccountTable";
+import { IncidentTable } from "@/app/staff/_components/incident/IncidentTable";
 import { LocationTable } from "@/app/staff/_components/location/LocationTable";
 import { PartyTable } from "@/app/staff/_components/party/PartyTable";
 import { StudentTable } from "@/app/staff/_components/student/StudentTable";
@@ -20,6 +21,7 @@ const TAB_CONTENT: Record<TabSlug, React.ReactNode> = {
   parties: <PartyTable />,
   students: <StudentTable />,
   locations: <LocationTable />,
+  incidents: <IncidentTable />,
   accounts: <AccountTable />,
 };
 
