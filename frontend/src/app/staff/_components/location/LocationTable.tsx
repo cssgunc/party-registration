@@ -1,40 +1,28 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
-import { LocationService } from "@/lib/api/location/location.service";
 import {
-  IncidentDto,
-  LocationCreate,
-  LocationDto,
-} from "@/lib/api/location/location.types";
-import { PaginatedResponse } from "@/lib/shared";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+  useCreateLocation,
+  useDeleteLocation,
+  useLocations,
+  useUpdateLocation,
+} from "@/lib/api/location/location.queries";
+import { LocationCreate, LocationDto } from "@/lib/api/location/location.types";
 import { ColumnDef } from "@tanstack/react-table";
-import { AxiosError } from "axios";
+import { isAxiosError } from "axios";
 import { useState } from "react";
+import { GenericInfoChip } from "../shared/sidebar/GenericInfoChip";
 import { useSidebar } from "../shared/sidebar/SidebarContext";
 import { TableTemplate } from "../shared/table/TableTemplate";
-import IncidentSidebar from "./IncidentSidebar";
+import IncidentInfoChipDetails from "./IncidentInfoChipDetails";
 import LocationTableForm from "./LocationTableForm";
 
-const locationService = new LocationService();
-
 export const LocationTable = () => {
-  const queryClient = useQueryClient();
   const { openSidebar, closeSidebar } = useSidebar();
   const [editingLocation, setEditingLocation] = useState<LocationDto | null>(
     null
   );
-  const [incidentList, setIncidentList] = useState<IncidentDto[]>([]);
-  const [selectedLocationId, setSelectedLocationId] = useState<number | null>(
-    null
-  );
 
-  const locationsQuery = useQuery<PaginatedResponse<LocationDto>>({
-    queryKey: ["locations"],
-    queryFn: () => locationService.getLocations(),
-    retry: 1,
-  });
+  const locationsQuery = useLocations();
 
   const locations = (locationsQuery.data?.items ?? [])
     .slice()
@@ -42,14 +30,16 @@ export const LocationTable = () => {
       (a.formatted_address || "").localeCompare(b.formatted_address || "")
     );
 
-  const createMutation = useMutation({
-    mutationFn: (payload: LocationCreate) =>
-      locationService.createLocation(payload),
-    onError: (error: AxiosError<{ message: string }>) => {
+  const createMutation = useCreateLocation({
+    onError: (error: Error) => {
       console.error("Failed to create location:", error);
-      const errorMessage = error.response?.data?.message || error.message;
+      const errorMessage = isAxiosError(error)
+        ? error.response?.data?.message || error.message
+        : error.message;
       const userMessage =
-        error.status === 409 ? "This location already exists." : errorMessage;
+        isAxiosError(error) && error.status === 409
+          ? "This location already exists."
+          : errorMessage;
 
       openSidebar(
         "create-location",
@@ -63,23 +53,24 @@ export const LocationTable = () => {
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["locations"] });
       closeSidebar();
       setEditingLocation(null);
     },
   });
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: number; payload: LocationCreate }) =>
-      locationService.updateLocation(id, payload),
+  const updateMutation = useUpdateLocation({
     onError: (
-      error: AxiosError<{ message: string }>,
+      error: Error,
       variables: { id: number; payload: LocationCreate }
     ) => {
       console.error("Failed to update location:", error);
-      const errorMessage = error.response?.data?.message || error.message;
+      const errorMessage = isAxiosError(error)
+        ? error.response?.data?.message || error.message
+        : error.message;
       const userMessage =
-        error.status === 409 ? "This location already exists." : errorMessage;
+        isAxiosError(error) && error.status === 409
+          ? "This location already exists."
+          : errorMessage;
 
       const editTarget =
         editingLocation && editingLocation.id === variables.id
@@ -107,42 +98,14 @@ export const LocationTable = () => {
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["locations"] });
       closeSidebar();
       setEditingLocation(null);
     },
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: (id: number) => locationService.deleteLocation(id),
-    onMutate: async (id: number) => {
-      await queryClient.cancelQueries({ queryKey: ["locations"] });
-
-      const previous = queryClient.getQueryData<PaginatedResponse<LocationDto>>(
-        ["locations"]
-      );
-
-      queryClient.setQueryData<PaginatedResponse<LocationDto> | undefined>(
-        ["locations"],
-        (old) =>
-          old
-            ? {
-                ...old,
-                items: old.items.filter((l) => l.id !== id),
-              }
-            : old
-      );
-
-      return { previous };
-    },
-    onError: (error: Error, _vars, context) => {
+  const deleteMutation = useDeleteLocation({
+    onError: (error: Error) => {
       console.error("Failed to delete location:", error);
-      if (context?.previous) {
-        queryClient.setQueryData(["locations"], context.previous);
-      }
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["locations"] });
     },
   });
 
@@ -208,45 +171,6 @@ export const LocationTable = () => {
     updateMutation.mutate({ id: locationId, payload });
   };
 
-  const handleDeleteIncident = (incidentId: number) => {
-    const updated = incidentList.filter(
-      (incident) => incident.id !== incidentId
-    );
-    setIncidentList(updated);
-
-    queryClient.setQueryData<PaginatedResponse<LocationDto> | undefined>(
-      ["locations"],
-      (old) =>
-        old
-          ? {
-              ...old,
-              items: old.items.map((loc) =>
-                loc.id === selectedLocationId
-                  ? {
-                      ...loc,
-                      incidents: loc.incidents.filter(
-                        (inc) => inc.id !== incidentId
-                      ),
-                    }
-                  : loc
-              ),
-            }
-          : old
-    );
-
-    if (selectedLocationId !== null) {
-      openSidebar(
-        `incidents-${selectedLocationId}`,
-        "Incidents at Location",
-        `Warnings & Citations go here`,
-        <IncidentSidebar
-          incidents={updated}
-          onDeleteIncidentAction={handleDeleteIncident}
-        />
-      );
-    }
-  };
-
   const columns: ColumnDef<LocationDto>[] = [
     {
       accessorKey: "formatted_address",
@@ -258,29 +182,21 @@ export const LocationTable = () => {
       cell: ({ row }) => {
         return (
           <div className="flex w-auto">
-            <Badge
-              variant="outline"
-              className="cursor-pointer"
-              onClick={() => {
-                const locIncidents = row.original.incidents;
-                setSelectedLocationId(row.original.id);
-                setIncidentList(locIncidents);
-                openSidebar(
-                  `incidents-${row.original.id}`,
-                  "Incidents at Location",
-                  `Warnings & Citations go here`,
-                  <IncidentSidebar
-                    incidents={locIncidents}
-                    onDeleteIncidentAction={handleDeleteIncident}
-                  />
-                );
-              }}
-            >
-              <span className="mr-1">
-                {row.original.incidents.length}{" "}
-                {row.original.incidents.length === 1 ? "incident" : "incidents"}
-              </span>
-            </Badge>
+            <GenericInfoChip
+              chipKey={`incidents-${row.original.id}`}
+              shortName={`${row.original.incidents.length}${" "}
+                ${row.original.incidents.length === 1 ? "incident" : "incidents"}`}
+              title="Incidents at Location"
+              description="Warnings & Citations go here"
+              sidebarContent={
+                <IncidentInfoChipDetails
+                  key={`${row.original.id}-${JSON.stringify(
+                    row.original.incidents.map((i) => i.id)
+                  )}`}
+                  incidents={row.original.incidents}
+                />
+              }
+            />
           </div>
         );
       },

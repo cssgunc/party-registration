@@ -1,5 +1,6 @@
 "use client";
 
+import DatePickerComponent from "@/app/staff/_components/location/DatePickerComponent";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -32,12 +33,6 @@ import type {
   IncidentSeverity,
 } from "@/lib/api/location/location.types";
 import { useForm } from "react-hook-form";
-
-function toLocalDatetimeString(date: Date) {
-  const tzOffset = date.getTimezoneOffset() * 60000;
-  const local = new Date(date.getTime() - tzOffset);
-  return local.toISOString().slice(0, 16);
-}
 
 type Mode = "create" | "edit";
 
@@ -93,25 +88,62 @@ export default function IncidentModal({
             <FormField
               control={form.control}
               name="incident_datetime"
-              render={({ field }) => (
+              render={() => (
                 <FormItem>
                   <FormLabel>Date & Time</FormLabel>
                   <FormControl>
-                    <Input
-                      type="datetime-local"
-                      value={
-                        field.value
-                          ? toLocalDatetimeString(new Date(field.value))
-                          : ""
-                      }
-                      onChange={(e) => field.onChange(new Date(e.target.value))}
+                    <FormField
+                      control={form.control}
+                      name="incident_datetime"
+                      render={({ field }) => {
+                        const date = field.value
+                          ? new Date(field.value)
+                          : new Date();
+
+                        return (
+                          <FormItem className="flex flex-row">
+                            <FormControl>
+                              <DatePickerComponent
+                                date={date}
+                                setDate={(newDate) => {
+                                  const updated = new Date(date);
+                                  updated.setFullYear(
+                                    newDate.getFullYear(),
+                                    newDate.getMonth(),
+                                    newDate.getDate()
+                                  );
+                                  field.onChange(updated);
+                                }}
+                              />
+                            </FormControl>
+
+                            <FormControl>
+                              <Input
+                                type="time"
+                                value={date.toTimeString().slice(0, 5)}
+                                onChange={(e) => {
+                                  const [hours, minutes] =
+                                    e.target.value.split(":");
+                                  const updated = new Date(date);
+                                  updated.setHours(
+                                    Number(hours),
+                                    Number(minutes)
+                                  );
+                                  field.onChange(updated);
+                                }}
+                              />
+                            </FormControl>
+
+                            <FormMessage />
+                          </FormItem>
+                        );
+                      }}
                     />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-
             <FormField
               control={form.control}
               name="severity"
