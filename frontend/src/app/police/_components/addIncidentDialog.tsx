@@ -4,7 +4,6 @@ import {
   Dialog,
   DialogClose,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -20,7 +19,7 @@ import { PartyDto } from "@/lib/api/party/party.types";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 export interface AddIncidentDialogProps {
   open: boolean;
@@ -62,10 +61,6 @@ export default function AddIncidentDialog({
     getInitialValues(party)
   );
 
-  useEffect(() => {
-    setFormData(getInitialValues(party));
-  }, [party]);
-
   const updateField = <K extends keyof IncidentFormValues>(
     field: K,
     value: IncidentFormValues[K]
@@ -73,17 +68,15 @@ export default function AddIncidentDialog({
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  const shortAddress = party?.location.formatted_address ?? "";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-[619px] bg-card">
         <DialogHeader>
-          <DialogTitle className="text-center subhead-title">
-            Add {title}
+          <DialogTitle className="text-center content-bold">
+            Editing incident at {shortAddress}
           </DialogTitle>
-          <DialogDescription className="text-center content text-muted-foreground">
-            {party?.location.formatted_address ??
-              "Record a incident for this location."}
-          </DialogDescription>
         </DialogHeader>
 
         <form
@@ -92,7 +85,31 @@ export default function AddIncidentDialog({
         >
           <div className="grid grid-cols-2 gap-4">
             <Field>
-              <FieldLabel htmlFor="party-date">Party Date</FieldLabel>
+              <FieldLabel htmlFor="selected-address">
+                Selected Address
+              </FieldLabel>
+              <Input
+                id="selected-address"
+                value={shortAddress}
+                readOnly
+                className="bg-white"
+              />
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="incident-type">Incident Type</FieldLabel>
+              <Input
+                id="incident-type"
+                value={title}
+                readOnly
+                className="bg-white"
+              />
+            </Field>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Field>
+              <FieldLabel htmlFor="party-date">Date</FieldLabel>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -103,12 +120,12 @@ export default function AddIncidentDialog({
                       !formData.partyDate && "text-muted-foreground"
                     )}
                   >
+                    <CalendarIcon className="h-4 w-4 opacity-50" />
                     {formData.partyDate ? (
                       format(formData.partyDate, "MM/dd/yy")
                     ) : (
                       <span>Pick a date</span>
                     )}
-                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -122,10 +139,11 @@ export default function AddIncidentDialog({
             </Field>
 
             <Field>
-              <FieldLabel htmlFor="party-time">Party Time</FieldLabel>
+              <FieldLabel htmlFor="party-time">Time</FieldLabel>
               <Input
                 id="party-time"
                 type="time"
+                placeholder="Enter Time..."
                 value={formData.partyTime}
                 onChange={(e) => updateField("partyTime", e.target.value)}
               />
@@ -133,12 +151,10 @@ export default function AddIncidentDialog({
           </div>
 
           <div className="grid gap-2">
-            <FieldLabel htmlFor="incident-description">
-              Incident description (optional)
-            </FieldLabel>
+            <FieldLabel htmlFor="incident-description">{title}</FieldLabel>
             <textarea
               id="incident-description"
-              className="min-h-24 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] resize-none"
+              className="min-h-16 rounded-md border border-input bg-card px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] resize-none"
               value={formData.description}
               onChange={(event) =>
                 updateField("description", event.target.value)
@@ -147,11 +163,6 @@ export default function AddIncidentDialog({
           </div>
 
           <DialogFooter className="justify-center sm:justify-center">
-            <DialogClose asChild>
-              <Button type="button" variant="outline">
-                Cancel
-              </Button>
-            </DialogClose>
             <DialogClose asChild>
               <Button
                 type="submit"

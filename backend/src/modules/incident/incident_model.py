@@ -1,6 +1,7 @@
 from enum import Enum
 
 from pydantic import AwareDatetime, BaseModel, Field
+from src.core.query_utils import PaginatedResponse
 
 
 class IncidentSeverity(Enum):
@@ -36,3 +37,6 @@ class IncidentDto(IncidentData):
     """Output DTO for an incident."""
 
     id: int
+
+
+PaginatedIncidentsResponse = PaginatedResponse[IncidentDto]

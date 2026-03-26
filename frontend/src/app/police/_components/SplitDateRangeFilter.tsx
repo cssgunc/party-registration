@@ -24,38 +24,38 @@ export default function SplitDateRangeFilter({
   onEndDateChange,
 }: SplitDateRangeProps) {
   return (
-    <div className="flex gap-2 justify-center flex-row md:justify-between md:gap-4">
-      {/* Start Date */}
+    <div className="flex gap-1 items-center">
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="outline" className="flex-1">
-            <CalendarIcon />
-            {startDate ? format(startDate, "MM/dd") : "Start Date"}
+          <Button
+            variant="outline"
+            className="w-full justify-start text-left font-normal content border-border shadow-[0px_4px_4px_var(--card-shadow)]"
+          >
+            <CalendarIcon className="h-4 w-4 flex-shrink-0" />
+            <span className="truncate">
+              {startDate && endDate
+                ? `${format(startDate, "MM/dd")} - ${format(endDate, "MM/dd")}`
+                : startDate
+                  ? format(startDate, "MM/dd/yyyy")
+                  : "[calendar search]"}
+            </span>
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0">
-          <Calendar
-            mode="single"
-            selected={startDate}
-            onSelect={onStartDateChange}
-          />
-        </PopoverContent>
-      </Popover>
-      <div className="self-center flex-0">and</div>
-      {/* End Date */}
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button variant="outline" className="flex-1">
-            <CalendarIcon />
-            {endDate ? format(endDate, "MM/dd") : "End Date"}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0">
-          <Calendar
-            mode="single"
-            selected={endDate}
-            onSelect={onEndDateChange}
-          />
+        <PopoverContent className="w-auto p-0" align="start">
+          <div className="flex flex-col gap-2 p-2">
+            <p className="content-bold text-secondary px-2">Start Date</p>
+            <Calendar
+              mode="single"
+              selected={startDate}
+              onSelect={onStartDateChange}
+            />
+            <p className="content-bold text-secondary px-2">End Date</p>
+            <Calendar
+              mode="single"
+              selected={endDate}
+              onSelect={onEndDateChange}
+            />
+          </div>
         </PopoverContent>
       </Popover>
     </div>

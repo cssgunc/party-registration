@@ -36,9 +36,13 @@ interface PartyListProps {
 const formatPhoneNumber = (phone: string): string => {
   const cleaned = phone.replace(/\D/g, "");
   if (cleaned.length === 10) {
-    return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+    return `${cleaned.slice(0, 3)}-${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
   }
   return phone;
+};
+
+const formatPreference = (pref: string): string => {
+  return `Preference: ${pref.charAt(0).toUpperCase() + pref.slice(1).toLowerCase()}`;
 };
 
 const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
@@ -87,18 +91,19 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                 activeParty?.id === party.id && "bg-primary/10"
               )}
             >
-              <div className="space-y-2">
-                {/* Address and menu */}
+              <div className="space-y-1">
+                {/* Date/Time and menu */}
                 <div className="flex items-start justify-between gap-2">
-                  <p className="content-bold text-secondary leading-snug">
-                    {party.location.formatted_address}
+                  <p className="content-bold text-secondary">
+                    {format(party.party_datetime, "MM/dd/yyyy")} @{" "}
+                    {format(party.party_datetime, "h:mm a")}
                   </p>
                   <Popover>
                     <PopoverTrigger asChild>
                       <button
                         type="button"
                         onClick={(event) => event.stopPropagation()}
-                        className="flex-shrink-0 rounded p-1 hover:bg-muted transition-colors"
+                        className="shrink-0 rounded p-1 hover:bg-muted transition-colors"
                         aria-label="Party options"
                       >
                         <EllipsisVertical className="h-4 w-4 text-muted-foreground" />
@@ -139,25 +144,24 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                   </Popover>
                 </div>
 
-                {/* Date/Time */}
-                <p className="content text-muted-foreground">
-                  {format(party.party_datetime, "MM/dd/yyyy")} @{" "}
-                  {format(party.party_datetime, "h:mm a")}
+                {/* Address */}
+                <p className="content-bold text-secondary leading-snug">
+                  {party.location.formatted_address}
                 </p>
 
                 {/* Contacts side by side */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4 pt-1">
                   {/* Contact One */}
                   <div>
                     <p className="content text-secondary">
                       {party.contact_one.first_name}{" "}
                       {party.contact_one.last_name}
                     </p>
-                    <p className="content text-muted-foreground ml-4">
+                    <p className="content text-secondary ml-4">
                       {formatPhoneNumber(party.contact_one.phone_number)}
                     </p>
-                    <p className="content text-muted-foreground ml-4 capitalize">
-                      {party.contact_one.contact_preference}
+                    <p className="content text-secondary ml-4">
+                      {formatPreference(party.contact_one.contact_preference)}
                     </p>
                   </div>
 
@@ -167,67 +171,67 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                       {party.contact_two.first_name}{" "}
                       {party.contact_two.last_name}
                     </p>
-                    <p className="content text-muted-foreground ml-4">
+                    <p className="content text-secondary ml-4">
                       {formatPhoneNumber(party.contact_two.phone_number)}
                     </p>
-                    <p className="content text-muted-foreground ml-4 capitalize">
-                      {party.contact_two.contact_preference}
+                    <p className="content text-secondary ml-4">
+                      {formatPreference(party.contact_two.contact_preference)}
                     </p>
                   </div>
+                </div>
 
-                  {/* Flags */}
-                  <div className="flex items-center gap-3 col-span-2">
-                    <HoverCard openDelay={0} closeDelay={4}>
-                      <HoverCardTrigger asChild>
-                        <div className="flex items-center gap-1 content-bold text-secondary cursor-default">
-                          {complaintCount}
-                          <Image
-                            src={blackFlag}
-                            alt="complaints"
-                            width={16}
-                            height={16}
-                          />
-                        </div>
-                      </HoverCardTrigger>
-                      <HoverCardContent className="w-32 content">
-                        Complaints
-                      </HoverCardContent>
-                    </HoverCard>
+                {/* Flags */}
+                <div className="flex items-center gap-3 pt-1">
+                  <HoverCard openDelay={0} closeDelay={4}>
+                    <HoverCardTrigger asChild>
+                      <div className="flex items-center gap-1 content-bold text-black cursor-default">
+                        {complaintCount}
+                        <Image
+                          src={blackFlag}
+                          alt="complaints"
+                          width={16}
+                          height={16}
+                        />
+                      </div>
+                    </HoverCardTrigger>
+                    <HoverCardContent className="w-32 content">
+                      Complaints
+                    </HoverCardContent>
+                  </HoverCard>
 
-                    <HoverCard openDelay={0} closeDelay={4}>
-                      <HoverCardTrigger asChild>
-                        <div className="flex items-center gap-1 content-bold text-secondary cursor-default">
-                          {warningCount}
-                          <Image
-                            src={yellowFlag}
-                            alt="warnings"
-                            width={16}
-                            height={16}
-                          />
-                        </div>
-                      </HoverCardTrigger>
-                      <HoverCardContent className="w-32 content">
-                        Warnings
-                      </HoverCardContent>
-                    </HoverCard>
+                  <HoverCard openDelay={0} closeDelay={4}>
+                    <HoverCardTrigger asChild>
+                      <div className="flex items-center gap-1 content-bold text-black cursor-default">
+                        {warningCount}
+                        <Image
+                          src={yellowFlag}
+                          alt="warnings"
+                          width={16}
+                          height={16}
+                        />
+                      </div>
+                    </HoverCardTrigger>
+                    <HoverCardContent className="w-32 content">
+                      Warnings
+                    </HoverCardContent>
+                  </HoverCard>
 
-                    <HoverCard openDelay={0} closeDelay={4}>
-                      <HoverCardTrigger asChild>
-                        <div className="flex items-center gap-1 content-bold text-secondary cursor-default">
-                          {citationCount}
-                          <Image
-                            src={redFlag}
-                            alt="citations"
-                            width={16}
-                            height={16}
-                          />
-                        </div>
-                      </HoverCardTrigger>
-                      <HoverCardContent className="w-32 content">
-                        Citations
-                      </HoverCardContent>
-                    </HoverCard>
-                  </div>
+                  <HoverCard openDelay={0} closeDelay={4}>
+                    <HoverCardTrigger asChild>
+                      <div className="flex items-center gap-1 content-bold text-black cursor-default">
+                        {citationCount}
+                        <Image
+                          src={redFlag}
+                          alt="citations"
+                          width={16}
+                          height={16}
+                        />
+                      </div>
+                    </HoverCardTrigger>
+                    <HoverCardContent className="w-32 content">
+                      Citations
+                    </HoverCardContent>
+                  </HoverCard>
                 </div>
               </div>
             </div>
@@ -240,6 +244,7 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
         onOpenChange={setIncidentDialogOpen}
         incidentType={incidentType}
         party={selectedParty}
+        key={incidentDialogOpen ? selectedParty?.id : undefined}
       />
     </div>
   );

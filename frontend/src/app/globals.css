@@ -43,7 +43,7 @@
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(0.7349 0.0915 237.35 / 0.1);
+  --background: rgb(111 178 220 / 5%);
   --background-gradient: linear-gradient(
     in oklch 161deg,
     #dceef9 0%,

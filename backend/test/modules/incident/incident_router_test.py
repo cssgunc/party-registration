@@ -13,6 +13,7 @@ from test.utils.http.assertions import (
 from test.utils.http.test_templates import generate_auth_required_tests
 
 test_incident_authentication = generate_auth_required_tests(
+    ({"admin", "staff", "police"}, "GET", "/api/incidents", None),
     ({"admin", "staff", "police"}, "GET", "/api/locations/1/incidents", None),
     ({"admin", "police"}, "POST", "/api/incidents", IncidentTestUtils.get_sample_create_data()),
     ({"admin", "police"}, "PUT", "/api/incidents/1", IncidentTestUtils.get_sample_update_data()),
