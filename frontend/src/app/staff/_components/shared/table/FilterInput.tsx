@@ -13,6 +13,7 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -89,7 +90,7 @@ export function FilterInput<T>({
     switch (filterType) {
       case "dateRange":
         return (
-          <div className="space-y-4">
+          <div className="space-y-4 p-4">
             <div className="space-y-2">
               <Label>Date Range</Label>
               <Popover>
@@ -136,7 +137,7 @@ export function FilterInput<T>({
 
       case "date":
         return (
-          <div className="space-y-4">
+          <div className="space-y-4 p-4">
             <div className="space-y-2">
               <Label>Date</Label>
               <Popover>
@@ -203,7 +204,7 @@ export function FilterInput<T>({
 
       case "select":
         return (
-          <div className="space-y-4">
+          <div className="space-y-4 p-4">
             <div className="space-y-2">
               <Label>Select Value</Label>
               <Select
@@ -214,11 +215,13 @@ export function FilterInput<T>({
                   <SelectValue placeholder="Choose an option" />
                 </SelectTrigger>
                 <SelectContent>
-                  {selectOptions.map((option) => (
-                    <SelectItem key={option} value={option}>
-                      {option}
-                    </SelectItem>
-                  ))}
+                  <SelectGroup>
+                    {selectOptions.map((option) => (
+                      <SelectItem key={option} value={option}>
+                        {option}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
                 </SelectContent>
               </Select>
             </div>
@@ -236,7 +239,7 @@ export function FilterInput<T>({
       case "text":
       default:
         return (
-          <div className="space-y-4">
+          <div className="space-y-4 p-4">
             <div className="space-y-2">
               <Label htmlFor="filter-input">Contains</Label>
               <Input
@@ -261,16 +264,11 @@ export function FilterInput<T>({
   };
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          Filter: {columnName}
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>{renderFilterInput()}</CardContent>
-    </Card>
+    <div>
+      <p className="flex items-center justify-between pb-2">
+        Filter: {columnName}
+      </p>
+      <div>{renderFilterInput()}</div>
+    </div>
   );
 }

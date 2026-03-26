@@ -34,7 +34,6 @@ import {
 } from "@/components/ui/table";
 import { useRole } from "@/contexts/RoleContext";
 import {
-  Column,
   ColumnDef,
   ColumnFiltersState,
   PaginationState,
@@ -98,7 +97,7 @@ export function TableTemplate<T extends object>({
   pageSize = 8,
   pageSizeOptions = [5, 8, 10, 20],
 }: TableProps<T>) {
-  const { isOpen } = useSidebar();
+  const { isOpen, openSidebar, closeSidebar } = useSidebar();
   const { role } = useRole();
   // Apply custom sorting if provided
   const sortedData = useMemo(
@@ -112,10 +111,6 @@ export function TableTemplate<T extends object>({
   const [sorting, setSorting] = useState<SortingState>(initialSort);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-  const [activeFilterColumn, setActiveFilterColumn] = useState<{
-    column: Column<T, unknown>;
-    name: string;
-  } | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<T | null>(null);
   const [globalFilter, setGlobalFilter] = useState<string>("");
@@ -361,14 +356,30 @@ export function TableTemplate<T extends object>({
                                   : header.column.id
                               }
                               onFilterClick={() => {
-                                setActiveFilterColumn({
-                                  column: header.column,
-                                  name:
-                                    typeof header.column.columnDef.header ===
-                                    "string"
-                                      ? header.column.columnDef.header
-                                      : header.column.id,
-                                });
+                                const columnName =
+                                  typeof header.column.columnDef.header ===
+                                  "string"
+                                    ? header.column.columnDef.header
+                                    : header.column.id;
+
+                                openSidebar(
+                                  `filter-${header.column.id}`,
+                                  `Filter: ${columnName}`,
+                                  `Refine results by ${columnName.toLowerCase()}`,
+                                  <FilterInput
+                                    column={header.column}
+                                    columnName={columnName}
+                                    onClose={() => closeSidebar()}
+                                    filterType={
+                                      header.column.columnDef.meta
+                                        ?.filterType || "text"
+                                    }
+                                    selectOptions={
+                                      header.column.columnDef.meta
+                                        ?.selectOptions || []
+                                    }
+                                  />
+                                );
                               }}
                             />
                           )}
@@ -523,24 +534,6 @@ export function TableTemplate<T extends object>({
               </Select>
             </div>
           </div>
-
-          {/* Mock Sidebar Section */}
-          {activeFilterColumn && (
-            <div className="border-t pt-4">
-              <h3 className="text-lg font-semibold mb-4">Filter</h3>
-              <FilterInput
-                column={activeFilterColumn.column}
-                columnName={activeFilterColumn.name}
-                onClose={() => setActiveFilterColumn(null)}
-                filterType={
-                  activeFilterColumn.column.columnDef.meta?.filterType || "text"
-                }
-                selectOptions={
-                  activeFilterColumn.column.columnDef.meta?.selectOptions || []
-                }
-              />
-            </div>
-          )}
         </div>
       )}
 
