@@ -1,14 +1,13 @@
 import { PartyService } from "@/lib/api/party/party.service";
 import { CreatePartyDto, PartyDto } from "@/lib/api/party/party.types";
-import getMockClient from "@/lib/network/mockClient";
-import { StringRole } from "@/lib/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+
+const partyService = new PartyService();
 
 /**
  * Hook to create a new party registration
  */
-export function useCreateParty(role: StringRole = "student") {
-  const partyService = new PartyService(getMockClient(role));
+export function useCreateParty() {
   const queryClient = useQueryClient();
 
   return useMutation<PartyDto, Error, CreatePartyDto>({
@@ -23,8 +22,7 @@ export function useCreateParty(role: StringRole = "student") {
 /**
  * Hook to update an existing party registration
  */
-export function useUpdateParty(role: StringRole = "student") {
-  const partyService = new PartyService(getMockClient(role));
+export function useUpdateParty() {
   const queryClient = useQueryClient();
 
   return useMutation<
@@ -43,8 +41,7 @@ export function useUpdateParty(role: StringRole = "student") {
 /**
  * Hook to delete a party registration
  */
-export function useDeleteParty(role: StringRole = "student") {
-  const partyService = new PartyService(getMockClient(role));
+export function useDeleteParty() {
   const queryClient = useQueryClient();
 
   return useMutation<PartyDto, Error, number>({

@@ -1,4 +1,4 @@
-import getMockClient from "@/lib/network/mockClient";
+import apiClient from "@/lib/network/apiClient";
 import { AxiosInstance } from "axios";
 import { PartyDto, PartyDtoBackend, convertParty } from "../party/party.types";
 import {
@@ -12,7 +12,7 @@ import {
  * Service class for student-related operations
  */
 export class StudentService {
-  constructor(private client: AxiosInstance = getMockClient("student")) {}
+  constructor(private client: AxiosInstance = apiClient) {}
 
   /**
    * Get current authenticated student (GET /api/students/me)

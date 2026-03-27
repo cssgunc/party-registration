@@ -8,14 +8,13 @@ import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { PartyService } from "@/lib/api/party/party.service";
 import { PartyDto } from "@/lib/api/party/party.types";
-import getMockClient from "@/lib/network/mockClient";
 import { useQuery } from "@tanstack/react-query";
 import { startOfDay } from "date-fns";
 import { useEffect, useMemo, useState } from "react";
 import PartyCsvExportButton from "./_components/PartyCsvExportButton";
 
-const policeLocationService = new LocationService(getMockClient("police"));
-const partyService = new PartyService(getMockClient("police"));
+const locationService = new LocationService();
+const partyService = new PartyService();
 
 export default function PolicePage() {
   const today = startOfDay(new Date());
@@ -30,7 +29,7 @@ export default function PolicePage() {
   const { data: placeDetails } = useQuery({
     queryKey: ["place-details", searchAddress?.google_place_id],
     queryFn: () =>
-      policeLocationService.getPlaceDetails(searchAddress!.google_place_id),
+      locationService.getPlaceDetails(searchAddress!.google_place_id),
     enabled: !!searchAddress?.google_place_id,
   });
 
@@ -126,7 +125,7 @@ export default function PolicePage() {
                 value={searchAddress?.formatted_address || ""}
                 onSelect={setSearchAddress}
                 placeholder="Enter Address..."
-                locationService={policeLocationService}
+                locationService={locationService}
               />
               {searchAddress && (
                 <p className="mt-2 text-sm text-gray-600">
