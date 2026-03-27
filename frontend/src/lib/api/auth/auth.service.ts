@@ -110,26 +110,32 @@ export async function refreshSessionCookie(
 export async function exchangeToken(
   data: ExchangeTokenRequest
 ): Promise<ExchangeTokenResponse> {
-  const resp = await axios.post(`${base}/auth/exchange`, data, {
-    headers: internalHeaders(),
-  });
-  return resp.data as ExchangeTokenResponse;
+  const resp = await axios.post<ExchangeTokenResponse>(
+    `${base}/auth/exchange`,
+    data,
+    { headers: internalHeaders() }
+  );
+  return resp.data;
 }
 
 export async function refreshToken(
   data: RefreshTokenRequest
 ): Promise<RefreshTokenResponse> {
-  const resp = await axios.post(`${base}/auth/refresh`, data, {
-    headers: internalHeaders(),
-  });
-  return resp.data as RefreshTokenResponse;
+  const resp = await axios.post<RefreshTokenResponse>(
+    `${base}/auth/refresh`,
+    data,
+    { headers: internalHeaders() }
+  );
+  return resp.data;
 }
 
 export async function policeLogin(
   data: PoliceLoginRequest
 ): Promise<PoliceLoginResponse> {
-  const resp = await axios.post(`${base}/auth/police/login`, data, {
-    headers: internalHeaders(),
-  });
-  return resp.data as PoliceLoginResponse;
+  const resp = await axios.post<PoliceLoginResponse>(
+    `${base}/auth/police/login`,
+    data,
+    { headers: internalHeaders() }
+  );
+  return resp.data;
 }
