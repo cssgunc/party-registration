@@ -10,7 +10,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useRole } from "@/contexts/RoleContext";
 import { cn } from "@/lib/utils";
 import { signOut, useSession } from "next-auth/react";
 import Image from "next/image";
@@ -19,9 +18,9 @@ import { usePathname } from "next/navigation";
 import PartySmartLogo from "./PartySmartLogo";
 
 export default function Header({ className }: { className?: string }) {
-  const { role } = useRole();
   const pathname = usePathname();
-  const { status } = useSession();
+  const { data: session, status } = useSession();
+  const role = session?.role;
 
   if (pathname.startsWith("/login")) {
     return null;

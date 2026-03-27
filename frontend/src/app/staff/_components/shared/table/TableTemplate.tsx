@@ -16,7 +16,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useRole } from "@/contexts/RoleContext";
 import {
   Column,
   ColumnDef,
@@ -42,6 +41,7 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
+import { useSession } from "next-auth/react";
 import { useEffect, useMemo, useState } from "react";
 import { DeleteConfirmDialog } from "../dialog/DeleteConfirmDialog";
 import { useSidebar } from "../sidebar/SidebarContext";
@@ -90,7 +90,8 @@ export function TableTemplate<T extends object>({
   sortBy,
 }: TableProps<T>) {
   const { isOpen } = useSidebar();
-  const { role } = useRole();
+  const { data: session } = useSession();
+  const role = session?.role;
   // Apply custom sorting if provided
   const sortedData = useMemo(
     () => (sortBy ? [...data].sort(sortBy) : data),
