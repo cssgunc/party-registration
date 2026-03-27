@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 const ALLOWED_ROLES_FOR_PATH: Record<string, AppRole[]> = {
   "/student": ["student"],
   "/staff": ["staff", "admin"],
-  "/police": ["police"],
+  "/police": ["police", "admin"],
 };
 
 function getRequiredRolesForPath(pathname: string): AppRole[] | null {
