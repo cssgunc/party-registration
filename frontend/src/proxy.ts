@@ -1,7 +1,6 @@
+import { AppRole } from "@/lib/api/account/account.types";
 import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
-
-type AppRole = "student" | "staff" | "admin" | "police";
 
 const ALLOWED_ROLES_FOR_PATH: Record<string, AppRole[]> = {
   "/student": ["student"],

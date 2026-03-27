@@ -6,6 +6,4 @@ type PaginatedResponse<T> = {
   total_pages: number;
 };
 
-type StringRole = "staff" | "admin" | "student" | "police" | "unauthenticated";
-
-export type { PaginatedResponse, StringRole };
+export type { PaginatedResponse };

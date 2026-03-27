@@ -1,3 +1,4 @@
+import type { AppRole } from "@/lib/api/account/account.types";
 import "next-auth";
 import "next-auth/jwt";
 
@@ -5,7 +6,7 @@ declare module "next-auth" {
   interface Session {
     accessToken?: string;
     id?: string;
-    role?: "admin" | "staff" | "student" | "police";
+    role?: AppRole;
     firstName?: string;
     lastName?: string;
     onyen?: string;
@@ -17,7 +18,7 @@ declare module "next-auth" {
     refreshToken?: string;
     accessTokenExpires?: number; // ms epoch, sourced from backend token expiry
     refreshTokenExpires?: number; // ms epoch, sourced from backend token expiry
-    role?: "admin" | "staff" | "student" | "police";
+    role?: AppRole;
     firstName?: string;
     lastName?: string;
     onyen?: string;
@@ -35,7 +36,7 @@ declare module "next-auth/jwt" {
     accessTokenExpires?: number; // ms epoch
     refreshTokenExpires?: number; // ms epoch — stored for early session invalidation, not the token itself
     id?: string;
-    role?: "admin" | "staff" | "student" | "police";
+    role?: AppRole;
     firstName?: string;
     lastName?: string;
     onyen?: string;
