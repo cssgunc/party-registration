@@ -188,7 +188,7 @@ class TestPartyListPaginationSortFilter:
         await self.party_utils.create_one(location_id=location2.id)
         await self.party_utils.create_one(location_id=location1.id)
 
-        response = await self.admin_client.get("/api/parties", params={"location_id": location1.id})
+        response = await self.admin_client.get("/api/parties", params={"location.id": location1.id})
 
         paginated = assert_res_paginated(response, PartyDto, total_records=2)
         assert all(p.location.id == location1.id for p in paginated.items)

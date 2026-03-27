@@ -145,8 +145,8 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
   };
 
   const currentDate = new Date();
-  var school_year = "";
-  var change_date = "";
+  let school_year = "";
+  let change_date = "";
   if (currentDate < new Date("08-01")) {
     school_year =
       currentDate.getFullYear() + "-" + (currentDate.getFullYear() + 1);

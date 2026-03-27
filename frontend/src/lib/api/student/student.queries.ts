@@ -1,30 +1,81 @@
 import { LocationDto } from "@/lib/api/location/location.types";
-import { PartyDto } from "@/lib/api/party/party.types";
+import { MY_PARTIES_KEY, PartyDto } from "@/lib/api/party/party.types";
 import StudentService from "@/lib/api/student/student.service";
 import {
+  CURRENT_STUDENT_KEY,
   ResidenceUpdateWithDisplayDto,
+  STUDENTS_KEY,
   StudentData,
   StudentDto,
 } from "@/lib/api/student/student.types";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { OptimisticMutationOptions } from "@/lib/shared";
+import {
+  UseQueryOptions,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
 const studentService = new StudentService();
 
-export function useCurrentStudent() {
+// Unique fields that might cause server errors if duplicated
+const UNIQUE_STUDENT_FIELDS = [
+  "phone_number",
+] as const satisfies (keyof StudentData)[];
+
+export function useCurrentStudent(options?: UseQueryOptions<StudentDto>) {
   return useQuery<StudentDto, Error>({
-    queryKey: ["student", "me"],
+    queryKey: CURRENT_STUDENT_KEY,
     queryFn: () => studentService.getCurrentStudent(),
+    ...options,
   });
 }
 
-export function useUpdateStudent() {
+export function useUpdateStudent(
+  options?: OptimisticMutationOptions<StudentDto, Error, StudentData>
+) {
   const queryClient = useQueryClient();
 
-  return useMutation<StudentDto, Error, StudentData>({
+  return useMutation({
+    ...options,
     mutationFn: (data: StudentData) => studentService.updateMe(data),
-    onSuccess: (updatedStudent) => {
-      queryClient.setQueryData(["student", "me"], updatedStudent);
-      queryClient.invalidateQueries({ queryKey: ["student", "me"] });
+
+    onMutate: async (data, context) => {
+      await queryClient.cancelQueries({ queryKey: STUDENTS_KEY });
+
+      const previous =
+        queryClient.getQueryData<StudentDto>(CURRENT_STUDENT_KEY);
+
+      // Only optimistically update if no unique fields are changing
+      const hasUniqueFieldChange = UNIQUE_STUDENT_FIELDS.some(
+        (field) => previous?.[field] !== data[field]
+      );
+
+      if (!hasUniqueFieldChange && previous) {
+        // Safe to optimistically update - only non-unique fields changed
+        queryClient.setQueryData<StudentDto>(CURRENT_STUDENT_KEY, {
+          ...previous,
+          ...data,
+        });
+        options?.onOptimisticUpdate?.(data);
+      }
+
+      await options?.onMutate?.(data, context);
+      return { previous };
+    },
+
+    onError: (error, data, onMutateResult, context) => {
+      if (onMutateResult?.previous) {
+        queryClient.setQueryData(CURRENT_STUDENT_KEY, onMutateResult.previous);
+      }
+      options?.onError?.(error, data, onMutateResult, context);
+    },
+
+    onSuccess: (...params) => {
+      // Invalidate all student queries using prefix matching
+      // This will invalidate both ["students"] and ["students", "me"]
+      queryClient.invalidateQueries({ queryKey: STUDENTS_KEY });
+      options?.onSuccess?.(...params);
     },
   });
 }
@@ -41,9 +92,10 @@ export function useUpdateResidence() {
     mutationFn: ({ residence_place_id }) =>
       studentService.updateResidence({ residence_place_id }),
     onMutate: async (variables) => {
-      await queryClient.cancelQueries({ queryKey: ["student", "me"] });
-      const previous = queryClient.getQueryData<StudentDto>(["student", "me"]);
-      queryClient.setQueryData<StudentDto>(["student", "me"], (old) =>
+      await queryClient.cancelQueries({ queryKey: CURRENT_STUDENT_KEY });
+      const previous =
+        queryClient.getQueryData<StudentDto>(CURRENT_STUDENT_KEY);
+      queryClient.setQueryData<StudentDto>(CURRENT_STUDENT_KEY, (old) =>
         old
           ? {
               ...old,
@@ -74,18 +126,19 @@ export function useUpdateResidence() {
     },
     onError: (_error, _variables, context) => {
       if (context?.previous) {
-        queryClient.setQueryData(["student", "me"], context.previous);
+        queryClient.setQueryData(CURRENT_STUDENT_KEY, context.previous);
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["student", "me"] });
+      queryClient.invalidateQueries({ queryKey: CURRENT_STUDENT_KEY });
     },
   });
 }
 
-export function useMyParties() {
+export function useMyParties(options?: UseQueryOptions<PartyDto[]>) {
   return useQuery<PartyDto[], Error>({
-    queryKey: ["student", "me", "parties"],
+    queryKey: MY_PARTIES_KEY,
     queryFn: () => studentService.getMyParties(),
+    ...options,
   });
 }

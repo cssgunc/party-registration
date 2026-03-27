@@ -80,6 +80,13 @@ type IsRegisteredUpdate = {
   is_registered: boolean;
 };
 
+/**
+ * Query keys for student-related queries
+ * Used across admin and student queries for cache management
+ */
+export const STUDENTS_KEY = ["students"] as const;
+export const CURRENT_STUDENT_KEY = [...STUDENTS_KEY, "me"] as const;
+
 export type {
   ContactPreference,
   IsRegisteredUpdate,
