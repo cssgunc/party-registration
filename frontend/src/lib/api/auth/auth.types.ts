@@ -1,3 +1,5 @@
+import type { AccountRole } from "@/lib/api/account/account.types";
+
 type TokenPair = {
   access_token: string;
   access_token_expires: string;
@@ -11,7 +13,7 @@ type ExchangeTokenRequest = {
   last_name: string;
   pid: string;
   onyen: string;
-  role: string;
+  role: AccountRole;
 };
 
 type ExchangeTokenResponse = TokenPair;

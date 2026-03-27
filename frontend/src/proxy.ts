@@ -22,7 +22,7 @@ function getDefaultRoleForPath(pathname: string): AppRole | null {
   return null;
 }
 
-function getDashboardPath(role: string | undefined): string {
+function getDashboardPath(role: AppRole | undefined): string {
   switch (role) {
     case "student":
       return "/student";
