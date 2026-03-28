@@ -8,12 +8,19 @@ import {
   useStudents,
   useUpdateStudent,
 } from "@/lib/api/student/admin-student.queries";
-import { StudentDto } from "@/lib/api/student/student.types";
+import { StudentDto, StudentUpdateDto } from "@/lib/api/student/student.types";
 import { isFromThisSchoolYear } from "@/lib/utils";
 import { ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
+import LocationInfoChipDetails from "../party/details/LocationInfoChipDetails";
+import { GenericInfoChip } from "../shared/sidebar/GenericInfoChip";
 import { TableTemplate } from "../shared/table/TableTemplate";
 import StudentTableForm from "./StudentTableForm";
+
+const toEditData = (student: StudentDto) => ({
+  ...student,
+  residence_place_id: student.residence?.location.google_place_id ?? null,
+});
 
 export const StudentTable = () => {
   const { openSidebar, closeSidebar } = useSidebar();
@@ -86,7 +93,7 @@ export const StudentTable = () => {
       <StudentTableForm
         title="Edit Student"
         onSubmit={(data) => handleEditSubmit(student, data)}
-        editData={student}
+        editData={toEditData(student)}
       />
     );
   };
@@ -111,7 +118,7 @@ export const StudentTable = () => {
 
   const handleEditSubmit = async (
     student: StudentDto,
-    data: Omit<StudentDto, "id" | "email" | "pid">
+    data: StudentUpdateDto
   ) => {
     editFormMutation.mutate({ id: student.id, data });
   };
@@ -165,6 +172,33 @@ export const StudentTable = () => {
         const preference =
           row.getValue<StudentDto["contact_preference"]>("contact_preference");
         return preference === "call" ? "Call" : "Text";
+      },
+    },
+    {
+      id: "residence",
+      header: "Residence",
+      enableColumnFilter: false,
+      cell: ({ row }) => {
+        const student = row.original;
+        const hasValidResidence =
+          student.residence &&
+          isFromThisSchoolYear(student.residence.residence_chosen_date);
+        if (!hasValidResidence || !student.residence) {
+          return "—";
+        }
+        const location = student.residence.location;
+        const shortName = [location.street_number, location.street_name]
+          .filter(Boolean)
+          .join(" ");
+        return (
+          <GenericInfoChip
+            chipKey={`student-${student.id}-residence`}
+            title="Residence Information"
+            description="Detailed information about the student's residence"
+            shortName={shortName || location.formatted_address}
+            sidebarContent={<LocationInfoChipDetails data={location} />}
+          />
+        );
       },
     },
     {

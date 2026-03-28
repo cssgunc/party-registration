@@ -1,5 +1,6 @@
 "use client";
 
+import AddressSearch from "@/components/AddressSearch";
 import DatePicker from "@/components/DatePicker";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { ResidenceDto } from "@/lib/api/student/student.types";
 import { addBusinessDays, isAfter, startOfDay } from "date-fns";
 import { useState } from "react";
@@ -45,6 +47,7 @@ export const studentTableFormSchema = z.object({
     .min(1, "PID is required"),
   onyen: z.string().min(1, "Onyen is required"),
   residence: z.custom<ResidenceDto | null>().default(null),
+  residence_place_id: z.string().nullable().optional(),
 });
 
 const formatPhoneNumber = (value: string): string => {
@@ -68,6 +71,14 @@ export default function StudentTableForm({
   submissionError,
   title,
 }: StudentTableFormProps) {
+  const initialResidenceSelection: AutocompleteResult | null =
+    editData?.residence
+      ? {
+          formatted_address: editData.residence.location.formatted_address,
+          google_place_id: editData.residence.location.google_place_id,
+        }
+      : null;
+
   const [formData, setFormData] = useState<Partial<StudentTableFormValues>>({
     pid: editData?.pid ?? "",
     first_name: editData?.first_name ?? "",
@@ -78,6 +89,7 @@ export default function StudentTableForm({
     contact_preference: editData?.contact_preference ?? undefined,
     last_registered: editData?.last_registered ?? null,
     residence: editData?.residence ?? null,
+    residence_place_id: editData?.residence_place_id ?? null,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -213,28 +225,6 @@ export default function StudentTableForm({
             )}
           </Field>
 
-          <Field data-invalid={!!errors.last_registered}>
-            <FieldLabel htmlFor="party-date">Last registered</FieldLabel>
-            <DatePicker
-              id="last-registered"
-              value={formData.last_registered}
-              onChange={(date) => updateField("last_registered", date)}
-              disabled={(date) =>
-                isAfter(
-                  startOfDay(date),
-                  addBusinessDays(startOfDay(new Date()), 0)
-                )
-              }
-              clearable
-            />
-            <FieldDescription>
-              Leave blank if student is not registered.
-            </FieldDescription>
-            {errors.last_registered && (
-              <FieldError>{errors.last_registered}</FieldError>
-            )}
-          </Field>
-
           <Field data-invalid={!!errors.contact_preference}>
             <FieldLabel htmlFor="contact-preference">
               Contact Preference
@@ -255,6 +245,45 @@ export default function StudentTableForm({
             </Select>
             {errors.contact_preference && (
               <FieldError>{errors.contact_preference}</FieldError>
+            )}
+          </Field>
+
+          <Field>
+            <FieldLabel>Residence Address</FieldLabel>
+            <AddressSearch
+              initialSelection={initialResidenceSelection}
+              onSelect={(address) =>
+                updateField(
+                  "residence_place_id",
+                  address?.google_place_id ?? null
+                )
+              }
+              placeholder="Search for student's residence..."
+            />
+            <FieldDescription>
+              Leave blank to remove the student&apos;s current residence.
+            </FieldDescription>
+          </Field>
+
+          <Field data-invalid={!!errors.last_registered}>
+            <FieldLabel htmlFor="party-date">Last registered</FieldLabel>
+            <DatePicker
+              id="last-registered"
+              value={formData.last_registered}
+              onChange={(date) => updateField("last_registered", date)}
+              disabled={(date) =>
+                isAfter(
+                  startOfDay(date),
+                  addBusinessDays(startOfDay(new Date()), 0)
+                )
+              }
+              clearable
+            />
+            <FieldDescription>
+              Leave blank if student is not registered.
+            </FieldDescription>
+            {errors.last_registered && (
+              <FieldError>{errors.last_registered}</FieldError>
             )}
           </Field>
 
