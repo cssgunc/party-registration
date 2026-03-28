@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -330,7 +331,7 @@ export function TableTemplate<T extends object>({
 
       {!isLoading && !error && (
         <div className="flex min-h-0 h-full flex-col justify-between overflow-hidden">
-          <div className="flex-1 min-h-0 rounded-sm border py-2 px-4 overflow-hidden shadow-lg bg-white">
+          <Card className="flex-1 min-h-0 py-2 px-4 overflow-hidden rounded-sm w-full max-w-none mx-0">
             <div className="h-full overflow-y-auto">
               <Table className="bg-card rounded-sm">
                 <TableHeader>
@@ -438,7 +439,7 @@ export function TableTemplate<T extends object>({
                 </TableBody>
               </Table>
             </div>
-          </div>
+          </Card>
 
           {/* Pagination Controls */}
           <div className="flex flex-col items-center p-2 gap-2 lg:mt-4">

@@ -1,8 +1,16 @@
 "use client";
 
-import { AccountService } from "@/lib/api/account/account.service";
-import type { AccountDto, AccountRole } from "@/lib/api/account/account.types";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useAccounts,
+  useCreateAccount,
+  useDeleteAccount,
+  useUpdateAccount,
+} from "@/lib/api/account/account.queries";
+import type {
+  AccountData,
+  AccountDto,
+  AccountRole,
+} from "@/lib/api/account/account.types";
 import { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
 import { useState } from "react";
@@ -13,34 +21,18 @@ import AccountTableForm, { accountTableFormSchema } from "./AccountTableForm";
 
 type AccountTableFormValues = z.infer<typeof accountTableFormSchema>;
 
-const accountService = new AccountService();
-
 export const AccountTable = () => {
-  const queryClient = useQueryClient();
   const { openSidebar, closeSidebar } = useSidebar();
   const [editingAccount, setEditingAccount] = useState<AccountDto | null>(null);
 
-  const accountsQuery = useQuery({
-    queryKey: ["accounts"],
-    queryFn: () => accountService.listAccounts(["admin", "staff"]),
-    retry: 1,
-  });
+  const accountsQuery = useAccounts();
 
   const accounts = (accountsQuery.data ?? []).filter(
     (a) => a.role === "admin" || a.role === "staff"
   );
 
-  const createMutation = useMutation({
-    mutationFn: (data: AccountTableFormValues) =>
-      accountService.createAccount({
-        email: data.email,
-        first_name: data.first_name,
-        last_name: data.last_name,
-        pid: data.pid,
-        onyen: data.onyen,
-        role: data.role as AccountRole,
-      }),
-    onError: (error: Error, variables) => {
+  const createMutation = useCreateAccount({
+    onError: (error: Error, variables: AccountData) => {
       const errorMessage =
         isAxiosError(error) && error.response
           ? `${error.response.data.message}`
@@ -60,28 +52,25 @@ export const AccountTable = () => {
           title="New Account"
           onSubmit={handleCreateSubmit}
           submissionError={errorMessage}
-          editData={variables}
+          editData={{
+            email: variables.email,
+            first_name: variables.first_name,
+            last_name: variables.last_name,
+            pid: variables.pid,
+            onyen: variables.onyen,
+            role: variables.role,
+          }}
         />
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["accounts"] });
       closeSidebar();
       setEditingAccount(null);
     },
   });
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: AccountTableFormValues }) =>
-      accountService.updateAccount(id, {
-        email: data.email,
-        first_name: data.first_name,
-        last_name: data.last_name,
-        pid: data.pid,
-        onyen: data.onyen,
-        role: data.role as AccountRole,
-      }),
-    onError: (error: Error, variables) => {
+  const updateMutation = useUpdateAccount({
+    onError: (error: Error, variables: { id: number; data: AccountData }) => {
       console.error("Failed to update account:", error);
       const errorMessage = `Failed to update account: ${error.message}`;
       const editTarget =
@@ -113,34 +102,14 @@ export const AccountTable = () => {
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["accounts"] });
       closeSidebar();
       setEditingAccount(null);
     },
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: (id: number) => accountService.deleteAccount(id),
-    // Optimistically remove the account from the cache.
-    onMutate: async (id: number) => {
-      await queryClient.cancelQueries({ queryKey: ["accounts"] });
-
-      const previous = queryClient.getQueryData<AccountDto[]>(["accounts"]);
-
-      queryClient.setQueryData<AccountDto[] | undefined>(["accounts"], (old) =>
-        old?.filter((a) => a.id !== id)
-      );
-
-      return { previous };
-    },
-    onError: (error: Error, _vars, context) => {
+  const deleteMutation = useDeleteAccount({
+    onError: (error: Error) => {
       console.error("Failed to delete account:", error);
-      if (context?.previous) {
-        queryClient.setQueryData(["accounts"], context.previous);
-      }
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["accounts"] });
     },
   });
 
@@ -180,14 +149,31 @@ export const AccountTable = () => {
   };
 
   const handleCreateSubmit = async (data: AccountTableFormValues) => {
-    createMutation.mutate(data);
+    createMutation.mutate({
+      email: data.email,
+      first_name: data.first_name,
+      last_name: data.last_name,
+      pid: data.pid,
+      onyen: data.onyen,
+      role: data.role as AccountRole,
+    });
   };
 
   const handleEditSubmit = async (
     accountId: number,
     data: AccountTableFormValues
   ) => {
-    updateMutation.mutate({ id: accountId, data });
+    updateMutation.mutate({
+      id: accountId,
+      data: {
+        email: data.email,
+        first_name: data.first_name,
+        last_name: data.last_name,
+        pid: data.pid,
+        onyen: data.onyen,
+        role: data.role as AccountRole,
+      },
+    });
   };
 
   const columns: ColumnDef<AccountDto>[] = [
