@@ -1,8 +1,8 @@
 "use client";
 
 import AddressSearch from "@/components/AddressSearch";
+import DatePicker from "@/components/DatePicker";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
 import {
   Field,
   FieldError,
@@ -11,11 +11,6 @@ import {
   FieldSet,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -28,9 +23,14 @@ import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { PartyDto } from "@/lib/api/party/party.types";
 import { addBusinessDays, format, isAfter, startOfDay } from "date-fns";
-import { CalendarIcon } from "lucide-react";
 import { useState } from "react";
 import * as z from "zod";
+
+const formatPhoneNumber = (value: string): string => {
+  return value
+    ? `(${value.slice(0, 3)}) ${value.slice(3, 6)}-${value.slice(6, 10)}`
+    : "—";
+};
 
 export const createPartyTableFormSchema = (isAdmin: boolean) => {
   const partyDateSchema = isAdmin
@@ -233,40 +233,21 @@ export default function PartyTableForm({
           <div className="grid grid-cols-2 gap-4">
             <Field data-invalid={!!errors.partyDate}>
               <FieldLabel htmlFor="party-date">Party Date</FieldLabel>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    id="party-date"
-                    variant="outline"
-                    className={`w-full justify-start text-left font-normal ${
-                      !formData.partyDate && "text-muted-foreground"
-                    }`}
-                  >
-                    {formData.partyDate ? (
-                      format(formData.partyDate, "MM/dd/yy")
-                    ) : (
-                      <span>Pick a date</span>
-                    )}
-                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={formData.partyDate}
-                    onSelect={(date) => updateField("partyDate", date as Date)}
-                    disabled={
-                      isAdmin
-                        ? undefined
-                        : (date) =>
-                            !isAfter(
-                              startOfDay(date),
-                              addBusinessDays(startOfDay(new Date()), 1)
-                            )
-                    }
-                  />
-                </PopoverContent>
-              </Popover>
+              <DatePicker
+                id="party-date"
+                dateFormat="MM/dd/yy"
+                value={formData.partyDate ?? null}
+                onChange={(date) => updateField("partyDate", date as Date)}
+                disabled={
+                  isAdmin
+                    ? undefined
+                    : (date) =>
+                        !isAfter(
+                          startOfDay(date),
+                          addBusinessDays(startOfDay(new Date()), 1)
+                        )
+                }
+              />
               {errors.partyDate && <FieldError>{errors.partyDate}</FieldError>}
             </Field>
 
@@ -300,7 +281,7 @@ export default function PartyTableForm({
             )}
           </Field>
 
-          <div className="font-bold">Second contact information </div>
+          <p className="font-bold">Second Contact Information </p>
 
           <Field data-invalid={!!errors.contactTwoEmail}>
             <FieldLabel htmlFor="contact-two-email">Contact Email</FieldLabel>
@@ -316,40 +297,43 @@ export default function PartyTableForm({
               <FieldError>{errors.contactTwoEmail}</FieldError>
             )}
           </Field>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field data-invalid={!!errors.contactTwoFirstName}>
+              <FieldLabel htmlFor="contact-two-first-name">
+                First Name
+              </FieldLabel>
+              <Input
+                id="contact-two-first-name"
+                type="text"
+                placeholder="John"
+                value={formData.contactTwoFirstName}
+                onChange={(e) =>
+                  updateField("contactTwoFirstName", e.target.value)
+                }
+                aria-invalid={!!errors.contactTwoFirstName}
+              />
+              {errors.contactTwoFirstName && (
+                <FieldError>{errors.contactTwoFirstName}</FieldError>
+              )}
+            </Field>
 
-          <Field data-invalid={!!errors.contactTwoFirstName}>
-            <FieldLabel htmlFor="contact-two-first-name">First Name</FieldLabel>
-            <Input
-              id="contact-two-first-name"
-              type="text"
-              placeholder="John"
-              value={formData.contactTwoFirstName}
-              onChange={(e) =>
-                updateField("contactTwoFirstName", e.target.value)
-              }
-              aria-invalid={!!errors.contactTwoFirstName}
-            />
-            {errors.contactTwoFirstName && (
-              <FieldError>{errors.contactTwoFirstName}</FieldError>
-            )}
-          </Field>
-
-          <Field data-invalid={!!errors.contactTwoLastName}>
-            <FieldLabel htmlFor="contact-two-last-name">Last Name</FieldLabel>
-            <Input
-              id="contact-two-last-name"
-              type="text"
-              placeholder="Doe"
-              value={formData.contactTwoLastName}
-              onChange={(e) =>
-                updateField("contactTwoLastName", e.target.value)
-              }
-              aria-invalid={!!errors.contactTwoLastName}
-            />
-            {errors.contactTwoLastName && (
-              <FieldError>{errors.contactTwoLastName}</FieldError>
-            )}
-          </Field>
+            <Field data-invalid={!!errors.contactTwoLastName}>
+              <FieldLabel htmlFor="contact-two-last-name">Last Name</FieldLabel>
+              <Input
+                id="contact-two-last-name"
+                type="text"
+                placeholder="Doe"
+                value={formData.contactTwoLastName}
+                onChange={(e) =>
+                  updateField("contactTwoLastName", e.target.value)
+                }
+                aria-invalid={!!errors.contactTwoLastName}
+              />
+              {errors.contactTwoLastName && (
+                <FieldError>{errors.contactTwoLastName}</FieldError>
+              )}
+            </Field>
+          </div>
 
           <Field data-invalid={!!errors.contactTwoPhoneNumber}>
             <FieldLabel htmlFor="contact-two-phone-number">
@@ -358,8 +342,8 @@ export default function PartyTableForm({
             </FieldLabel>
             <Input
               id="contact-two-phone-number"
-              placeholder="(123) 456-7890"
-              value={formData.contactTwoPhoneNumber}
+              placeholder="123-456-7890"
+              value={formatPhoneNumber(formData.contactTwoPhoneNumber || "")}
               onChange={(e) =>
                 updateField("contactTwoPhoneNumber", e.target.value)
               }
@@ -395,7 +379,7 @@ export default function PartyTableForm({
 
           <Field orientation="vertical">
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Submitting..." : "Save"}
+              {isSubmitting ? "Submitting..." : "Save Changes"}
             </Button>
           </Field>
         </FieldSet>

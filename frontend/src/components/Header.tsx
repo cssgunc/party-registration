@@ -21,7 +21,7 @@ export default function Header({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "bg-primary py-4 px-6 w-full flex justify-between items-center",
+        "bg-primary h-[var(--app-header-height)] px-6 w-full flex justify-between items-center",
         className
       )}
     >
