@@ -1,8 +1,8 @@
 "use client";
 
 import AddressSearch from "@/components/AddressSearch";
+import DatePicker from "@/components/DatePicker";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
 import {
   Field,
   FieldError,
@@ -11,11 +11,6 @@ import {
   FieldSet,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -28,7 +23,6 @@ import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { PartyDto } from "@/lib/api/party/party.types";
 import { addBusinessDays, format, isAfter, startOfDay } from "date-fns";
-import { CalendarIcon } from "lucide-react";
 import { useState } from "react";
 import * as z from "zod";
 
@@ -239,40 +233,21 @@ export default function PartyTableForm({
           <div className="grid grid-cols-2 gap-4">
             <Field data-invalid={!!errors.partyDate}>
               <FieldLabel htmlFor="party-date">Party Date</FieldLabel>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    id="party-date"
-                    variant="outline"
-                    className={`w-full justify-start text-left font-normal ${
-                      !formData.partyDate && "text-muted-foreground"
-                    }`}
-                  >
-                    {formData.partyDate ? (
-                      format(formData.partyDate, "MM/dd/yy")
-                    ) : (
-                      <p>Pick a date</p>
-                    )}
-                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={formData.partyDate}
-                    onSelect={(date) => updateField("partyDate", date as Date)}
-                    disabled={
-                      isAdmin
-                        ? undefined
-                        : (date) =>
-                            !isAfter(
-                              startOfDay(date),
-                              addBusinessDays(startOfDay(new Date()), 1)
-                            )
-                    }
-                  />
-                </PopoverContent>
-              </Popover>
+              <DatePicker
+                id="party-date"
+                dateFormat="MM/dd/yy"
+                value={formData.partyDate ?? null}
+                onChange={(date) => updateField("partyDate", date as Date)}
+                disabled={
+                  isAdmin
+                    ? undefined
+                    : (date) =>
+                        !isAfter(
+                          startOfDay(date),
+                          addBusinessDays(startOfDay(new Date()), 1)
+                        )
+                }
+              />
               {errors.partyDate && <FieldError>{errors.partyDate}</FieldError>}
             </Field>
 

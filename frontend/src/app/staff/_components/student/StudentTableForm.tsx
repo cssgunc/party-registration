@@ -1,7 +1,7 @@
 "use client";
 
+import DatePicker from "@/components/DatePicker";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
 import {
   Field,
   FieldDescription,
@@ -12,11 +12,6 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -24,8 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ResidenceDto } from "@/lib/api/student/student.types";
-import { addBusinessDays, format, isAfter, startOfDay } from "date-fns";
-import { CalendarIcon } from "lucide-react";
+import { addBusinessDays, isAfter, startOfDay } from "date-fns";
 import { useState } from "react";
 import * as z from "zod";
 
@@ -221,39 +215,18 @@ export default function StudentTableForm({
 
           <Field data-invalid={!!errors.last_registered}>
             <FieldLabel htmlFor="party-date">Last registered</FieldLabel>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  id="party-date"
-                  variant="outline"
-                  className={`w-full justify-start text-left font-normal ${
-                    !formData.last_registered && "text-muted-foreground"
-                  }`}
-                >
-                  {formData.last_registered ? (
-                    format(formData.last_registered, "PPP")
-                  ) : (
-                    <span>Pick a date</span>
-                  )}
-                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={formData.last_registered || undefined}
-                  onSelect={(date) =>
-                    updateField("last_registered", date ?? null)
-                  }
-                  disabled={(date) =>
-                    isAfter(
-                      startOfDay(date),
-                      addBusinessDays(startOfDay(new Date()), 0)
-                    )
-                  }
-                />
-              </PopoverContent>
-            </Popover>
+            <DatePicker
+              id="last-registered"
+              value={formData.last_registered}
+              onChange={(date) => updateField("last_registered", date)}
+              disabled={(date) =>
+                isAfter(
+                  startOfDay(date),
+                  addBusinessDays(startOfDay(new Date()), 0)
+                )
+              }
+              clearable
+            />
             <FieldDescription>
               Leave blank if student is not registered.
             </FieldDescription>

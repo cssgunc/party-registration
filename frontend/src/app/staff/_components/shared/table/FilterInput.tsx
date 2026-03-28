@@ -1,15 +1,10 @@
 "use client";
 
+import DatePicker from "@/components/DatePicker";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -19,8 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Column } from "@tanstack/react-table";
-import { format } from "date-fns";
-import { CalendarIcon, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useState } from "react";
 import { DateRange } from "react-day-picker";
 
@@ -93,36 +87,31 @@ export function FilterInput<T>({
           <div className="space-y-4 p-4">
             <div className="space-y-2">
               <Label>Date Range</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start text-left font-normal"
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateRange?.from ? (
-                      dateRange.to ? (
-                        <>
-                          {format(dateRange.from, "LLL dd, y")} -{" "}
-                          {format(dateRange.to, "LLL dd, y")}
-                        </>
-                      ) : (
-                        format(dateRange.from, "LLL dd, y")
-                      )
-                    ) : (
-                      <span>Pick a date range</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="range"
-                    selected={dateRange}
-                    onSelect={setDateRange}
-                    numberOfMonths={2}
-                  />
-                </PopoverContent>
-              </Popover>
+              <div className="flex gap-2 justify-center flex-row md:justify-between md:gap-4">
+                <DatePicker
+                  value={dateRange?.from ?? null}
+                  onChange={(date) =>
+                    setDateRange((prev) => ({
+                      from: date ?? undefined,
+                      to: prev?.to,
+                    }))
+                  }
+                  placeholder="Start Date"
+                  dateFormat="LLL dd, y"
+                />
+                <div className="self-center flex-0">and</div>
+                <DatePicker
+                  value={dateRange?.to ?? null}
+                  onChange={(date) =>
+                    setDateRange((prev) => ({
+                      from: prev?.from,
+                      to: date ?? undefined,
+                    }))
+                  }
+                  placeholder="End Date"
+                  dateFormat="LLL dd, y"
+                />
+              </div>
             </div>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={handleClear}>
@@ -140,33 +129,14 @@ export function FilterInput<T>({
           <div className="space-y-4 p-4">
             <div className="space-y-2">
               <Label>Date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start text-left font-normal"
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateRange?.from ? (
-                      format(dateRange.from, "LLL dd, y")
-                    ) : (
-                      <span>Pick a date</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={dateRange?.from}
-                    onSelect={(date) =>
-                      setDateRange({
-                        from: date,
-                        to: date,
-                      })
-                    }
-                  />
-                </PopoverContent>
-              </Popover>
+              <DatePicker
+                value={dateRange?.from ?? null}
+                onChange={(date) =>
+                  setDateRange(date ? { from: date, to: date } : undefined)
+                }
+                placeholder="Pick a date"
+                dateFormat="LLL dd, y"
+              />
             </div>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={handleClear}>
