@@ -1,14 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
+import ClearableDatePicker from "@/components/ClearableDatePicker";
 
 interface SplitDateRangeProps {
   startDate: Date | undefined;
@@ -26,38 +18,20 @@ export default function SplitDateRangeFilter({
   return (
     <div className="flex gap-2 justify-center flex-row md:justify-between md:gap-4">
       {/* Start Date */}
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button variant="outline" className="flex-1">
-            <CalendarIcon />
-            {startDate ? format(startDate, "MM/dd") : "Start Date"}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0">
-          <Calendar
-            mode="single"
-            selected={startDate}
-            onSelect={onStartDateChange}
-          />
-        </PopoverContent>
-      </Popover>
+      <ClearableDatePicker
+        value={startDate ?? null}
+        onChange={(date) => onStartDateChange(date ?? undefined)}
+        placeholder="Start Date"
+        dateFormat="MM/dd"
+      />
       <div className="self-center flex-0">and</div>
       {/* End Date */}
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button variant="outline" className="flex-1">
-            <CalendarIcon />
-            {endDate ? format(endDate, "MM/dd") : "End Date"}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0">
-          <Calendar
-            mode="single"
-            selected={endDate}
-            onSelect={onEndDateChange}
-          />
-        </PopoverContent>
-      </Popover>
+      <ClearableDatePicker
+        value={endDate ?? null}
+        onChange={(date) => onEndDateChange(date ?? undefined)}
+        placeholder="End Date"
+        dateFormat="MM/dd"
+      />
     </div>
   );
 }

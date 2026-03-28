@@ -1,5 +1,6 @@
 "use client";
 
+import ClearableDatePicker from "@/components/ClearableDatePicker";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -139,33 +140,14 @@ export function FilterInput<T>({
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start text-left font-normal"
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateRange?.from ? (
-                      format(dateRange.from, "LLL dd, y")
-                    ) : (
-                      <span>Pick a date</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={dateRange?.from}
-                    onSelect={(date) =>
-                      setDateRange({
-                        from: date,
-                        to: date,
-                      })
-                    }
-                  />
-                </PopoverContent>
-              </Popover>
+              <ClearableDatePicker
+                value={dateRange?.from ?? null}
+                onChange={(date) =>
+                  setDateRange(date ? { from: date, to: date } : undefined)
+                }
+                placeholder="Pick a date"
+                dateFormat="LLL dd, y"
+              />
             </div>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={handleClear}>
