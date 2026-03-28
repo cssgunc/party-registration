@@ -8,7 +8,7 @@ import {
   useStudents,
   useUpdateStudent,
 } from "@/lib/api/student/admin-student.queries";
-import { StudentDto } from "@/lib/api/student/student.types";
+import { StudentDto, StudentUpdateDto } from "@/lib/api/student/student.types";
 import { isFromThisSchoolYear } from "@/lib/utils";
 import { ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
@@ -118,7 +118,7 @@ export const StudentTable = () => {
 
   const handleEditSubmit = async (
     student: StudentDto,
-    data: Omit<StudentDto, "id" | "email" | "pid">
+    data: StudentUpdateDto
   ) => {
     editFormMutation.mutate({ id: student.id, data });
   };
