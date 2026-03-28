@@ -32,6 +32,12 @@ import { CalendarIcon } from "lucide-react";
 import { useState } from "react";
 import * as z from "zod";
 
+const formatPhoneNumber = (value: string): string => {
+  return value
+    ? `(${value.slice(0, 3)}) ${value.slice(3, 6)}-${value.slice(6, 10)}`
+    : "—";
+};
+
 export const createPartyTableFormSchema = (isAdmin: boolean) => {
   const partyDateSchema = isAdmin
     ? z.date({
@@ -245,7 +251,7 @@ export default function PartyTableForm({
                     {formData.partyDate ? (
                       format(formData.partyDate, "MM/dd/yy")
                     ) : (
-                      <span>Pick a date</span>
+                      <p>Pick a date</p>
                     )}
                     <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                   </Button>
@@ -300,7 +306,7 @@ export default function PartyTableForm({
             )}
           </Field>
 
-          <div className="font-bold">Second contact information </div>
+          <p className="font-bold">Second Contact Information </p>
 
           <Field data-invalid={!!errors.contactTwoEmail}>
             <FieldLabel htmlFor="contact-two-email">Contact Email</FieldLabel>
@@ -316,40 +322,43 @@ export default function PartyTableForm({
               <FieldError>{errors.contactTwoEmail}</FieldError>
             )}
           </Field>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field data-invalid={!!errors.contactTwoFirstName}>
+              <FieldLabel htmlFor="contact-two-first-name">
+                First Name
+              </FieldLabel>
+              <Input
+                id="contact-two-first-name"
+                type="text"
+                placeholder="John"
+                value={formData.contactTwoFirstName}
+                onChange={(e) =>
+                  updateField("contactTwoFirstName", e.target.value)
+                }
+                aria-invalid={!!errors.contactTwoFirstName}
+              />
+              {errors.contactTwoFirstName && (
+                <FieldError>{errors.contactTwoFirstName}</FieldError>
+              )}
+            </Field>
 
-          <Field data-invalid={!!errors.contactTwoFirstName}>
-            <FieldLabel htmlFor="contact-two-first-name">First Name</FieldLabel>
-            <Input
-              id="contact-two-first-name"
-              type="text"
-              placeholder="John"
-              value={formData.contactTwoFirstName}
-              onChange={(e) =>
-                updateField("contactTwoFirstName", e.target.value)
-              }
-              aria-invalid={!!errors.contactTwoFirstName}
-            />
-            {errors.contactTwoFirstName && (
-              <FieldError>{errors.contactTwoFirstName}</FieldError>
-            )}
-          </Field>
-
-          <Field data-invalid={!!errors.contactTwoLastName}>
-            <FieldLabel htmlFor="contact-two-last-name">Last Name</FieldLabel>
-            <Input
-              id="contact-two-last-name"
-              type="text"
-              placeholder="Doe"
-              value={formData.contactTwoLastName}
-              onChange={(e) =>
-                updateField("contactTwoLastName", e.target.value)
-              }
-              aria-invalid={!!errors.contactTwoLastName}
-            />
-            {errors.contactTwoLastName && (
-              <FieldError>{errors.contactTwoLastName}</FieldError>
-            )}
-          </Field>
+            <Field data-invalid={!!errors.contactTwoLastName}>
+              <FieldLabel htmlFor="contact-two-last-name">Last Name</FieldLabel>
+              <Input
+                id="contact-two-last-name"
+                type="text"
+                placeholder="Doe"
+                value={formData.contactTwoLastName}
+                onChange={(e) =>
+                  updateField("contactTwoLastName", e.target.value)
+                }
+                aria-invalid={!!errors.contactTwoLastName}
+              />
+              {errors.contactTwoLastName && (
+                <FieldError>{errors.contactTwoLastName}</FieldError>
+              )}
+            </Field>
+          </div>
 
           <Field data-invalid={!!errors.contactTwoPhoneNumber}>
             <FieldLabel htmlFor="contact-two-phone-number">
@@ -358,8 +367,8 @@ export default function PartyTableForm({
             </FieldLabel>
             <Input
               id="contact-two-phone-number"
-              placeholder="(123) 456-7890"
-              value={formData.contactTwoPhoneNumber}
+              placeholder="123-456-7890"
+              value={formatPhoneNumber(formData.contactTwoPhoneNumber || "")}
               onChange={(e) =>
                 updateField("contactTwoPhoneNumber", e.target.value)
               }
@@ -395,7 +404,7 @@ export default function PartyTableForm({
 
           <Field orientation="vertical">
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Submitting..." : "Save"}
+              {isSubmitting ? "Submitting..." : "Save Changes"}
             </Button>
           </Field>
         </FieldSet>

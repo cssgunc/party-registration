@@ -52,9 +52,9 @@ export default function StaffTabPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="h-[calc(100dvh-var(--app-header-height))] overflow-hidden  flex flex-col">
       {/* Navbar */}
-      <div className="w-full bg-[#6FB2DC] h-16 flex-shrink-0 flex items-center justify-between px-6">
+      <div className="w-full bg-primary h-16 flex-shrink-0 flex items-center justify-between px-6">
         <div className="text-white font-semibold">Staff Portal</div>
         <div className="flex items-center gap-4">
           <span className="text-white text-sm">
@@ -64,17 +64,18 @@ export default function StaffTabPage() {
             onClick={toggleRole}
             variant="secondary"
             size="sm"
-            className="bg-white hover:bg-gray-100 text-[#6FB2DC]"
+            className="bg-white hover:bg-gray-100 text-primary"
           >
             Switch to {role === "admin" ? "Staff" : "Admin"}
           </Button>
         </div>
       </div>
 
-      <div className="container mx-auto p-6">
+      <div className="container mx-auto p-6 flex-1 min-h-0 flex flex-col overflow-hidden">
         <Tabs
           value={tab as TabSlug}
           onValueChange={(value) => router.push(`/staff/${value}`)}
+          className="flex h-full min-h-0 flex-col"
         >
           <TabsList>
             {STAFF_TABS.map((slug) => {
@@ -89,7 +90,11 @@ export default function StaffTabPage() {
           {STAFF_TABS.map((slug) => {
             if (TAB_CONFIG[slug].adminOnly && role !== "admin") return null;
             return (
-              <TabsContent key={slug} value={slug}>
+              <TabsContent
+                key={slug}
+                value={slug}
+                className="flex-1 min-h-0 overflow-hidden"
+              >
                 {TAB_CONTENT[slug]}
               </TabsContent>
             );

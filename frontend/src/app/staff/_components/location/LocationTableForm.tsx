@@ -47,6 +47,13 @@ export default function LocationTableForm({
   title,
 }: LocationTableFormProps) {
   const locationService = new LocationService();
+  const initialAddressSelection: AutocompleteResult | null =
+    editData?.address && editData?.placeId
+      ? {
+          formatted_address: editData.address,
+          google_place_id: editData.placeId,
+        }
+      : null;
 
   const [formData, setFormData] = useState<Partial<LocationTableFormValues>>({
     address: editData?.address ?? "",
@@ -127,6 +134,7 @@ export default function LocationTableForm({
             <FieldLabel htmlFor="party-address">Party Address</FieldLabel>
             <AddressSearch
               value={formData.address}
+              initialSelection={initialAddressSelection}
               onSelect={handleAddressSelect}
               locationService={locationService}
               placeholder="Search for the location address..."
@@ -181,7 +189,7 @@ export default function LocationTableForm({
 
           <Field orientation="vertical">
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Submitting..." : "Save"}
+              {isSubmitting ? "Submitting..." : "Save Changes"}
             </Button>
           </Field>
         </FieldSet>
