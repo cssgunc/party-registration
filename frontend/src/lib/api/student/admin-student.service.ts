@@ -2,10 +2,10 @@ import apiClient from "@/lib/network/apiClient";
 import { PaginatedResponse } from "@/lib/shared";
 import { AxiosInstance } from "axios";
 import {
-  StudentCreate,
-  StudentDataWithNames,
+  StudentCreateDto,
   StudentDto,
   StudentDtoBackend,
+  StudentUpdateDto,
   convertStudent,
 } from "./student.types";
 
@@ -66,7 +66,7 @@ export class AdminStudentService {
   /**
    * Creates a new student (POST /api/students)
    */
-  async createStudent(payload: StudentCreate): Promise<StudentDto> {
+  async createStudent(payload: StudentCreateDto): Promise<StudentDto> {
     try {
       const response = await this.client.post<StudentDtoBackend>(
         "/students",
@@ -82,10 +82,7 @@ export class AdminStudentService {
   /**
    * Updates an existing student (PUT /api/students/{student_id})
    */
-  async updateStudent(
-    id: number,
-    data: StudentDataWithNames
-  ): Promise<StudentDto> {
+  async updateStudent(id: number, data: StudentUpdateDto): Promise<StudentDto> {
     try {
       const response = await this.client.put<StudentDtoBackend>(
         `/students/${id}`,

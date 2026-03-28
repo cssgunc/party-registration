@@ -19,6 +19,7 @@ export default function StudentDashboard() {
   const validResidence = isFromThisSchoolYear(
     studentQuery?.data?.residence?.residence_chosen_date
   );
+  const incidents = studentQuery.data?.residence?.location.incidents ?? [];
 
   return (
     <div className="flex flex-col items-center">
@@ -50,10 +51,7 @@ export default function StudentDashboard() {
             </Button>
           )}
 
-          <RegistrationTracker
-            {...partiesQuery}
-            incidents={studentQuery.data?.residence?.location.incidents}
-          />
+          <RegistrationTracker {...partiesQuery} incidents={incidents} />
           <div className="text-[24px] font-semibold">Party Smart Course </div>
           <StatusComponent
             last_registered={studentQuery.data?.last_registered}

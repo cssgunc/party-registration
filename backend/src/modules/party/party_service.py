@@ -20,11 +20,13 @@ from src.core.exceptions import (
     NotFoundException,
 )
 from src.core.query_utils import get_paginated_results, parse_pagination_params
+from src.modules.account.account_entity import AccountEntity
 from src.modules.location.location_model import LocationDto
 from src.modules.student.student_model import StudentDto
 from src.modules.student.student_service import StudentNotFoundException, StudentService
 
 from ..account.account_service import AccountByEmailNotFoundException, AccountService
+from ..location.location_entity import LocationEntity
 from ..location.location_service import LocationService
 from ..student.student_entity import StudentEntity
 from .party_entity import PartyEntity
@@ -109,6 +111,7 @@ class PartyService:
             .options(
                 selectinload(PartyEntity.location),
                 selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.residence),
             )
         )
         party_entity = result.scalar_one_or_none()
@@ -225,6 +228,7 @@ class PartyService:
             .options(
                 selectinload(PartyEntity.location),
                 selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.residence),
             )
         )
         if limit is not None:
@@ -252,31 +256,30 @@ class PartyService:
         Returns:
             PaginatedPartiesResponse with items and metadata
         """
-        # Define allowed fields for sorting and filtering
-        allowed_sort_fields = [
-            "id",
-            "party_datetime",
-            "location_id",
-            "contact_one_id",
-            "contact_two_email",
-            "contact_two_first_name",
-            "contact_two_last_name",
-            "contact_two_phone_number",
-            "contact_two_contact_preference",
-            "status",
-        ]
-        allowed_filter_fields = [
-            "id",
-            "party_datetime",
-            "location_id",
-            "contact_one_id",
-            "contact_two_email",
-            "contact_two_first_name",
-            "contact_two_last_name",
-            "contact_two_phone_number",
-            "contact_two_contact_preference",
-            "status",
-        ]
+        nested_field_columns = {
+            "contact_one.id": PartyEntity.contact_one_id,
+            "contact_one.first_name": AccountEntity.first_name,
+            "contact_one.last_name": AccountEntity.last_name,
+            "contact_one.email": AccountEntity.email,
+            "contact_one.phone_number": StudentEntity.phone_number,
+            "contact_one.onyen": AccountEntity.onyen,
+            "contact_one.pid": AccountEntity.pid,
+            "contact_one.contact_preference": StudentEntity.contact_preference,
+            "contact_one.last_registered": StudentEntity.last_registered,
+            "contact_two.email": PartyEntity.contact_two_email,
+            "contact_two.first_name": PartyEntity.contact_two_first_name,
+            "contact_two.last_name": PartyEntity.contact_two_last_name,
+            "contact_two.phone_number": PartyEntity.contact_two_phone_number,
+            "contact_two.contact_preference": PartyEntity.contact_two_contact_preference,
+            "location.id": PartyEntity.location_id,
+            "location.google_place_id": LocationEntity.google_place_id,
+            "location.formatted_address": LocationEntity.formatted_address,
+            "location.hold_expiration": LocationEntity.hold_expiration,
+        }
+
+        _base_allowed_fields = ["id", "party_datetime", "status"]
+        allowed_sort_fields = [*_base_allowed_fields, *nested_field_columns.keys()]
+        allowed_filter_fields = list(allowed_sort_fields)
 
         # Parse query params from request
         query_params = parse_pagination_params(
@@ -285,10 +288,16 @@ class PartyService:
             allowed_filter_fields=allowed_filter_fields,
         )
 
-        # Build base query with eager loading
-        base_query = select(PartyEntity).options(
-            selectinload(PartyEntity.location),
-            selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
+        # Build base query with JOINs for filter/sort and eager loading for hydration
+        base_query = (
+            select(PartyEntity)
+            .join(LocationEntity, PartyEntity.location_id == LocationEntity.id)
+            .join(StudentEntity, PartyEntity.contact_one_id == StudentEntity.account_id)
+            .join(AccountEntity, StudentEntity.account_id == AccountEntity.id)
+            .options(
+                selectinload(PartyEntity.location),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
+            )
         )
 
         # Use the generic pagination utility
@@ -300,6 +309,7 @@ class PartyService:
             query_params=query_params,
             allowed_sort_fields=allowed_sort_fields,
             allowed_filter_fields=allowed_filter_fields,
+            nested_field_columns=nested_field_columns,
         )
 
     async def get_party_by_id(self, party_id: int) -> PartyDto:
@@ -314,6 +324,7 @@ class PartyService:
             .options(
                 selectinload(PartyEntity.location),
                 selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.residence),
             )
         )
         parties = result.scalars().all()
@@ -330,6 +341,7 @@ class PartyService:
             .options(
                 selectinload(PartyEntity.location),
                 selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.residence),
             )
         )
         parties = result.scalars().all()
@@ -348,6 +360,7 @@ class PartyService:
             .options(
                 selectinload(PartyEntity.location),
                 selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.residence),
             )
         )
         parties = result.scalars().all()
@@ -606,6 +619,7 @@ class PartyService:
             .options(
                 selectinload(PartyEntity.location),
                 selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.residence),
             )
         )
         parties = result.scalars().all()
@@ -621,6 +635,7 @@ class PartyService:
             .options(
                 selectinload(PartyEntity.location),
                 selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.residence),
             )
             .where(
                 PartyEntity.party_datetime >= start_time,
@@ -671,6 +686,7 @@ class PartyService:
             .options(
                 selectinload(PartyEntity.location),
                 selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.residence),
             )
             .where(
                 PartyEntity.party_datetime >= start_date,

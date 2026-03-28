@@ -105,22 +105,8 @@ class AccountService:
             PaginatedAccountsResponse with items and metadata
         """
         # Define allowed fields for sorting and filtering
-        allowed_sort_fields = [
-            "id",
-            "email",
-            "first_name",
-            "last_name",
-            "pid",
-            "role",
-        ]
-        allowed_filter_fields = [
-            "id",
-            "email",
-            "first_name",
-            "last_name",
-            "pid",
-            "role",
-        ]
+        allowed_fields = ["id", "email", "first_name", "last_name", "pid", "role"]
+        allowed_sort_fields = allowed_filter_fields = allowed_fields
 
         # Build base query
         base_query = select(AccountEntity)

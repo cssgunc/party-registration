@@ -1,7 +1,8 @@
 "use client";
 
+import AddressSearch from "@/components/AddressSearch";
+import DatePicker from "@/components/DatePicker";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
 import {
   Field,
   FieldDescription,
@@ -12,20 +13,15 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { ResidenceDto } from "@/lib/api/student/student.types";
-import { addBusinessDays, format, isAfter, startOfDay } from "date-fns";
-import { CalendarIcon } from "lucide-react";
+import { addBusinessDays, isAfter, startOfDay } from "date-fns";
 import { useState } from "react";
 import * as z from "zod";
 
@@ -51,7 +47,14 @@ export const studentTableFormSchema = z.object({
     .min(1, "PID is required"),
   onyen: z.string().min(1, "Onyen is required"),
   residence: z.custom<ResidenceDto | null>().default(null),
+  residence_place_id: z.string().nullable().optional(),
 });
+
+const formatPhoneNumber = (value: string): string => {
+  return value
+    ? `(${value.slice(0, 3)}) ${value.slice(3, 6)}-${value.slice(6, 10)}`
+    : "—";
+};
 
 type StudentTableFormValues = z.infer<typeof studentTableFormSchema>;
 
@@ -68,6 +71,14 @@ export default function StudentTableForm({
   submissionError,
   title,
 }: StudentTableFormProps) {
+  const initialResidenceSelection: AutocompleteResult | null =
+    editData?.residence
+      ? {
+          formatted_address: editData.residence.location.formatted_address,
+          google_place_id: editData.residence.location.google_place_id,
+        }
+      : null;
+
   const [formData, setFormData] = useState<Partial<StudentTableFormValues>>({
     pid: editData?.pid ?? "",
     first_name: editData?.first_name ?? "",
@@ -78,6 +89,7 @@ export default function StudentTableForm({
     contact_preference: editData?.contact_preference ?? undefined,
     last_registered: editData?.last_registered ?? null,
     residence: editData?.residence ?? null,
+    residence_place_id: editData?.residence_place_id ?? null,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -147,6 +159,7 @@ export default function StudentTableForm({
             />
             {errors.pid && <FieldError>{errors.pid}</FieldError>}
           </Field>
+
           <Field data-invalid={!!errors.first_name}>
             <FieldLabel htmlFor="first-name">First name</FieldLabel>
             <Input
@@ -203,55 +216,12 @@ export default function StudentTableForm({
             <Input
               id="phone-number"
               placeholder="(123) 456-7890"
-              value={formData.phone_number}
+              value={formatPhoneNumber((formData.phone_number as string) || "")}
               onChange={(e) => updateField("phone_number", e.target.value)}
               aria-invalid={!!errors.phone_number}
             />
             {errors.phone_number && (
               <FieldError>{errors.phone_number}</FieldError>
-            )}
-          </Field>
-
-          <Field data-invalid={!!errors.last_registered}>
-            <FieldLabel htmlFor="party-date">Last registered</FieldLabel>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  id="party-date"
-                  variant="outline"
-                  className={`w-full justify-start text-left font-normal ${
-                    !formData.last_registered && "text-muted-foreground"
-                  }`}
-                >
-                  {formData.last_registered ? (
-                    format(formData.last_registered, "PPP")
-                  ) : (
-                    <span>Pick a date</span>
-                  )}
-                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={formData.last_registered || undefined}
-                  onSelect={(date) =>
-                    updateField("last_registered", date ?? null)
-                  }
-                  disabled={(date) =>
-                    isAfter(
-                      startOfDay(date),
-                      addBusinessDays(startOfDay(new Date()), 0)
-                    )
-                  }
-                />
-              </PopoverContent>
-            </Popover>
-            <FieldDescription>
-              Leave blank if student is not registered.
-            </FieldDescription>
-            {errors.last_registered && (
-              <FieldError>{errors.last_registered}</FieldError>
             )}
           </Field>
 
@@ -278,9 +248,48 @@ export default function StudentTableForm({
             )}
           </Field>
 
+          <Field>
+            <FieldLabel>Residence Address</FieldLabel>
+            <AddressSearch
+              initialSelection={initialResidenceSelection}
+              onSelect={(address) =>
+                updateField(
+                  "residence_place_id",
+                  address?.google_place_id ?? null
+                )
+              }
+              placeholder="Search for student's residence..."
+            />
+            <FieldDescription>
+              Leave blank to remove the student&apos;s current residence.
+            </FieldDescription>
+          </Field>
+
+          <Field data-invalid={!!errors.last_registered}>
+            <FieldLabel htmlFor="party-date">Last registered</FieldLabel>
+            <DatePicker
+              id="last-registered"
+              value={formData.last_registered}
+              onChange={(date) => updateField("last_registered", date)}
+              disabled={(date) =>
+                isAfter(
+                  startOfDay(date),
+                  addBusinessDays(startOfDay(new Date()), 0)
+                )
+              }
+              clearable
+            />
+            <FieldDescription>
+              Leave blank if student is not registered.
+            </FieldDescription>
+            {errors.last_registered && (
+              <FieldError>{errors.last_registered}</FieldError>
+            )}
+          </Field>
+
           <Field orientation="vertical">
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Submitting..." : "Save"}
+              {isSubmitting ? "Submitting..." : "Save Changes"}
             </Button>
           </Field>
         </FieldSet>

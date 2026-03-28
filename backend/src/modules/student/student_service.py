@@ -141,24 +141,25 @@ class StudentService:
         Returns:
             PaginatedStudentsResponse with items and metadata
         """
-        # Build base query with eager loading
-        base_query = select(StudentEntity).options(
-            selectinload(StudentEntity.account), selectinload(StudentEntity.residence)
-        )
+        nested_field_columns = {
+            "id": AccountEntity.id,
+            "first_name": AccountEntity.first_name,
+            "last_name": AccountEntity.last_name,
+            "email": AccountEntity.email,
+            "onyen": AccountEntity.onyen,
+            "pid": AccountEntity.pid,
+        }
 
-        # Define allowed fields for sorting and filtering
-        allowed_sort_fields = [
-            "account_id",
-            "phone_number",
-            "contact_preference",
-            "last_registered",
-        ]
-        allowed_filter_fields = [
-            "account_id",
-            "phone_number",
-            "contact_preference",
-            "last_registered",
-        ]
+        _base_allowed_fields = ["phone_number", "contact_preference", "last_registered"]
+        allowed_sort_fields = [*_base_allowed_fields, *nested_field_columns.keys()]
+        allowed_filter_fields = list(allowed_sort_fields)
+
+        # Build base query with JOIN for filter/sort and eager loading for hydration
+        base_query = (
+            select(StudentEntity)
+            .join(AccountEntity, StudentEntity.account_id == AccountEntity.id)
+            .options(selectinload(StudentEntity.account))
+        )
 
         # Parse query params and get paginated results
         query_params = parse_pagination_params(
@@ -176,6 +177,7 @@ class StudentService:
             query_params=query_params,
             allowed_sort_fields=allowed_sort_fields,
             allowed_filter_fields=allowed_filter_fields,
+            nested_field_columns=nested_field_columns,
         )
 
     async def get_student_count(self) -> int:

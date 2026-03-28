@@ -3,9 +3,10 @@ from typing import Any
 
 import pytest
 from httpx import AsyncClient
+from pydantic import BaseModel
 from src.core.authentication import StringRole
 from src.core.exceptions import CredentialsException, ForbiddenException
-from test.utils.http.assertions import assert_res_failure
+from test.utils.http.assertions import assert_res_failure, assert_res_paginated
 
 all_roles: set[StringRole] = {"admin", "staff", "student", "police"}
 
@@ -63,3 +64,40 @@ def generate_auth_required_tests(*params: tuple[set[StringRole], str, str, dict 
             print("✓")
 
     return test_authentication
+
+
+def generate_filter_sort_tests(
+    endpoint: str,
+    dto_class: type[BaseModel],
+    sort_fields: list[str],
+    filter_cases: list[tuple[str, Any]],
+):
+    """Generate tests verifying each allowed sort/filter field works without error.
+
+    Args:
+        endpoint: The API endpoint path (e.g., "/api/incidents").
+        dto_class: The DTO class to validate paginated response items against.
+        sort_fields: List of field names allowed for sorting.
+        filter_cases: List of (query_param_key, sample_value) tuples for filter testing.
+    """
+
+    @pytest.mark.parametrize(
+        "sort_field,sort_order",
+        [(f, o) for f in sort_fields for o in ["asc", "desc"]],
+    )
+    @pytest.mark.asyncio
+    async def test_allowed_sort_fields(admin_client: AsyncClient, sort_field: str, sort_order: str):
+        response = await admin_client.get(
+            f"{endpoint}?sort_by={sort_field}&sort_order={sort_order}"
+        )
+        assert_res_paginated(response, dto_class)
+
+    @pytest.mark.parametrize("filter_key,filter_value", filter_cases)
+    @pytest.mark.asyncio
+    async def test_allowed_filter_fields(
+        admin_client: AsyncClient, filter_key: str, filter_value: Any
+    ):
+        response = await admin_client.get(f"{endpoint}?{filter_key}={filter_value}")
+        assert_res_paginated(response, dto_class)
+
+    return test_allowed_sort_fields, test_allowed_filter_fields

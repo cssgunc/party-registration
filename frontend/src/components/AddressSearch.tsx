@@ -18,7 +18,7 @@ import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { cn } from "@/lib/utils";
 import { CheckIcon, Loader2Icon, MapPinIcon, XIcon } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 interface AddressSearchProps {
   value?: string;
@@ -42,9 +42,14 @@ export default function AddressSearch({
   placeholder = "Search for an address...",
   className,
   disabled = false,
-  locationService = new LocationService(),
+  locationService,
   error: externalError,
 }: AddressSearchProps) {
+  const resolvedLocationService = useMemo(
+    () => locationService ?? new LocationService(),
+    [locationService]
+  );
+
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState(
     initialSelection?.formatted_address ?? value
@@ -103,7 +108,8 @@ export default function AddressSearch({
       setInternalError(null);
 
       try {
-        const results = await locationService.autocompleteAddress(trimmedInput);
+        const results =
+          await resolvedLocationService.autocompleteAddress(trimmedInput);
         setSuggestions(results);
       } catch (err) {
         console.error("Error fetching address suggestions:", err);
@@ -129,7 +135,7 @@ export default function AddressSearch({
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [searchTerm, locationService, selectedAddress]);
+  }, [searchTerm, resolvedLocationService, selectedAddress]);
 
   /**
    * Handle address selection from dropdown
