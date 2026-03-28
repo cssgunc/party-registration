@@ -44,35 +44,40 @@ export default function DatePicker({
           variant="outline"
           aria-invalid={ariaInvalid}
           className={cn(
-            "w-full justify-start text-left font-normal",
+            "relative w-full justify-start text-left font-normal text-base md:text-sm pl-3 py-1",
+            value && clearable ? "pr-16" : "pr-10",
             !value && "text-muted-foreground",
             className
           )}
         >
-          {value ? format(value, dateFormat) : <span>{placeholder}</span>}
-          {value && clearable ? (
-            <span
-              role="button"
-              tabIndex={0}
-              className="ml-auto p-1 rounded-sm hover:bg-accent"
-              onClick={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                onChange(null);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
+          <span className="truncate">
+            {value ? format(value, dateFormat) : placeholder}
+          </span>
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex items-center gap-1">
+            {value && clearable && (
+              <span
+                role="button"
+                tabIndex={0}
+                aria-label="Clear date"
+                className="inline-flex h-6 w-6 items-center justify-center p-0 rounded-sm hover:bg-transparent cursor-pointer"
+                onClick={(e) => {
                   e.stopPropagation();
                   e.preventDefault();
                   onChange(null);
-                }
-              }}
-            >
-              <XIcon className="h-4 w-4 opacity-50 hover:opacity-100" />
-            </span>
-          ) : (
-            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-          )}
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    onChange(null);
+                  }
+                }}
+              >
+                <XIcon className="h-4 w-4 opacity-50" />
+              </span>
+            )}
+            <CalendarIcon className="h-4 w-4 opacity-50" />
+          </span>
         </Button>
       </PopoverTrigger>
       <PopoverContent

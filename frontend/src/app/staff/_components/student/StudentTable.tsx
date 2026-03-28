@@ -118,6 +118,11 @@ export const StudentTable = () => {
 
   const columns: ColumnDef<StudentDto>[] = [
     {
+      accessorKey: "onyen",
+      header: "Onyen",
+      enableColumnFilter: true,
+    },
+    {
       accessorKey: "pid",
       header: "PID",
       enableColumnFilter: true,
@@ -130,11 +135,6 @@ export const StudentTable = () => {
     {
       accessorKey: "last_name",
       header: "Last Name",
-      enableColumnFilter: true,
-    },
-    {
-      accessorKey: "onyen",
-      header: "Onyen",
       enableColumnFilter: true,
     },
     {
@@ -155,7 +155,7 @@ export const StudentTable = () => {
     },
     {
       accessorKey: "contact_preference",
-      header: "Contact Preference",
+      header: "Call/Text",
       enableColumnFilter: true,
       meta: {
         filterType: "select",
@@ -194,14 +194,14 @@ export const StudentTable = () => {
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="h-full min-h-0 flex flex-col">
       <TableTemplate
         data={students}
         columns={columns}
         resourceName="Student"
         onEdit={handleEdit}
         onDelete={handleDelete}
-        onCreateNew={handleCreate}
+        onCreateNewRow={handleCreate}
         isLoading={studentsQuery.isLoading}
         error={studentsQuery.error}
         getDeleteDescription={(student: StudentDto) =>

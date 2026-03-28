@@ -1,7 +1,7 @@
 "use client";
 
 import AddressSearch from "@/components/AddressSearch";
-import ClearableDatePicker from "@/components/ClearableDatePicker";
+import DatePicker from "@/components/DatePicker";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -31,7 +31,7 @@ import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { ResidenceDto } from "@/lib/api/student/student.types";
 import { isFromThisSchoolYear } from "@/lib/utils";
-import { addBusinessDays, format, isAfter, startOfDay } from "date-fns";
+import { addBusinessDays, isAfter, startOfDay } from "date-fns";
 import { useRef, useState } from "react";
 import * as z from "zod";
 
@@ -296,7 +296,7 @@ export default function PartyRegistrationForm({
           <div className="grid grid-cols-2 gap-4">
             <Field data-invalid={!!errors.partyDate}>
               <FieldLabel htmlFor="party-date">Party Date</FieldLabel>
-              <ClearableDatePicker
+              <DatePicker
                 id="party-date"
                 value={formData.partyDate ?? null}
                 onChange={(date) => updateField("partyDate", date as Date)}

@@ -1,4 +1,4 @@
-import ClearableDatePicker from "@/components/ClearableDatePicker";
+import DatePicker from "@/components/DatePicker";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,8 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PartyDto } from "@/lib/api/party/party.types";
 import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 export interface AddIncidentDialogProps {
   open: boolean;
@@ -80,7 +79,7 @@ export default function AddIncidentDialog({
           <div className="grid grid-cols-2 gap-4">
             <Field>
               <FieldLabel htmlFor="party-date">Party Date</FieldLabel>
-              <ClearableDatePicker
+              <DatePicker
                 id="party-date"
                 dateFormat="MM/dd/yy"
                 value={formData.partyDate}

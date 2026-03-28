@@ -1,6 +1,6 @@
 "use client";
 
-import ClearableDatePicker from "@/components/ClearableDatePicker";
+import DatePicker from "@/components/DatePicker";
 import { Button } from "@/components/ui/button";
 import {
   Field,
@@ -46,6 +46,12 @@ export const studentTableFormSchema = z.object({
   onyen: z.string().min(1, "Onyen is required"),
   residence: z.custom<ResidenceDto | null>().default(null),
 });
+
+const formatPhoneNumber = (value: string): string => {
+  return value
+    ? `(${value.slice(0, 3)}) ${value.slice(3, 6)}-${value.slice(6, 10)}`
+    : "—";
+};
 
 type StudentTableFormValues = z.infer<typeof studentTableFormSchema>;
 
@@ -141,6 +147,7 @@ export default function StudentTableForm({
             />
             {errors.pid && <FieldError>{errors.pid}</FieldError>}
           </Field>
+
           <Field data-invalid={!!errors.first_name}>
             <FieldLabel htmlFor="first-name">First name</FieldLabel>
             <Input
@@ -197,7 +204,7 @@ export default function StudentTableForm({
             <Input
               id="phone-number"
               placeholder="(123) 456-7890"
-              value={formData.phone_number}
+              value={formatPhoneNumber((formData.phone_number as string) || "")}
               onChange={(e) => updateField("phone_number", e.target.value)}
               aria-invalid={!!errors.phone_number}
             />
@@ -208,7 +215,7 @@ export default function StudentTableForm({
 
           <Field data-invalid={!!errors.last_registered}>
             <FieldLabel htmlFor="party-date">Last registered</FieldLabel>
-            <ClearableDatePicker
+            <DatePicker
               id="last-registered"
               value={formData.last_registered}
               onChange={(date) => updateField("last_registered", date)}
@@ -218,6 +225,7 @@ export default function StudentTableForm({
                   addBusinessDays(startOfDay(new Date()), 0)
                 )
               }
+              clearable
             />
             <FieldDescription>
               Leave blank if student is not registered.
@@ -252,7 +260,7 @@ export default function StudentTableForm({
 
           <Field orientation="vertical">
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Submitting..." : "Save"}
+              {isSubmitting ? "Submitting..." : "Save Changes"}
             </Button>
           </Field>
         </FieldSet>
