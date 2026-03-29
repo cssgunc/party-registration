@@ -23,7 +23,7 @@ import {
 import { PartyDto } from "@/lib/api/party/party.types";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { EllipsisVertical } from "lucide-react";
+import { AlertTriangle, EllipsisVertical } from "lucide-react";
 import Image from "next/image";
 import type { MouseEvent } from "react";
 import { useState } from "react";
@@ -37,9 +37,13 @@ interface PartyListProps {
 const formatPhoneNumber = (phone: string): string => {
   const cleaned = phone.replace(/\D/g, "");
   if (cleaned.length === 10) {
-    return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+    return `${cleaned.slice(0, 3)}-${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
   }
   return phone;
+};
+
+const formatPreference = (pref: string): string => {
+  return `${pref.charAt(0).toUpperCase() + pref.slice(1).toLowerCase()}`;
 };
 
 const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
@@ -86,18 +90,13 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                 activeParty?.id === party.id && "bg-sky-950/5"
               )}
             >
-              <div className="space-y-2">
-                {/* Date, address, menu */}
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-bold text-sky-950">
-                      {format(party.party_datetime, "M/d/yyyy")} @{" "}
-                      {format(party.party_datetime, "h:mm a")}
-                    </p>
-                    <p className="text-sm font-bold text-sky-950">
-                      {party.location.formatted_address}
-                    </p>
-                  </div>
+              <div className="space-y-1">
+                {/* address is located here */}
+                <div className="flex items-start justify-between gap-2">
+                  <p className="font-semibold">
+                    {party.location.formatted_address}
+                  </p>
+
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button
@@ -138,82 +137,107 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                   </DropdownMenu>
                 </div>
 
-                {/* Contacts + flags */}
-                <div className="grid grid-cols-2 gap-4">
-                  <section>
-                    <p className="text-sm text-sky-950">
+                {/* Contacts on top of each other */}
+                <div className="grid grid-rows-2 gap-y-2 mb-2 mr-4">
+                  {/* Contact One */}
+                  <div className="flex flex-row justify-between gap-x-0.5">
+                    <p className="content text-secondary self-end mb-[-6px]">
                       {party.contact_one.first_name}{" "}
                       {party.contact_one.last_name}
                     </p>
-                    <p className="ml-4 text-sm text-sky-950">
-                      {formatPhoneNumber(party.contact_one.phone_number)}
-                    </p>
-                    <p className="ml-4 text-sm text-sky-950">
-                      Preference:{" "}
-                      {party.contact_one.contact_preference
-                        .charAt(0)
-                        .toUpperCase() +
-                        party.contact_one.contact_preference
-                          .slice(1)
-                          .toLowerCase()}
-                      s
-                    </p>
-                  </section>
-
-                  <section>
-                    <p className="text-sm text-sky-950">
-                      {party.contact_two.first_name}{" "}
-                      {party.contact_two.last_name}
-                    </p>
-                    <p className="ml-4 text-sm text-sky-950">
-                      {formatPhoneNumber(party.contact_two.phone_number)}
-                    </p>
-                    <p className="ml-4 text-sm text-sky-950">
-                      Preference:{" "}
-                      {party.contact_two.contact_preference
-                        .charAt(0)
-                        .toUpperCase() +
-                        party.contact_two.contact_preference
-                          .slice(1)
-                          .toLowerCase()}
-                      s
-                    </p>
-                  </section>
-
-                  <div className="col-span-2 flex flex-row items-center gap-3">
+                    <span className="flex-1 h-[2px] bg-[radial-gradient(circle,currentColor_1px,transparent_1px)] bg-[length:6px_2px] bg-repeat-x self-end text-[var(--secondary)]"></span>
+                    <div className="flex flex-row gap-x-1 mb-[-6px]">
+                      <p className="content text-secondary">
+                        {formatPhoneNumber(party.contact_one.phone_number)}
+                      </p>
+                      <p className="content text-secondary">{" - "}</p>
+                      <p className="content text-secondary">
+                        {formatPreference(party.contact_one.contact_preference)}
+                      </p>
+                    </div>
+                  </div>
+                  {/* Contact Two */}
+                  <div>
+                    <div className="flex flex-row justify-between gap-x-0.5">
+                      <p className="content text-secondary self-end mb-[-6px]">
+                        {party.contact_two.first_name}{" "}
+                        {party.contact_two.last_name}
+                      </p>
+                      <span className="flex-1 h-[2px] bg-[radial-gradient(circle,currentColor_1px,transparent_1px)] bg-[length:6px_2px] bg-repeat-x self-end text-[var(--secondary)]"></span>
+                      <div className="flex flex-row gap-x-1 mb-[-6px]">
+                        <p className="content text-secondary">
+                          {formatPhoneNumber(party.contact_two.phone_number)}
+                        </p>
+                        <p className="content text-secondary">{" - "}</p>
+                        <p className="content text-secondary">
+                          {formatPreference(
+                            party.contact_two.contact_preference
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {/* Flags */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3 pt-1">
                     <HoverCard openDelay={0} closeDelay={4}>
                       <HoverCardTrigger asChild>
-                        <div className="flex items-center gap-1 text-sm font-bold text-black">
+                        <div className="flex items-center gap-1 content-bold text-black cursor-default">
                           {complaintCount}
-                          <Image src={blackFlag} alt="complaints" />
+                          <Image
+                            src={blackFlag}
+                            alt="complaints"
+                            width={16}
+                            height={16}
+                          />
                         </div>
                       </HoverCardTrigger>
-                      <HoverCardContent className="w-40">
+                      <HoverCardContent className="w-32 content">
                         Complaints
                       </HoverCardContent>
                     </HoverCard>
+
                     <HoverCard openDelay={0} closeDelay={4}>
                       <HoverCardTrigger asChild>
-                        <div className="flex items-center gap-1 text-sm font-bold text-black">
+                        <div className="flex items-center gap-1 content-bold text-black cursor-default">
                           {warningCount}
-                          <Image src={yellowFlag} alt="warnings" />
+                          <Image
+                            src={yellowFlag}
+                            alt="warnings"
+                            width={16}
+                            height={16}
+                          />
                         </div>
                       </HoverCardTrigger>
-                      <HoverCardContent className="w-40">
+                      <HoverCardContent className="w-32 content">
                         Warnings
                       </HoverCardContent>
                     </HoverCard>
+
                     <HoverCard openDelay={0} closeDelay={4}>
                       <HoverCardTrigger asChild>
-                        <div className="flex items-center gap-1 text-sm font-bold text-black">
+                        <div className="flex items-center gap-1 content-bold text-black cursor-default">
                           {citationCount}
-                          <Image src={redFlag} alt="citations" />
+                          <Image
+                            src={redFlag}
+                            alt="citations"
+                            width={16}
+                            height={16}
+                          />
                         </div>
                       </HoverCardTrigger>
-                      <HoverCardContent className="w-40">
+                      <HoverCardContent className="w-32 content">
                         Citations
                       </HoverCardContent>
                     </HoverCard>
+                  </div>
+                  <div className="text-[var(--flag-citation)] flex flex-row gap-2 justify-end items-center mr-4">
+                    <AlertTriangle
+                      size="18px"
+                      className="text-black"
+                    ></AlertTriangle>
+                    <span>{format(party.party_datetime, "MM/dd/yy")}</span>
                   </div>
                 </div>
               </div>
@@ -221,6 +245,7 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
           );
         })()
       )}
+
       <AddIncidentDialog
         open={incidentDialogOpen}
         onOpenChange={setIncidentDialogOpen}
