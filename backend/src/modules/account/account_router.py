@@ -19,7 +19,7 @@ async def get_police_credentials(
     _=Depends(authenticate_admin),
 ) -> PoliceAccountDto:
     police_entity = await police_service.get_police()
-    return PoliceAccountDto(email=police_entity.email)
+    return police_entity.to_dto()
 
 
 @account_router.put("/police")
@@ -29,7 +29,7 @@ async def update_police_credentials(
     _=Depends(authenticate_admin),
 ) -> PoliceAccountDto:
     police_entity = await police_service.update_police(data.email, data.password)
-    return PoliceAccountDto(email=police_entity.email)
+    return police_entity.to_dto()
 
 
 @account_router.get("", openapi_extra=PAGINATED_OPENAPI_PARAMS)

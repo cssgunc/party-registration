@@ -1,4 +1,4 @@
-import getMockClient from "@/lib/network/mockClient";
+import apiClient from "@/lib/network/apiClient";
 import { PaginatedResponse } from "@/lib/shared";
 import { AxiosInstance } from "axios";
 import {
@@ -18,7 +18,7 @@ export const hasActiveHold = (holdExpiration: Date | null): boolean => {
 };
 
 export class LocationService {
-  constructor(private client: AxiosInstance = getMockClient("admin")) {}
+  constructor(private client: AxiosInstance = apiClient) {}
 
   /**
    * Autocomplete address search (POST /api/locations/autocomplete)

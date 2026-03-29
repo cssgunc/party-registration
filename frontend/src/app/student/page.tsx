@@ -3,22 +3,14 @@
 import RegistrationTracker from "@/app/student/_components/RegistrationTracker";
 import StatusComponent from "@/app/student/_components/StatusComponent";
 import { Button } from "@/components/ui/button";
-import { useRole } from "@/contexts/RoleContext";
 import {
   useCurrentStudent,
   useMyParties,
 } from "@/lib/api/student/student.queries";
 import { isFromThisSchoolYear } from "@/lib/utils";
 import Link from "next/link";
-import { useEffect } from "react";
 
 export default function StudentDashboard() {
-  const { setRole } = useRole();
-
-  useEffect(() => {
-    setRole("student");
-  }, [setRole]);
-
   const studentQuery = useCurrentStudent();
   const partiesQuery = useMyParties();
   const courseCompleted = isFromThisSchoolYear(

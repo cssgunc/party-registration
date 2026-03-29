@@ -1,4 +1,4 @@
-import getMockClient from "@/lib/network/mockClient";
+import apiClient from "@/lib/network/apiClient";
 import { PaginatedResponse } from "@/lib/shared";
 import { AxiosInstance } from "axios";
 import {
@@ -13,7 +13,7 @@ import {
  * Service class for student-related operations (admin)
  */
 export class AdminStudentService {
-  constructor(private client: AxiosInstance = getMockClient("admin")) {}
+  constructor(private client: AxiosInstance = apiClient) {}
 
   /**
    * Fetches a paginated list of students (GET /api/students)

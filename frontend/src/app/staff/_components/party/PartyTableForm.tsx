@@ -18,11 +18,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useRole } from "@/contexts/RoleContext";
 import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { PartyDto } from "@/lib/api/party/party.types";
 import { addBusinessDays, format, isAfter, startOfDay } from "date-fns";
+import { useSession } from "next-auth/react";
 import { useState } from "react";
 import * as z from "zod";
 
@@ -106,8 +106,8 @@ export default function PartyTableForm({
   submissionError,
   title,
 }: PartyTableFormProps) {
-  const { role } = useRole();
-  const isAdmin = role === "admin";
+  const { data: session } = useSession();
+  const isAdmin = session?.role === "admin";
   const locationService = new LocationService();
 
   const partyTableFormSchema = createPartyTableFormSchema(isAdmin);

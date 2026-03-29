@@ -33,7 +33,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useRole } from "@/contexts/RoleContext";
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -49,6 +48,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
+import { useSession } from "next-auth/react";
 import { useEffect, useMemo, useState } from "react";
 import { DeleteConfirmDialog } from "../dialog/DeleteConfirmDialog";
 import { useSidebar } from "../sidebar/SidebarContext";
@@ -99,7 +99,8 @@ export function TableTemplate<T extends object>({
   pageSizeOptions = [5, 8, 10, 20],
 }: TableProps<T>) {
   const { isOpen, openSidebar, closeSidebar } = useSidebar();
-  const { role } = useRole();
+  const { data: session } = useSession();
+  const role = session?.role;
   // Apply custom sorting if provided
   const sortedData = useMemo(
     () => (sortBy ? [...data].sort(sortBy) : data),

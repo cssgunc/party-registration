@@ -4,6 +4,12 @@
 export type AccountRole = "student" | "staff" | "admin";
 
 /**
+ * All application-level roles, including police which authenticates
+ * separately from SAML-based accounts.
+ */
+export type AppRole = AccountRole | "police";
+
+/**
  * DTO for creating/updating an Account
  */
 type AccountData = {

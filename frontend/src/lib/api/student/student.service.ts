@@ -1,4 +1,4 @@
-import getMockClient from "@/lib/network/mockClient";
+import apiClient from "@/lib/network/apiClient";
 import { AxiosInstance } from "axios";
 import {
   LocationDto,
@@ -15,7 +15,7 @@ import {
 } from "./student.types";
 
 export class StudentService {
-  constructor(private client: AxiosInstance = getMockClient("student")) {}
+  constructor(private client: AxiosInstance = apiClient) {}
 
   async getCurrentStudent(): Promise<StudentDto> {
     try {

@@ -8,9 +8,11 @@ import {
 } from "@/lib/api/party/party.types";
 import StudentService from "@/lib/api/student/student.service";
 import { CURRENT_STUDENT_KEY } from "@/lib/api/student/student.types";
-import getMockClient from "@/lib/network/mockClient";
-import { OptimisticMutationOptions, StringRole } from "@/lib/shared";
+import { OptimisticMutationOptions } from "@/lib/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+
+const partyService = new PartyService();
+const studentService = new StudentService();
 
 type RegisterPartyInput = {
   partyData: StudentCreatePartyDto;
@@ -22,8 +24,6 @@ type RegisterPartyInput = {
  * doesn't have one set for this academic year.
  */
 export function useRegisterParty() {
-  const studentService = new StudentService(getMockClient("student"));
-  const partyService = new PartyService(getMockClient("student"));
   const queryClient = useQueryClient();
 
   return useMutation<PartyDto, Error, RegisterPartyInput>({
@@ -46,10 +46,8 @@ export function useRegisterParty() {
  * Hook to create a new party registration
  */
 export function useCreateParty(
-  role: StringRole = "student",
   options?: OptimisticMutationOptions<PartyDto, Error, CreatePartyDto>
 ) {
-  const partyService = new PartyService(getMockClient(role));
   const queryClient = useQueryClient();
 
   return useMutation<PartyDto, Error, CreatePartyDto>({
@@ -67,8 +65,7 @@ export function useCreateParty(
 /**
  * Hook to update an existing party registration
  */
-export function useUpdateParty(role: StringRole = "student") {
-  const partyService = new PartyService(getMockClient(role));
+export function useUpdateParty() {
   const queryClient = useQueryClient();
 
   return useMutation<
@@ -87,8 +84,7 @@ export function useUpdateParty(role: StringRole = "student") {
 /**
  * Hook to delete a party registration
  */
-export function useDeleteParty(role: StringRole = "student") {
-  const partyService = new PartyService(getMockClient(role));
+export function useDeleteParty() {
   const queryClient = useQueryClient();
 
   return useMutation<PartyDto, Error, number>({

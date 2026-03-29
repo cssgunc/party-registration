@@ -1,9 +1,8 @@
 import { Button } from "@/components/ui/button";
-import { useRole } from "@/contexts/RoleContext";
-import { IncidentDto } from "@/lib/api/location/location.types";
-import { LocationDto } from "@/lib/api/location/location.types";
+import { IncidentDto, LocationDto } from "@/lib/api/location/location.types";
 import { PaginatedResponse } from "@/lib/shared";
 import { useQueryClient } from "@tanstack/react-query";
+import { useSession } from "next-auth/react";
 import { useState } from "react";
 import { DeleteConfirmDialog } from "../shared/dialog/DeleteConfirmDialog";
 import { useSidebar } from "../shared/sidebar/SidebarContext";
@@ -17,7 +16,8 @@ type IncidentSidebarProps = {
 export default function IncidentInfoChipDetails({
   incidents,
 }: IncidentSidebarProps) {
-  const { role } = useRole();
+  const { data: session } = useSession();
+  const role = session?.role;
   type ModalState =
     | { mode: "create" }
     | { mode: "edit"; incident: IncidentDto }

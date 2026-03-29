@@ -1,7 +1,8 @@
 "use client";
 
-import { SessionProvider, signIn, signOut, useSession } from "next-auth/react";
+import { SessionProvider, signOut, useSession } from "next-auth/react";
 import Link from "next/link";
+import { useState } from "react";
 
 // Wrap the AuthTest component in a SessionProvider since this is a client-side rendered page
 export default function AuthTestWrapper() {
@@ -14,6 +15,25 @@ export default function AuthTestWrapper() {
 
 function AuthTest() {
   const { data: session } = useSession();
+  const [showPoliceForm, setShowPoliceForm] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [policeError, setPoliceError] = useState("");
+
+  async function handlePoliceSignIn(e: React.FormEvent) {
+    e.preventDefault();
+    setPoliceError("");
+    const res = await fetch("/api/auth/police/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    if (!res.ok) {
+      setPoliceError("Invalid email or password.");
+    } else {
+      window.location.reload();
+    }
+  }
 
   return (
     <div className="font-sans min-h-screen flex flex-col items-center justify-center p-8 sm:p-20 max-w-2xl mx-auto">
@@ -43,8 +63,11 @@ function AuthTest() {
 
       {session ? (
         <div className="text-center">
-          <p className="mb-4">
+          <p className="mb-1">
             Signed in as: {session.user?.email || session.user?.name}
+          </p>
+          <p className="mb-4 text-sm text-gray-500">
+            Role: {session.role ?? "none"}
           </p>
           <button
             onClick={() => signOut()}
@@ -56,17 +79,63 @@ function AuthTest() {
       ) : (
         <div className="text-center">
           <p className="mb-4">Not signed in</p>
-          <button
-            onClick={() =>
-              signIn("credentials", {
-                username: "admin",
-                password: "password",
-              })
-            } // Hard code credentials for now to make testing easier
-            className="bg-blue-500 text-white px-4 py-2 rounded"
-          >
-            Sign In
-          </button>
+          <div className="flex flex-wrap justify-center gap-2">
+            <Link
+              href="/api/auth/login/saml?callbackUrl=/auth-test&role=student"
+              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded inline-block"
+            >
+              Student
+            </Link>
+            <Link
+              href="/api/auth/login/saml?callbackUrl=/auth-test&role=staff"
+              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded inline-block"
+            >
+              Staff
+            </Link>
+            <Link
+              href="/api/auth/login/saml?callbackUrl=/auth-test&role=admin"
+              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded inline-block"
+            >
+              Admin
+            </Link>
+            <button
+              onClick={() => setShowPoliceForm((v) => !v)}
+              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
+            >
+              Police
+            </button>
+          </div>
+
+          {showPoliceForm && (
+            <form
+              onSubmit={handlePoliceSignIn}
+              className="mt-4 flex flex-col items-center gap-2"
+            >
+              <input
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="border rounded px-3 py-1.5 text-sm w-48"
+              />
+              <input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="border rounded px-3 py-1.5 text-sm w-48"
+              />
+              {policeError && (
+                <p className="text-red-500 text-sm">{policeError}</p>
+              )}
+              <button
+                type="submit"
+                className="bg-green-600 hover:bg-green-700 text-white px-4 py-1.5 rounded text-sm"
+              >
+                Sign In
+              </button>
+            </form>
+          )}
         </div>
       )}
     </div>

@@ -4,14 +4,12 @@ import PartyRegistrationForm, {
   PartyFormValues,
 } from "@/app/student/_components/PartyRegistrationForm";
 import { Card } from "@/components/ui/card";
-import { LocationService } from "@/lib/api/location/location.service";
 import { useRegisterParty } from "@/lib/api/party/party.queries";
 import { StudentCreatePartyDto } from "@/lib/api/party/party.types";
 import {
   useCurrentStudent,
   useMyParties,
 } from "@/lib/api/student/student.queries";
-import getMockClient from "@/lib/network/mockClient";
 import { isFromThisSchoolYear } from "@/lib/utils";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -107,7 +105,6 @@ export default function RegistrationForm() {
         </div>
         <PartyRegistrationForm
           onSubmit={handleSubmit}
-          locationService={new LocationService(getMockClient("student"))}
           initialValues={initialValues}
           studentEmail={studentQuery.data?.email}
           studentPhoneNumber={studentQuery.data?.phone_number}
