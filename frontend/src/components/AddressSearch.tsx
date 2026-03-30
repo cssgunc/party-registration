@@ -29,6 +29,7 @@ interface AddressSearchProps {
   disabled?: boolean;
   locationService?: LocationService;
   error?: string;
+  chapelHillOnly?: boolean;
 }
 
 /**
@@ -44,6 +45,7 @@ export default function AddressSearch({
   disabled = false,
   locationService,
   error: externalError,
+  chapelHillOnly = false,
 }: AddressSearchProps) {
   const resolvedLocationService = useMemo(
     () => locationService ?? new LocationService(),
@@ -110,7 +112,13 @@ export default function AddressSearch({
       try {
         const results =
           await resolvedLocationService.autocompleteAddress(trimmedInput);
-        setSuggestions(results);
+        setSuggestions(
+          chapelHillOnly
+            ? results.filter((r) =>
+                r.formatted_address.toLowerCase().includes("chapel hill")
+              )
+            : results
+        );
       } catch (err) {
         console.error("Error fetching address suggestions:", err);
         setInternalError(
@@ -135,7 +143,7 @@ export default function AddressSearch({
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [searchTerm, resolvedLocationService, selectedAddress]);
+  }, [searchTerm, resolvedLocationService, selectedAddress, chapelHillOnly]);
 
   /**
    * Handle address selection from dropdown
@@ -336,6 +344,12 @@ export default function AddressSearch({
           </Command>
         </PopoverContent>
       </Popover>
+
+      {chapelHillOnly && (
+        <p className="mt-1 text-sm italic text-muted-foreground">
+          Only Chapel Hill addresses are covered by Party Smart
+        </p>
+      )}
 
       {displayError && (
         <p className="mt-2 text-sm text-destructive" role="alert">
