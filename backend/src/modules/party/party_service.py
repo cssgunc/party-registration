@@ -111,6 +111,7 @@ class PartyService:
             .options(
                 selectinload(PartyEntity.location),
                 selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.residence),
             )
         )
         party_entity = result.scalar_one_or_none()
@@ -227,6 +228,7 @@ class PartyService:
             .options(
                 selectinload(PartyEntity.location),
                 selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.residence),
             )
         )
         if limit is not None:
@@ -322,6 +324,7 @@ class PartyService:
             .options(
                 selectinload(PartyEntity.location),
                 selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.residence),
             )
         )
         parties = result.scalars().all()
@@ -338,6 +341,7 @@ class PartyService:
             .options(
                 selectinload(PartyEntity.location),
                 selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.residence),
             )
         )
         parties = result.scalars().all()
@@ -356,6 +360,7 @@ class PartyService:
             .options(
                 selectinload(PartyEntity.location),
                 selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.residence),
             )
         )
         parties = result.scalars().all()
@@ -614,6 +619,7 @@ class PartyService:
             .options(
                 selectinload(PartyEntity.location),
                 selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.residence),
             )
         )
         parties = result.scalars().all()
@@ -629,6 +635,7 @@ class PartyService:
             .options(
                 selectinload(PartyEntity.location),
                 selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.residence),
             )
             .where(
                 PartyEntity.party_datetime >= start_time,
@@ -679,6 +686,7 @@ class PartyService:
             .options(
                 selectinload(PartyEntity.location),
                 selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.residence),
             )
             .where(
                 PartyEntity.party_datetime >= start_date,

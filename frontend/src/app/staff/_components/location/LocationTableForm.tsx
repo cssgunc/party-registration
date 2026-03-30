@@ -1,8 +1,8 @@
 "use client";
 
 import AddressSearch from "@/components/AddressSearch";
+import DatePicker from "@/components/DatePicker";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
 import {
   Field,
   FieldDescription,
@@ -11,15 +11,9 @@ import {
   FieldLabel,
   FieldSet,
 } from "@/components/ui/field";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
-import { addBusinessDays, format, isAfter, startOfDay } from "date-fns";
-import { CalendarIcon } from "lucide-react";
+import { addBusinessDays, isAfter, startOfDay } from "date-fns";
 import { useState } from "react";
 import * as z from "zod";
 
@@ -47,6 +41,13 @@ export default function LocationTableForm({
   title,
 }: LocationTableFormProps) {
   const locationService = new LocationService();
+  const initialAddressSelection: AutocompleteResult | null =
+    editData?.address && editData?.placeId
+      ? {
+          formatted_address: editData.address,
+          google_place_id: editData.placeId,
+        }
+      : null;
 
   const [formData, setFormData] = useState<Partial<LocationTableFormValues>>({
     address: editData?.address ?? "",
@@ -127,6 +128,7 @@ export default function LocationTableForm({
             <FieldLabel htmlFor="party-address">Party Address</FieldLabel>
             <AddressSearch
               value={formData.address}
+              initialSelection={initialAddressSelection}
               onSelect={handleAddressSelect}
               locationService={locationService}
               placeholder="Search for the location address..."
@@ -139,39 +141,18 @@ export default function LocationTableForm({
 
           <Field data-invalid={!!errors.holdExpiration}>
             <FieldLabel htmlFor="hold-expiration">Hold Expiration</FieldLabel>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  id="hold-expiration"
-                  variant="outline"
-                  className={`w-full justify-start text-left font-normal ${
-                    !formData.holdExpiration && "text-muted-foreground"
-                  }`}
-                >
-                  {formData.holdExpiration ? (
-                    format(formData.holdExpiration, "PPP")
-                  ) : (
-                    <span>Pick a date</span>
-                  )}
-                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={formData.holdExpiration || undefined}
-                  onSelect={(date) =>
-                    updateField("holdExpiration", date ?? null)
-                  }
-                  disabled={(date) =>
-                    !isAfter(
-                      startOfDay(date),
-                      addBusinessDays(startOfDay(new Date()), 1)
-                    )
-                  }
-                />
-              </PopoverContent>
-            </Popover>
+            <DatePicker
+              id="hold-expiration"
+              value={formData.holdExpiration}
+              onChange={(date) => updateField("holdExpiration", date)}
+              disabled={(date) =>
+                !isAfter(
+                  startOfDay(date),
+                  addBusinessDays(startOfDay(new Date()), 1)
+                )
+              }
+              clearable
+            />
             <FieldDescription>
               Leave blank if there is no hold on this location.
             </FieldDescription>
@@ -182,7 +163,7 @@ export default function LocationTableForm({
 
           <Field orientation="vertical">
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Submitting..." : "Save"}
+              {isSubmitting ? "Submitting..." : "Save Changes"}
             </Button>
           </Field>
         </FieldSet>
