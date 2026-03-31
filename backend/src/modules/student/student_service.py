@@ -6,10 +6,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from src.core.database import get_session
-from src.core.date_utils import is_same_academic_year
-from src.core.excel_export import ExcelExporter
 from src.core.exceptions import BadRequestException, ConflictException, NotFoundException
-from src.core.query_utils import (
+from src.core.utils.date_utils import is_same_academic_year
+from src.core.utils.excel_utils import ExcelExporter
+from src.core.utils.query_utils import (
     ListQueryParam,
     apply_query_params,
     get_paginated_results,

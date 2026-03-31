@@ -15,7 +15,7 @@ from src.core.exceptions import (
     ForbiddenException,
     UnprocessableEntityException,
 )
-from src.core.query_utils import PAGINATED_OPENAPI_PARAMS
+from src.core.utils.query_utils import PAGINATED_OPENAPI_PARAMS
 from src.modules.account.account_model import AccountDto, AccountRole
 from src.modules.location.location_service import LocationService
 from src.modules.police.police_model import PoliceAccountDto

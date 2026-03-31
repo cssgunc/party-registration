@@ -3,9 +3,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from src.core.database import get_session
-from src.core.excel_export import ExcelExporter
 from src.core.exceptions import NotFoundException
-from src.core.query_utils import (
+from src.core.utils.excel_utils import ExcelExporter
+from src.core.utils.query_utils import (
     ListQueryParam,
     PaginatedResponse,
     apply_query_params,

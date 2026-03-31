@@ -1,9 +1,9 @@
 from fastapi import Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.core.bcrypt_utils import hash_password, verify_password
 from src.core.database import get_session
 from src.core.exceptions import ConflictException, CredentialsException, InternalServerException
+from src.core.utils.bcrypt_utils import hash_password, verify_password
 from src.modules.police.police_entity import PoliceEntity
 
 

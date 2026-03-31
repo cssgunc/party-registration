@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Request, Response, status
 from src.core.authentication import authenticate_police_or_admin, authenticate_police_staff_or_admin
-from src.core.query_utils import PAGINATED_OPENAPI_PARAMS
+from src.core.utils.query_utils import PAGINATED_OPENAPI_PARAMS
 from src.modules.account.account_model import AccountDto
 from src.modules.police.police_model import PoliceAccountDto
 

@@ -9,14 +9,14 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.config import env
 from src.core.database import get_session
-from src.core.excel_export import ExcelExporter
 from src.core.exceptions import (
     BadRequestException,
     ConflictException,
     InternalServerException,
     NotFoundException,
 )
-from src.core.query_utils import get_paginated_results, parse_pagination_params
+from src.core.utils.excel_utils import ExcelExporter
+from src.core.utils.query_utils import get_paginated_results, parse_pagination_params
 from src.modules.incident.incident_model import IncidentSeverity
 
 from .location_entity import LocationEntity

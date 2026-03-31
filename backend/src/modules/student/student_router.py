@@ -4,7 +4,7 @@ from src.core.authentication import (
     authenticate_staff_or_admin,
     authenticate_student,
 )
-from src.core.query_utils import PAGINATED_OPENAPI_PARAMS
+from src.core.utils.query_utils import PAGINATED_OPENAPI_PARAMS
 from src.modules.account.account_model import AccountDto
 from src.modules.location.location_model import LocationDto
 from src.modules.party.party_model import PartyDto

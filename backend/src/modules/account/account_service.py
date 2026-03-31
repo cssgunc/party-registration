@@ -3,9 +3,9 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.database import get_session
-from src.core.excel_export import ExcelExporter
 from src.core.exceptions import ConflictException, NotFoundException
-from src.core.query_utils import get_paginated_results, parse_pagination_params
+from src.core.utils.excel_utils import ExcelExporter
+from src.core.utils.query_utils import get_paginated_results, parse_pagination_params
 from src.modules.account.account_entity import AccountEntity, AccountRole
 from src.modules.account.account_model import AccountData, AccountDto, PaginatedAccountsResponse
 
