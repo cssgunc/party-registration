@@ -2,7 +2,7 @@ import pytest
 from httpx import AsyncClient
 from src.core.config import env
 from src.core.exceptions import CredentialsException, ForbiddenException
-from src.modules.account.account_model import AccountData, AccountRole
+from src.modules.account.account_model import AccountData, AccountDto, AccountRole
 from src.modules.auth.auth_model import AccessTokenDto, PoliceCredentialsDto, TokensDto
 from src.modules.auth.auth_service import (
     AuthService,
@@ -64,9 +64,16 @@ class TestAuthRouter:
 
         data = assert_res_success(response, TokensDto)
         payload = self.auth_utils.decode_token(data.access_token)
-        assert payload["email"] == account_data.email
-        assert payload["onyen"] == account_data.onyen
-        assert payload["role"] == "student"
+        expected = AccountDto(
+            id=payload["sub"],
+            email=account_data.email,
+            first_name=account_data.first_name,
+            last_name=account_data.last_name,
+            pid=account_data.pid,
+            onyen=account_data.onyen,
+            role=AccountRole.STUDENT,
+        )
+        self.auth_utils.assert_account_token_payload(payload, expected)
 
     @pytest.mark.asyncio
     async def test_exchange_student_upserts_idp_fields_leaves_role(
@@ -92,10 +99,16 @@ class TestAuthRouter:
 
         data = assert_res_success(response, TokensDto)
         payload = self.auth_utils.decode_token(data.access_token)
-        assert payload["first_name"] == "Updated"
-        assert payload["last_name"] == "Name"
-        assert payload["email"] == "newemail@unc.edu"
-        assert payload["role"] == "student"
+        expected = AccountDto(
+            id=payload["sub"],
+            email=updated_data.email,
+            first_name=updated_data.first_name,
+            last_name=updated_data.last_name,
+            pid=updated_data.pid,
+            onyen=updated_data.onyen,
+            role=AccountRole.STUDENT,
+        )
+        self.auth_utils.assert_account_token_payload(payload, expected)
 
     @pytest.mark.asyncio
     async def test_exchange_staff_success(self, account_utils: AccountTestUtils) -> None:
@@ -119,7 +132,7 @@ class TestAuthRouter:
 
         result = assert_res_success(response, TokensDto)
         payload = self.auth_utils.decode_token(result.access_token)
-        assert payload["role"] == "staff"
+        self.auth_utils.assert_account_token_payload(payload, existing.to_dto())
 
     @pytest.mark.asyncio
     async def test_exchange_admin_success(self, account_utils: AccountTestUtils) -> None:
@@ -143,7 +156,7 @@ class TestAuthRouter:
 
         result = assert_res_success(response, TokensDto)
         payload = self.auth_utils.decode_token(result.access_token)
-        assert payload["role"] == "admin"
+        self.auth_utils.assert_account_token_payload(payload, existing.to_dto())
 
     @pytest.mark.asyncio
     async def test_exchange_staff_not_found_returns_403(

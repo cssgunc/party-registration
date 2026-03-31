@@ -184,14 +184,16 @@ class TestAccountRouter:
             json={"role": "admin"},
         )
         data = assert_res_success(response, AccountDto)
-        assert data.id == account_to_update.id
-        assert data.role == AccountRole.ADMIN
-        # IdP fields should be unchanged
-        assert data.email == account_to_update.email
-        assert data.first_name == account_to_update.first_name
-        assert data.last_name == account_to_update.last_name
-        assert data.pid == account_to_update.pid
-        assert data.onyen == account_to_update.onyen
+        expected = AccountDto(
+            id=account_to_update.id,
+            role=AccountRole.ADMIN,
+            email=account_to_update.email,
+            first_name=account_to_update.first_name,
+            last_name=account_to_update.last_name,
+            pid=account_to_update.pid,
+            onyen=account_to_update.onyen,
+        )
+        self.account_utils.assert_matches(expected, data)
 
     @pytest.mark.asyncio
     async def test_update_account_not_found(self):

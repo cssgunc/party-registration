@@ -3,7 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.database import get_session
-from src.core.exceptions import ConflictException, NotFoundException
+from src.core.exceptions import ConflictException, ForbiddenException, NotFoundException
 from src.core.query_utils import get_paginated_results, parse_pagination_params
 from src.modules.account.account_entity import AccountEntity, AccountRole
 from src.modules.account.account_model import (
@@ -221,3 +221,23 @@ class AccountService:
         await self.session.delete(account_entity)
         await self.session.commit()
         return account
+
+    async def upsert_idp_account(self, data: AccountData) -> AccountDto:
+        try:
+            account_entity = await self._get_account_entity_by_onyen(data.onyen)
+        except AccountByOnyenNotFoundException:
+            if data.role != AccountRole.STUDENT:
+                raise ForbiddenException(detail="No matching account found") from None
+            return await self.create_account(data)
+
+        if data.role != AccountRole.STUDENT and account_entity.role != data.role:
+            raise ForbiddenException(detail="Role mismatch")
+
+        account_entity.first_name = data.first_name
+        account_entity.last_name = data.last_name
+        account_entity.email = data.email
+        account_entity.pid = data.pid
+        self.session.add(account_entity)
+        await self.session.commit()
+        await self.session.refresh(account_entity)
+        return account_entity.to_dto()

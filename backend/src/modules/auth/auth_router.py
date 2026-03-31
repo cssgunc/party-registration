@@ -1,8 +1,7 @@
 from fastapi import APIRouter, Depends, Header, status
 from src.core.authentication import authenticate_by_role
 from src.core.config import env
-from src.core.exceptions import ForbiddenException, NotFoundException
-from src.modules.account.account_model import AccountData, AccountRole
+from src.modules.account.account_model import AccountData
 from src.modules.account.account_service import AccountService
 from src.modules.auth.auth_model import (
     AccessTokenDto,
@@ -47,28 +46,7 @@ async def exchange_account_data_for_tokens(
 
     Requires internal API secret in X-Internal-Secret header.
     """
-    if data.role == AccountRole.STUDENT:
-        try:
-            account = await account_service.get_account_by_onyen(data.onyen)
-            account_entity = await account_service._get_account_entity_by_id(account.id)
-            account_entity.first_name = data.first_name
-            account_entity.last_name = data.last_name
-            account_entity.email = data.email
-            account_entity.pid = data.pid
-            account_service.session.add(account_entity)
-            await account_service.session.commit()
-            await account_service.session.refresh(account_entity)
-            account = account_entity.to_dto()
-        except NotFoundException:
-            account = await account_service.create_account(data)
-    else:
-        try:
-            account = await account_service.get_account_by_onyen(data.onyen)
-        except NotFoundException:
-            raise ForbiddenException(detail="No matching account found") from None
-        if account.role != data.role:
-            raise ForbiddenException(detail="Role mismatch")
-
+    account = await account_service.upsert_idp_account(data)
     return await auth_service.exchange_account_for_tokens(account)
 
 
