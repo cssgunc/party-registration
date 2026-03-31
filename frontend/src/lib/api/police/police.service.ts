@@ -1,4 +1,4 @@
-import getMockClient from "@/lib/network/mockClient";
+import apiClient from "@/lib/network/apiClient";
 import { AxiosInstance } from "axios";
 import {
   LocationDto,
@@ -10,7 +10,7 @@ import {
  * Service class for police-related operations
  */
 export class PoliceService {
-  constructor(private client: AxiosInstance = getMockClient("police")) {}
+  constructor(private client: AxiosInstance = apiClient) {}
 
   /**
    * Increment location warning count (POST /api/police/locations/{location_id}/warnings)

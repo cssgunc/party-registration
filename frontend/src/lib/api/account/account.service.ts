@@ -1,4 +1,4 @@
-import getMockClient from "@/lib/network/mockClient";
+import apiClient from "@/lib/network/apiClient";
 import { PaginatedResponse } from "@/lib/shared";
 import { AxiosInstance } from "axios";
 import { AccountData, AccountDto, AccountRole } from "./account.types";
@@ -7,7 +7,7 @@ import { AccountData, AccountDto, AccountRole } from "./account.types";
  * Service class for account-related operations
  */
 export class AccountService {
-  constructor(private client: AxiosInstance = getMockClient("admin")) {}
+  constructor(private client: AxiosInstance = apiClient) {}
 
   /**
    * List accounts (GET /api/accounts)

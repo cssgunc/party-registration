@@ -1,6 +1,7 @@
 "use client";
 
 import { StudentDto } from "@/lib/api/student/student.types";
+import { isFromThisSchoolYear } from "@/lib/utils";
 import { GenericChipDetails } from "../../shared/sidebar/GenericChipDetails";
 
 interface StudentInfoChipDetailsProps {
@@ -17,42 +18,51 @@ export function StudentInfoChipDetails({ data }: StudentInfoChipDetailsProps) {
         <div className="space-y-3">
           <div>
             <label className="block text-sm font-medium">First Name</label>
-            <p className="p-2 border rounded">{d.first_name}</p>
+            <p className="p-2">{d.first_name}</p>
           </div>
           <div>
             <label className="block text-sm font-medium">Last Name</label>
-            <p className="p-2 border rounded">{d.last_name}</p>
+            <p className="p-2">{d.last_name}</p>
           </div>
           <div>
             <label className="block text-sm font-medium">Phone Number</label>
-            <p className="p-2 border rounded">{d.phone_number}</p>
+            <p className="p-2">{d.phone_number}</p>
           </div>
           <div>
             <label className="block text-sm font-medium">
               Contact Preference
             </label>
-            <p className="p-2 border rounded">
+            <p className="p-2">
               {d.contact_preference.charAt(0).toUpperCase() +
                 d.contact_preference.slice(1)}
             </p>
           </div>
           <div>
             <label className="block text-sm font-medium">PID</label>
-            <p className="p-2 border rounded">{d.pid}</p>
+            <p className="p-2">{d.pid}</p>
           </div>
           <div>
             <label className="block text-sm font-medium">Onyen</label>
-            <p className="p-2 border rounded">{d.onyen}</p>
+            <p className="p-2">{d.onyen}</p>
           </div>
           <div>
             <label className="block text-sm font-medium">Email</label>
-            <p className="p-2 border rounded">{d.email}</p>
+            <p className="p-2">{d.email}</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium">Residence</label>
+            <p className="p-2 border rounded">
+              {d.residence &&
+              isFromThisSchoolYear(d.residence.residence_chosen_date)
+                ? d.residence.location.formatted_address
+                : "—"}
+            </p>
           </div>
           <div>
             <label className="block text-sm font-medium">
               Completed Party Smart
             </label>
-            <p className="p-2 border rounded">
+            <p className="p-2">
               {d.last_registered != null ? "Yes" : "Not Registered"}
             </p>
           </div>

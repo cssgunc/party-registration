@@ -9,28 +9,34 @@ import {
   useStudents,
   useUpdateStudent,
 } from "@/lib/api/student/admin-student.queries";
-import { StudentDto } from "@/lib/api/student/student.types";
+import { StudentDto, StudentUpdateDto } from "@/lib/api/student/student.types";
 import { isFromThisSchoolYear } from "@/lib/utils";
 import { ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
+import LocationInfoChipDetails from "../party/details/LocationInfoChipDetails";
+import { GenericInfoChip } from "../shared/sidebar/GenericInfoChip";
 import { TableTemplate } from "../shared/table/TableTemplate";
 import StudentTableForm from "./StudentTableForm";
 
 const hasStudentChanged = (
   original: StudentDto | null,
-  updated: Omit<StudentDto, "id" | "email" | "pid">
+  updated: StudentUpdateDto
 ): boolean => {
   if (!original) return true;
 
   return (
     original.first_name !== updated.first_name ||
     original.last_name !== updated.last_name ||
-    original.onyen !== updated.onyen ||
     original.phone_number !== updated.phone_number ||
     original.contact_preference !== updated.contact_preference ||
     original.last_registered?.getTime() !== updated.last_registered?.getTime()
   );
 };
+
+const toEditData = (student: StudentDto) => ({
+  ...student,
+  residence_place_id: student.residence?.location.google_place_id ?? null,
+});
 
 export const StudentTable = () => {
   const { openSnackbar } = useSnackbar();
@@ -111,7 +117,7 @@ export const StudentTable = () => {
       <StudentTableForm
         title="Edit Student"
         onSubmit={(data) => handleEditSubmit(student, data)}
-        editData={student}
+        editData={toEditData(student)}
       />
     );
   };
@@ -136,12 +142,17 @@ export const StudentTable = () => {
 
   const handleEditSubmit = async (
     student: StudentDto,
-    data: Omit<StudentDto, "id" | "email" | "pid">
+    data: StudentUpdateDto
   ) => {
     editFormMutation.mutate({ id: student.id, data });
   };
 
   const columns: ColumnDef<StudentDto>[] = [
+    {
+      accessorKey: "onyen",
+      header: "Onyen",
+      enableColumnFilter: true,
+    },
     {
       accessorKey: "pid",
       header: "PID",
@@ -155,11 +166,6 @@ export const StudentTable = () => {
     {
       accessorKey: "last_name",
       header: "Last Name",
-      enableColumnFilter: true,
-    },
-    {
-      accessorKey: "onyen",
-      header: "Onyen",
       enableColumnFilter: true,
     },
     {
@@ -180,7 +186,7 @@ export const StudentTable = () => {
     },
     {
       accessorKey: "contact_preference",
-      header: "Contact Preference",
+      header: "Call/Text",
       enableColumnFilter: true,
       meta: {
         filterType: "select",
@@ -190,6 +196,33 @@ export const StudentTable = () => {
         const preference =
           row.getValue<StudentDto["contact_preference"]>("contact_preference");
         return preference === "call" ? "Call" : "Text";
+      },
+    },
+    {
+      id: "residence",
+      header: "Residence",
+      enableColumnFilter: false,
+      cell: ({ row }) => {
+        const student = row.original;
+        const hasValidResidence =
+          student.residence &&
+          isFromThisSchoolYear(student.residence.residence_chosen_date);
+        if (!hasValidResidence || !student.residence) {
+          return "—";
+        }
+        const location = student.residence.location;
+        const shortName = [location.street_number, location.street_name]
+          .filter(Boolean)
+          .join(" ");
+        return (
+          <GenericInfoChip
+            chipKey={`student-${student.id}-residence`}
+            title="Residence Information"
+            description="Detailed information about the student's residence"
+            shortName={shortName || location.formatted_address}
+            sidebarContent={<LocationInfoChipDetails data={location} />}
+          />
+        );
       },
     },
     {
@@ -219,14 +252,14 @@ export const StudentTable = () => {
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="h-full min-h-0 flex flex-col">
       <TableTemplate
         data={students}
         columns={columns}
         resourceName="Student"
         onEdit={handleEdit}
         onDelete={handleDelete}
-        onCreateNew={handleCreate}
+        onCreateNewRow={handleCreate}
         isLoading={studentsQuery.isLoading}
         error={studentsQuery.error}
         getDeleteDescription={(student: StudentDto) =>

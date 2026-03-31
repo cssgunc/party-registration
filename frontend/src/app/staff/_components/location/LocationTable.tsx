@@ -231,9 +231,9 @@ export const LocationTable = () => {
         const holdDate = row.getValue("hold_expiration") as Date | null;
         if (holdDate) {
           const formattedDate = new Date(holdDate).toLocaleDateString();
-          return `until ${formattedDate}`;
+          return `Expires: ${formattedDate}`;
         }
-        return "no active hold";
+        return "No";
       },
 
       filterFn: (row, columnId, filterValue) => {
@@ -248,14 +248,14 @@ export const LocationTable = () => {
     },
   ];
   return (
-    <div className="space-y-4">
+    <div className="h-full min-h-0 flex flex-col">
       <TableTemplate
         data={locations}
         columns={columns}
         resourceName="Location"
         onEdit={handleEdit}
         onDelete={handleDelete}
-        onCreateNew={handleCreate}
+        onCreateNewRow={handleCreate}
         isLoading={locationsQuery.isLoading}
         error={locationsQuery.error as Error | null}
         getDeleteDescription={(location: LocationDto) =>

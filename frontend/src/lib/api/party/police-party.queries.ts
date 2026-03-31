@@ -1,12 +1,11 @@
 import { LocationService } from "@/lib/api/location/location.service";
 import { AddressData } from "@/lib/api/location/location.types";
-import getMockClient from "@/lib/network/mockClient";
 import { UseQueryOptions, useQuery } from "@tanstack/react-query";
 import { PartyService } from "./party.service";
 import { PARTIES_KEY, PartyDto } from "./party.types";
 
-const policeLocationService = new LocationService(getMockClient("police"));
-const partyService = new PartyService(getMockClient("police"));
+const policeLocationService = new LocationService();
+const partyService = new PartyService();
 
 // Query key constants for police queries
 const PLACE_DETAILS_KEY = ["place-details"] as const;

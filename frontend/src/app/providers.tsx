@@ -1,6 +1,5 @@
 "use client";
 
-import { RoleProvider } from "@/contexts/RoleContext";
 import { SnackbarProvider, useSnackbar } from "@/contexts/SnackbarContext";
 import { setupErrorInterceptor } from "@/lib/network/apiClient";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -32,15 +31,13 @@ const queryClient = new QueryClient({
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
-      <RoleProvider>
-        <QueryClientProvider client={queryClient}>
-          <SnackbarProvider>
-            <InterceptorSetup />
-            {children}
-            <Toaster />
-          </SnackbarProvider>
-        </QueryClientProvider>
-      </RoleProvider>
+      <QueryClientProvider client={queryClient}>
+        <SnackbarProvider>
+          <InterceptorSetup />
+          {children}
+          <Toaster />
+        </SnackbarProvider>
+      </QueryClientProvider>
     </SessionProvider>
   );
 }

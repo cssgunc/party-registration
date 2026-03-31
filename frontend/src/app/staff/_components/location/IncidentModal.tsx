@@ -1,6 +1,6 @@
 "use client";
 
-import DatePickerComponent from "@/app/staff/_components/location/DatePickerComponent";
+import DatePicker from "@/components/DatePicker";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -103,9 +103,11 @@ export default function IncidentModal({
                         return (
                           <FormItem className="flex flex-row">
                             <FormControl>
-                              <DatePickerComponent
-                                date={date}
-                                setDate={(newDate) => {
+                              <DatePicker
+                                value={date}
+                                onChange={(newDate) => {
+                                  if (!newDate) return;
+
                                   const updated = new Date(date);
                                   updated.setFullYear(
                                     newDate.getFullYear(),
@@ -114,6 +116,7 @@ export default function IncidentModal({
                                   );
                                   field.onChange(updated);
                                 }}
+                                placeholder="Pick a date"
                               />
                             </FormControl>
 
