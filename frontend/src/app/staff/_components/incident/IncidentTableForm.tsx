@@ -218,10 +218,11 @@ export default function IncidentTableForm({
 
           <Field data-invalid={!!errors.description}>
             <FieldLabel>Description</FieldLabel>
-            <Input
+            <textarea
               value={formData.description}
               onChange={(e) => updateField("description", e.target.value)}
               placeholder="What happened?"
+              className="w-full min-h-24 px-3 py-2 rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-vertical"
             />
             {errors.description && (
               <FieldError>{errors.description}</FieldError>
