@@ -276,13 +276,11 @@ def party_service(
     test_session: AsyncSession,
     location_service: LocationService,
     student_service: StudentService,
-    account_service: AccountService,
 ):
     return PartyService(
         session=test_session,
         location_service=location_service,
         student_service=student_service,
-        account_service=account_service,
     )
 
 
