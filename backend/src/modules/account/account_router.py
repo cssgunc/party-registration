@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Response
 from src.core.authentication import authenticate_admin
 from src.core.query_utils import PAGINATED_OPENAPI_PARAMS
 from src.modules.account.account_model import (
@@ -48,6 +48,21 @@ async def create_account(
     _=Depends(authenticate_admin),
 ) -> AccountDto:
     return await account_service.create_account(data)
+
+
+@account_router.get("/csv")
+async def get_accounts_csv(
+    request: Request,
+    account_service: AccountService = Depends(),
+    _: AccountDto = Depends(authenticate_admin),
+) -> Response:
+    accounts = await account_service.get_accounts_for_export(request)
+    excel_content = account_service.export_accounts_to_excel(accounts)
+    return Response(
+        content=excel_content,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=accounts.xlsx"},
+    )
 
 
 @account_router.put("/{account_id}")
