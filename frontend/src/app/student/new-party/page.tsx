@@ -4,47 +4,23 @@ import PartyRegistrationForm, {
   PartyFormValues,
 } from "@/app/student/_components/PartyRegistrationForm";
 import { Card } from "@/components/ui/card";
-import { LocationService } from "@/lib/api/location/location.service";
-import { useCreateParty } from "@/lib/api/party/party.queries";
+import { useRegisterParty } from "@/lib/api/party/party.queries";
 import { StudentCreatePartyDto } from "@/lib/api/party/party.types";
 import {
   useCurrentStudent,
   useMyParties,
 } from "@/lib/api/student/student.queries";
-import getMockClient from "@/lib/network/mockClient";
 import { ArrowLeft, Info } from "lucide-react";
+import { isFromThisSchoolYear } from "@/lib/utils";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 
 export default function RegistrationForm() {
-  const createPartyMutation = useCreateParty();
+  const registerPartyMutation = useRegisterParty();
   const partiesQuery = useMyParties();
   const studentQuery = useCurrentStudent();
   const router = useRouter();
-  // mocking
-  if (studentQuery?.data) {
-    studentQuery.data.residence = {
-      location: {
-        google_place_id: "ChIJqWQcpuXCrIkRqI-BGFaaqLw",
-        formatted_address: "408 Pittsboro St, Chapel Hill, NC 27516, USA",
-        latitude: 35.9059464,
-        longitude: -79.0553058,
-        street_number: "408",
-        street_name: "Pittsboro Street",
-        unit: null,
-        city: "Chapel Hill",
-        county: "Orange County",
-        state: "NC",
-        country: "US",
-        zip_code: "27516",
-        hold_expiration: null,
-        id: 1,
-        incidents: [],
-      },
-      residence_chosen_date: new Date(2022, 5, 6),
-    };
-  }
 
   /**
    * Get initial values from the student's most recent party (if they have one).
@@ -104,7 +80,13 @@ export default function RegistrationForm() {
   const handleSubmit = async (values: PartyFormValues, placeId: string) => {
     try {
       const partyData = formToData(values, placeId);
-      await createPartyMutation.mutateAsync(partyData);
+      const hasValidResidence = isFromThisSchoolYear(
+        studentQuery.data?.residence?.residence_chosen_date
+      );
+      await registerPartyMutation.mutateAsync({
+        partyData,
+        residencePlaceId: hasValidResidence ? undefined : placeId,
+      });
       alert("Party created successfully!");
       router.push("/student");
     } catch (err) {
@@ -141,9 +123,7 @@ export default function RegistrationForm() {
 
               <PartyRegistrationForm
                 onSubmit={handleSubmit}
-                locationService={new LocationService(getMockClient("student"))}
                 initialValues={initialValues}
-                student={studentQuery.data}
               />
             </div>
           </div>

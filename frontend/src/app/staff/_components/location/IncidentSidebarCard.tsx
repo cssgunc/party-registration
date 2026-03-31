@@ -10,9 +10,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useRole } from "@/contexts/RoleContext";
 import { IncidentDto } from "@/lib/api/location/location.types";
 import { ChevronDown, MoreHorizontal } from "lucide-react";
+import { useSession } from "next-auth/react";
 
 type IncidentSidebarCardProps = {
   incidents: IncidentDto;
@@ -24,7 +24,8 @@ export default function IncidentSidebarCard({
   onDeleteIncidentAction,
   onEditIncidentAction,
 }: IncidentSidebarCardProps) {
-  const { role } = useRole();
+  const { data: session } = useSession();
+  const role = session?.role;
   return (
     <div>
       <Collapsible>

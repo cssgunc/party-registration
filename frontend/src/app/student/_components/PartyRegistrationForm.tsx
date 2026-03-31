@@ -1,6 +1,7 @@
 "use client";
 
 import AddressSearch from "@/components/AddressSearch";
+import DatePicker from "@/components/DatePicker";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -36,7 +37,7 @@ import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { StudentDto } from "@/lib/api/student/student.types";
 import { isFromThisSchoolYear } from "@/lib/utils";
-import { addBusinessDays, format, isAfter, startOfDay } from "date-fns";
+import { addBusinessDays, isAfter, startOfDay } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { useRef, useState } from "react";
 import * as z from "zod";
@@ -273,7 +274,7 @@ export default function PartyRegistrationForm({
                       }`}
                     >
                       {formData.partyDate ? (
-                        format(formData.partyDate, "PPP")
+                        (formData.partyDate, "PPP")
                       ) : (
                         <span>Pick a date</span>
                       )}
@@ -301,6 +302,30 @@ export default function PartyRegistrationForm({
                 )}
               </Field>
 
+              <div className="grid grid-cols-2 gap-4">
+                <Field data-invalid={!!errors.partyDate}>
+                  <FieldLabel htmlFor="party-date">Party Date</FieldLabel>
+                  <DatePicker
+                    id="party-date"
+                    value={formData.partyDate ?? null}
+                    onChange={(date) => updateField("partyDate", date as Date)}
+                    disabled={(date) =>
+                      !isAfter(
+                        startOfDay(date),
+                        addBusinessDays(startOfDay(new Date()), 1)
+                      )
+                    }
+                    aria-invalid={!!errors.partyDate}
+                  />
+                  <FieldDescription>
+                    Must be at least 2 business days from today
+                  </FieldDescription>
+                  {errors.partyDate && (
+                    <FieldError>{errors.partyDate}</FieldError>
+                  )}
+                </Field>
+              </div>
+
               <Field data-invalid={!!errors.partyTime}>
                 <FieldLabel
                   htmlFor="party-time"
@@ -314,7 +339,9 @@ export default function PartyRegistrationForm({
                   value={formData.partyTime}
                   onChange={(e) => updateField("partyTime", e.target.value)}
                   aria-invalid={!!errors.partyTime}
-                  className="content bg-white"
+                  className={`w-full justify-between items-center content bg-white input-shadow ${
+                    !formData.partyDate && "text-muted-foreground"
+                  }`}
                 />
                 {errors.partyTime && (
                   <FieldError>{errors.partyTime}</FieldError>

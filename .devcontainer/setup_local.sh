@@ -86,8 +86,8 @@ success "Activated .venv  ($(python --version))"
 
 info "Installing packages: pip install -e '.[dev]' && pip install -e backend ..."
 cd "$REPO_ROOT"
-pip install -e ".[dev]" -q
-pip install -e backend -q
+# pip install -e ".[dev]" -q
+# pip install -e backend -q
 success "Python packages installed"
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -161,72 +161,72 @@ info "(except MSSQL_HOST which should be 'localhost')"
 step "5/7  Start database container + reset dev DB"
 # ══════════════════════════════════════════════════════════════════════════════
 
-if ! command -v docker &>/dev/null; then
-  error "Docker not found. Please install Docker Desktop:"
-  if [[ "$OS" == "mac" ]]; then
-    error "  https://docs.docker.com/desktop/install/mac-install/"
-  else
-    error "  https://docs.docker.com/desktop/install/windows-install/"
-  fi
-  exit 1
-fi
+# if ! command -v docker &>/dev/null; then
+#   error "Docker not found. Please install Docker Desktop:"
+#   if [[ "$OS" == "mac" ]]; then
+#     error "  https://docs.docker.com/desktop/install/mac-install/"
+#   else
+#     error "  https://docs.docker.com/desktop/install/windows-install/"
+#   fi
+#   exit 1
+# fi
 
-if ! docker info &>/dev/null 2>&1; then
-  error "Docker daemon is not running. Start Docker Desktop, then re-run this script."
-  exit 1
-fi
-success "Docker is running"
+# if ! docker info &>/dev/null 2>&1; then
+#   error "Docker daemon is not running. Start Docker Desktop, then re-run this script."
+#   exit 1
+# fi
+# success "Docker is running"
 
-# Prefer the v2 plugin syntax
-if docker compose version &>/dev/null 2>&1; then
-  DC="docker compose"
-elif command -v docker-compose &>/dev/null; then
-  DC="docker-compose"
-else
-  error "'docker compose' not found. Please update Docker Desktop."
-  exit 1
-fi
+# # Prefer the v2 plugin syntax
+# if docker compose version &>/dev/null 2>&1; then
+#   DC="docker compose"
+# elif command -v docker-compose &>/dev/null; then
+#   DC="docker-compose"
+# else
+#   error "'docker compose' not found. Please update Docker Desktop."
+#   exit 1
+# fi
 
-info "Starting db service  ($DC up -d db) ..."
-cd "$REPO_ROOT/.devcontainer"
-$DC up -d db
-cd "$REPO_ROOT"
-success "Database container started"
+# info "Starting db service  ($DC up -d db) ..."
+# cd "$REPO_ROOT/.devcontainer"
+# $DC up -d db
+# cd "$REPO_ROOT"
+# success "Database container started"
 
-# Wait for SQL Server to accept connections (can take ~30 s)
-info "Waiting for SQL Server to be ready (up to 90 s) ..."
-MAX_WAIT=90
-WAITED=0
-DB_CONTAINER=$(cd "$REPO_ROOT/.devcontainer" && $DC ps -q db 2>/dev/null | head -1)
+# # Wait for SQL Server to accept connections (can take ~30 s)
+# info "Waiting for SQL Server to be ready (up to 90 s) ..."
+# MAX_WAIT=90
+# WAITED=0
+# DB_CONTAINER=$(cd "$REPO_ROOT/.devcontainer" && $DC ps -q db 2>/dev/null | head -1)
 
-if [[ -z "$DB_CONTAINER" ]]; then
-  error "Could not find the db container. Check: cd .devcontainer && $DC ps"
-  exit 1
-fi
+# if [[ -z "$DB_CONTAINER" ]]; then
+#   error "Could not find the db container. Check: cd .devcontainer && $DC ps"
+#   exit 1
+# fi
 
-while ! docker exec "$DB_CONTAINER" \
-    /opt/mssql-tools18/bin/sqlcmd \
-      -S localhost -U sa -P "YourStrong!Passw0rd" -Q "SELECT 1" -C \
-    &>/dev/null 2>&1; do
-  sleep 2
-  WAITED=$((WAITED + 2))
-  echo -n "."
-  if [[ $WAITED -ge $MAX_WAIT ]]; then
-    echo ""
-    error "SQL Server did not become ready in ${MAX_WAIT}s."
-    error "  Check logs: docker logs $DB_CONTAINER"
-    error "  If you see a connection timeout, verify the MSSQL_* vars in backend/.env."
-    exit 1
-  fi
-done
-echo ""
-success "SQL Server is ready!"
+# while ! docker exec "$DB_CONTAINER" \
+#     /opt/mssql-tools18/bin/sqlcmd \
+#       -S localhost -U sa -P "YourStrong!Passw0rd" -Q "SELECT 1" -C \
+#     &>/dev/null 2>&1; do
+#   sleep 2
+#   WAITED=$((WAITED + 2))
+#   echo -n "."
+#   if [[ $WAITED -ge $MAX_WAIT ]]; then
+#     echo ""
+#     error "SQL Server did not become ready in ${MAX_WAIT}s."
+#     error "  Check logs: docker logs $DB_CONTAINER"
+#     error "  If you see a connection timeout, verify the MSSQL_* vars in backend/.env."
+#     exit 1
+#   fi
+# done
+# echo ""
+# success "SQL Server is ready!"
 
-info "Running python -m script.reset_dev ..."
-cd "$REPO_ROOT/backend"
-python -m script.reset_dev
-cd "$REPO_ROOT"
-success "Dev database reset"
+# info "Running python -m script.reset_dev ..."
+# cd "$REPO_ROOT/backend"
+# python -m script.reset_dev
+# cd "$REPO_ROOT"
+# success "Dev database reset"
 
 # ══════════════════════════════════════════════════════════════════════════════
 step "6/7  pre-commit hooks"

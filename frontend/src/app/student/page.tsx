@@ -2,62 +2,26 @@
 
 import RegistrationTracker from "@/app/student/_components/RegistrationTracker";
 import StatusComponent from "@/app/student/_components/StatusComponent";
-import { useRole } from "@/contexts/RoleContext";
 import {
   useCurrentStudent,
   useMyParties,
 } from "@/lib/api/student/student.queries";
-import { LOCATIONS } from "@/lib/mockData";
 import { isFromThisSchoolYear } from "@/lib/utils";
 import { Info } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo } from "react";
 import PartyRegistrationInfo from "./_components/PartyRegistrationInfo";
 import PartySmartInfo from "./_components/PartySmartInfo";
 
 export default function StudentDashboard() {
-  const { setRole } = useRole();
-
-  useEffect(() => {
-    setRole("student");
-  }, [setRole]);
-
   const studentQuery = useCurrentStudent();
-  // mocking
-  if (studentQuery?.data) {
-    studentQuery.data.residence = {
-      location: {
-        google_place_id: "ChIJqWQcpuXCrIkRqI-BGFaaqLw",
-        formatted_address: "408 Pittsboro St, Chapel Hill, NC 27516, USA",
-        latitude: 35.9059464,
-        longitude: -79.0553058,
-        street_number: "408",
-        street_name: "Pittsboro Street",
-        unit: null,
-        city: "Chapel Hill",
-        county: "Orange County",
-        state: "NC",
-        country: "US",
-        zip_code: "27516",
-        hold_expiration: null,
-        id: 1,
-        incidents: [],
-      },
-      residence_chosen_date: new Date(),
-    };
-  }
-
   const partiesQuery = useMyParties();
-  // Get mock incidents from first location with incidents
-  const mockIncidents = useMemo(() => {
-    const locationWithIncidents = LOCATIONS.find(
-      (loc) => loc.incidents.length > 0
-    );
-    return locationWithIncidents?.incidents || [];
-  }, []);
+  const courseCompleted = isFromThisSchoolYear(
+    studentQuery.data?.last_registered
+  );
   const validResidence = isFromThisSchoolYear(
     studentQuery?.data?.residence?.residence_chosen_date
   );
+  const incidents = studentQuery.data?.residence?.location.incidents ?? [];
 
   return (
     <div className="flex flex-col items-center pt-6 mb-6">
@@ -76,12 +40,7 @@ export default function StudentDashboard() {
                 </div>
               )}
             </div>
-            <RegistrationTracker
-              data={partiesQuery.data}
-              incidents={mockIncidents}
-              isPending={partiesQuery.isPending}
-              error={partiesQuery.error}
-            />
+            <RegistrationTracker {...partiesQuery} incidents={incidents} />
           </div>
 
           <div className="mt-8">
@@ -95,8 +54,7 @@ export default function StudentDashboard() {
             </Link>
             <StatusComponent
               last_registered={studentQuery.data?.last_registered}
-              isPending={studentQuery.isPending}
-              error={studentQuery.error}
+              {...studentQuery}
             />
           </div>
         </div>
