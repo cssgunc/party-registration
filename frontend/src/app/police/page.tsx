@@ -36,7 +36,7 @@ export default function PolicePage() {
     name: "",
     phone: "",
     contactPreference: "",
-    citationType: "",
+    severity: "",
   });
 
   // Fetch place details when address is selected
@@ -108,11 +108,11 @@ export default function PolicePage() {
         if (!matchesPreference) return false;
       }
 
-      if (advancedFilters.citationType) {
-        const hasCitationType = party.location.incidents.some(
-          (incident) => incident.severity === advancedFilters.citationType
+      if (advancedFilters.severity) {
+        const hasSeverity = party.location.incidents.some(
+          (incident) => incident.severity === advancedFilters.severity
         );
-        if (!hasCitationType) return false;
+        if (!hasSeverity) return false;
       }
 
       if (advancedFilters.startTime) {

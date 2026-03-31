@@ -8,11 +8,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { IncidentSeverity } from "@/lib/api/location/location.types";
+import { ContactPreference } from "@/lib/api/student/student.types";
 import { useMemo, useState } from "react";
 
-export type TimeFilterType = "before" | "after" | "exact" | "";
-export type ContactPreferenceFilter = "" | "call" | "text";
-export type CitationTypeFilter = "" | "complaint" | "warning" | "citation";
+export type TimeFilterType = "" | "before" | "after" | "exact";
+export type ContactPreferenceFilter = "" | ContactPreference;
+export type SeverityFilter = "" | IncidentSeverity;
 
 export type AdvancedPartyFilters = {
   timeFilterType: TimeFilterType;
@@ -20,7 +22,7 @@ export type AdvancedPartyFilters = {
   name: string;
   phone: string;
   contactPreference: ContactPreferenceFilter;
-  citationType: CitationTypeFilter;
+  severity: SeverityFilter;
 };
 
 type Props = {
@@ -40,7 +42,7 @@ export default function AdvancedPartySearch({
     if (filters.phone) count++;
     if (filters.name) count++;
     if (filters.contactPreference) count++;
-    if (filters.citationType) count++;
+    if (filters.severity) count++;
     return count;
   }, [filters]);
 
@@ -51,47 +53,77 @@ export default function AdvancedPartySearch({
     onFiltersChange({ ...filters, [key]: value });
   }
 
+  function clearAllFilters() {
+    onFiltersChange({
+      timeFilterType: "exact",
+      startTime: "",
+      name: "",
+      phone: "",
+      contactPreference: "",
+      severity: "",
+    });
+  }
+
   return (
     <div>
-      <div className="flex items-center my-2 gap-4">
+      <div className="my-4 2xl:flex 2xl:justify-between">
         <Button
           type="button"
           variant="link"
           className="p-0 content"
-          onClick={() => setIsOpen((open) => !open)}
+          onClick={() => {
+            setIsOpen((open) => !open);
+            clearAllFilters();
+          }}
         >
           {!isOpen && <p>Advanced Search</p>}
           {isOpen && <p>Hide Advanced Search</p>}
         </Button>
-        {isOpen && <p className="content">({selectedCount}) Selected</p>}
+
+        <div className="flex items-center gap-4">
+          {isOpen && <p className="content">({selectedCount}) Selected</p>}
+          {selectedCount > 0 && (
+            <Button
+              type="button"
+              size="sm"
+              onClick={clearAllFilters}
+              title="Clear all filters"
+            >
+              Clear all filters
+            </Button>
+          )}
+        </div>
       </div>
+
       {isOpen && (
         <div className="flex flex-wrap gap-4">
           <div>
             <Label className="mb-2">Start</Label>
-            <div className="flex gap-4">
-              <Select
-                value={filters.timeFilterType}
-                onValueChange={(val: "before" | "after" | "exact") =>
-                  patch("timeFilterType", val)
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="None" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="before">Before</SelectItem>
-                  <SelectItem value="after">After</SelectItem>
-                  <SelectItem value="exact">Exactly</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="flex gap-2 items-end">
+              <div className="flex gap-2">
+                <Select
+                  value={filters.timeFilterType || "exact"}
+                  onValueChange={(val: TimeFilterType) =>
+                    patch("timeFilterType", val)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="None" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="before">Before</SelectItem>
+                    <SelectItem value="after">After</SelectItem>
+                    <SelectItem value="exact">Exactly</SelectItem>
+                  </SelectContent>
+                </Select>
 
-              <Input
-                type="time"
-                value={filters.startTime}
-                onChange={(e) => patch("startTime", e.target.value)}
-                className="w-32"
-              />
+                <Input
+                  type="time"
+                  value={filters.startTime}
+                  onChange={(e) => patch("startTime", e.target.value)}
+                  className="w-32"
+                />
+              </div>
             </div>
           </div>
 
@@ -119,42 +151,65 @@ export default function AdvancedPartySearch({
 
           <div>
             <Label className="mb-2">Preference</Label>
+            <div className="gap-2">
+              <Select
+                value={filters.contactPreference}
+                onValueChange={(val: ContactPreferenceFilter) =>
+                  patch("contactPreference", val)
+                }
+              >
+                <SelectTrigger className="w-fit">
+                  <SelectValue placeholder="None" />
+                </SelectTrigger>
 
-            <Select
-              value={filters.contactPreference}
-              onValueChange={(val: "call" | "text") =>
-                patch("contactPreference", val)
-              }
-            >
-              <SelectTrigger className="w-fit">
-                <SelectValue placeholder="None" />
-              </SelectTrigger>
-
-              <SelectContent>
-                <SelectItem value="call">Call</SelectItem>
-                <SelectItem value="text">Text</SelectItem>
-              </SelectContent>
-            </Select>
+                <SelectContent>
+                  <SelectItem value="call">Call</SelectItem>
+                  <SelectItem value="text">Text</SelectItem>
+                </SelectContent>
+              </Select>
+              {filters.contactPreference && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => patch("contactPreference", "")}
+                  className="h-auto p-1 content-sub"
+                >
+                  Clear
+                </Button>
+              )}
+            </div>
           </div>
 
           <div>
-            <Label className="mb-2">Citation Type</Label>
-            <Select
-              value={filters.citationType}
-              onValueChange={(val: "complaint" | "warning" | "citation") =>
-                patch("citationType", val)
-              }
-            >
-              <SelectTrigger className="w-fit">
-                <SelectValue placeholder="None" />
-              </SelectTrigger>
+            <Label className="mb-2">Incident Severity</Label>
+            <div className="gap-2">
+              <Select
+                value={filters.severity}
+                onValueChange={(val: SeverityFilter) => patch("severity", val)}
+              >
+                <SelectTrigger className="w-fit">
+                  <SelectValue placeholder="None" />
+                </SelectTrigger>
 
-              <SelectContent>
-                <SelectItem value="complaint">Complaint</SelectItem>
-                <SelectItem value="warning">Warning</SelectItem>
-                <SelectItem value="citation">Citation</SelectItem>
-              </SelectContent>
-            </Select>
+                <SelectContent>
+                  <SelectItem value="complaint">Complaint</SelectItem>
+                  <SelectItem value="warning">Warning</SelectItem>
+                  <SelectItem value="citation">Citation</SelectItem>
+                </SelectContent>
+              </Select>
+              {filters.severity && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => patch("severity", "")}
+                  className="h-auto p-1"
+                >
+                  Clear
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       )}
