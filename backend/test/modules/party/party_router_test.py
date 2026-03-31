@@ -34,6 +34,7 @@ from test.utils.http.test_templates import generate_auth_required_tests
 
 test_party_authentication = generate_auth_required_tests(
     ({"admin", "staff", "police"}, "GET", "/api/parties", None),
+    ({"admin", "staff", "police"}, "GET", "/api/parties/csv", None),
     ({"admin", "staff"}, "GET", "/api/parties/1", None),
     ({"student", "admin"}, "DELETE", "/api/parties/1", None),
     (
