@@ -30,9 +30,11 @@ import { useMemo, useState } from "react";
 import * as z from "zod";
 
 const formatPhoneNumber = (value: string): string => {
-  return value
-    ? `(${value.slice(0, 3)}) ${value.slice(3, 6)}-${value.slice(6, 10)}`
-    : "—";
+  const digits = value.replace(/\D/g, "").slice(0, 10);
+  if (!digits) return "";
+  if (digits.length <= 3) return `(${digits}`;
+  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
 };
 
 export const createPartyTableFormSchema = (isAdmin: boolean) => {
@@ -346,12 +348,17 @@ export default function PartyTableForm({
             </FieldLabel>
             <Input
               id="contact-two-phone-number"
-              placeholder="123-456-7890"
+              type="tel"
+              placeholder="(123) 456-7890"
               value={formatPhoneNumber(formData.contactTwoPhoneNumber || "")}
-              onChange={(e) =>
-                updateField("contactTwoPhoneNumber", e.target.value)
-              }
+              onChange={(e) => {
+                const digitsOnly = e.target.value
+                  .replace(/\D/g, "")
+                  .slice(0, 10);
+                updateField("contactTwoPhoneNumber", digitsOnly);
+              }}
               aria-invalid={!!errors.contactTwoPhoneNumber}
+              maxLength={14}
             />
             {errors.contactTwoPhoneNumber && (
               <FieldError>{errors.contactTwoPhoneNumber}</FieldError>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useSnackbar } from "@/contexts/SnackbarContext";
 import {
   useCreateLocation,
   useDeleteLocation,
@@ -16,7 +17,20 @@ import { TableTemplate } from "../shared/table/TableTemplate";
 import IncidentInfoChipDetails from "./IncidentInfoChipDetails";
 import LocationTableForm from "./LocationTableForm";
 
+const hasLocationChanged = (
+  original: LocationDto | null,
+  updated: LocationCreate
+): boolean => {
+  if (!original) return true;
+
+  return (
+    original.google_place_id !== updated.google_place_id ||
+    original.hold_expiration !== updated.hold_expiration
+  );
+};
+
 export const LocationTable = () => {
+  const { openSnackbar } = useSnackbar();
   const { openSidebar, closeSidebar } = useSidebar();
   const [editingLocation, setEditingLocation] = useState<LocationDto | null>(
     null
@@ -53,6 +67,7 @@ export const LocationTable = () => {
       );
     },
     onSuccess: () => {
+      openSnackbar("Location created successfully", "success");
       closeSidebar();
       setEditingLocation(null);
     },
@@ -97,7 +112,10 @@ export const LocationTable = () => {
         />
       );
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
+      if (hasLocationChanged(editingLocation, variables.payload)) {
+        openSnackbar("Location updated successfully", "success");
+      }
       closeSidebar();
       setEditingLocation(null);
     },
@@ -106,6 +124,9 @@ export const LocationTable = () => {
   const deleteMutation = useDeleteLocation({
     onError: (error: Error) => {
       console.error("Failed to delete location:", error);
+    },
+    onSuccess: () => {
+      openSnackbar("Location deleted successfully", "success");
     },
   });
 
