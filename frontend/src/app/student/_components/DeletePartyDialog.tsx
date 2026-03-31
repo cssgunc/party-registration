@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useSnackbar } from "@/contexts/SnackbarContext";
 import { useDeleteParty } from "@/lib/api/party/party.queries";
 import { PartyDto } from "@/lib/api/party/party.types";
 import { format } from "date-fns";
@@ -24,14 +25,16 @@ export function DeletePartyDialog({
   open,
   onOpenChange,
 }: DeletePartyDialogProps) {
+  const { openSnackbar } = useSnackbar();
   const deletePartyMutation = useDeleteParty();
 
   const handleDelete = async () => {
     try {
       await deletePartyMutation.mutateAsync(party.id);
       onOpenChange(false);
+      openSnackbar("Party deleted successfully!", "success");
     } catch {
-      alert("Failed to delete party");
+      openSnackbar("Failed to delete party", "error");
     }
   };
 

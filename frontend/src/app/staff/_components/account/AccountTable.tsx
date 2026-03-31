@@ -130,8 +130,12 @@ export const AccountTable = () => {
   });
 
   const deleteMutation = useDeleteAccount({
+    onSuccess: () => {
+      openSnackbar("Account deleted successfully", "success");
+    },
     onError: (error: Error) => {
       console.error("Failed to delete account:", error);
+      openSnackbar("Failed to delete account", "error");
     },
   });
 
