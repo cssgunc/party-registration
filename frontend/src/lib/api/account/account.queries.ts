@@ -1,8 +1,13 @@
 import { AccountService } from "@/lib/api/account/account.service";
 import { AccountData, AccountDto } from "@/lib/api/account/account.types";
-import { OptimisticMutationOptions } from "@/lib/shared";
+import {
+  ServerTableParams,
+  toAxiosParams,
+} from "@/lib/api/shared/query-params";
+import { OptimisticMutationOptions, PaginatedResponse } from "@/lib/shared";
 import {
   UseQueryOptions,
+  keepPreviousData,
   useMutation,
   useQuery,
   useQueryClient,
@@ -17,10 +22,17 @@ type UpdateAccountVars = {
   data: AccountData;
 };
 
-export function useAccounts(options?: UseQueryOptions<AccountDto[]>) {
+export function useAccounts(
+  serverParams?: ServerTableParams,
+  options?: UseQueryOptions<PaginatedResponse<AccountDto>>
+) {
   return useQuery({
-    queryKey: ACCOUNTS_KEY,
-    queryFn: () => accountService.listAccounts(["admin", "staff"]),
+    queryKey: [...ACCOUNTS_KEY, serverParams ?? "all"],
+    queryFn: () =>
+      accountService.listAccounts(
+        serverParams ? toAxiosParams(serverParams) : undefined
+      ),
+    placeholderData: keepPreviousData,
     ...options,
   });
 }
@@ -66,27 +78,6 @@ export function useDeleteAccount(
   return useMutation({
     ...options,
     mutationFn: (id: number) => accountService.deleteAccount(id),
-
-    onMutate: async (id, context) => {
-      await queryClient.cancelQueries({ queryKey: ACCOUNTS_KEY });
-
-      const previous = queryClient.getQueryData<AccountDto[]>(ACCOUNTS_KEY);
-
-      queryClient.setQueryData<AccountDto[]>(ACCOUNTS_KEY, (old) =>
-        old?.filter((a) => a.id !== id)
-      );
-      options?.onOptimisticUpdate?.(id);
-
-      await options?.onMutate?.(id, context);
-      return { previous };
-    },
-
-    onError: (error, id, onMutateResult, context) => {
-      if (onMutateResult?.previous) {
-        queryClient.setQueryData(ACCOUNTS_KEY, onMutateResult.previous);
-      }
-      options?.onError?.(error, id, onMutateResult, context);
-    },
 
     onSuccess: (...params) => {
       queryClient.invalidateQueries({ queryKey: ACCOUNTS_KEY });

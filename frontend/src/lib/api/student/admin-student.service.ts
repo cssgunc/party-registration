@@ -19,14 +19,9 @@ export class AdminStudentService {
    * Fetches a paginated list of students (GET /api/students)
    */
   async listStudents(
-    pageNumber?: number,
-    pageSize?: number
+    params?: Record<string, string | number>
   ): Promise<PaginatedResponse<StudentDto>> {
     try {
-      const params: Record<string, number> = {};
-      if (pageNumber !== undefined) params.page_number = pageNumber;
-      if (pageSize !== undefined) params.page_size = pageSize;
-
       const response = await this.client.get<
         PaginatedResponse<StudentDtoBackend>
       >("/students", { params });

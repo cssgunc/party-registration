@@ -1,6 +1,11 @@
+import {
+  ServerTableParams,
+  toAxiosParams,
+} from "@/lib/api/shared/query-params";
 import { OptimisticMutationOptions, PaginatedResponse } from "@/lib/shared";
 import {
   UseQueryOptions,
+  keepPreviousData,
   useMutation,
   useQuery,
   useQueryClient,
@@ -16,11 +21,16 @@ type UpdatePartyVars = {
 };
 
 export function useAdminParties(
+  serverParams?: ServerTableParams,
   options?: UseQueryOptions<PaginatedResponse<PartyDto>>
 ) {
   return useQuery({
-    queryKey: PARTIES_KEY,
-    queryFn: () => partyService.listParties(),
+    queryKey: [...PARTIES_KEY, serverParams ?? "all"],
+    queryFn: () =>
+      partyService.listParties(
+        serverParams ? toAxiosParams(serverParams) : undefined
+      ),
+    placeholderData: keepPreviousData,
     ...options,
   });
 }
@@ -67,30 +77,6 @@ export function useDeleteAdminParty(
   return useMutation({
     ...options,
     mutationFn: (id: number) => partyService.deleteParty(id),
-
-    onMutate: async (id, context) => {
-      await queryClient.cancelQueries({ queryKey: PARTIES_KEY });
-
-      const previous =
-        queryClient.getQueryData<PaginatedResponse<PartyDto>>(PARTIES_KEY);
-
-      queryClient.setQueryData<PaginatedResponse<PartyDto>>(
-        PARTIES_KEY,
-        (prev) =>
-          prev && { ...prev, items: prev.items.filter((p) => p.id !== id) }
-      );
-      options?.onOptimisticUpdate?.(id);
-
-      await options?.onMutate?.(id, context);
-      return { previous };
-    },
-
-    onError: (error, id, onMutateResult, context) => {
-      if (onMutateResult?.previous) {
-        queryClient.setQueryData(PARTIES_KEY, onMutateResult.previous);
-      }
-      options?.onError?.(error, id, onMutateResult, context);
-    },
 
     onSuccess: (...params) => {
       queryClient.invalidateQueries({ queryKey: PARTIES_KEY });

@@ -1,6 +1,11 @@
+import {
+  ServerTableParams,
+  toAxiosParams,
+} from "@/lib/api/shared/query-params";
 import { OptimisticMutationOptions, PaginatedResponse } from "@/lib/shared";
 import {
   UseQueryOptions,
+  keepPreviousData,
   useMutation,
   useQuery,
   useQueryClient,
@@ -18,11 +23,16 @@ type UpdateLocationVars = {
 };
 
 export function useLocations(
+  serverParams?: ServerTableParams,
   options?: UseQueryOptions<PaginatedResponse<LocationDto>>
 ) {
   return useQuery({
-    queryKey: LOCATIONS_KEY,
-    queryFn: () => locationService.getLocations(),
+    queryKey: [...LOCATIONS_KEY, serverParams ?? "all"],
+    queryFn: () =>
+      locationService.getLocations(
+        serverParams ? toAxiosParams(serverParams) : undefined
+      ),
+    placeholderData: keepPreviousData,
     ...options,
   });
 }
@@ -69,29 +79,6 @@ export function useDeleteLocation(
   return useMutation({
     ...options,
     mutationFn: (id: number) => locationService.deleteLocation(id),
-
-    onMutate: async (id, context) => {
-      await queryClient.cancelQueries({ queryKey: LOCATIONS_KEY });
-
-      const previous =
-        queryClient.getQueryData<PaginatedResponse<LocationDto>>(LOCATIONS_KEY);
-
-      queryClient.setQueryData<PaginatedResponse<LocationDto>>(
-        LOCATIONS_KEY,
-        (old) => old && { ...old, items: old.items.filter((l) => l.id !== id) }
-      );
-      options?.onOptimisticUpdate?.(id);
-
-      await options?.onMutate?.(id, context);
-      return { previous };
-    },
-
-    onError: (error, id, onMutateResult, context) => {
-      if (onMutateResult?.previous) {
-        queryClient.setQueryData(LOCATIONS_KEY, onMutateResult.previous);
-      }
-      options?.onError?.(error, id, onMutateResult, context);
-    },
 
     onSuccess: (...params) => {
       queryClient.invalidateQueries({ queryKey: LOCATIONS_KEY });
