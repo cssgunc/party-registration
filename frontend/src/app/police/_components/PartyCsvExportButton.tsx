@@ -2,7 +2,6 @@
 
 import { Button } from "@/components/ui/button";
 import { PartyService } from "@/lib/api/party/party.service";
-import getMockClient from "@/lib/network/mockClient";
 import { Download } from "lucide-react";
 import { useState } from "react";
 
@@ -28,7 +27,7 @@ export default function PartyCsvExportButton({
     setError(null);
 
     try {
-      const partyService = new PartyService(getMockClient("admin"));
+      const partyService = new PartyService();
       await partyService.downloadPartiesCsv(startDate, endDate);
     } catch (err) {
       console.error("Failed to download CSV:", err);

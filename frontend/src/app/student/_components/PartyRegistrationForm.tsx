@@ -1,8 +1,8 @@
 "use client";
 
 import AddressSearch from "@/components/AddressSearch";
+import DatePicker from "@/components/DatePicker";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
 import {
   Dialog,
   DialogContent,
@@ -21,11 +21,6 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -36,8 +31,7 @@ import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { ResidenceDto } from "@/lib/api/student/student.types";
 import { isFromThisSchoolYear } from "@/lib/utils";
-import { addBusinessDays, format, isAfter, startOfDay } from "date-fns";
-import { CalendarIcon } from "lucide-react";
+import { addBusinessDays, isAfter, startOfDay } from "date-fns";
 import { useRef, useState } from "react";
 import * as z from "zod";
 
@@ -273,6 +267,7 @@ export default function PartyRegistrationForm({
                 className="w-full"
                 error={errors.address}
                 initialSelection={initialAddress}
+                chapelHillOnly
               />
               <FieldDescription className="italics">
                 This will be added to your profile as your {school_year}{" "}
@@ -302,38 +297,18 @@ export default function PartyRegistrationForm({
           <div className="grid grid-cols-2 gap-4">
             <Field data-invalid={!!errors.partyDate}>
               <FieldLabel htmlFor="party-date">Party Date</FieldLabel>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    id="party-date"
-                    variant="outline"
-                    aria-invalid={!!errors.partyDate}
-                    className={`w-full justify-start text-left font-normal ${
-                      !formData.partyDate && "text-muted-foreground"
-                    }`}
-                  >
-                    {formData.partyDate ? (
-                      format(formData.partyDate, "PPP")
-                    ) : (
-                      <span>Pick a date</span>
-                    )}
-                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={formData.partyDate}
-                    onSelect={(date) => updateField("partyDate", date as Date)}
-                    disabled={(date) =>
-                      !isAfter(
-                        startOfDay(date),
-                        addBusinessDays(startOfDay(new Date()), 1)
-                      )
-                    }
-                  />
-                </PopoverContent>
-              </Popover>
+              <DatePicker
+                id="party-date"
+                value={formData.partyDate ?? null}
+                onChange={(date) => updateField("partyDate", date as Date)}
+                disabled={(date) =>
+                  !isAfter(
+                    startOfDay(date),
+                    addBusinessDays(startOfDay(new Date()), 1)
+                  )
+                }
+                aria-invalid={!!errors.partyDate}
+              />
               <FieldDescription>
                 Must be at least 2 business days from today
               </FieldDescription>

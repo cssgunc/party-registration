@@ -1,4 +1,4 @@
-import getMockClient from "@/lib/network/mockClient";
+import apiClient from "@/lib/network/apiClient";
 import { PaginatedResponse } from "@/lib/shared";
 import { AxiosInstance } from "axios";
 import { endOfDay } from "date-fns";
@@ -10,7 +10,7 @@ import {
 } from "./incident.types";
 
 export class IncidentService {
-  constructor(private client: AxiosInstance = getMockClient("admin")) {}
+  constructor(private client: AxiosInstance = apiClient) {}
 
   /**
    * Get all incidents (GET /api/incidents)

@@ -1,4 +1,4 @@
-import getMockClient from "@/lib/network/mockClient";
+import apiClient from "@/lib/network/apiClient";
 import { PaginatedResponse } from "@/lib/shared";
 import { AxiosInstance } from "axios";
 import { endOfDay } from "date-fns";
@@ -11,7 +11,7 @@ import {
 } from "./party.types";
 
 export class PartyService {
-  constructor(private client: AxiosInstance = getMockClient("admin")) {}
+  constructor(private client: AxiosInstance = apiClient) {}
 
   /**
    * Create party (POST /api/parties)

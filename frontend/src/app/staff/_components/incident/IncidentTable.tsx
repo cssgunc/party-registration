@@ -390,7 +390,7 @@ export const IncidentTable = () => {
         resourceName="Incident"
         onEdit={handleEdit}
         onDelete={handleDelete}
-        onCreateNew={handleCreate}
+        onCreateNewRow={handleCreate}
         isLoading={incidentsQuery.isLoading || locationsQuery.isLoading}
         error={
           (incidentsQuery.error as Error | null) ||

@@ -18,7 +18,7 @@ import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { cn } from "@/lib/utils";
 import { CheckIcon, Loader2Icon, MapPinIcon, XIcon } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 interface AddressSearchProps {
   value?: string;
@@ -29,6 +29,7 @@ interface AddressSearchProps {
   disabled?: boolean;
   locationService?: LocationService;
   error?: string;
+  chapelHillOnly?: boolean;
 }
 
 /**
@@ -42,9 +43,15 @@ export default function AddressSearch({
   placeholder = "Search for an address...",
   className,
   disabled = false,
-  locationService = new LocationService(),
+  locationService,
   error: externalError,
+  chapelHillOnly = false,
 }: AddressSearchProps) {
+  const resolvedLocationService = useMemo(
+    () => locationService ?? new LocationService(),
+    [locationService]
+  );
+
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState(
     initialSelection?.formatted_address ?? value
@@ -103,8 +110,15 @@ export default function AddressSearch({
       setInternalError(null);
 
       try {
-        const results = await locationService.autocompleteAddress(trimmedInput);
-        setSuggestions(results);
+        const results =
+          await resolvedLocationService.autocompleteAddress(trimmedInput);
+        setSuggestions(
+          chapelHillOnly
+            ? results.filter((r) =>
+                r.formatted_address.toLowerCase().includes("chapel hill")
+              )
+            : results
+        );
       } catch (err) {
         console.error("Error fetching address suggestions:", err);
         setInternalError(
@@ -129,7 +143,7 @@ export default function AddressSearch({
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [searchTerm, locationService, selectedAddress]);
+  }, [searchTerm, resolvedLocationService, selectedAddress, chapelHillOnly]);
 
   /**
    * Handle address selection from dropdown
@@ -330,6 +344,12 @@ export default function AddressSearch({
           </Command>
         </PopoverContent>
       </Popover>
+
+      {chapelHillOnly && (
+        <p className="mt-1 text-sm italic text-muted-foreground">
+          Only Chapel Hill addresses are covered by Party Smart
+        </p>
+      )}
 
       {displayError && (
         <p className="mt-2 text-sm text-destructive" role="alert">
