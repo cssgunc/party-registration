@@ -1,5 +1,6 @@
 "use client";
 
+import { useSnackbar } from "@/contexts/SnackbarContext";
 import {
   useAccounts,
   useCreateAccount,
@@ -21,8 +22,25 @@ import AccountTableForm, { accountTableFormSchema } from "./AccountTableForm";
 
 type AccountTableFormValues = z.infer<typeof accountTableFormSchema>;
 
+const hasAccountChanged = (
+  original: AccountDto | null,
+  updated: AccountData
+): boolean => {
+  if (!original) return true;
+
+  return (
+    original.email !== updated.email ||
+    original.first_name !== updated.first_name ||
+    original.last_name !== updated.last_name ||
+    original.pid !== updated.pid ||
+    original.onyen !== updated.onyen ||
+    original.role !== updated.role
+  );
+};
+
 export const AccountTable = () => {
   const { openSidebar, closeSidebar } = useSidebar();
+  const { openSnackbar } = useSnackbar();
   const [editingAccount, setEditingAccount] = useState<AccountDto | null>(null);
 
   const accountsQuery = useAccounts();
@@ -66,13 +84,14 @@ export const AccountTable = () => {
     onSuccess: () => {
       closeSidebar();
       setEditingAccount(null);
+      openSnackbar("Student created successfully", "success");
     },
   });
 
   const updateMutation = useUpdateAccount({
     onError: (error: Error, variables: { id: number; data: AccountData }) => {
       console.error("Failed to update account:", error);
-      const errorMessage = `Failed to update account: ${error.message}`;
+      const errorMessage = `${error.message}` || "Failed to update account";
       const editTarget =
         editingAccount && editingAccount.id === variables.id
           ? editingAccount
@@ -101,7 +120,10 @@ export const AccountTable = () => {
         />
       );
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
+      if (hasAccountChanged(editingAccount, variables.data)) {
+        openSnackbar("Account edited successfully", "success");
+      }
       closeSidebar();
       setEditingAccount(null);
     },

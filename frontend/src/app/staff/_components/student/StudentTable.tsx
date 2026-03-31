@@ -2,6 +2,7 @@
 
 import { useSidebar } from "@/app/staff/_components/shared/sidebar/SidebarContext";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useSnackbar } from "@/contexts/SnackbarContext";
 import {
   useCreateStudent,
   useDeleteStudent,
@@ -15,7 +16,24 @@ import { useState } from "react";
 import { TableTemplate } from "../shared/table/TableTemplate";
 import StudentTableForm from "./StudentTableForm";
 
+const hasStudentChanged = (
+  original: StudentDto | null,
+  updated: Omit<StudentDto, "id" | "email" | "pid">
+): boolean => {
+  if (!original) return true;
+
+  return (
+    original.first_name !== updated.first_name ||
+    original.last_name !== updated.last_name ||
+    original.onyen !== updated.onyen ||
+    original.phone_number !== updated.phone_number ||
+    original.contact_preference !== updated.contact_preference ||
+    original.last_registered?.getTime() !== updated.last_registered?.getTime()
+  );
+};
+
 export const StudentTable = () => {
+  const { openSnackbar } = useSnackbar();
   const { openSidebar, closeSidebar } = useSidebar();
   const [editingStudent, setEditingStudent] = useState<StudentDto | null>(null);
 
@@ -44,7 +62,10 @@ export const StudentTable = () => {
         />
       );
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
+      if (hasStudentChanged(editingStudent, variables.data)) {
+        openSnackbar("Student updated successfully", "success");
+      }
       closeSidebar();
       setEditingStudent(null);
     },
@@ -66,6 +87,7 @@ export const StudentTable = () => {
       );
     },
     onSuccess: () => {
+      openSnackbar("Student created successfully", "success");
       closeSidebar();
       setEditingStudent(null);
     },
@@ -74,6 +96,9 @@ export const StudentTable = () => {
   const deleteMutation = useDeleteStudent({
     onError: (error) => {
       console.error("Failed to delete student:", error);
+    },
+    onSuccess: () => {
+      openSnackbar("Student deleted successfully", "success");
     },
   });
 

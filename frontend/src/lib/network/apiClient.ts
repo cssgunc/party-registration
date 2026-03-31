@@ -124,3 +124,23 @@ apiClient.interceptors.response.use(
 );
 
 export default apiClient;
+
+// Setup error interceptor with custom error handler
+export const setupErrorInterceptor = (showError: (message: string) => void) => {
+  apiClient.interceptors.response.use(
+    (response) => response,
+    (error) => {
+      // Skip 401 errors (handled by token refresh interceptor)
+      if (error.response?.status === 401) {
+        return Promise.reject(error);
+      }
+
+      // Get error message
+      const message =
+        error.response?.data?.message || error.message || "An error occurred";
+
+      showError(message);
+      return Promise.reject(error);
+    }
+  );
+};
