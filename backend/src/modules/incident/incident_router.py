@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Request, Response, status
 from src.core.authentication import authenticate_police_or_admin, authenticate_police_staff_or_admin
 from src.core.query_utils import PAGINATED_OPENAPI_PARAMS
 from src.modules.account.account_model import AccountDto
@@ -29,6 +29,21 @@ async def get_incidents_paginated(
     _: AccountDto | PoliceAccountDto = Depends(authenticate_police_staff_or_admin),
 ) -> PaginatedIncidentsResponse:
     return await incident_service.get_incidents_paginated(request)
+
+
+@incident_router.get("/incidents/csv")
+async def get_incidents_csv(
+    request: Request,
+    incident_service: IncidentService = Depends(),
+    _=Depends(authenticate_police_staff_or_admin),
+) -> Response:
+    incident_data = await incident_service.get_incidents_for_export(request)
+    excel_content = incident_service.export_incidents_to_excel(incident_data)
+    return Response(
+        content=excel_content,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=incidents.xlsx"},
+    )
 
 
 @incident_router.get(
