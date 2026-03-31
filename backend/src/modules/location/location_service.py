@@ -9,6 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.config import env
 from src.core.database import get_session
+from src.core.excel_export import ExcelExporter
 from src.core.exceptions import (
     BadRequestException,
     ConflictException,
@@ -16,6 +17,7 @@ from src.core.exceptions import (
     NotFoundException,
 )
 from src.core.query_utils import get_paginated_results, parse_pagination_params
+from src.modules.incident.incident_model import IncidentSeverity
 
 from .location_entity import LocationEntity
 from .location_model import (
@@ -158,6 +160,73 @@ class LocationService:
             allowed_sort_fields=allowed_sort_fields,
             allowed_filter_fields=allowed_filter_fields,
         )
+
+    async def get_locations_for_export(self, request: Request) -> list[LocationDto]:
+        """Get all locations without pagination for export."""
+        allowed_fields = [
+            "id",
+            "google_place_id",
+            "formatted_address",
+            "latitude",
+            "longitude",
+            "street_number",
+            "street_name",
+            "unit",
+            "city",
+            "county",
+            "state",
+            "country",
+            "zip_code",
+            "hold_expiration",
+        ]
+        allowed_sort_fields = allowed_filter_fields = allowed_fields
+
+        base_query = select(LocationEntity)
+
+        query_params = parse_pagination_params(
+            request,
+            allowed_sort_fields=allowed_sort_fields,
+            allowed_filter_fields=allowed_filter_fields,
+        )
+        query_params = query_params.model_copy(update={"pagination": None})
+
+        result = await get_paginated_results(
+            session=self.session,
+            base_query=base_query,
+            entity_class=LocationEntity,
+            dto_converter=lambda entity: entity.to_dto(),
+            query_params=query_params,
+            allowed_sort_fields=allowed_sort_fields,
+            allowed_filter_fields=allowed_filter_fields,
+        )
+        return result.items
+
+    def export_locations_to_excel(self, locations: list[LocationDto]) -> bytes:
+        """Export locations to an Excel file."""
+        exporter = ExcelExporter(sheet_title="Locations")
+        exporter.set_headers(
+            ["Fully Formatted Address", "Complaint Count", "Warning Count", "Citation Count"]
+        )
+        for location in locations:
+            complaint_count = sum(
+                1
+                for incident in location.incidents
+                if incident.severity == IncidentSeverity.COMPLAINT
+            )
+            warning_count = sum(
+                1
+                for incident in location.incidents
+                if incident.severity == IncidentSeverity.WARNING
+            )
+            citation_count = sum(
+                1
+                for incident in location.incidents
+                if incident.severity == IncidentSeverity.CITATION
+            )
+            exporter.add_row(
+                [location.formatted_address, complaint_count, warning_count, citation_count]
+            )
+        return exporter.to_bytes()
 
     async def get_location_by_id(self, location_id: int) -> LocationDto:
         location_entity = await self._get_location_entity_by_id(location_id)

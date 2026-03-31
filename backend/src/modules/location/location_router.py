@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from src.core.authentication import (
     authenticate_admin,
     authenticate_by_role,
@@ -101,6 +101,21 @@ async def get_locations(
     Returns all locations with pagination, sorting, and filtering.
     """
     return await location_service.get_locations_paginated(request=request)
+
+
+@location_router.get("/csv")
+async def get_locations_csv(
+    request: Request,
+    location_service: LocationService = Depends(),
+    _=Depends(authenticate_staff_or_admin),
+) -> Response:
+    locations = await location_service.get_locations_for_export(request)
+    excel_content = location_service.export_locations_to_excel(locations)
+    return Response(
+        content=excel_content,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=locations.xlsx"},
+    )
 
 
 @location_router.get("/{location_id}", response_model=LocationDto)
