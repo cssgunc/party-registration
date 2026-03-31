@@ -787,7 +787,7 @@ class PartyService:
         Args:
             parties: List of PartyDto models to export
             is_police: If True, use the police format (11 columns, full names only).
-                       If False, use the staff/admin format (15 columns, includes residence).
+                       If False, use the staff/admin format (14 columns, includes residence).
 
         Returns:
             Excel file content as bytes
