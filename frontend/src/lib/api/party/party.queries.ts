@@ -50,6 +50,7 @@ export function useCreateParty(
   options?: OptimisticMutationOptions<PartyDto, Error, CreatePartyDto>
 ) {
   const queryClient = useQueryClient();
+  const { openSnackbar } = useSnackbar();
 
   return useMutation<PartyDto, Error, CreatePartyDto>({
     ...options,
@@ -59,6 +60,7 @@ export function useCreateParty(
       // This will invalidate ["parties"], ["parties", "me"], ["parties", ...dates], etc.
       queryClient.invalidateQueries({ queryKey: PARTIES_KEY });
       options?.onSuccess?.(...params);
+      openSnackbar("Party created successfully!", "success");
     },
   });
 }
@@ -68,7 +70,7 @@ export function useCreateParty(
  */
 export function useUpdateParty() {
   const queryClient = useQueryClient();
-
+  const { openSnackbar } = useSnackbar();
   return useMutation<
     PartyDto,
     Error,
@@ -78,6 +80,7 @@ export function useUpdateParty() {
     onSuccess: () => {
       // Invalidate parties list to refetch after update
       queryClient.invalidateQueries({ queryKey: MY_PARTIES_KEY });
+      openSnackbar("Party updated successfully!", "success");
     },
   });
 }

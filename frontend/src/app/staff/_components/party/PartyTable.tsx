@@ -29,7 +29,7 @@ const hasPartyChanged = (
 
   return (
     original.party_datetime.getTime() !== updated.party_datetime.getTime() ||
-    original.location.formatted_address !== updated.google_place_id ||
+    original.location.google_place_id !== updated.google_place_id ||
     original.contact_one.email !== updated.contact_one_email ||
     original.contact_two.email !== updated.contact_two.email ||
     original.contact_two.first_name !== updated.contact_two.first_name ||

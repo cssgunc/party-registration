@@ -118,7 +118,6 @@ export default function AccountTableForm({
               placeholder="student@unc.edu"
               value={formData.email}
               onChange={(e) => updateField("email", e.target.value)}
-              aria-invalid={!!errors.email}
               disabled={isPIDEditMode}
             />
             {errors.email && <FieldError>{errors.email}</FieldError>}
