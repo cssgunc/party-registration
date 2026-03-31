@@ -7,8 +7,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from src.core.database import get_session
 from src.core.date_utils import is_same_academic_year
+from src.core.excel_export import ExcelExporter
 from src.core.exceptions import BadRequestException, ConflictException, NotFoundException
-from src.core.query_utils import get_paginated_results, parse_pagination_params
+from src.core.query_utils import (
+    ListQueryParam,
+    apply_query_params,
+    get_paginated_results,
+    parse_pagination_params,
+)
 from src.modules.account.account_entity import AccountEntity, AccountRole
 from src.modules.location.location_model import LocationDto
 from src.modules.location.location_service import LocationService
@@ -179,6 +185,82 @@ class StudentService:
             allowed_filter_fields=allowed_filter_fields,
             nested_field_columns=nested_field_columns,
         )
+
+    async def get_students_for_export(self, request: Request) -> list[StudentDto]:
+        nested_field_columns = {
+            "id": AccountEntity.id,
+            "first_name": AccountEntity.first_name,
+            "last_name": AccountEntity.last_name,
+            "email": AccountEntity.email,
+            "onyen": AccountEntity.onyen,
+            "pid": AccountEntity.pid,
+        }
+
+        _base_allowed_fields = ["phone_number", "contact_preference", "last_registered"]
+        allowed_sort_fields = [*_base_allowed_fields, *nested_field_columns.keys()]
+        allowed_filter_fields = list(allowed_sort_fields)
+
+        base_query = (
+            select(StudentEntity)
+            .join(AccountEntity, StudentEntity.account_id == AccountEntity.id)
+            .options(selectinload(StudentEntity.account), selectinload(StudentEntity.residence))
+        )
+
+        query_params = parse_pagination_params(
+            request,
+            allowed_sort_fields=allowed_sort_fields,
+            allowed_filter_fields=allowed_filter_fields,
+        )
+        query_params = query_params.model_copy(update={"pagination": None})
+
+        # Apply filters and sort (without pagination)
+        final_query = apply_query_params(
+            base_query,
+            StudentEntity,  # pyright: ignore[reportArgumentType]
+            params=ListQueryParam(filters=query_params.filters, sort=query_params.sort),
+            allowed_sort_fields=allowed_sort_fields,
+            allowed_filter_fields=allowed_filter_fields,
+            nested_field_columns=nested_field_columns,
+        )
+
+        result = await self.session.execute(final_query)
+        return [entity.to_dto() for entity in result.scalars().all()]
+
+    def export_students_to_excel(self, students: list[StudentDto]) -> bytes:
+        headers = [
+            "PID",
+            "First Name",
+            "Last Name",
+            "Email",
+            "Phone Number",
+            "Contact Preference",
+            "Is Registered",
+            "Residence Address",
+        ]
+        exporter = ExcelExporter(sheet_title="Students")
+        exporter.set_headers(headers)
+        for student in students:
+            is_registered = "Yes" if student.last_registered is not None else "No"
+            residence_address = (
+                student.residence.location.formatted_address
+                if student.residence is not None
+                else ""
+            )
+            phone = ExcelExporter.format_phone(student.phone_number)
+            contact_preference = student.contact_preference.value.capitalize()
+            exporter.add_row(
+                [
+                    student.pid,
+                    student.first_name,
+                    student.last_name,
+                    student.email,
+                    phone,
+                    contact_preference,
+                    is_registered,
+                    residence_address,
+                ]
+            )
+        return exporter.to_bytes()
 
     async def get_student_count(self) -> int:
         count_query = select(func.count(StudentEntity.account_id))

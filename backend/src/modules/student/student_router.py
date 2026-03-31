@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Response
 from src.core.authentication import (
     authenticate_admin,
     authenticate_staff_or_admin,
@@ -81,6 +81,21 @@ async def list_students(
     - total_pages: Total number of pages
     """
     return await student_service.get_students_paginated(request=request)
+
+
+@student_router.get("/csv")
+async def get_students_csv(
+    request: Request,
+    student_service: StudentService = Depends(),
+    _=Depends(authenticate_staff_or_admin),
+) -> Response:
+    students = await student_service.get_students_for_export(request)
+    excel_content = student_service.export_students_to_excel(students)
+    return Response(
+        content=excel_content,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=students.xlsx"},
+    )
 
 
 @student_router.get("/{student_id}")
