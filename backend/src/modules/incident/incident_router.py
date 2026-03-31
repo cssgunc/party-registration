@@ -35,7 +35,7 @@ async def get_incidents_paginated(
 async def get_incidents_csv(
     request: Request,
     incident_service: IncidentService = Depends(),
-    _=Depends(authenticate_police_staff_or_admin),
+    _: AccountDto | PoliceAccountDto = Depends(authenticate_police_staff_or_admin),
 ) -> Response:
     incident_data = await incident_service.get_incidents_for_export(request)
     excel_content = incident_service.export_incidents_to_excel(incident_data)
