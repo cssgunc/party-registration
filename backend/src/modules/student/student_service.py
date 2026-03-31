@@ -240,6 +240,8 @@ class StudentService:
         exporter = ExcelExporter(sheet_title="Students")
         exporter.set_headers(headers)
         for student in students:
+            # Mirrors the UI checkbox: "Yes" if last_registered is set
+            # (cleared to None when unmarked via PATCH /students/{id}/is-registered)
             is_registered = "Yes" if student.last_registered is not None else "No"
             residence_address = (
                 student.residence.location.formatted_address

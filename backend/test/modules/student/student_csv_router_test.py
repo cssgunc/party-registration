@@ -104,6 +104,11 @@ class TestStudentCSVRouter:
         row_no_res = data_rows[pid_no_res]
         assert row_no_res[6] == "No"  # Is Registered
         assert row_no_res[7] in ("", None)  # Residence Address (empty)
+        # Phone number should be formatted as (XXX) XXX-XXXX
+        phone_no_res = str(row_no_res[4])  # Phone Number
+        assert "(" in phone_no_res and ")" in phone_no_res and "-" in phone_no_res
+        # Contact preference should be capitalized
+        assert str(row_no_res[5])[0].isupper()  # Contact Preference starts with uppercase
 
         # Assert student with residence
         pid_with_res = student_with_residence.account.pid
@@ -111,6 +116,11 @@ class TestStudentCSVRouter:
         row_with_res = data_rows[pid_with_res]
         assert row_with_res[6] == "Yes"  # Is Registered
         assert row_with_res[7] == location.formatted_address  # Residence Address
+        # Phone number should be formatted as (XXX) XXX-XXXX
+        phone_with_res = str(row_with_res[4])  # Phone Number
+        assert "(" in phone_with_res and ")" in phone_with_res and "-" in phone_with_res
+        # Contact preference should be capitalized
+        assert str(row_with_res[5])[0].isupper()  # Contact Preference starts with uppercase
 
     @pytest.mark.asyncio
     async def test_get_students_csv_police_forbidden(self, police_client: AsyncClient):
