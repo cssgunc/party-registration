@@ -6,10 +6,11 @@ import jwt
 from fastapi import Depends
 from pydantic import TypeAdapter
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.config import env
 from src.core.database import get_session
-from src.core.exceptions import CredentialsException, ForbiddenException
+from src.core.exceptions import BadRequestException, CredentialsException, ForbiddenException
 from src.modules.account.account_model import AccountDto
 from src.modules.account.account_service import AccountService
 from src.modules.auth.auth_model import (
@@ -119,13 +120,16 @@ class AuthService:
         Create a refresh token and store its hash in the database.
 
         Exactly one of account_id or police_id must be provided.
-        JWT sub is str(account_id) for accounts and "police" for police tokens.
+        JWT sub is str(account_id) for accounts and str(police_id) for police tokens.
         """
+        if (account_id is None) == (police_id is None):
+            raise BadRequestException("Exactly one of account_id or police_id must be provided")
+
         expires_delta = timedelta(days=env.REFRESH_TOKEN_EXPIRE_DAYS)
         expires_at = datetime.now(UTC) + expires_delta
         jti = str(uuid4())
 
-        sub = str(account_id) if account_id is not None else "police"
+        sub = str(account_id) if account_id is not None else str(police_id)
 
         payload = RefreshTokenPayload(
             jti=jti,
@@ -146,17 +150,21 @@ class AuthService:
             expires_at=expires_at,
         )
 
-        self.session.add(refresh_token_entity)
-        await self.session.commit()
+        try:
+            self.session.add(refresh_token_entity)
+            await self.session.commit()
+        except IntegrityError as e:
+            await self.session.rollback()
+            raise InvalidRefreshTokenException() from e
 
         return token, expires_at
 
-    async def validate_refresh_token(self, token: str) -> tuple[int | None, int | None]:
+    async def validate_refresh_token(self, token: str) -> tuple[int, str]:
         """
         Validate a refresh token against the database allow-list.
 
         Returns:
-            tuple[int | None, int | None]: (account_id, police_id)
+            tuple[int, str]: (id, role) where role is "account" or "police"
 
         Raises:
             InvalidRefreshTokenException: If token is invalid or not in allow-list
@@ -188,7 +196,11 @@ class AuthService:
             await self.session.commit()
             raise InvalidRefreshTokenException()
 
-        return refresh_token_entity.account_id, refresh_token_entity.police_id
+        if refresh_token_entity.police_id is not None:
+            return refresh_token_entity.police_id, "police"
+        if refresh_token_entity.account_id is not None:
+            return refresh_token_entity.account_id, "account"
+        raise InvalidRefreshTokenException()
 
     async def revoke_refresh_token(self, token: str) -> None:
         """Revoke a refresh token by removing it from the database allow-list."""
@@ -239,13 +251,13 @@ class AuthService:
 
     async def refresh_access_token(self, refresh_token: str) -> AccessTokenDto:
         """Refresh an access token using a valid refresh token."""
-        account_id, police_id = await self.validate_refresh_token(refresh_token)
+        token_id, role = await self.validate_refresh_token(refresh_token)
 
-        if police_id is not None:
-            police = await self.police_service.get_police_by_id(police_id)
+        if role == "police":
+            police = await self.police_service.get_police_by_id(token_id)
             access_token, access_expires = self.create_police_access_token(police)
         else:
-            account = await self.account_service.get_account_by_id(account_id)  # type: ignore[arg-type]
+            account = await self.account_service.get_account_by_id(token_id)
             access_token, access_expires = self.create_account_access_token(account)
 
         return AccessTokenDto(access_token=access_token, access_token_expires=access_expires)

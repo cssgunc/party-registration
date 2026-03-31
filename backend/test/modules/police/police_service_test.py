@@ -148,3 +148,18 @@ class TestPoliceService:
         """Test verifying credentials when police not found raises CredentialsException."""
         with pytest.raises(CredentialsException):
             await self.police_service.verify_police_credentials("police@unc.edu", "password")
+
+    @pytest.mark.asyncio
+    async def test_verify_police_credentials_wildcard_email(self) -> None:
+        """Test that % and _ wildcards in email don't cause MultipleResultsFound."""
+        await self.police_utils.create_many(i=3)
+
+        with pytest.raises(CredentialsException):
+            await self.police_service.verify_police_credentials(
+                "%@unc.edu", self.police_utils.TEST_PASSWORD
+            )
+
+        with pytest.raises(CredentialsException):
+            await self.police_service.verify_police_credentials(
+                "_@unc.edu", self.police_utils.TEST_PASSWORD
+            )

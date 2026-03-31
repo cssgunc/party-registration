@@ -1,5 +1,5 @@
 from fastapi import Depends, Request
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.bcrypt_utils import hash_password, verify_password
@@ -38,7 +38,7 @@ class PoliceService:
 
     async def _get_police_entity_by_email(self, email: str) -> PoliceEntity | None:
         result = await self.session.execute(
-            select(PoliceEntity).where(PoliceEntity.email.ilike(email))
+            select(PoliceEntity).where(func.lower(PoliceEntity.email) == email.lower())
         )
         return result.scalar_one_or_none()
 

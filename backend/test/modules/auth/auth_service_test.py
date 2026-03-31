@@ -4,7 +4,7 @@ import jwt
 import pytest
 from sqlalchemy import select
 from src.core.config import env
-from src.core.exceptions import CredentialsException
+from src.core.exceptions import BadRequestException, CredentialsException
 from src.modules.account.account_model import AccountDto
 from src.modules.auth.auth_model import AccountAccessTokenPayload, PoliceAccessTokenPayload
 from src.modules.auth.auth_service import AuthService, InvalidRefreshTokenException
@@ -143,7 +143,7 @@ class TestAuthService:
         token, expires_at = await self.auth_service.create_refresh_token(police_id=police_entity.id)
 
         payload = self.auth_utils.decode_token(token, env.REFRESH_TOKEN_SECRET_KEY)
-        assert payload["sub"] == "police"
+        assert payload["sub"] == str(police_entity.id)
         assert "jti" in payload
         self.auth_utils.assert_expiration_approx(expires_at, 7 * 24 * 60 * 60)
 
@@ -153,27 +153,46 @@ class TestAuthService:
         assert entity.account_id is None
 
     @pytest.mark.asyncio
+    async def test_create_refresh_token_neither_raises(self) -> None:
+        """Test that create_refresh_token with neither account_id nor police_id raises."""
+        with pytest.raises(BadRequestException):
+            await self.auth_service.create_refresh_token()
+
+    @pytest.mark.asyncio
+    async def test_create_refresh_token_both_raises(
+        self, account_utils: AccountTestUtils, police_utils: PoliceTestUtils
+    ) -> None:
+        """Test that create_refresh_token with both account_id and police_id raises."""
+        account_entity = await account_utils.create_one()
+        police_entity = await police_utils.create_one()
+
+        with pytest.raises(BadRequestException):
+            await self.auth_service.create_refresh_token(
+                account_id=account_entity.id, police_id=police_entity.id
+            )
+
+    @pytest.mark.asyncio
     async def test_validate_refresh_token_valid(self, account_utils: AccountTestUtils) -> None:
-        """Test validating a valid refresh token returns (account_id, None)."""
+        """Test validating a valid refresh token returns (account_id, "account")."""
         account_entity = await account_utils.create_one()
         account_id = account_entity.id
         token, _ = await self.auth_service.create_refresh_token(account_id=account_id)
 
-        result_account_id, result_police_id = await self.auth_service.validate_refresh_token(token)
+        result_id, result_role = await self.auth_service.validate_refresh_token(token)
 
-        assert result_account_id == account_id
-        assert result_police_id is None
+        assert result_id == account_id
+        assert result_role == "account"
 
     @pytest.mark.asyncio
     async def test_validate_police_refresh_token(self, police_utils: PoliceTestUtils) -> None:
-        """Test validating a police refresh token returns (None, police_id)."""
+        """Test validating a police refresh token returns (police_id, "police")."""
         police_entity = await police_utils.create_one()
         token, _ = await self.auth_service.create_refresh_token(police_id=police_entity.id)
 
-        result_account_id, result_police_id = await self.auth_service.validate_refresh_token(token)
+        result_id, result_role = await self.auth_service.validate_refresh_token(token)
 
-        assert result_account_id is None
-        assert result_police_id == police_entity.id
+        assert result_id == police_entity.id
+        assert result_role == "police"
 
     @pytest.mark.asyncio
     async def test_validate_refresh_token_expired(self, police_utils: PoliceTestUtils) -> None:
@@ -232,8 +251,9 @@ class TestAuthService:
         account_id = account_entity.id
         token, _ = await self.auth_service.create_refresh_token(account_id=account_id)
 
-        validated_id, _ = await self.auth_service.validate_refresh_token(token)
-        assert validated_id == account_id
+        result_id, result_role = await self.auth_service.validate_refresh_token(token)
+        assert result_id == account_id
+        assert result_role == "account"
 
         await self.auth_service.revoke_refresh_token(token)
 
@@ -290,7 +310,7 @@ class TestAuthService:
         refresh_payload = self.auth_utils.decode_token(
             tokens.refresh_token, env.REFRESH_TOKEN_SECRET_KEY
         )
-        assert refresh_payload["sub"] == "police"
+        assert refresh_payload["sub"] == str(police.id)
 
     @pytest.mark.asyncio
     async def test_refresh_access_token_account(self, account_utils: AccountTestUtils) -> None:

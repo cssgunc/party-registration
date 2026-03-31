@@ -39,7 +39,7 @@ class RefreshTokenPayload(BaseModel):
     """JWT payload for refresh tokens."""
 
     jti: str
-    sub: str  # str(account_id) or "police"
+    sub: str  # str(account_id) or str(police_id)
     exp: AwareDatetime
     iat: AwareDatetime
 
