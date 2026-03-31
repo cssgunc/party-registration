@@ -4,6 +4,7 @@ import PartyRegistrationForm, {
   PartyFormValues,
 } from "@/app/student/_components/PartyRegistrationForm";
 import { Card } from "@/components/ui/card";
+import { useSnackbar } from "@/contexts/SnackbarContext";
 import { useRegisterParty } from "@/lib/api/party/party.queries";
 import { StudentCreatePartyDto } from "@/lib/api/party/party.types";
 import {
@@ -20,6 +21,7 @@ export default function RegistrationForm() {
   const partiesQuery = useMyParties();
   const studentQuery = useCurrentStudent();
   const router = useRouter();
+  const { openSnackbar } = useSnackbar();
 
   /**
    * Get initial values from the student's most recent party (if they have one).
@@ -86,11 +88,11 @@ export default function RegistrationForm() {
         partyData,
         residencePlaceId: hasValidResidence ? undefined : placeId,
       });
-      alert("Party created successfully!");
+      openSnackbar("Party created successfully!", "success");
       router.push("/student");
     } catch (err) {
       console.log(err);
-      alert("Failed to create party");
+      openSnackbar("Failed to create party", "error");
     }
   };
 
