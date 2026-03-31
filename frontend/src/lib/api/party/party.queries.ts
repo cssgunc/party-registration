@@ -1,3 +1,4 @@
+import { useSnackbar } from "@/contexts/SnackbarContext";
 import { PartyService } from "@/lib/api/party/party.service";
 import {
   CreatePartyDto,
@@ -86,12 +87,14 @@ export function useUpdateParty() {
  */
 export function useDeleteParty() {
   const queryClient = useQueryClient();
+  const { openSnackbar } = useSnackbar();
 
   return useMutation<PartyDto, Error, number>({
     mutationFn: (partyId) => partyService.deleteParty(partyId),
     onSuccess: () => {
       // Invalidate parties list to refetch after deletion
       queryClient.invalidateQueries({ queryKey: MY_PARTIES_KEY });
+      openSnackbar("Party deleted successfully!", "success");
     },
   });
 }

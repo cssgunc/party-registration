@@ -32,7 +32,6 @@ export function DeletePartyDialog({
     try {
       await deletePartyMutation.mutateAsync(party.id);
       onOpenChange(false);
-      openSnackbar("Party deleted successfully!", "success");
     } catch {
       openSnackbar("Failed to delete party", "error");
     }
