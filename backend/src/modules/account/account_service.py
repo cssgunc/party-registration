@@ -106,7 +106,7 @@ class AccountService:
             PaginatedAccountsResponse with items and metadata
         """
         # Define allowed fields for sorting and filtering
-        allowed_fields = ["id", "email", "first_name", "last_name", "pid", "role"]
+        allowed_fields = ["id", "email", "first_name", "last_name", "onyen", "pid", "role"]
         allowed_sort_fields = allowed_filter_fields = allowed_fields
 
         # Build base query
@@ -133,7 +133,7 @@ class AccountService:
 
     async def get_accounts_for_export(self, request: Request) -> list[AccountDto]:
         """Get all accounts for export, ignoring pagination."""
-        allowed_fields = ["id", "email", "first_name", "last_name", "pid", "role"]
+        allowed_fields = ["id", "email", "first_name", "last_name", "onyen", "pid", "role"]
         allowed_sort_fields = allowed_filter_fields = allowed_fields
 
         base_query = select(AccountEntity)
