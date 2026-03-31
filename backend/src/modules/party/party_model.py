@@ -59,9 +59,7 @@ class AdminCreatePartyDto(BaseModel):
     type: Literal["admin"] = Field("admin", description="Request type discriminator")
     party_datetime: AwareDatetime = Field(..., description="Date and time of the party")
     google_place_id: str = Field(..., description="Google Maps place ID of the location")
-    contact_one_email: EmailStr = Field(
-        ..., description="Email address of the first contact student"
-    )
+    contact_one_student_id: int = Field(..., description="Account ID of the first contact student")
     contact_two: ContactDto = Field(..., description="Contact information for the second contact")
 
 
