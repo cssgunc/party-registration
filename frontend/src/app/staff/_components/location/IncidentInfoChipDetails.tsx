@@ -1,26 +1,106 @@
-"use client";
 import { Button } from "@/components/ui/button";
-import { useRole } from "@/contexts/RoleContext";
 import { IncidentDto, LocationDto } from "@/lib/api/location/location.types";
 import { PaginatedResponse } from "@/lib/shared";
 import { useQueryClient } from "@tanstack/react-query";
+import { useSession } from "next-auth/react";
+import { useState } from "react";
+import { DeleteConfirmDialog } from "../shared/dialog/DeleteConfirmDialog";
 import { useSidebar } from "../shared/sidebar/SidebarContext";
+import IncidentModal from "./IncidentModal";
 import IncidentSidebarCard from "./IncidentSidebarCard";
 
 type IncidentSidebarProps = {
   incidents: IncidentDto[];
-  locationId: number;
 };
 
 export default function IncidentInfoChipDetails({
   incidents,
-  locationId,
 }: IncidentSidebarProps) {
-  const { role } = useRole();
-
-  const queryClient = useQueryClient();
+  const { data: session } = useSession();
+  const role = session?.role;
+  type ModalState =
+    | { mode: "create" }
+    | { mode: "edit"; incident: IncidentDto }
+    | null;
+  const [modalState, setModalState] = useState<ModalState>(null);
   const { openSidebar } = useSidebar();
-  const handleDelete = (incidentId: number) => {
+
+  const [confirmStateDelete, setConfirmStateDelete] = useState<number | null>(
+    null
+  );
+
+  const requestDelete = (incidentId: number) => {
+    setConfirmStateDelete(incidentId);
+  };
+
+  const doDelete = () => {
+    if (confirmStateDelete === null) return;
+    const incident = incidents.find((i) => i.id === confirmStateDelete);
+    if (!incident) return;
+    queryClient.setQueryData<PaginatedResponse<LocationDto> | undefined>(
+      ["locations"],
+      (old) =>
+        old
+          ? {
+              ...old,
+              items: old.items.map((loc) =>
+                loc.id === incident.location_id
+                  ? {
+                      ...loc,
+                      incidents: loc.incidents.filter(
+                        (inc) => inc.id !== confirmStateDelete
+                      ),
+                    }
+                  : loc
+              ),
+            }
+          : old
+    );
+
+    refreshSidebar(incident.location_id);
+    setConfirmStateDelete(null);
+  };
+
+  const handleEdit = (incident: IncidentDto) => {
+    setModalState({ mode: "edit", incident });
+  };
+
+  const handleAdd = () => {
+    setModalState({ mode: "create" });
+  };
+  const closeModal = () => setModalState(null);
+  const queryClient = useQueryClient();
+  const refreshSidebar = (locationId: number) => {
+    const updated = queryClient.getQueryData<PaginatedResponse<LocationDto>>([
+      "locations",
+    ]);
+
+    const location = updated?.items.find((l) => l.id === locationId);
+
+    if (!location) return;
+
+    openSidebar(
+      `incidents-${location.id}`,
+      "Incidents at Location",
+      "Warnings & Citations go here",
+      <IncidentInfoChipDetails incidents={location.incidents} />
+    );
+  };
+  const handleCreateIncident = (
+    data: Omit<IncidentDto, "id" | "location_id"> & {
+      incident_datetime: Date;
+    }
+  ) => {
+    const locationId = incidents.length > 0 ? incidents[0].location_id : 0;
+
+    const newIncident: IncidentDto = {
+      id: Date.now(),
+      location_id: locationId,
+      incident_datetime: data.incident_datetime,
+      description: data.description,
+      severity: data.severity,
+    };
+
     queryClient.setQueryData<PaginatedResponse<LocationDto> | undefined>(
       ["locations"],
       (old) =>
@@ -31,8 +111,45 @@ export default function IncidentInfoChipDetails({
                 loc.id === locationId
                   ? {
                       ...loc,
-                      incidents: loc.incidents.filter(
-                        (inc) => inc.id !== incidentId
+                      incidents: [newIncident, ...loc.incidents],
+                    }
+                  : loc
+              ),
+            }
+          : old
+    );
+    refreshSidebar(locationId);
+    setModalState(null);
+  };
+
+  const handleEditIncident = (
+    data: Omit<IncidentDto, "id" | "location_id"> & {
+      incident_datetime: Date;
+    }
+  ) => {
+    if (modalState?.mode !== "edit") return;
+
+    const editingIncident = modalState.incident;
+
+    queryClient.setQueryData<PaginatedResponse<LocationDto> | undefined>(
+      ["locations"],
+      (old) =>
+        old
+          ? {
+              ...old,
+              items: old.items.map((loc) =>
+                loc.id === editingIncident.location_id
+                  ? {
+                      ...loc,
+                      incidents: loc.incidents.map((inc) =>
+                        inc.id === editingIncident.id
+                          ? {
+                              ...inc,
+                              incident_datetime: data.incident_datetime,
+                              description: data.description,
+                              severity: data.severity,
+                            }
+                          : inc
                       ),
                     }
                   : loc
@@ -41,23 +158,9 @@ export default function IncidentInfoChipDetails({
           : old
     );
 
-    const updated = queryClient.getQueryData<PaginatedResponse<LocationDto>>([
-      "locations",
-    ]);
+    refreshSidebar(editingIncident.location_id);
 
-    const location = updated?.items.find((l) => l.id === locationId);
-
-    if (!location) return;
-
-    openSidebar(
-      `incidents-${locationId}`,
-      "Incidents at Location",
-      "Warnings & Citations go here",
-      <IncidentInfoChipDetails
-        incidents={location.incidents}
-        locationId={locationId}
-      />
-    );
+    setModalState(null);
   };
 
   return (
@@ -70,14 +173,45 @@ export default function IncidentInfoChipDetails({
         <IncidentSidebarCard
           incidents={incident}
           key={incident.id}
-          onDeleteAction={handleDelete}
+          onDeleteIncidentAction={requestDelete}
+          onEditIncidentAction={handleEdit}
         />
       ))}
+      <DeleteConfirmDialog
+        open={confirmStateDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setConfirmStateDelete(null);
+          }
+        }}
+        onConfirm={doDelete}
+        title="Delete Incident"
+        description="Are you sure you want to delete this incident? This action cannot be undone."
+      />
       {role === "admin" && (
-        <Button variant="default" className="mt-4">
+        <Button variant="default" className="mt-4" onClick={handleAdd}>
           Add Incident
         </Button>
       )}
+
+      <IncidentModal
+        key={
+          modalState?.mode === "edit"
+            ? `edit-${modalState.incident.id}`
+            : "create"
+        }
+        open={modalState !== null}
+        onOpenChange={(open) => {
+          if (!open) closeModal();
+        }}
+        mode={modalState?.mode ?? "create"}
+        incident={modalState?.mode === "edit" ? modalState.incident : undefined}
+        onSubmit={
+          modalState?.mode === "edit"
+            ? handleEditIncident
+            : handleCreateIncident
+        }
+      />
     </div>
   );
 }

@@ -6,16 +6,17 @@ import SplitDateRangeFilter from "@/app/police/_components/SplitDateRangeFilter"
 import AddressSearch from "@/components/AddressSearch";
 import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
-import { PartyService } from "@/lib/api/party/party.service";
 import { PartyDto } from "@/lib/api/party/party.types";
-import getMockClient from "@/lib/network/mockClient";
-import { useQuery } from "@tanstack/react-query";
+import {
+  usePartiesNearby,
+  usePlaceDetails,
+  usePoliceParties,
+} from "@/lib/api/party/police-party.queries";
 import { startOfDay } from "date-fns";
 import { useEffect, useMemo, useState } from "react";
 import PartyCsvExportButton from "./_components/PartyCsvExportButton";
 
-const policeLocationService = new LocationService(getMockClient("police"));
-const partyService = new PartyService(getMockClient("police"));
+const locationService = new LocationService();
 
 export default function PolicePage() {
   const today = startOfDay(new Date());
@@ -27,45 +28,22 @@ export default function PolicePage() {
   const [activeParty, setActiveParty] = useState<PartyDto | undefined>();
 
   // Fetch place details when address is selected
-  const { data: placeDetails } = useQuery({
-    queryKey: ["place-details", searchAddress?.google_place_id],
-    queryFn: () =>
-      policeLocationService.getPlaceDetails(searchAddress!.google_place_id),
-    enabled: !!searchAddress?.google_place_id,
-  });
+  const { data: placeDetails } = usePlaceDetails(
+    searchAddress?.google_place_id
+  );
 
   // Fetch parties using Tanstack Query
   const {
     data: allParties = [],
     isLoading,
     error,
-  } = useQuery({
-    queryKey: ["parties", startDate, endDate],
-    queryFn: async () => {
-      const page = await partyService.listParties({
-        startDate,
-        endDate,
-      });
-      return page.items;
-    },
-    enabled: !!startDate && !!endDate,
-  });
+  } = usePoliceParties({ startDate, endDate });
 
   // Fetch nearby parties if address search is active
-  const { data: nearbyParties, isLoading: isLoadingNearby } = useQuery({
-    queryKey: [
-      "parties-nearby",
-      searchAddress?.google_place_id,
-      startDate,
-      endDate,
-    ],
-    queryFn: () =>
-      partyService.getPartiesNearby(
-        searchAddress!.google_place_id,
-        startDate!,
-        endDate!
-      ),
-    enabled: !!searchAddress?.google_place_id && !!startDate && !!endDate,
+  const { data: nearbyParties, isLoading: isLoadingNearby } = usePartiesNearby({
+    placeId: searchAddress?.google_place_id,
+    startDate,
+    endDate,
   });
 
   // Use nearby parties if address search is active, otherwise use all parties
@@ -126,7 +104,7 @@ export default function PolicePage() {
                 value={searchAddress?.formatted_address || ""}
                 onSelect={setSearchAddress}
                 placeholder="Enter Address..."
-                locationService={policeLocationService}
+                locationService={locationService}
               />
               {searchAddress && (
                 <p className="mt-2 text-sm text-gray-600">

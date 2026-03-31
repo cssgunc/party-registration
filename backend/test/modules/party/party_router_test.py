@@ -5,7 +5,7 @@ import openpyxl
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
-from src.modules.account.account_entity import AccountRole
+from src.modules.account.account_entity import AccountEntity
 from src.modules.location.location_service import LocationHoldActiveException
 from src.modules.party.party_model import ContactDto, PartyDto, PartyStatus
 from src.modules.party.party_service import (
@@ -20,7 +20,6 @@ from src.modules.party.party_service import (
 )
 from src.modules.student.student_entity import StudentEntity
 from src.modules.student.student_model import ContactPreference
-from test.modules.account.account_utils import AccountTestUtils
 from test.modules.location.location_utils import GmapsMockUtils, LocationTestUtils
 from test.modules.party.party_utils import PartyTestUtils
 from test.modules.student.student_utils import StudentTestUtils
@@ -391,19 +390,12 @@ class TestPartyCreateStudentRouter:
     student_utils: StudentTestUtils
 
     @pytest_asyncio.fixture
-    async def current_student(
-        self, setup_test_accounts: None, account_utils: AccountTestUtils
-    ) -> StudentEntity:
-        """Create student for authenticated student client (id=3)."""
-        # student_client uses id=3 from mock_authenticate
-        account = await account_utils.create_one(role=AccountRole.STUDENT.value)
-        assert account.id == 3
-
-        # Set last_registered to indicate Party Smart completion
-        student = await self.student_utils.create_one(
-            account_id=account.id, last_registered=datetime.now(UTC) - timedelta(days=1)
+    async def current_student(self, student_account: AccountEntity) -> StudentEntity:
+        """Create student for the authenticated student client."""
+        return await self.student_utils.create_one(
+            account_id=student_account.id,
+            last_registered=datetime.now(UTC) - timedelta(days=1),
         )
-        return student
 
     @pytest.fixture(autouse=True)
     def _setup(
@@ -448,14 +440,11 @@ class TestPartyCreateStudentRouter:
         assert_res_failure(response, NoResidenceException())
 
     @pytest.mark.asyncio
-    async def test_create_party_without_party_smart_fails(
-        self, setup_test_accounts: None, account_utils: AccountTestUtils
-    ):
+    async def test_create_party_without_party_smart_fails(self, student_account: AccountEntity):
         """Test that student who hasn't completed Party Smart cannot create party."""
         # Create student with old Party Smart completion (previous academic year)
-        account = await account_utils.create_one(role=AccountRole.STUDENT.value)
         student = await self.student_utils.create_student_with_old_party_smart(
-            account_id=account.id
+            account_id=student_account.id
         )
 
         # Set up old residence from previous year
@@ -706,17 +695,12 @@ class TestPartyUpdateStudentRouter:
     student_utils: StudentTestUtils
 
     @pytest_asyncio.fixture
-    async def current_student(
-        self, setup_test_accounts: None, account_utils: AccountTestUtils
-    ) -> StudentEntity:
-        """Create student for authenticated student client (id=3)."""
-        account = await account_utils.create_one(role=AccountRole.STUDENT.value)
-        assert account.id == 3
-
-        student = await self.student_utils.create_one(
-            account_id=account.id, last_registered=datetime.now(UTC) - timedelta(days=1)
+    async def current_student(self, student_account: AccountEntity) -> StudentEntity:
+        """Create student for the authenticated student client."""
+        return await self.student_utils.create_one(
+            account_id=student_account.id,
+            last_registered=datetime.now(UTC) - timedelta(days=1),
         )
-        return student
 
     @pytest.fixture(autouse=True)
     def _setup(
@@ -854,15 +838,13 @@ class TestPartyUpdateStudentRouter:
         assert_res_failure(response, PartyDateTooSoonException())
 
     @pytest.mark.asyncio
-    async def test_update_party_as_student_party_smart_not_completed(self):
+    async def test_update_party_as_student_party_smart_not_completed(
+        self, student_account: AccountEntity
+    ):
         """Test student cannot update party if Party Smart not completed."""
-        account_utils = AccountTestUtils(self.student_utils.session)
-        await account_utils.create_one(role=AccountRole.ADMIN.value)
-        await account_utils.create_one(role=AccountRole.STAFF.value)
-        account = await account_utils.create_one(role=AccountRole.STUDENT.value)
-        assert account.id == 3
-
-        student = await self.student_utils.create_one(account_id=account.id, last_registered=None)
+        student = await self.student_utils.create_one(
+            account_id=student_account.id, last_registered=None
+        )
 
         # Create party directly in DB (bypasses Party Smart validation)
         party = await self.party_utils.create_one(contact_one_id=student.account_id)
@@ -1255,17 +1237,9 @@ class TestStudentPartyDeleteRouter:
     student_utils: StudentTestUtils
 
     @pytest_asyncio.fixture
-    async def current_student(self) -> StudentEntity:
-        """Create student for authenticated student client (id=3)."""
-        account_utils = self.student_utils.account_utils
-        await account_utils.create_one(role=AccountRole.ADMIN.value)
-        await account_utils.create_one(role=AccountRole.STAFF.value)
-
-        account = await account_utils.create_one(role=AccountRole.STUDENT.value)
-        assert account.id == 3
-
-        student = await self.student_utils.create_one(account_id=account.id)
-        return student
+    async def current_student(self, student_account: AccountEntity) -> StudentEntity:
+        """Create student for the authenticated student client."""
+        return await self.student_utils.create_one(account_id=student_account.id)
 
     @pytest.fixture(autouse=True)
     def _setup(
@@ -1329,19 +1303,11 @@ class TestStudentPartyUpdateValidationRouter:
     student_utils: StudentTestUtils
 
     @pytest_asyncio.fixture
-    async def current_student(self) -> StudentEntity:
-        """Create student for authenticated student client (id=3)."""
-        account_utils = self.student_utils.account_utils
-        await account_utils.create_one(role=AccountRole.ADMIN.value)
-        await account_utils.create_one(role=AccountRole.STAFF.value)
-
-        account = await account_utils.create_one(role=AccountRole.STUDENT.value)
-        assert account.id == 3
-
-        student = await self.student_utils.create_one(
-            account_id=account.id, last_registered=datetime.now(UTC) - timedelta(days=1)
+    async def current_student(self, student_account: AccountEntity) -> StudentEntity:
+        """Create student for the authenticated student client."""
+        return await self.student_utils.create_one(
+            account_id=student_account.id, last_registered=datetime.now(UTC) - timedelta(days=1)
         )
-        return student
 
     @pytest.fixture(autouse=True)
     def _setup(
@@ -1415,17 +1381,9 @@ class TestStudentMyPartiesRouter:
     student_utils: StudentTestUtils
 
     @pytest_asyncio.fixture
-    async def current_student(self) -> StudentEntity:
-        """Create student for authenticated student client (id=3)."""
-        account_utils = self.student_utils.account_utils
-        await account_utils.create_one(role=AccountRole.ADMIN.value)
-        await account_utils.create_one(role=AccountRole.STAFF.value)
-
-        account = await account_utils.create_one(role=AccountRole.STUDENT.value)
-        assert account.id == 3
-
-        student = await self.student_utils.create_one(account_id=account.id)
-        return student
+    async def current_student(self, student_account: AccountEntity) -> StudentEntity:
+        """Create student for the authenticated student client."""
+        return await self.student_utils.create_one(account_id=student_account.id)
 
     @pytest.fixture(autouse=True)
     def _setup(

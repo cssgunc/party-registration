@@ -1,11 +1,14 @@
 "use client";
 
-import { LocationService } from "@/lib/api/location/location.service";
+import {
+  useCreateLocation,
+  useDeleteLocation,
+  useLocations,
+  useUpdateLocation,
+} from "@/lib/api/location/location.queries";
 import { LocationCreate, LocationDto } from "@/lib/api/location/location.types";
-import { PaginatedResponse } from "@/lib/shared";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
-import { AxiosError } from "axios";
+import { isAxiosError } from "axios";
 import { useState } from "react";
 import { GenericInfoChip } from "../shared/sidebar/GenericInfoChip";
 import { useSidebar } from "../shared/sidebar/SidebarContext";
@@ -13,20 +16,13 @@ import { TableTemplate } from "../shared/table/TableTemplate";
 import IncidentInfoChipDetails from "./IncidentInfoChipDetails";
 import LocationTableForm from "./LocationTableForm";
 
-const locationService = new LocationService();
-
 export const LocationTable = () => {
-  const queryClient = useQueryClient();
   const { openSidebar, closeSidebar } = useSidebar();
   const [editingLocation, setEditingLocation] = useState<LocationDto | null>(
     null
   );
 
-  const locationsQuery = useQuery<PaginatedResponse<LocationDto>>({
-    queryKey: ["locations"],
-    queryFn: () => locationService.getLocations(),
-    retry: 1,
-  });
+  const locationsQuery = useLocations();
 
   const locations = (locationsQuery.data?.items ?? [])
     .slice()
@@ -34,14 +30,16 @@ export const LocationTable = () => {
       (a.formatted_address || "").localeCompare(b.formatted_address || "")
     );
 
-  const createMutation = useMutation({
-    mutationFn: (payload: LocationCreate) =>
-      locationService.createLocation(payload),
-    onError: (error: AxiosError<{ message: string }>) => {
+  const createMutation = useCreateLocation({
+    onError: (error: Error) => {
       console.error("Failed to create location:", error);
-      const errorMessage = error.response?.data?.message || error.message;
+      const errorMessage = isAxiosError(error)
+        ? error.response?.data?.message || error.message
+        : error.message;
       const userMessage =
-        error.status === 409 ? "This location already exists." : errorMessage;
+        isAxiosError(error) && error.status === 409
+          ? "This location already exists."
+          : errorMessage;
 
       openSidebar(
         "create-location",
@@ -55,23 +53,24 @@ export const LocationTable = () => {
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["locations"] });
       closeSidebar();
       setEditingLocation(null);
     },
   });
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: number; payload: LocationCreate }) =>
-      locationService.updateLocation(id, payload),
+  const updateMutation = useUpdateLocation({
     onError: (
-      error: AxiosError<{ message: string }>,
+      error: Error,
       variables: { id: number; payload: LocationCreate }
     ) => {
       console.error("Failed to update location:", error);
-      const errorMessage = error.response?.data?.message || error.message;
+      const errorMessage = isAxiosError(error)
+        ? error.response?.data?.message || error.message
+        : error.message;
       const userMessage =
-        error.status === 409 ? "This location already exists." : errorMessage;
+        isAxiosError(error) && error.status === 409
+          ? "This location already exists."
+          : errorMessage;
 
       const editTarget =
         editingLocation && editingLocation.id === variables.id
@@ -99,42 +98,14 @@ export const LocationTable = () => {
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["locations"] });
       closeSidebar();
       setEditingLocation(null);
     },
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: (id: number) => locationService.deleteLocation(id),
-    onMutate: async (id: number) => {
-      await queryClient.cancelQueries({ queryKey: ["locations"] });
-
-      const previous = queryClient.getQueryData<PaginatedResponse<LocationDto>>(
-        ["locations"]
-      );
-
-      queryClient.setQueryData<PaginatedResponse<LocationDto> | undefined>(
-        ["locations"],
-        (old) =>
-          old
-            ? {
-                ...old,
-                items: old.items.filter((l) => l.id !== id),
-              }
-            : old
-      );
-
-      return { previous };
-    },
-    onError: (error: Error, _vars, context) => {
+  const deleteMutation = useDeleteLocation({
+    onError: (error: Error) => {
       console.error("Failed to delete location:", error);
-      if (context?.previous) {
-        queryClient.setQueryData(["locations"], context.previous);
-      }
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["locations"] });
     },
   });
 
@@ -223,7 +194,6 @@ export const LocationTable = () => {
                     row.original.incidents.map((i) => i.id)
                   )}`}
                   incidents={row.original.incidents}
-                  locationId={row.original.id}
                 />
               }
             />
@@ -240,9 +210,9 @@ export const LocationTable = () => {
         const holdDate = row.getValue("hold_expiration") as Date | null;
         if (holdDate) {
           const formattedDate = new Date(holdDate).toLocaleDateString();
-          return `until ${formattedDate}`;
+          return `Expires: ${formattedDate}`;
         }
-        return "no active hold";
+        return "No";
       },
 
       filterFn: (row, columnId, filterValue) => {
@@ -257,14 +227,14 @@ export const LocationTable = () => {
     },
   ];
   return (
-    <div className="space-y-4">
+    <div className="h-full min-h-0 flex flex-col">
       <TableTemplate
         data={locations}
         columns={columns}
         resourceName="Location"
         onEdit={handleEdit}
         onDelete={handleDelete}
-        onCreateNew={handleCreate}
+        onCreateNewRow={handleCreate}
         isLoading={locationsQuery.isLoading}
         error={locationsQuery.error as Error | null}
         getDeleteDescription={(location: LocationDto) =>

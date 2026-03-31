@@ -1,11 +1,14 @@
 "use client";
 
-import { PartyService } from "@/lib/api/party/party.service";
+import {
+  useAdminParties,
+  useCreateAdminParty,
+  useDeleteAdminParty,
+  useUpdateAdminParty,
+} from "@/lib/api/party/admin-party.queries";
 import { AdminCreatePartyDto, PartyDto } from "@/lib/api/party/party.types";
-import { PaginatedResponse } from "@/lib/shared";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
-import { AxiosError } from "axios";
+import { isAxiosError } from "axios";
 import { format, isWithinInterval, startOfDay } from "date-fns";
 import { useState } from "react";
 import { DateRange } from "react-day-picker";
@@ -17,30 +20,19 @@ import ContactInfoChipDetails from "./details/ContactInfoChipDetails";
 import LocationInfoChipDetails from "./details/LocationInfoChipDetails";
 import StudentInfoChipDetails from "./details/StudentInfoChipDetails";
 
-const partyService = new PartyService();
-
 export const PartyTable = () => {
-  const queryClient = useQueryClient();
   const { openSidebar, closeSidebar } = useSidebar();
   const [editingParty, setEditingParty] = useState<PartyDto | null>(null);
 
-  const partiesQuery = useQuery({
-    queryKey: ["parties"],
-    queryFn: () => partyService.listParties(),
-    retry: 1,
-  });
-
+  const partiesQuery = useAdminParties();
   const parties = partiesQuery.data?.items ?? [];
 
-  const createMutation = useMutation({
-    mutationFn: (payload: AdminCreatePartyDto) =>
-      partyService.createParty(payload),
-    onError: (error: AxiosError<{ message: string }>) => {
+  const createMutation = useCreateAdminParty({
+    onError: (error: Error) => {
       console.error("Failed to create party:", error);
-      const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        "Failed to create party";
+      const errorMessage = isAxiosError(error)
+        ? error.response?.data?.message || error.message
+        : error.message || "Failed to create party";
 
       openSidebar(
         "create-party",
@@ -54,28 +46,18 @@ export const PartyTable = () => {
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["parties"] });
       closeSidebar();
       setEditingParty(null);
     },
   });
 
-  const updateMutation = useMutation({
-    mutationFn: ({
-      id,
-      payload,
-    }: {
-      id: number;
-      payload: AdminCreatePartyDto;
-    }) => partyService.updateParty(id, payload),
+  const updateMutation = useUpdateAdminParty({
     onError: (
       error: Error,
       variables: { id: number; payload: AdminCreatePartyDto }
     ) => {
       console.error("Failed to update party:", error);
-      const isNotFound =
-        "response" in error &&
-        (error as { response?: { status?: number } }).response?.status === 404;
+      const isNotFound = isAxiosError(error) && error.response?.status === 404;
       const errorMessage = isNotFound
         ? "Student not found. Please select a valid student for the first contact."
         : `Failed to update party: ${error.message}`;
@@ -99,41 +81,15 @@ export const PartyTable = () => {
         />
       );
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["parties"] });
+    onSuccess: () => {
       closeSidebar();
       setEditingParty(null);
     },
   });
-  const deleteMutation = useMutation({
-    mutationFn: (id: number) => partyService.deleteParty(id),
-    // Optimistically remove the party from the cache.
-    onMutate: async (id: number) => {
-      await queryClient.cancelQueries({ queryKey: ["parties"] });
 
-      const previous = queryClient.getQueryData<PaginatedResponse<PartyDto>>([
-        "parties",
-      ]);
-
-      queryClient.setQueryData<PaginatedResponse<PartyDto>>(
-        ["parties"],
-        (prev) =>
-          prev && {
-            ...prev,
-            items: prev.items.filter((p) => p.id !== id),
-          }
-      );
-
-      return { previous };
-    },
-    onError: (error: Error, _vars, context) => {
+  const deleteMutation = useDeleteAdminParty({
+    onError: (error: Error) => {
       console.error("Failed to delete party:", error);
-      if (context?.previous) {
-        queryClient.setQueryData(["parties"], context.previous);
-      }
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["parties"] });
     },
   });
 
@@ -213,7 +169,6 @@ export const PartyTable = () => {
     contactTwoPreference: "call" | "text" | string;
   }) => {
     const payload = buildPayload(data);
-
     createMutation.mutate(payload);
   };
 
@@ -233,9 +188,9 @@ export const PartyTable = () => {
     }
   ) => {
     const payload = buildPayload(data);
-
     updateMutation.mutate({ id: partyId, payload });
   };
+
   const columns: ColumnDef<PartyDto>[] = [
     {
       id: "location",
@@ -320,7 +275,7 @@ export const PartyTable = () => {
         const party_datetime = row.original.party_datetime;
         const date = new Date(party_datetime);
         return date.toLocaleTimeString([], {
-          hour: "2-digit",
+          hour: "numeric",
           minute: "2-digit",
         });
       },
@@ -407,7 +362,7 @@ export const PartyTable = () => {
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="h-full min-h-0 flex flex-col">
       <TableTemplate
         data={parties}
         columns={columns}
@@ -415,7 +370,7 @@ export const PartyTable = () => {
         initialSort={[{ id: "party_datetime", desc: true }]}
         onEdit={handleEdit}
         onDelete={handleDelete}
-        onCreateNew={handleCreate}
+        onCreateNewRow={handleCreate}
         isLoading={partiesQuery.isLoading}
         error={partiesQuery.error as Error | null}
         getDeleteDescription={(party: PartyDto) =>

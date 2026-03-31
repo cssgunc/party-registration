@@ -1,30 +1,23 @@
-import { LocationDto } from "../location/location.types";
+import {
+  LocationDto,
+  LocationDtoBackend,
+  convertLocation,
+} from "../location/location.types";
 
-/**
- * Contact preference enum matching backend
- */
 type ContactPreference = "call" | "text";
 
-/**
- * Student data without names
- */
 type StudentData = {
   contact_preference: ContactPreference;
   last_registered: Date | null;
   phone_number: string;
 };
 
-/**
- * Student data including names
- */
-type StudentDataWithNames = StudentData & {
+type StudentUpdateDto = StudentData & {
   first_name: string;
   last_name: string;
+  residence_place_id?: string | null;
 };
 
-/**
- * Student DTO
- */
 type StudentDto = {
   id: number;
   pid: string;
@@ -38,44 +31,51 @@ type StudentDto = {
   residence: ResidenceDto | null;
 };
 
-/**
- * Residence DTO
- */
 type ResidenceDto = {
   location: LocationDto;
   residence_chosen_date: Date;
 };
 
-/**
- * Student DTO (backend response format with string dates)
- */
-type StudentDtoBackend = Omit<StudentDto, "last_registered"> & {
-  last_registered: string | null;
+type ResidenceDtoBackend = {
+  location: LocationDtoBackend;
+  residence_chosen_date: string;
 };
 
-/**
- * Convert student from backend format (string dates) to frontend format (Date objects)
- */
+type StudentDtoBackend = Omit<StudentDto, "last_registered" | "residence"> & {
+  last_registered: string | null;
+  residence: ResidenceDtoBackend | null;
+};
+
+type ResidenceUpdateDto = {
+  residence_place_id: string;
+};
+
+type ResidenceUpdateWithDisplayDto = ResidenceUpdateDto & {
+  formatted_address: string;
+};
+
 function convertStudent(backend: StudentDtoBackend): StudentDto {
   return {
     ...backend,
     last_registered: backend.last_registered
       ? new Date(backend.last_registered)
       : null,
+    residence: backend.residence
+      ? {
+          location: convertLocation(backend.residence.location),
+          residence_chosen_date: new Date(
+            backend.residence.residence_chosen_date
+          ),
+        }
+      : null,
   };
 }
 
-/**
- * Request body for creating a student (admin)
- */
-type StudentCreate = {
+type StudentCreateDto = {
   account_id: number;
-  data: StudentDataWithNames;
+  data: StudentUpdateDto;
 };
 
-/**
- * Request body for updating student registration status
- */
 type IsRegisteredUpdate = {
   is_registered: boolean;
 };
@@ -98,17 +98,26 @@ type StudentSuggestionDto = {
   matched_field_value: string;
 };
 
+/**
+ * Query keys for student-related queries
+ * Used across admin and student queries for cache management
+ */
+export const STUDENTS_KEY = ["students"] as const;
+export const CURRENT_STUDENT_KEY = [...STUDENTS_KEY, "me"] as const;
+
 export type {
   ContactPreference,
   IsRegisteredUpdate,
+  ResidenceDto,
+  ResidenceUpdateDto,
+  ResidenceUpdateWithDisplayDto,
   StudentAutocompleteInput,
-  StudentCreate,
+  StudentCreateDto,
   StudentData,
-  StudentDataWithNames,
+  StudentUpdateDto,
   StudentDto,
   StudentDtoBackend,
   StudentSuggestionDto,
-  ResidenceDto,
 };
 
 export { convertStudent };

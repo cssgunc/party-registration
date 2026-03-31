@@ -31,6 +31,12 @@ interface StudentSearchProps {
   error?: string;
 }
 
+const formatPhoneNumber = (value: string): string => {
+  return value
+    ? `(${value.slice(0, 3)}) ${value.slice(3, 6)}-${value.slice(6, 10)}`
+    : value;
+};
+
 function highlightMatch(text: string, query: string): React.ReactNode {
   if (!query) return text;
   const index = text.toLowerCase().indexOf(query.toLowerCase());
@@ -301,7 +307,9 @@ export default function StudentSearch({
                         {suggestion.first_name} {suggestion.last_name}
                         {" — "}
                         {highlightMatch(
-                          suggestion.matched_field_value,
+                          suggestion.matched_field_name === "phone_number"
+                            ? formatPhoneNumber(suggestion.matched_field_value)
+                            : suggestion.matched_field_value,
                           searchTerm.trim()
                         )}
                       </span>
@@ -323,7 +331,11 @@ export default function StudentSearch({
       </Popover>
 
       {displayError && (
-        <p className="mt-2 text-sm text-destructive" role="alert">
+        <p
+          id="student-error"
+          className="mt-2 text-sm text-destructive"
+          role="alert"
+        >
           {displayError}
         </p>
       )}

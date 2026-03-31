@@ -83,6 +83,13 @@ type AdminCreatePartyDto = {
  */
 type CreatePartyDto = StudentCreatePartyDto | AdminCreatePartyDto;
 
+/**
+ * Query keys for party-related queries
+ * Used across admin and student party queries for cache management
+ */
+export const PARTIES_KEY = ["parties"] as const;
+export const MY_PARTIES_KEY = [...PARTIES_KEY, "me"] as const;
+
 export type {
   AdminCreatePartyDto,
   ContactDto,

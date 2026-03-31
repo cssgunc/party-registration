@@ -10,6 +10,7 @@ from src.modules.student.student_model import (
     StudentCreateDto,
     StudentData,
     StudentDto,
+    StudentSuggestionDto,
     StudentUpdateDto,
 )
 from test.modules.account.account_utils import AccountTestUtils
@@ -181,6 +182,22 @@ class StudentTestUtils(
             "Expected residence_chosen_date to be set, but it is None"
         )
         self.location_utils.assert_matches(student_dto.residence.location, expected_location)
+
+    def assert_suggestion_match(
+        self,
+        suggestion: StudentSuggestionDto,
+        *,
+        student_id: int,
+        first_name: str,
+        last_name: str,
+        matched_field_name: str,
+        matched_field_value: str,
+    ) -> None:
+        assert suggestion.student_id == student_id
+        assert suggestion.first_name == first_name
+        assert suggestion.last_name == last_name
+        assert suggestion.matched_field_name == matched_field_name
+        assert suggestion.matched_field_value == matched_field_value
 
     # ================================ Typing Overrides ================================
 

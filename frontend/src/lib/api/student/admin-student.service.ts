@@ -1,13 +1,13 @@
-import getMockClient from "@/lib/network/mockClient";
+import apiClient from "@/lib/network/apiClient";
 import { PaginatedResponse } from "@/lib/shared";
 import { AxiosInstance } from "axios";
 import {
   StudentAutocompleteInput,
-  StudentCreate,
-  StudentDataWithNames,
+  StudentCreateDto,
   StudentDto,
   StudentDtoBackend,
   StudentSuggestionDto,
+  StudentUpdateDto,
   convertStudent,
 } from "./student.types";
 
@@ -15,7 +15,7 @@ import {
  * Service class for student-related operations (admin)
  */
 export class AdminStudentService {
-  constructor(private client: AxiosInstance = getMockClient("admin")) {}
+  constructor(private client: AxiosInstance = apiClient) {}
 
   /**
    * Fetches a paginated list of students (GET /api/students)
@@ -68,7 +68,7 @@ export class AdminStudentService {
   /**
    * Creates a new student (POST /api/students)
    */
-  async createStudent(payload: StudentCreate): Promise<StudentDto> {
+  async createStudent(payload: StudentCreateDto): Promise<StudentDto> {
     try {
       const response = await this.client.post<StudentDtoBackend>(
         "/students",
@@ -84,10 +84,7 @@ export class AdminStudentService {
   /**
    * Updates an existing student (PUT /api/students/{student_id})
    */
-  async updateStudent(
-    id: number,
-    data: StudentDataWithNames
-  ): Promise<StudentDto> {
+  async updateStudent(id: number, data: StudentUpdateDto): Promise<StudentDto> {
     try {
       const response = await this.client.put<StudentDtoBackend>(
         `/students/${id}`,

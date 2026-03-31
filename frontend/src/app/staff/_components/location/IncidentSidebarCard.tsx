@@ -10,19 +10,22 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useRole } from "@/contexts/RoleContext";
 import { IncidentDto } from "@/lib/api/location/location.types";
 import { ChevronDown, MoreHorizontal } from "lucide-react";
+import { useSession } from "next-auth/react";
 
 type IncidentSidebarCardProps = {
   incidents: IncidentDto;
-  onDeleteAction: (incidentId: number) => void;
+  onDeleteIncidentAction: (incidentId: number) => void;
+  onEditIncidentAction: (incident: IncidentDto) => void;
 };
 export default function IncidentSidebarCard({
   incidents,
-  onDeleteAction,
+  onDeleteIncidentAction,
+  onEditIncidentAction,
 }: IncidentSidebarCardProps) {
-  const { role } = useRole();
+  const { data: session } = useSession();
+  const role = session?.role;
   return (
     <div>
       <Collapsible>
@@ -50,9 +53,13 @@ export default function IncidentSidebarCard({
                   <MoreHorizontal />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
-                  <DropdownMenuItem>Edit</DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={() => onDeleteAction(incidents.id)}
+                    onClick={() => onEditIncidentAction?.(incidents)}
+                  >
+                    Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => onDeleteIncidentAction(incidents.id)}
                   >
                     Delete
                   </DropdownMenuItem>

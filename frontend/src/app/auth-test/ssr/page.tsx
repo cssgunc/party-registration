@@ -1,6 +1,7 @@
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import apiClient from "@/lib/network/apiClient";
 import { getServerSession } from "next-auth";
+import RefreshTokenButton from "./_components/RefreshTokenButton";
 
 export default async function SSRPage() {
   const session = await getServerSession(authOptions);
@@ -32,12 +33,13 @@ export default async function SSRPage() {
       </p>
 
       <div className="w-full space-y-4 mb-6">
-        <div className="bg-blue-50 border border-blue-200 p-4 rounded">
-          <h2 className="font-semibold mb-2">API Token Test (Server-Side)</h2>
+        <div className="bg-blue-50 border border-blue-200 p-4 rounded space-y-3">
+          <h2 className="font-semibold">API Token Test (Server-Side)</h2>
           <p className="text-sm text-blue-700">
             Tokens fetched from /auth-test/api/tokens during server-side
             rendering
           </p>
+          <RefreshTokenButton />
         </div>
 
         {apiError && (
@@ -63,7 +65,7 @@ export default async function SSRPage() {
           <div className="space-y-2">
             <div>
               <strong>Access Token:</strong>
-              <pre className="break-words bg-gray-50 p-2 rounded mt-1">
+              <pre className="break-words whitespace-pre-wrap bg-gray-50 p-2 rounded mt-1">
                 {session?.accessToken ?? "Not Available"}
               </pre>
             </div>

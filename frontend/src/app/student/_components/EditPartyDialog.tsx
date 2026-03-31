@@ -10,11 +10,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { LocationService } from "@/lib/api/location/location.service";
 import { useUpdateParty } from "@/lib/api/party/party.queries";
 import { PartyDto, StudentCreatePartyDto } from "@/lib/api/party/party.types";
 import { useCurrentStudent } from "@/lib/api/student/student.queries";
-import getMockClient from "@/lib/network/mockClient";
 import { format } from "date-fns";
 
 interface EditPartyDialogProps {
@@ -87,7 +85,6 @@ export function EditPartyDialog({
         </DialogHeader>
         <PartyRegistrationForm
           onSubmit={handleSubmit}
-          locationService={new LocationService(getMockClient("student"))}
           initialValues={initialValues}
           studentEmail={studentQuery.data?.email}
           studentPhoneNumber={studentQuery.data?.phone_number}
