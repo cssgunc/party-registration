@@ -34,6 +34,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  ServerColumnMap,
+  ServerTableParams,
+  buildServerTableParams,
+} from "@/lib/api/shared/query-params";
+import {
   ColumnDef,
   ColumnFiltersState,
   PaginationState,
@@ -49,7 +54,7 @@ import {
 } from "@tanstack/react-table";
 import { MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
 import { useSession } from "next-auth/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { DeleteConfirmDialog } from "../dialog/DeleteConfirmDialog";
 import { useSidebar } from "../sidebar/SidebarContext";
 import { ColumnHeader } from "./ColumnHeader";
@@ -80,6 +85,9 @@ export type TableProps<T> = {
   sortBy?: (a: T, b: T) => number;
   pageSize?: number;
   pageSizeOptions?: number[];
+  serverMeta?: { totalRecords: number; totalPages: number };
+  onStateChange?: (params: ServerTableParams) => void;
+  columnMap?: ServerColumnMap;
 };
 
 export function TableTemplate<T extends object>({
@@ -95,9 +103,13 @@ export function TableTemplate<T extends object>({
   isDeleting,
   initialSort = [],
   sortBy,
-  pageSize = 8,
-  pageSizeOptions = [5, 8, 10, 20],
+  pageSize = 50,
+  pageSizeOptions = [10, 25, 50, 100],
+  serverMeta,
+  onStateChange,
+  columnMap,
 }: TableProps<T>) {
+  const isServerMode = !!serverMeta;
   const { isOpen, openSidebar, closeSidebar } = useSidebar();
   const { data: session } = useSession();
   const role = session?.role;
@@ -130,6 +142,38 @@ export function TableTemplate<T extends object>({
       setRowSelection({});
     }
   }, [isOpen, rowSelection]);
+
+  const filterDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Server mode: immediate callback on pagination/sorting change
+  useEffect(() => {
+    if (!isServerMode || !onStateChange || !columnMap) return;
+    onStateChange(
+      buildServerTableParams(pagination, sorting, columnFilters, columnMap)
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pagination, sorting]);
+
+  // Server mode: debounced callback on filter change (reset page to 0 first)
+  useEffect(() => {
+    if (!isServerMode || !onStateChange || !columnMap) return;
+    if (filterDebounceRef.current) clearTimeout(filterDebounceRef.current);
+    filterDebounceRef.current = setTimeout(() => {
+      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+      onStateChange(
+        buildServerTableParams(
+          { ...pagination, pageIndex: 0 },
+          sorting,
+          columnFilters,
+          columnMap
+        )
+      );
+    }, 300);
+    return () => {
+      if (filterDebounceRef.current) clearTimeout(filterDebounceRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [columnFilters]);
 
   const handleDeleteClick = (row: T) => {
     setItemToDelete(row);
@@ -242,7 +286,7 @@ export function TableTemplate<T extends object>({
   };
 
   const table = useReactTable({
-    data: sortedData,
+    data: isServerMode ? data : sortedData,
     columns: columnsWithActions,
     state: {
       sorting,
@@ -251,15 +295,28 @@ export function TableTemplate<T extends object>({
       globalFilter,
       rowSelection,
     },
-    globalFilterFn: customFilterFn,
-    onSortingChange: setSorting,
+    ...(isServerMode
+      ? {
+          manualSorting: true,
+          manualFiltering: true,
+          manualPagination: true,
+          pageCount: serverMeta!.totalPages,
+        }
+      : {
+          globalFilterFn: customFilterFn,
+          getSortedRowModel: getSortedRowModel(),
+          getFilteredRowModel: getFilteredRowModel(),
+          getPaginationRowModel: getPaginationRowModel(),
+        }),
+    onSortingChange: (updater) => {
+      const next = typeof updater === "function" ? updater(sorting) : updater;
+      if (isServerMode) setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+      setSorting(next);
+    },
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
     onGlobalFilterChange: setGlobalFilter,
-    getPaginationRowModel: getPaginationRowModel(),
     onPaginationChange: setPagination,
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
     onRowSelectionChange: setRowSelection,
   });
 
@@ -271,7 +328,9 @@ export function TableTemplate<T extends object>({
   );
   const activePage = table.getState().pagination.pageIndex;
   const activePageSize = table.getState().pagination.pageSize;
-  const filteredRowCount = table.getFilteredRowModel().rows.length;
+  const filteredRowCount = isServerMode
+    ? serverMeta!.totalRecords
+    : table.getFilteredRowModel().rows.length;
   const pageCount = table.getPageCount();
   const maxVisiblePages = 3;
   const pageStart = Math.max(
@@ -295,16 +354,18 @@ export function TableTemplate<T extends object>({
           {(() => {
             return (
               <div className="flex justify-between w-full gap-4">
-                <div className="flex-1 min-w-sm max-w-lg bg-card rounded-md">
-                  <Input
-                    type="text"
-                    value={globalFilter}
-                    onChange={(e) => setGlobalFilter(e.target.value)}
-                    placeholder="Search all columns..."
-                    className="p-2 pl-3 h-9 rounded-md "
-                  />
-                </div>
-                <div className="shrink-0">
+                {!isServerMode && (
+                  <div className="flex-1 min-w-sm max-w-lg bg-card rounded-md">
+                    <Input
+                      type="text"
+                      value={globalFilter}
+                      onChange={(e) => setGlobalFilter(e.target.value)}
+                      placeholder="Search all columns..."
+                      className="p-2 pl-3 h-9 rounded-md "
+                    />
+                  </div>
+                )}
+                <div className="shrink-0 ml-auto">
                   {onCreateNewRow && role === "admin" && (
                     <Button onClick={onCreateNewRow} className="h-9">
                       <Plus className="mr-1" />

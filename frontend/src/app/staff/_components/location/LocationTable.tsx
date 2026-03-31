@@ -7,6 +7,10 @@ import {
   useUpdateLocation,
 } from "@/lib/api/location/location.queries";
 import { LocationCreate, LocationDto } from "@/lib/api/location/location.types";
+import {
+  ServerColumnMap,
+  ServerTableParams,
+} from "@/lib/api/shared/query-params";
 import { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
 import { useState } from "react";
@@ -16,19 +20,33 @@ import { TableTemplate } from "../shared/table/TableTemplate";
 import IncidentInfoChipDetails from "./IncidentInfoChipDetails";
 import LocationTableForm from "./LocationTableForm";
 
+const SERVER_COLUMN_MAP: ServerColumnMap = {
+  formatted_address: {
+    backendField: "formatted_address",
+    filterOperator: "contains",
+  },
+  hold_expiration: {
+    backendField: "hold_expiration",
+    filterOperator: "contains",
+  },
+};
+
+const DEFAULT_PARAMS: ServerTableParams = {
+  page_number: 1,
+  page_size: 50,
+  filters: {},
+};
+
 export const LocationTable = () => {
   const { openSidebar, closeSidebar } = useSidebar();
   const [editingLocation, setEditingLocation] = useState<LocationDto | null>(
     null
   );
+  const [serverParams, setServerParams] =
+    useState<ServerTableParams>(DEFAULT_PARAMS);
 
-  const locationsQuery = useLocations();
-
-  const locations = (locationsQuery.data?.items ?? [])
-    .slice()
-    .sort((a, b) =>
-      (a.formatted_address || "").localeCompare(b.formatted_address || "")
-    );
+  const locationsQuery = useLocations(serverParams);
+  const locations = locationsQuery.data?.items ?? [];
 
   const createMutation = useCreateLocation({
     onError: (error: Error) => {
@@ -214,16 +232,6 @@ export const LocationTable = () => {
         }
         return "No";
       },
-
-      filterFn: (row, columnId, filterValue) => {
-        const holdDate = row.getValue(columnId) as Date | null;
-        const displayText = holdDate
-          ? `until ${new Date(holdDate).toLocaleDateString()}`
-          : "no active hold";
-        return displayText
-          .toLowerCase()
-          .includes(String(filterValue).toLowerCase());
-      },
     },
   ];
   return (
@@ -241,6 +249,16 @@ export const LocationTable = () => {
           `Are you sure you want to delete location ${location.formatted_address}? This action cannot be undone.`
         }
         isDeleting={deleteMutation.isPending}
+        serverMeta={
+          locationsQuery.data
+            ? {
+                totalRecords: locationsQuery.data.total_records,
+                totalPages: locationsQuery.data.total_pages,
+              }
+            : undefined
+        }
+        onStateChange={setServerParams}
+        columnMap={SERVER_COLUMN_MAP}
       />
     </div>
   );

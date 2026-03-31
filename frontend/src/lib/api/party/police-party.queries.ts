@@ -29,7 +29,10 @@ export function usePoliceParties(
   return useQuery({
     queryKey: [...PARTIES_KEY, startDate, endDate],
     queryFn: async () => {
-      const page = await partyService.listParties({ startDate, endDate });
+      const params: Record<string, string> = {};
+      if (startDate) params.party_datetime_gte = startDate.toISOString();
+      if (endDate) params.party_datetime_lte = endDate.toISOString();
+      const page = await partyService.listParties(params);
       return page.items;
     },
     enabled: !!startDate && !!endDate,
