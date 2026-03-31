@@ -187,15 +187,19 @@ class StudentTestUtils(
         self,
         suggestion: StudentSuggestionDto,
         *,
-        student_id: int,
-        first_name: str,
-        last_name: str,
+        student_dto: StudentDto | None = None,
+        student_id: int | None = None,
+        first_name: str | None = None,
+        last_name: str | None = None,
         matched_field_name: str,
         matched_field_value: str,
     ) -> None:
-        assert suggestion.student_id == student_id
-        assert suggestion.first_name == first_name
-        assert suggestion.last_name == last_name
+        resolved_id = student_dto.id if student_dto is not None else student_id
+        resolved_first = student_dto.first_name if student_dto is not None else first_name
+        resolved_last = student_dto.last_name if student_dto is not None else last_name
+        assert suggestion.student_id == resolved_id
+        assert suggestion.first_name == resolved_first
+        assert suggestion.last_name == resolved_last
         assert suggestion.matched_field_name == matched_field_name
         assert suggestion.matched_field_value == matched_field_value
 

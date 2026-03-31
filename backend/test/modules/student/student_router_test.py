@@ -473,9 +473,7 @@ class TestStudentAutocompleteRouter:
         assert len(data) == 1
         self.student_utils.assert_suggestion_match(
             data[0],
-            student_id=student.account_id,
-            first_name=student_dto.first_name,
-            last_name=student_dto.last_name,
+            student_dto=student_dto,
             matched_field_name="pid",
             matched_field_value="123456789",
         )
@@ -492,9 +490,7 @@ class TestStudentAutocompleteRouter:
         assert len(data) == 1
         self.student_utils.assert_suggestion_match(
             data[0],
-            student_id=student.account_id,
-            first_name=student_dto.first_name,
-            last_name=student_dto.last_name,
+            student_dto=student_dto,
             matched_field_name="email",
             matched_field_value="unique_test@unc.edu",
         )
@@ -515,9 +511,7 @@ class TestStudentAutocompleteRouter:
         assert len(data) == 1
         self.student_utils.assert_suggestion_match(
             data[0],
-            student_id=student.account_id,
-            first_name=student_dto.first_name,
-            last_name=student_dto.last_name,
+            student_dto=student_dto,
             matched_field_name="onyen",
             matched_field_value="jdoetest99",
         )
@@ -534,9 +528,7 @@ class TestStudentAutocompleteRouter:
         assert len(data) == 1
         self.student_utils.assert_suggestion_match(
             data[0],
-            student_id=student.account_id,
-            first_name=student_dto.first_name,
-            last_name=student_dto.last_name,
+            student_dto=student_dto,
             matched_field_name="phone_number",
             matched_field_value="9991234567",
         )
@@ -594,9 +586,7 @@ class TestStudentAutocompleteRouter:
         assert len(data) == 1
         self.student_utils.assert_suggestion_match(
             data[0],
-            student_id=student.account_id,
-            first_name=student_dto.first_name,
-            last_name=student_dto.last_name,
+            student_dto=student_dto,
             matched_field_name="email",
             matched_field_value="fieldtest@unc.edu",
         )

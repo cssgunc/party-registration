@@ -50,6 +50,37 @@ function highlightMatch(text: string, query: string): React.ReactNode {
   );
 }
 
+function highlightPhoneMatch(rawPhone: string, query: string): React.ReactNode {
+  const digitQuery = query.replace(/\D/g, "");
+  const formatted = formatPhoneNumber(rawPhone);
+  if (!digitQuery) return formatted;
+  const matchStart = rawPhone.indexOf(digitQuery);
+  if (matchStart === -1) return formatted;
+  const matchEnd = matchStart + digitQuery.length;
+  let digitCount = 0;
+  let fmtStart = -1;
+  let fmtEnd = -1;
+  for (let i = 0; i < formatted.length; i++) {
+    if (/\d/.test(formatted[i])) {
+      if (digitCount === matchStart) fmtStart = i;
+      digitCount++;
+      if (digitCount === matchEnd) {
+        fmtEnd = i + 1;
+        break;
+      }
+    }
+  }
+  if (fmtStart === -1) return formatted;
+  if (fmtEnd === -1) fmtEnd = formatted.length;
+  return (
+    <>
+      {formatted.slice(0, fmtStart)}
+      <strong>{formatted.slice(fmtStart, fmtEnd)}</strong>
+      {formatted.slice(fmtEnd)}
+    </>
+  );
+}
+
 /**
  * Reusable student search component with autocomplete functionality.
  * Searches by PID, email, onyen, or phone number.
@@ -306,12 +337,15 @@ export default function StudentSearch({
                       <span className="text-sm flex-1">
                         {suggestion.first_name} {suggestion.last_name}
                         {" — "}
-                        {highlightMatch(
-                          suggestion.matched_field_name === "phone_number"
-                            ? formatPhoneNumber(suggestion.matched_field_value)
-                            : suggestion.matched_field_value,
-                          searchTerm.trim()
-                        )}
+                        {suggestion.matched_field_name === "phone_number"
+                          ? highlightPhoneMatch(
+                              suggestion.matched_field_value,
+                              searchTerm.trim()
+                            )
+                          : highlightMatch(
+                              suggestion.matched_field_value,
+                              searchTerm.trim()
+                            )}
                       </span>
                       <CheckIcon
                         className={cn(

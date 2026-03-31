@@ -1,3 +1,4 @@
+import re
 from datetime import UTC, datetime
 
 from fastapi import Depends, Request
@@ -321,6 +322,8 @@ class StudentService:
     async def autocomplete_students(self, query: str) -> list[StudentSuggestionDto]:
         """Return up to 10 students matching query against PID, email, onyen, or phone number."""
         pattern = f"%{query}%"
+        digits_only_query = re.sub(r"\D", "", query)
+        phone_pattern = f"%{digits_only_query}%"
         result = await self.session.execute(
             select(StudentEntity)
             .join(AccountEntity, StudentEntity.account_id == AccountEntity.id)
@@ -329,7 +332,7 @@ class StudentService:
                     AccountEntity.pid.ilike(pattern),
                     AccountEntity.email.ilike(pattern),
                     AccountEntity.onyen.ilike(pattern),
-                    StudentEntity.phone_number.ilike(pattern),
+                    StudentEntity.phone_number.ilike(phone_pattern),
                 )
             )
             .options(selectinload(StudentEntity.account))
