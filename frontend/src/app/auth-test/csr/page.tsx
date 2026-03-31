@@ -11,6 +11,7 @@ export default function CSRPage() {
     accessToken: string | null;
   } | null>(null);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Fetch access token from the test API route to verify that the custom API client is automatically pulling the access
@@ -31,6 +32,24 @@ export default function CSRPage() {
     }
   };
 
+  const refreshAccessToken = async () => {
+    setRefreshing(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/auth/token/refresh", { method: "POST" });
+      if (!res.ok) {
+        const data = (await res.json()) as { error?: string };
+        setError(data.error ?? "Failed to refresh token");
+      } else {
+        window.location.reload();
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error occurred");
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   return (
     <div className="font-sans min-h-screen flex flex-col items-center justify-start p-8 sm:p-20 max-w-3xl mx-auto">
       <h1 className="text-3xl font-bold mb-6 text-center">
@@ -43,14 +62,21 @@ export default function CSRPage() {
       </p>
 
       <div className="w-full space-y-4 mb-6">
-        <div className="bg-blue-50 border border-blue-200 p-4 rounded">
-          <h2 className="font-semibold mb-2">API Token Test</h2>
+        <div className="bg-blue-50 border border-blue-200 p-4 rounded flex flex-wrap items-center gap-3">
+          <h2 className="font-semibold w-full">API Token Test</h2>
           <button
             onClick={fetchTokenFromAPI}
-            disabled={loading}
+            disabled={loading || refreshing}
             className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
           >
             {loading ? "Fetching..." : "Fetch Token from API"}
+          </button>
+          <button
+            onClick={refreshAccessToken}
+            disabled={loading || refreshing}
+            className="bg-amber-600 text-white px-4 py-2 rounded hover:bg-amber-700 disabled:opacity-50"
+          >
+            {refreshing ? "Refreshing..." : "Refresh Access Token"}
           </button>
         </div>
 
@@ -77,7 +103,7 @@ export default function CSRPage() {
           <div className="space-y-2">
             <div>
               <strong>Access Token:</strong>
-              <pre className="break-words bg-gray-50 p-2 rounded mt-1">
+              <pre className="break-words whitespace-pre-wrap bg-gray-50 p-2 rounded mt-1">
                 {session?.accessToken ?? "Not Available"}
               </pre>
             </div>

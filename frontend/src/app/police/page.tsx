@@ -12,7 +12,6 @@ import {
   usePlaceDetails,
   usePoliceParties,
 } from "@/lib/api/party/police-party.queries";
-import getMockClient from "@/lib/network/mockClient";
 import { startOfDay } from "date-fns";
 import { useEffect, useMemo, useState } from "react";
 import AdvancedPartySearch, {
@@ -20,7 +19,7 @@ import AdvancedPartySearch, {
 } from "./_components/AdvancedPartySearch";
 import PartyCsvExportButton from "./_components/PartyCsvExportButton";
 
-const policeLocationService = new LocationService(getMockClient("police"));
+const locationService = new LocationService();
 
 export default function PolicePage() {
   const today = startOfDay(new Date());
@@ -186,7 +185,7 @@ export default function PolicePage() {
                 value={searchAddress?.formatted_address || ""}
                 onSelect={setSearchAddress}
                 placeholder="Enter Address..."
-                locationService={policeLocationService}
+                locationService={locationService}
               />
               {searchAddress && (
                 <p className="mt-2 text-sm text-gray-600">

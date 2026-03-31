@@ -22,19 +22,19 @@ function LocationInfoChipDetails({ data }: LocationInfoChipDetailsProps) {
         <div className="space-y-3">
           <div>
             <label className="block text-sm font-medium">Address</label>
-            <p className="p-2 border rounded">{d.formatted_address}</p>
+            <p className="p-2">{d.formatted_address}</p>
           </div>
           <div>
             <label className="block text-sm font-medium">Warning Count</label>
-            <p className="p-2 border rounded">{getWarningCount(d)}</p>
+            <p className="p-2">{getWarningCount(d)}</p>
           </div>
           <div>
             <label className="block text-sm font-medium">Citation Count</label>
-            <p className="p-2 border rounded">{getCitationCount(d)}</p>
+            <p className="p-2">{getCitationCount(d)}</p>
           </div>
           <div>
             <label className="block text-sm font-medium">Active Hold</label>
-            <p className="p-2 border rounded">
+            <p className="p-2">
               {hasActiveHold(d.hold_expiration)
                 ? "Active: Expires " + d.hold_expiration?.toDateString()
                 : "No"}

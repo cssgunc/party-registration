@@ -7,7 +7,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { AdminStudentService } from "./admin-student.service";
-import { STUDENTS_KEY, StudentDto } from "./student.types";
+import { STUDENTS_KEY, StudentDto, StudentUpdateDto } from "./student.types";
 
 const studentService = new AdminStudentService();
 const accountService = new AccountService();
@@ -15,12 +15,11 @@ const accountService = new AccountService();
 // Used to determine whether to optimistically update the cache on updates
 const UNIQUE_STUDENT_FIELDS = [
   "phone_number",
-  "onyen",
-] as const satisfies (keyof StudentDto)[];
+] as const satisfies (keyof StudentUpdateDto)[];
 
 type UpdateStudentVars = {
   id: number;
-  data: Omit<StudentDto, "id" | "email" | "pid">;
+  data: StudentUpdateDto;
 };
 
 type CreateStudentVars = {
