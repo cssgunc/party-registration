@@ -134,6 +134,7 @@ export default function LocationTableForm({
               placeholder="Search for the location address..."
               className="w-full"
               error={errors.address}
+              chapelHillOnly
             />
             {errors.address && <FieldError>{errors.address}</FieldError>}
           </Field>

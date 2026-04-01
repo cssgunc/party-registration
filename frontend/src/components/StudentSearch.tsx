@@ -14,95 +14,130 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { LocationService } from "@/lib/api/location/location.service";
-import { AutocompleteResult } from "@/lib/api/location/location.types";
+import { AdminStudentService } from "@/lib/api/student/admin-student.service";
+import { StudentSuggestionDto } from "@/lib/api/student/student.types";
 import { cn } from "@/lib/utils";
-import { CheckIcon, Loader2Icon, MapPinIcon, XIcon } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { CheckIcon, Loader2Icon, UserIcon, XIcon } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
-interface AddressSearchProps {
+interface StudentSearchProps {
   value?: string;
-  initialSelection?: AutocompleteResult | null;
-  onSelect: (address: AutocompleteResult | null) => void;
+  initialSelection?: StudentSuggestionDto | null;
+  onSelect: (student: StudentSuggestionDto | null) => void;
   placeholder?: string;
   className?: string;
   disabled?: boolean;
-  locationService?: LocationService;
+  adminStudentService?: AdminStudentService;
   error?: string;
-  chapelHillOnly?: boolean;
+}
+
+const formatPhoneNumber = (value: string): string => {
+  return value
+    ? `(${value.slice(0, 3)}) ${value.slice(3, 6)}-${value.slice(6, 10)}`
+    : value;
+};
+
+function highlightMatch(text: string, query: string): React.ReactNode {
+  if (!query) return text;
+  const index = text.toLowerCase().indexOf(query.toLowerCase());
+  if (index === -1) return text;
+  return (
+    <>
+      {text.slice(0, index)}
+      <strong>{text.slice(index, index + query.length)}</strong>
+      {text.slice(index + query.length)}
+    </>
+  );
+}
+
+function highlightPhoneMatch(rawPhone: string, query: string): React.ReactNode {
+  const digitQuery = query.replace(/\D/g, "");
+  const formatted = formatPhoneNumber(rawPhone);
+  if (!digitQuery) return formatted;
+  const matchStart = rawPhone.indexOf(digitQuery);
+  if (matchStart === -1) return formatted;
+  const matchEnd = matchStart + digitQuery.length;
+  let digitCount = 0;
+  let fmtStart = -1;
+  let fmtEnd = -1;
+  for (let i = 0; i < formatted.length; i++) {
+    if (/\d/.test(formatted[i])) {
+      if (digitCount === matchStart) fmtStart = i;
+      digitCount++;
+      if (digitCount === matchEnd) {
+        fmtEnd = i + 1;
+        break;
+      }
+    }
+  }
+  if (fmtStart === -1) return formatted;
+  if (fmtEnd === -1) fmtEnd = formatted.length;
+  return (
+    <>
+      {formatted.slice(0, fmtStart)}
+      <strong>{formatted.slice(fmtStart, fmtEnd)}</strong>
+      {formatted.slice(fmtEnd)}
+    </>
+  );
 }
 
 /**
- * Reusable address search component with autocomplete functionality
- * Built using shadcn Combobox pattern with async address fetching
+ * Reusable student search component with autocomplete functionality.
+ * Searches by PID, email, onyen, or phone number.
+ * Suggestions display as "First Last - <matched value>" with the matched substring bolded.
  */
-export default function AddressSearch({
+export default function StudentSearch({
   value = "",
   initialSelection,
   onSelect,
-  placeholder = "Search for an address...",
+  placeholder = "Search by PID, email, onyen, or phone...",
   className,
   disabled = false,
-  locationService,
+  adminStudentService = new AdminStudentService(),
   error: externalError,
-  chapelHillOnly = false,
-}: AddressSearchProps) {
-  const resolvedLocationService = useMemo(
-    () => locationService ?? new LocationService(),
-    [locationService]
-  );
-
+}: StudentSearchProps) {
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState(
-    initialSelection?.formatted_address ?? value
+    initialSelection
+      ? `${initialSelection.first_name} ${initialSelection.last_name}`
+      : value
   );
-  const [suggestions, setSuggestions] = useState<AutocompleteResult[]>([]);
+  const [suggestions, setSuggestions] = useState<StudentSuggestionDto[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedAddress, setSelectedAddress] =
-    useState<AutocompleteResult | null>(initialSelection ?? null);
+  const [selectedStudent, setSelectedStudent] =
+    useState<StudentSuggestionDto | null>(initialSelection ?? null);
   const [internalError, setInternalError] = useState<string | null>(null);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
 
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const commandRef = useRef<HTMLDivElement>(null);
+  const serviceRef = useRef(adminStudentService);
+  const selectedStudentRef = useRef(selectedStudent);
+
+  serviceRef.current = adminStudentService;
+  selectedStudentRef.current = selectedStudent;
 
   const displayError = externalError || internalError;
 
-  /**
-   * Sync internal state with external value prop
-   */
   useEffect(() => {
-    if (value && value !== selectedAddress?.formatted_address) {
-      setSearchTerm(value); // Ensure input shows the initial value
-      // If there's an external value, try to find matching suggestion
-      const match = suggestions.find((s) => s.formatted_address === value);
-      if (match) {
-        setSelectedAddress(match);
-      }
+    if (value && !initialSelection) {
+      setSearchTerm(value);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
-  /**
-   * Fetch address suggestions with debouncing
-   * Skip fetching if the search term matches the selected address
-   */
   useEffect(() => {
     const fetchSuggestions = async (input: string) => {
-      const trimmedInput = input.trim();
+      const trimmed = input.trim();
 
-      if (trimmedInput.length < 3) {
+      if (trimmed.length < 1) {
         setSuggestions([]);
         return;
       }
 
-      // Skip API call if the search term exactly matches the selected address
-      if (
-        selectedAddress &&
-        selectedAddress.formatted_address === trimmedInput
-      ) {
-        setSuggestions([selectedAddress]);
+      // Skip API call if search term matches the currently selected student's display name
+      const current = selectedStudentRef.current;
+      if (current && `${current.first_name} ${current.last_name}` === trimmed) {
         return;
       }
 
@@ -110,19 +145,12 @@ export default function AddressSearch({
       setInternalError(null);
 
       try {
-        const results =
-          await resolvedLocationService.autocompleteAddress(trimmedInput);
-        setSuggestions(
-          chapelHillOnly
-            ? results.filter((r) =>
-                r.formatted_address.toLowerCase().includes("chapel hill")
-              )
-            : results
-        );
+        const results = await serviceRef.current.autocompleteStudents(trimmed);
+        setSuggestions(results);
       } catch (err) {
-        console.error("Error fetching address suggestions:", err);
+        console.error("Error fetching student suggestions:", err);
         setInternalError(
-          "Failed to fetch address suggestions. Please try again."
+          "Failed to fetch student suggestions. Please try again."
         );
         setSuggestions([]);
       } finally {
@@ -143,19 +171,16 @@ export default function AddressSearch({
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [searchTerm, resolvedLocationService, selectedAddress, chapelHillOnly]);
+  }, [searchTerm]);
 
-  /**
-   * Handle address selection from dropdown
-   */
-  const handleSelect = (currentValue: string) => {
+  const handleSelect = (studentId: string) => {
     const suggestion = suggestions.find(
-      (s) => s.google_place_id === currentValue
+      (s) => String(s.student_id) === studentId
     );
 
     if (suggestion) {
-      setSelectedAddress(suggestion);
-      setSearchTerm(suggestion.formatted_address);
+      setSelectedStudent(suggestion);
+      setSearchTerm(`${suggestion.first_name} ${suggestion.last_name}`);
       onSelect(suggestion);
     }
 
@@ -163,11 +188,8 @@ export default function AddressSearch({
     setInternalError(null);
   };
 
-  /**
-   * Clear the selected address
-   */
   const handleClear = () => {
-    setSelectedAddress(null);
+    setSelectedStudent(null);
     setSearchTerm("");
     setSuggestions([]);
     setOpen(false);
@@ -175,31 +197,24 @@ export default function AddressSearch({
     onSelect(null);
   };
 
-  /**
-   * Handle input value changes
-   */
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     setSearchTerm(newValue);
-
-    // Open popover when user starts typing
-    if (newValue.length >= 3) {
+    if (selectedStudent) {
+      setSelectedStudent(null);
+      onSelect(null);
+    }
+    if (newValue.length >= 1) {
       setOpen(true);
     }
   };
 
-  /**
-   * Handle input focus - open popover if there's enough text
-   */
   const handleFocus = () => {
-    if (searchTerm.length >= 3) {
+    if (searchTerm.length >= 1) {
       setOpen(true);
     }
   };
 
-  /**
-   * Handle keyboard navigation
-   */
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!open || suggestions.length === 0) return;
 
@@ -219,7 +234,7 @@ export default function AddressSearch({
       case "Enter":
         e.preventDefault();
         if (highlightedIndex >= 0 && highlightedIndex < suggestions.length) {
-          handleSelect(suggestions[highlightedIndex].google_place_id);
+          handleSelect(String(suggestions[highlightedIndex].student_id));
         }
         break;
       case "Escape":
@@ -229,7 +244,6 @@ export default function AddressSearch({
     }
   };
 
-  // Reset highlighted index when suggestions change
   useEffect(() => {
     setHighlightedIndex(-1);
   }, [suggestions]);
@@ -248,10 +262,10 @@ export default function AddressSearch({
               placeholder={placeholder}
               disabled={disabled}
               className={cn("pr-16", displayError && "border-destructive")}
-              aria-label="Address search input"
-              aria-describedby={displayError ? "address-error" : undefined}
+              aria-label="Student search input"
+              aria-describedby={displayError ? "student-error" : undefined}
               aria-invalid={!!displayError}
-              aria-controls="address-suggestions"
+              aria-controls="student-suggestions"
               aria-autocomplete="list"
             />
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
@@ -268,7 +282,7 @@ export default function AddressSearch({
                   size="sm"
                   className="h-6 w-6 p-0 hover:bg-transparent cursor-pointer"
                   onClick={handleClear}
-                  aria-label="Clear address selection"
+                  aria-label="Clear student selection"
                   tabIndex={-1}
                 >
                   <XIcon className="h-4 w-4" />
@@ -282,8 +296,8 @@ export default function AddressSearch({
           align="start"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
-          <Command shouldFilter={false} ref={commandRef} loop>
-            <CommandList id="address-suggestions">
+          <Command shouldFilter={false} loop>
+            <CommandList id="student-suggestions">
               {isLoading && (
                 <div className="flex items-center justify-center py-6">
                   <Loader2Icon className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -297,25 +311,21 @@ export default function AddressSearch({
                   {displayError}
                 </div>
               )}
-              {!displayError && !isLoading && searchTerm.trim().length < 3 && (
-                <CommandEmpty>
-                  Type at least 3 characters to search.
-                </CommandEmpty>
+              {!displayError && !isLoading && searchTerm.trim().length < 1 && (
+                <CommandEmpty>Type to search for a student.</CommandEmpty>
               )}
               {!displayError &&
                 !isLoading &&
-                searchTerm.trim().length >= 3 &&
+                searchTerm.trim().length >= 1 &&
                 suggestions.length === 0 && (
-                  <CommandEmpty>
-                    No addresses found. Try a different search.
-                  </CommandEmpty>
+                  <CommandEmpty>No students found.</CommandEmpty>
                 )}
               {!isLoading && suggestions.length > 0 && (
                 <CommandGroup>
                   {suggestions.map((suggestion, index) => (
                     <CommandItem
-                      key={suggestion.google_place_id}
-                      value={suggestion.google_place_id}
+                      key={suggestion.student_id}
+                      value={String(suggestion.student_id)}
                       onSelect={handleSelect}
                       className={cn(
                         "cursor-pointer",
@@ -323,15 +333,24 @@ export default function AddressSearch({
                       )}
                       onMouseEnter={() => setHighlightedIndex(index)}
                     >
-                      <MapPinIcon className="mr-2 h-4 w-4 text-muted-foreground flex-shrink-0" />
-                      <span className="line-clamp-2 text-sm flex-1">
-                        {suggestion.formatted_address}
+                      <UserIcon className="mr-2 h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      <span className="text-sm flex-1">
+                        {suggestion.first_name} {suggestion.last_name}
+                        {" — "}
+                        {suggestion.matched_field_name === "phone_number"
+                          ? highlightPhoneMatch(
+                              suggestion.matched_field_value,
+                              searchTerm.trim()
+                            )
+                          : highlightMatch(
+                              suggestion.matched_field_value,
+                              searchTerm.trim()
+                            )}
                       </span>
                       <CheckIcon
                         className={cn(
                           "ml-2 h-4 w-4 flex-shrink-0",
-                          selectedAddress?.google_place_id ===
-                            suggestion.google_place_id
+                          selectedStudent?.student_id === suggestion.student_id
                             ? "opacity-100"
                             : "opacity-0"
                         )}
@@ -345,22 +364,20 @@ export default function AddressSearch({
         </PopoverContent>
       </Popover>
 
-      {chapelHillOnly && (
-        <p className="mt-1 text-sm italic text-muted-foreground">
-          Only Chapel Hill addresses are covered by Party Smart
-        </p>
-      )}
-
       {displayError && (
-        <p className="mt-2 text-sm text-destructive" role="alert">
+        <p
+          id="student-error"
+          className="mt-2 text-sm text-destructive"
+          role="alert"
+        >
           {displayError}
         </p>
       )}
 
-      {selectedAddress && (
+      {selectedStudent && (
         <div className="mt-2 p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-md">
           <p className="text-sm font-medium text-green-900 dark:text-green-100">
-            ✓ Selected: {selectedAddress.formatted_address}
+            ✓ Selected: {selectedStudent.first_name} {selectedStudent.last_name}
           </p>
         </div>
       )}
