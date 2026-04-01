@@ -1,6 +1,6 @@
 from typing import Self
 
-from sqlalchemy import CheckConstraint, Integer, String
+from sqlalchemy import Integer, String
 from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column
 from src.core.database import EntityBase
 from src.core.utils.bcrypt_utils import hash_password
@@ -8,24 +8,17 @@ from src.modules.police.police_model import PoliceAccountDto, PoliceAccountUpdat
 
 
 class PoliceEntity(MappedAsDataclass, EntityBase):
-    """
-    Singleton entity for police credentials.
-    Only one row should exist in this table.
-    """
-
     __tablename__ = "police"
-    __table_args__ = (CheckConstraint("id = 1", name="police_singleton_constraint"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, init=False)
-    email: Mapped[str] = mapped_column(String(255), nullable=False)
+    email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
 
     @classmethod
     def from_data(cls, data: PoliceAccountUpdate) -> Self:
         """Create a PoliceEntity from a PoliceAccountUpdate model."""
-        hashed_password = hash_password(data.password)
-        return cls(email=data.email, hashed_password=hashed_password)
+        return cls(email=data.email, hashed_password=hash_password(data.password))
 
     def to_dto(self) -> PoliceAccountDto:
-        """Convert the entity to a PoliceAccount model."""
-        return PoliceAccountDto(email=self.email)
+        """Convert the entity to a PoliceAccountDto."""
+        return PoliceAccountDto(id=self.id, email=self.email)

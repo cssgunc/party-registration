@@ -24,9 +24,8 @@ from src.core.utils.query_utils import (
 from src.modules.account.account_entity import AccountEntity
 from src.modules.location.location_model import LocationDto
 from src.modules.student.student_model import StudentDto
-from src.modules.student.student_service import StudentNotFoundException, StudentService
+from src.modules.student.student_service import StudentService
 
-from ..account.account_service import AccountByEmailNotFoundException, AccountService
 from ..location.location_entity import LocationEntity
 from ..location.location_service import LocationService
 from ..student.student_entity import StudentEntity
@@ -97,12 +96,10 @@ class PartyService:
         self,
         session: AsyncSession = Depends(get_session),
         location_service: LocationService = Depends(),
-        account_service: AccountService = Depends(),
         student_service: StudentService = Depends(),
     ):
         self.session = session
         self.location_service = location_service
-        self.account_service = account_service
         self.student_service = student_service
 
     async def _get_party_entity_by_id(self, party_id: int) -> PartyEntity:
@@ -199,27 +196,6 @@ class PartyService:
         """Validate party date and Party Smart attendance for a student."""
         self._validate_party_date(party_datetime)
         await self._validate_party_smart_attendance(student_id)
-
-    async def _get_student_by_email(self, email: str) -> StudentEntity:
-        """Get a student from the database by email address."""
-        # First find the account by email
-        try:
-            account = await self.account_service.get_account_by_email(email)
-        except AccountByEmailNotFoundException as e:
-            raise StudentNotFoundException(email=email) from e
-
-        # Then get the student entity
-        result = await self.session.execute(
-            select(StudentEntity)
-            .where(StudentEntity.account_id == account.id)
-            .options(selectinload(StudentEntity.account))
-        )
-        student = result.scalar_one_or_none()
-
-        if student is None:
-            raise StudentNotFoundException(account.id)
-
-        return student
 
     async def get_parties(self, skip: int = 0, limit: int | None = None) -> list[PartyDto]:
         query = (
@@ -459,7 +435,7 @@ class PartyService:
         return await new_party.load_dto(self.session)
 
     async def _validate_admin_party_and_get_details(
-        self, google_place_id: str, contact_one_email: str
+        self, google_place_id: str, contact_one_student_id: int
     ) -> tuple[LocationDto, StudentDto]:
         """
         Validate admin party data and get location and contact_one entity.
@@ -469,16 +445,15 @@ class PartyService:
         # Get/create location (skip hold validation for admins)
         location = await self.location_service.get_or_create_location(google_place_id)
 
-        # Get contact_one by email
-        contact_one = await self._get_student_by_email(contact_one_email)
-        contact_one_dto = await contact_one.load_dto(self.session)
+        # Get contact_one by student ID
+        contact_one = await self.student_service.get_student_by_id(contact_one_student_id)
 
-        return location, contact_one_dto
+        return location, contact_one
 
     async def create_party_from_admin_dto(self, dto: AdminCreatePartyDto) -> PartyDto:
         """Create a party registration from an admin. Both contacts must be specified."""
         location, contact_one = await self._validate_admin_party_and_get_details(
-            dto.google_place_id, dto.contact_one_email
+            dto.google_place_id, dto.contact_one_student_id
         )
 
         # Validate contact two differs from contact one
@@ -550,7 +525,7 @@ class PartyService:
 
         # Validate and get location and contact_one details
         location, contact_one = await self._validate_admin_party_and_get_details(
-            dto.google_place_id, dto.contact_one_email
+            dto.google_place_id, dto.contact_one_student_id
         )
 
         # Validate contact two differs from contact one

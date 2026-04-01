@@ -102,6 +102,22 @@ class IsRegisteredUpdate(BaseModel):
     is_registered: bool = Field(..., description="True to mark as registered, False to unmark")
 
 
+class AutocompleteInput(BaseModel):
+    """Request body for student autocomplete search."""
+
+    query: str
+
+
+class StudentSuggestionDto(BaseModel):
+    """DTO for student autocomplete suggestions."""
+
+    student_id: int
+    first_name: str
+    last_name: str
+    matched_field_name: str
+    matched_field_value: str
+
+
 PaginatedStudentsResponse = PaginatedResponse[StudentDto]
 
 # Resolve forward references after all models are defined

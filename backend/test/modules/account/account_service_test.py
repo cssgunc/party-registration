@@ -1,6 +1,6 @@
 import pytest
 from src.modules.account.account_entity import AccountEntity
-from src.modules.account.account_model import AccountData, AccountRole
+from src.modules.account.account_model import AccountRole, AccountUpdateData
 from src.modules.account.account_service import (
     AccountByEmailNotFoundException,
     AccountByPidNotFoundException,
@@ -82,77 +82,27 @@ class TestAccountService:
             await self.account_service.get_account_by_email("nonexistent@example.com")
 
     @pytest.mark.asyncio
-    async def test_update_account_full(self):
+    async def test_update_account_role(self):
         data = await self.account_utils.next_data()
         account = await self.account_service.create_account(data)
 
-        update_data = await self.account_utils.next_data(role="admin")
-        updated = await self.account_service.update_account(account.id, update_data)
-
-        assert account.id == updated.id
-        self.account_utils.assert_matches(updated, update_data)
-
-    @pytest.mark.asyncio
-    async def test_update_account_partial(self):
-        data = await self.account_utils.next_data()
-        account = await self.account_service.create_account(data)
-
-        update_data = AccountData(
-            email=account.email,
-            first_name=account.first_name,
-            last_name=account.last_name,
-            pid=account.pid,
-            onyen=account.onyen,
-            role=AccountRole.ADMIN,
-        )
+        update_data = AccountUpdateData(role=AccountRole.ADMIN)
         updated = await self.account_service.update_account(account.id, update_data)
 
         assert updated.id == account.id
-        self.account_utils.assert_matches(updated, update_data)
+        assert updated.role == AccountRole.ADMIN
+        # IdP fields should be unchanged
+        assert updated.email == account.email
+        assert updated.first_name == account.first_name
+        assert updated.last_name == account.last_name
+        assert updated.pid == account.pid
+        assert updated.onyen == account.onyen
 
     @pytest.mark.asyncio
     async def test_update_account_not_found(self):
-        update_data = await self.account_utils.next_data()
+        update_data = AccountUpdateData(role=AccountRole.ADMIN)
         with pytest.raises(AccountNotFoundException):
             await self.account_service.update_account(999, update_data)
-
-    @pytest.mark.asyncio
-    async def test_update_account_conflict(self):
-        data1 = await self.account_utils.next_data()
-        data2 = await self.account_utils.next_data()
-        await self.account_service.create_account(data1)
-        account2 = await self.account_service.create_account(data2)
-
-        with pytest.raises(AccountConflictException):
-            await self.account_service.update_account(
-                account2.id,
-                AccountData(
-                    email=data1.email,
-                    first_name="Test",
-                    last_name="User",
-                    pid=data2.pid,
-                    onyen=data2.onyen,
-                    role=AccountRole.STUDENT,
-                ),
-            )
-
-    @pytest.mark.asyncio
-    async def test_update_account_onyen_conflict(self):
-        account1, account2 = await self.account_utils.create_many(i=2)
-        conflict_data = AccountData(
-            email=account2.email,
-            first_name=account2.first_name,
-            last_name=account2.last_name,
-            pid=account2.pid,
-            onyen=account1.onyen,
-            role=account2.role,
-        )
-
-        with pytest.raises(AccountConflictException):
-            await self.account_service.update_account(
-                account2.id,
-                conflict_data,
-            )
 
     @pytest.mark.asyncio
     async def test_delete_account(self):
@@ -254,68 +204,6 @@ class TestAccountService:
 
         with pytest.raises(AccountConflictException):
             await self.account_service.create_account(data2)
-
-    @pytest.mark.asyncio
-    async def test_update_account_duplicate_pid(self) -> None:
-        """Test that updating to a duplicate PID raises conflict."""
-        data1 = await self.account_utils.next_data()
-        data2 = await self.account_utils.next_data()
-
-        account1 = await self.account_service.create_account(data1)
-        account2 = await self.account_service.create_account(data2)
-
-        # Try to update account2 to use account1's PID
-        data2.pid = account1.pid
-
-        with pytest.raises(AccountConflictException) as exc_info:
-            await self.account_service.update_account(account2.id, data2)
-        assert "PID" in str(exc_info.value)
-
-    @pytest.mark.asyncio
-    async def test_update_account_case_insensitive_email(self) -> None:
-        """Test that updating to a duplicate email (different case) raises conflict."""
-        data1 = await self.account_utils.next_data()
-        data1.email = "original@example.com"
-        data2 = await self.account_utils.next_data()
-        data2.email = "other@example.com"
-
-        await self.account_service.create_account(data1)
-        account2 = await self.account_service.create_account(data2)
-
-        # Try to update account2 to use account1's email in different case
-        data2.email = "ORIGINAL@EXAMPLE.COM"
-
-        with pytest.raises(AccountConflictException) as exc_info:
-            await self.account_service.update_account(account2.id, data2)
-        assert "email" in str(exc_info.value).lower()
-
-    @pytest.mark.asyncio
-    async def test_update_account_same_email_different_case_same_account(self) -> None:
-        """Test that updating email case for the same account works."""
-        data = await self.account_utils.next_data()
-        data.email = "test@example.com"
-        account = await self.account_service.create_account(data)
-
-        # Update to same email but different case - should work
-        data.email = "TEST@EXAMPLE.COM"
-        updated = await self.account_service.update_account(account.id, data)
-
-        # Email should be updated (case is preserved as stored in database)
-        assert updated.email.lower() == data.email.lower()
-        assert updated.id == account.id
-
-    @pytest.mark.asyncio
-    async def test_update_account_same_pid_same_account(self) -> None:
-        """Test that updating with the same PID for the same account works."""
-        data = await self.account_utils.next_data()
-        account = await self.account_service.create_account(data)
-
-        # Update with same PID - should work
-        data.first_name = "Updated"
-        updated = await self.account_service.update_account(account.id, data)
-
-        assert updated.pid == account.pid
-        assert updated.first_name == "Updated"
 
     @pytest.mark.asyncio
     async def test_get_account_by_email_case_insensitive(self) -> None:

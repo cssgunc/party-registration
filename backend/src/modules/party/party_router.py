@@ -44,9 +44,9 @@ async def create_party(
     - Students: provide type="student", party_datetime, and contact_two (ContactDTO)
       - contact_one is auto-filled from the authenticated student
       - Party location is automatically derived from the student's residence
-    - Admins: provide type="admin", party_datetime, google_place_id, contact_one_email, and
+    - Admins: provide type="admin", party_datetime, google_place_id, contact_one_student_id, and
       contact_two (ContactDTO)
-      - contact_one_email identifies the first contact by email
+      - contact_one_student_id identifies the first contact by student account ID
       - contact_two is a ContactDTO with email, first_name, last_name, phone_number, and
         contact_preference
 
@@ -203,9 +203,9 @@ async def update_party(
     - Students: provide type="student", party_datetime, and contact_two (ContactDTO)
       - contact_one is auto-filled from the authenticated student
       - Party location is automatically derived from the student's residence
-    - Admins: provide type="admin", party_datetime, google_place_id, contact_one_email, and
+    - Admins: provide type="admin", party_datetime, google_place_id, contact_one_student_id, and
       contact_two (ContactDTO)
-      - contact_one_email identifies the first contact by email
+      - contact_one_student_id identifies the first contact by student account ID
       - contact_two is a ContactDTO with email, first_name, last_name, phone_number, and
         contact_preference
 

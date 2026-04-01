@@ -11,12 +11,14 @@ from src.modules.party.party_model import PartyDto
 from src.modules.party.party_service import PartyService
 
 from .student_model import (
+    AutocompleteInput,
     IsRegisteredUpdate,
     PaginatedStudentsResponse,
     ResidenceUpdateDto,
     SelfUpdateStudentDto,
     StudentCreateDto,
     StudentDto,
+    StudentSuggestionDto,
     StudentUpdateDto,
 )
 from .student_service import StudentService
@@ -96,6 +98,15 @@ async def get_students_csv(
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": "attachment; filename=students.xlsx"},
     )
+
+
+@student_router.post("/autocomplete")
+async def autocomplete_students(
+    input_data: AutocompleteInput,
+    student_service: StudentService = Depends(),
+    _=Depends(authenticate_staff_or_admin),
+) -> list[StudentSuggestionDto]:
+    return await student_service.autocomplete_students(input_data.query)
 
 
 @student_router.get("/{student_id}")

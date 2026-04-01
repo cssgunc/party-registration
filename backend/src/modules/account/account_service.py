@@ -3,11 +3,16 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.database import get_session
-from src.core.exceptions import ConflictException, NotFoundException
+from src.core.exceptions import ConflictException, ForbiddenException, NotFoundException
 from src.core.utils.excel_utils import ExcelExporter
 from src.core.utils.query_utils import get_paginated_results, parse_pagination_params
 from src.modules.account.account_entity import AccountEntity, AccountRole
-from src.modules.account.account_model import AccountData, AccountDto, PaginatedAccountsResponse
+from src.modules.account.account_model import (
+    AccountData,
+    AccountDto,
+    AccountUpdateData,
+    PaginatedAccountsResponse,
+)
 
 
 class AccountNotFoundException(NotFoundException):
@@ -192,6 +197,10 @@ class AccountService:
         account_entity = await self._get_account_entity_by_email(email)
         return account_entity.to_dto()
 
+    async def get_account_by_onyen(self, onyen: str) -> AccountDto:
+        account_entity = await self._get_account_entity_by_onyen(onyen)
+        return account_entity.to_dto()
+
     async def get_account_by_pid(self, pid: str) -> AccountDto:
         account_entity = await self._get_account_entity_by_pid(pid)
         return account_entity.to_dto()
@@ -241,53 +250,11 @@ class AccountService:
         await self.session.refresh(new_account)
         return new_account.to_dto()
 
-    async def update_account(self, account_id: int, data: AccountData) -> AccountDto:
+    async def update_account(self, account_id: int, data: AccountUpdateData) -> AccountDto:
         account_entity = await self._get_account_entity_by_id(account_id)
-
-        # Check email conflict if email changed (case-insensitive)
-        if data.email.lower() != account_entity.email.lower():
-            try:
-                await self._get_account_entity_by_email(data.email)
-                # If we get here, account with this email exists
-                raise AccountConflictException(email=data.email)
-            except AccountByEmailNotFoundException:
-                # Email is available, proceed
-                pass
-
-        # Check PID conflict if PID changed
-        if data.pid != account_entity.pid:
-            try:
-                await self._get_account_entity_by_pid(data.pid)
-                # If we get here, account with this PID exists
-                raise AccountConflictException(pid=data.pid)
-            except AccountByPidNotFoundException:
-                # PID is available, proceed
-                pass
-
-        # Check onyen conflict if onyen changed
-        if data.onyen != account_entity.onyen:
-            try:
-                await self._get_account_entity_by_onyen(data.onyen)
-                # If we get here, account with this onyen exists
-                raise AccountConflictException(onyen=data.onyen)
-            except AccountByOnyenNotFoundException:
-                # Onyen is available, proceed
-                pass
-
-        # Update fields
-        account_entity.email = data.email
-        account_entity.first_name = data.first_name
-        account_entity.last_name = data.last_name
-        account_entity.pid = data.pid
-        account_entity.onyen = data.onyen
         account_entity.role = AccountRole(data.role.value)
-
-        try:
-            self.session.add(account_entity)
-            await self.session.commit()
-        except IntegrityError as e:
-            # Handle race condition
-            raise AccountConflictException(email=data.email, onyen=data.onyen, pid=data.pid) from e
+        self.session.add(account_entity)
+        await self.session.commit()
         await self.session.refresh(account_entity)
         return account_entity.to_dto()
 
@@ -297,3 +264,23 @@ class AccountService:
         await self.session.delete(account_entity)
         await self.session.commit()
         return account
+
+    async def upsert_idp_account(self, data: AccountData) -> AccountDto:
+        try:
+            account_entity = await self._get_account_entity_by_onyen(data.onyen)
+        except AccountByOnyenNotFoundException as e:
+            if data.role != AccountRole.STUDENT:
+                raise ForbiddenException(detail="No matching account found") from e
+            return await self.create_account(data)
+
+        if data.role != AccountRole.STUDENT and account_entity.role != data.role:
+            raise ForbiddenException(detail="Role mismatch")
+
+        account_entity.first_name = data.first_name
+        account_entity.last_name = data.last_name
+        account_entity.email = data.email
+        account_entity.pid = data.pid
+        self.session.add(account_entity)
+        await self.session.commit()
+        await self.session.refresh(account_entity)
+        return account_entity.to_dto()
