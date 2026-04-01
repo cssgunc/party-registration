@@ -2,7 +2,6 @@
 .env*
 !.env.template
 
-
 # Node.js / Next.js
 node_modules/
 .npm/
@@ -53,7 +52,6 @@ htmlcov/
 
 # Generated files
 backend/script/schema.sql
-
 
 # UV lock
 backend/uv.lock
