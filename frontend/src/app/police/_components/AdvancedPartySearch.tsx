@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/select";
 import { IncidentSeverity } from "@/lib/api/location/location.types";
 import { ContactPreference } from "@/lib/api/student/student.types";
+import { X } from "lucide-react";
 import { useMemo, useState } from "react";
 
 export type TimeFilterType = "" | "before" | "after" | "exact";
@@ -151,65 +152,63 @@ export default function AdvancedPartySearch({
 
           <div>
             <Label className="mb-2">Preference</Label>
-            <div className="gap-2">
-              <Select
-                value={filters.contactPreference}
-                onValueChange={(val: ContactPreferenceFilter) =>
-                  patch("contactPreference", val)
-                }
-              >
-                <SelectTrigger className="w-fit">
-                  <SelectValue placeholder="None" />
-                </SelectTrigger>
-
-                <SelectContent>
-                  <SelectItem value="call">Call</SelectItem>
-                  <SelectItem value="text">Text</SelectItem>
-                </SelectContent>
-              </Select>
-              {filters.contactPreference && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => patch("contactPreference", "")}
-                  className="h-auto p-1 content-sub"
-                >
-                  Clear
-                </Button>
-              )}
-            </div>
+            <Select
+              value={filters.contactPreference}
+              onValueChange={(val: ContactPreferenceFilter) =>
+                patch("contactPreference", val)
+              }
+            >
+              <SelectTrigger className="w-fit">
+                <SelectValue placeholder="None" />
+                {filters.contactPreference && (
+                  <span
+                    role="button"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      patch("contactPreference", "");
+                    }}
+                    className="ml-1 rounded-sm opacity-60 hover:opacity-100"
+                  >
+                    <X className="h-3 w-3" />
+                  </span>
+                )}
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="call">Call</SelectItem>
+                <SelectItem value="text">Text</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div>
             <Label className="mb-2">Incident Severity</Label>
-            <div className="gap-2">
-              <Select
-                value={filters.severity}
-                onValueChange={(val: SeverityFilter) => patch("severity", val)}
-              >
-                <SelectTrigger className="w-fit">
-                  <SelectValue placeholder="None" />
-                </SelectTrigger>
-
-                <SelectContent>
-                  <SelectItem value="complaint">Complaint</SelectItem>
-                  <SelectItem value="warning">Warning</SelectItem>
-                  <SelectItem value="citation">Citation</SelectItem>
-                </SelectContent>
-              </Select>
-              {filters.severity && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => patch("severity", "")}
-                  className="h-auto p-1"
-                >
-                  Clear
-                </Button>
-              )}
-            </div>
+            <Select
+              value={filters.severity}
+              onValueChange={(val: SeverityFilter) => patch("severity", val)}
+            >
+              <SelectTrigger className="w-fit">
+                <SelectValue placeholder="None" />
+                {filters.severity && (
+                  <span
+                    role="button"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      patch("severity", "");
+                    }}
+                    className="ml-1 rounded-sm opacity-60 hover:opacity-100"
+                  >
+                    <X className="h-3 w-3" />
+                  </span>
+                )}
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="complaint">Complaint</SelectItem>
+                <SelectItem value="warning">Warning</SelectItem>
+                <SelectItem value="citation">Citation</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       )}
