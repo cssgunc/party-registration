@@ -225,9 +225,9 @@ class AccountService:
     async def upsert_idp_account(self, data: AccountData) -> AccountDto:
         try:
             account_entity = await self._get_account_entity_by_onyen(data.onyen)
-        except AccountByOnyenNotFoundException:
+        except AccountByOnyenNotFoundException as e:
             if data.role != AccountRole.STUDENT:
-                raise ForbiddenException(detail="No matching account found") from None
+                raise ForbiddenException(detail="No matching account found") from e
             return await self.create_account(data)
 
         if data.role != AccountRole.STUDENT and account_entity.role != data.role:
