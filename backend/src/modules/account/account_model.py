@@ -40,6 +40,12 @@ class AccountDto(BaseModel):
     role: AccountRole
 
 
+class AccountUpdateData(BaseModel):
+    """DTO for updating an Account's role."""
+
+    role: AccountRole
+
+
 class PaginatedAccountsResponse(PaginatedResponse[AccountDto]):
     """Paginated response for accounts."""
 

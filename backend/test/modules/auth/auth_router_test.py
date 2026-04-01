@@ -2,7 +2,7 @@ import pytest
 from httpx import AsyncClient
 from src.core.config import env
 from src.core.exceptions import CredentialsException, ForbiddenException
-from src.modules.account.account_model import AccountData, AccountRole
+from src.modules.account.account_model import AccountData, AccountDto, AccountRole
 from src.modules.auth.auth_model import AccessTokenDto, PoliceCredentialsDto, TokensDto
 from src.modules.auth.auth_service import (
     AuthService,
@@ -47,12 +47,14 @@ class TestAuthRouter:
         self.unauthenticated_client = unauthenticated_client
         self.auth_utils = auth_utils
 
-    # ========================= /auth/exchange Tests =========================
+        # ========================= /auth/exchange Tests =========================
 
     @pytest.mark.asyncio
-    async def test_exchange_new_account_success(self, account_utils: AccountTestUtils) -> None:
-        """Test exchanging account data for tokens creates new account."""
-        account_data = await account_utils.next_data()
+    async def test_exchange_student_creates_account_if_not_found(
+        self, account_utils: AccountTestUtils
+    ) -> None:
+        """Student exchange creates a new account when onyen doesn't exist."""
+        account_data = await account_utils.next_data(role="student")
 
         response = await self.unauthenticated_client.post(
             "/api/auth/exchange",
@@ -61,24 +63,32 @@ class TestAuthRouter:
         )
 
         data = assert_res_success(response, TokensDto)
-
         payload = self.auth_utils.decode_token(data.access_token)
-        assert payload["email"] == account_data.email
-        assert payload["first_name"] == account_data.first_name
-        assert payload["role"] == account_data.role.value
+        expected = AccountDto(
+            id=payload["sub"],
+            email=account_data.email,
+            first_name=account_data.first_name,
+            last_name=account_data.last_name,
+            pid=account_data.pid,
+            onyen=account_data.onyen,
+            role=AccountRole.STUDENT,
+        )
+        self.auth_utils.assert_account_token_payload(payload, expected)
 
     @pytest.mark.asyncio
-    async def test_exchange_existing_account_updates(self, account_utils: AccountTestUtils) -> None:
-        """Test exchanging existing account data updates the account."""
-        existing_account = await account_utils.create_one(email="existing@unc.edu", role="student")
+    async def test_exchange_student_upserts_idp_fields_leaves_role(
+        self, account_utils: AccountTestUtils
+    ) -> None:
+        """Student exchange overwrites IdP fields but never touches role."""
+        existing = await account_utils.create_one(role="student")
 
         updated_data = AccountData(
-            email="existing@unc.edu",
+            email="newemail@unc.edu",
             first_name="Updated",
             last_name="Name",
-            pid=existing_account.pid,
-            onyen=existing_account.onyen,
-            role=AccountRole.ADMIN,
+            pid="987654321",
+            onyen=existing.onyen,
+            role=AccountRole.STUDENT,
         )
 
         response = await self.unauthenticated_client.post(
@@ -88,11 +98,119 @@ class TestAuthRouter:
         )
 
         data = assert_res_success(response, TokensDto)
-
         payload = self.auth_utils.decode_token(data.access_token)
-        assert payload["first_name"] == "Updated"
-        assert payload["last_name"] == "Name"
-        assert payload["role"] == "admin"
+        expected = AccountDto(
+            id=payload["sub"],
+            email=updated_data.email,
+            first_name=updated_data.first_name,
+            last_name=updated_data.last_name,
+            pid=updated_data.pid,
+            onyen=updated_data.onyen,
+            role=AccountRole.STUDENT,
+        )
+        self.auth_utils.assert_account_token_payload(payload, expected)
+
+    @pytest.mark.asyncio
+    async def test_exchange_staff_success(self, account_utils: AccountTestUtils) -> None:
+        """Staff exchange succeeds when account exists and role matches."""
+        existing = await account_utils.create_one(role="staff")
+
+        data = AccountData(
+            email=existing.email,
+            first_name=existing.first_name,
+            last_name=existing.last_name,
+            pid=existing.pid,
+            onyen=existing.onyen,
+            role=AccountRole.STAFF,
+        )
+
+        response = await self.unauthenticated_client.post(
+            "/api/auth/exchange",
+            json=data.model_dump(mode="json"),
+            headers={"X-Internal-Secret": env.INTERNAL_API_SECRET},
+        )
+
+        result = assert_res_success(response, TokensDto)
+        payload = self.auth_utils.decode_token(result.access_token)
+        self.auth_utils.assert_account_token_payload(payload, existing.to_dto())
+
+    @pytest.mark.asyncio
+    async def test_exchange_admin_success(self, account_utils: AccountTestUtils) -> None:
+        """Admin exchange succeeds when account exists and role matches."""
+        existing = await account_utils.create_one(role="admin")
+
+        data = AccountData(
+            email=existing.email,
+            first_name=existing.first_name,
+            last_name=existing.last_name,
+            pid=existing.pid,
+            onyen=existing.onyen,
+            role=AccountRole.ADMIN,
+        )
+
+        response = await self.unauthenticated_client.post(
+            "/api/auth/exchange",
+            json=data.model_dump(mode="json"),
+            headers={"X-Internal-Secret": env.INTERNAL_API_SECRET},
+        )
+
+        result = assert_res_success(response, TokensDto)
+        payload = self.auth_utils.decode_token(result.access_token)
+        self.auth_utils.assert_account_token_payload(payload, existing.to_dto())
+
+    @pytest.mark.asyncio
+    async def test_exchange_staff_not_found_returns_403(
+        self, account_utils: AccountTestUtils
+    ) -> None:
+        """Staff exchange returns 403 when no account exists for onyen."""
+        data = await account_utils.next_data(role="staff")
+
+        response = await self.unauthenticated_client.post(
+            "/api/auth/exchange",
+            json=data.model_dump(mode="json"),
+            headers={"X-Internal-Secret": env.INTERNAL_API_SECRET},
+        )
+
+        assert_res_failure(response, ForbiddenException("No matching account found"))
+
+    @pytest.mark.asyncio
+    async def test_exchange_admin_not_found_returns_403(
+        self, account_utils: AccountTestUtils
+    ) -> None:
+        """Admin exchange returns 403 when no account exists for onyen."""
+        data = await account_utils.next_data(role="admin")
+
+        response = await self.unauthenticated_client.post(
+            "/api/auth/exchange",
+            json=data.model_dump(mode="json"),
+            headers={"X-Internal-Secret": env.INTERNAL_API_SECRET},
+        )
+
+        assert_res_failure(response, ForbiddenException("No matching account found"))
+
+    @pytest.mark.asyncio
+    async def test_exchange_role_mismatch_returns_403(
+        self, account_utils: AccountTestUtils
+    ) -> None:
+        """Exchange returns 403 when role in payload doesn't match DB role."""
+        existing = await account_utils.create_one(role="staff")
+
+        data = AccountData(
+            email=existing.email,
+            first_name=existing.first_name,
+            last_name=existing.last_name,
+            pid=existing.pid,
+            onyen=existing.onyen,
+            role=AccountRole.ADMIN,  # DB has staff, payload claims admin
+        )
+
+        response = await self.unauthenticated_client.post(
+            "/api/auth/exchange",
+            json=data.model_dump(mode="json"),
+            headers={"X-Internal-Secret": env.INTERNAL_API_SECRET},
+        )
+
+        assert_res_failure(response, ForbiddenException("Role mismatch"))
 
     @pytest.mark.asyncio
     async def test_exchange_missing_internal_secret(self, account_utils: AccountTestUtils) -> None:
