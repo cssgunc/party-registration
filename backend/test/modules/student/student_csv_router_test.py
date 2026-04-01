@@ -6,10 +6,26 @@ import pytest
 from httpx import AsyncClient
 from test.modules.location.location_utils import LocationTestUtils
 from test.modules.student.student_utils import StudentTestUtils
-from test.utils.http.test_templates import generate_auth_required_tests
+from test.utils.http.test_templates import generate_auth_required_tests, generate_csv_empty_test
 
 test_student_csv_authentication = generate_auth_required_tests(
     ({"admin", "staff"}, "GET", "/api/students/csv", None),
+)
+
+test_student_csv_empty = generate_csv_empty_test(
+    "staff",
+    "/api/students/csv",
+    (
+        "Onyen",
+        "PID",
+        "First Name",
+        "Last Name",
+        "Email",
+        "Phone Number",
+        "Contact Preference",
+        "Is Registered",
+        "Residence Address",
+    ),
 )
 
 
@@ -23,37 +39,6 @@ class TestStudentCSVRouter:
     def _setup(self, student_utils: StudentTestUtils, staff_client: AsyncClient):
         self.student_utils = student_utils
         self.staff_client = staff_client
-
-    @pytest.mark.asyncio
-    async def test_get_students_csv_empty(self):
-        """Test Excel export with no students returns header row only."""
-        response = await self.staff_client.get("/api/students/csv")
-        assert response.status_code == 200
-        assert (
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            in response.headers["content-type"]
-        )
-
-        workbook = openpyxl.load_workbook(BytesIO(response.content))
-        sheet = workbook.active
-        assert sheet is not None
-        rows = list(sheet.values)
-
-        # Should only have header row
-        assert len(rows) == 1
-
-        expected_headers = (
-            "PID",
-            "First Name",
-            "Last Name",
-            "Email",
-            "Phone Number",
-            "Contact Preference",
-            "Is Registered",
-            "Residence Address",
-        )
-        assert rows[0] == expected_headers
-        assert sheet["A1"].font.bold is True
 
     @pytest.mark.asyncio
     async def test_get_students_csv_with_data(self, location_utils: LocationTestUtils):
@@ -84,6 +69,7 @@ class TestStudentCSVRouter:
         assert len(rows) == 3
 
         expected_headers = (
+            "Onyen",
             "PID",
             "First Name",
             "Last Name",
@@ -96,31 +82,31 @@ class TestStudentCSVRouter:
         assert rows[0] == expected_headers
 
         # Build a map by PID for easy assertion
-        data_rows = {row[0]: row for row in rows[1:]}
+        data_rows = {row[1]: row for row in rows[1:]}
 
         # Assert student without residence
         pid_no_res = student_no_residence.account.pid
         assert pid_no_res in data_rows
         row_no_res = data_rows[pid_no_res]
-        assert row_no_res[6] == "No"  # Is Registered
-        assert row_no_res[7] in ("", None)  # Residence Address (empty)
+        assert row_no_res[7] == "No"  # Is Registered
+        assert row_no_res[8] == "-"  # Residence Address (no residence)
         # Phone number should be formatted as (XXX) XXX-XXXX
-        phone_no_res = str(row_no_res[4])  # Phone Number
+        phone_no_res = str(row_no_res[5])  # Phone Number
         assert "(" in phone_no_res and ")" in phone_no_res and "-" in phone_no_res
         # Contact preference should be capitalized
-        assert str(row_no_res[5])[0].isupper()  # Contact Preference starts with uppercase
+        assert str(row_no_res[6])[0].isupper()  # Contact Preference starts with uppercase
 
         # Assert student with residence
         pid_with_res = student_with_residence.account.pid
         assert pid_with_res in data_rows
         row_with_res = data_rows[pid_with_res]
-        assert row_with_res[6] == "Yes"  # Is Registered
-        assert row_with_res[7] == location.formatted_address  # Residence Address
+        assert row_with_res[7] == "Yes"  # Is Registered
+        assert row_with_res[8] == location.formatted_address  # Residence Address
         # Phone number should be formatted as (XXX) XXX-XXXX
-        phone_with_res = str(row_with_res[4])  # Phone Number
+        phone_with_res = str(row_with_res[5])  # Phone Number
         assert "(" in phone_with_res and ")" in phone_with_res and "-" in phone_with_res
         # Contact preference should be capitalized
-        assert str(row_with_res[5])[0].isupper()  # Contact Preference starts with uppercase
+        assert str(row_with_res[6])[0].isupper()  # Contact Preference starts with uppercase
 
     @pytest.mark.asyncio
     async def test_get_students_csv_police_forbidden(self, police_client: AsyncClient):

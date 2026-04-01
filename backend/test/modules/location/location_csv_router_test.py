@@ -6,10 +6,16 @@ from httpx import AsyncClient
 from src.modules.incident.incident_model import IncidentSeverity
 from test.modules.incident.incident_utils import IncidentTestUtils
 from test.modules.location.location_utils import LocationTestUtils
-from test.utils.http.test_templates import generate_auth_required_tests
+from test.utils.http.test_templates import generate_auth_required_tests, generate_csv_empty_test
 
 test_location_csv_authentication = generate_auth_required_tests(
     ({"admin", "staff"}, "GET", "/api/locations/csv", None),
+)
+
+test_location_csv_empty = generate_csv_empty_test(
+    "staff",
+    "/api/locations/csv",
+    ("Address", "Complaint Count", "Warning Count", "Citation Count"),
 )
 
 
@@ -30,33 +36,6 @@ class TestLocationCSVRouter:
         self.staff_client = staff_client
         self.location_utils = location_utils
         self.incident_utils = incident_utils
-
-    @pytest.mark.asyncio
-    async def test_get_locations_csv_empty(self):
-        """Test Excel export with no locations returns header row only."""
-        response = await self.staff_client.get("/api/locations/csv")
-        assert response.status_code == 200
-        assert (
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            in response.headers["content-type"]
-        )
-
-        workbook = openpyxl.load_workbook(BytesIO(response.content))
-        sheet = workbook.active
-        assert sheet is not None
-        rows = list(sheet.values)
-
-        # Should only have header row
-        assert len(rows) == 1
-
-        expected_headers = (
-            "Fully Formatted Address",
-            "Complaint Count",
-            "Warning Count",
-            "Citation Count",
-        )
-        assert rows[0] == expected_headers
-        assert sheet["A1"].font.bold is True
 
     @pytest.mark.asyncio
     async def test_get_locations_csv_with_data(self):
@@ -102,12 +81,7 @@ class TestLocationCSVRouter:
         # Should have header + 2 data rows
         assert len(rows) == 3
 
-        expected_headers = (
-            "Fully Formatted Address",
-            "Complaint Count",
-            "Warning Count",
-            "Citation Count",
-        )
+        expected_headers = ("Address", "Complaint Count", "Warning Count", "Citation Count")
         assert rows[0] == expected_headers
 
         # Build map by formatted address for easy assertion

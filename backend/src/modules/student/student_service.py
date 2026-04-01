@@ -1,5 +1,6 @@
 import re
 from datetime import UTC, datetime
+from typing import ClassVar
 
 from fastapi import Depends, Request
 from sqlalchemy import func, or_, select
@@ -71,6 +72,25 @@ class ResidenceAlreadyChosenException(BadRequestException):
 
 
 class StudentService:
+    _NESTED_FIELD_COLUMNS: ClassVar[dict] = {
+        "id": AccountEntity.id,
+        "first_name": AccountEntity.first_name,
+        "last_name": AccountEntity.last_name,
+        "email": AccountEntity.email,
+        "onyen": AccountEntity.onyen,
+        "pid": AccountEntity.pid,
+    }
+    _BASE_ALLOWED_FIELDS: ClassVar[list[str]] = [
+        "phone_number",
+        "contact_preference",
+        "last_registered",
+    ]
+    _ALLOWED_SORT_FIELDS: ClassVar[list[str]] = [
+        *_BASE_ALLOWED_FIELDS,
+        *_NESTED_FIELD_COLUMNS.keys(),
+    ]
+    _ALLOWED_FILTER_FIELDS: ClassVar[list[str]] = list(_ALLOWED_SORT_FIELDS)
+
     def __init__(
         self,
         session: AsyncSession = Depends(get_session),
@@ -149,19 +169,6 @@ class StudentService:
         Returns:
             PaginatedStudentsResponse with items and metadata
         """
-        nested_field_columns = {
-            "id": AccountEntity.id,
-            "first_name": AccountEntity.first_name,
-            "last_name": AccountEntity.last_name,
-            "email": AccountEntity.email,
-            "onyen": AccountEntity.onyen,
-            "pid": AccountEntity.pid,
-        }
-
-        _base_allowed_fields = ["phone_number", "contact_preference", "last_registered"]
-        allowed_sort_fields = [*_base_allowed_fields, *nested_field_columns.keys()]
-        allowed_filter_fields = list(allowed_sort_fields)
-
         # Build base query with JOIN for filter/sort and eager loading for hydration
         base_query = (
             select(StudentEntity)
@@ -172,8 +179,8 @@ class StudentService:
         # Parse query params and get paginated results
         query_params = parse_pagination_params(
             request,
-            allowed_sort_fields=allowed_sort_fields,
-            allowed_filter_fields=allowed_filter_fields,
+            allowed_sort_fields=self._ALLOWED_SORT_FIELDS,
+            allowed_filter_fields=self._ALLOWED_FILTER_FIELDS,
         )
 
         # Use the generic pagination utility
@@ -183,25 +190,12 @@ class StudentService:
             entity_class=StudentEntity,
             dto_converter=lambda entity: entity.to_dto(),
             query_params=query_params,
-            allowed_sort_fields=allowed_sort_fields,
-            allowed_filter_fields=allowed_filter_fields,
-            nested_field_columns=nested_field_columns,
+            allowed_sort_fields=self._ALLOWED_SORT_FIELDS,
+            allowed_filter_fields=self._ALLOWED_FILTER_FIELDS,
+            nested_field_columns=self._NESTED_FIELD_COLUMNS,
         )
 
     async def get_students_for_export(self, request: Request) -> list[StudentDto]:
-        nested_field_columns = {
-            "id": AccountEntity.id,
-            "first_name": AccountEntity.first_name,
-            "last_name": AccountEntity.last_name,
-            "email": AccountEntity.email,
-            "onyen": AccountEntity.onyen,
-            "pid": AccountEntity.pid,
-        }
-
-        _base_allowed_fields = ["phone_number", "contact_preference", "last_registered"]
-        allowed_sort_fields = [*_base_allowed_fields, *nested_field_columns.keys()]
-        allowed_filter_fields = list(allowed_sort_fields)
-
         base_query = (
             select(StudentEntity)
             .join(AccountEntity, StudentEntity.account_id == AccountEntity.id)
@@ -210,8 +204,8 @@ class StudentService:
 
         query_params = parse_pagination_params(
             request,
-            allowed_sort_fields=allowed_sort_fields,
-            allowed_filter_fields=allowed_filter_fields,
+            allowed_sort_fields=self._ALLOWED_SORT_FIELDS,
+            allowed_filter_fields=self._ALLOWED_FILTER_FIELDS,
         )
         query_params = query_params.model_copy(update={"pagination": None})
 
@@ -220,9 +214,9 @@ class StudentService:
             base_query,
             StudentEntity,  # pyright: ignore[reportArgumentType]
             params=ListQueryParam(filters=query_params.filters, sort=query_params.sort),
-            allowed_sort_fields=allowed_sort_fields,
-            allowed_filter_fields=allowed_filter_fields,
-            nested_field_columns=nested_field_columns,
+            allowed_sort_fields=self._ALLOWED_SORT_FIELDS,
+            allowed_filter_fields=self._ALLOWED_FILTER_FIELDS,
+            nested_field_columns=self._NESTED_FIELD_COLUMNS,
         )
 
         result = await self.session.execute(final_query)
@@ -230,6 +224,7 @@ class StudentService:
 
     def export_students_to_excel(self, students: list[StudentDto]) -> bytes:
         headers = [
+            "Onyen",
             "PID",
             "First Name",
             "Last Name",
@@ -239,7 +234,7 @@ class StudentService:
             "Is Registered",
             "Residence Address",
         ]
-        exporter = ExcelExporter(sheet_title="Students")
+        exporter = ExcelExporter(sheet_title=f"Students {datetime.now(UTC).strftime('%Y-%m-%d')}")
         exporter.set_headers(headers)
         for student in students:
             # Mirrors the UI checkbox: "Yes" if last_registered is set
@@ -248,12 +243,13 @@ class StudentService:
             residence_address = (
                 student.residence.location.formatted_address
                 if student.residence is not None
-                else ""
+                else "-"
             )
             phone = ExcelExporter.format_phone(student.phone_number)
             contact_preference = student.contact_preference.value.capitalize()
             exporter.add_row(
                 [
+                    student.onyen,
                     student.pid,
                     student.first_name,
                     student.last_name,

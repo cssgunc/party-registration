@@ -1,5 +1,6 @@
 import asyncio
 from datetime import UTC, datetime
+from typing import ClassVar
 
 import googlemaps
 from fastapi import Depends, Request
@@ -72,6 +73,23 @@ def get_gmaps_client() -> googlemaps.Client:
 
 
 class LocationService:
+    _ALLOWED_FIELDS: ClassVar[list[str]] = [
+        "id",
+        "google_place_id",
+        "formatted_address",
+        "latitude",
+        "longitude",
+        "street_number",
+        "street_name",
+        "unit",
+        "city",
+        "county",
+        "state",
+        "country",
+        "zip_code",
+        "hold_expiration",
+    ]
+
     def __init__(
         self,
         gmaps_client: googlemaps.Client = Depends(get_gmaps_client),
@@ -122,23 +140,7 @@ class LocationService:
             PaginatedLocationResponse with items and metadata
         """
         # Define allowed fields for sorting and filtering
-        allowed_fields = [
-            "id",
-            "google_place_id",
-            "formatted_address",
-            "latitude",
-            "longitude",
-            "street_number",
-            "street_name",
-            "unit",
-            "city",
-            "county",
-            "state",
-            "country",
-            "zip_code",
-            "hold_expiration",
-        ]
-        allowed_sort_fields = allowed_filter_fields = allowed_fields
+        allowed_sort_fields = allowed_filter_fields = self._ALLOWED_FIELDS
 
         # Build base query
         base_query = select(LocationEntity)
@@ -163,23 +165,7 @@ class LocationService:
 
     async def get_locations_for_export(self, request: Request) -> list[LocationDto]:
         """Get all locations without pagination for export."""
-        allowed_fields = [
-            "id",
-            "google_place_id",
-            "formatted_address",
-            "latitude",
-            "longitude",
-            "street_number",
-            "street_name",
-            "unit",
-            "city",
-            "county",
-            "state",
-            "country",
-            "zip_code",
-            "hold_expiration",
-        ]
-        allowed_sort_fields = allowed_filter_fields = allowed_fields
+        allowed_sort_fields = allowed_filter_fields = self._ALLOWED_FIELDS
 
         base_query = select(LocationEntity)
 
@@ -203,10 +189,8 @@ class LocationService:
 
     def export_locations_to_excel(self, locations: list[LocationDto]) -> bytes:
         """Export locations to an Excel file."""
-        exporter = ExcelExporter(sheet_title="Locations")
-        exporter.set_headers(
-            ["Fully Formatted Address", "Complaint Count", "Warning Count", "Citation Count"]
-        )
+        exporter = ExcelExporter(sheet_title=f"Locations {datetime.now(UTC).strftime('%Y-%m-%d')}")
+        exporter.set_headers(["Address", "Complaint Count", "Warning Count", "Citation Count"])
         for location in locations:
             complaint_count = sum(
                 1

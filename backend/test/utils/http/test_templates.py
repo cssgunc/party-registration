@@ -1,6 +1,8 @@
 from collections.abc import AsyncGenerator, Callable
+from io import BytesIO
 from typing import Any
 
+import openpyxl
 import pytest
 from httpx import AsyncClient
 from pydantic import BaseModel
@@ -64,6 +66,41 @@ def generate_auth_required_tests(*params: tuple[set[StringRole], str, str, dict 
             print("✓")
 
     return test_authentication
+
+
+def generate_csv_empty_test(
+    client_role: StringRole,
+    endpoint: str,
+    expected_headers: tuple,
+):
+    """Generate a test verifying an Excel CSV export endpoint returns only a header row when empty.
+
+    Args:
+        client_role: The role of the client used to make the request.
+        endpoint: The endpoint path (e.g., "/api/students/csv").
+        expected_headers: Tuple of expected column header strings.
+    """
+
+    @pytest.mark.asyncio
+    async def test_csv_empty(
+        create_test_client: Callable[..., AsyncGenerator[AsyncClient, Any]],
+    ):
+        async for client in create_test_client(client_role):
+            response = await client.get(endpoint)
+            assert response.status_code == 200
+            assert (
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                in response.headers["content-type"]
+            )
+            workbook = openpyxl.load_workbook(BytesIO(response.content))
+            sheet = workbook.active
+            assert sheet is not None
+            rows = list(sheet.values)
+            assert len(rows) == 1
+            assert rows[0] == expected_headers
+            assert sheet["A1"].font.bold is True
+
+    return test_csv_empty
 
 
 def generate_filter_sort_tests(

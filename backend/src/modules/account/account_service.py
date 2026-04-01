@@ -1,3 +1,6 @@
+from datetime import UTC, datetime
+from typing import ClassVar
+
 from fastapi import Depends, Request
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -52,6 +55,16 @@ class AccountByOnyenNotFoundException(NotFoundException):
 
 
 class AccountService:
+    _ALLOWED_FIELDS: ClassVar[list[str]] = [
+        "id",
+        "email",
+        "first_name",
+        "last_name",
+        "onyen",
+        "pid",
+        "role",
+    ]
+
     def __init__(self, session: AsyncSession = Depends(get_session)):
         self.session = session
 
@@ -111,8 +124,7 @@ class AccountService:
             PaginatedAccountsResponse with items and metadata
         """
         # Define allowed fields for sorting and filtering
-        allowed_fields = ["id", "email", "first_name", "last_name", "onyen", "pid", "role"]
-        allowed_sort_fields = allowed_filter_fields = allowed_fields
+        allowed_sort_fields = allowed_filter_fields = self._ALLOWED_FIELDS
 
         # Build base query
         base_query = select(AccountEntity)
@@ -138,8 +150,7 @@ class AccountService:
 
     async def get_accounts_for_export(self, request: Request) -> list[AccountDto]:
         """Get all accounts for export, ignoring pagination."""
-        allowed_fields = ["id", "email", "first_name", "last_name", "onyen", "pid", "role"]
-        allowed_sort_fields = allowed_filter_fields = allowed_fields
+        allowed_sort_fields = allowed_filter_fields = self._ALLOWED_FIELDS
 
         base_query = select(AccountEntity)
 
@@ -163,7 +174,7 @@ class AccountService:
     def export_accounts_to_excel(self, accounts: list[AccountDto]) -> bytes:
         """Export accounts to Excel bytes."""
         headers = ["Onyen", "Email", "First Name", "Last Name", "PID", "Role"]
-        exporter = ExcelExporter(sheet_title="Accounts")
+        exporter = ExcelExporter(sheet_title=f"Accounts {datetime.now(UTC).strftime('%Y-%m-%d')}")
         exporter.set_headers(headers)
         for account in accounts:
             exporter.add_row(

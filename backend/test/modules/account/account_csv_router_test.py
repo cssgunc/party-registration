@@ -5,10 +5,16 @@ import pytest
 from httpx import AsyncClient
 from src.modules.account.account_entity import AccountRole
 from test.modules.account.account_utils import AccountTestUtils
-from test.utils.http.test_templates import generate_auth_required_tests
+from test.utils.http.test_templates import generate_auth_required_tests, generate_csv_empty_test
 
 test_account_csv_authentication = generate_auth_required_tests(
     ({"admin"}, "GET", "/api/accounts/csv", None),
+)
+
+test_account_csv_empty = generate_csv_empty_test(
+    "admin",
+    "/api/accounts/csv",
+    ("Onyen", "Email", "First Name", "Last Name", "PID", "Role"),
 )
 
 
@@ -22,28 +28,6 @@ class TestAccountCSVRouter:
     def _setup(self, account_utils: AccountTestUtils, admin_client: AsyncClient):
         self.account_utils = account_utils
         self.admin_client = admin_client
-
-    @pytest.mark.asyncio
-    async def test_get_accounts_csv_empty(self):
-        """Test Excel export with no accounts returns header row only."""
-        response = await self.admin_client.get("/api/accounts/csv")
-        assert response.status_code == 200
-        assert (
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            in response.headers["content-type"]
-        )
-
-        workbook = openpyxl.load_workbook(BytesIO(response.content))
-        sheet = workbook.active
-        assert sheet is not None
-        rows = list(sheet.values)
-
-        # Should only have header row
-        assert len(rows) == 1
-
-        expected_headers = ("Onyen", "Email", "First Name", "Last Name", "PID", "Role")
-        assert rows[0] == expected_headers
-        assert sheet["A1"].font.bold is True
 
     @pytest.mark.asyncio
     async def test_get_accounts_csv_with_data(self):

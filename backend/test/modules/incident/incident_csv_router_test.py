@@ -7,10 +7,16 @@ from httpx import AsyncClient
 from src.modules.incident.incident_model import IncidentSeverity
 from test.modules.incident.incident_utils import IncidentTestUtils
 from test.modules.location.location_utils import LocationTestUtils
-from test.utils.http.test_templates import generate_auth_required_tests
+from test.utils.http.test_templates import generate_auth_required_tests, generate_csv_empty_test
 
 test_incident_csv_authentication = generate_auth_required_tests(
     ({"admin", "staff", "police"}, "GET", "/api/incidents/csv", None),
+)
+
+test_incident_csv_empty = generate_csv_empty_test(
+    "staff",
+    "/api/incidents/csv",
+    ("Severity", "Address", "Date", "Time", "Description"),
 )
 
 
@@ -31,28 +37,6 @@ class TestIncidentCSVRouter:
         self.staff_client = staff_client
         self.incident_utils = incident_utils
         self.location_utils = location_utils
-
-    @pytest.mark.asyncio
-    async def test_get_incidents_csv_empty(self):
-        """Test Excel export with no incidents returns header row only."""
-        response = await self.staff_client.get("/api/incidents/csv")
-        assert response.status_code == 200
-        assert (
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            in response.headers["content-type"]
-        )
-
-        workbook = openpyxl.load_workbook(BytesIO(response.content))
-        sheet = workbook.active
-        assert sheet is not None
-        rows = list(sheet.values)
-
-        # Should only have header row
-        assert len(rows) == 1
-
-        expected_headers = ("Severity", "Address", "Date", "Time", "Description")
-        assert rows[0] == expected_headers
-        assert sheet["A1"].font.bold is True
 
     @pytest.mark.asyncio
     async def test_get_incidents_csv_with_data(self):
