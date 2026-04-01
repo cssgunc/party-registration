@@ -2,6 +2,11 @@
 .env*
 !.env.template
 
+#claude
+.claude/
+*
+
+
 # Node.js / Next.js
 node_modules/
 .npm/
@@ -52,3 +57,4 @@ htmlcov/
 
 # Generated files
 backend/script/schema.sql
+backend/uv.lock
