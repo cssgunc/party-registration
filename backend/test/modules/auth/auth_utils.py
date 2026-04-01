@@ -21,6 +21,7 @@ class AuthTestUtils:
     async def create_one(
         self,
         account_id: int | None = None,
+        police_id: int | None = None,
         token_hash: str | None = None,
         expires_at: datetime | None = None,
     ) -> RefreshTokenEntity:
@@ -32,8 +33,9 @@ class AuthTestUtils:
             expires_at = datetime.now(UTC) + timedelta(days=7)
 
         entity = RefreshTokenEntity(
-            account_id=account_id,
             token_hash=token_hash,
+            account_id=account_id,
+            police_id=police_id,
             expires_at=expires_at,
         )
 
@@ -110,7 +112,7 @@ class AuthTestUtils:
         else:
             assert police is not None
             payload = PoliceAccessTokenPayload(
-                sub="police",
+                sub=police.id,
                 email=police.email,
                 role="police",
                 exp=expires_at,
@@ -153,7 +155,7 @@ class AuthTestUtils:
         """Assert that a decoded access token payload matches the given police account."""
         if isinstance(payload, PoliceAccessTokenPayload):
             payload = payload.model_dump(mode="json")
-        assert payload["sub"] == "police"
+        assert payload["sub"] == police.id
         assert payload["email"] == police.email
         assert payload["role"] == "police"
         for field in ("first_name", "last_name", "pid", "onyen"):

@@ -68,8 +68,7 @@ async def police_login(
     police = await police_service.verify_police_credentials(credentials.email, credentials.password)
 
     # Generate token pair
-    police_dto = police.to_dto()
-    return await auth_service.exchange_police_for_tokens(police_dto)
+    return await auth_service.exchange_police_for_tokens(police)
 
 
 @router.post("/refresh")

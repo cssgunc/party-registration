@@ -302,7 +302,7 @@ class TestPartyCreateAdminRouter:
         )
         data = assert_res_success(response, PartyDto, status=201)
 
-        assert data.contact_one.email == payload.contact_one_email
+        assert data.contact_one.id == payload.contact_one_student_id
         assert data.contact_two.email == payload.contact_two.email
         assert data.location.google_place_id == payload.google_place_id
 
@@ -341,7 +341,7 @@ class TestPartyCreateAdminRouter:
 
         payload = await self.party_utils.next_admin_create_dto(
             google_place_id=location.google_place_id,
-            contact_one_email=student_dto.email,
+            contact_one_student_id=student.account_id,
             contact_two=ContactDto(
                 email=student_dto.email,
                 first_name="Other",
@@ -365,7 +365,7 @@ class TestPartyCreateAdminRouter:
 
         payload = await self.party_utils.next_admin_create_dto(
             google_place_id=location.google_place_id,
-            contact_one_email=student_dto.email,
+            contact_one_student_id=student.account_id,
             contact_two=ContactDto(
                 email="different@email.com",
                 first_name="Other",
@@ -543,7 +543,7 @@ class TestPartyUpdateAdminRouter:
 
         update_payload = await self.party_utils.next_admin_create_dto(
             google_place_id=location.google_place_id,
-            contact_one_email=create_payload.contact_one_email,
+            contact_one_student_id=create_payload.contact_one_student_id,
         )
 
         response = await self.admin_client.put(
@@ -552,7 +552,7 @@ class TestPartyUpdateAdminRouter:
         data = assert_res_success(response, PartyDto)
 
         assert data.id == created.id
-        assert data.contact_one.email == update_payload.contact_one_email
+        assert data.contact_one.id == update_payload.contact_one_student_id
         assert data.contact_two.email == update_payload.contact_two.email
         assert data.location.google_place_id == update_payload.google_place_id
 
@@ -566,7 +566,7 @@ class TestPartyUpdateAdminRouter:
         # Create a party first
         create_payload = await self.party_utils.next_admin_create_dto(
             google_place_id=location.google_place_id,
-            contact_one_email=student_dto.email,
+            contact_one_student_id=student.account_id,
         )
         create_response = await self.admin_client.post(
             "/api/parties", json=create_payload.model_dump(mode="json")
@@ -576,7 +576,7 @@ class TestPartyUpdateAdminRouter:
         # Attempt update with duplicate email
         update_payload = await self.party_utils.next_admin_create_dto(
             google_place_id=location.google_place_id,
-            contact_one_email=student_dto.email,
+            contact_one_student_id=student.account_id,
             contact_two=ContactDto(
                 email=student_dto.email,
                 first_name="Other",
@@ -601,7 +601,7 @@ class TestPartyUpdateAdminRouter:
         # Create a party first
         create_payload = await self.party_utils.next_admin_create_dto(
             google_place_id=location.google_place_id,
-            contact_one_email=student_dto.email,
+            contact_one_student_id=student.account_id,
         )
         create_response = await self.admin_client.post(
             "/api/parties", json=create_payload.model_dump(mode="json")
@@ -611,7 +611,7 @@ class TestPartyUpdateAdminRouter:
         # Attempt update with duplicate phone
         update_payload = await self.party_utils.next_admin_create_dto(
             google_place_id=location.google_place_id,
-            contact_one_email=student_dto.email,
+            contact_one_student_id=student.account_id,
             contact_two=ContactDto(
                 email="different@email.com",
                 first_name="Other",
@@ -676,7 +676,7 @@ class TestPartyUpdateAdminRouter:
 
         update_payload = await self.party_utils.next_admin_create_dto(
             google_place_id=location_with_hold.google_place_id,
-            contact_one_email=create_payload.contact_one_email,
+            contact_one_student_id=create_payload.contact_one_student_id,
         )
 
         response = await self.admin_client.put(

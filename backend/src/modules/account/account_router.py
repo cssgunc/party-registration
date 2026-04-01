@@ -8,29 +8,8 @@ from src.modules.account.account_model import (
     PaginatedAccountsResponse,
 )
 from src.modules.account.account_service import AccountService
-from src.modules.police.police_model import PoliceAccountDto, PoliceAccountUpdate
-from src.modules.police.police_service import PoliceService
 
 account_router = APIRouter(prefix="/api/accounts", tags=["accounts"])
-
-
-@account_router.get("/police")
-async def get_police_credentials(
-    police_service: PoliceService = Depends(),
-    _=Depends(authenticate_admin),
-) -> PoliceAccountDto:
-    police_entity = await police_service.get_police()
-    return police_entity.to_dto()
-
-
-@account_router.put("/police")
-async def update_police_credentials(
-    data: PoliceAccountUpdate,
-    police_service: PoliceService = Depends(),
-    _=Depends(authenticate_admin),
-) -> PoliceAccountDto:
-    police_entity = await police_service.update_police(data.email, data.password)
-    return police_entity.to_dto()
 
 
 @account_router.get("", openapi_extra=PAGINATED_OPENAPI_PARAMS)
