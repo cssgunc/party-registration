@@ -1,6 +1,7 @@
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import apiClient from "@/lib/network/apiClient";
 import { getServerSession } from "next-auth";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 import RefreshTokenButton from "./_components/RefreshTokenButton";
 
 export default async function SSRPage() {
@@ -16,6 +17,7 @@ export default async function SSRPage() {
     );
     apiResponse = response.data;
   } catch (error) {
+    if (isRedirectError(error)) throw error; // Propagate redirect errors to the client
     apiError =
       error instanceof Error ? error.message : "Unknown error occurred";
   }
