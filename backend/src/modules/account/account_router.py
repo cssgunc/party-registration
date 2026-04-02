@@ -7,7 +7,7 @@ from src.modules.account.account_model import (
     AccountUpdateData,
     PaginatedAccountsResponse,
 )
-from src.modules.account.account_service import AccountService
+from src.modules.account.account_service import AccountService, CannotDeleteOwnAccountException
 
 account_router = APIRouter(prefix="/api/accounts", tags=["accounts"])
 
@@ -44,6 +44,8 @@ async def update_account(
 async def delete_account(
     account_id: int,
     account_service: AccountService = Depends(),
-    _=Depends(authenticate_admin),
+    current_admin: AccountDto = Depends(authenticate_admin),
 ) -> AccountDto:
+    if account_id == current_admin.id:
+        raise CannotDeleteOwnAccountException()
     return await account_service.delete_account(account_id)

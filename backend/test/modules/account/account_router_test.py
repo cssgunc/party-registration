@@ -2,7 +2,11 @@ import pytest
 from httpx import AsyncClient
 from src.modules.account.account_entity import AccountEntity, AccountRole
 from src.modules.account.account_model import AccountDto
-from src.modules.account.account_service import AccountConflictException, AccountNotFoundException
+from src.modules.account.account_service import (
+    AccountConflictException,
+    AccountNotFoundException,
+    CannotDeleteOwnAccountException,
+)
 from test.modules.account.account_utils import AccountTestUtils
 from test.utils.http.assertions import (
     assert_res_failure,
@@ -208,5 +212,11 @@ class TestAccountRouter:
     @pytest.mark.asyncio
     async def test_delete_account_not_found(self):
         """Test deleting a non-existent account returns 404."""
+        response = await self.admin_client.delete("/api/accounts/88888")
+        assert_res_failure(response, AccountNotFoundException(88888))
+
+    @pytest.mark.asyncio
+    async def test_delete_own_account(self):
+        """Test that an admin cannot delete their own account."""
         response = await self.admin_client.delete("/api/accounts/99999")
-        assert_res_failure(response, AccountNotFoundException(99999))
+        assert_res_failure(response, CannotDeleteOwnAccountException())

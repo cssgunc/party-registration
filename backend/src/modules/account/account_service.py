@@ -50,6 +50,11 @@ class AccountByOnyenNotFoundException(NotFoundException):
         super().__init__(f"Account with onyen {onyen} not found")
 
 
+class CannotDeleteOwnAccountException(ForbiddenException):
+    def __init__(self):
+        super().__init__(detail="Admins cannot delete their own account")
+
+
 class AccountService:
     def __init__(self, session: AsyncSession = Depends(get_session)):
         self.session = session
