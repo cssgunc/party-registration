@@ -150,26 +150,7 @@ class AccountService:
 
     async def get_accounts_for_export(self, request: Request) -> list[AccountDto]:
         """Get all accounts for export, ignoring pagination."""
-        allowed_sort_fields = allowed_filter_fields = self._ALLOWED_FIELDS
-
-        base_query = select(AccountEntity)
-
-        query_params = parse_pagination_params(
-            request,
-            allowed_sort_fields=allowed_sort_fields,
-            allowed_filter_fields=allowed_filter_fields,
-        ).model_copy(update={"pagination": None})
-
-        result = await get_paginated_results(
-            session=self.session,
-            base_query=base_query,
-            entity_class=AccountEntity,
-            dto_converter=lambda entity: entity.to_dto(),
-            query_params=query_params,
-            allowed_sort_fields=allowed_sort_fields,
-            allowed_filter_fields=allowed_filter_fields,
-        )
-        return result.items
+        return (await self.get_accounts_paginated(request)).items
 
     def export_accounts_to_excel(self, accounts: list[AccountDto]) -> bytes:
         """Export accounts to Excel bytes."""

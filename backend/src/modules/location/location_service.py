@@ -165,27 +165,7 @@ class LocationService:
 
     async def get_locations_for_export(self, request: Request) -> list[LocationDto]:
         """Get all locations without pagination for export."""
-        allowed_sort_fields = allowed_filter_fields = self._ALLOWED_FIELDS
-
-        base_query = select(LocationEntity)
-
-        query_params = parse_pagination_params(
-            request,
-            allowed_sort_fields=allowed_sort_fields,
-            allowed_filter_fields=allowed_filter_fields,
-        )
-        query_params = query_params.model_copy(update={"pagination": None})
-
-        result = await get_paginated_results(
-            session=self.session,
-            base_query=base_query,
-            entity_class=LocationEntity,
-            dto_converter=lambda entity: entity.to_dto(),
-            query_params=query_params,
-            allowed_sort_fields=allowed_sort_fields,
-            allowed_filter_fields=allowed_filter_fields,
-        )
-        return result.items
+        return (await self.get_locations_paginated(request)).items
 
     def export_locations_to_excel(self, locations: list[LocationDto]) -> bytes:
         """Export locations to an Excel file."""

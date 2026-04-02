@@ -103,7 +103,7 @@ async def get_locations(
     return await location_service.get_locations_paginated(request=request)
 
 
-@location_router.get("/csv")
+@location_router.get("/csv", openapi_extra=PAGINATED_OPENAPI_PARAMS)
 async def get_locations_csv(
     request: Request,
     location_service: LocationService = Depends(),

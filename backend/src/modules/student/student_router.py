@@ -85,7 +85,7 @@ async def list_students(
     return await student_service.get_students_paginated(request=request)
 
 
-@student_router.get("/csv")
+@student_router.get("/csv", openapi_extra=PAGINATED_OPENAPI_PARAMS)
 async def get_students_csv(
     request: Request,
     student_service: StudentService = Depends(),

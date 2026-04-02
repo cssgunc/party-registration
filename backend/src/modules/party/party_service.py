@@ -17,7 +17,6 @@ from src.core.exceptions import (
 from src.core.utils.date_utils import is_same_academic_year
 from src.core.utils.excel_utils import ExcelExporter
 from src.core.utils.query_utils import (
-    apply_query_params,
     get_paginated_results,
     parse_pagination_params,
 )
@@ -274,6 +273,7 @@ class PartyService:
             .options(
                 selectinload(PartyEntity.location),
                 selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.residence),
             )
         )
 
@@ -704,60 +704,7 @@ class PartyService:
         """
         Get all parties (no pagination) for export, respecting sort/filter query params.
         """
-        nested_field_columns = {
-            "contact_one.id": PartyEntity.contact_one_id,
-            "contact_one.first_name": AccountEntity.first_name,
-            "contact_one.last_name": AccountEntity.last_name,
-            "contact_one.email": AccountEntity.email,
-            "contact_one.phone_number": StudentEntity.phone_number,
-            "contact_one.onyen": AccountEntity.onyen,
-            "contact_one.pid": AccountEntity.pid,
-            "contact_one.contact_preference": StudentEntity.contact_preference,
-            "contact_one.last_registered": StudentEntity.last_registered,
-            "contact_two.email": PartyEntity.contact_two_email,
-            "contact_two.first_name": PartyEntity.contact_two_first_name,
-            "contact_two.last_name": PartyEntity.contact_two_last_name,
-            "contact_two.phone_number": PartyEntity.contact_two_phone_number,
-            "contact_two.contact_preference": PartyEntity.contact_two_contact_preference,
-            "location.id": PartyEntity.location_id,
-            "location.google_place_id": LocationEntity.google_place_id,
-            "location.formatted_address": LocationEntity.formatted_address,
-            "location.hold_expiration": LocationEntity.hold_expiration,
-        }
-
-        _base_allowed_fields = ["id", "party_datetime", "status"]
-        allowed_sort_fields = [*_base_allowed_fields, *nested_field_columns.keys()]
-        allowed_filter_fields = list(allowed_sort_fields)
-
-        query_params = parse_pagination_params(
-            request,
-            allowed_sort_fields=allowed_sort_fields,
-            allowed_filter_fields=allowed_filter_fields,
-        )
-        query_params = query_params.model_copy(update={"pagination": None})
-
-        base_query = (
-            select(PartyEntity)
-            .join(LocationEntity, PartyEntity.location_id == LocationEntity.id)
-            .join(StudentEntity, PartyEntity.contact_one_id == StudentEntity.account_id)
-            .join(AccountEntity, StudentEntity.account_id == AccountEntity.id)
-            .options(
-                selectinload(PartyEntity.location),
-                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
-                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.residence),
-            )
-        )
-
-        filtered_query = apply_query_params(
-            base_query,
-            PartyEntity,  # pyright: ignore[reportArgumentType]
-            query_params,
-            allowed_sort_fields=allowed_sort_fields,
-            allowed_filter_fields=allowed_filter_fields,
-            nested_field_columns=nested_field_columns,
-        )
-        result = await self.session.execute(filtered_query)
-        return [entity.to_dto() for entity in result.scalars().all()]
+        return (await self.get_parties_paginated(request)).items
 
     def export_parties_to_excel(self, parties: list[PartyDto], *, is_police: bool) -> bytes:
         """
@@ -771,7 +718,7 @@ class PartyService:
         Returns:
             Excel file content as bytes
         """
-        exporter = ExcelExporter(sheet_title="Parties")
+        exporter = ExcelExporter(sheet_title=f"Parties {datetime.now(UTC).strftime('%Y-%m-%d')}")
 
         if is_police:
             headers = [

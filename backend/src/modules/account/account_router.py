@@ -30,7 +30,7 @@ async def create_account(
     return await account_service.create_account(data)
 
 
-@account_router.get("/csv")
+@account_router.get("/csv", openapi_extra=PAGINATED_OPENAPI_PARAMS)
 async def get_accounts_csv(
     request: Request,
     account_service: AccountService = Depends(),

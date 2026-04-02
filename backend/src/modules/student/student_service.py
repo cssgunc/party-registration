@@ -12,8 +12,6 @@ from src.core.exceptions import BadRequestException, ConflictException, NotFound
 from src.core.utils.date_utils import is_same_academic_year
 from src.core.utils.excel_utils import ExcelExporter
 from src.core.utils.query_utils import (
-    ListQueryParam,
-    apply_query_params,
     get_paginated_results,
     parse_pagination_params,
 )
@@ -173,7 +171,7 @@ class StudentService:
         base_query = (
             select(StudentEntity)
             .join(AccountEntity, StudentEntity.account_id == AccountEntity.id)
-            .options(selectinload(StudentEntity.account))
+            .options(selectinload(StudentEntity.account), selectinload(StudentEntity.residence))
         )
 
         # Parse query params and get paginated results
@@ -196,31 +194,7 @@ class StudentService:
         )
 
     async def get_students_for_export(self, request: Request) -> list[StudentDto]:
-        base_query = (
-            select(StudentEntity)
-            .join(AccountEntity, StudentEntity.account_id == AccountEntity.id)
-            .options(selectinload(StudentEntity.account), selectinload(StudentEntity.residence))
-        )
-
-        query_params = parse_pagination_params(
-            request,
-            allowed_sort_fields=self._ALLOWED_SORT_FIELDS,
-            allowed_filter_fields=self._ALLOWED_FILTER_FIELDS,
-        )
-        query_params = query_params.model_copy(update={"pagination": None})
-
-        # Apply filters and sort (without pagination)
-        final_query = apply_query_params(
-            base_query,
-            StudentEntity,  # pyright: ignore[reportArgumentType]
-            params=ListQueryParam(filters=query_params.filters, sort=query_params.sort),
-            allowed_sort_fields=self._ALLOWED_SORT_FIELDS,
-            allowed_filter_fields=self._ALLOWED_FILTER_FIELDS,
-            nested_field_columns=self._NESTED_FIELD_COLUMNS,
-        )
-
-        result = await self.session.execute(final_query)
-        return [entity.to_dto() for entity in result.scalars().all()]
+        return (await self.get_students_paginated(request)).items
 
     def export_students_to_excel(self, students: list[StudentDto]) -> bytes:
         headers = [

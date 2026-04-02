@@ -4,7 +4,7 @@ from typing import Any
 
 import openpyxl
 import pytest
-from httpx import AsyncClient
+from httpx import AsyncClient, Response
 from pydantic import BaseModel
 from src.core.authentication import StringRole
 from src.core.exceptions import CredentialsException, ForbiddenException
@@ -101,6 +101,36 @@ def generate_csv_empty_test(
             assert sheet["A1"].font.bold is True
 
     return test_csv_empty
+
+
+def assert_excel_response(
+    response: Response,
+    expected_headers: tuple,
+    expected_row_count: int | None = None,
+) -> list:
+    """Assert standard Excel response properties and return all rows (including header).
+
+    Args:
+        response: The HTTP response from the CSV endpoint.
+        expected_headers: Tuple of expected column header strings.
+        expected_row_count: If provided, assert the total number of rows (header + data).
+
+    Returns:
+        List of row tuples from the workbook (rows[0] is the header row).
+    """
+    assert response.status_code == 200
+    assert (
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        in response.headers["content-type"]
+    )
+    workbook = openpyxl.load_workbook(BytesIO(response.content))
+    sheet = workbook.active
+    assert sheet is not None
+    rows = list(sheet.values)
+    assert rows[0] == expected_headers
+    if expected_row_count is not None:
+        assert len(rows) == expected_row_count
+    return rows
 
 
 def generate_filter_sort_tests(

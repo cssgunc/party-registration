@@ -31,7 +31,7 @@ async def get_incidents_paginated(
     return await incident_service.get_incidents_paginated(request)
 
 
-@incident_router.get("/incidents/csv")
+@incident_router.get("/incidents/csv", openapi_extra=PAGINATED_OPENAPI_PARAMS)
 async def get_incidents_csv(
     request: Request,
     incident_service: IncidentService = Depends(),

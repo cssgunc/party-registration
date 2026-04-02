@@ -166,7 +166,7 @@ async def get_parties_nearby(
     return parties
 
 
-@party_router.get("/csv")
+@party_router.get("/csv", openapi_extra=PAGINATED_OPENAPI_PARAMS)
 async def get_parties_csv(
     request: Request,
     party_service: PartyService = Depends(),

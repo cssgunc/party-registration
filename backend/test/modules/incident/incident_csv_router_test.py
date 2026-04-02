@@ -1,13 +1,17 @@
 from datetime import UTC, datetime
-from io import BytesIO
 
-import openpyxl
 import pytest
 from httpx import AsyncClient
 from src.modules.incident.incident_model import IncidentSeverity
 from test.modules.incident.incident_utils import IncidentTestUtils
 from test.modules.location.location_utils import LocationTestUtils
-from test.utils.http.test_templates import generate_auth_required_tests, generate_csv_empty_test
+from test.utils.http.test_templates import (
+    assert_excel_response,
+    generate_auth_required_tests,
+    generate_csv_empty_test,
+)
+
+INCIDENT_HEADERS = ("Severity", "Address", "Date", "Time", "Description")
 
 test_incident_csv_authentication = generate_auth_required_tests(
     ({"admin", "staff", "police"}, "GET", "/api/incidents/csv", None),
@@ -16,7 +20,7 @@ test_incident_csv_authentication = generate_auth_required_tests(
 test_incident_csv_empty = generate_csv_empty_test(
     "staff",
     "/api/incidents/csv",
-    ("Severity", "Address", "Date", "Time", "Description"),
+    INCIDENT_HEADERS,
 )
 
 
@@ -50,37 +54,43 @@ class TestIncidentCSVRouter:
         )
 
         response = await self.staff_client.get("/api/incidents/csv")
-        assert response.status_code == 200
-        assert (
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            in response.headers["content-type"]
-        )
-
-        workbook = openpyxl.load_workbook(BytesIO(response.content))
-        sheet = workbook.active
-        assert sheet is not None
-        rows = list(sheet.values)
-
-        # Should have header + 1 data row
-        assert len(rows) == 2
-
-        expected_headers = ("Severity", "Address", "Date", "Time", "Description")
-        assert rows[0] == expected_headers
+        rows = assert_excel_response(response, INCIDENT_HEADERS, expected_row_count=2)
 
         data_row = rows[1]
-        # Severity should be capitalized
         assert data_row[0] == "Warning"
-        # Address should match location formatted address
         assert data_row[1] == location.formatted_address
-        # Date format YYYY-MM-DD
         assert data_row[2] == "2026-03-15"
-        # Time format H:MM AM/PM (no leading zero)
         assert data_row[3] == "2:30 PM"
-        # Description
         assert data_row[4] == "Test incident description"
 
     @pytest.mark.asyncio
-    async def test_get_incidents_csv_student_forbidden(self, student_client: AsyncClient):
-        """Test that students cannot access the incidents CSV endpoint."""
-        response = await student_client.get("/api/incidents/csv")
-        assert response.status_code == 403
+    async def test_get_incidents_csv_filter_by_severity(self):
+        """CSV endpoint respects severity filter query param."""
+        location = await self.location_utils.create_one()
+        await self.incident_utils.create_one(
+            location_id=location.id, severity=IncidentSeverity.WARNING
+        )
+        await self.incident_utils.create_one(
+            location_id=location.id, severity=IncidentSeverity.COMPLAINT
+        )
+
+        response = await self.staff_client.get("/api/incidents/csv?severity=warning")
+        rows = assert_excel_response(response, INCIDENT_HEADERS, expected_row_count=2)
+        assert rows[1][0] == "Warning"
+
+    @pytest.mark.asyncio
+    async def test_get_incidents_csv_sort_by_severity(self):
+        """CSV endpoint respects sort_by query param."""
+        location = await self.location_utils.create_one()
+        await self.incident_utils.create_one(
+            location_id=location.id, severity=IncidentSeverity.WARNING
+        )
+        await self.incident_utils.create_one(
+            location_id=location.id, severity=IncidentSeverity.COMPLAINT
+        )
+
+        response = await self.staff_client.get("/api/incidents/csv?sort_by=severity&sort_order=asc")
+        rows = assert_excel_response(response, INCIDENT_HEADERS, expected_row_count=3)
+        # "complaint" < "warning" alphabetically
+        assert rows[1][0] == "Complaint"
+        assert rows[2][0] == "Warning"

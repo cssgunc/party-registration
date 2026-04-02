@@ -1,12 +1,13 @@
-from io import BytesIO
-
-import openpyxl
 import pytest
 from httpx import AsyncClient
 from src.modules.incident.incident_model import IncidentSeverity
 from test.modules.incident.incident_utils import IncidentTestUtils
 from test.modules.location.location_utils import LocationTestUtils
-from test.utils.http.test_templates import generate_auth_required_tests, generate_csv_empty_test
+from test.utils.http.test_templates import (
+    assert_excel_response,
+    generate_auth_required_tests,
+    generate_csv_empty_test,
+)
 
 test_location_csv_authentication = generate_auth_required_tests(
     ({"admin", "staff"}, "GET", "/api/locations/csv", None),
@@ -67,22 +68,11 @@ class TestLocationCSVRouter:
         # location2 has no incidents
 
         response = await self.staff_client.get("/api/locations/csv")
-        assert response.status_code == 200
-        assert (
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            in response.headers["content-type"]
+        rows = assert_excel_response(
+            response,
+            ("Address", "Complaint Count", "Warning Count", "Citation Count"),
+            expected_row_count=3,
         )
-
-        workbook = openpyxl.load_workbook(BytesIO(response.content))
-        sheet = workbook.active
-        assert sheet is not None
-        rows = list(sheet.values)
-
-        # Should have header + 2 data rows
-        assert len(rows) == 3
-
-        expected_headers = ("Address", "Complaint Count", "Warning Count", "Citation Count")
-        assert rows[0] == expected_headers
 
         # Build map by formatted address for easy assertion
         data_rows = {row[0]: row for row in rows[1:]}
@@ -100,15 +90,3 @@ class TestLocationCSVRouter:
         assert row2[1] == 0  # complaints
         assert row2[2] == 0  # warnings
         assert row2[3] == 0  # citations
-
-    @pytest.mark.asyncio
-    async def test_get_locations_csv_police_forbidden(self, police_client: AsyncClient):
-        """Test that police cannot access the location CSV endpoint."""
-        response = await police_client.get("/api/locations/csv")
-        assert response.status_code == 403
-
-    @pytest.mark.asyncio
-    async def test_get_locations_csv_student_forbidden(self, student_client: AsyncClient):
-        """Test that students cannot access the location CSV endpoint."""
-        response = await student_client.get("/api/locations/csv")
-        assert response.status_code == 403

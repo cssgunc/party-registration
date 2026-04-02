@@ -1,12 +1,26 @@
 from datetime import UTC, datetime
-from io import BytesIO
 
-import openpyxl
 import pytest
 from httpx import AsyncClient
 from test.modules.location.location_utils import LocationTestUtils
 from test.modules.student.student_utils import StudentTestUtils
-from test.utils.http.test_templates import generate_auth_required_tests, generate_csv_empty_test
+from test.utils.http.test_templates import (
+    assert_excel_response,
+    generate_auth_required_tests,
+    generate_csv_empty_test,
+)
+
+STUDENT_HEADERS = (
+    "Onyen",
+    "PID",
+    "First Name",
+    "Last Name",
+    "Email",
+    "Phone Number",
+    "Contact Preference",
+    "Is Registered",
+    "Residence Address",
+)
 
 test_student_csv_authentication = generate_auth_required_tests(
     ({"admin", "staff"}, "GET", "/api/students/csv", None),
@@ -15,17 +29,7 @@ test_student_csv_authentication = generate_auth_required_tests(
 test_student_csv_empty = generate_csv_empty_test(
     "staff",
     "/api/students/csv",
-    (
-        "Onyen",
-        "PID",
-        "First Name",
-        "Last Name",
-        "Email",
-        "Phone Number",
-        "Contact Preference",
-        "Is Registered",
-        "Residence Address",
-    ),
+    STUDENT_HEADERS,
 )
 
 
@@ -54,32 +58,7 @@ class TestStudentCSVRouter:
         await self.student_utils.set_student_residence(student_with_residence, location.id)
 
         response = await self.staff_client.get("/api/students/csv")
-        assert response.status_code == 200
-        assert (
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            in response.headers["content-type"]
-        )
-
-        workbook = openpyxl.load_workbook(BytesIO(response.content))
-        sheet = workbook.active
-        assert sheet is not None
-        rows = list(sheet.values)
-
-        # Should have header + 2 data rows
-        assert len(rows) == 3
-
-        expected_headers = (
-            "Onyen",
-            "PID",
-            "First Name",
-            "Last Name",
-            "Email",
-            "Phone Number",
-            "Contact Preference",
-            "Is Registered",
-            "Residence Address",
-        )
-        assert rows[0] == expected_headers
+        rows = assert_excel_response(response, STUDENT_HEADERS, expected_row_count=3)
 
         # Build a map by PID for easy assertion
         data_rows = {row[1]: row for row in rows[1:]}
@@ -107,15 +86,3 @@ class TestStudentCSVRouter:
         assert "(" in phone_with_res and ")" in phone_with_res and "-" in phone_with_res
         # Contact preference should be capitalized
         assert str(row_with_res[6])[0].isupper()  # Contact Preference starts with uppercase
-
-    @pytest.mark.asyncio
-    async def test_get_students_csv_police_forbidden(self, police_client: AsyncClient):
-        """Test that police cannot access the student CSV endpoint."""
-        response = await police_client.get("/api/students/csv")
-        assert response.status_code == 403
-
-    @pytest.mark.asyncio
-    async def test_get_students_csv_student_forbidden(self, student_client: AsyncClient):
-        """Test that students cannot access the student CSV endpoint."""
-        response = await student_client.get("/api/students/csv")
-        assert response.status_code == 403

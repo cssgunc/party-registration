@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 from fastapi import Depends, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -117,7 +119,9 @@ class IncidentService:
 
     def export_incidents_to_excel(self, incident_data: list[tuple[IncidentDto, str]]) -> bytes:
         headers = ["Severity", "Address", "Date", "Time", "Description"]
-        exporter = ExcelExporter(sheet_title="Incidents").set_headers(headers)
+        exporter = ExcelExporter(
+            sheet_title=f"Incidents {datetime.now(UTC).strftime('%Y-%m-%d')}"
+        ).set_headers(headers)
         for incident, address in incident_data:
             exporter.add_row(
                 [
