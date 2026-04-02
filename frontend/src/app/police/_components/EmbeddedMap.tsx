@@ -171,11 +171,13 @@ const PoiMarkers = ({ pois, activePoiKey, onSelect }: PoiMarkersProps) => {
                 {selectedPoi.party.contact_one.last_name}
               </div>
               <div className="flex justify-between items-center text-xs">
-                <span>
+                <a
+                  href={`tel:${selectedPoi.party.contact_one.phone_number.replace(/\D/g, "")}`}
+                >
                   {formatPhoneNumber(
                     selectedPoi.party.contact_one.phone_number
                   )}
-                </span>
+                </a>
                 <span className="text-gray-600">
                   {selectedPoi.party.contact_one.contact_preference
                     .charAt(0)

@@ -157,7 +157,12 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                         {party.contact_one.last_name}
                       </div>
                       <div>
-                        {formatPhoneNumber(party.contact_one.phone_number)}
+                        <a
+                          href={`tel:${party.contact_one.phone_number.replace(/\D/g, "")}`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {formatPhoneNumber(party.contact_one.phone_number)}
+                        </a>
                       </div>
                       <div className="text-gray-600">
                         Preference:{" "}
@@ -182,7 +187,12 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                         {party.contact_two.last_name}
                       </div>
                       <div>
-                        {formatPhoneNumber(party.contact_two.phone_number)}
+                        <a
+                          href={`tel:${party.contact_two.phone_number.replace(/\D/g, "")}`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {formatPhoneNumber(party.contact_two.phone_number)}
+                        </a>
                       </div>
                       <div className="text-gray-600">
                         Preference:{" "}
