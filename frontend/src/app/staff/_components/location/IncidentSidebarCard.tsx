@@ -73,6 +73,10 @@ export default function IncidentSidebarCard({
             {incidents.description || "No description provided."}
             <br></br>
             <strong>Severity:</strong> {incidents.severity || "N/A"}
+            <span>
+              <br></br>
+              <strong>Reference ID:</strong> {incidents.reference_id || "N/A"}
+            </span>
           </p>
         </CollapsibleContent>
       </Collapsible>

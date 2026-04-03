@@ -8,7 +8,7 @@ export const STAFF_TABS = [
 
 export type TabSlug = (typeof STAFF_TABS)[number];
 
-export const DEFAULT_TAB: TabSlug = "incidents";
+export const DEFAULT_TAB: TabSlug = "parties";
 
 export const TAB_CONFIG: Record<
   TabSlug,
