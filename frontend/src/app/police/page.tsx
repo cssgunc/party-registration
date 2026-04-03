@@ -17,6 +17,9 @@ import {
 } from "@/lib/api/party/police-party.queries";
 import { startOfDay } from "date-fns";
 import { useEffect, useMemo, useState } from "react";
+import AdvancedPartySearch, {
+  AdvancedPartyFilters,
+} from "./_components/AdvancedPartySearch";
 
 const locationService = new LocationService();
 
@@ -28,6 +31,14 @@ export default function PolicePage() {
     null
   );
   const [activeParty, setActiveParty] = useState<PartyDto | undefined>();
+  const [advancedFilters, setAdvancedFilters] = useState<AdvancedPartyFilters>({
+    timeFilterType: "",
+    startTime: "",
+    name: "",
+    phone: "",
+    contactPreference: "",
+    severity: "",
+  });
 
   const { data: placeDetails } = usePlaceDetails(
     searchAddress?.google_place_id
@@ -45,11 +56,83 @@ export default function PolicePage() {
     endDate,
   });
 
-  const parties = useMemo(() => {
+  // Use nearby parties if address search is active, otherwise use all parties
+  const baseParties = useMemo(() => {
     return searchAddress && nearbyParties !== undefined
       ? nearbyParties
       : allParties;
   }, [allParties, nearbyParties, searchAddress]);
+
+  const filteredParties = useMemo(() => {
+    function normalize(value: string): string {
+      return value.trim().toLowerCase();
+    }
+
+    function normalizePhone(value: string): string {
+      return value.replace(/\D/g, "");
+    }
+
+    function toMinutes(time: string): number | null {
+      const [h, m] = time.split(":").map(Number);
+      if (Number.isNaN(h) || Number.isNaN(m)) return null;
+      return h * 60 + m;
+    }
+
+    return baseParties.filter((party) => {
+      const contactOneName = `${party.contact_one.first_name} ${party.contact_one.last_name}`;
+      const contactTwoName = `${party.contact_two.first_name} ${party.contact_two.last_name}`;
+
+      if (advancedFilters.name) {
+        const nameQuery = normalize(advancedFilters.name);
+        const matchesName =
+          normalize(contactOneName).includes(nameQuery) ||
+          normalize(contactTwoName).includes(nameQuery);
+        if (!matchesName) return false;
+      }
+
+      if (advancedFilters.phone) {
+        const phoneQuery = normalizePhone(advancedFilters.phone);
+        const matchesPhone =
+          normalizePhone(party.contact_one.phone_number).includes(phoneQuery) ||
+          normalizePhone(party.contact_two.phone_number).includes(phoneQuery);
+        if (!matchesPhone) return false;
+      }
+
+      if (advancedFilters.contactPreference) {
+        const preference = advancedFilters.contactPreference;
+        const matchesPreference =
+          party.contact_one.contact_preference === preference ||
+          party.contact_two.contact_preference === preference;
+        if (!matchesPreference) return false;
+      }
+
+      if (advancedFilters.severity) {
+        const hasSeverity = party.location.incidents.some(
+          (incident) => incident.severity === advancedFilters.severity
+        );
+        if (!hasSeverity) return false;
+      }
+
+      if (advancedFilters.startTime) {
+        const filterTimeMinutes = toMinutes(advancedFilters.startTime);
+        if (filterTimeMinutes === null) return false;
+
+        const partyTimeMinutes =
+          party.party_datetime.getHours() * 60 +
+          party.party_datetime.getMinutes();
+
+        if (advancedFilters.timeFilterType === "before") {
+          if (!(partyTimeMinutes < filterTimeMinutes)) return false;
+        } else if (advancedFilters.timeFilterType === "after") {
+          if (!(partyTimeMinutes > filterTimeMinutes)) return false;
+        } else {
+          if (partyTimeMinutes !== filterTimeMinutes) return false;
+        }
+      }
+
+      return true;
+    });
+  }, [advancedFilters, baseParties]);
 
   function handleActiveParty(party: PartyDto | null): void {
     setActiveParty(party ?? undefined);
@@ -99,6 +182,13 @@ export default function PolicePage() {
             </div>
           </div>
 
+          <div className="px-1 pb-4">
+            <AdvancedPartySearch
+              filters={advancedFilters}
+              onFiltersChange={setAdvancedFilters}
+            />
+          </div>
+
           {/* Party list */}
           <div className="flex lg:min-h-0 lg:flex-1 lg:overflow-hidden">
             {(isLoading || isLoadingNearby) && (
@@ -118,7 +208,7 @@ export default function PolicePage() {
             )}
             {!isLoading && !isLoadingNearby && (
               <PartyList
-                parties={parties}
+                parties={filteredParties}
                 onSelect={(party) => handleActiveParty(party)}
                 activeParty={activeParty}
               />
@@ -135,7 +225,7 @@ export default function PolicePage() {
           </h2>
           <div className="min-h-0 lg:flex-1 overflow-hidden rounded-md max-lg:h-80">
             <EmbeddedMap
-              parties={parties}
+              parties={filteredParties}
               activeParty={activeParty}
               center={
                 placeDetails

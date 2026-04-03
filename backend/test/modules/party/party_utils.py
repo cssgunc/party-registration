@@ -28,7 +28,7 @@ class PartyOverrides(TypedDict, total=False):
     location_id: int
     contact_one_id: int
     google_place_id: str
-    contact_one_email: str
+    contact_one_student_id: int
     contact_two: ContactDto
     contact_two_email: str
     contact_two_first_name: str
@@ -122,16 +122,15 @@ class PartyTestUtils(
             location = await self.location_utils.create_one()
             overrides["google_place_id"] = location.google_place_id
 
-        if "contact_one_email" not in overrides:
+        if "contact_one_student_id" not in overrides:
             student = await self.student_utils.create_one()
-            student_dto = await student.load_dto(self.student_utils.session)
-            overrides["contact_one_email"] = student_dto.email
+            overrides["contact_one_student_id"] = student.account_id
 
         return AdminCreatePartyDto(
             type="admin",
             party_datetime=overrides.get("party_datetime", get_valid_party_datetime()),
             google_place_id=overrides["google_place_id"],
-            contact_one_email=overrides["contact_one_email"],
+            contact_one_student_id=overrides["contact_one_student_id"],
             contact_two=overrides.get("contact_two", self.next_contact()),
         )
 

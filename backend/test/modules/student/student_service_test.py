@@ -387,3 +387,115 @@ class TestStudentResidenceService:
         student_dto = await self.student_service.get_student_by_id(student_entity.account_id)
 
         self.student_utils.assert_residence(student_dto, location)
+
+
+class TestStudentAutocompleteService:
+    """Tests for StudentService.autocomplete_students()."""
+
+    student_utils: StudentTestUtils
+    student_service: StudentService
+
+    @pytest.fixture(autouse=True)
+    def _setup(self, student_utils: StudentTestUtils, student_service: StudentService):
+        self.student_utils = student_utils
+        self.student_service = student_service
+
+    @pytest.mark.asyncio
+    async def test_autocomplete_empty_returns_no_results(self):
+        """Test autocomplete with no students returns empty list."""
+        result = await self.student_service.autocomplete_students("xyz")
+        assert result == []
+
+    @pytest.mark.asyncio
+    async def test_autocomplete_matches_by_pid(self):
+        """Test autocomplete matches on PID."""
+        student = await self.student_utils.create_one(pid="123456789")
+        student_dto = await student.load_dto(self.student_utils.session)
+        result = await self.student_service.autocomplete_students("1234")
+        assert len(result) == 1
+        self.student_utils.assert_suggestion_match(
+            result[0],
+            student_dto=student_dto,
+            matched_field_name="pid",
+            matched_field_value="123456789",
+        )
+
+    @pytest.mark.asyncio
+    async def test_autocomplete_matches_by_email(self):
+        """Test autocomplete matches on email."""
+        student = await self.student_utils.create_one(email="unique_test@unc.edu")
+        student_dto = await student.load_dto(self.student_utils.session)
+        result = await self.student_service.autocomplete_students("unique_test")
+        assert len(result) == 1
+        self.student_utils.assert_suggestion_match(
+            result[0],
+            student_dto=student_dto,
+            matched_field_name="email",
+            matched_field_value="unique_test@unc.edu",
+        )
+
+    @pytest.mark.asyncio
+    async def test_autocomplete_matches_by_onyen(self):
+        """Test autocomplete matches on onyen."""
+        account = await self.student_utils.account_utils.create_one(
+            role="student", onyen="jdoetest99"
+        )
+        student = await self.student_utils.create_one(account_id=account.id)
+        student_dto = await student.load_dto(self.student_utils.session)
+        result = await self.student_service.autocomplete_students("jdoetest99")
+        assert len(result) == 1
+        self.student_utils.assert_suggestion_match(
+            result[0],
+            student_dto=student_dto,
+            matched_field_name="onyen",
+            matched_field_value="jdoetest99",
+        )
+
+    @pytest.mark.asyncio
+    async def test_autocomplete_matches_by_phone(self):
+        """Test autocomplete matches on phone number."""
+        student = await self.student_utils.create_one(phone_number="9991234567")
+        student_dto = await student.load_dto(self.student_utils.session)
+        result = await self.student_service.autocomplete_students("9991234")
+        assert len(result) == 1
+        self.student_utils.assert_suggestion_match(
+            result[0],
+            student_dto=student_dto,
+            matched_field_name="phone_number",
+            matched_field_value="9991234567",
+        )
+
+    @pytest.mark.asyncio
+    async def test_autocomplete_phone_formatted_query(self):
+        """Test autocomplete matches phone number when query contains formatting characters."""
+        student = await self.student_utils.create_one(phone_number="6991098313")
+        student_dto = await student.load_dto(self.student_utils.session)
+        result = await self.student_service.autocomplete_students("(699) 109")
+        assert len(result) == 1
+        self.student_utils.assert_suggestion_match(
+            result[0],
+            student_dto=student_dto,
+            matched_field_name="phone_number",
+            matched_field_value="6991098313",
+        )
+
+    @pytest.mark.asyncio
+    async def test_autocomplete_is_case_insensitive(self):
+        """Test that autocomplete search is case-insensitive."""
+        student = await self.student_utils.create_one(email="CaseSensitive@unc.edu")
+        result = await self.student_service.autocomplete_students("casesensitive")
+        assert any(s.student_id == student.account_id for s in result)
+
+    @pytest.mark.asyncio
+    async def test_autocomplete_returns_no_match(self):
+        """Test autocomplete returns empty list when nothing matches."""
+        await self.student_utils.create_one()
+        result = await self.student_service.autocomplete_students("zzznomatch999")
+        assert result == []
+
+    @pytest.mark.asyncio
+    async def test_autocomplete_limits_results(self):
+        """Test autocomplete returns at most 10 results."""
+        await self.student_utils.create_many(i=15)
+        result = await self.student_service.autocomplete_students("@unc.edu")
+        assert len(result) == 10
