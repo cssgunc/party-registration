@@ -161,15 +161,15 @@ const PoiMarkers = ({ pois, activePoiKey, onSelect }: PoiMarkersProps) => {
           }
         >
           <div className="space-y-1.5 text-sm">
-            <div className="text-gray-700">
+            <p className="text-gray-700">
               {format(selectedPoi.party.party_datetime, "MMM d, yyyy")} at{" "}
               {format(selectedPoi.party.party_datetime, "h:mm a")}
-            </div>
+            </p>
             <div className="border-t pt-1.5">
-              <div>
+              <p>
                 {selectedPoi.party.contact_one.first_name}{" "}
                 {selectedPoi.party.contact_one.last_name}
-              </div>
+              </p>
               <div className="flex justify-between items-center text-xs">
                 <span>
                   {formatPhoneNumber(

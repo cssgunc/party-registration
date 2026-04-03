@@ -69,158 +69,161 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
   };
 
   return (
-    <div className="h-full w-full overflow-y-auto rounded-md border border-zinc-300 bg-white input-shadow [scroll-behavior:smooth]">
-      {parties.map((party) =>
-        (() => {
-          const complaintCount = getComplaintCount(party.location);
-          const warningCount = getWarningCount(party.location);
-          const citationCount = getCitationCount(party.location);
+    <>
+      <ul className="h-full w-full overflow-y-auto rounded-md border border-zinc-300 bg-white card-shadow [scroll-behavior:smooth]">
+        {parties.map((party) =>
+          (() => {
+            const complaintCount = getComplaintCount(party.location);
+            const warningCount = getWarningCount(party.location);
+            const citationCount = getCitationCount(party.location);
 
-          return (
-            <article
-              key={party.id}
-              data-party-id={party.id}
-              onClick={() => onSelect?.(party)}
-              className={cn(
-                "cursor-pointer border-b border-zinc-300 px-4 py-4 last:border-b-0 hover:bg-sky-950/5",
-                activeParty?.id === party.id && "bg-sky-950/5"
-              )}
-            >
-              <div className="space-y-2">
-                {/* Date, address, menu */}
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-bold text-sky-950">
-                      {format(party.party_datetime, "M/d/yyyy")} @{" "}
-                      {format(party.party_datetime, "h:mm a")}
-                    </p>
-                    <p className="text-sm font-bold text-sky-950">
-                      {party.location.formatted_address}
-                    </p>
+            return (
+              <li key={party.id}>
+                <article
+                  data-party-id={party.id}
+                  onClick={() => onSelect?.(party)}
+                  className={cn(
+                    "cursor-pointer border-b border-zinc-300 px-4 py-4 last:border-b-0 hover:bg-sky-950/5",
+                    activeParty?.id === party.id && "bg-sky-950/5"
+                  )}
+                >
+                  <div className="space-y-2">
+                    {/* Date, address, menu */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-bold text-sky-950">
+                          {format(party.party_datetime, "M/d/yyyy")} @{" "}
+                          {format(party.party_datetime, "h:mm a")}
+                        </p>
+                        <p className="text-sm font-bold text-sky-950">
+                          {party.location.formatted_address}
+                        </p>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={(event) => event.stopPropagation()}
+                            className="rounded-md p-1 text-sky-950 hover:bg-muted"
+                            aria-label="Open incident menu"
+                          >
+                            <EllipsisVertical height={16} />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-44" align="end">
+                          <DropdownMenuItem
+                            onClick={(event) =>
+                              openIncidentDialog(event, "complaint", party)
+                            }
+                          >
+                            <Image src={blackFlag} alt="complaints" />
+                            Add complaint
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={(event) =>
+                              openIncidentDialog(event, "warning", party)
+                            }
+                          >
+                            <Image src={yellowFlag} alt="warning" />
+                            Add warning
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={(event) =>
+                              openIncidentDialog(event, "citation", party)
+                            }
+                          >
+                            <Image src={redFlag} alt="citation" />
+                            Add citation
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+
+                    {/* Contacts + flags */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <section>
+                        <p className="text-sm text-sky-950">
+                          {party.contact_one.first_name}{" "}
+                          {party.contact_one.last_name}
+                        </p>
+                        <p className="ml-4 text-sm text-sky-950">
+                          {formatPhoneNumber(party.contact_one.phone_number)}
+                        </p>
+                        <p className="ml-4 text-sm text-sky-950">
+                          Preference:{" "}
+                          {party.contact_one.contact_preference
+                            .charAt(0)
+                            .toUpperCase() +
+                            party.contact_one.contact_preference
+                              .slice(1)
+                              .toLowerCase()}
+                          s
+                        </p>
+                      </section>
+
+                      <section>
+                        <p className="text-sm text-sky-950">
+                          {party.contact_two.first_name}{" "}
+                          {party.contact_two.last_name}
+                        </p>
+                        <p className="ml-4 text-sm text-sky-950">
+                          {formatPhoneNumber(party.contact_two.phone_number)}
+                        </p>
+                        <p className="ml-4 text-sm text-sky-950">
+                          Preference:{" "}
+                          {party.contact_two.contact_preference
+                            .charAt(0)
+                            .toUpperCase() +
+                            party.contact_two.contact_preference
+                              .slice(1)
+                              .toLowerCase()}
+                          s
+                        </p>
+                      </section>
+
+                      <div className="col-span-2 flex flex-row items-center gap-3">
+                        <HoverCard openDelay={0} closeDelay={4}>
+                          <HoverCardTrigger asChild>
+                            <div className="flex items-center gap-1 text-sm font-bold text-black">
+                              {complaintCount}
+                              <Image src={blackFlag} alt="complaints" />
+                            </div>
+                          </HoverCardTrigger>
+                          <HoverCardContent className="w-40">
+                            Complaints
+                          </HoverCardContent>
+                        </HoverCard>
+                        <HoverCard openDelay={0} closeDelay={4}>
+                          <HoverCardTrigger asChild>
+                            <div className="flex items-center gap-1 text-sm font-bold text-black">
+                              {warningCount}
+                              <Image src={yellowFlag} alt="warnings" />
+                            </div>
+                          </HoverCardTrigger>
+                          <HoverCardContent className="w-40">
+                            Warnings
+                          </HoverCardContent>
+                        </HoverCard>
+                        <HoverCard openDelay={0} closeDelay={4}>
+                          <HoverCardTrigger asChild>
+                            <div className="flex items-center gap-1 text-sm font-bold text-black">
+                              {citationCount}
+                              <Image src={redFlag} alt="citations" />
+                            </div>
+                          </HoverCardTrigger>
+                          <HoverCardContent className="w-40">
+                            Citations
+                          </HoverCardContent>
+                        </HoverCard>
+                      </div>
+                    </div>
                   </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        type="button"
-                        onClick={(event) => event.stopPropagation()}
-                        className="rounded-md p-1 text-sky-950 hover:bg-muted"
-                        aria-label="Open incident menu"
-                      >
-                        <EllipsisVertical height={16} />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-44" align="end">
-                      <DropdownMenuItem
-                        onClick={(event) =>
-                          openIncidentDialog(event, "complaint", party)
-                        }
-                      >
-                        <Image src={blackFlag} alt="complaints" />
-                        Add complaint
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={(event) =>
-                          openIncidentDialog(event, "warning", party)
-                        }
-                      >
-                        <Image src={yellowFlag} alt="warning" />
-                        Add warning
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={(event) =>
-                          openIncidentDialog(event, "citation", party)
-                        }
-                      >
-                        <Image src={redFlag} alt="citation" />
-                        Add citation
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-
-                {/* Contacts + flags */}
-                <div className="grid grid-cols-2 gap-4">
-                  <section>
-                    <p className="text-sm text-sky-950">
-                      {party.contact_one.first_name}{" "}
-                      {party.contact_one.last_name}
-                    </p>
-                    <p className="ml-4 text-sm text-sky-950">
-                      {formatPhoneNumber(party.contact_one.phone_number)}
-                    </p>
-                    <p className="ml-4 text-sm text-sky-950">
-                      Preference:{" "}
-                      {party.contact_one.contact_preference
-                        .charAt(0)
-                        .toUpperCase() +
-                        party.contact_one.contact_preference
-                          .slice(1)
-                          .toLowerCase()}
-                      s
-                    </p>
-                  </section>
-
-                  <section>
-                    <p className="text-sm text-sky-950">
-                      {party.contact_two.first_name}{" "}
-                      {party.contact_two.last_name}
-                    </p>
-                    <p className="ml-4 text-sm text-sky-950">
-                      {formatPhoneNumber(party.contact_two.phone_number)}
-                    </p>
-                    <p className="ml-4 text-sm text-sky-950">
-                      Preference:{" "}
-                      {party.contact_two.contact_preference
-                        .charAt(0)
-                        .toUpperCase() +
-                        party.contact_two.contact_preference
-                          .slice(1)
-                          .toLowerCase()}
-                      s
-                    </p>
-                  </section>
-
-                  <div className="col-span-2 flex flex-row items-center gap-3">
-                    <HoverCard openDelay={0} closeDelay={4}>
-                      <HoverCardTrigger asChild>
-                        <div className="flex items-center gap-1 text-sm font-bold text-black">
-                          {complaintCount}
-                          <Image src={blackFlag} alt="complaints" />
-                        </div>
-                      </HoverCardTrigger>
-                      <HoverCardContent className="w-40">
-                        Complaints
-                      </HoverCardContent>
-                    </HoverCard>
-                    <HoverCard openDelay={0} closeDelay={4}>
-                      <HoverCardTrigger asChild>
-                        <div className="flex items-center gap-1 text-sm font-bold text-black">
-                          {warningCount}
-                          <Image src={yellowFlag} alt="warnings" />
-                        </div>
-                      </HoverCardTrigger>
-                      <HoverCardContent className="w-40">
-                        Warnings
-                      </HoverCardContent>
-                    </HoverCard>
-                    <HoverCard openDelay={0} closeDelay={4}>
-                      <HoverCardTrigger asChild>
-                        <div className="flex items-center gap-1 text-sm font-bold text-black">
-                          {citationCount}
-                          <Image src={redFlag} alt="citations" />
-                        </div>
-                      </HoverCardTrigger>
-                      <HoverCardContent className="w-40">
-                        Citations
-                      </HoverCardContent>
-                    </HoverCard>
-                  </div>
-                </div>
-              </div>
-            </article>
-          );
-        })()
-      )}
+                </article>
+              </li>
+            );
+          })()
+        )}
+      </ul>
       <AddIncidentDialog
         open={incidentDialogOpen}
         onOpenChange={setIncidentDialogOpen}
@@ -228,7 +231,7 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
         party={selectedParty}
         key={incidentDialogOpen ? selectedParty?.id : undefined}
       />
-    </div>
+    </>
   );
 };
 

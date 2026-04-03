@@ -1,3 +1,5 @@
+"use client";
+
 import DatePicker from "@/components/DatePicker";
 import { Button } from "@/components/ui/button";
 import {
@@ -7,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -19,7 +22,7 @@ import { IncidentSeverity } from "@/lib/api/location/location.types";
 import { PartyDto } from "@/lib/api/party/party.types";
 import { format } from "date-fns";
 import { ClockIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 export interface AddIncidentDialogProps {
   open: boolean;
@@ -35,31 +38,29 @@ type IncidentFormValues = {
   description: string;
 };
 
+const getDisplayAddress = (party: PartyDto | null): string => {
+  if (!party) return "";
+  const { street_number, street_name, city } = party.location;
+  const street = [street_number, street_name].filter(Boolean).join(" ");
+  return city
+    ? street
+      ? `${street}, ${city}`
+      : city
+    : party.location.formatted_address;
+};
+
 export default function AddIncidentDialog({
   open,
   onOpenChange,
   incidentType,
   party,
 }: AddIncidentDialogProps) {
-  const getInitialValues = (
-    currentParty: PartyDto | null
-  ): IncidentFormValues => ({
+  const [formData, setFormData] = useState<IncidentFormValues>({
     severity: incidentType,
-    partyDate: currentParty?.party_datetime ?? null,
-    partyTime: currentParty ? format(currentParty.party_datetime, "HH:mm") : "",
+    partyDate: party?.party_datetime ?? null,
+    partyTime: party ? format(party.party_datetime, "HH:mm") : "",
     description: "",
   });
-
-  const [formData, setFormData] = useState<IncidentFormValues>(() =>
-    getInitialValues(party)
-  );
-
-  useEffect(() => {
-    if (open) {
-      setFormData(getInitialValues(party));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, party, incidentType]);
 
   const updateField = <K extends keyof IncidentFormValues>(
     field: K,
@@ -73,8 +74,8 @@ export default function AddIncidentDialog({
       <DialogContent className="bg-white rounded-2xl shadow-[0px_4px_4px_0px_rgba(111,178,220,0.25)] border-white sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="text-center text-sm font-medium text-black">
-            Add incident
-            {party ? ` at ${party.location.formatted_address}` : ""}
+            Add Incident
+            {party ? ` at ${getDisplayAddress(party)}` : ""}
           </DialogTitle>
         </DialogHeader>
 
@@ -84,27 +85,17 @@ export default function AddIncidentDialog({
         >
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
-              <label
-                className="text-black text-sm font-medium"
-                htmlFor="selected-address"
-              >
-                Selected Address
-              </label>
+              <Label htmlFor="selected-address">Selected Address</Label>
               <Input
                 id="selected-address"
-                value={party?.location.formatted_address ?? ""}
+                value={getDisplayAddress(party)}
                 readOnly
-                className="h-8 border-0 bg-white outline-1 outline-slate-300 shadow-[0px_4px_4px_0px_rgba(111,178,220,0.10)] text-black text-sm font-medium"
+                className="h-8 bg-white border-zinc-300 text-black text-sm font-medium"
               />
             </div>
 
             <div className="grid gap-2">
-              <label
-                className="text-black text-sm font-medium"
-                htmlFor="incident-type"
-              >
-                Incident Type
-              </label>
+              <Label htmlFor="incident-type">Incident Type</Label>
               <Select
                 value={formData.severity}
                 onValueChange={(v) =>
@@ -113,7 +104,7 @@ export default function AddIncidentDialog({
               >
                 <SelectTrigger
                   id="incident-type"
-                  className="h-8 border-0 bg-white outline-1 outline-slate-300 shadow-[0px_4px_4px_0px_rgba(111,178,220,0.10)] text-sm"
+                  className="h-8 border-zinc-300 bg-white text-sm"
                 >
                   <SelectValue placeholder="Enter Incident Type" />
                 </SelectTrigger>
@@ -128,29 +119,19 @@ export default function AddIncidentDialog({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
-              <label
-                className="text-black text-sm font-medium"
-                htmlFor="party-date"
-              >
-                Date
-              </label>
+              <Label htmlFor="party-date">Date</Label>
               <DatePicker
                 id="party-date"
                 dateFormat="MM/dd/yy"
                 value={formData.partyDate}
                 onChange={(date) => updateField("partyDate", date)}
-                className="h-8 rounded-md outline-1 outline-slate-300 border-0"
+                className="h-8 rounded-md border-zinc-300 border-0"
               />
             </div>
 
             <div className="grid gap-2">
-              <label
-                className="text-black text-sm font-medium"
-                htmlFor="party-time"
-              >
-                Time
-              </label>
-              <div className="flex h-8 items-center gap-2 rounded-md bg-white shadow-[0px_4px_4px_0px_rgba(111,178,220,0.10)] outline-1 outline-slate-300 px-3">
+              <Label htmlFor="party-time">Time</Label>
+              <div className="flex h-8 items-center gap-2 rounded-md bg-white input-shadow border border-zinc-300 px-3">
                 <ClockIcon className="size-4 shrink-0 text-neutral-500" />
                 <input
                   id="party-time"
@@ -164,15 +145,10 @@ export default function AddIncidentDialog({
           </div>
 
           <div className="grid gap-2">
-            <label
-              className="text-black text-sm font-medium"
-              htmlFor="incident-description"
-            >
-              Complaint
-            </label>
+            <Label htmlFor="incident-description">Description (Optional)</Label>
             <Textarea
               id="incident-description"
-              className="min-h-24 bg-white rounded-md border-0 outline-1 outline-slate-300"
+              className="min-h-24 bg-white rounded-md border-zinc-300"
               value={formData.description}
               onChange={(event) =>
                 updateField("description", event.target.value)
