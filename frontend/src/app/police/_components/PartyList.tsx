@@ -51,8 +51,8 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
 
   if (parties.length === 0) {
     return (
-      <div className="w-full rounded-md border border-zinc-300 bg-white px-4 py-8 text-center input-shadow">
-        <p className="text-sm text-neutral-500">No parties found</p>
+      <div className="w-full rounded-md border border-border bg-card px-4 py-8 text-center input-shadow">
+        <p className="content text-muted-foreground">No parties found</p>
       </div>
     );
   }
@@ -70,7 +70,7 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
 
   return (
     <>
-      <ul className="h-full w-full overflow-y-auto rounded-md border border-zinc-300 bg-white card-shadow [scroll-behavior:smooth]">
+      <ul className="h-full w-full overflow-y-auto rounded-md border border-border bg-card card-shadow [scroll-behavior:smooth]">
         {parties.map((party) =>
           (() => {
             const complaintCount = getComplaintCount(party.location);
@@ -83,19 +83,19 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                   data-party-id={party.id}
                   onClick={() => onSelect?.(party)}
                   className={cn(
-                    "cursor-pointer border-b border-zinc-300 px-4 py-4 last:border-b-0 hover:bg-sky-950/5",
-                    activeParty?.id === party.id && "bg-sky-950/5"
+                    "cursor-pointer border-b border-border px-4 py-4 last:border-b-0 hover:bg-secondary/5",
+                    activeParty?.id === party.id && "bg-secondary/5"
                   )}
                 >
                   <div className="space-y-2">
                     {/* Date, address, menu */}
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="text-sm font-bold text-sky-950">
+                        <p className="content-bold font-bold text-secondary">
                           {format(party.party_datetime, "M/d/yyyy")} @{" "}
                           {format(party.party_datetime, "h:mm a")}
                         </p>
-                        <p className="text-sm font-bold text-sky-950">
+                        <p className="content-bold font-bold text-secondary">
                           {party.location.formatted_address}
                         </p>
                       </div>
@@ -104,7 +104,7 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                           <button
                             type="button"
                             onClick={(event) => event.stopPropagation()}
-                            className="rounded-md p-1 text-sky-950 hover:bg-muted"
+                            className="rounded-md p-1 text-secondary hover:bg-muted"
                             aria-label="Open incident menu"
                           >
                             <EllipsisVertical height={16} />
@@ -117,7 +117,7 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                             }
                           >
                             <Image src={blackFlag} alt="complaints" />
-                            Add complaint
+                            <span className="content">Add complaint</span>
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={(event) =>
@@ -125,7 +125,7 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                             }
                           >
                             <Image src={yellowFlag} alt="warning" />
-                            Add warning
+                            <span className="content">Add warning</span>
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={(event) =>
@@ -133,7 +133,7 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                             }
                           >
                             <Image src={redFlag} alt="citation" />
-                            Add citation
+                            <span className="content">Add citation</span>
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -142,14 +142,14 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                     {/* Contacts + flags */}
                     <div className="grid grid-cols-2 gap-4">
                       <section>
-                        <p className="text-sm text-sky-950">
+                        <p className="content text-secondary">
                           {party.contact_one.first_name}{" "}
                           {party.contact_one.last_name}
                         </p>
-                        <p className="ml-4 text-sm text-sky-950">
+                        <p className="ml-4 text-sm text-secondary">
                           {formatPhoneNumber(party.contact_one.phone_number)}
                         </p>
-                        <p className="ml-4 text-sm text-sky-950">
+                        <p className="ml-4 text-sm text-secondary">
                           Preference:{" "}
                           {party.contact_one.contact_preference
                             .charAt(0)
@@ -162,14 +162,14 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                       </section>
 
                       <section>
-                        <p className="text-sm text-sky-950">
+                        <p className="content text-secondary">
                           {party.contact_two.first_name}{" "}
                           {party.contact_two.last_name}
                         </p>
-                        <p className="ml-4 text-sm text-sky-950">
+                        <p className="ml-4 text-sm text-secondary">
                           {formatPhoneNumber(party.contact_two.phone_number)}
                         </p>
-                        <p className="ml-4 text-sm text-sky-950">
+                        <p className="ml-4 text-sm text-secondary">
                           Preference:{" "}
                           {party.contact_two.contact_preference
                             .charAt(0)
@@ -184,35 +184,35 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                       <div className="col-span-2 flex flex-row items-center gap-3">
                         <HoverCard openDelay={0} closeDelay={4}>
                           <HoverCardTrigger asChild>
-                            <div className="flex items-center gap-1 text-sm font-bold text-black">
+                            <div className="flex items-center gap-1 content-bold font-bold text-foreground">
                               {complaintCount}
                               <Image src={blackFlag} alt="complaints" />
                             </div>
                           </HoverCardTrigger>
                           <HoverCardContent className="w-40">
-                            Complaints
+                            <p className="content">Complaints</p>
                           </HoverCardContent>
                         </HoverCard>
                         <HoverCard openDelay={0} closeDelay={4}>
                           <HoverCardTrigger asChild>
-                            <div className="flex items-center gap-1 text-sm font-bold text-black">
+                            <div className="flex items-center gap-1 content-bold font-bold text-foreground">
                               {warningCount}
                               <Image src={yellowFlag} alt="warnings" />
                             </div>
                           </HoverCardTrigger>
                           <HoverCardContent className="w-40">
-                            Warnings
+                            <p className="content">Warnings</p>
                           </HoverCardContent>
                         </HoverCard>
                         <HoverCard openDelay={0} closeDelay={4}>
                           <HoverCardTrigger asChild>
-                            <div className="flex items-center gap-1 text-sm font-bold text-black">
+                            <div className="flex items-center gap-1 content-bold font-bold text-foreground">
                               {citationCount}
                               <Image src={redFlag} alt="citations" />
                             </div>
                           </HoverCardTrigger>
                           <HoverCardContent className="w-40">
-                            Citations
+                            <p className="content">Citations</p>
                           </HoverCardContent>
                         </HoverCard>
                       </div>

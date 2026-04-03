@@ -42,11 +42,11 @@ export default function SplitDateRangeFilter({
           id={id}
           type="button"
           className={cn(
-            "flex h-9 w-full items-center gap-2 rounded-md border border-zinc-300 bg-white px-3 text-sm input-shadow",
-            !dateRangeLabel && "text-neutral-500"
+            "flex h-9 w-full items-center gap-2 rounded-md border border-border bg-card px-3 text-sm input-shadow",
+            !dateRangeLabel && "text-muted-foreground"
           )}
         >
-          <CalendarIcon className="size-4 shrink-0 text-neutral-500" />
+          <CalendarIcon className="size-4 shrink-0 text-muted-foreground" />
           <span className="truncate">
             {dateRangeLabel || "[calendar search]"}
           </span>

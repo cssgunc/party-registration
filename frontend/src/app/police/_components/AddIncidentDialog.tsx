@@ -71,9 +71,9 @@ export default function AddIncidentDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-white rounded-2xl shadow-[0px_4px_4px_0px_rgba(111,178,220,0.25)] border-white sm:max-w-lg">
+      <DialogContent className="bg-card rounded-2xl card-shadow border-card sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="text-center text-sm font-medium text-black">
+          <DialogTitle className="text-center content-bold text-foreground">
             Add Incident
             {party ? ` at ${getDisplayAddress(party)}` : ""}
           </DialogTitle>
@@ -90,7 +90,7 @@ export default function AddIncidentDialog({
                 id="selected-address"
                 value={getDisplayAddress(party)}
                 readOnly
-                className="h-8 bg-white border-zinc-300 text-black text-sm font-medium"
+                className="h-8 bg-card border-border text-foreground content-bold"
               />
             </div>
 
@@ -104,7 +104,7 @@ export default function AddIncidentDialog({
               >
                 <SelectTrigger
                   id="incident-type"
-                  className="h-8 border-zinc-300 bg-white text-sm"
+                  className="h-8 border-border bg-card content"
                 >
                   <SelectValue placeholder="Enter Incident Type" />
                 </SelectTrigger>
@@ -125,20 +125,20 @@ export default function AddIncidentDialog({
                 dateFormat="MM/dd/yy"
                 value={formData.partyDate}
                 onChange={(date) => updateField("partyDate", date)}
-                className="h-8 rounded-md border-zinc-300 border-0"
+                className="h-8 rounded-md border-border border-0"
               />
             </div>
 
             <div className="grid gap-2">
               <Label htmlFor="party-time">Time</Label>
-              <div className="flex h-8 items-center gap-2 rounded-md bg-white input-shadow border border-zinc-300 px-3">
-                <ClockIcon className="size-4 shrink-0 text-neutral-500" />
-                <input
+              <div className="flex h-8 items-center gap-2 rounded-md bg-card input-shadow border border-border px-3">
+                <ClockIcon className="size-4 shrink-0 text-muted-foreground" />
+                <Input
                   id="party-time"
                   type="time"
                   value={formData.partyTime}
                   onChange={(e) => updateField("partyTime", e.target.value)}
-                  className="flex-1 bg-transparent text-sm outline-none [color-scheme:light]"
+                  className="flex-1 h-auto border-0 bg-transparent p-0 content shadow-none focus-visible:ring-0 [color-scheme:light]"
                 />
               </div>
             </div>
@@ -148,7 +148,7 @@ export default function AddIncidentDialog({
             <Label htmlFor="incident-description">Description (Optional)</Label>
             <Textarea
               id="incident-description"
-              className="min-h-24 bg-white rounded-md border-zinc-300"
+              className="min-h-24 bg-card rounded-md border-border"
               value={formData.description}
               onChange={(event) =>
                 updateField("description", event.target.value)
@@ -159,7 +159,7 @@ export default function AddIncidentDialog({
           <div className="flex justify-center">
             <Button
               type="submit"
-              className="bg-sky-950 rounded-md text-white text-sm font-medium px-8"
+              className="bg-secondary rounded-md text-primary-foreground content-bold px-8"
             >
               Save Changes
             </Button>

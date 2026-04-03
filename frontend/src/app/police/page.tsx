@@ -148,10 +148,10 @@ export default function PolicePage() {
     <main className="lg:h-[calc(100vh-var(--app-header-height))] lg:overflow-hidden overflow-y-auto bg-background px-4 py-4 md:px-6 md:py-6">
       <div className="grid lg:h-full gap-6 lg:grid-cols-[minmax(22rem,34rem)_minmax(0,1fr)]">
         {/* Left panel */}
-        <aside className="flex lg:min-h-0 flex-col lg:overflow-hidden">
+        <aside className="flex lg:min-h-0 flex-col">
           {/* Header */}
           <header className="flex items-center justify-between gap-3 px-1 pb-4">
-            <h1 className="page-title text-sky-950">Party Search</h1>
+            <h1 className="page-title text-secondary">Party Search</h1>
             <div className="flex items-center gap-2">
               <Button size="sm">Tracker</Button>
               <PartyCsvExportButton startDate={startDate} endDate={endDate} />
@@ -163,7 +163,7 @@ export default function PolicePage() {
             <div className="flex flex-col gap-1 order-2 sm:order-1">
               <Label>Enter Address</Label>
               <AddressSearch
-                className="[&_input]:bg-white [&_input]:border-zinc-300"
+                className="[&_input]:bg-card [&_input]:border-border"
                 value={searchAddress?.formatted_address || ""}
                 onSelect={setSearchAddress}
                 placeholder="Enter Address..."
@@ -193,7 +193,9 @@ export default function PolicePage() {
           <div className="flex flex-col lg:min-h-0 lg:flex-1 lg:overflow-hidden p-1 -m-1">
             {(isLoading || isLoadingNearby) && (
               <div className="w-full px-1 py-8 text-center">
-                <p className="text-sm text-neutral-500">Loading parties...</p>
+                <p className="content text-muted-foreground">
+                  Loading parties...
+                </p>
               </div>
             )}
             {error && (
@@ -201,7 +203,7 @@ export default function PolicePage() {
                 className="mt-2 rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3"
                 role="alert"
               >
-                <p className="text-sm text-destructive">
+                <p className="content text-destructive">
                   Error loading parties
                 </p>
               </div>
@@ -220,7 +222,10 @@ export default function PolicePage() {
           className="flex lg:min-h-0 flex-col"
           aria-labelledby="police-map-results"
         >
-          <h2 id="police-map-results" className="page-title mb-3 text-sky-950">
+          <h2
+            id="police-map-results"
+            className="page-title mb-3 text-secondary"
+          >
             {searchAddress ? "Showing Nearby Parties" : "Showing All Parties"}
           </h2>
           <div className="min-h-0 lg:flex-1 overflow-hidden rounded-md max-lg:h-80">

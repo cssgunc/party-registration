@@ -71,7 +71,7 @@ export default function AdvancedPartySearch({
         <Button
           type="button"
           variant="link"
-          className="p-0 h-auto text-sky-950 content underline"
+          className="p-0 h-auto text-secondary content underline"
           onClick={() => {
             setIsOpen((open) => !open);
             clearAllFilters();
@@ -82,7 +82,7 @@ export default function AdvancedPartySearch({
 
         <div className="flex items-center gap-3">
           {isOpen && (
-            <span className="content text-sky-950">
+            <span className="content text-secondary">
               ({selectedCount}) Selected
             </span>
           )}
@@ -110,7 +110,7 @@ export default function AdvancedPartySearch({
                   patch("timeFilterType", val)
                 }
               >
-                <SelectTrigger className="w-28 bg-white border-zinc-300 input-shadow">
+                <SelectTrigger className="w-28 bg-card border-border input-shadow">
                   <SelectValue placeholder="Type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -124,7 +124,7 @@ export default function AdvancedPartySearch({
                 type="time"
                 value={filters.startTime}
                 onChange={(e) => patch("startTime", e.target.value)}
-                className="w-36 bg-white border-zinc-300 input-shadow"
+                className="w-36 bg-card border-border input-shadow"
               />
             </div>
           </div>
@@ -132,7 +132,7 @@ export default function AdvancedPartySearch({
           <div className="flex flex-col gap-1">
             <Label>Phone</Label>
             <Input
-              className="w-36 bg-white border-zinc-300 input-shadow"
+              className="w-36 bg-card border-border input-shadow"
               placeholder="None"
               type="text"
               value={filters.phone}
@@ -143,7 +143,7 @@ export default function AdvancedPartySearch({
           <div className="flex flex-col gap-1">
             <Label>Name</Label>
             <Input
-              className="w-36 bg-white border-zinc-300 input-shadow"
+              className="w-36 bg-card border-border input-shadow"
               placeholder="None"
               type="text"
               value={filters.name}
@@ -159,7 +159,7 @@ export default function AdvancedPartySearch({
                 patch("contactPreference", val)
               }
             >
-              <SelectTrigger className="w-36 bg-white border-zinc-300 input-shadow">
+              <SelectTrigger className="w-36 bg-card border-border input-shadow">
                 <SelectValue placeholder="None" />
                 {filters.contactPreference && (
                   <span
@@ -188,7 +188,7 @@ export default function AdvancedPartySearch({
               value={filters.severity}
               onValueChange={(val: SeverityFilter) => patch("severity", val)}
             >
-              <SelectTrigger className="w-40 bg-white border-zinc-300 input-shadow">
+              <SelectTrigger className="w-40 bg-card border-border input-shadow">
                 <SelectValue placeholder="None" />
                 {filters.severity && (
                   <span
