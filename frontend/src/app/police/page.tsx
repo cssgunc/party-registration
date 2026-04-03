@@ -190,7 +190,7 @@ export default function PolicePage() {
           </div>
 
           {/* Party list */}
-          <div className="flex lg:min-h-0 lg:flex-1 lg:overflow-hidden">
+          <div className="flex flex-col lg:min-h-0 lg:flex-1 lg:overflow-hidden p-1 -m-1">
             {(isLoading || isLoadingNearby) && (
               <div className="w-full px-1 py-8 text-center">
                 <p className="text-sm text-neutral-500">Loading parties...</p>
@@ -206,7 +206,7 @@ export default function PolicePage() {
                 </p>
               </div>
             )}
-            {!isLoading && !isLoadingNearby && (
+            {!isLoading && !isLoadingNearby && !error && (
               <PartyList
                 parties={filteredParties}
                 onSelect={(party) => handleActiveParty(party)}
