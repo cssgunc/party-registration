@@ -10,8 +10,8 @@ import {
   useCurrentStudent,
   useMyParties,
 } from "@/lib/api/student/student.queries";
-import { ArrowLeft, Info } from "lucide-react";
 import { isFromThisSchoolYear } from "@/lib/utils";
+import { ArrowLeft, Info } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";

@@ -86,8 +86,8 @@ success "Activated .venv  ($(python --version))"
 
 info "Installing packages: pip install -e '.[dev]' && pip install -e backend ..."
 cd "$REPO_ROOT"
-# pip install -e ".[dev]" -q
-# pip install -e backend -q
+pip install -e ".[dev]" -q
+pip install -e backend -q
 success "Python packages installed"
 
 # ══════════════════════════════════════════════════════════════════════════════
