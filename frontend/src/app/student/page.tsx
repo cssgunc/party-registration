@@ -15,30 +15,34 @@ import PartySmartInfo from "./_components/PartySmartInfo";
 export default function StudentDashboard() {
   const studentQuery = useCurrentStudent();
   const partiesQuery = useMyParties();
-  const courseCompleted = isFromThisSchoolYear(
+  {
+    /*const courseCompleted = isFromThisSchoolYear(
     studentQuery.data?.last_registered
-  );
+  );*/
+  }
   const validResidence = isFromThisSchoolYear(
     studentQuery?.data?.residence?.residence_chosen_date
   );
   const incidents = studentQuery.data?.residence?.location.incidents ?? [];
 
   return (
-    <div className="flex flex-col items-center pt-6 mb-6">
+    <div className="flex flex-col items-center pt-6">
       <div className="px-4 sm:px-8 flex flex-col 2xl:flex-row gap-4 max-w-4xl w-full 2xl:max-w-11/12 2xl:gap-24 h-fit">
         <div className="2xl:w-1/2 flex flex-col justify-between">
           <div>
-            <h1 className="page-title w-1/2">Events</h1>
-            <div className="content text-wrap text-end w-1/2">
-              {validResidence && (
-                <div className="flex justify-end">
-                  <p>
-                    {studentQuery?.data?.residence?.location.street_number}{" "}
-                    {studentQuery?.data?.residence?.location.street_name}{" "}
-                    {studentQuery?.data?.residence?.location.unit}
-                  </p>
-                </div>
-              )}
+            <div className="flex items-center justify-between">
+              <h1 className="page-title w-1/2">Events</h1>
+              <div className="content text-wrap text-end w-1/2">
+                {validResidence && (
+                  <div className="flex justify-end">
+                    <p>
+                      {studentQuery?.data?.residence?.location.street_number}{" "}
+                      {studentQuery?.data?.residence?.location.street_name}{" "}
+                      {studentQuery?.data?.residence?.location.unit}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
             <RegistrationTracker {...partiesQuery} incidents={incidents} />
           </div>

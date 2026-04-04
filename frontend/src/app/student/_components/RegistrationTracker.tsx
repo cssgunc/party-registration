@@ -311,7 +311,7 @@ export default function RegistrationTracker({
             </div>
           </TabsContent>
 
-          <TabsContent value="past" className="">
+          <TabsContent value="past">
             <div className="w-full bg-card rounded-md overflow-hidden">
               <div className="h-[calc(100vh-28rem)] overflow-y-auto">
                 {pastParties.length === 0 ? (
