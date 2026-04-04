@@ -2,10 +2,10 @@ from fastapi import Depends, Request
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.core.bcrypt_utils import hash_password, verify_password
 from src.core.database import get_session
 from src.core.exceptions import ConflictException, CredentialsException, NotFoundException
-from src.core.query_utils import get_paginated_results, parse_pagination_params
+from src.core.utils.bcrypt_utils import hash_password, verify_password
+from src.core.utils.query_utils import get_paginated_results, parse_pagination_params
 from src.modules.police.police_entity import PoliceEntity
 from src.modules.police.police_model import (
     PaginatedPoliceResponse,

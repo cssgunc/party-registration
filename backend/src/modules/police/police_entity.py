@@ -2,8 +2,8 @@ from typing import Self
 
 from sqlalchemy import Integer, String
 from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column
-from src.core.bcrypt_utils import hash_password
 from src.core.database import EntityBase
+from src.core.utils.bcrypt_utils import hash_password
 from src.modules.police.police_model import PoliceAccountDto, PoliceAccountUpdate
 
 

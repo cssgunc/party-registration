@@ -3,9 +3,9 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import Response
 from src.core.authentication import (
-    authenticate_admin,
     authenticate_by_role,
     authenticate_police_or_admin,
+    authenticate_police_staff_or_admin,
     authenticate_staff_or_admin,
     authenticate_student_or_admin,
     authenticate_user,
@@ -15,9 +15,10 @@ from src.core.exceptions import (
     ForbiddenException,
     UnprocessableEntityException,
 )
-from src.core.query_utils import PAGINATED_OPENAPI_PARAMS
+from src.core.utils.query_utils import PAGINATED_OPENAPI_PARAMS
 from src.modules.account.account_model import AccountDto, AccountRole
 from src.modules.location.location_service import LocationService
+from src.modules.police.police_model import PoliceAccountDto
 
 from .party_model import (
     AdminCreatePartyDto,
@@ -165,46 +166,23 @@ async def get_parties_nearby(
     return parties
 
 
-@party_router.get("/csv")
+@party_router.get("/csv", openapi_extra=PAGINATED_OPENAPI_PARAMS)
 async def get_parties_csv(
-    start_date: str = Query(
-        ..., pattern=r"^\d{4}-\d{2}-\d{2}$", description="Start date in YYYY-MM-DD format"
-    ),
-    end_date: str = Query(
-        ..., pattern=r"^\d{4}-\d{2}-\d{2}$", description="End date in YYYY-MM-DD format"
-    ),
+    request: Request,
     party_service: PartyService = Depends(),
-    _=Depends(authenticate_admin),
+    principal: AccountDto | PoliceAccountDto = Depends(authenticate_police_staff_or_admin),
 ) -> Response:
     """
-    Returns parties within the specified date range as an Excel file.
+    Returns all parties as an Excel file, with columns tailored to the requester's role.
 
-    Query Parameters:
-    - start_date: Start date in YYYY-MM-DD format (required)
-    - end_date: End date in YYYY-MM-DD format (required)
+    Police users get 11 columns (full names, no residence).
+    Staff/admin users get 15 columns (split names, includes residence).
 
-    Returns:
-    - Excel file stream with party data
-
-    Raises:
-    - 400: If date format is invalid
+    Supports the same filter/sort query params as GET /api/parties.
     """
-    try:
-        start_datetime = datetime.strptime(start_date, "%Y-%m-%d")
-        end_datetime = datetime.strptime(end_date, "%Y-%m-%d")
-        end_datetime = end_datetime.replace(hour=23, minute=59, second=59, microsecond=999999)
-    except ValueError as e:
-        raise UnprocessableEntityException(
-            "Invalid date format. Use YYYY-MM-DD format for dates."
-        ) from e
-
-    # Validate that start_date is not greater than end_date
-    if start_datetime > end_datetime:
-        raise BadRequestException("Start date must be less than or equal to end date")
-
-    parties = await party_service.get_parties_by_date_range(start_datetime, end_datetime)
-    excel_content = await party_service.export_parties_to_excel(parties)
-
+    parties = await party_service.get_parties_for_export(request)
+    is_police = isinstance(principal, PoliceAccountDto)
+    excel_content = party_service.export_parties_to_excel(parties, is_police=is_police)
     return Response(
         content=excel_content,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
