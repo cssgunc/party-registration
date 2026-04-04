@@ -33,8 +33,9 @@
       "last_name": "Morrison",
       "phone_number": "5367829443",
       "contact_preference": "text",
-      "last_registered": "NOW-571d",
-      "onyen": "stevenmorrison"
+      "last_registered": "NOW-14d",
+      "onyen": "stevenmorrison",
+      "residence_id": 1
     },
     {
       "id": 4,
@@ -44,8 +45,9 @@
       "last_name": "Malone",
       "phone_number": "7247664088",
       "contact_preference": "text",
-      "last_registered": "NOW-266d",
-      "onyen": "monicamalone"
+      "last_registered": null,
+      "onyen": "monicamalone",
+      "residence_id": null
     },
     {
       "id": 5,
@@ -56,7 +58,8 @@
       "phone_number": "8565753194",
       "contact_preference": "call",
       "last_registered": "NOW-700d",
-      "onyen": "lauragonzales"
+      "onyen": "lauragonzales",
+      "residence_id": 2
     },
     {
       "id": 6,
@@ -67,7 +70,8 @@
       "phone_number": "4136665062",
       "contact_preference": "text",
       "last_registered": "NOW-580d",
-      "onyen": "jonathanbowers"
+      "onyen": "jonathanbowers",
+      "residence_id": 3
     },
     {
       "id": 7,
@@ -78,7 +82,8 @@
       "phone_number": "3552965822",
       "contact_preference": "call",
       "last_registered": "NOW-306d",
-      "onyen": "joshuataylor"
+      "onyen": "joshuataylor",
+      "residence_id": 4
     },
     {
       "id": 8,
@@ -89,7 +94,8 @@
       "phone_number": "0289383947",
       "contact_preference": "text",
       "last_registered": "NOW-118d",
-      "onyen": "carolynwall"
+      "onyen": "carolynwall",
+      "residence_id": 5
     },
     {
       "id": 9,
@@ -100,7 +106,8 @@
       "phone_number": "8115401257",
       "contact_preference": "text",
       "last_registered": "NOW-594d",
-      "onyen": "ambercallahan"
+      "onyen": "ambercallahan",
+      "residence_id": 6
     },
     {
       "id": 10,
@@ -111,7 +118,8 @@
       "phone_number": "1630236315",
       "contact_preference": "text",
       "last_registered": "NOW-171d",
-      "onyen": "georgeperry"
+      "onyen": "georgeperry",
+      "residence_id": 7
     },
     {
       "id": 11,
@@ -122,7 +130,8 @@
       "phone_number": "5040599133",
       "contact_preference": "text",
       "last_registered": "NOW-526d",
-      "onyen": "martinellis"
+      "onyen": "martinellis",
+      "residence_id": 8
     },
     {
       "id": 12,
@@ -133,7 +142,8 @@
       "phone_number": "3550426305",
       "contact_preference": "text",
       "last_registered": "NOW-395d",
-      "onyen": "williamlamb"
+      "onyen": "williamlamb",
+      "residence_id": 9
     },
     {
       "id": 13,
@@ -144,7 +154,8 @@
       "phone_number": "6991098313",
       "contact_preference": "call",
       "last_registered": "NOW-699d",
-      "onyen": "theodoresmith"
+      "onyen": "theodoresmith",
+      "residence_id": 10
     },
     {
       "id": 14,
@@ -155,7 +166,8 @@
       "phone_number": "6738853178",
       "contact_preference": "call",
       "last_registered": "NOW-240d",
-      "onyen": "nicholasboone"
+      "onyen": "nicholasboone",
+      "residence_id": 11
     },
     {
       "id": 15,
@@ -166,7 +178,8 @@
       "phone_number": "0871691117",
       "contact_preference": "text",
       "last_registered": "NOW-450d",
-      "onyen": "bryangarcia"
+      "onyen": "bryangarcia",
+      "residence_id": 12
     },
     {
       "id": 16,
@@ -177,7 +190,8 @@
       "phone_number": "6909950691",
       "contact_preference": "call",
       "last_registered": "NOW-621d",
-      "onyen": "karenboone"
+      "onyen": "karenboone",
+      "residence_id": 13
     },
     {
       "id": 17,
@@ -188,7 +202,8 @@
       "phone_number": "6964827095",
       "contact_preference": "call",
       "last_registered": null,
-      "onyen": "markmccoy"
+      "onyen": "markmccoy",
+      "residence_id": 14
     },
     {
       "id": 18,
@@ -199,7 +214,8 @@
       "phone_number": "4774070184",
       "contact_preference": "call",
       "last_registered": "NOW-77d",
-      "onyen": "ericbennett"
+      "onyen": "ericbennett",
+      "residence_id": 15
     },
     {
       "id": 19,
@@ -210,7 +226,8 @@
       "phone_number": "0743440309",
       "contact_preference": "call",
       "last_registered": "NOW-578d",
-      "onyen": "carolinewalker"
+      "onyen": "carolinewalker",
+      "residence_id": 16
     },
     {
       "id": 20,
@@ -221,7 +238,8 @@
       "phone_number": "4371067072",
       "contact_preference": "call",
       "last_registered": "NOW-141d",
-      "onyen": "marywilliams"
+      "onyen": "marywilliams",
+      "residence_id": 17
     },
     {
       "id": 21,
@@ -232,7 +250,8 @@
       "phone_number": "2850625038",
       "contact_preference": "text",
       "last_registered": "NOW-516d",
-      "onyen": "jordanwilson"
+      "onyen": "jordanwilson",
+      "residence_id": 18
     },
     {
       "id": 22,
@@ -243,7 +262,8 @@
       "phone_number": "2019256153",
       "contact_preference": "call",
       "last_registered": "NOW-491d",
-      "onyen": "jeremyramos"
+      "onyen": "jeremyramos",
+      "residence_id": 19
     },
     {
       "id": 23,
@@ -254,7 +274,8 @@
       "phone_number": "5383184902",
       "contact_preference": "text",
       "last_registered": "NOW-3d",
-      "onyen": "ronaldjones"
+      "onyen": "ronaldjones",
+      "residence_id": 20
     },
     {
       "id": 24,
@@ -265,7 +286,8 @@
       "phone_number": "2686743843",
       "contact_preference": "call",
       "last_registered": "NOW-448d",
-      "onyen": "manuelschwartz"
+      "onyen": "manuelschwartz",
+      "residence_id": 21
     },
     {
       "id": 25,
@@ -276,7 +298,8 @@
       "phone_number": "0608695584",
       "contact_preference": "text",
       "last_registered": "NOW-231d",
-      "onyen": "timothycohen"
+      "onyen": "timothycohen",
+      "residence_id": 22
     },
     {
       "id": 26,
@@ -287,7 +310,8 @@
       "phone_number": "1326280027",
       "contact_preference": "text",
       "last_registered": "NOW-180d",
-      "onyen": "christineolson"
+      "onyen": "christineolson",
+      "residence_id": 23
     },
     {
       "id": 27,
@@ -298,7 +322,8 @@
       "phone_number": "9827615102",
       "contact_preference": "call",
       "last_registered": "NOW-409d",
-      "onyen": "kristinadavidson"
+      "onyen": "kristinadavidson",
+      "residence_id": 24
     },
     {
       "id": 28,
@@ -309,7 +334,8 @@
       "phone_number": "8174015134",
       "contact_preference": "text",
       "last_registered": "NOW-186d",
-      "onyen": "richardmccoy"
+      "onyen": "richardmccoy",
+      "residence_id": 25
     },
     {
       "id": 29,
@@ -320,7 +346,8 @@
       "phone_number": "1159522119",
       "contact_preference": "text",
       "last_registered": "NOW-689d",
-      "onyen": "timothylopez"
+      "onyen": "timothylopez",
+      "residence_id": 26
     },
     {
       "id": 30,
@@ -331,7 +358,8 @@
       "phone_number": "9329522805",
       "contact_preference": "call",
       "last_registered": "NOW-420d",
-      "onyen": "perrycolon"
+      "onyen": "perrycolon",
+      "residence_id": 27
     },
     {
       "id": 31,
@@ -342,7 +370,8 @@
       "phone_number": "8080795200",
       "contact_preference": "call",
       "last_registered": "NOW-690d",
-      "onyen": "katelynbennett"
+      "onyen": "katelynbennett",
+      "residence_id": 28
     },
     {
       "id": 32,
@@ -353,7 +382,8 @@
       "phone_number": "5470400829",
       "contact_preference": "call",
       "last_registered": "NOW-110d",
-      "onyen": "davidhowe"
+      "onyen": "davidhowe",
+      "residence_id": 29
     },
     {
       "id": 33,
@@ -364,7 +394,8 @@
       "phone_number": "9702868495",
       "contact_preference": "text",
       "last_registered": "NOW-282d",
-      "onyen": "jonathanthomas"
+      "onyen": "jonathanthomas",
+      "residence_id": 30
     },
     {
       "id": 34,
@@ -375,7 +406,8 @@
       "phone_number": "1393049091",
       "contact_preference": "call",
       "last_registered": "NOW-434d",
-      "onyen": "mercedesdavenport"
+      "onyen": "mercedesdavenport",
+      "residence_id": 31
     },
     {
       "id": 35,
@@ -386,7 +418,8 @@
       "phone_number": "5623160025",
       "contact_preference": "call",
       "last_registered": "NOW-508d",
-      "onyen": "susanjones"
+      "onyen": "susanjones",
+      "residence_id": 32
     },
     {
       "id": 36,
@@ -397,7 +430,8 @@
       "phone_number": "8597613689",
       "contact_preference": "text",
       "last_registered": "NOW-518d",
-      "onyen": "nancypatterson"
+      "onyen": "nancypatterson",
+      "residence_id": 33
     },
     {
       "id": 37,
@@ -408,7 +442,8 @@
       "phone_number": "0347041827",
       "contact_preference": "text",
       "last_registered": "NOW-384d",
-      "onyen": "amandabenson"
+      "onyen": "amandabenson",
+      "residence_id": 34
     },
     {
       "id": 38,
@@ -419,7 +454,8 @@
       "phone_number": "2329750026",
       "contact_preference": "text",
       "last_registered": "NOW-724d",
-      "onyen": "brianajones"
+      "onyen": "brianajones",
+      "residence_id": 35
     },
     {
       "id": 39,
@@ -430,7 +466,8 @@
       "phone_number": "8034245803",
       "contact_preference": "text",
       "last_registered": "NOW-652d",
-      "onyen": "austindouglas"
+      "onyen": "austindouglas",
+      "residence_id": 36
     },
     {
       "id": 40,
@@ -441,7 +478,8 @@
       "phone_number": "4323191835",
       "contact_preference": "text",
       "last_registered": "NOW-223d",
-      "onyen": "kellypruitt"
+      "onyen": "kellypruitt",
+      "residence_id": 37
     },
     {
       "id": 41,
@@ -452,7 +490,8 @@
       "phone_number": "7900107653",
       "contact_preference": "text",
       "last_registered": "NOW-690d",
-      "onyen": "angelasawyer"
+      "onyen": "angelasawyer",
+      "residence_id": null
     },
     {
       "id": 42,
@@ -463,7 +502,8 @@
       "phone_number": "7055471558",
       "contact_preference": "text",
       "last_registered": "NOW-453d",
-      "onyen": "michellebooth"
+      "onyen": "michellebooth",
+      "residence_id": null
     },
     {
       "id": 43,
@@ -474,7 +514,8 @@
       "phone_number": "7154704515",
       "contact_preference": "text",
       "last_registered": "NOW-458d",
-      "onyen": "michellelawson"
+      "onyen": "michellelawson",
+      "residence_id": null
     },
     {
       "id": 44,
@@ -485,7 +526,8 @@
       "phone_number": "1720107314",
       "contact_preference": "text",
       "last_registered": "NOW-393d",
-      "onyen": "ashleygordon"
+      "onyen": "ashleygordon",
+      "residence_id": null
     },
     {
       "id": 45,
@@ -496,7 +538,8 @@
       "phone_number": "4810904735",
       "contact_preference": "text",
       "last_registered": "NOW-692d",
-      "onyen": "douglastrujillo"
+      "onyen": "douglastrujillo",
+      "residence_id": null
     },
     {
       "id": 46,
@@ -507,7 +550,8 @@
       "phone_number": "4440115552",
       "contact_preference": "text",
       "last_registered": "NOW-312d",
-      "onyen": "anawashington"
+      "onyen": "anawashington",
+      "residence_id": null
     },
     {
       "id": 47,
@@ -518,7 +562,8 @@
       "phone_number": "6954827095",
       "contact_preference": "call",
       "last_registered": "NOW-636d",
-      "onyen": "nicoledoyle"
+      "onyen": "nicoledoyle",
+      "residence_id": null
     },
     {
       "id": 48,
@@ -529,7 +574,8 @@
       "phone_number": "8162287744",
       "contact_preference": "text",
       "last_registered": "NOW-426d",
-      "onyen": "shauncardenas"
+      "onyen": "shauncardenas",
+      "residence_id": null
     },
     {
       "id": 49,
@@ -540,7 +586,8 @@
       "phone_number": "4690838189",
       "contact_preference": "text",
       "last_registered": "NOW-353d",
-      "onyen": "frankwallace"
+      "onyen": "frankwallace",
+      "residence_id": null
     },
     {
       "id": 50,
@@ -551,7 +598,8 @@
       "phone_number": "0964966004",
       "contact_preference": "text",
       "last_registered": "NOW-20d",
-      "onyen": "keithmartinez"
+      "onyen": "keithmartinez",
+      "residence_id": null
     },
     {
       "id": 51,
@@ -562,7 +610,8 @@
       "phone_number": "8879848197",
       "contact_preference": "text",
       "last_registered": null,
-      "onyen": "christophermiller"
+      "onyen": "christophermiller",
+      "residence_id": null
     },
     {
       "id": 52,
@@ -573,7 +622,8 @@
       "phone_number": "7356585248",
       "contact_preference": "text",
       "last_registered": "NOW-631d",
-      "onyen": "marksolis"
+      "onyen": "marksolis",
+      "residence_id": null
     },
     {
       "id": 53,
@@ -584,7 +634,8 @@
       "phone_number": "9042516249",
       "contact_preference": "text",
       "last_registered": "NOW-659d",
-      "onyen": "travisandersen"
+      "onyen": "travisandersen",
+      "residence_id": null
     },
     {
       "id": 54,
@@ -595,7 +646,8 @@
       "phone_number": "1975041368",
       "contact_preference": "text",
       "last_registered": "NOW-726d",
-      "onyen": "melindaholland"
+      "onyen": "melindaholland",
+      "residence_id": null
     },
     {
       "id": 55,
@@ -606,7 +658,8 @@
       "phone_number": "3250380312",
       "contact_preference": "text",
       "last_registered": "NOW-585d",
-      "onyen": "catherinestevens"
+      "onyen": "catherinestevens",
+      "residence_id": null
     },
     {
       "id": 56,
@@ -617,7 +670,8 @@
       "phone_number": "9637296013",
       "contact_preference": "call",
       "last_registered": "NOW-37d",
-      "onyen": "joannewhite"
+      "onyen": "joannewhite",
+      "residence_id": null
     },
     {
       "id": 57,
@@ -628,7 +682,8 @@
       "phone_number": "0634622490",
       "contact_preference": "text",
       "last_registered": null,
-      "onyen": "savannahjohnson"
+      "onyen": "savannahjohnson",
+      "residence_id": null
     },
     {
       "id": 58,
@@ -639,7 +694,8 @@
       "phone_number": "8790458763",
       "contact_preference": "text",
       "last_registered": "NOW-162d",
-      "onyen": "roygonzalez"
+      "onyen": "roygonzalez",
+      "residence_id": null
     },
     {
       "id": 59,
@@ -650,7 +706,8 @@
       "phone_number": "8645777450",
       "contact_preference": "text",
       "last_registered": null,
-      "onyen": "ryanpope"
+      "onyen": "ryanpope",
+      "residence_id": null
     },
     {
       "id": 60,
@@ -661,7 +718,8 @@
       "phone_number": "4839300352",
       "contact_preference": "text",
       "last_registered": "NOW-384d",
-      "onyen": "christophersmith"
+      "onyen": "christophersmith",
+      "residence_id": null
     },
     {
       "id": 61,
@@ -672,7 +730,8 @@
       "phone_number": "8738997432",
       "contact_preference": "text",
       "last_registered": "NOW-135d",
-      "onyen": "carlsmith"
+      "onyen": "carlsmith",
+      "residence_id": null
     },
     {
       "id": 62,
@@ -683,7 +742,8 @@
       "phone_number": "2790409215",
       "contact_preference": "text",
       "last_registered": "NOW-592d",
-      "onyen": "williamperez"
+      "onyen": "williamperez",
+      "residence_id": null
     },
     {
       "id": 63,
@@ -694,7 +754,8 @@
       "phone_number": "3066645204",
       "contact_preference": "call",
       "last_registered": "NOW-133d",
-      "onyen": "jameswilson"
+      "onyen": "jameswilson",
+      "residence_id": null
     },
     {
       "id": 64,
@@ -705,7 +766,8 @@
       "phone_number": "9846111710",
       "contact_preference": "text",
       "last_registered": "NOW-22d",
-      "onyen": "angelicahamilton"
+      "onyen": "angelicahamilton",
+      "residence_id": null
     },
     {
       "id": 65,
@@ -716,7 +778,8 @@
       "phone_number": "2444268424",
       "contact_preference": "text",
       "last_registered": "NOW-318d",
-      "onyen": "michaeltorres"
+      "onyen": "michaeltorres",
+      "residence_id": null
     },
     {
       "id": 66,
@@ -727,7 +790,8 @@
       "phone_number": "6424401732",
       "contact_preference": "text",
       "last_registered": "NOW-410d",
-      "onyen": "jeffreytaylor"
+      "onyen": "jeffreytaylor",
+      "residence_id": null
     },
     {
       "id": 67,
@@ -738,7 +802,8 @@
       "phone_number": "5557860678",
       "contact_preference": "text",
       "last_registered": "NOW-574d",
-      "onyen": "samanthamarshall"
+      "onyen": "samanthamarshall",
+      "residence_id": null
     },
     {
       "id": 68,
@@ -749,7 +814,8 @@
       "phone_number": "9692094073",
       "contact_preference": "call",
       "last_registered": "NOW-143d",
-      "onyen": "michaelsmith"
+      "onyen": "michaelsmith",
+      "residence_id": null
     },
     {
       "id": 69,
@@ -760,7 +826,8 @@
       "phone_number": "6273577824",
       "contact_preference": "text",
       "last_registered": "NOW-673d",
-      "onyen": "hayleygarcia"
+      "onyen": "hayleygarcia",
+      "residence_id": null
     },
     {
       "id": 70,
@@ -771,7 +838,8 @@
       "phone_number": "3345141282",
       "contact_preference": "text",
       "last_registered": "NOW-63d",
-      "onyen": "williammiddleton"
+      "onyen": "williammiddleton",
+      "residence_id": null
     },
     {
       "id": 71,
@@ -782,7 +850,8 @@
       "phone_number": "7362022441",
       "contact_preference": "call",
       "last_registered": "NOW-584d",
-      "onyen": "bryanhale"
+      "onyen": "bryanhale",
+      "residence_id": null
     },
     {
       "id": 72,
@@ -793,7 +862,8 @@
       "phone_number": "3870407072",
       "contact_preference": "call",
       "last_registered": "NOW-566d",
-      "onyen": "dianemerritt"
+      "onyen": "dianemerritt",
+      "residence_id": null
     },
     {
       "id": 73,
@@ -804,7 +874,8 @@
       "phone_number": "8894897302",
       "contact_preference": "text",
       "last_registered": "NOW-223d",
-      "onyen": "angelatodd"
+      "onyen": "angelatodd",
+      "residence_id": null
     },
     {
       "id": 74,
@@ -815,7 +886,8 @@
       "phone_number": "3017410106",
       "contact_preference": "text",
       "last_registered": "NOW-550d",
-      "onyen": "daniellestewart"
+      "onyen": "daniellestewart",
+      "residence_id": null
     },
     {
       "id": 75,
@@ -826,7 +898,8 @@
       "phone_number": "6708441824",
       "contact_preference": "text",
       "last_registered": "NOW-79d",
-      "onyen": "ryanoliver"
+      "onyen": "ryanoliver",
+      "residence_id": null
     },
     {
       "id": 76,
@@ -837,7 +910,8 @@
       "phone_number": "9960151797",
       "contact_preference": "text",
       "last_registered": "NOW-561d",
-      "onyen": "masonwatson"
+      "onyen": "masonwatson",
+      "residence_id": null
     }
   ],
   "parties": [
@@ -1219,19 +1293,6 @@
       }
     },
     {
-      "id": 30,
-      "party_datetime": "NOW+2d@20:30",
-      "location_id": 32,
-      "contact_one_id": 17,
-      "contact_two": {
-        "email": "jeremy.spencer@unc.edu",
-        "first_name": "Jeremy",
-        "last_name": "Spencer",
-        "phone_number": "1441449651",
-        "contact_preference": "call"
-      }
-    },
-    {
       "id": 31,
       "party_datetime": "NOW-1d@19:00",
       "location_id": 37,
@@ -1336,19 +1397,6 @@
       }
     },
     {
-      "id": 39,
-      "party_datetime": "NOW-5d@22:45",
-      "location_id": 32,
-      "contact_one_id": 17,
-      "contact_two": {
-        "email": "jeremy.spencer@unc.edu",
-        "first_name": "Jeremy",
-        "last_name": "Spencer",
-        "phone_number": "1441449651",
-        "contact_preference": "call"
-      }
-    },
-    {
       "id": 40,
       "party_datetime": "NOW+5d@23:15",
       "location_id": 42,
@@ -1372,19 +1420,6 @@
         "last_name": "Andersen",
         "phone_number": "9042516249",
         "contact_preference": "text"
-      }
-    },
-    {
-      "id": 42,
-      "party_datetime": "NOW+1d@20:15",
-      "location_id": 32,
-      "contact_one_id": 17,
-      "contact_two": {
-        "email": "jeremy.spencer@unc.edu",
-        "first_name": "Jeremy",
-        "last_name": "Spencer",
-        "phone_number": "1441449651",
-        "contact_preference": "call"
       }
     },
     {
@@ -2025,19 +2060,6 @@
       }
     },
     {
-      "id": 92,
-      "party_datetime": "NOW+4d@21:30",
-      "location_id": 50,
-      "contact_one_id": 51,
-      "contact_two": {
-        "email": "tammy.reynolds@unc.edu",
-        "first_name": "Tammy",
-        "last_name": "Reynolds",
-        "phone_number": "2152959512",
-        "contact_preference": "text"
-      }
-    },
-    {
       "id": 93,
       "party_datetime": "NOW-2d@19:45",
       "location_id": 29,
@@ -2311,19 +2333,6 @@
       }
     },
     {
-      "id": 114,
-      "party_datetime": "NOW+8d@20:15",
-      "location_id": 62,
-      "contact_one_id": 57,
-      "contact_two": {
-        "email": "gary.reed@unc.edu",
-        "first_name": "Gary",
-        "last_name": "Reed",
-        "phone_number": "1991692832",
-        "contact_preference": "text"
-      }
-    },
-    {
       "id": 115,
       "party_datetime": "NOW-4d@20:30",
       "location_id": 56,
@@ -2424,19 +2433,6 @@
         "first_name": "Martin",
         "last_name": "Ellis",
         "phone_number": "5040599133",
-        "contact_preference": "text"
-      }
-    },
-    {
-      "id": 123,
-      "party_datetime": "NOW-5d@22:15",
-      "location_id": 39,
-      "contact_one_id": 59,
-      "contact_two": {
-        "email": "zachary.sandoval@unc.edu",
-        "first_name": "Zachary",
-        "last_name": "Sandoval",
-        "phone_number": "2540439457",
         "contact_preference": "text"
       }
     },
