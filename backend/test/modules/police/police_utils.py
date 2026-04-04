@@ -1,16 +1,10 @@
 from typing import Any, TypedDict, Unpack, override
 
 import bcrypt
-from sqlalchemy import delete, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.modules.police.police_entity import PoliceEntity
 from src.modules.police.police_model import PoliceAccountDto, PoliceAccountUpdate
 from test.utils.resource_test_utils import ResourceTestUtils
-
-
-class PoliceOverrides(TypedDict, total=False):
-    email: str
-    hashed_password: str
 
 
 class PoliceUpdateOverrides(TypedDict, total=False):
@@ -38,45 +32,9 @@ class PoliceTestUtils(
     @staticmethod
     def generate_defaults(count: int) -> dict[str, Any]:
         return {
-            "email": "police@unc.edu",
+            "email": f"police{count}@unc.edu",
             "password": PoliceTestUtils.TEST_PASSWORD,
         }
-
-    @override
-    async def create_many(
-        self, *, i: int, **overrides: Unpack[PoliceUpdateOverrides]
-    ) -> list[PoliceEntity]:
-        raise NotImplementedError("create_many is not implemented for PoliceTestUtils2")
-
-    @override
-    async def create_one(self, **overrides: Unpack[PoliceUpdateOverrides]) -> PoliceEntity:
-        """Create a single police entity (singleton)."""
-        # Delete any existing police record (singleton pattern)
-        await self.session.execute(delete(PoliceEntity))
-        await self.session.commit()
-
-        # Enable identity insert to explicitly set id=1
-        await self.session.execute(text("SET IDENTITY_INSERT police ON"))
-
-        hashed_password = self.hash_password(overrides.get("password", self.TEST_PASSWORD))
-        police_entity = await super().next_entity(**overrides, hashed_password=hashed_password)
-
-        # Explicitly set id to 1 (required by CHECK constraint)
-        police_entity.id = 1
-
-        self.session.add(police_entity)
-        await self.session.flush()
-
-        # Disable identity insert
-        await self.session.execute(text("SET IDENTITY_INSERT police OFF"))
-        await self.session.commit()
-
-        return police_entity
-
-    async def get_police(self) -> PoliceEntity:
-        """Get the police entity (singleton)."""
-        all_police = await self.get_all()
-        return all_police[0]
 
     @override
     def assert_matches(
@@ -88,19 +46,25 @@ class PoliceTestUtils(
         assert resource1 is not None, "First resource is None"
         assert resource2 is not None, "Second resource is None"
 
-        # Email should always match
         assert resource1.email == resource2.email, (
             f"Email mismatch: {resource1.email} != {resource2.email}"
         )
 
-        # If both are entities, compare IDs and hashed passwords
         if isinstance(resource1, PoliceEntity) and isinstance(resource2, PoliceEntity):
             assert resource1.id == resource2.id, f"ID mismatch: {resource1.id} != {resource2.id}"
             assert resource1.hashed_password == resource2.hashed_password, (
                 "Hashed password mismatch"
             )
 
-        # If both are updates, compare passwords
+        if isinstance(resource1, PoliceAccountDto) and isinstance(resource2, PoliceAccountDto):
+            assert resource1.id == resource2.id, f"ID mismatch: {resource1.id} != {resource2.id}"
+
+        if isinstance(resource1, PoliceEntity) and isinstance(resource2, PoliceAccountDto):
+            assert resource1.id == resource2.id, f"ID mismatch: {resource1.id} != {resource2.id}"
+
+        if isinstance(resource1, PoliceAccountDto) and isinstance(resource2, PoliceEntity):
+            assert resource1.id == resource2.id, f"ID mismatch: {resource1.id} != {resource2.id}"
+
         if isinstance(resource1, PoliceAccountUpdate) and isinstance(
             resource2, PoliceAccountUpdate
         ):

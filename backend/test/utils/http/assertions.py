@@ -5,7 +5,7 @@ from typing import Any, get_args, get_origin, overload
 from fastapi import HTTPException
 from httpx import Response
 from pydantic import BaseModel
-from src.core.query_utils import PaginatedResponse
+from src.core.utils.query_utils import PaginatedResponse
 
 
 @overload

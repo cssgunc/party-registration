@@ -124,6 +124,7 @@ async def reset_dev():
 
         await session.flush()
 
+        account_id_by_onyen: dict[str, int] = {}
         for student_data in data["students"]:
             account = entities.AccountEntity(
                 pid=student_data["pid"],
@@ -135,16 +136,7 @@ async def reset_dev():
             )
             session.add(account)
             await session.flush()
-
-            student = entities.StudentEntity.from_data(
-                StudentData(
-                    contact_preference=ContactPreference(student_data["contact_preference"]),
-                    phone_number=student_data["phone_number"],
-                    last_registered=parse_date(student_data.get("last_registered")),
-                ),
-                account.id,
-            )
-            session.add(student)
+            account_id_by_onyen[student_data["onyen"]] = account.id
 
         for location_data in data["locations"]:
             location = entities.LocationEntity(
@@ -162,6 +154,20 @@ async def reset_dev():
                 longitude=location_data["longitude"],
             )
             session.add(location)
+
+        await session.flush()
+
+        for student_data in data["students"]:
+            student = entities.StudentEntity.from_data(
+                StudentData(
+                    contact_preference=ContactPreference(student_data["contact_preference"]),
+                    phone_number=student_data["phone_number"],
+                    last_registered=parse_date(student_data.get("last_registered")),
+                ),
+                account_id_by_onyen[student_data["onyen"]],
+                residence_id=student_data.get("residence_id"),
+            )
+            session.add(student)
 
         await session.flush()
 

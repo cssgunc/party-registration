@@ -7,9 +7,9 @@ from src.modules.party.party_service import (
     ContactTwoMatchesContactOneException,
     PartyNotFoundException,
     PartyService,
-    StudentNotFoundException,
 )
 from src.modules.student.student_model import ContactPreference
+from src.modules.student.student_service import StudentNotFoundException
 from test.modules.location.location_utils import LocationTestUtils
 from test.modules.party.party_utils import PartyTestUtils
 from test.modules.student.student_utils import StudentTestUtils
