@@ -14,6 +14,7 @@ from zoneinfo import ZoneInfo
 
 import src.modules as entities
 from sqlalchemy import create_engine, text
+from src.core.bcrypt_utils import hash_password
 from src.core.config import env
 from src.core.database import AsyncSessionLocal, EntityBase, server_url, validate_sql_identifier
 from src.core.database import engine as async_engine
@@ -107,7 +108,7 @@ async def reset_dev():
 
         police = entities.PoliceEntity(
             email=data["police"]["email"],
-            hashed_password=data["police"]["hashed_password"],
+            hashed_password=hash_password(data["police"]["password"]),
         )
         session.add(police)
 
