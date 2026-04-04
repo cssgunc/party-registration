@@ -1,9 +1,12 @@
 "use client";
 
 import EmbeddedMap from "@/app/police/_components/EmbeddedMap";
+import PartyCsvExportButton from "@/app/police/_components/PartyCsvExportButton";
 import PartyList from "@/app/police/_components/PartyList";
 import SplitDateRangeFilter from "@/app/police/_components/SplitDateRangeFilter";
 import AddressSearch from "@/components/AddressSearch";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { PartyDto } from "@/lib/api/party/party.types";
@@ -17,7 +20,6 @@ import { useEffect, useMemo, useState } from "react";
 import AdvancedPartySearch, {
   AdvancedPartyFilters,
 } from "./_components/AdvancedPartySearch";
-import PartyCsvExportButton from "./_components/PartyCsvExportButton";
 
 const locationService = new LocationService();
 
@@ -38,19 +40,16 @@ export default function PolicePage() {
     severity: "",
   });
 
-  // Fetch place details when address is selected
   const { data: placeDetails } = usePlaceDetails(
     searchAddress?.google_place_id
   );
 
-  // Fetch parties using Tanstack Query
   const {
     data: allParties = [],
     isLoading,
     error,
   } = usePoliceParties({ startDate, endDate });
 
-  // Fetch nearby parties if address search is active
   const { data: nearbyParties, isLoading: isLoadingNearby } = usePartiesNearby({
     placeId: searchAddress?.google_place_id,
     startDate,
@@ -135,36 +134,46 @@ export default function PolicePage() {
     });
   }, [advancedFilters, baseParties]);
 
-  // Handle party selection from the list
   function handleActiveParty(party: PartyDto | null): void {
     setActiveParty(party ?? undefined);
-    console.log("Active party set to:", party);
   }
 
-  // Scroll to the selected party when it changes
   useEffect(() => {
     if (!activeParty) return;
-    const partyElement = document.querySelector(
-      `[data-party-id="${activeParty.id}"]`
-    );
-    if (partyElement) {
-      partyElement.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    }
+    const el = document.querySelector(`[data-party-id="${activeParty.id}"]`);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [activeParty]);
 
   return (
-    <div className="h-screen bg-white flex flex-col overflow-hidden">
-      {/* Navbar */}
-      <div className="overflow-y-scroll md:flex flex-1 overflow-hidden">
-        {/* Left Panel - Filters and Search */}
-        <div className="md:w-1/3 border-r border-gray-200 flex flex-col overflow-hidden">
-          {/* Filter Between Section */}
-          <div className="px-4 md:px-6 py-4 flex-shrink-0 border-b border-gray-200">
-            <h2 className="text-2xl font-semibold mb-4 md:text-xl">
-              Filter Between
-            </h2>
-            <div>
+    <main className="lg:h-[calc(100vh-var(--app-header-height))] lg:overflow-hidden overflow-y-auto bg-background px-4 py-4 md:px-6 md:py-6">
+      <div className="grid lg:h-full gap-6 lg:grid-cols-[minmax(22rem,34rem)_minmax(0,1fr)]">
+        {/* Left panel */}
+        <aside className="flex lg:min-h-0 flex-col">
+          {/* Header */}
+          <header className="flex items-center justify-between gap-3 px-1 pb-4">
+            <h1 className="page-title text-secondary">Party Search</h1>
+            <div className="flex items-center gap-2">
+              <Button size="sm">Tracker</Button>
+              <PartyCsvExportButton startDate={startDate} endDate={endDate} />
+            </div>
+          </header>
+
+          {/* Search filters */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-1 pb-4">
+            <div className="flex flex-col gap-1 order-2 sm:order-1">
+              <Label>Enter Address</Label>
+              <AddressSearch
+                className="[&_input]:bg-card [&_input]:border-border"
+                value={searchAddress?.formatted_address || ""}
+                onSelect={setSearchAddress}
+                placeholder="Enter Address..."
+                locationService={locationService}
+              />
+            </div>
+            <div className="flex flex-col gap-1 order-1 sm:order-2">
+              <Label htmlFor="date-range">Date Search</Label>
               <SplitDateRangeFilter
+                id="date-range"
                 startDate={startDate}
                 endDate={endDate}
                 onStartDateChange={setStartDate}
@@ -173,77 +182,53 @@ export default function PolicePage() {
             </div>
           </div>
 
-          {/* Dto Search Section */}
-          <div className="px-4 md:px-6 py-4 flex-shrink-0 border-b border-gray-200">
-            <h2 className="text-2xl font-semibold mb-4 flex-shrink-0 md:text-xl">
-              Proximity Search
-            </h2>
-
-            {/* Address Search */}
-            <div className="flex-shrink-0">
-              <AddressSearch
-                value={searchAddress?.formatted_address || ""}
-                onSelect={setSearchAddress}
-                placeholder="Enter Address..."
-                locationService={locationService}
-              />
-              {searchAddress && (
-                <p className="mt-2 text-sm text-gray-600">
-                  Searching within 0.5 miles
-                </p>
-              )}
-            </div>
+          <div className="px-1 pb-4">
             <AdvancedPartySearch
               filters={advancedFilters}
               onFiltersChange={setAdvancedFilters}
             />
           </div>
 
-          {/* Party List Section */}
-          <div className="px-4 md:px-6 py-4 flex-1 flex flex-col overflow-hidden">
-            <div className="flex justify-between">
-              <h2 className="text-2xl font-semibold mb-4 flex-shrink-0 md:text-xl">
-                Party List
-              </h2>
-              <PartyCsvExportButton startDate={startDate} endDate={endDate} />
-            </div>
-
-            {/* Loading State */}
+          {/* Party list */}
+          <div className="flex flex-col lg:min-h-0 lg:flex-1 lg:overflow-hidden p-1 -m-1">
             {(isLoading || isLoadingNearby) && (
-              <div className="text-center py-8">
-                <p className="text-gray-600">Loading parties...</p>
+              <div className="w-full px-1 py-8 text-center">
+                <p className="content text-muted-foreground">
+                  Loading parties...
+                </p>
               </div>
             )}
-
-            {/* Error State */}
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg mb-4">
-                <p>Error loading parties</p>
+              <div
+                className="mt-2 rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3"
+                role="alert"
+              >
+                <p className="content text-destructive">
+                  Error loading parties
+                </p>
               </div>
             )}
-
-            {/* Party List - Scrollable */}
-            {!isLoading && !isLoadingNearby && (
-              <div
-                className="max-h-48.5 overflow-scroll md:max-h-100 flex-1 min-h-0"
-                id="party-list"
-              >
-                <PartyList
-                  parties={filteredParties}
-                  onSelect={(party) => handleActiveParty(party)}
-                  activeParty={activeParty}
-                />
-              </div>
+            {!isLoading && !isLoadingNearby && !error && (
+              <PartyList
+                parties={filteredParties}
+                onSelect={(party) => handleActiveParty(party)}
+                activeParty={activeParty}
+              />
             )}
           </div>
-        </div>
+        </aside>
 
-        {/* Right Panel - Map */}
-        <div className="h-[60vh] sm:h-[75vh] md:h-full flex-1 px-6 py-4 flex flex-col overflow-hidden">
-          <h2 className="text-2xl font-semibold mb-4 flex-shrink-0 md:text-xl">
-            {searchAddress ? "Showing Nearby Parties" : "Showing Parties"}
+        <section
+          className="flex lg:min-h-0 flex-col"
+          aria-labelledby="police-map-results"
+        >
+          <h2
+            id="police-map-results"
+            className="page-title mb-3 text-secondary"
+          >
+            {searchAddress ? "Showing Nearby Parties" : "Showing All Parties"}
           </h2>
-          <div className="h-full md:flex-1 overflow-hidden">
+          <div className="min-h-0 lg:flex-1 overflow-hidden rounded-md max-lg:h-80">
             <EmbeddedMap
               parties={filteredParties}
               activeParty={activeParty}
@@ -252,11 +237,11 @@ export default function PolicePage() {
                   ? { lat: placeDetails.latitude, lng: placeDetails.longitude }
                   : undefined
               }
-              onSelect={(party) => handleActiveParty(party)}
+              onSelect={handleActiveParty}
             />
           </div>
-        </div>
+        </section>
       </div>
-    </div>
+    </main>
   );
 }
