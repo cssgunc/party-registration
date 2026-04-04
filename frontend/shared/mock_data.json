@@ -2,7 +2,7 @@
   "police": {
     "email": "police@example.com",
     "password": "securepassword",
-    "hashed_password": "$2b$12$KIXQJZ6Yh1rOqv1pX5E5EuFh8jFz1Z6Yh1rOqv1pX5E5EuFh8jFz1Z6"
+    "hashed_password": "$2b$12$Z7spWrk5cs2vVjIO/jHZeeb4s/ofF4bCRUBVpaorKKYKGfnl6ctj."
   },
   "accounts": [
     {
