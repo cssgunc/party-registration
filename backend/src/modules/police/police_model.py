@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr
-from src.core.query_utils import PaginatedResponse
+from src.core.utils.query_utils import PaginatedResponse
 
 
 class PoliceAccountDto(BaseModel):

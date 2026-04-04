@@ -1,10 +1,14 @@
+from datetime import UTC, datetime
+from typing import ClassVar
+
 from fastapi import Depends, Request
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.database import get_session
 from src.core.exceptions import ConflictException, ForbiddenException, NotFoundException
-from src.core.query_utils import get_paginated_results, parse_pagination_params
+from src.core.utils.excel_utils import ExcelExporter
+from src.core.utils.query_utils import get_paginated_results, parse_pagination_params
 from src.modules.account.account_entity import AccountEntity, AccountRole
 from src.modules.account.account_model import (
     AccountData,
@@ -51,6 +55,16 @@ class AccountByOnyenNotFoundException(NotFoundException):
 
 
 class AccountService:
+    _ALLOWED_FIELDS: ClassVar[list[str]] = [
+        "id",
+        "email",
+        "first_name",
+        "last_name",
+        "onyen",
+        "pid",
+        "role",
+    ]
+
     def __init__(self, session: AsyncSession = Depends(get_session)):
         self.session = session
 
@@ -110,8 +124,7 @@ class AccountService:
             PaginatedAccountsResponse with items and metadata
         """
         # Define allowed fields for sorting and filtering
-        allowed_fields = ["id", "email", "first_name", "last_name", "pid", "role"]
-        allowed_sort_fields = allowed_filter_fields = allowed_fields
+        allowed_sort_fields = allowed_filter_fields = self._ALLOWED_FIELDS
 
         # Build base query
         base_query = select(AccountEntity)
@@ -134,6 +147,28 @@ class AccountService:
             allowed_filter_fields=allowed_filter_fields,
         )
         return PaginatedAccountsResponse(**result.model_dump())
+
+    async def get_accounts_for_export(self, request: Request) -> list[AccountDto]:
+        """Get all accounts for export, ignoring pagination."""
+        return (await self.get_accounts_paginated(request)).items
+
+    def export_accounts_to_excel(self, accounts: list[AccountDto]) -> bytes:
+        """Export accounts to Excel bytes."""
+        headers = ["Onyen", "Email", "First Name", "Last Name", "PID", "Role"]
+        exporter = ExcelExporter(sheet_title=f"Accounts {datetime.now(UTC).strftime('%Y-%m-%d')}")
+        exporter.set_headers(headers)
+        for account in accounts:
+            exporter.add_row(
+                [
+                    account.onyen,
+                    account.email,
+                    account.first_name,
+                    account.last_name,
+                    account.pid,
+                    account.role.value.capitalize(),
+                ]
+            )
+        return exporter.to_bytes()
 
     async def get_accounts_by_roles(
         self, roles: list[AccountRole] | None = None

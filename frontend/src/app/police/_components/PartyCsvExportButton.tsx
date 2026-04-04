@@ -37,20 +37,20 @@ export default function PartyCsvExportButton({
     }
   };
 
-  const isDisabled = !startDate || !endDate || isDownloading;
-
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col items-end gap-1">
       <Button
         onClick={handleDownload}
-        disabled={isDisabled}
-        className="w-full sm:w-auto"
+        disabled={!startDate || !endDate || isDownloading}
+        variant="outline"
+        size="icon-sm"
+        aria-label="Download CSV"
+        title="Download CSV"
       >
-        <Download className="mr-2 h-4 w-4" />
-        {isDownloading ? "Downloading..." : "Download CSV"}
+        <Download className="size-4" />
       </Button>
       {error && (
-        <p className="text-sm text-red-600" role="alert">
+        <p className="content text-destructive" role="alert">
           {error}
         </p>
       )}

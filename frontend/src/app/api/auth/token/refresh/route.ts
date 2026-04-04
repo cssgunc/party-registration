@@ -10,10 +10,8 @@ import { NextRequest, NextResponse } from "next/server";
  * interceptor when the current access token has expired but the
  * longer-lived refresh token is still valid.
  *
- * The refresh_token cookie is path-restricted to this route, so the
- * browser only sends it here and nowhere else. On success, a new
- * session JWT with the fresh access token is written back to the
- * session cookie.
+ * On success, a new session JWT with the fresh access token is written
+ * back to the session cookie.
  */
 export async function POST(req: NextRequest) {
   const refreshToken = req.cookies.get("refresh_token")?.value;

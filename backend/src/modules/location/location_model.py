@@ -1,7 +1,7 @@
 from typing import Self
 
 from pydantic import AwareDatetime, BaseModel
-from src.core.query_utils import PaginatedResponse
+from src.core.utils.query_utils import PaginatedResponse
 from src.modules.incident.incident_model import IncidentDto
 
 

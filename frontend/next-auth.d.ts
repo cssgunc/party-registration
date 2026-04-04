@@ -5,6 +5,7 @@ import "next-auth/jwt";
 declare module "next-auth" {
   interface Session {
     accessToken?: string;
+    accessTokenExpires?: number;
     id?: string;
     role?: AppRole;
     firstName?: string;
@@ -29,8 +30,7 @@ declare module "next-auth" {
 declare module "next-auth/jwt" {
   // JWT is stored as HTTP-only cookie by default in NextAuth.
   // NOTE: The refresh token is intentionally NOT stored here. It lives in a
-  // dedicated httpOnly cookie scoped to path=/api/auth/token/refresh so the
-  // browser cannot send it to any other endpoint.
+  // dedicated httpOnly cookie.
   interface JWT {
     accessToken?: string;
     accessTokenExpires?: number; // ms epoch

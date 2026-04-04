@@ -33,8 +33,10 @@ const authOptions: NextAuthOptions = {
 
       // Expose the access token so the Axios API client can attach it to request headers
       if (token.accessToken) {
-        (session as Session & { accessToken?: string }).accessToken =
-          token.accessToken as string;
+        session.accessToken = token.accessToken as string;
+      }
+      if (token.accessTokenExpires) {
+        session.accessTokenExpires = token.accessTokenExpires as number;
       }
 
       return session;
