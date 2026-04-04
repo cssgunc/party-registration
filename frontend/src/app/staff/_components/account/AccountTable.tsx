@@ -13,6 +13,7 @@ import type {
 } from "@/lib/api/account/account.types";
 import { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
+import { useSession } from "next-auth/react";
 import { useState } from "react";
 import * as z from "zod";
 import { useSidebar } from "../shared/sidebar/SidebarContext";
@@ -23,6 +24,7 @@ type AccountTableFormValues = z.infer<typeof accountTableFormSchema>;
 
 export const AccountTable = () => {
   const { openSidebar, closeSidebar } = useSidebar();
+  const { data: session } = useSession();
   const [editingAccount, setEditingAccount] = useState<AccountDto | null>(null);
 
   const accountsQuery = useAccounts();
@@ -223,6 +225,9 @@ export const AccountTable = () => {
           `Are you sure you want to delete account ${account.email}? This action cannot be undone.`
         }
         isDeleting={deleteMutation.isPending}
+        isDeleteDisabled={(account: AccountDto) =>
+          account.id === Number(session?.id)
+        }
         sortBy={(a, b) =>
           a.last_name.localeCompare(b.last_name) ||
           a.first_name.localeCompare(b.first_name)
