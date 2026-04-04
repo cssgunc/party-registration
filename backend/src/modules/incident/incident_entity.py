@@ -24,6 +24,7 @@ class IncidentEntity(MappedAsDataclass, EntityBase):
         Enum(IncidentSeverity, native_enum=False, length=20), nullable=False
     )
     description: Mapped[str] = mapped_column(String(2000), nullable=False, default="")
+    reference_id: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
 
     # Relationships
     location: Mapped["LocationEntity"] = relationship(
@@ -37,6 +38,7 @@ class IncidentEntity(MappedAsDataclass, EntityBase):
             incident_datetime=data.incident_datetime,
             severity=data.severity,
             description=data.description,
+            reference_id=data.reference_id,
         )
 
     def to_dto(self) -> IncidentDto:
@@ -52,4 +54,5 @@ class IncidentEntity(MappedAsDataclass, EntityBase):
             incident_datetime=incident_dt,
             description=self.description,
             severity=self.severity,
+            reference_id=self.reference_id,
         )

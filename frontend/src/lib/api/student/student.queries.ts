@@ -1,7 +1,9 @@
+import { LocationDto } from "@/lib/api/location/location.types";
 import { MY_PARTIES_KEY, PartyDto } from "@/lib/api/party/party.types";
 import StudentService from "@/lib/api/student/student.service";
 import {
   CURRENT_STUDENT_KEY,
+  ResidenceUpdateWithDisplayDto,
   STUDENTS_KEY,
   StudentData,
   StudentDto,
@@ -74,6 +76,61 @@ export function useUpdateStudent(
       // This will invalidate both ["students"] and ["students", "me"]
       queryClient.invalidateQueries({ queryKey: STUDENTS_KEY });
       options?.onSuccess?.(...params);
+    },
+  });
+}
+
+export function useUpdateResidence() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    LocationDto,
+    Error,
+    ResidenceUpdateWithDisplayDto,
+    { previous: StudentDto | undefined }
+  >({
+    mutationFn: ({ residence_place_id }) =>
+      studentService.updateResidence({ residence_place_id }),
+    onMutate: async (variables) => {
+      await queryClient.cancelQueries({ queryKey: CURRENT_STUDENT_KEY });
+      const previous =
+        queryClient.getQueryData<StudentDto>(CURRENT_STUDENT_KEY);
+      queryClient.setQueryData<StudentDto>(CURRENT_STUDENT_KEY, (old) =>
+        old
+          ? {
+              ...old,
+              residence: {
+                location: {
+                  google_place_id: variables.residence_place_id,
+                  formatted_address: variables.formatted_address,
+                  id: old.residence?.location.id ?? 0,
+                  latitude: old.residence?.location.latitude ?? 0,
+                  longitude: old.residence?.location.longitude ?? 0,
+                  street_number: null,
+                  street_name: null,
+                  unit: null,
+                  city: null,
+                  county: null,
+                  state: null,
+                  country: null,
+                  zip_code: null,
+                  hold_expiration: null,
+                  incidents: [],
+                },
+                residence_chosen_date: new Date(),
+              },
+            }
+          : old
+      );
+      return { previous };
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(CURRENT_STUDENT_KEY, context.previous);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: CURRENT_STUDENT_KEY });
     },
   });
 }
