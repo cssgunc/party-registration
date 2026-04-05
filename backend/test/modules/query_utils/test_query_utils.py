@@ -62,8 +62,8 @@ class TestQueryUtilsSorting:
     @pytest.mark.asyncio
     async def test_sort_enum_field(self):
         """Sorting by an enum field (severity) orders alphabetically by value."""
-        await self.incident_utils.create_one(severity=IncidentSeverity.WARNING)
-        await self.incident_utils.create_one(severity=IncidentSeverity.COMPLAINT)
+        await self.incident_utils.create_one(severity=IncidentSeverity.IN_PERSON)
+        await self.incident_utils.create_one(severity=IncidentSeverity.REMOTE)
         await self.incident_utils.create_one(severity=IncidentSeverity.CITATION)
 
         response = await self.admin_client.get("/api/incidents?sort_by=severity&sort_order=asc")
@@ -105,10 +105,10 @@ class TestQueryUtilsFilterOperators:
     @pytest.mark.asyncio
     async def test_filter_equals(self):
         """EQUALS operator filters to exact enum match."""
-        i1 = await self.incident_utils.create_one(severity=IncidentSeverity.COMPLAINT)
-        await self.incident_utils.create_one(severity=IncidentSeverity.WARNING)
+        i1 = await self.incident_utils.create_one(severity=IncidentSeverity.CITATION)
+        await self.incident_utils.create_one(severity=IncidentSeverity.IN_PERSON)
 
-        response = await self.admin_client.get("/api/incidents?severity=complaint")
+        response = await self.admin_client.get("/api/incidents?severity=citation")
         paginated = assert_res_paginated(response, IncidentDto, total_records=1)
         self.incident_utils.assert_matches(paginated.items[0], i1.to_dto())
 

@@ -173,7 +173,7 @@ class TestIncidentRouter:
         """Test successfully updating an incident."""
         incident = await self.incident_utils.create_one()
         update_dto = await self.incident_utils.next_update_dto(
-            description="Updated description", severity=IncidentSeverity.WARNING
+            description="Updated description", severity=IncidentSeverity.IN_PERSON
         )
 
         response = await self.admin_client.put(

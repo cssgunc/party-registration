@@ -47,13 +47,13 @@ class TestLocationCSVRouter:
 
         # Add incidents to location1: 2 complaints, 1 warning, 3 citations
         await self.incident_utils.create_one(
-            location_id=location1.id, severity=IncidentSeverity.COMPLAINT
+            location_id=location1.id, severity=IncidentSeverity.REMOTE
         )
         await self.incident_utils.create_one(
-            location_id=location1.id, severity=IncidentSeverity.COMPLAINT
+            location_id=location1.id, severity=IncidentSeverity.REMOTE
         )
         await self.incident_utils.create_one(
-            location_id=location1.id, severity=IncidentSeverity.WARNING
+            location_id=location1.id, severity=IncidentSeverity.IN_PERSON
         )
         await self.incident_utils.create_one(
             location_id=location1.id, severity=IncidentSeverity.CITATION

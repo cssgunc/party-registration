@@ -1,5 +1,5 @@
 /**
- * Incident severity levels per TDD 3.2
+ * Incident severity levels - complaint, warning, or citation
  */
 type IncidentSeverity = "remote_warning" | "in_person_warning" | "citation";
 

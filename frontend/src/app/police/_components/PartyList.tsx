@@ -15,6 +15,7 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
+import type { IncidentSeverity } from "@/lib/api/incident/incident.types";
 import {
   getCitationCount,
   getComplaintCount,
@@ -44,9 +45,8 @@ const formatPhoneNumber = (phone: string): string => {
 
 const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
   const [incidentDialogOpen, setIncidentDialogOpen] = useState(false);
-  const [incidentType, setIncidentType] = useState<
-    "complaint" | "warning" | "citation"
-  >("complaint");
+  const [incidentType, setIncidentType] =
+    useState<IncidentSeverity>("in_person_warning");
   const [selectedParty, setSelectedParty] = useState<PartyDto | null>(null);
 
   if (parties.length === 0) {
@@ -59,7 +59,7 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
 
   const openIncidentDialog = (
     event: MouseEvent,
-    type: "complaint" | "warning" | "citation",
+    type: IncidentSeverity,
     selectedParty: PartyDto
   ) => {
     event.stopPropagation();
@@ -113,19 +113,25 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                         <DropdownMenuContent className="w-44" align="end">
                           <DropdownMenuItem
                             onClick={(event) =>
-                              openIncidentDialog(event, "complaint", party)
+                              openIncidentDialog(
+                                event,
+                                "in_person_warning",
+                                party
+                              )
                             }
                           >
                             <Image src={blackFlag} alt="complaints" />
-                            <span className="content">Add complaint</span>
+                            <span className="content">
+                              Add in-person warning
+                            </span>
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={(event) =>
-                              openIncidentDialog(event, "warning", party)
+                              openIncidentDialog(event, "remote_warning", party)
                             }
                           >
                             <Image src={yellowFlag} alt="warning" />
-                            <span className="content">Add warning</span>
+                            <span className="content">Add remote warning</span>
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={(event) =>

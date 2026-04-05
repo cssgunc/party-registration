@@ -1,5 +1,7 @@
 "use client";
 
+import AddressSearch from "@/components/AddressSearch";
+import DatePicker from "@/components/DatePicker";
 import { Button } from "@/components/ui/button";
 import {
   Field,
@@ -22,7 +24,10 @@ import {
   IncidentDto,
   IncidentSeverity,
 } from "@/lib/api/incident/incident.types";
-import { useState } from "react";
+import { LocationService } from "@/lib/api/location/location.service";
+import { AutocompleteResult } from "@/lib/api/location/location.types";
+import { format } from "date-fns";
+import { useMemo, useState } from "react";
 import * as z from "zod";
 
 const incidentSeverityValues: IncidentSeverity[] = [
@@ -33,7 +38,10 @@ const incidentSeverityValues: IncidentSeverity[] = [
 
 const incidentTableFormSchema = z.object({
   location_id: z.number().int().positive("Location is required"),
-  incident_datetime: z.date(),
+  incident_date: z.date({
+    message: "Incident date is required",
+  }),
+  incident_time: z.string().min(1, "Incident time is required"),
   severity: z.enum(incidentSeverityValues),
   description: z.string(),
   reference_id: z.string().nullable().optional(),
@@ -54,12 +62,6 @@ interface IncidentTableFormProps {
   title?: string;
 }
 
-function toLocalDatetimeString(date: Date) {
-  const tzOffset = date.getTimezoneOffset() * 60000;
-  const local = new Date(date.getTime() - tzOffset);
-  return local.toISOString().slice(0, 16);
-}
-
 function severityLabel(severity: IncidentSeverity): string {
   if (severity === "remote_warning") return "Remote Warning";
   if (severity === "in_person_warning") return "In-Person Warning";
@@ -75,13 +77,32 @@ export default function IncidentTableForm({
 }: IncidentTableFormProps) {
   const [formData, setFormData] = useState<IncidentTableFormValues>({
     location_id: editData?.location_id ?? 0,
-    incident_datetime: editData?.incident_datetime ?? new Date(),
+    incident_date: editData?.incident_datetime ?? new Date(),
+    incident_time: editData?.incident_datetime
+      ? format(editData.incident_datetime, "HH:mm")
+      : "",
     severity: editData?.severity ?? "in_person_warning",
     description: editData?.description ?? "",
     reference_id: editData?.reference_id ?? null,
   });
+  const locationService = new LocationService();
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const address = useMemo(() => {
+    if (formData.location_id <= 0) return "";
+    return (
+      locations.find((loc) => loc.id === formData.location_id)?.label ?? ""
+    );
+  }, [formData.location_id, locations]);
+
+  const initialAddressSelection: AutocompleteResult | null =
+    address && formData?.location_id
+      ? {
+          formatted_address: address,
+          google_place_id: formData.location_id.toString(),
+        }
+      : null;
 
   const updateField = <K extends keyof IncidentTableFormValues>(
     field: K,
@@ -115,13 +136,34 @@ export default function IncidentTableForm({
 
     setIsSubmitting(true);
     try {
+      const { incident_date, incident_time, ...rest } = result.data;
+      const [hours, minutes] = incident_time.split(":").map(Number);
+      const incident_datetime = new Date(incident_date);
+      incident_datetime.setHours(hours, minutes, 0, 0);
+
       await onSubmit({
-        ...result.data,
+        ...rest,
+        incident_datetime,
         description: result.data.description.trim(),
         reference_id: result.data.reference_id?.trim() || null,
       });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleAddressSelect = (address: AutocompleteResult | null) => {
+    setFormData((prev) => ({
+      ...prev,
+      address: address?.formatted_address || "",
+      placeId: address?.google_place_id || undefined,
+    }));
+    if (errors.address) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors.address;
+        return newErrors;
+      });
     }
   };
 
@@ -141,31 +183,22 @@ export default function IncidentTableForm({
         <FieldSet>
           <Field data-invalid={!!errors.location_id}>
             <FieldLabel>Location</FieldLabel>
-            <Select
-              value={
-                formData.location_id > 0 ? String(formData.location_id) : ""
-              }
-              onValueChange={(value) =>
-                updateField("location_id", Number(value))
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select a location" />
-              </SelectTrigger>
-              <SelectContent>
-                {locations.map((location) => (
-                  <SelectItem key={location.id} value={String(location.id)}>
-                    {location.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <AddressSearch
+              value={address}
+              initialSelection={initialAddressSelection}
+              onSelect={handleAddressSelect}
+              locationService={locationService}
+              placeholder="Search for the location address..."
+              className="w-full"
+              error={errors.address}
+              chapelHillOnly
+            />
             {errors.location_id && (
               <FieldError>{errors.location_id}</FieldError>
             )}
           </Field>
 
-          <Field data-invalid={!!errors.incident_datetime}>
+          {/* <Field data-invalid={!!errors.incident_datetime}>
             <FieldLabel>Date and Time</FieldLabel>
             <Input
               type="datetime-local"
@@ -177,7 +210,35 @@ export default function IncidentTableForm({
             {errors.incident_datetime && (
               <FieldError>{errors.incident_datetime}</FieldError>
             )}
-          </Field>
+          </Field> */}
+          <div className="grid grid-cols-2 gap-4">
+            <Field data-invalid={!!errors.incident_date}>
+              <FieldLabel htmlFor="incident-date">Incident Date</FieldLabel>
+              <DatePicker
+                id="incident-date"
+                dateFormat="MM/dd/yy"
+                value={formData.incident_date ?? null}
+                onChange={(date) => updateField("incident_date", date as Date)}
+              />
+              {errors.incident_date && (
+                <FieldError>{errors.incident_date}</FieldError>
+              )}
+            </Field>
+
+            <Field data-invalid={!!errors.incident_time}>
+              <FieldLabel htmlFor="incident-time">Incident Time</FieldLabel>
+              <Input
+                id="incident-time"
+                type="time"
+                value={formData.incident_time}
+                onChange={(e) => updateField("incident_time", e.target.value)}
+                aria-invalid={!!errors.incident_time}
+              />
+              {errors.incident_time && (
+                <FieldError>{errors.incident_time}</FieldError>
+              )}
+            </Field>
+          </div>
 
           <Field data-invalid={!!errors.severity}>
             <FieldLabel>Severity</FieldLabel>
