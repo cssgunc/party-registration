@@ -133,12 +133,12 @@ class TestIncidentService:
     @pytest.mark.asyncio
     async def test_update_incident_severity(self) -> None:
         """Test updating an incident's severity."""
-        incident_entity = await self.incident_utils.create_one(severity=IncidentSeverity.COMPLAINT)
-        update_dto = await self.incident_utils.next_update_dto(severity=IncidentSeverity.CITATION)
+        incident_entity = await self.incident_utils.create_one(severity=IncidentSeverity.IN_PERSON)
+        update_dto = await self.incident_utils.next_update_dto(severity=IncidentSeverity.REMOTE)
 
         updated = await self.incident_service.update_incident(incident_entity.id, update_dto)
 
-        assert updated.severity == IncidentSeverity.CITATION
+        assert updated.severity == IncidentSeverity.REMOTE
 
     @pytest.mark.asyncio
     async def test_update_incident_not_found(self) -> None:
@@ -204,7 +204,7 @@ class TestIncidentService:
             location_place_id=location.google_place_id,
             incident_datetime=datetime(2025, 12, 25, 14, 30, 45, tzinfo=UTC),
             description="Detailed description of the incident issue",
-            severity=IncidentSeverity.WARNING,
+            severity=IncidentSeverity.IN_PERSON,
         )
 
         created = await self.incident_service.create_incident(create_dto)

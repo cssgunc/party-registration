@@ -170,17 +170,17 @@ class LocationService:
     def export_locations_to_excel(self, locations: list[LocationDto]) -> bytes:
         """Export locations to an Excel file."""
         exporter = ExcelExporter(sheet_title=f"Locations {datetime.now(UTC).strftime('%Y-%m-%d')}")
-        exporter.set_headers(["Address", "Complaint Count", "Warning Count", "Citation Count"])
+        exporter.set_headers(
+            ["Address", "In-Person Warning Count", "Remote Warning Count", "Citation Count"]
+        )
         for location in locations:
-            complaint_count = sum(
+            in_person_warning_count = sum(
                 1
                 for incident in location.incidents
-                if incident.severity == IncidentSeverity.COMPLAINT
+                if incident.severity == IncidentSeverity.IN_PERSON
             )
-            warning_count = sum(
-                1
-                for incident in location.incidents
-                if incident.severity == IncidentSeverity.WARNING
+            remote_warning_count = sum(
+                1 for incident in location.incidents if incident.severity == IncidentSeverity.REMOTE
             )
             citation_count = sum(
                 1
@@ -188,7 +188,12 @@ class LocationService:
                 if incident.severity == IncidentSeverity.CITATION
             )
             exporter.add_row(
-                [location.formatted_address, complaint_count, warning_count, citation_count]
+                [
+                    location.formatted_address,
+                    in_person_warning_count,
+                    remote_warning_count,
+                    citation_count,
+                ]
             )
         return exporter.to_bytes()
 

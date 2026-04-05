@@ -2,6 +2,7 @@ export const STAFF_TABS = [
   "parties",
   "students",
   "locations",
+  "incidents",
   "accounts",
 ] as const;
 
@@ -16,5 +17,6 @@ export const TAB_CONFIG: Record<
   parties: { label: "Parties", adminOnly: false },
   students: { label: "Students", adminOnly: false },
   locations: { label: "Locations", adminOnly: false },
+  incidents: { label: "Incidents", adminOnly: false },
   accounts: { label: "Accounts", adminOnly: true },
 };
