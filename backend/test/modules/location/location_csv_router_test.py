@@ -16,7 +16,7 @@ test_location_csv_authentication = generate_auth_required_tests(
 test_location_csv_empty = generate_csv_empty_test(
     "staff",
     "/api/locations/csv",
-    ("Address", "Complaint Count", "Warning Count", "Citation Count"),
+    ("Address", "In-Person Warning Count", "Remote Warning Count", "Citation Count"),
 )
 
 
@@ -45,7 +45,6 @@ class TestLocationCSVRouter:
         location1 = await self.location_utils.create_one()
         location2 = await self.location_utils.create_one()
 
-        # Add incidents to location1: 2 complaints, 1 warning, 3 citations
         await self.incident_utils.create_one(
             location_id=location1.id, severity=IncidentSeverity.REMOTE
         )
@@ -70,7 +69,7 @@ class TestLocationCSVRouter:
         response = await self.staff_client.get("/api/locations/csv")
         rows = assert_excel_response(
             response,
-            ("Address", "Complaint Count", "Warning Count", "Citation Count"),
+            ("Address", "In-Person Warning Count", "Remote Warning Count", "Citation Count"),
             expected_row_count=3,
         )
 

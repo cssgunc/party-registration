@@ -114,9 +114,16 @@ function countIncidentsBySeverity(
 }
 
 /**
- * Get warning count for a location
+ * Get remote warning count for a location
  */
-function getWarningCount(location: LocationDto): number {
+function getRemoteWarningCount(location: LocationDto): number {
+  return countIncidentsBySeverity(location, "remote_warning");
+}
+
+/**
+ * Get in-person warning count for a location
+ */
+function getInPersonWarningCount(location: LocationDto): number {
   return countIncidentsBySeverity(location, "in_person_warning");
 }
 
@@ -127,18 +134,11 @@ function getCitationCount(location: LocationDto): number {
   return countIncidentsBySeverity(location, "citation");
 }
 
-/**
- * Get complaint count for a location
- */
-function getComplaintCount(location: LocationDto): number {
-  return countIncidentsBySeverity(location, "remote_warning");
-}
-
 export {
   convertIncident,
   convertLocation,
   countIncidentsBySeverity,
   getCitationCount,
-  getComplaintCount,
-  getWarningCount,
+  getInPersonWarningCount,
+  getRemoteWarningCount,
 };

@@ -1,5 +1,5 @@
 /**
- * Incident severity levels - complaint, warning, or citation
+ * Incident severity levels
  */
 type IncidentSeverity = "remote_warning" | "in_person_warning" | "citation";
 

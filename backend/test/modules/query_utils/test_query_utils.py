@@ -220,7 +220,7 @@ class TestQueryUtilsTypeValidation:
     @pytest.mark.asyncio
     async def test_enum_field_comparison_operator_returns_400(self):
         """Using GT/GTE/LT/LTE on an enum field returns 400."""
-        response = await self.admin_client.get("/api/incidents?severity_gt=complaint")
+        response = await self.admin_client.get("/api/incidents?severity_gt=citation")
         assert_res_failure(
             response, BadRequestException("Operator 'gt' is not supported for string/enum fields")
         )

@@ -18,8 +18,8 @@ import {
 import type { IncidentSeverity } from "@/lib/api/incident/incident.types";
 import {
   getCitationCount,
-  getComplaintCount,
-  getWarningCount,
+  getInPersonWarningCount,
+  getRemoteWarningCount,
 } from "@/lib/api/location/location.types";
 import { PartyDto } from "@/lib/api/party/party.types";
 import { cn } from "@/lib/utils";
@@ -73,8 +73,10 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
       <ul className="h-full w-full overflow-y-auto rounded-md border border-border bg-card card-shadow [scroll-behavior:smooth]">
         {parties.map((party) =>
           (() => {
-            const complaintCount = getComplaintCount(party.location);
-            const warningCount = getWarningCount(party.location);
+            const inPersonWarningCount = getInPersonWarningCount(
+              party.location
+            );
+            const remoteWarningCount = getRemoteWarningCount(party.location);
             const citationCount = getCitationCount(party.location);
 
             return (
@@ -120,7 +122,7 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                               )
                             }
                           >
-                            <Image src={blackFlag} alt="complaints" />
+                            <Image src={yellowFlag} alt="in-person warning" />
                             <span className="content">
                               Add in-person warning
                             </span>
@@ -130,7 +132,7 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                               openIncidentDialog(event, "remote_warning", party)
                             }
                           >
-                            <Image src={yellowFlag} alt="warning" />
+                            <Image src={blackFlag} alt="warning" />
                             <span className="content">Add remote warning</span>
                           </DropdownMenuItem>
                           <DropdownMenuItem
@@ -191,23 +193,23 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                         <HoverCard openDelay={0} closeDelay={4}>
                           <HoverCardTrigger asChild>
                             <div className="flex items-center gap-1 content-bold font-bold text-foreground">
-                              {complaintCount}
-                              <Image src={blackFlag} alt="complaints" />
+                              {inPersonWarningCount}
+                              <Image src={blackFlag} alt="in-person warning" />
                             </div>
                           </HoverCardTrigger>
                           <HoverCardContent className="w-40">
-                            <p className="content">Complaints</p>
+                            <p className="content">In-Person Warnings</p>
                           </HoverCardContent>
                         </HoverCard>
                         <HoverCard openDelay={0} closeDelay={4}>
                           <HoverCardTrigger asChild>
                             <div className="flex items-center gap-1 content-bold font-bold text-foreground">
-                              {warningCount}
+                              {remoteWarningCount}
                               <Image src={yellowFlag} alt="warnings" />
                             </div>
                           </HoverCardTrigger>
                           <HoverCardContent className="w-40">
-                            <p className="content">Warnings</p>
+                            <p className="content">Remote Warnings</p>
                           </HoverCardContent>
                         </HoverCard>
                         <HoverCard openDelay={0} closeDelay={4}>
