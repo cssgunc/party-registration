@@ -14,6 +14,16 @@ import type {
 const base =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api";
 
+/**
+ * Decodes the payload of a JWT without verifying its signature.
+ * Only use on tokens already validated by the backend.
+ */
+export function decodeJwtPayload(token: string): Record<string, unknown> {
+  const base64Url = token.split(".")[1];
+  const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+  return JSON.parse(Buffer.from(base64, "base64").toString());
+}
+
 function internalHeaders() {
   return { "X-Internal-Secret": process.env.INTERNAL_API_SECRET };
 }
