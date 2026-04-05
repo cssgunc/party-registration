@@ -2,6 +2,7 @@
  * DTO for Police Account responses
  */
 type PoliceAccountDto = {
+  id: number;
   email: string;
 };
 
