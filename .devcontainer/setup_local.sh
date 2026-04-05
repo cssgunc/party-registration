@@ -34,7 +34,7 @@ info "Repo root : $REPO_ROOT"
 info "OS        : $OS"
 
 # ══════════════════════════════════════════════════════════════════════════════
-step "1/7  Python 3.12"
+step "1/8  Python 3.12"
 # ══════════════════════════════════════════════════════════════════════════════
 
 PYTHON=""
@@ -62,7 +62,7 @@ fi
 success "Found Python 3.12: $(command -v "$PYTHON")"
 
 # ══════════════════════════════════════════════════════════════════════════════
-step "2/7  Virtual environment + Python packages"
+step "2/8  Virtual environment + Python packages"
 # ══════════════════════════════════════════════════════════════════════════════
 
 VENV_DIR="$REPO_ROOT/.venv"
@@ -91,7 +91,7 @@ pip install -e backend -q
 success "Python packages installed"
 
 # ══════════════════════════════════════════════════════════════════════════════
-step "3/7  ODBC Driver 18 for SQL Server"
+step "3/8  ODBC Driver 18 for SQL Server"
 # ══════════════════════════════════════════════════════════════════════════════
 
 ODBC_FOUND=false
@@ -123,7 +123,7 @@ fi
 success "ODBC Driver 18 for SQL Server found"
 
 # ══════════════════════════════════════════════════════════════════════════════
-step "4/7  backend/.env"
+step "4/8  backend/.env"
 # ══════════════════════════════════════════════════════════════════════════════
 
 ENV_FILE="$REPO_ROOT/backend/.env"
@@ -158,7 +158,7 @@ info "Verify that the MSSQL_* vars in backend/.env match backend/.env.template"
 info "(except MSSQL_HOST which should be 'localhost')"
 
 # ══════════════════════════════════════════════════════════════════════════════
-step "5/7  Start database container + reset dev DB"
+step "5/8  Start containers (db + saml-idp) + reset dev DB"
 # ══════════════════════════════════════════════════════════════════════════════
 
 if ! command -v docker &>/dev/null; then
@@ -187,11 +187,11 @@ else
   exit 1
 fi
 
-info "Starting db service  ($DC up -d db) ..."
+info "Starting db and saml-idp services ($DC up -d db saml-idp) ..."
 cd "$REPO_ROOT/.devcontainer"
-$DC up -d db
+$DC up -d db saml-idp
 cd "$REPO_ROOT"
-success "Database container started"
+success "Containers started"
 
 # Wait for SQL Server to accept connections (can take ~30 s)
 info "Waiting for SQL Server to be ready (up to 90 s) ..."
@@ -222,6 +222,25 @@ done
 echo ""
 success "SQL Server is ready!"
 
+# Wait for SAML IdP to accept HTTP connections (can take ~15 s)
+info "Waiting for SAML IdP to be ready (up to 60 s) ..."
+MAX_WAIT=60
+WAITED=0
+while ! curl -s -o /dev/null -w "%{http_code}" http://localhost:8080 2>/dev/null | grep -qE "^[23]"; do
+  sleep 2
+  WAITED=$((WAITED + 2))
+  echo -n "."
+  if [[ $WAITED -ge $MAX_WAIT ]]; then
+    echo ""
+    SAML_CONTAINER=$(cd "$REPO_ROOT/.devcontainer" && $DC ps -q saml-idp 2>/dev/null | head -1)
+    error "SAML IdP did not become ready in ${MAX_WAIT}s."
+    error "  Check logs: docker logs $SAML_CONTAINER"
+    exit 1
+  fi
+done
+echo ""
+success "SAML IdP is ready!"
+
 info "Running python -m script.reset_dev ..."
 cd "$REPO_ROOT/backend"
 python -m script.reset_dev
@@ -229,7 +248,32 @@ cd "$REPO_ROOT"
 success "Dev database reset"
 
 # ══════════════════════════════════════════════════════════════════════════════
-step "6/7  pre-commit hooks"
+step "6/8  Frontend SAML SP certificates"
+# ══════════════════════════════════════════════════════════════════════════════
+
+CERTS_DIR="$REPO_ROOT/frontend/certs"
+mkdir -p "$CERTS_DIR"
+
+if [[ -f "$CERTS_DIR/key.pem" ]] && [[ -f "$CERTS_DIR/cert.pem" ]]; then
+  success "SAML SP certificates already exist — skipping generation."
+else
+  if ! command -v openssl &>/dev/null; then
+    error "openssl not found. Install it and re-run this script."
+    error "  Mac: brew install openssl"
+    error "  Windows: bundled with Git for Windows — ensure Git is on your PATH."
+    exit 1
+  fi
+  # MSYS_NO_PATHCONV=1 prevents Git Bash on Windows from mangling the -subj path
+  MSYS_NO_PATHCONV=1 openssl req -x509 -newkey rsa:4096 \
+    -keyout "$CERTS_DIR/key.pem" \
+    -out "$CERTS_DIR/cert.pem" \
+    -nodes -days 900 \
+    -subj "/CN=localhost"
+  success "SAML SP certificates generated in frontend/certs/"
+fi
+
+# ══════════════════════════════════════════════════════════════════════════════
+step "7/8  pre-commit hooks"
 # ══════════════════════════════════════════════════════════════════════════════
 
 # pre-commit is installed as part of .[dev], but check just in case
@@ -244,7 +288,7 @@ pre-commit install-hooks
 success "pre-commit hooks installed"
 
 # ══════════════════════════════════════════════════════════════════════════════
-step "7/7  .vscode/settings.json + extensions"
+step "8/8  .vscode/settings.json + extensions"
 # ══════════════════════════════════════════════════════════════════════════════
 
 VSCODE_DIR="$REPO_ROOT/.vscode"
@@ -331,5 +375,5 @@ else
 fi
 echo "  • In VSCode, select the .venv interpreter:"
 echo "      Ctrl+Shift+P → 'Python: Select Interpreter' → choose .venv"
-echo "  • DB container is running. Stop it with:"
-echo "      cd .devcontainer && $DC stop db"
+echo "  • Containers are running. Stop them with:"
+echo "      cd .devcontainer && $DC stop db saml-idp"

@@ -158,6 +158,9 @@ export default function StudentTableForm({
               onChange={(e) => updateField("pid", e.target.value)}
               aria-invalid={!!errors.pid}
               disabled={isPIDEditMode}
+              title={
+                isPIDEditMode ? "This field is managed by UNC SSO" : undefined
+              }
             />
             {errors.pid && <FieldError>{errors.pid}</FieldError>}
           </Field>
@@ -170,6 +173,10 @@ export default function StudentTableForm({
               value={formData.first_name}
               onChange={(e) => updateField("first_name", e.target.value)}
               aria-invalid={!!errors.first_name}
+              disabled={isPIDEditMode}
+              title={
+                isPIDEditMode ? "This field is managed by UNC SSO" : undefined
+              }
             />
             {errors.first_name && <FieldError>{errors.first_name}</FieldError>}
           </Field>
@@ -182,6 +189,10 @@ export default function StudentTableForm({
               value={formData.last_name}
               onChange={(e) => updateField("last_name", e.target.value)}
               aria-invalid={!!errors.last_name}
+              disabled={isPIDEditMode}
+              title={
+                isPIDEditMode ? "This field is managed by UNC SSO" : undefined
+              }
             />
             {errors.last_name && <FieldError>{errors.last_name}</FieldError>}
           </Field>
@@ -196,6 +207,9 @@ export default function StudentTableForm({
               onChange={(e) => updateField("email", e.target.value)}
               aria-invalid={!!errors.email}
               disabled={isPIDEditMode}
+              title={
+                isPIDEditMode ? "This field is managed by UNC SSO" : undefined
+              }
             />
             {errors.email && <FieldError>{errors.email}</FieldError>}
           </Field>
@@ -209,6 +223,9 @@ export default function StudentTableForm({
               onChange={(e) => updateField("onyen", e.target.value)}
               aria-invalid={!!errors.onyen}
               disabled={isPIDEditMode}
+              title={
+                isPIDEditMode ? "This field is managed by UNC SSO" : undefined
+              }
             />
             {errors.onyen && <FieldError>{errors.onyen}</FieldError>}
           </Field>

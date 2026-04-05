@@ -2,7 +2,7 @@ import enum
 from typing import TYPE_CHECKING
 
 from pydantic import AwareDatetime, BaseModel, EmailStr, Field
-from src.core.query_utils import PaginatedResponse
+from src.core.utils.query_utils import PaginatedResponse
 
 if TYPE_CHECKING:
     from src.modules.location.location_model import LocationDto
@@ -100,6 +100,22 @@ class IsRegisteredUpdate(BaseModel):
     """Request body for updating student registration status (staff/admin)."""
 
     is_registered: bool = Field(..., description="True to mark as registered, False to unmark")
+
+
+class AutocompleteInput(BaseModel):
+    """Request body for student autocomplete search."""
+
+    query: str
+
+
+class StudentSuggestionDto(BaseModel):
+    """DTO for student autocomplete suggestions."""
+
+    student_id: int
+    first_name: str
+    last_name: str
+    matched_field_name: str
+    matched_field_value: str
 
 
 PaginatedStudentsResponse = PaginatedResponse[StudentDto]

@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, Header, status
 from src.core.authentication import authenticate_by_role
 from src.core.config import env
-from src.core.exceptions import NotFoundException
 from src.modules.account.account_model import AccountData
 from src.modules.account.account_service import AccountService
 from src.modules.auth.auth_model import (
@@ -47,25 +46,7 @@ async def exchange_account_data_for_tokens(
 
     Requires internal API secret in X-Internal-Secret header.
     """
-    # Get or create account by email
-    try:
-        account = await account_service.get_account_by_email(data.email)
-        # Only update if data has changed
-        existing_data = AccountData(
-            email=account.email,
-            first_name=account.first_name,
-            last_name=account.last_name,
-            pid=account.pid,
-            onyen=account.onyen,
-            role=account.role,
-        )
-        if existing_data != data:
-            account = await account_service.update_account(account.id, data)
-    except NotFoundException:
-        # Create new account
-        account = await account_service.create_account(data)
-
-    # Generate token pair
+    account = await account_service.upsert_idp_account(data)
     return await auth_service.exchange_account_for_tokens(account)
 
 
@@ -87,8 +68,7 @@ async def police_login(
     police = await police_service.verify_police_credentials(credentials.email, credentials.password)
 
     # Generate token pair
-    police_dto = police.to_dto()
-    return await auth_service.exchange_police_for_tokens(police_dto)
+    return await auth_service.exchange_police_for_tokens(police)
 
 
 @router.post("/refresh")

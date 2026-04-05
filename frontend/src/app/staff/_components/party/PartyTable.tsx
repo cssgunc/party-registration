@@ -30,7 +30,6 @@ const hasPartyChanged = (
   return (
     original.party_datetime.getTime() !== updated.party_datetime.getTime() ||
     original.location.google_place_id !== updated.google_place_id ||
-    original.contact_one.email !== updated.contact_one_email ||
     original.contact_two.email !== updated.contact_two.email ||
     original.contact_two.first_name !== updated.contact_two.first_name ||
     original.contact_two.last_name !== updated.contact_two.last_name ||
@@ -81,7 +80,7 @@ export const PartyTable = () => {
       console.error("Failed to update party:", error);
       const isNotFound = isAxiosError(error) && error.response?.status === 404;
       const errorMessage = isNotFound
-        ? "Student not found. Please verify the first contact email belongs to a registered student."
+        ? "Student not found. Please select a valid student for the first contact."
         : `Failed to update party: ${error.message}`;
 
       const editTarget =
@@ -154,7 +153,7 @@ export const PartyTable = () => {
     placeId: string;
     partyDate: Date;
     partyTime: string;
-    contactOneEmail: string;
+    contactOneStudentId: number;
     contactTwoEmail: string;
     contactTwoFirstName: string;
     contactTwoLastName: string;
@@ -170,7 +169,7 @@ export const PartyTable = () => {
       type: "admin",
       google_place_id: data.placeId,
       party_datetime,
-      contact_one_email: data.contactOneEmail,
+      contact_one_student_id: data.contactOneStudentId,
       contact_two: {
         email: data.contactTwoEmail,
         first_name: data.contactTwoFirstName,
@@ -189,7 +188,7 @@ export const PartyTable = () => {
     placeId: string;
     partyDate: Date;
     partyTime: string;
-    contactOneEmail: string;
+    contactOneStudentId: number;
     contactTwoEmail: string;
     contactTwoFirstName: string;
     contactTwoLastName: string;
@@ -207,7 +206,7 @@ export const PartyTable = () => {
       placeId: string;
       partyDate: Date;
       partyTime: string;
-      contactOneEmail: string;
+      contactOneStudentId: number;
       contactTwoEmail: string;
       contactTwoFirstName: string;
       contactTwoLastName: string;

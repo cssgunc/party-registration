@@ -1,6 +1,9 @@
+import type { RefreshTokenResponse } from "@/lib/api/auth/auth.types";
+import { signOut } from "@/lib/auth/signout";
 import axios, { AxiosRequestConfig, AxiosRequestHeaders } from "axios";
 import { getServerSession } from "next-auth";
-import { getSession, signOut } from "next-auth/react";
+import { getSession } from "next-auth/react";
+import { redirect } from "next/navigation";
 
 const apiClient = axios.create({
   withCredentials: true,
@@ -19,35 +22,54 @@ let failedQueue: Array<{
 
 // Process the queue of failed requests for token refresh
 // This is used to ensure that all requests in the queue are retried with the new token
-const processQueue = (error: Error | null, token: string | null = null) => {
+function processQueue(error: Error | null, token: string | null = null) {
   failedQueue.forEach((prom) => {
     if (error) prom.reject(error);
     else prom.resolve(token || undefined);
   });
   failedQueue = [];
-};
+}
 
-// This loads the access token from the session. If the access token is not available, it will trigger the NextAuth jwt
-// callback to refresh the token.
-async function resolveFreshAccessToken(): Promise<string | undefined> {
+/**
+ * Calls the NextAuth-powered token refresh route. Only works in CSR contexts
+ * because the refresh_token cookie must be sent by the browser.
+ * @returns The new access token, or null if the refresh failed
+ */
+async function refreshAccessToken(): Promise<string | null> {
+  try {
+    const resp = await axios.post<RefreshTokenResponse>(
+      "/api/auth/token/refresh",
+      {},
+      { baseURL: window.location.origin }
+    );
+    return resp.data.access_token;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Gets the access token from the NextAuth session. Can be used in both CSR and SSR contexts.
+ * @returns The access token, or undefined if not available
+ */
+async function getAccessToken(): Promise<string | undefined> {
+  // SSR context
   if (typeof window === "undefined") {
     const { authOptions } = await import("@/app/api/auth/[...nextauth]/route");
     const session = await getServerSession(authOptions);
-    return session?.accessToken as string | undefined;
-  } else {
-    const session = await getSession();
-    return session?.accessToken as string | undefined;
+    return session?.accessToken;
   }
+
+  // CSR context
+  const session = await getSession();
+  return session?.accessToken;
 }
 
 // Use an async interceptor to attach the access token to the request and forward cookies for requests made
 // in the SSR context.
 apiClient.interceptors.request.use(async (config) => {
-  // Get access token via NextAuth session (triggers refresh in jwt callback if needed)
-  const accessToken = await resolveFreshAccessToken();
-
+  const accessToken = await getAccessToken();
   if (accessToken) config.headers["Authorization"] = `Bearer ${accessToken}`;
-
   return config;
 });
 
@@ -64,7 +86,14 @@ apiClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    // If error is 401 and we haven't already tried to refresh
+    // Token refresh is unavailable in SSR contexts due to us not having access to the refresh_token cookie
+    if (typeof window === "undefined") {
+      console.error(
+        "[API Client] Received 401 response. Token refresh is not available in SSR contexts — the user will be logged out."
+      );
+      return redirect("/logout");
+    }
+
     if (isRefreshing) {
       // If already refreshing, queue this request
       return new Promise((resolve, reject) => {
@@ -77,17 +106,14 @@ apiClient.interceptors.response.use(
           }
           return apiClient(originalRequest);
         })
-        .catch((err) => {
-          return Promise.reject(err);
-        });
+        .catch((err) => Promise.reject(err));
     }
 
     originalRequest._retry = true;
     isRefreshing = true;
 
     try {
-      // Re-read session to trigger NextAuth jwt callback refresh
-      const newAccessToken = await resolveFreshAccessToken();
+      const newAccessToken = await refreshAccessToken();
 
       if (newAccessToken) {
         processQueue(null, newAccessToken);
@@ -99,23 +125,18 @@ apiClient.interceptors.response.use(
         }
 
         return apiClient(originalRequest);
-      } else {
-        // Refresh failed, sign out user
-        processQueue(new Error("Token refresh failed"), null);
-        if (typeof window !== "undefined") {
-          signOut();
-        }
-        return Promise.reject(error);
       }
+
+      processQueue(new Error("Token refresh failed"), null);
+      signOut();
+      return Promise.reject(error);
     } catch (refreshError) {
-      const error =
+      const err =
         refreshError instanceof Error
           ? refreshError
           : new Error("Token refresh failed");
-      processQueue(error, null);
-      if (typeof window !== "undefined") {
-        signOut();
-      }
+      processQueue(err, null);
+      signOut();
       return Promise.reject(refreshError);
     } finally {
       isRefreshing = false;

@@ -86,8 +86,7 @@ export function EditPartyDialog({
         <PartyRegistrationForm
           onSubmit={handleSubmit}
           initialValues={initialValues}
-          studentEmail={studentQuery.data?.email}
-          studentPhoneNumber={studentQuery.data?.phone_number}
+          student={studentQuery.data}
           mode="edit"
         />
       </DialogContent>

@@ -81,6 +81,24 @@ type IsRegisteredUpdate = {
 };
 
 /**
+ * Input for student autocomplete search
+ */
+type StudentAutocompleteInput = {
+  query: string;
+};
+
+/**
+ * Student suggestion DTO returned by autocomplete
+ */
+type StudentSuggestionDto = {
+  student_id: number;
+  first_name: string;
+  last_name: string;
+  matched_field_name: string;
+  matched_field_value: string;
+};
+
+/**
  * Query keys for student-related queries
  * Used across admin and student queries for cache management
  */
@@ -93,11 +111,13 @@ export type {
   ResidenceDto,
   ResidenceUpdateDto,
   ResidenceUpdateWithDisplayDto,
+  StudentAutocompleteInput,
   StudentCreateDto,
   StudentData,
   StudentUpdateDto,
   StudentDto,
   StudentDtoBackend,
+  StudentSuggestionDto,
 };
 
 export { convertStudent };
