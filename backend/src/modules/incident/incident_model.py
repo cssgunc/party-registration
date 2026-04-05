@@ -1,7 +1,7 @@
 from enum import Enum
 
 from pydantic import AwareDatetime, BaseModel, Field
-from src.core.query_utils import PaginatedResponse
+from src.core.utils.query_utils import PaginatedResponse
 
 
 class IncidentSeverity(Enum):

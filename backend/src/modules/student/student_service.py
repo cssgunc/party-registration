@@ -1,14 +1,20 @@
+import re
 from datetime import UTC, datetime
+from typing import ClassVar
 
 from fastapi import Depends, Request
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from src.core.database import get_session
-from src.core.date_utils import is_same_academic_year
 from src.core.exceptions import BadRequestException, ConflictException, NotFoundException
-from src.core.query_utils import get_paginated_results, parse_pagination_params
+from src.core.utils.date_utils import is_same_academic_year
+from src.core.utils.excel_utils import ExcelExporter
+from src.core.utils.query_utils import (
+    get_paginated_results,
+    parse_pagination_params,
+)
 from src.modules.account.account_entity import AccountEntity, AccountRole
 from src.modules.location.location_model import LocationDto
 from src.modules.location.location_service import LocationService
@@ -19,6 +25,7 @@ from .student_model import (
     SelfUpdateStudentDto,
     StudentData,
     StudentDto,
+    StudentSuggestionDto,
     StudentUpdateDto,
 )
 
@@ -63,6 +70,25 @@ class ResidenceAlreadyChosenException(BadRequestException):
 
 
 class StudentService:
+    _NESTED_FIELD_COLUMNS: ClassVar[dict] = {
+        "id": AccountEntity.id,
+        "first_name": AccountEntity.first_name,
+        "last_name": AccountEntity.last_name,
+        "email": AccountEntity.email,
+        "onyen": AccountEntity.onyen,
+        "pid": AccountEntity.pid,
+    }
+    _BASE_ALLOWED_FIELDS: ClassVar[list[str]] = [
+        "phone_number",
+        "contact_preference",
+        "last_registered",
+    ]
+    _ALLOWED_SORT_FIELDS: ClassVar[list[str]] = [
+        *_BASE_ALLOWED_FIELDS,
+        *_NESTED_FIELD_COLUMNS.keys(),
+    ]
+    _ALLOWED_FILTER_FIELDS: ClassVar[list[str]] = list(_ALLOWED_SORT_FIELDS)
+
     def __init__(
         self,
         session: AsyncSession = Depends(get_session),
@@ -141,31 +167,18 @@ class StudentService:
         Returns:
             PaginatedStudentsResponse with items and metadata
         """
-        nested_field_columns = {
-            "id": AccountEntity.id,
-            "first_name": AccountEntity.first_name,
-            "last_name": AccountEntity.last_name,
-            "email": AccountEntity.email,
-            "onyen": AccountEntity.onyen,
-            "pid": AccountEntity.pid,
-        }
-
-        _base_allowed_fields = ["phone_number", "contact_preference", "last_registered"]
-        allowed_sort_fields = [*_base_allowed_fields, *nested_field_columns.keys()]
-        allowed_filter_fields = list(allowed_sort_fields)
-
         # Build base query with JOIN for filter/sort and eager loading for hydration
         base_query = (
             select(StudentEntity)
             .join(AccountEntity, StudentEntity.account_id == AccountEntity.id)
-            .options(selectinload(StudentEntity.account))
+            .options(selectinload(StudentEntity.account), selectinload(StudentEntity.residence))
         )
 
         # Parse query params and get paginated results
         query_params = parse_pagination_params(
             request,
-            allowed_sort_fields=allowed_sort_fields,
-            allowed_filter_fields=allowed_filter_fields,
+            allowed_sort_fields=self._ALLOWED_SORT_FIELDS,
+            allowed_filter_fields=self._ALLOWED_FILTER_FIELDS,
         )
 
         # Use the generic pagination utility
@@ -175,10 +188,53 @@ class StudentService:
             entity_class=StudentEntity,
             dto_converter=lambda entity: entity.to_dto(),
             query_params=query_params,
-            allowed_sort_fields=allowed_sort_fields,
-            allowed_filter_fields=allowed_filter_fields,
-            nested_field_columns=nested_field_columns,
+            allowed_sort_fields=self._ALLOWED_SORT_FIELDS,
+            allowed_filter_fields=self._ALLOWED_FILTER_FIELDS,
+            nested_field_columns=self._NESTED_FIELD_COLUMNS,
         )
+
+    async def get_students_for_export(self, request: Request) -> list[StudentDto]:
+        return (await self.get_students_paginated(request)).items
+
+    def export_students_to_excel(self, students: list[StudentDto]) -> bytes:
+        headers = [
+            "Onyen",
+            "PID",
+            "First Name",
+            "Last Name",
+            "Email",
+            "Phone Number",
+            "Contact Preference",
+            "Is Registered",
+            "Residence Address",
+        ]
+        exporter = ExcelExporter(sheet_title=f"Students {datetime.now(UTC).strftime('%Y-%m-%d')}")
+        exporter.set_headers(headers)
+        for student in students:
+            # Mirrors the UI checkbox: "Yes" if last_registered is set
+            # (cleared to None when unmarked via PATCH /students/{id}/is-registered)
+            is_registered = "Yes" if student.last_registered is not None else "No"
+            residence_address = (
+                student.residence.location.formatted_address
+                if student.residence is not None
+                else "-"
+            )
+            phone = ExcelExporter.format_phone(student.phone_number)
+            contact_preference = student.contact_preference.value.capitalize()
+            exporter.add_row(
+                [
+                    student.onyen,
+                    student.pid,
+                    student.first_name,
+                    student.last_name,
+                    student.email,
+                    phone,
+                    contact_preference,
+                    is_registered,
+                    residence_address,
+                ]
+            )
+        return exporter.to_bytes()
 
     async def get_student_count(self) -> int:
         count_query = select(func.count(StudentEntity.account_id))
@@ -314,6 +370,58 @@ class StudentService:
         await self.session.delete(student_entity)
         await self.session.commit()
         return student_dto
+
+    _AUTOCOMPLETE_LIMIT = 10
+
+    async def autocomplete_students(self, query: str) -> list[StudentSuggestionDto]:
+        """Return up to 10 students matching query against PID, email, onyen, or phone number."""
+        pattern = f"%{query}%"
+        digits_only_query = re.sub(r"\D", "", query)
+        phone_pattern = f"%{digits_only_query}%"
+        result = await self.session.execute(
+            select(StudentEntity)
+            .join(AccountEntity, StudentEntity.account_id == AccountEntity.id)
+            .where(
+                or_(
+                    AccountEntity.pid.ilike(pattern),
+                    AccountEntity.email.ilike(pattern),
+                    AccountEntity.onyen.ilike(pattern),
+                    StudentEntity.phone_number.ilike(phone_pattern),
+                )
+            )
+            .options(selectinload(StudentEntity.account))
+            .limit(self._AUTOCOMPLETE_LIMIT)
+        )
+        students = result.scalars().all()
+
+        suggestions = []
+        for student in students:
+            account = student.account
+            # Determine the first matching field (priority: pid, email, onyen, phone_number)
+            if account.pid.lower().find(query.lower()) != -1:
+                matched_field_name = "pid"
+                matched_field_value = account.pid
+            elif query.lower() in account.email.lower():
+                matched_field_name = "email"
+                matched_field_value = account.email
+            elif query.lower() in account.onyen.lower():
+                matched_field_name = "onyen"
+                matched_field_value = account.onyen
+            else:
+                matched_field_name = "phone_number"
+                matched_field_value = student.phone_number
+
+            suggestions.append(
+                StudentSuggestionDto(
+                    student_id=student.account_id,
+                    first_name=account.first_name,
+                    last_name=account.last_name,
+                    matched_field_name=matched_field_name,
+                    matched_field_value=matched_field_value,
+                )
+            )
+
+        return suggestions
 
     async def update_is_registered(self, account_id: int, is_registered: bool) -> StudentDto:
         """

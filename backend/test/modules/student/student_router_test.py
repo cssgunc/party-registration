@@ -11,6 +11,7 @@ from src.modules.student.student_model import (
     ContactPreference,
     SelfUpdateStudentDto,
     StudentDto,
+    StudentSuggestionDto,
 )
 from src.modules.student.student_service import (
     AccountNotFoundException,
@@ -63,6 +64,7 @@ test_student_authentication = generate_auth_required_tests(
     ({"admin"}, "PUT", "/api/students/12345", StudentTestUtils.get_sample_data()),
     ({"admin"}, "DELETE", "/api/students/12345", None),
     ({"admin", "staff"}, "PATCH", "/api/students/12345/is-registered", {"is_registered": True}),
+    ({"admin", "staff"}, "POST", "/api/students/autocomplete", {"query": "test"}),
     ({"student"}, "GET", "/api/students/me", None),
     ({"student"}, "PUT", "/api/students/me", StudentTestUtils.get_sample_data()),
     ({"student"}, "PUT", "/api/students/me/residence", {"residence_place_id": "ChIJTest"}),
@@ -432,6 +434,162 @@ class TestStudentCRUDRouter:
         """Test deleting a non-existent student."""
         response = await self.admin_client.delete("/api/students/99999")
         assert_res_failure(response, StudentNotFoundException(99999))
+
+
+class TestStudentAutocompleteRouter:
+    """Tests for POST /api/students/autocomplete endpoint."""
+
+    admin_client: AsyncClient
+    staff_client: AsyncClient
+    student_utils: StudentTestUtils
+
+    @pytest.fixture(autouse=True)
+    def _setup(
+        self,
+        student_utils: StudentTestUtils,
+        admin_client: AsyncClient,
+        staff_client: AsyncClient,
+    ):
+        self.student_utils = student_utils
+        self.admin_client = admin_client
+        self.staff_client = staff_client
+
+    @pytest.mark.asyncio
+    async def test_autocomplete_empty_returns_no_results(self):
+        """Test autocomplete with no students returns empty list."""
+        response = await self.admin_client.post("/api/students/autocomplete", json={"query": "xyz"})
+        data = assert_res_success(response, list[StudentSuggestionDto])
+        assert data == []
+
+    @pytest.mark.asyncio
+    async def test_autocomplete_matches_by_pid(self):
+        """Test autocomplete matches on PID."""
+        student = await self.student_utils.create_one(pid="123456789")
+        student_dto = await student.load_dto(self.student_utils.session)
+        response = await self.admin_client.post(
+            "/api/students/autocomplete", json={"query": "1234"}
+        )
+        data = assert_res_success(response, list[StudentSuggestionDto])
+        assert len(data) == 1
+        self.student_utils.assert_suggestion_match(
+            data[0],
+            student_dto=student_dto,
+            matched_field_name="pid",
+            matched_field_value="123456789",
+        )
+
+    @pytest.mark.asyncio
+    async def test_autocomplete_matches_by_email(self):
+        """Test autocomplete matches on email."""
+        student = await self.student_utils.create_one(email="unique_test@unc.edu")
+        student_dto = await student.load_dto(self.student_utils.session)
+        response = await self.admin_client.post(
+            "/api/students/autocomplete", json={"query": "unique_test"}
+        )
+        data = assert_res_success(response, list[StudentSuggestionDto])
+        assert len(data) == 1
+        self.student_utils.assert_suggestion_match(
+            data[0],
+            student_dto=student_dto,
+            matched_field_name="email",
+            matched_field_value="unique_test@unc.edu",
+        )
+
+    @pytest.mark.asyncio
+    async def test_autocomplete_matches_by_onyen(self):
+        """Test autocomplete matches on onyen."""
+        # Create an account with a distinct onyen, then create the student
+        account = await self.student_utils.account_utils.create_one(
+            role="student", onyen="jdoetest99"
+        )
+        student = await self.student_utils.create_one(account_id=account.id)
+        student_dto = await student.load_dto(self.student_utils.session)
+        response = await self.admin_client.post(
+            "/api/students/autocomplete", json={"query": "jdoetest99"}
+        )
+        data = assert_res_success(response, list[StudentSuggestionDto])
+        assert len(data) == 1
+        self.student_utils.assert_suggestion_match(
+            data[0],
+            student_dto=student_dto,
+            matched_field_name="onyen",
+            matched_field_value="jdoetest99",
+        )
+
+    @pytest.mark.asyncio
+    async def test_autocomplete_matches_by_phone(self):
+        """Test autocomplete matches on phone number."""
+        student = await self.student_utils.create_one(phone_number="9991234567")
+        student_dto = await student.load_dto(self.student_utils.session)
+        response = await self.admin_client.post(
+            "/api/students/autocomplete", json={"query": "9991234"}
+        )
+        data = assert_res_success(response, list[StudentSuggestionDto])
+        assert len(data) == 1
+        self.student_utils.assert_suggestion_match(
+            data[0],
+            student_dto=student_dto,
+            matched_field_name="phone_number",
+            matched_field_value="9991234567",
+        )
+
+    @pytest.mark.asyncio
+    async def test_autocomplete_is_case_insensitive(self):
+        """Test that autocomplete search is case-insensitive."""
+        student = await self.student_utils.create_one(email="CaseSensitive@unc.edu")
+        response = await self.admin_client.post(
+            "/api/students/autocomplete", json={"query": "casesensitive"}
+        )
+        data = assert_res_success(response, list[StudentSuggestionDto])
+        assert any(s.student_id == student.account_id for s in data)
+
+    @pytest.mark.asyncio
+    async def test_autocomplete_returns_no_match(self):
+        """Test autocomplete returns empty list when nothing matches."""
+        await self.student_utils.create_one()
+        response = await self.admin_client.post(
+            "/api/students/autocomplete", json={"query": "zzznomatch999"}
+        )
+        data = assert_res_success(response, list[StudentSuggestionDto])
+        assert data == []
+
+    @pytest.mark.asyncio
+    async def test_autocomplete_limits_results(self):
+        """Test autocomplete returns at most 10 results."""
+        # Default emails follow "account-N@unc.edu", so "@unc.edu" matches all
+        await self.student_utils.create_many(i=15)
+        response = await self.admin_client.post(
+            "/api/students/autocomplete", json={"query": "@unc.edu"}
+        )
+        data = assert_res_success(response, list[StudentSuggestionDto])
+        assert len(data) == 10
+
+    @pytest.mark.asyncio
+    async def test_autocomplete_accessible_by_staff(self):
+        """Test autocomplete is accessible by staff."""
+        await self.student_utils.create_one(email="stafftest@unc.edu")
+        response = await self.staff_client.post(
+            "/api/students/autocomplete", json={"query": "stafftest"}
+        )
+        data = assert_res_success(response, list[StudentSuggestionDto])
+        assert len(data) >= 1
+
+    @pytest.mark.asyncio
+    async def test_autocomplete_returns_correct_dto_fields(self):
+        """Test that autocomplete DTOs include all required fields."""
+        student = await self.student_utils.create_one(email="fieldtest@unc.edu")
+        student_dto = await student.load_dto(self.student_utils.session)
+        response = await self.admin_client.post(
+            "/api/students/autocomplete", json={"query": "fieldtest"}
+        )
+        data = assert_res_success(response, list[StudentSuggestionDto])
+        assert len(data) == 1
+        self.student_utils.assert_suggestion_match(
+            data[0],
+            student_dto=student_dto,
+            matched_field_name="email",
+            matched_field_value="fieldtest@unc.edu",
+        )
 
 
 class TestStudentRegistrationRouter:

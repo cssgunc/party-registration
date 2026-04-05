@@ -34,6 +34,7 @@ from test.utils.http.test_templates import generate_auth_required_tests
 
 test_party_authentication = generate_auth_required_tests(
     ({"admin", "staff", "police"}, "GET", "/api/parties", None),
+    ({"admin", "staff", "police"}, "GET", "/api/parties/csv", None),
     ({"admin", "staff"}, "GET", "/api/parties/1", None),
     ({"student", "admin"}, "DELETE", "/api/parties/1", None),
     (
@@ -302,7 +303,7 @@ class TestPartyCreateAdminRouter:
         )
         data = assert_res_success(response, PartyDto, status=201)
 
-        assert data.contact_one.email == payload.contact_one_email
+        assert data.contact_one.id == payload.contact_one_student_id
         assert data.contact_two.email == payload.contact_two.email
         assert data.location.google_place_id == payload.google_place_id
 
@@ -341,7 +342,7 @@ class TestPartyCreateAdminRouter:
 
         payload = await self.party_utils.next_admin_create_dto(
             google_place_id=location.google_place_id,
-            contact_one_email=student_dto.email,
+            contact_one_student_id=student.account_id,
             contact_two=ContactDto(
                 email=student_dto.email,
                 first_name="Other",
@@ -365,7 +366,7 @@ class TestPartyCreateAdminRouter:
 
         payload = await self.party_utils.next_admin_create_dto(
             google_place_id=location.google_place_id,
-            contact_one_email=student_dto.email,
+            contact_one_student_id=student.account_id,
             contact_two=ContactDto(
                 email="different@email.com",
                 first_name="Other",
@@ -543,7 +544,7 @@ class TestPartyUpdateAdminRouter:
 
         update_payload = await self.party_utils.next_admin_create_dto(
             google_place_id=location.google_place_id,
-            contact_one_email=create_payload.contact_one_email,
+            contact_one_student_id=create_payload.contact_one_student_id,
         )
 
         response = await self.admin_client.put(
@@ -552,7 +553,7 @@ class TestPartyUpdateAdminRouter:
         data = assert_res_success(response, PartyDto)
 
         assert data.id == created.id
-        assert data.contact_one.email == update_payload.contact_one_email
+        assert data.contact_one.id == update_payload.contact_one_student_id
         assert data.contact_two.email == update_payload.contact_two.email
         assert data.location.google_place_id == update_payload.google_place_id
 
@@ -566,7 +567,7 @@ class TestPartyUpdateAdminRouter:
         # Create a party first
         create_payload = await self.party_utils.next_admin_create_dto(
             google_place_id=location.google_place_id,
-            contact_one_email=student_dto.email,
+            contact_one_student_id=student.account_id,
         )
         create_response = await self.admin_client.post(
             "/api/parties", json=create_payload.model_dump(mode="json")
@@ -576,7 +577,7 @@ class TestPartyUpdateAdminRouter:
         # Attempt update with duplicate email
         update_payload = await self.party_utils.next_admin_create_dto(
             google_place_id=location.google_place_id,
-            contact_one_email=student_dto.email,
+            contact_one_student_id=student.account_id,
             contact_two=ContactDto(
                 email=student_dto.email,
                 first_name="Other",
@@ -601,7 +602,7 @@ class TestPartyUpdateAdminRouter:
         # Create a party first
         create_payload = await self.party_utils.next_admin_create_dto(
             google_place_id=location.google_place_id,
-            contact_one_email=student_dto.email,
+            contact_one_student_id=student.account_id,
         )
         create_response = await self.admin_client.post(
             "/api/parties", json=create_payload.model_dump(mode="json")
@@ -611,7 +612,7 @@ class TestPartyUpdateAdminRouter:
         # Attempt update with duplicate phone
         update_payload = await self.party_utils.next_admin_create_dto(
             google_place_id=location.google_place_id,
-            contact_one_email=student_dto.email,
+            contact_one_student_id=student.account_id,
             contact_two=ContactDto(
                 email="different@email.com",
                 first_name="Other",
@@ -676,7 +677,7 @@ class TestPartyUpdateAdminRouter:
 
         update_payload = await self.party_utils.next_admin_create_dto(
             google_place_id=location_with_hold.google_place_id,
-            contact_one_email=create_payload.contact_one_email,
+            contact_one_student_id=create_payload.contact_one_student_id,
         )
 
         response = await self.admin_client.put(
@@ -1061,7 +1062,7 @@ class TestPartyNearbyRouter:
 
 
 class TestPartyCSVRouter:
-    """Tests for GET /api/parties/csv endpoint."""
+    """Tests for GET /api/parties/csv endpoint (admin/staff path — 15-column format)."""
 
     admin_client: AsyncClient
     party_utils: PartyTestUtils
@@ -1073,26 +1074,143 @@ class TestPartyCSVRouter:
 
     @pytest.mark.asyncio
     async def test_get_parties_csv_empty(self):
-        """Test Excel export with no parties."""
-        now = datetime.now(UTC)
-        params = {
-            "start_date": now.strftime("%Y-%m-%d"),
-            "end_date": (now + timedelta(days=30)).strftime("%Y-%m-%d"),
-        }
-        response = await self.admin_client.get("/api/parties/csv", params=params)
+        """Test Excel export with no parties returns header row only."""
+        response = await self.admin_client.get("/api/parties/csv")
         assert response.status_code == 200
         assert (
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             in response.headers["content-type"]
         )
 
-        # Parse Excel content
         workbook = openpyxl.load_workbook(BytesIO(response.content))
         sheet = workbook.active
         assert sheet is not None
         rows = list(sheet.values)
 
         # Should only have header row
+        assert len(rows) == 1
+
+        # Admin gets 15-column staff/admin format
+        expected_headers = (
+            "Address",
+            "Date of Party",
+            "Time of Party",
+            "Contact One First Name",
+            "Contact One Last Name",
+            "Contact One Email",
+            "Contact One Phone Number",
+            "Contact One Contact Preference",
+            "Contact One Residence",
+            "Contact Two First Name",
+            "Contact Two Last Name",
+            "Contact Two Email",
+            "Contact Two Phone Number",
+            "Contact Two Contact Preference",
+        )
+
+        assert rows[0] == expected_headers
+        assert sheet["A1"].font.bold is True
+
+    @pytest.mark.asyncio
+    async def test_get_parties_csv_with_data(self):
+        """Test Excel export with parties returns correct 15-column data."""
+        parties = await self.party_utils.create_many(i=3)
+
+        response = await self.admin_client.get("/api/parties/csv")
+        assert response.status_code == 200
+        assert (
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            in response.headers["content-type"]
+        )
+
+        workbook = openpyxl.load_workbook(BytesIO(response.content))
+        sheet = workbook.active
+        assert sheet is not None
+        rows = list(sheet.values)
+
+        # Should have header + 3 data rows
+        assert len(rows) == 4
+
+        expected_headers = (
+            "Address",
+            "Date of Party",
+            "Time of Party",
+            "Contact One First Name",
+            "Contact One Last Name",
+            "Contact One Email",
+            "Contact One Phone Number",
+            "Contact One Contact Preference",
+            "Contact One Residence",
+            "Contact Two First Name",
+            "Contact Two Last Name",
+            "Contact Two Email",
+            "Contact Two Phone Number",
+            "Contact Two Contact Preference",
+        )
+
+        assert rows[0] == expected_headers
+        assert sheet["A1"].font.bold is True
+
+        first_party = parties[0]
+        row_2 = rows[1]
+
+        # col 0: address
+        assert first_party.location.formatted_address in str(row_2[0])
+
+        # col 1: date
+        expected_date = first_party.party_datetime.strftime("%Y-%m-%d")
+        assert row_2[1] == expected_date
+
+        # col 2: time
+        assert ":" in str(row_2[2])
+        assert "AM" in str(row_2[2]) or "PM" in str(row_2[2])
+
+        # col 5: contact one email (from StudentEntity.account.email)
+        assert first_party.contact_one.account.email == row_2[5]
+
+        # col 6: contact one phone (formatted)
+        phone_str = str(row_2[6])
+        assert "(" in phone_str and ")" in phone_str and "-" in phone_str
+
+        # col 7: contact one preference (capitalized)
+        assert str(row_2[7] or "")[0].isupper()
+
+        # col 11: contact two email
+        assert first_party.contact_two_email == row_2[11]
+
+    @pytest.mark.asyncio
+    async def test_get_parties_csv_student_forbidden(self, student_client: AsyncClient):
+        """Test that students cannot access the CSV export."""
+        response = await student_client.get("/api/parties/csv")
+        assert response.status_code == 403
+
+
+class TestPartyCSVRouterPolice:
+    """Tests for GET /api/parties/csv endpoint (police path — 11-column format)."""
+
+    police_client: AsyncClient
+    party_utils: PartyTestUtils
+
+    @pytest.fixture(autouse=True)
+    def _setup(self, party_utils: PartyTestUtils, police_client: AsyncClient):
+        self.party_utils = party_utils
+        self.police_client = police_client
+
+    @pytest.mark.asyncio
+    async def test_get_parties_csv_police_empty(self):
+        """Test police Excel export with no parties returns header row only."""
+        response = await self.police_client.get("/api/parties/csv")
+        assert response.status_code == 200
+        assert (
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            in response.headers["content-type"]
+        )
+
+        workbook = openpyxl.load_workbook(BytesIO(response.content))
+        sheet = workbook.active
+        assert sheet is not None
+        rows = list(sheet.values)
+
         assert len(rows) == 1
 
         expected_headers = (
@@ -1113,30 +1231,20 @@ class TestPartyCSVRouter:
         assert sheet["A1"].font.bold is True
 
     @pytest.mark.asyncio
-    async def test_get_parties_csv_with_data(self):
-        """Test Excel export with parties."""
-        parties = await self.party_utils.create_many(i=3)
+    async def test_get_parties_csv_police_with_data(self):
+        """Test police Excel export with parties returns correct 11-column data."""
+        parties = await self.party_utils.create_many(i=2)
 
-        now = datetime.now(UTC)
-        params = {
-            "start_date": (now - timedelta(days=1)).strftime("%Y-%m-%d"),
-            "end_date": (now + timedelta(days=365)).strftime("%Y-%m-%d"),
-        }
-        response = await self.admin_client.get("/api/parties/csv", params=params)
+        response = await self.police_client.get("/api/parties/csv")
         assert response.status_code == 200
-        assert (
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            in response.headers["content-type"]
-        )
 
-        # Parse Excel content
         workbook = openpyxl.load_workbook(BytesIO(response.content))
         sheet = workbook.active
         assert sheet is not None
         rows = list(sheet.values)
 
-        # Should have header + 3 data rows
-        assert len(rows) == 4
+        # Should have header + 2 data rows
+        assert len(rows) == 3
 
         expected_headers = (
             "Address",
@@ -1153,49 +1261,38 @@ class TestPartyCSVRouter:
         )
 
         assert rows[0] == expected_headers
-        assert sheet["A1"].font.bold is True
 
         first_party = parties[0]
         row_2 = rows[1]
 
+        # col 0: address
         assert first_party.location.formatted_address in str(row_2[0])
 
+        # col 1: date
         expected_date = first_party.party_datetime.strftime("%Y-%m-%d")
         assert row_2[1] == expected_date
 
+        # col 2: time
         assert ":" in str(row_2[2])
         assert "AM" in str(row_2[2]) or "PM" in str(row_2[2])
 
-        contact_one_email = (
-            first_party.contact_one.account.email if first_party.contact_one.account else None
-        )
-        assert contact_one_email == row_2[4]
+        # col 3: contact one full name (from StudentEntity.account first/last name)
+        c1_account = first_party.contact_one.account
+        expected_full_name = f"{c1_account.first_name} {c1_account.last_name}"
+        assert row_2[3] == expected_full_name
 
+        # col 4: contact one email (from StudentEntity.account.email)
+        assert c1_account.email == row_2[4]
+
+        # col 5: contact one phone (formatted)
         phone_str = str(row_2[5])
         assert "(" in phone_str and ")" in phone_str and "-" in phone_str
 
+        # col 6: contact one preference (capitalized)
         assert str(row_2[6] or "")[0].isupper()
 
+        # col 8: contact two email
         assert first_party.contact_two_email == row_2[8]
-
-    @pytest.mark.asyncio
-    @pytest.mark.parametrize(
-        "params",
-        [
-            {"end_date": "2024-01-02"},  # missing start_date
-            {"start_date": "2024-01-01"},  # missing end_date
-            {"start_date": "01-01-2024", "end_date": "2024-01-02"},  # MM-DD-YYYY
-            {"start_date": "2024-01-01", "end_date": "01/02/2024"},  # MM/DD/YYYY
-            {"start_date": "2024/01/01", "end_date": "2024-01-02"},  # slashes
-            {"start_date": "2024-1-1", "end_date": "2024-01-02"},  # no leading zeros
-            {"start_date": "2024-01-01", "end_date": "24-01-02"},  # 2-digit year
-            {"start_date": "not-a-date", "end_date": "2024-01-02"},  # invalid string
-        ],
-    )
-    async def test_get_parties_csv_validation_errors(self, params: dict[str, str]):
-        """Test validation errors for CSV export."""
-        response = await self.admin_client.get("/api/parties/csv", params=params)
-        assert_res_validation_error(response)
 
 
 class TestPartyCreateStatusRouter:
