@@ -1,7 +1,4 @@
-import {
-  ServerTableParams,
-  toAxiosParams,
-} from "@/lib/api/shared/query-params";
+import { ServerTableParams } from "@/lib/api/shared/query-params";
 import { OptimisticMutationOptions, PaginatedResponse } from "@/lib/shared";
 import {
   UseQueryOptions,
@@ -26,10 +23,7 @@ export function useAdminParties(
 ) {
   return useQuery({
     queryKey: [...PARTIES_KEY, serverParams ?? "all"],
-    queryFn: () =>
-      partyService.listParties(
-        serverParams ? toAxiosParams(serverParams) : undefined
-      ),
+    queryFn: () => partyService.listParties(serverParams),
     placeholderData: keepPreviousData,
     ...options,
   });

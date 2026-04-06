@@ -8,6 +8,7 @@ import {
 } from "@/lib/api/location/location.queries";
 import { LocationCreate, LocationDto } from "@/lib/api/location/location.types";
 import {
+  DEFAULT_TABLE_PARAMS,
   ServerColumnMap,
   ServerTableParams,
 } from "@/lib/api/shared/query-params";
@@ -27,14 +28,8 @@ const SERVER_COLUMN_MAP: ServerColumnMap = {
   },
   hold_expiration: {
     backendField: "hold_expiration",
-    filterOperator: "contains",
+    filterOperator: "dateRange",
   },
-};
-
-const DEFAULT_PARAMS: ServerTableParams = {
-  page_number: 1,
-  page_size: 50,
-  filters: {},
 };
 
 export const LocationTable = () => {
@@ -43,7 +38,7 @@ export const LocationTable = () => {
     null
   );
   const [serverParams, setServerParams] =
-    useState<ServerTableParams>(DEFAULT_PARAMS);
+    useState<ServerTableParams>(DEFAULT_TABLE_PARAMS);
 
   const locationsQuery = useLocations(serverParams);
   const locations = locationsQuery.data?.items ?? [];
@@ -224,6 +219,7 @@ export const LocationTable = () => {
       accessorKey: "hold_expiration",
       header: "Active Hold",
       enableColumnFilter: true,
+      meta: { filterType: "dateRange" },
       cell: ({ row }) => {
         const holdDate = row.getValue("hold_expiration") as Date | null;
         if (holdDate) {
@@ -244,6 +240,7 @@ export const LocationTable = () => {
         onDelete={handleDelete}
         onCreateNewRow={handleCreate}
         isLoading={locationsQuery.isLoading}
+        isFetching={locationsQuery.isFetching}
         error={locationsQuery.error as Error | null}
         getDeleteDescription={(location: LocationDto) =>
           `Are you sure you want to delete location ${location.formatted_address}? This action cannot be undone.`

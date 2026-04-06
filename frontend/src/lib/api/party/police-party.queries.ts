@@ -1,5 +1,6 @@
 import { LocationService } from "@/lib/api/location/location.service";
 import { AddressData } from "@/lib/api/location/location.types";
+import { ServerTableParams } from "@/lib/api/shared/query-params";
 import { UseQueryOptions, useQuery } from "@tanstack/react-query";
 import { PartyService } from "./party.service";
 import { PARTIES_KEY, PartyDto } from "./party.types";
@@ -29,9 +30,14 @@ export function usePoliceParties(
   return useQuery({
     queryKey: [...PARTIES_KEY, startDate, endDate],
     queryFn: async () => {
-      const params: Record<string, string> = {};
-      if (startDate) params.party_datetime_gte = startDate.toISOString();
-      if (endDate) params.party_datetime_lte = endDate.toISOString();
+      const params: ServerTableParams = {
+        page_number: 1,
+        page_size: 200,
+        filters: {},
+      };
+      if (startDate)
+        params.filters.party_datetime_gte = startDate.toISOString();
+      if (endDate) params.filters.party_datetime_lte = endDate.toISOString();
       const page = await partyService.listParties(params);
       return page.items;
     },

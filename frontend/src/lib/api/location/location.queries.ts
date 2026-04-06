@@ -1,7 +1,4 @@
-import {
-  ServerTableParams,
-  toAxiosParams,
-} from "@/lib/api/shared/query-params";
+import { ServerTableParams } from "@/lib/api/shared/query-params";
 import { OptimisticMutationOptions, PaginatedResponse } from "@/lib/shared";
 import {
   UseQueryOptions,
@@ -28,10 +25,7 @@ export function useLocations(
 ) {
   return useQuery({
     queryKey: [...LOCATIONS_KEY, serverParams ?? "all"],
-    queryFn: () =>
-      locationService.getLocations(
-        serverParams ? toAxiosParams(serverParams) : undefined
-      ),
+    queryFn: () => locationService.getLocations(serverParams),
     placeholderData: keepPreviousData,
     ...options,
   });

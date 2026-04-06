@@ -3,6 +3,7 @@ import {
   PaginationState,
   SortingState,
 } from "@tanstack/react-table";
+import { endOfDay } from "date-fns";
 import { DateRange } from "react-day-picker";
 
 export type ServerColumnConfig =
@@ -16,6 +17,14 @@ export type ServerColumnConfig =
       firstNameField: string;
       lastNameField: string;
     };
+
+function isDateRange(value: unknown): value is DateRange {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    ("from" in value || "to" in value)
+  );
+}
 
 export type ServerColumnMap = Record<string, ServerColumnConfig>;
 
@@ -68,14 +77,15 @@ export function buildServerTableParams(
         );
       }
     } else if (config.filterOperator === "dateRange") {
-      const range = filter.value as DateRange;
+      if (!isDateRange(filter.value)) continue;
+      const range = filter.value;
       if (range.from) {
         params.filters[`${config.backendField}_gte`] = range.from.toISOString();
       }
       if (range.to) {
-        const end = new Date(range.to);
-        end.setHours(23, 59, 59, 999);
-        params.filters[`${config.backendField}_lte`] = end.toISOString();
+        params.filters[`${config.backendField}_lte`] = endOfDay(
+          range.to
+        ).toISOString();
       }
     } else if (config.filterOperator === "eq") {
       params.filters[config.backendField] = String(filter.value);
@@ -87,6 +97,12 @@ export function buildServerTableParams(
 
   return params;
 }
+
+export const DEFAULT_TABLE_PARAMS: ServerTableParams = {
+  page_number: 1,
+  page_size: 50,
+  filters: {},
+};
 
 export function toAxiosParams(
   params: ServerTableParams

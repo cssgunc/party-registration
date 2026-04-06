@@ -8,6 +8,7 @@ import {
 } from "@/lib/api/party/admin-party.queries";
 import { AdminCreatePartyDto, PartyDto } from "@/lib/api/party/party.types";
 import {
+  DEFAULT_TABLE_PARAMS,
   ServerColumnMap,
   ServerTableParams,
 } from "@/lib/api/shared/query-params";
@@ -44,17 +45,11 @@ const SERVER_COLUMN_MAP: ServerColumnMap = {
   },
 };
 
-const DEFAULT_PARAMS: ServerTableParams = {
-  page_number: 1,
-  page_size: 50,
-  filters: {},
-};
-
 export const PartyTable = () => {
   const { openSidebar, closeSidebar } = useSidebar();
   const [editingParty, setEditingParty] = useState<PartyDto | null>(null);
   const [serverParams, setServerParams] =
-    useState<ServerTableParams>(DEFAULT_PARAMS);
+    useState<ServerTableParams>(DEFAULT_TABLE_PARAMS);
 
   const partiesQuery = useAdminParties(serverParams);
   const parties = partiesQuery.data?.items ?? [];
@@ -259,7 +254,8 @@ export const PartyTable = () => {
       id: "time",
       accessorFn: (row) => format(row.party_datetime, "HH:mm"),
       header: "Time",
-      enableColumnFilter: false,
+      enableColumnFilter: true,
+      meta: { filterType: "time", filterMode: "client" },
       cell: ({ row }) => {
         const date = new Date(row.original.party_datetime);
         return date.toLocaleTimeString([], {
@@ -324,6 +320,7 @@ export const PartyTable = () => {
         onDelete={handleDelete}
         onCreateNewRow={handleCreate}
         isLoading={partiesQuery.isLoading}
+        isFetching={partiesQuery.isFetching}
         error={partiesQuery.error as Error | null}
         getDeleteDescription={(party: PartyDto) =>
           `Are you sure you want to delete this party on ${new Date(

@@ -1,3 +1,7 @@
+import {
+  ServerTableParams,
+  toAxiosParams,
+} from "@/lib/api/shared/query-params";
 import apiClient from "@/lib/network/apiClient";
 import { PaginatedResponse } from "@/lib/shared";
 import { AxiosInstance } from "axios";
@@ -21,12 +25,12 @@ export class AdminStudentService {
    * Fetches a paginated list of students (GET /api/students)
    */
   async listStudents(
-    params?: Record<string, string | number>
+    params?: ServerTableParams
   ): Promise<PaginatedResponse<StudentDto>> {
     try {
       const response = await this.client.get<
         PaginatedResponse<StudentDtoBackend>
-      >("/students", { params });
+      >("/students", { params: params ? toAxiosParams(params) : undefined });
 
       return {
         ...response.data,

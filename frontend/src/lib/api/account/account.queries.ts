@@ -1,9 +1,6 @@
 import { AccountService } from "@/lib/api/account/account.service";
 import { AccountData, AccountDto } from "@/lib/api/account/account.types";
-import {
-  ServerTableParams,
-  toAxiosParams,
-} from "@/lib/api/shared/query-params";
+import { ServerTableParams } from "@/lib/api/shared/query-params";
 import { OptimisticMutationOptions, PaginatedResponse } from "@/lib/shared";
 import {
   UseQueryOptions,
@@ -28,10 +25,7 @@ export function useAccounts(
 ) {
   return useQuery({
     queryKey: [...ACCOUNTS_KEY, serverParams ?? "all"],
-    queryFn: () =>
-      accountService.listAccounts(
-        serverParams ? toAxiosParams(serverParams) : undefined
-      ),
+    queryFn: () => accountService.listAccounts(serverParams),
     placeholderData: keepPreviousData,
     ...options,
   });
@@ -78,6 +72,34 @@ export function useDeleteAccount(
   return useMutation({
     ...options,
     mutationFn: (id: number) => accountService.deleteAccount(id),
+
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ACCOUNTS_KEY });
+      const previous = queryClient.getQueriesData<
+        PaginatedResponse<AccountDto>
+      >({ queryKey: ACCOUNTS_KEY });
+      queryClient.setQueriesData<PaginatedResponse<AccountDto>>(
+        { queryKey: ACCOUNTS_KEY },
+        (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            items: old.items.filter((a) => a.id !== id),
+            total_records: old.total_records - 1,
+          };
+        }
+      );
+      options?.onOptimisticUpdate?.(id);
+      return { previous };
+    },
+
+    onError: (_error, _id, context) => {
+      if (context?.previous) {
+        for (const [queryKey, data] of context.previous) {
+          queryClient.setQueryData(queryKey, data);
+        }
+      }
+    },
 
     onSuccess: (...params) => {
       queryClient.invalidateQueries({ queryKey: ACCOUNTS_KEY });

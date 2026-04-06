@@ -1,3 +1,7 @@
+import {
+  ServerTableParams,
+  toAxiosParams,
+} from "@/lib/api/shared/query-params";
 import apiClient from "@/lib/network/apiClient";
 import { PaginatedResponse } from "@/lib/shared";
 import { AxiosInstance } from "axios";
@@ -34,12 +38,12 @@ export class PartyService {
    * List parties (GET /api/parties)
    */
   async listParties(
-    params?: Record<string, string | number>
+    params?: ServerTableParams
   ): Promise<PaginatedResponse<PartyDto>> {
     try {
       const response = await this.client.get<
         PaginatedResponse<PartyDtoBackend>
-      >("/parties", { params });
+      >("/parties", { params: params ? toAxiosParams(params) : undefined });
       return {
         ...response.data,
         items: response.data.items.map(convertParty),

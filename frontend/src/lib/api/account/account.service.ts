@@ -1,3 +1,7 @@
+import {
+  ServerTableParams,
+  toAxiosParams,
+} from "@/lib/api/shared/query-params";
 import apiClient from "@/lib/network/apiClient";
 import { PaginatedResponse } from "@/lib/shared";
 import { AxiosInstance } from "axios";
@@ -13,12 +17,12 @@ export class AccountService {
    * List accounts (GET /api/accounts)
    */
   async listAccounts(
-    params?: Record<string, string | number>
+    params?: ServerTableParams
   ): Promise<PaginatedResponse<AccountDto>> {
     try {
       const response = await this.client.get<PaginatedResponse<AccountDto>>(
         "/accounts",
-        { params }
+        { params: params ? toAxiosParams(params) : undefined }
       );
       return response.data;
     } catch (error) {

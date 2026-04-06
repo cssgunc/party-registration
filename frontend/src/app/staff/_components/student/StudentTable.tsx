@@ -3,6 +3,7 @@
 import { useSidebar } from "@/app/staff/_components/shared/sidebar/SidebarContext";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  DEFAULT_TABLE_PARAMS,
   ServerColumnMap,
   ServerTableParams,
 } from "@/lib/api/shared/query-params";
@@ -39,17 +40,11 @@ const SERVER_COLUMN_MAP: ServerColumnMap = {
   },
 };
 
-const DEFAULT_PARAMS: ServerTableParams = {
-  page_number: 1,
-  page_size: 50,
-  filters: {},
-};
-
 export const StudentTable = () => {
   const { openSidebar, closeSidebar } = useSidebar();
   const [editingStudent, setEditingStudent] = useState<StudentDto | null>(null);
   const [serverParams, setServerParams] =
-    useState<ServerTableParams>(DEFAULT_PARAMS);
+    useState<ServerTableParams>(DEFAULT_TABLE_PARAMS);
 
   const studentsQuery = useStudents(serverParams);
   const students = studentsQuery.data?.items ?? [];
@@ -262,6 +257,7 @@ export const StudentTable = () => {
         onDelete={handleDelete}
         onCreateNewRow={handleCreate}
         isLoading={studentsQuery.isLoading}
+        isFetching={studentsQuery.isFetching}
         error={studentsQuery.error}
         getDeleteDescription={(student: StudentDto) =>
           `Are you sure you want to delete ${student.first_name} ${student.last_name}? This action cannot be undone.`

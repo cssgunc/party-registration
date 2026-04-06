@@ -12,6 +12,7 @@ import type {
   AccountRole,
 } from "@/lib/api/account/account.types";
 import {
+  DEFAULT_TABLE_PARAMS,
   ServerColumnMap,
   ServerTableParams,
 } from "@/lib/api/shared/query-params";
@@ -33,17 +34,11 @@ const SERVER_COLUMN_MAP: ServerColumnMap = {
   role: { backendField: "role", filterOperator: "eq" },
 };
 
-const DEFAULT_PARAMS: ServerTableParams = {
-  page_number: 1,
-  page_size: 50,
-  filters: {},
-};
-
 export const AccountTable = () => {
   const { openSidebar, closeSidebar } = useSidebar();
   const [editingAccount, setEditingAccount] = useState<AccountDto | null>(null);
   const [serverParams, setServerParams] =
-    useState<ServerTableParams>(DEFAULT_PARAMS);
+    useState<ServerTableParams>(DEFAULT_TABLE_PARAMS);
 
   const accountsQuery = useAccounts(serverParams);
   const accounts = accountsQuery.data?.items ?? [];
@@ -235,6 +230,7 @@ export const AccountTable = () => {
         onDelete={handleDelete}
         onCreateNewRow={handleCreate}
         isLoading={accountsQuery.isLoading}
+        isFetching={accountsQuery.isFetching}
         error={accountsQuery.error as Error | null}
         getDeleteDescription={(account: AccountDto) =>
           `Are you sure you want to delete account ${account.email}? This action cannot be undone.`

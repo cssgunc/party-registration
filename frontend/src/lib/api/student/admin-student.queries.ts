@@ -1,8 +1,5 @@
 import { AccountService } from "@/lib/api/account/account.service";
-import {
-  ServerTableParams,
-  toAxiosParams,
-} from "@/lib/api/shared/query-params";
+import { ServerTableParams } from "@/lib/api/shared/query-params";
 import { OptimisticMutationOptions, PaginatedResponse } from "@/lib/shared";
 import {
   UseQueryOptions,
@@ -32,10 +29,7 @@ export function useStudents(
 ) {
   return useQuery({
     queryKey: [...STUDENTS_KEY, serverParams ?? "all"],
-    queryFn: () =>
-      studentService.listStudents(
-        serverParams ? toAxiosParams(serverParams) : undefined
-      ),
+    queryFn: () => studentService.listStudents(serverParams),
     placeholderData: keepPreviousData,
     ...options,
   });
