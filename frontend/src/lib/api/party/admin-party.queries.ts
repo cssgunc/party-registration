@@ -16,11 +16,12 @@ type UpdatePartyVars = {
 };
 
 export function useAdminParties(
+  search?: string,
   options?: UseQueryOptions<PaginatedResponse<PartyDto>>
 ) {
   return useQuery({
-    queryKey: PARTIES_KEY,
-    queryFn: () => partyService.listParties(),
+    queryKey: [...PARTIES_KEY, { search }],
+    queryFn: () => partyService.listParties({ search }),
     ...options,
   });
 }

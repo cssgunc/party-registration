@@ -59,12 +59,13 @@ export class LocationService {
   /**
    * Get locations (GET /api/locations)
    */
-  async getLocations(): Promise<PaginatedResponse<LocationDto>> {
+  async getLocations(search?: string): Promise<PaginatedResponse<LocationDto>> {
     try {
-      const response =
-        await this.client.get<PaginatedResponse<LocationDtoBackend>>(
-          "/locations"
-        );
+      const params: Record<string, string> = {};
+      if (search) params.search = search;
+      const response = await this.client.get<
+        PaginatedResponse<LocationDtoBackend>
+      >("/locations", { params });
       return {
         ...response.data,
         items: response.data.items.map(convertLocation),

@@ -12,14 +12,16 @@ export class AccountService {
   /**
    * List accounts (GET /api/accounts)
    */
-  async listAccounts(roles?: AccountRole[]): Promise<AccountDto[]> {
+  async listAccounts(
+    roles?: AccountRole[],
+    search?: string
+  ): Promise<AccountDto[]> {
     try {
-      const params = roles ? { role_in: roles } : {};
+      const params: Record<string, unknown> = roles ? { role_in: roles } : {};
+      if (search) params.search = search;
       const response = await this.client.get<PaginatedResponse<AccountDto>>(
         "/accounts",
-        {
-          params,
-        }
+        { params }
       );
       return response.data.items;
     } catch (error) {

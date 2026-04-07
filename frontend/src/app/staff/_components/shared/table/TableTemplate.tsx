@@ -80,6 +80,8 @@ export type TableProps<T> = {
   sortBy?: (a: T, b: T) => number;
   pageSize?: number;
   pageSizeOptions?: number[];
+  /** When provided, search is server-side. Called with debounced search string. */
+  onSearchChange?: (search: string) => void;
 };
 
 export function TableTemplate<T extends object>({
@@ -97,6 +99,7 @@ export function TableTemplate<T extends object>({
   sortBy,
   pageSize = 8,
   pageSizeOptions = [5, 8, 10, 20],
+  onSearchChange,
 }: TableProps<T>) {
   const { isOpen, openSidebar, closeSidebar } = useSidebar();
   const { data: session } = useSession();
@@ -116,6 +119,16 @@ export function TableTemplate<T extends object>({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<T | null>(null);
   const [globalFilter, setGlobalFilter] = useState<string>("");
+  const [searchInput, setSearchInput] = useState<string>("");
+
+  // Debounce backend search
+  useEffect(() => {
+    if (!onSearchChange) return;
+    const timer = setTimeout(() => {
+      onSearchChange(searchInput);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput, onSearchChange]);
 
   useEffect(() => {
     setPagination((prev) => ({
@@ -298,8 +311,12 @@ export function TableTemplate<T extends object>({
                 <div className="flex-1 min-w-sm max-w-lg bg-card rounded-md">
                   <Input
                     type="text"
-                    value={globalFilter}
-                    onChange={(e) => setGlobalFilter(e.target.value)}
+                    value={onSearchChange ? searchInput : globalFilter}
+                    onChange={(e) =>
+                      onSearchChange
+                        ? setSearchInput(e.target.value)
+                        : setGlobalFilter(e.target.value)
+                    }
                     placeholder="Search all columns..."
                     className="p-2 pl-3 h-9 rounded-md "
                   />

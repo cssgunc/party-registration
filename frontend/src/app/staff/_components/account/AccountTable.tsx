@@ -24,8 +24,9 @@ type AccountTableFormValues = z.infer<typeof accountTableFormSchema>;
 export const AccountTable = () => {
   const { openSidebar, closeSidebar } = useSidebar();
   const [editingAccount, setEditingAccount] = useState<AccountDto | null>(null);
+  const [search, setSearch] = useState("");
 
-  const accountsQuery = useAccounts();
+  const accountsQuery = useAccounts(search || undefined);
 
   const accounts = (accountsQuery.data ?? []).filter(
     (a) => a.role === "admin" || a.role === "staff"
@@ -227,6 +228,7 @@ export const AccountTable = () => {
           a.last_name.localeCompare(b.last_name) ||
           a.first_name.localeCompare(b.first_name)
         }
+        onSearchChange={setSearch}
       />
     </div>
   );

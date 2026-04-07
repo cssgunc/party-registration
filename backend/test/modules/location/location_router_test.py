@@ -468,3 +468,51 @@ class TestLocationAutocompleteRouter:
             response,
             InternalServerException("Failed to fetch address suggestions. Please try again later."),
         )
+
+
+class TestLocationListSearch:
+    """Tests for full-table search on GET /api/locations."""
+
+    admin_client: AsyncClient
+    location_utils: LocationTestUtils
+
+    @pytest.fixture(autouse=True)
+    def _setup(self, location_utils: LocationTestUtils, admin_client: AsyncClient):
+        self.location_utils = location_utils
+        self.admin_client = admin_client
+
+    @pytest.mark.asyncio
+    async def test_search_by_formatted_address(self):
+        """Search should match locations whose formatted address contains the term."""
+        loc1 = await self.location_utils.create_one(
+            formatted_address="123 Elm St, Chapel Hill, NC 27514, US"
+        )
+        _loc2 = await self.location_utils.create_one(
+            formatted_address="456 Oak Ave, Chapel Hill, NC 27514, US"
+        )
+
+        response = await self.admin_client.get("/api/locations?search=Elm")
+        paginated = assert_res_paginated(response, LocationDto, total_records=1)
+        self.location_utils.assert_matches(loc1, paginated.items[0])
+
+    @pytest.mark.asyncio
+    async def test_search_is_case_insensitive(self):
+        """Search should be case-insensitive."""
+        loc1 = await self.location_utils.create_one(
+            formatted_address="123 Elm St, Chapel Hill, NC 27514, US"
+        )
+        _loc2 = await self.location_utils.create_one(
+            formatted_address="456 Oak Ave, Chapel Hill, NC 27514, US"
+        )
+
+        response = await self.admin_client.get("/api/locations?search=elm")
+        paginated = assert_res_paginated(response, LocationDto, total_records=1)
+        self.location_utils.assert_matches(loc1, paginated.items[0])
+
+    @pytest.mark.asyncio
+    async def test_search_no_results(self):
+        """Search with no matching term returns empty results."""
+        await self.location_utils.create_many(i=3)
+
+        response = await self.admin_client.get("/api/locations?search=zzznomatch")
+        assert_res_paginated(response, LocationDto, total_records=0)

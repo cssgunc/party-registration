@@ -21,8 +21,9 @@ export const LocationTable = () => {
   const [editingLocation, setEditingLocation] = useState<LocationDto | null>(
     null
   );
+  const [search, setSearch] = useState("");
 
-  const locationsQuery = useLocations();
+  const locationsQuery = useLocations(search || undefined);
 
   const locations = (locationsQuery.data?.items ?? [])
     .slice()
@@ -241,6 +242,7 @@ export const LocationTable = () => {
           `Are you sure you want to delete location ${location.formatted_address}? This action cannot be undone.`
         }
         isDeleting={deleteMutation.isPending}
+        onSearchChange={setSearch}
       />
     </div>
   );

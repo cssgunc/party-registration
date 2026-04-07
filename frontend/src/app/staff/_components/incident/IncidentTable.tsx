@@ -56,10 +56,12 @@ export const IncidentTable = () => {
   const [editingIncident, setEditingIncident] = useState<IncidentDto | null>(
     null
   );
+  const [search, setSearch] = useState("");
 
   const incidentsQuery = useQuery<PaginatedResponse<IncidentDto>>({
-    queryKey: ["incidents"],
-    queryFn: () => incidentService.listIncidents(),
+    queryKey: ["incidents", { search }],
+    queryFn: () =>
+      incidentService.listIncidents({ search: search || undefined }),
     retry: 1,
   });
 
@@ -390,7 +392,7 @@ export const IncidentTable = () => {
         resourceName="Incident"
         onEdit={handleEdit}
         onDelete={handleDelete}
-        onCreateNew={handleCreate}
+        onCreateNewRow={handleCreate}
         isLoading={incidentsQuery.isLoading || locationsQuery.isLoading}
         error={
           (incidentsQuery.error as Error | null) ||
@@ -403,6 +405,7 @@ export const IncidentTable = () => {
         sortBy={(a, b) =>
           b.incident_datetime.getTime() - a.incident_datetime.getTime()
         }
+        onSearchChange={setSearch}
       />
     </div>
   );

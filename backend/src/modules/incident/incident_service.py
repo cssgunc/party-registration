@@ -57,6 +57,13 @@ class IncidentService:
             allowed_filter_fields=allowed_filter_fields,
         )
 
+        search_columns = [
+            IncidentEntity.description,
+            IncidentEntity.reference_id,
+            LocationEntity.formatted_address,
+            LocationEntity.google_place_id,
+        ]
+
         return await get_paginated_results(
             session=self.session,
             base_query=base_query,
@@ -66,6 +73,7 @@ class IncidentService:
             allowed_sort_fields=allowed_sort_fields,
             allowed_filter_fields=allowed_filter_fields,
             nested_field_columns=nested_field_columns,
+            search_columns=search_columns,
         )
 
     async def get_incidents_by_location(self, location_id: int) -> list[IncidentDto]:

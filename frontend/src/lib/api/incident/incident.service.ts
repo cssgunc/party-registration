@@ -35,11 +35,13 @@ export class IncidentService {
     pageSize,
     startDate,
     endDate,
+    search,
   }: {
     pageNumber?: number;
     pageSize?: number;
     startDate?: Date;
     endDate?: Date;
+    search?: string;
   } = {}): Promise<PaginatedResponse<IncidentDto>> {
     try {
       const params: Record<string, number | string> = {};
@@ -49,6 +51,7 @@ export class IncidentService {
         params.incident_datetime_gte = startDate.toISOString();
       if (endDate !== undefined)
         params.incident_datetime_lte = endOfDay(endDate).toISOString();
+      if (search) params.search = search;
 
       const response = await this.client.get<
         PaginatedResponse<IncidentDtoBackend>

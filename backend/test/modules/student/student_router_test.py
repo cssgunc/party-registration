@@ -764,3 +764,63 @@ class TestStudentResidenceRouter:
         response = await self.student_client.put("/api/students/me/residence", json=payload)
         data = assert_res_success(response, LocationDto)
         self.location_utils.assert_matches(data, location2)
+
+
+class TestStudentListSearch:
+    """Tests for full-table search on GET /api/students."""
+
+    admin_client: AsyncClient
+    student_utils: StudentTestUtils
+
+    @pytest.fixture(autouse=True)
+    def _setup(self, student_utils: StudentTestUtils, admin_client: AsyncClient):
+        self.student_utils = student_utils
+        self.admin_client = admin_client
+
+    @pytest.mark.asyncio
+    async def test_search_by_first_name(self):
+        """Search should match students whose first name contains the term."""
+        student1 = await self.student_utils.create_one(first_name="Uniquelynamed")
+        _student2 = await self.student_utils.create_one(first_name="Otherperson")
+
+        response = await self.admin_client.get("/api/students?search=Uniquelynamed")
+        paginated = assert_res_paginated(response, StudentDto, total_records=1)
+        self.student_utils.assert_matches(student1, paginated.items[0])
+
+    @pytest.mark.asyncio
+    async def test_search_by_email(self):
+        """Search should match students whose email contains the term."""
+        student1 = await self.student_utils.create_one(email="searchme@unc.edu")
+        _student2 = await self.student_utils.create_one(email="other@unc.edu")
+
+        response = await self.admin_client.get("/api/students?search=searchme")
+        paginated = assert_res_paginated(response, StudentDto, total_records=1)
+        self.student_utils.assert_matches(student1, paginated.items[0])
+
+    @pytest.mark.asyncio
+    async def test_search_by_phone_number(self):
+        """Search should match students whose phone number contains the term."""
+        student1 = await self.student_utils.create_one(phone_number="9195550001")
+        _student2 = await self.student_utils.create_one(phone_number="9195550002")
+
+        response = await self.admin_client.get("/api/students?search=9195550001")
+        paginated = assert_res_paginated(response, StudentDto, total_records=1)
+        self.student_utils.assert_matches(student1, paginated.items[0])
+
+    @pytest.mark.asyncio
+    async def test_search_is_case_insensitive(self):
+        """Search should be case-insensitive."""
+        student1 = await self.student_utils.create_one(first_name="Uniquelynamed")
+        _student2 = await self.student_utils.create_one(first_name="Otherperson")
+
+        response = await self.admin_client.get("/api/students?search=uniquelynamed")
+        paginated = assert_res_paginated(response, StudentDto, total_records=1)
+        self.student_utils.assert_matches(student1, paginated.items[0])
+
+    @pytest.mark.asyncio
+    async def test_search_no_results(self):
+        """Search with no matching term returns empty results."""
+        await self.student_utils.create_many(i=3)
+
+        response = await self.admin_client.get("/api/students?search=zzznomatch")
+        assert_res_paginated(response, StudentDto, total_records=0)

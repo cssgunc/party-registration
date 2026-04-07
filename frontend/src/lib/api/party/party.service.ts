@@ -39,11 +39,13 @@ export class PartyService {
     pageSize,
     startDate,
     endDate,
+    search,
   }: {
     pageNumber?: number;
     pageSize?: number;
     startDate?: Date;
     endDate?: Date;
+    search?: string;
   } = {}): Promise<PaginatedResponse<PartyDto>> {
     try {
       const params: Record<string, number | string> = {};
@@ -53,6 +55,7 @@ export class PartyService {
         params.party_datetime_gte = startDate.toISOString();
       if (endDate !== undefined)
         params.party_datetime_lte = endOfDay(endDate).toISOString();
+      if (search) params.search = search;
 
       const response = await this.client.get<
         PaginatedResponse<PartyDtoBackend>

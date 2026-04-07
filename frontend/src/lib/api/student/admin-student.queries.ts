@@ -27,11 +27,12 @@ type CreateStudentVars = {
 };
 
 export function useStudents(
+  search?: string,
   options?: UseQueryOptions<PaginatedResponse<StudentDto>>
 ) {
   return useQuery({
-    queryKey: STUDENTS_KEY,
-    queryFn: () => studentService.listStudents(),
+    queryKey: [...STUDENTS_KEY, { search }],
+    queryFn: () => studentService.listStudents(undefined, undefined, search),
     ...options,
   });
 }

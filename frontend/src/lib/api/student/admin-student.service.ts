@@ -20,12 +20,14 @@ export class AdminStudentService {
    */
   async listStudents(
     pageNumber?: number,
-    pageSize?: number
+    pageSize?: number,
+    search?: string
   ): Promise<PaginatedResponse<StudentDto>> {
     try {
-      const params: Record<string, number> = {};
+      const params: Record<string, number | string> = {};
       if (pageNumber !== undefined) params.page_number = pageNumber;
       if (pageSize !== undefined) params.page_size = pageSize;
+      if (search) params.search = search;
 
       const response = await this.client.get<
         PaginatedResponse<StudentDtoBackend>

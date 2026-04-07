@@ -510,3 +510,59 @@ class TestPartyListNestedFiltering:
         """Test that using a comparison operator on a string field returns HTTP 400."""
         response = await self.admin_client.get("/api/parties?location.formatted_address_gte=Z")
         assert response.status_code == 400
+
+
+class TestPartyListSearch:
+    """Tests for full-table search on GET /api/parties."""
+
+    admin_client: AsyncClient
+    party_utils: PartyTestUtils
+
+    @pytest.fixture(autouse=True)
+    def _setup(self, party_utils: PartyTestUtils, admin_client: AsyncClient):
+        self.party_utils = party_utils
+        self.admin_client = admin_client
+
+    @pytest.mark.asyncio
+    async def test_search_by_contact_two_email(self):
+        """Search should match parties whose contact two email contains the term."""
+        party1 = await self.party_utils.create_one(contact_two_email="searchme@example.com")
+        _party2 = await self.party_utils.create_one(contact_two_email="other@example.com")
+
+        response = await self.admin_client.get("/api/parties?search=searchme")
+        paginated = assert_res_paginated(response, PartyDto, total_records=1)
+        self.party_utils.assert_matches(paginated.items[0], party1)
+
+    @pytest.mark.asyncio
+    async def test_search_by_location_formatted_address(self):
+        """Search should match parties whose location address contains the term."""
+        loc_main = await self.party_utils.location_utils.create_one(
+            formatted_address="123 Main St, Chapel Hill, NC 27514, US"
+        )
+        loc_oak = await self.party_utils.location_utils.create_one(
+            formatted_address="456 Oak Ave, Chapel Hill, NC 27514, US"
+        )
+        party1 = await self.party_utils.create_one(location_id=loc_main.id)
+        _party2 = await self.party_utils.create_one(location_id=loc_oak.id)
+
+        response = await self.admin_client.get("/api/parties?search=Main")
+        paginated = assert_res_paginated(response, PartyDto, total_records=1)
+        self.party_utils.assert_matches(paginated.items[0], party1)
+
+    @pytest.mark.asyncio
+    async def test_search_is_case_insensitive(self):
+        """Search should be case-insensitive."""
+        party1 = await self.party_utils.create_one(contact_two_email="searchme@example.com")
+        _party2 = await self.party_utils.create_one(contact_two_email="other@example.com")
+
+        response = await self.admin_client.get("/api/parties?search=SEARCHME")
+        paginated = assert_res_paginated(response, PartyDto, total_records=1)
+        self.party_utils.assert_matches(paginated.items[0], party1)
+
+    @pytest.mark.asyncio
+    async def test_search_no_results(self):
+        """Search with no matching term returns empty results."""
+        await self.party_utils.create_many(i=3)
+
+        response = await self.admin_client.get("/api/parties?search=zzznomatch")
+        assert_res_paginated(response, PartyDto, total_records=0)

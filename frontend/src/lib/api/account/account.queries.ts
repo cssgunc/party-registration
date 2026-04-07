@@ -17,10 +17,13 @@ type UpdateAccountVars = {
   data: AccountData;
 };
 
-export function useAccounts(options?: UseQueryOptions<AccountDto[]>) {
+export function useAccounts(
+  search?: string,
+  options?: UseQueryOptions<AccountDto[]>
+) {
   return useQuery({
-    queryKey: ACCOUNTS_KEY,
-    queryFn: () => accountService.listAccounts(["admin", "staff"]),
+    queryKey: [...ACCOUNTS_KEY, { search }],
+    queryFn: () => accountService.listAccounts(["admin", "staff"], search),
     ...options,
   });
 }

@@ -25,8 +25,9 @@ const toEditData = (student: StudentDto) => ({
 export const StudentTable = () => {
   const { openSidebar, closeSidebar } = useSidebar();
   const [editingStudent, setEditingStudent] = useState<StudentDto | null>(null);
+  const [search, setSearch] = useState("");
 
-  const studentsQuery = useStudents();
+  const studentsQuery = useStudents(search || undefined);
   const students = studentsQuery.data?.items ?? [];
 
   const checkboxMutation = useUpdateStudent();
@@ -246,6 +247,7 @@ export const StudentTable = () => {
           a.last_name.localeCompare(b.last_name) ||
           a.first_name.localeCompare(b.first_name)
         }
+        onSearchChange={setSearch}
       />
     </div>
   );

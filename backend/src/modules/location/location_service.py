@@ -148,6 +148,19 @@ class LocationService:
             allowed_filter_fields=allowed_filter_fields,
         )
 
+        search_columns = [
+            LocationEntity.formatted_address,
+            LocationEntity.google_place_id,
+            LocationEntity.street_number,
+            LocationEntity.street_name,
+            LocationEntity.unit,
+            LocationEntity.city,
+            LocationEntity.county,
+            LocationEntity.state,
+            LocationEntity.country,
+            LocationEntity.zip_code,
+        ]
+
         # Use the generic pagination utility
         return await get_paginated_results(
             session=self.session,
@@ -157,6 +170,7 @@ class LocationService:
             query_params=query_params,
             allowed_sort_fields=allowed_sort_fields,
             allowed_filter_fields=allowed_filter_fields,
+            search_columns=search_columns,
         )
 
     async def get_location_by_id(self, location_id: int) -> LocationDto:

@@ -18,11 +18,12 @@ type UpdateLocationVars = {
 };
 
 export function useLocations(
+  search?: string,
   options?: UseQueryOptions<PaginatedResponse<LocationDto>>
 ) {
   return useQuery({
-    queryKey: LOCATIONS_KEY,
-    queryFn: () => locationService.getLocations(),
+    queryKey: [...LOCATIONS_KEY, { search }],
+    queryFn: () => locationService.getLocations(search),
     ...options,
   });
 }

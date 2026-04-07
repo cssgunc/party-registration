@@ -248,3 +248,83 @@ class TestIncidentListNestedFiltering:
         )
         paginated = assert_res_paginated(response, IncidentDto, total_records=1)
         self.incident_utils.assert_matches(paginated.items[0], incident1.to_dto())
+
+
+class TestIncidentListSearch:
+    """Tests for full-table search on GET /api/incidents."""
+
+    admin_client: AsyncClient
+    incident_utils: IncidentTestUtils
+
+    @pytest.fixture(autouse=True)
+    def _setup(self, incident_utils: IncidentTestUtils, admin_client: AsyncClient):
+        self.incident_utils = incident_utils
+        self.admin_client = admin_client
+
+    @pytest.mark.asyncio
+    async def test_search_by_description(self):
+        """Search should match incidents whose description contains the term."""
+        incident1 = await self.incident_utils.create_one(description="noise complaint downtown")
+        _incident2 = await self.incident_utils.create_one(description="unrelated event")
+
+        response = await self.admin_client.get("/api/incidents?search=downtown")
+        paginated = assert_res_paginated(response, IncidentDto, total_records=1)
+        self.incident_utils.assert_matches(paginated.items[0], incident1.to_dto())
+
+    @pytest.mark.asyncio
+    async def test_search_by_reference_id(self):
+        """Search should match incidents whose reference_id contains the term."""
+        incident1 = await self.incident_utils.create_one(reference_id="CAD-5555")
+        _incident2 = await self.incident_utils.create_one(reference_id="CAD-9999")
+
+        response = await self.admin_client.get("/api/incidents?search=5555")
+        paginated = assert_res_paginated(response, IncidentDto, total_records=1)
+        self.incident_utils.assert_matches(paginated.items[0], incident1.to_dto())
+
+    @pytest.mark.asyncio
+    async def test_search_by_location_formatted_address(self):
+        """Search should match incidents whose location address contains the term."""
+        loc_main = await self.incident_utils.location_utils.create_one(
+            formatted_address="123 Elm St, Chapel Hill, NC 27514, US"
+        )
+        loc_oak = await self.incident_utils.location_utils.create_one(
+            formatted_address="456 Oak Ave, Durham, NC 27701, US"
+        )
+        incident1 = await self.incident_utils.create_one(location_id=loc_main.id)
+        _incident2 = await self.incident_utils.create_one(location_id=loc_oak.id)
+
+        response = await self.admin_client.get("/api/incidents?search=Elm")
+        paginated = assert_res_paginated(response, IncidentDto, total_records=1)
+        self.incident_utils.assert_matches(paginated.items[0], incident1.to_dto())
+
+    @pytest.mark.asyncio
+    async def test_search_is_case_insensitive(self):
+        """Search should be case-insensitive."""
+        incident1 = await self.incident_utils.create_one(description="Loud Music")
+        _incident2 = await self.incident_utils.create_one(description="quiet party")
+
+        response = await self.admin_client.get("/api/incidents?search=loud")
+        paginated = assert_res_paginated(response, IncidentDto, total_records=1)
+        self.incident_utils.assert_matches(paginated.items[0], incident1.to_dto())
+
+    @pytest.mark.asyncio
+    async def test_search_combined_with_filter(self):
+        """Search and filters should both apply (AND logic)."""
+        incident1 = await self.incident_utils.create_one(
+            description="loud music", severity="remote_warning"
+        )
+        _incident2 = await self.incident_utils.create_one(
+            description="loud music", severity="citation"
+        )
+
+        response = await self.admin_client.get("/api/incidents?search=loud&severity=remote_warning")
+        paginated = assert_res_paginated(response, IncidentDto, total_records=1)
+        self.incident_utils.assert_matches(paginated.items[0], incident1.to_dto())
+
+    @pytest.mark.asyncio
+    async def test_search_no_results(self):
+        """Search with no matching term returns empty results."""
+        await self.incident_utils.create_many(i=3)
+
+        response = await self.admin_client.get("/api/incidents?search=zzznomatch")
+        assert_res_paginated(response, IncidentDto, total_records=0)

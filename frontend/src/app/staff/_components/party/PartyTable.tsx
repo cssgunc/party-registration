@@ -23,8 +23,9 @@ import StudentInfoChipDetails from "./details/StudentInfoChipDetails";
 export const PartyTable = () => {
   const { openSidebar, closeSidebar } = useSidebar();
   const [editingParty, setEditingParty] = useState<PartyDto | null>(null);
+  const [search, setSearch] = useState("");
 
-  const partiesQuery = useAdminParties();
+  const partiesQuery = useAdminParties(search || undefined);
   const parties = partiesQuery.data?.items ?? [];
 
   const createMutation = useCreateAdminParty({
@@ -379,6 +380,7 @@ export const PartyTable = () => {
           ).toLocaleString()}? This action cannot be undone.`
         }
         isDeleting={deleteMutation.isPending}
+        onSearchChange={setSearch}
       />
     </div>
   );
