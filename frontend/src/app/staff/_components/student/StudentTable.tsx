@@ -4,6 +4,11 @@ import { useSidebar } from "@/app/staff/_components/shared/sidebar/SidebarContex
 import { Checkbox } from "@/components/ui/checkbox";
 import { useSnackbar } from "@/contexts/SnackbarContext";
 import {
+  DEFAULT_TABLE_PARAMS,
+  ServerColumnMap,
+  ServerTableParams,
+} from "@/lib/api/shared/query-params";
+import {
   useDeleteStudent,
   useStudents,
   useUpdateStudent,
@@ -37,12 +42,27 @@ const toEditData = (student: StudentDto) => ({
   residence_place_id: student.residence?.location.google_place_id ?? null,
 });
 
+const SERVER_COLUMN_MAP: ServerColumnMap = {
+  onyen: { backendField: "onyen", filterOperator: "contains" },
+  pid: { backendField: "pid", filterOperator: "contains" },
+  first_name: { backendField: "first_name", filterOperator: "contains" },
+  last_name: { backendField: "last_name", filterOperator: "contains" },
+  email: { backendField: "email", filterOperator: "contains" },
+  phone_number: { backendField: "phone_number", filterOperator: "contains" },
+  contact_preference: {
+    backendField: "contact_preference",
+    filterOperator: "eq",
+  },
+};
+
 export const StudentTable = () => {
   const { openSnackbar } = useSnackbar();
   const { openSidebar, closeSidebar } = useSidebar();
   const [editingStudent, setEditingStudent] = useState<StudentDto | null>(null);
+  const [serverParams, setServerParams] =
+    useState<ServerTableParams>(DEFAULT_TABLE_PARAMS);
 
-  const studentsQuery = useStudents();
+  const studentsQuery = useStudents(serverParams);
   const students = studentsQuery.data?.items ?? [];
 
   const checkboxMutation = useUpdateStudent();
@@ -223,15 +243,22 @@ export const StudentTable = () => {
         onEdit={handleEdit}
         onDelete={handleDelete}
         isLoading={studentsQuery.isLoading}
+        isFetching={studentsQuery.isFetching}
         error={studentsQuery.error}
         getDeleteDescription={(student: StudentDto) =>
           `Are you sure you want to delete ${student.first_name} ${student.last_name}? This action cannot be undone.`
         }
         isDeleting={deleteMutation.isPending}
-        sortBy={(a, b) =>
-          a.last_name.localeCompare(b.last_name) ||
-          a.first_name.localeCompare(b.first_name)
+        serverMeta={
+          studentsQuery.data
+            ? {
+                totalRecords: studentsQuery.data.total_records,
+                totalPages: studentsQuery.data.total_pages,
+              }
+            : undefined
         }
+        onStateChange={setServerParams}
+        columnMap={SERVER_COLUMN_MAP}
       />
     </div>
   );
