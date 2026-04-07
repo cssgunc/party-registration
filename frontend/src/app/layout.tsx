@@ -1,5 +1,4 @@
 import Header from "@/components/Header";
-import { Toaster } from "@/components/ui/sonner";
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
@@ -41,7 +40,6 @@ export default function RootLayout({
       <body
         className={`${avenirNext.variable} font-[family-name:var(--font-avenir-next)] antialiased h-screen overflow-hidden`}
       >
-        <Toaster />
         <Providers>
           <Header />
           {children}

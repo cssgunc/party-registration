@@ -35,7 +35,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         <SnackbarProvider>
           <InterceptorSetup />
           {children}
-          <Toaster />
+          <Toaster position="bottom-left" />
         </SnackbarProvider>
       </QueryClientProvider>
     </SessionProvider>
