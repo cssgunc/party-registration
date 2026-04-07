@@ -11,10 +11,12 @@ import IncidentSidebarCard from "./IncidentSidebarCard";
 
 type IncidentSidebarProps = {
   incidents: IncidentDto[];
+  onDeleteIncidentAction: (incidentId: number) => void;
 };
 
-export default function IncidentInfoChipDetails({
+export default function IncidentSidebar({
   incidents,
+  onDeleteIncidentAction,
 }: IncidentSidebarProps) {
   const { data: session } = useSession();
   const role = session?.role;
@@ -35,8 +37,10 @@ export default function IncidentInfoChipDetails({
 
   const doDelete = () => {
     if (confirmStateDelete === null) return;
+
     const incident = incidents.find((i) => i.id === confirmStateDelete);
     if (!incident) return;
+
     queryClient.setQueryData<PaginatedResponse<LocationDto> | undefined>(
       ["locations"],
       (old) =>
@@ -57,6 +61,7 @@ export default function IncidentInfoChipDetails({
           : old
     );
 
+    onDeleteIncidentAction(confirmStateDelete);
     refreshSidebar(incident.location_id);
     setConfirmStateDelete(null);
   };
@@ -83,7 +88,10 @@ export default function IncidentInfoChipDetails({
       `incidents-${location.id}`,
       "Incidents at Location",
       "Warnings & Citations go here",
-      <IncidentInfoChipDetails incidents={location.incidents} />
+      <IncidentSidebar
+        incidents={location.incidents}
+        onDeleteIncidentAction={onDeleteIncidentAction}
+      />
     );
   };
   const handleCreateIncident = (
@@ -99,7 +107,6 @@ export default function IncidentInfoChipDetails({
       incident_datetime: data.incident_datetime,
       description: data.description,
       severity: data.severity,
-      reference_id: data.reference_id ?? null,
     };
 
     queryClient.setQueryData<PaginatedResponse<LocationDto> | undefined>(
@@ -149,7 +156,6 @@ export default function IncidentInfoChipDetails({
                               incident_datetime: data.incident_datetime,
                               description: data.description,
                               severity: data.severity,
-                              reference_id: data.reference_id ?? null,
                             }
                           : inc
                       ),
@@ -171,6 +177,11 @@ export default function IncidentInfoChipDetails({
       <p className="text-sm text-gray-500">
         Manage the incidents for this location here.
       </p>
+      {role === "admin" && (
+        <Button variant="default" className="mt-4" onClick={handleAdd}>
+          Add Incident
+        </Button>
+      )}
       {incidents.map((incident) => (
         <IncidentSidebarCard
           incidents={incident}
@@ -190,11 +201,6 @@ export default function IncidentInfoChipDetails({
         title="Delete Incident"
         description="Are you sure you want to delete this incident? This action cannot be undone."
       />
-      {role === "admin" && (
-        <Button variant="default" className="mt-4" onClick={handleAdd}>
-          Add Incident
-        </Button>
-      )}
 
       <IncidentModal
         key={
