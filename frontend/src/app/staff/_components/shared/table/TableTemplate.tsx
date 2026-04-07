@@ -164,6 +164,11 @@ export function TableTemplate<T extends object>({
   }, [isOpen, rowSelection]);
 
   const filterDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const globalFilterRef = useRef(globalFilter);
+  useEffect(() => {
+    globalFilterRef.current = globalFilter;
+  }, [globalFilter]);
 
   // Server mode: immediate callback on pagination/sorting change
   useEffect(() => {
@@ -173,7 +178,8 @@ export function TableTemplate<T extends object>({
         paginationRef.current,
         sortingRef.current,
         columnFiltersRef.current,
-        columnMap
+        columnMap,
+        globalFilterRef.current || undefined
       )
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -190,7 +196,8 @@ export function TableTemplate<T extends object>({
           { ...paginationRef.current, pageIndex: 0 },
           sortingRef.current,
           columnFiltersRef.current,
-          columnMap
+          columnMap,
+          globalFilterRef.current || undefined
         )
       );
     }, 300);
@@ -199,6 +206,28 @@ export function TableTemplate<T extends object>({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [columnFilters]);
+
+  // Server mode: debounced callback on search (globalFilter) change
+  useEffect(() => {
+    if (!isServerMode || !onStateChange || !columnMap) return;
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+      onStateChange(
+        buildServerTableParams(
+          { ...paginationRef.current, pageIndex: 0 },
+          sortingRef.current,
+          columnFiltersRef.current,
+          columnMap,
+          globalFilter || undefined
+        )
+      );
+    }, 300);
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [globalFilter]);
 
   function flattenValues<T extends object>(obj: T): string {
     const result: string[] = [];
@@ -235,16 +264,11 @@ export function TableTemplate<T extends object>({
     return result.join(" ").toLowerCase();
   }
 
-  // In server mode, apply global search and client-only column filters on the loaded page
+  // In server mode, apply client-only column filters on the loaded page (global search is backend)
   const displayData = useMemo(() => {
     if (!isServerMode) return sortedData;
 
     let filtered = data;
-
-    if (globalFilter) {
-      const q = globalFilter.toLowerCase();
-      filtered = filtered.filter((row) => flattenValues(row).includes(q));
-    }
 
     for (const filter of columnFilters) {
       if (!filter.value) continue;
@@ -264,7 +288,7 @@ export function TableTemplate<T extends object>({
     }
 
     return filtered;
-  }, [data, sortedData, globalFilter, columnFilters, isServerMode, columns]);
+  }, [data, sortedData, columnFilters, isServerMode, columns]);
 
   const handleDeleteClick = (row: T) => {
     setItemToDelete(row);
@@ -407,9 +431,7 @@ export function TableTemplate<T extends object>({
                 type="text"
                 value={globalFilter}
                 onChange={(e) => setGlobalFilter(e.target.value)}
-                placeholder={
-                  isServerMode ? "Search this page..." : "Search all columns..."
-                }
+                placeholder="Search all columns..."
                 className="p-2 pl-3 h-9 rounded-md"
               />
             </div>

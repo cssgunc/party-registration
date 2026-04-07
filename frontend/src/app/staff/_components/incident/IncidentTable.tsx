@@ -13,6 +13,11 @@ import {
 } from "@/lib/api/incident/incident.types";
 import { LocationService } from "@/lib/api/location/location.service";
 import { LocationDto } from "@/lib/api/location/location.types";
+import {
+  DEFAULT_TABLE_PARAMS,
+  ServerColumnMap,
+  ServerTableParams,
+} from "@/lib/api/shared/query-params";
 import { PaginatedResponse } from "@/lib/shared";
 import { formatTime } from "@/lib/utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -30,6 +35,12 @@ import IncidentTableForm from "./IncidentTableForm";
 
 const incidentService = new IncidentService();
 const locationService = new LocationService();
+
+const SERVER_COLUMN_MAP: ServerColumnMap = {
+  severity: { backendField: "severity", filterOperator: "eq" },
+  reference_id: { backendField: "reference_id", filterOperator: "contains" },
+  description: { backendField: "description", filterOperator: "contains" },
+};
 
 const hasIncidentChanged = (
   original: IncidentDto | null,
@@ -80,10 +91,12 @@ export const IncidentTable = () => {
   const [editingIncident, setEditingIncident] = useState<IncidentDto | null>(
     null
   );
+  const [serverParams, setServerParams] =
+    useState<ServerTableParams>(DEFAULT_TABLE_PARAMS);
 
   const incidentsQuery = useQuery<PaginatedResponse<IncidentDto>>({
-    queryKey: ["incidents"],
-    queryFn: () => incidentService.listIncidents(),
+    queryKey: ["incidents", serverParams],
+    queryFn: () => incidentService.listIncidents(serverParams),
     retry: 1,
   });
 
@@ -415,6 +428,16 @@ export const IncidentTable = () => {
         sortBy={(a, b) =>
           b.incident_datetime.getTime() - a.incident_datetime.getTime()
         }
+        serverMeta={
+          incidentsQuery.data
+            ? {
+                totalRecords: incidentsQuery.data.total_records,
+                totalPages: incidentsQuery.data.total_pages,
+              }
+            : undefined
+        }
+        onStateChange={setServerParams}
+        columnMap={SERVER_COLUMN_MAP}
       />
     </div>
   );

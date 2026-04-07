@@ -181,6 +181,15 @@ class StudentService:
             allowed_filter_fields=self._ALLOWED_FILTER_FIELDS,
         )
 
+        search_columns = [
+            AccountEntity.first_name,
+            AccountEntity.last_name,
+            AccountEntity.email,
+            AccountEntity.onyen,
+            AccountEntity.pid,
+            StudentEntity.phone_number,
+        ]
+
         # Use the generic pagination utility
         return await get_paginated_results(
             session=self.session,
@@ -191,6 +200,7 @@ class StudentService:
             allowed_sort_fields=self._ALLOWED_SORT_FIELDS,
             allowed_filter_fields=self._ALLOWED_FILTER_FIELDS,
             nested_field_columns=self._NESTED_FIELD_COLUMNS,
+            search_columns=search_columns,
         )
 
     async def get_students_for_export(self, request: Request) -> list[StudentDto]:

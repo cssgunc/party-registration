@@ -210,3 +210,53 @@ class TestAccountRouter:
         """Test deleting a non-existent account returns 404."""
         response = await self.admin_client.delete("/api/accounts/99999")
         assert_res_failure(response, AccountNotFoundException(99999))
+
+
+class TestAccountListSearch:
+    """Tests for full-table search on GET /api/accounts."""
+
+    admin_client: AsyncClient
+    account_utils: AccountTestUtils
+
+    @pytest.fixture(autouse=True)
+    def _setup(self, account_utils: AccountTestUtils, admin_client: AsyncClient):
+        self.account_utils = account_utils
+        self.admin_client = admin_client
+
+    @pytest.mark.asyncio
+    async def test_search_by_first_name(self):
+        """Search should match accounts whose first name contains the term."""
+        account1 = await self.account_utils.create_one(first_name="Uniquelynamed")
+        _account2 = await self.account_utils.create_one(first_name="Otherperson")
+
+        response = await self.admin_client.get("/api/accounts?search=Uniquelynamed")
+        paginated = assert_res_paginated(response, AccountDto, total_records=1)
+        self.account_utils.assert_matches(paginated.items[0], account1.to_dto())
+
+    @pytest.mark.asyncio
+    async def test_search_by_email(self):
+        """Search should match accounts whose email contains the term."""
+        account1 = await self.account_utils.create_one(email="searchme@unc.edu")
+        _account2 = await self.account_utils.create_one(email="other@unc.edu")
+
+        response = await self.admin_client.get("/api/accounts?search=searchme")
+        paginated = assert_res_paginated(response, AccountDto, total_records=1)
+        self.account_utils.assert_matches(paginated.items[0], account1.to_dto())
+
+    @pytest.mark.asyncio
+    async def test_search_is_case_insensitive(self):
+        """Search should be case-insensitive."""
+        account1 = await self.account_utils.create_one(first_name="Uniquelynamed")
+        _account2 = await self.account_utils.create_one(first_name="Otherperson")
+
+        response = await self.admin_client.get("/api/accounts?search=uniquelynamed")
+        paginated = assert_res_paginated(response, AccountDto, total_records=1)
+        self.account_utils.assert_matches(paginated.items[0], account1.to_dto())
+
+    @pytest.mark.asyncio
+    async def test_search_no_results(self):
+        """Search with no matching term returns empty results."""
+        await self.account_utils.create_many(i=3)
+
+        response = await self.admin_client.get("/api/accounts?search=zzznomatch")
+        assert_res_paginated(response, AccountDto, total_records=0)

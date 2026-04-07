@@ -61,7 +61,6 @@ const SERVER_COLUMN_MAP: ServerColumnMap = {
 export const AccountTable = () => {
   const { openSidebar, closeSidebar } = useSidebar();
   const { openSnackbar } = useSnackbar();
-  // const [editingAccount, setEditingAccount] = useState<AccountDto | null>(null);
   const [editingAccount, setEditingAccount] = useState<AccountTableRow | null>(
     null
   );
