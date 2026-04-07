@@ -52,8 +52,13 @@ class IncidentService:
             "location.hold_expiration": LocationEntity.hold_expiration,
         }
 
-        _base_allowed_fields = ["id", "incident_datetime", "severity", "description"]
-        _base_allowed_fields.append("reference_id")
+        _base_allowed_fields = [
+            "id",
+            "incident_datetime",
+            "severity",
+            "description",
+            "reference_id",
+        ]
         allowed_sort_fields = [*_base_allowed_fields, *nested_field_columns.keys()]
         allowed_filter_fields = list(allowed_sort_fields)
 

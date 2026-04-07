@@ -119,7 +119,7 @@ class TestIncidentRouter:
         """Test creating incidents with different severity levels."""
         location = await self.location_utils.create_one()
 
-        for severity in ["remote_warning", "in_person_warning", IncidentSeverity.CITATION.value]:
+        for severity in [sev.value for sev in IncidentSeverity]:
             create_dto = await self.incident_utils.next_create_dto(
                 location_place_id=location.google_place_id, severity=severity
             )
