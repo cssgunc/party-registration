@@ -7,11 +7,15 @@ import {
   useUpdateAdminParty,
 } from "@/lib/api/party/admin-party.queries";
 import { AdminCreatePartyDto, PartyDto } from "@/lib/api/party/party.types";
+import {
+  DEFAULT_TABLE_PARAMS,
+  ServerColumnMap,
+  ServerTableParams,
+} from "@/lib/api/shared/query-params";
 import { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
-import { format, isWithinInterval, startOfDay } from "date-fns";
+import { format } from "date-fns";
 import { useState } from "react";
-import { DateRange } from "react-day-picker";
 import { GenericInfoChip } from "../shared/sidebar/GenericInfoChip";
 import { useSidebar } from "../shared/sidebar/SidebarContext";
 import { TableTemplate } from "../shared/table/TableTemplate";
@@ -20,11 +24,34 @@ import ContactInfoChipDetails from "./details/ContactInfoChipDetails";
 import LocationInfoChipDetails from "./details/LocationInfoChipDetails";
 import StudentInfoChipDetails from "./details/StudentInfoChipDetails";
 
+const SERVER_COLUMN_MAP: ServerColumnMap = {
+  location: {
+    backendField: "location.formatted_address",
+    filterOperator: "contains",
+  },
+  party_datetime: {
+    backendField: "party_datetime",
+    filterOperator: "dateRange",
+  },
+  contact_one: {
+    filterOperator: "splitName",
+    firstNameField: "contact_one.first_name",
+    lastNameField: "contact_one.last_name",
+  },
+  contact_two: {
+    filterOperator: "splitName",
+    firstNameField: "contact_two.first_name",
+    lastNameField: "contact_two.last_name",
+  },
+};
+
 export const PartyTable = () => {
   const { openSidebar, closeSidebar } = useSidebar();
   const [editingParty, setEditingParty] = useState<PartyDto | null>(null);
+  const [serverParams, setServerParams] =
+    useState<ServerTableParams>(DEFAULT_TABLE_PARAMS);
 
-  const partiesQuery = useAdminParties();
+  const partiesQuery = useAdminParties(serverParams);
   const parties = partiesQuery.data?.items ?? [];
 
   const createMutation = useCreateAdminParty({
@@ -197,14 +224,10 @@ export const PartyTable = () => {
       accessorFn: (row) => row.location.formatted_address,
       header: "Address",
       enableColumnFilter: true,
-      meta: {
-        filterType: "text",
-      },
+      meta: { filterType: "text" },
       cell: ({ row }) => {
         const location = row.original.location;
-        if (!location) {
-          return "—";
-        }
+        if (!location) return "—";
         return (
           <GenericInfoChip
             chipKey={`party-${row.original.id}-location`}
@@ -215,52 +238,16 @@ export const PartyTable = () => {
           />
         );
       },
-
-      filterFn: (row, _columnId, filterValue) => {
-        const location = row.original.location;
-        const addressString = `${location.street_number || ""} ${
-          location.street_name || ""
-        }`
-          .toLowerCase()
-          .trim();
-        return addressString.includes(String(filterValue).toLowerCase());
-      },
     },
     {
       id: "party_datetime",
       accessorFn: (row) => format(row.party_datetime, "MM-dd-yyyy"),
       header: "Date",
       enableColumnFilter: true,
-      meta: {
-        filterType: "dateRange",
-      },
+      meta: { filterType: "dateRange" },
       cell: ({ row }) => {
-        const party_datetime = row.original.party_datetime;
-        const date = new Date(party_datetime);
+        const date = new Date(row.original.party_datetime);
         return date.toLocaleDateString();
-      },
-
-      filterFn: (row, _columnId, filterValue) => {
-        if (!filterValue) return true;
-
-        const dateRange = filterValue as DateRange;
-        const party_datetime = row.original.party_datetime;
-        const date = startOfDay(new Date(party_datetime));
-
-        // If only 'from' date is selected
-        if (dateRange.from && !dateRange.to) {
-          return date.getTime() === startOfDay(dateRange.from).getTime();
-        }
-
-        // If both dates are selected
-        if (dateRange.from && dateRange.to) {
-          return isWithinInterval(date, {
-            start: startOfDay(dateRange.from),
-            end: startOfDay(dateRange.to),
-          });
-        }
-
-        return true;
       },
     },
     {
@@ -268,33 +255,13 @@ export const PartyTable = () => {
       accessorFn: (row) => format(row.party_datetime, "HH:mm"),
       header: "Time",
       enableColumnFilter: true,
-      meta: {
-        filterType: "time",
-      },
+      meta: { filterType: "time", filterMode: "client" },
       cell: ({ row }) => {
-        const party_datetime = row.original.party_datetime;
-        const date = new Date(party_datetime);
+        const date = new Date(row.original.party_datetime);
         return date.toLocaleTimeString([], {
           hour: "numeric",
           minute: "2-digit",
         });
-      },
-
-      filterFn: (row, _columnId, filterValue) => {
-        if (!filterValue) return true;
-
-        const party_datetime = row.original.party_datetime;
-        const date = new Date(party_datetime);
-
-        // Get hours and minutes from the time input (e.g., "14:30")
-        const [filterHours, filterMinutes] = String(filterValue)
-          .split(":")
-          .map(Number);
-
-        const rowHours = date.getHours();
-        const rowMinutes = date.getMinutes();
-
-        return rowHours === filterHours && rowMinutes === filterMinutes;
       },
     },
     {
@@ -303,9 +270,7 @@ export const PartyTable = () => {
         `${row.contact_one.first_name} ${row.contact_one.last_name}`,
       header: "Contact One",
       enableColumnFilter: true,
-      meta: {
-        filterType: "text",
-      },
+      meta: { filterType: "text" },
       cell: ({ row }) => {
         const contact = row.original.contact_one;
         return contact ? (
@@ -320,13 +285,6 @@ export const PartyTable = () => {
           "—"
         );
       },
-
-      filterFn: (row, _columnId, filterValue) => {
-        const contact = row.original.contact_one;
-        const fullName =
-          `${contact.first_name} ${contact.last_name}`.toLowerCase();
-        return fullName.includes(String(filterValue).toLowerCase());
-      },
     },
     {
       id: "contact_two",
@@ -334,9 +292,7 @@ export const PartyTable = () => {
         `${row.contact_two.first_name} ${row.contact_two.last_name}`,
       header: "Contact Two",
       enableColumnFilter: true,
-      meta: {
-        filterType: "text",
-      },
+      meta: { filterType: "text" },
       cell: ({ row }) => {
         const contact = row.original.contact_two;
         const partyId = row.original.id;
@@ -351,13 +307,6 @@ export const PartyTable = () => {
           />
         );
       },
-
-      filterFn: (row, _columnId, filterValue) => {
-        const contact = row.original.contact_two;
-        const fullName =
-          `${contact.first_name} ${contact.last_name}`.toLowerCase();
-        return fullName.includes(String(filterValue).toLowerCase());
-      },
     },
   ];
 
@@ -367,11 +316,11 @@ export const PartyTable = () => {
         data={parties}
         columns={columns}
         resourceName="Party"
-        initialSort={[{ id: "party_datetime", desc: true }]}
         onEdit={handleEdit}
         onDelete={handleDelete}
         onCreateNewRow={handleCreate}
         isLoading={partiesQuery.isLoading}
+        isFetching={partiesQuery.isFetching}
         error={partiesQuery.error as Error | null}
         getDeleteDescription={(party: PartyDto) =>
           `Are you sure you want to delete this party on ${new Date(
@@ -379,6 +328,16 @@ export const PartyTable = () => {
           ).toLocaleString()}? This action cannot be undone.`
         }
         isDeleting={deleteMutation.isPending}
+        serverMeta={
+          partiesQuery.data
+            ? {
+                totalRecords: partiesQuery.data.total_records,
+                totalPages: partiesQuery.data.total_pages,
+              }
+            : undefined
+        }
+        onStateChange={setServerParams}
+        columnMap={SERVER_COLUMN_MAP}
       />
     </div>
   );

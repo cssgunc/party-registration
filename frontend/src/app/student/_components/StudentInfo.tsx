@@ -162,212 +162,192 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
   );
   if (!isEditing) {
     return (
-      <div className="bg-white rounded-lg py-16 px-20 w-full flex flex-col">
-        <div className="self-center gap-6 flex justify-between mb-16">
-          <div className="text-[32px] font-semibold text-[#09294E]">
-            Edit Profile Information
-          </div>
+      <div className="bg-card rounded-lg p-6 sm:px-10 sm:py-8 w-full flex flex-col">
+        <div className="self-center gap-6 flex justify-around mr-4 sm:mr-0 sm:mt-4">
+          <h1 className="page-title">Edit Profile Information</h1>
           <button
             onClick={() => setIsEditing(true)}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            className="bg-transparent"
             aria-label="Edit profile"
           >
-            <Pencil className="w-6 h-6 text-[#09294E] cursor-pointer" />
+            <Pencil className=" content cursor-pointer" />
           </button>
         </div>
 
-        <div className="sm:grid sm:grid-cols-2 sm:gap-x-12 sm:gap-y-8">
-          <div>
-            <div className="text-[#09294E] font-semibold text-lg mb-2">
-              First Name
+        <section>
+          <div className="my-4 sm:my-8 sm:grid sm:grid-cols-2 sm:gap-y-2 sm:gap-x-12">
+            <div className="sm:mt-0 sm:border-b">
+              <p className="subhead-content mb-2">First Name</p>
+              <p className="content">{displayData.first_name}</p>
             </div>
-            <div className="text-gray-600 text-base border-b border-gray-300 pb-2">
-              {displayData.first_name}
+
+            <div className="mt-3 sm:mt-0 sm:border-b">
+              <p className="subhead-content mb-2">Last Name</p>
+              <p className="content">{displayData.last_name}</p>
+            </div>
+
+            <div className="mt-3 sm:mt-6 sm:border-b">
+              <p className="subhead-content mb-2">Phone Number</p>
+              <p className="content">{displayData.phone_number}</p>
+            </div>
+
+            <div className="mt-3 sm:mt-6 sm:border-b">
+              <p className="subhead-content mb-2">Contact Method</p>
+              <p className="content">
+                {displayData.contact_preference
+                  ? displayData.contact_preference.charAt(0).toUpperCase() +
+                    displayData.contact_preference.slice(1)
+                  : "Not set"}
+              </p>
             </div>
           </div>
-
-          <div>
-            <div className="text-[#09294E] font-semibold text-lg mb-2 mt-5 sm:mt-0">
-              Last Name
-            </div>
-            <div className="text-gray-600 text-base border-b border-gray-300 pb-2">
-              {displayData.last_name}
-            </div>
+          <div className="mt-3 mb-8 sm:mt-6 sm:border-b">
+            <p className="subhead-content mb-2">{school_year} Address</p>
+            <p className="content">
+              {initialData.residence?.location.formatted_address}
+            </p>
           </div>
+        </section>
 
-          <div>
-            <div className="text-[#09294E] font-semibold text-lg mb-2 mt-5 sm:mt-0">
-              Phone Number
-            </div>
-            <div className="text-gray-600 text-base border-b border-gray-300 pb-2">
-              {displayData.phone_number}
-            </div>
-          </div>
-
-          <div>
-            <div className="text-[#09294E] font-semibold text-lg mb-2 mt-5 sm:mt-0">
-              Contact Method
-            </div>
-            <div className="text-gray-600 text-base border-b border-gray-300 pb-2">
-              {displayData.contact_preference
-                ? displayData.contact_preference.charAt(0).toUpperCase() +
-                  displayData.contact_preference.slice(1)
-                : "Not set"}
-            </div>
-          </div>
-        </div>
-        <div className="text-[#09294E] font-semibold text-lg mb-2 mt-5 sm:mt-0 pt-4">
-          {school_year} Address
-        </div>
-
-        <div className="text-gray-600 text-base border-b border-gray-300 pb-2">
-          {initialData.residence?.location.formatted_address}
-        </div>
-
-        <div className="mt-16 flex justify-center">
+        <section className="sm:mb-4 flex justify-center">
           <Button variant="default">Log Out</Button>
-        </div>
+        </section>
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded-lg p-12 w-full">
-      <div className="flex justify-between items-center mb-6">
-        <div className="text-[32px] font-semibold text-[#09294E]">
-          Edit Profile Information
-        </div>
-        <button
-          onClick={() => setIsEditing(true)}
-          className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-          aria-label="Edit profile"
-        >
-          <Pencil className="w-6 h-6 text-[#09294E]" />
-        </button>
+    <form
+      onSubmit={handleSubmit}
+      className="bg-card rounded-lg w-full p-6 sm:p-10"
+    >
+      <div className="text-center mb-6 sm:mb-2 sm:mt-2">
+        <h1 className="page-title self-center">Edit Profile Information</h1>
       </div>
       <FieldGroup>
-        <FieldSet>
-          <div className="grid grid-cols-2 gap-x-12 gap-y-6">
-            <div>
-              <div className="text-[#09294E] font-semibold text-lg mb-2">
-                First Name
+        <FieldSet className="rounded-lg w-full flex flex-col sm:py-4">
+          <section>
+            <div className="mb-2 sm:mb-6 sm:mt-2">
+              <div className="grid grid-cols-2 mb-2 gap-12">
+                <div>
+                  <p className="subhead-content mb-2">First Name</p>
+                  <p className="content pb-2">{displayData.first_name}</p>
+                </div>
+
+                <div>
+                  <p className="subhead-content mb-2">Last Name</p>
+                  <p className="content pb-2">{displayData.last_name}</p>
+                </div>
               </div>
-              <div className="text-gray-600 text-base border-b border-gray-300 pb-2">
-                {displayData.first_name}
+              <div className="flex flex-row gap-2">
+                <TriangleAlert className="w-4 h-4 content" />
+                <p className="content-sub italic flex-1">
+                  Your name is associated with your Onyen
+                </p>
               </div>
             </div>
 
-            <div>
-              <div className="text-[#09294E] font-semibold text-lg mb-2 mt-5 sm:mt-0">
-                Last Name
-              </div>
-              <div className="text-gray-600 text-base border-b border-gray-300 pb-2">
-                {displayData.last_name}
-              </div>
-            </div>
-          </div>
-          <div className="flex flex-row gap-2">
-            <TriangleAlert />
-            <div className="text-gray-600 text-base italic flex-1">
-              Your name is associated with your Onyen
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-x-12 gap-y-6">
-            <Field data-invalid={!!errors.phone_number}>
-              <FieldLabel
-                htmlFor="phone-number"
-                className="text-[#09294E] font-semibold text-lg"
-              >
-                Phone Number
-              </FieldLabel>
-              <Input
-                id="phone-number"
-                placeholder="123-456-7890"
-                value={formData.phone_number}
-                onChange={(e) => updateField("phone_number", e.target.value)}
-                aria-invalid={!!errors.phone_number}
-              />
-              {errors.phone_number && (
-                <FieldError>{errors.phone_number}</FieldError>
-              )}
-            </Field>
-
-            <Field data-invalid={!!errors.contact_preference}>
-              <FieldLabel
-                htmlFor="contact-preference"
-                className="text-[#09294E] font-semibold text-lg"
-              >
-                Contact Method
-              </FieldLabel>
-              <Select
-                value={formData.contact_preference}
-                onValueChange={(value: "call" | "text") =>
-                  updateField("contact_preference", value)
-                }
-              >
-                <SelectTrigger id="contact-preference">
-                  <SelectValue placeholder="Select your preference" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="call">Call</SelectItem>
-                  <SelectItem value="text">Text</SelectItem>
-                </SelectContent>
-              </Select>
-              {errors.contact_preference && (
-                <FieldError>{errors.contact_preference}</FieldError>
-              )}
-            </Field>
-            {!validAddress && (
-              <Field data-invalid={!!errors.address}>
+            <div className="grid grid-cols-2 mb-2 gap-12">
+              <Field data-invalid={!!errors.phone_number} className="mb-2">
                 <FieldLabel
-                  htmlFor="address"
-                  className="text-[#09294E] font-semibold text-lg mb-2 mt-5 sm:mt-0"
+                  htmlFor="phone-number"
+                  className="subhead-content mt-3 sm:mt-0"
                 >
-                  {school_year} Address
+                  Phone Number
                 </FieldLabel>
                 <Input
-                  id="address"
-                  placeholder="123 Main St, Chapel Hill NC 27514"
-                  value={formData.address}
-                  onChange={(e) => updateField("address", e.target.value)}
-                  className="border-gray-300"
+                  id="phone-number"
+                  placeholder="123-456-7890"
+                  value={formData.phone_number}
+                  onChange={(e) => updateField("phone_number", e.target.value)}
+                  aria-invalid={!!errors.phone_number}
+                  className="content"
                 />
-                {errors.address && <FieldError>{errors.address}</FieldError>}
+                {errors.phone_number && (
+                  <FieldError>{errors.phone_number}</FieldError>
+                )}
               </Field>
-            )}
+
+              <Field
+                data-invalid={!!errors.contact_preference}
+                className="mb-4"
+              >
+                <FieldLabel
+                  htmlFor="contact-preference"
+                  className="subhead-content mt-3 sm:mt-0"
+                >
+                  Contact Method
+                </FieldLabel>
+                <Select
+                  value={formData.contact_preference}
+                  onValueChange={(value: "call" | "text") =>
+                    updateField("contact_preference", value)
+                  }
+                >
+                  <SelectTrigger id="contact-preference" className="content">
+                    <SelectValue placeholder="Select your preference" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="call" className="content">
+                      Call
+                    </SelectItem>
+                    <SelectItem value="text" className="content">
+                      Text
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                {errors.contact_preference && (
+                  <FieldError>{errors.contact_preference}</FieldError>
+                )}
+              </Field>
+              {!validAddress && (
+                <Field data-invalid={!!errors.address} className="mb-2">
+                  <FieldLabel
+                    htmlFor="address"
+                    className="subhead-content mt-3 sm:mt-0"
+                  >
+                    {school_year} Address
+                  </FieldLabel>
+                  <Input
+                    id="address"
+                    placeholder="123 Main St, Chapel Hill NC 27514"
+                    value={formData.address}
+                    onChange={(e) => updateField("address", e.target.value)}
+                    className="content"
+                  />
+                  {errors.address && <FieldError>{errors.address}</FieldError>}
+                </Field>
+              )}
+            </div>
+
             {validAddress && (
               <div className="col-span-2">
-                <div className="text-[#09294E] font-semibold text-lg mb-2">
+                <p className="subhead-content mt-3 sm:mt-0">
                   {school_year} Address
-                </div>
-                <div className="text-gray-600 text-base pb-3">
+                </p>
+                <p className="content my-2">
                   {initialData.residence?.location.formatted_address}
-                </div>
+                </p>
 
-                <div className="flex flex-row gap-4">
-                  <TriangleAlert />
-                  <div className="text-gray-600 text-base italic flex-1">
+                <div className="flex flex-row mt-3 gap-2">
+                  <TriangleAlert className="w-4 h-4 content" />
+                  <p className="content-sub italic flex-1">
                     You cannot change your address until {change_date}. If you
                     are experiencing hardship, contact [email] for changes
-                  </div>
+                  </p>
                 </div>
               </div>
             )}
-          </div>
+          </section>
 
           {errors.submit && (
-            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg ">
+            <div className="p-4 bg-red-50 border border-red-200 rounded-md text-center">
               <FieldError className="text-red-600">{errors.submit}</FieldError>
             </div>
           )}
 
-          <div className="mt-8 flex justify-center gap-4">
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-              className="bg-[#09294E] text-white px-8 py-2 rounded-lg hover:bg-[#0a1f38] "
-            >
+          <div className="flex justify-center">
+            <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Saving..." : "Save"}
             </Button>
           </div>

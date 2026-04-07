@@ -1,3 +1,7 @@
+import {
+  ServerTableParams,
+  toAxiosParams,
+} from "@/lib/api/shared/query-params";
 import apiClient from "@/lib/network/apiClient";
 import { PaginatedResponse } from "@/lib/shared";
 import { AxiosInstance } from "axios";
@@ -59,12 +63,13 @@ export class LocationService {
   /**
    * Get locations (GET /api/locations)
    */
-  async getLocations(): Promise<PaginatedResponse<LocationDto>> {
+  async getLocations(
+    params?: ServerTableParams
+  ): Promise<PaginatedResponse<LocationDto>> {
     try {
-      const response =
-        await this.client.get<PaginatedResponse<LocationDtoBackend>>(
-          "/locations"
-        );
+      const response = await this.client.get<
+        PaginatedResponse<LocationDtoBackend>
+      >("/locations", { params: params ? toAxiosParams(params) : undefined });
       return {
         ...response.data,
         items: response.data.items.map(convertLocation),

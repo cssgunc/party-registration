@@ -35,6 +35,8 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-sub-text: var(--sub-text);
+  --color-text: var(--text);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -88,6 +90,8 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  --sub-text: oklch(0.281 0.0773 254.77 / 0.7);
+  --text: oklch(0.281 0.0773 254.77);
   --modal-overlay: oklch(0 0 0 / 0.5);
 }
 
@@ -157,23 +161,26 @@
   }
 
   .page-title {
-    @apply text-2xl font-semibold;
+    @apply text-2xl font-semibold text-text;
   }
 
   .subhead-title {
-    @apply text-xl font-semibold;
+    @apply text-xl font-semibold text-text;
   }
 
   .subhead-content {
-    @apply text-lg font-normal;
+    @apply text-lg font-bold text-text;
   }
 
   .content {
-    @apply text-sm font-normal;
+    @apply text-base font-normal text-text;
   }
 
   .content-bold {
-    @apply text-sm font-medium;
+    @apply text-base font-bold text-text;
+  }
+  .content-sub {
+    @apply text-sm font-normal text-sub-text;
   }
 }
 
