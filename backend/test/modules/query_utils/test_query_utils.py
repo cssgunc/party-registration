@@ -62,8 +62,8 @@ class TestQueryUtilsSorting:
     @pytest.mark.asyncio
     async def test_sort_enum_field(self):
         """Sorting by an enum field (severity) orders alphabetically by value."""
-        await self.incident_utils.create_one(severity=IncidentSeverity.IN_PERSON)
-        await self.incident_utils.create_one(severity=IncidentSeverity.REMOTE)
+        await self.incident_utils.create_one(severity=IncidentSeverity.WARNING)
+        await self.incident_utils.create_one(severity=IncidentSeverity.COMPLAINT)
         await self.incident_utils.create_one(severity=IncidentSeverity.CITATION)
 
         response = await self.admin_client.get("/api/incidents?sort_by=severity&sort_order=asc")
@@ -105,10 +105,10 @@ class TestQueryUtilsFilterOperators:
     @pytest.mark.asyncio
     async def test_filter_equals(self):
         """EQUALS operator filters to exact enum match."""
-        i1 = await self.incident_utils.create_one(severity=IncidentSeverity.CITATION)
-        await self.incident_utils.create_one(severity=IncidentSeverity.IN_PERSON)
+        i1 = await self.incident_utils.create_one(severity=IncidentSeverity.COMPLAINT)
+        await self.incident_utils.create_one(severity=IncidentSeverity.WARNING)
 
-        response = await self.admin_client.get("/api/incidents?severity=citation")
+        response = await self.admin_client.get("/api/incidents?severity=complaint")
         paginated = assert_res_paginated(response, IncidentDto, total_records=1)
         self.incident_utils.assert_matches(paginated.items[0], i1.to_dto())
 
@@ -220,7 +220,7 @@ class TestQueryUtilsTypeValidation:
     @pytest.mark.asyncio
     async def test_enum_field_comparison_operator_returns_400(self):
         """Using GT/GTE/LT/LTE on an enum field returns 400."""
-        response = await self.admin_client.get("/api/incidents?severity_gt=citation")
+        response = await self.admin_client.get("/api/incidents?severity_gt=complaint")
         assert_res_failure(
             response, BadRequestException("Operator 'gt' is not supported for string/enum fields")
         )

@@ -45,7 +45,7 @@ class IncidentTestUtils(
                 datetime(2026, 1, 1, 0, 0, 0, tzinfo=UTC) + timedelta(days=count)
             ).isoformat(),
             "description": f"Incident {count}",
-            "severity": IncidentSeverity.IN_PERSON.value,
+            "severity": IncidentSeverity.COMPLAINT.value,
         }
 
     @classmethod

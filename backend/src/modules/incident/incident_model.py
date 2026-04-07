@@ -5,8 +5,8 @@ from src.core.utils.query_utils import PaginatedResponse
 
 
 class IncidentSeverity(Enum):
-    REMOTE = "remote_warning"
-    IN_PERSON = "in_person_warning"
+    COMPLAINT = "complaint"
+    WARNING = "warning"
     CITATION = "citation"
 
 
