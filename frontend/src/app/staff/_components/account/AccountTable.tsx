@@ -11,6 +11,11 @@ import type {
   AccountDto,
   AccountRole,
 } from "@/lib/api/account/account.types";
+import {
+  DEFAULT_TABLE_PARAMS,
+  ServerColumnMap,
+  ServerTableParams,
+} from "@/lib/api/shared/query-params";
 import { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
 import { useState } from "react";
@@ -21,15 +26,22 @@ import AccountTableForm, { accountTableFormSchema } from "./AccountTableForm";
 
 type AccountTableFormValues = z.infer<typeof accountTableFormSchema>;
 
+const SERVER_COLUMN_MAP: ServerColumnMap = {
+  email: { backendField: "email", filterOperator: "contains" },
+  first_name: { backendField: "first_name", filterOperator: "contains" },
+  last_name: { backendField: "last_name", filterOperator: "contains" },
+  onyen: { backendField: "onyen", filterOperator: "contains" },
+  role: { backendField: "role", filterOperator: "eq" },
+};
+
 export const AccountTable = () => {
   const { openSidebar, closeSidebar } = useSidebar();
   const [editingAccount, setEditingAccount] = useState<AccountDto | null>(null);
+  const [serverParams, setServerParams] =
+    useState<ServerTableParams>(DEFAULT_TABLE_PARAMS);
 
-  const accountsQuery = useAccounts();
-
-  const accounts = (accountsQuery.data ?? []).filter(
-    (a) => a.role === "admin" || a.role === "staff"
-  );
+  const accountsQuery = useAccounts(serverParams);
+  const accounts = accountsQuery.data?.items ?? [];
 
   const createMutation = useCreateAccount({
     onError: (error: Error, variables: AccountData) => {
@@ -218,15 +230,22 @@ export const AccountTable = () => {
         onDelete={handleDelete}
         onCreateNewRow={handleCreate}
         isLoading={accountsQuery.isLoading}
+        isFetching={accountsQuery.isFetching}
         error={accountsQuery.error as Error | null}
         getDeleteDescription={(account: AccountDto) =>
           `Are you sure you want to delete account ${account.email}? This action cannot be undone.`
         }
         isDeleting={deleteMutation.isPending}
-        sortBy={(a, b) =>
-          a.last_name.localeCompare(b.last_name) ||
-          a.first_name.localeCompare(b.first_name)
+        serverMeta={
+          accountsQuery.data
+            ? {
+                totalRecords: accountsQuery.data.total_records,
+                totalPages: accountsQuery.data.total_pages,
+              }
+            : undefined
         }
+        onStateChange={setServerParams}
+        columnMap={SERVER_COLUMN_MAP}
       />
     </div>
   );
