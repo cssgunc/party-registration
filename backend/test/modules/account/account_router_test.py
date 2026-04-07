@@ -1,14 +1,9 @@
 import pytest
-import pytest_asyncio
 from httpx import AsyncClient
 from src.modules.account.account_entity import AccountEntity, AccountRole
 from src.modules.account.account_model import AccountDto
 from src.modules.account.account_service import AccountConflictException, AccountNotFoundException
-from src.modules.police.police_entity import PoliceEntity
-from src.modules.police.police_model import PoliceAccountDto
-from src.modules.police.police_service import PoliceNotFoundException
 from test.modules.account.account_utils import AccountTestUtils
-from test.modules.police.police_utils import PoliceTestUtils
 from test.utils.http.assertions import (
     assert_res_failure,
     assert_res_paginated,
@@ -16,13 +11,6 @@ from test.utils.http.assertions import (
     assert_res_validation_error,
 )
 from test.utils.http.test_templates import generate_auth_required_tests, generate_filter_sort_tests
-
-
-@pytest_asyncio.fixture
-async def sample_police(police_utils: PoliceTestUtils) -> PoliceEntity:
-    """Create sample police credentials for testing."""
-    return await police_utils.create_one()
-
 
 test_account_sort, test_account_filter = generate_filter_sort_tests(
     "/api/accounts",
@@ -52,16 +40,9 @@ test_account_authentication = generate_auth_required_tests(
         {"admin"},
         "PUT",
         "/api/accounts/12345",
-        AccountTestUtils.get_sample_data(),
+        {"role": "staff"},
     ),
     ({"admin"}, "DELETE", "/api/accounts/12345", None),
-    ({"admin"}, "GET", "/api/accounts/police", None),
-    (
-        {"admin"},
-        "PUT",
-        "/api/accounts/police",
-        PoliceTestUtils.get_sample_data(),
-    ),
 )
 
 
@@ -176,87 +157,40 @@ class TestAccountRouter:
         assert_res_validation_error(response, expected_fields=list(invalid_data.keys()))
 
     @pytest.mark.asyncio
-    async def test_update_account(self, accounts_two_per_role: list[AccountEntity]):
-        """Test updating an existing account."""
+    async def test_update_account_role(self, accounts_two_per_role: list[AccountEntity]) -> None:
+        """Test updating an account's role."""
         account_to_update = accounts_two_per_role[0]
-        updated_data = await self.account_utils.next_data()
         response = await self.admin_client.put(
             f"/api/accounts/{account_to_update.id}",
-            json=updated_data.model_dump(mode="json"),
+            json={"role": "admin"},
         )
         data = assert_res_success(response, AccountDto)
-        self.account_utils.assert_matches(updated_data, data)
-        assert data.id == account_to_update.id
-
-    @pytest.mark.asyncio
-    async def test_update_account_change_email(self, accounts_two_per_role: list[AccountEntity]):
-        """Test changing an account's email successfully."""
-        account_to_update = accounts_two_per_role[0]
-        updated_data = account_to_update.to_dto()
-        updated_data.email = "newemail@example.com"
-        response = await self.admin_client.put(
-            f"/api/accounts/{account_to_update.id}",
-            json=updated_data.model_dump(mode="json", exclude={"id"}),
+        expected = AccountDto(
+            id=account_to_update.id,
+            role=AccountRole.ADMIN,
+            email=account_to_update.email,
+            first_name=account_to_update.first_name,
+            last_name=account_to_update.last_name,
+            pid=account_to_update.pid,
+            onyen=account_to_update.onyen,
         )
-        response_data = assert_res_success(response, AccountDto)
-        self.account_utils.assert_matches(updated_data, response_data)
-
-    @pytest.mark.asyncio
-    async def test_update_account_duplicate_email(self, accounts_two_per_role: list[AccountEntity]):
-        """Test that updating to an email that already exists returns 409."""
-        account_to_update = accounts_two_per_role[0]
-        updated_data = await self.account_utils.next_dict(email=accounts_two_per_role[1].email)
-        response = await self.admin_client.put(
-            f"/api/accounts/{account_to_update.id}", json=updated_data
-        )
-        assert_res_failure(response, AccountConflictException(email=updated_data["email"]))
-
-    @pytest.mark.asyncio
-    async def test_update_account_duplicate_onyen(self, accounts_two_per_role: list[AccountEntity]):
-        """Test that updating to an onyen that already exists returns 409."""
-        account_to_update = accounts_two_per_role[0]
-        updated_data = await self.account_utils.next_dict(onyen=accounts_two_per_role[1].onyen)
-        response = await self.admin_client.put(
-            f"/api/accounts/{account_to_update.id}", json=updated_data
-        )
-        assert_res_failure(response, AccountConflictException(onyen=updated_data["onyen"]))
-
-    @pytest.mark.asyncio
-    async def test_update_account_duplicate_pid(self, accounts_two_per_role: list[AccountEntity]):
-        """Test that updating to a PID that already exists returns 409."""
-        account_to_update = accounts_two_per_role[0]
-        updated_data = await self.account_utils.next_dict(pid=accounts_two_per_role[1].pid)
-        response = await self.admin_client.put(
-            f"/api/accounts/{account_to_update.id}", json=updated_data
-        )
-        assert_res_failure(response, AccountConflictException(pid=updated_data["pid"]))
+        self.account_utils.assert_matches(expected, data)
 
     @pytest.mark.asyncio
     async def test_update_account_not_found(self):
         """Test updating a non-existent account returns 404."""
-        updated_data = await self.account_utils.next_dict()
-        response = await self.admin_client.put("/api/accounts/99999", json=updated_data)
+        response = await self.admin_client.put("/api/accounts/99999", json={"role": "staff"})
         assert_res_failure(response, AccountNotFoundException(99999))
 
-    @pytest.mark.parametrize(
-        "invalid_data",
-        [
-            {"pid": "73012"},
-            {"pid": "73012345678"},
-            {"pid": "730abcdef"},
-            {"email": "invalid-email"},
-        ],
-    )
     @pytest.mark.asyncio
-    async def test_update_account_invalid_data(
-        self, invalid_data: dict, accounts_two_per_role: list[AccountEntity]
-    ):
+    async def test_update_account_invalid_role(self, accounts_two_per_role: list[AccountEntity]):
+        """Test that sending an invalid role returns 422."""
         account_to_update = accounts_two_per_role[0]
-        updated_account = await self.account_utils.next_dict(**invalid_data)
         response = await self.admin_client.put(
-            f"/api/accounts/{account_to_update.id}", json=updated_account
+            f"/api/accounts/{account_to_update.id}",
+            json={"role": "invalid_role"},
         )
-        assert_res_validation_error(response, expected_fields=list(invalid_data.keys()))
+        assert_res_validation_error(response, expected_fields=["role"])
 
     @pytest.mark.asyncio
     async def test_delete_account(self, accounts_two_per_role: list[AccountEntity]):
@@ -276,67 +210,3 @@ class TestAccountRouter:
         """Test deleting a non-existent account returns 404."""
         response = await self.admin_client.delete("/api/accounts/99999")
         assert_res_failure(response, AccountNotFoundException(99999))
-
-    @pytest.mark.asyncio
-    async def test_get_police_credentials(
-        self, sample_police: PoliceEntity, police_utils: PoliceTestUtils
-    ):
-        """Test getting police credentials"""
-        response = await self.admin_client.get("/api/accounts/police")
-        data = assert_res_success(response, PoliceAccountDto)
-        police_utils.assert_matches(sample_police, data)
-
-    @pytest.mark.asyncio
-    async def test_get_police_not_found(self):
-        """Test getting police when not configured returns 500."""
-        response = await self.admin_client.get("/api/accounts/police")
-        assert_res_failure(response, PoliceNotFoundException())
-
-    @pytest.mark.asyncio
-    async def test_update_police_credentials(
-        self, sample_police: PoliceEntity, police_utils: PoliceTestUtils
-    ):
-        """Test updating police credentials."""
-        updated_data = await police_utils.next_data()
-        response = await self.admin_client.put(
-            "/api/accounts/police", json=updated_data.model_dump(mode="json")
-        )
-        data = assert_res_success(response, PoliceAccountDto)
-        police_utils.assert_matches(updated_data, data)
-
-    @pytest.mark.asyncio
-    async def test_update_police_credentials_invalid_email(
-        self, sample_police: PoliceEntity, police_utils: PoliceTestUtils
-    ):
-        """Test updating police with invalid email returns 422."""
-        updated_data = await police_utils.next_dict(email="invalid-email")
-        response = await self.admin_client.put("/api/accounts/police", json=updated_data)
-        assert_res_validation_error(response, expected_fields=["email"])
-
-    @pytest.mark.asyncio
-    async def test_update_police_password_is_hashed(
-        self, sample_police: PoliceEntity, police_utils: PoliceTestUtils
-    ):
-        """Test that password is hashed when updating police credentials."""
-        previous_password = sample_police.hashed_password
-        plain_password = "my_plain_password_123"
-        updated_data = await police_utils.next_data(password=plain_password)
-        response = await self.admin_client.put(
-            "/api/accounts/police", json=updated_data.model_dump(mode="json")
-        )
-
-        assert_res_success(response, PoliceAccountDto)
-        updated_police = await police_utils.get_police()
-        police_utils.assert_matches(updated_data, updated_police)
-
-        assert updated_police.hashed_password != plain_password, "Password should be hashed"
-        assert updated_police.hashed_password != previous_password, "Password should be updated"
-
-    @pytest.mark.asyncio
-    async def test_update_police_not_found(self, police_utils: PoliceTestUtils):
-        """Test updating police when not configured returns 500."""
-        updated_data = await police_utils.next_data()
-        response = await self.admin_client.put(
-            "/api/accounts/police", json=updated_data.model_dump(mode="json")
-        )
-        assert_res_failure(response, PoliceNotFoundException())

@@ -11,6 +11,7 @@ import {
   useMyParties,
 } from "@/lib/api/student/student.queries";
 import { isFromThisSchoolYear } from "@/lib/utils";
+import { ArrowLeft, Info } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
@@ -96,21 +97,38 @@ export default function RegistrationForm() {
 
   return (
     <div>
-      <Card className="px-14 lg:px-48 pb-8">
-        <Link className="py-8" href="/student">
-          Back
-        </Link>
-        <div className="font-semibold py-3 text-2xl max-w-md">
-          Off Campus Student Life Party Registration Form
-        </div>
-        <PartyRegistrationForm
-          onSubmit={handleSubmit}
-          initialValues={initialValues}
-          studentEmail={studentQuery.data?.email}
-          studentPhoneNumber={studentQuery.data?.phone_number}
-          studentResidence={studentQuery.data?.residence}
-        />
-      </Card>
+      <main className="mx-4 mt-4">
+        <nav className="flex items-center content pb-2 lg:hidden">
+          <ArrowLeft className="h-4" />
+          <Link href="/student">Back</Link>
+        </nav>
+        <Card className="mb-12">
+          <div>
+            <nav className="hidden content lg:flex lg:items-center lg:px-8 lg:py-6">
+              <ArrowLeft className="h-4" />
+              <Link href="/student">Back</Link>
+            </nav>
+            <div className="px-8 py-6 lg:px-18 lg:py-0 lg:pb-12">
+              <h1 className="page-title max-w-md md:mb-4">
+                Off Campus Student Life Party Registration Form
+              </h1>
+
+              <Link
+                href="/student/about-party-smart"
+                className="flex items-center py-2 md:hidden"
+              >
+                <Info className="h-4 mr-1 content" />
+                <p className="content underline">Learn About Party Smart</p>
+              </Link>
+
+              <PartyRegistrationForm
+                onSubmit={handleSubmit}
+                initialValues={initialValues}
+              />
+            </div>
+          </div>
+        </Card>
+      </main>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 from enum import Enum, StrEnum
 
 from pydantic import BaseModel, EmailStr, Field
-from src.core.query_utils import PaginatedResponse
+from src.core.utils.query_utils import PaginatedResponse
 
 
 class AccountRole(Enum):
@@ -37,6 +37,12 @@ class AccountDto(BaseModel):
     last_name: str
     pid: str
     onyen: str
+    role: AccountRole
+
+
+class AccountUpdateData(BaseModel):
+    """DTO for updating an Account's role."""
+
     role: AccountRole
 
 

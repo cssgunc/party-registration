@@ -124,7 +124,7 @@ async def create_test_client(
         # Use fake DTOs — middleware reads from JWT only, no DB lookup needed.
         # Tests needing a real DB account use the student_client / student_account fixtures.
         if role == "police":
-            police = PoliceAccountDto(email="police@unc.edu")
+            police = PoliceAccountDto(id=99999, email="police@unc.edu")
             token, _ = auth_service.create_police_access_token(police)
         elif role in ("admin", "staff", "student"):
             fake_account = AccountDto(

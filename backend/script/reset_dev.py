@@ -17,6 +17,7 @@ from sqlalchemy import create_engine, text
 from src.core.config import env
 from src.core.database import AsyncSessionLocal, EntityBase, server_url, validate_sql_identifier
 from src.core.database import engine as async_engine
+from src.core.utils.bcrypt_utils import hash_password
 from src.modules.account.account_model import AccountRole
 from src.modules.incident.incident_model import IncidentSeverity
 from src.modules.student.student_model import ContactPreference, StudentData
@@ -107,7 +108,7 @@ async def reset_dev():
 
         police = entities.PoliceEntity(
             email=data["police"]["email"],
-            hashed_password=data["police"]["hashed_password"],
+            hashed_password=hash_password(data["police"]["password"]),
         )
         session.add(police)
 
@@ -124,6 +125,7 @@ async def reset_dev():
 
         await session.flush()
 
+        account_id_by_onyen: dict[str, int] = {}
         for student_data in data["students"]:
             account = entities.AccountEntity(
                 pid=student_data["pid"],
@@ -135,16 +137,7 @@ async def reset_dev():
             )
             session.add(account)
             await session.flush()
-
-            student = entities.StudentEntity.from_data(
-                StudentData(
-                    contact_preference=ContactPreference(student_data["contact_preference"]),
-                    phone_number=student_data["phone_number"],
-                    last_registered=parse_date(student_data.get("last_registered")),
-                ),
-                account.id,
-            )
-            session.add(student)
+            account_id_by_onyen[student_data["onyen"]] = account.id
 
         for location_data in data["locations"]:
             location = entities.LocationEntity(
@@ -162,6 +155,20 @@ async def reset_dev():
                 longitude=location_data["longitude"],
             )
             session.add(location)
+
+        await session.flush()
+
+        for student_data in data["students"]:
+            student = entities.StudentEntity.from_data(
+                StudentData(
+                    contact_preference=ContactPreference(student_data["contact_preference"]),
+                    phone_number=student_data["phone_number"],
+                    last_registered=parse_date(student_data.get("last_registered")),
+                ),
+                account_id_by_onyen[student_data["onyen"]],
+                residence_id=student_data.get("residence_id"),
+            )
+            session.add(student)
 
         await session.flush()
 

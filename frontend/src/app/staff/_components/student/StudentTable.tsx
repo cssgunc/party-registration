@@ -8,7 +8,6 @@ import {
   ServerTableParams,
 } from "@/lib/api/shared/query-params";
 import {
-  useCreateStudent,
   useDeleteStudent,
   useStudents,
   useUpdateStudent,
@@ -77,27 +76,6 @@ export const StudentTable = () => {
     },
   });
 
-  const createMutation = useCreateStudent({
-    onError: (error, vars) => {
-      console.error("Failed to create student:", error);
-      openSidebar(
-        "create-student",
-        "New Student",
-        "Add a new student to the system",
-        <StudentTableForm
-          title="New Student"
-          onSubmit={handleCreateSubmit}
-          submissionError={`Failed to create student: ${error.message}`}
-          editData={vars.data}
-        />
-      );
-    },
-    onSuccess: () => {
-      closeSidebar();
-      setEditingStudent(null);
-    },
-  });
-
   const deleteMutation = useDeleteStudent({
     onError: (error) => {
       console.error("Failed to delete student:", error);
@@ -120,20 +98,6 @@ export const StudentTable = () => {
 
   const handleDelete = (student: StudentDto) => {
     deleteMutation.mutate(student.id);
-  };
-
-  const handleCreate = () => {
-    setEditingStudent(null);
-    openSidebar(
-      "create-student",
-      "New Student",
-      "Add a new student to the system",
-      <StudentTableForm title="New Student" onSubmit={handleCreateSubmit} />
-    );
-  };
-
-  const handleCreateSubmit = async (data: Omit<StudentDto, "id">) => {
-    createMutation.mutate({ data });
   };
 
   const handleEditSubmit = async (
@@ -255,7 +219,6 @@ export const StudentTable = () => {
         resourceName="Student"
         onEdit={handleEdit}
         onDelete={handleDelete}
-        onCreateNewRow={handleCreate}
         isLoading={studentsQuery.isLoading}
         isFetching={studentsQuery.isFetching}
         error={studentsQuery.error}
