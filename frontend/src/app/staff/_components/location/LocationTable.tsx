@@ -207,6 +207,7 @@ export const LocationTable = () => {
                     row.original.incidents.map((i) => i.id)
                   )}`}
                   incidents={row.original.incidents}
+                  location={row.original}
                 />
               }
             />

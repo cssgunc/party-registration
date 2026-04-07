@@ -11,10 +11,12 @@ import IncidentSidebarCard from "./IncidentSidebarCard";
 
 type IncidentSidebarProps = {
   incidents: IncidentDto[];
+  location: LocationDto;
 };
 
 export default function IncidentInfoChipDetails({
   incidents,
+  location,
 }: IncidentSidebarProps) {
   const { data: session } = useSession();
   const role = session?.role;
@@ -83,7 +85,10 @@ export default function IncidentInfoChipDetails({
       `incidents-${location.id}`,
       "Incidents at Location",
       "Warnings & Citations go here",
-      <IncidentInfoChipDetails incidents={location.incidents} />
+      <IncidentInfoChipDetails
+        incidents={location.incidents}
+        location={location}
+      />
     );
   };
   const handleCreateIncident = (
@@ -166,19 +171,29 @@ export default function IncidentInfoChipDetails({
   };
 
   return (
-    <div>
-      <h1 className="text-lg">Incidents</h1>
-      <p className="text-sm text-gray-500">
-        Manage the incidents for this location here.
+    <div className="">
+      <div className="flex items-center justify-between pb-4">
+        <h1 className="page-title">Incidents</h1>
+        {role === "admin" && (
+          <Button variant="default" size="sm" className="" onClick={handleAdd}>
+            Add New
+          </Button>
+        )}
+      </div>
+
+      <p className="text-sm text-gray-500 pb-4">
+        View existing incidents, or add a new one.
       </p>
-      {incidents.map((incident) => (
-        <IncidentSidebarCard
-          incidents={incident}
-          key={incident.id}
-          onDeleteIncidentAction={requestDelete}
-          onEditIncidentAction={handleEdit}
-        />
-      ))}
+      <div>
+        {incidents.map((incident) => (
+          <IncidentSidebarCard
+            incidents={incident}
+            key={incident.id}
+            onDeleteIncidentAction={requestDelete}
+            onEditIncidentAction={handleEdit}
+          />
+        ))}
+      </div>
       <DeleteConfirmDialog
         open={confirmStateDelete !== null}
         onOpenChange={(open) => {
@@ -190,11 +205,6 @@ export default function IncidentInfoChipDetails({
         title="Delete Incident"
         description="Are you sure you want to delete this incident? This action cannot be undone."
       />
-      {role === "admin" && (
-        <Button variant="default" className="mt-4" onClick={handleAdd}>
-          Add Incident
-        </Button>
-      )}
 
       <IncidentModal
         key={
@@ -213,6 +223,7 @@ export default function IncidentInfoChipDetails({
             ? handleEditIncident
             : handleCreateIncident
         }
+        location={location}
       />
     </div>
   );
