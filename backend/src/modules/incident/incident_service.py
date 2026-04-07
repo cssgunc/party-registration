@@ -142,7 +142,7 @@ class IncidentService:
                     incident.incident_datetime.strftime("%Y-%m-%d"),
                     incident.incident_datetime.strftime("%-I:%M %p"),
                     incident.description,
-                    incident.reference_id or "",
+                    incident.reference_id or "-",
                 ]
             )
         return exporter.to_bytes()
