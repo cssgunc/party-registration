@@ -7,7 +7,7 @@ type IncidentSeverity = "remote_warning" | "in_person_warning" | "citation";
  * Incident create/update DTO
  */
 type IncidentCreateDto = {
-  location_id: number;
+  location_place_id: string;
   incident_datetime: Date;
   description: string;
   severity: IncidentSeverity;
@@ -17,8 +17,13 @@ type IncidentCreateDto = {
 /**
  * Incident DTO (full response from backend)
  */
-type IncidentDto = IncidentCreateDto & {
+type IncidentDto = {
   id: number;
+  location_id: number;
+  incident_datetime: Date;
+  description: string;
+  severity: IncidentSeverity;
+  reference_id?: string | null;
 };
 
 /**

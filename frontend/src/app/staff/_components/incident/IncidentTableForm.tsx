@@ -26,7 +26,10 @@ import {
   IncidentSeverity,
 } from "@/lib/api/incident/incident.types";
 import { LocationService } from "@/lib/api/location/location.service";
-import { AutocompleteResult } from "@/lib/api/location/location.types";
+import {
+  AutocompleteResult,
+  LocationDto,
+} from "@/lib/api/location/location.types";
 import { format } from "date-fns";
 import { useMemo, useState } from "react";
 import * as z from "zod";
@@ -38,26 +41,21 @@ const incidentSeverityValues: IncidentSeverity[] = [
 ];
 
 const incidentTableFormSchema = z.object({
-  location_id: z.number().int().positive("Location is required"),
-  incident_date: z.date({
+  location_place_id: z.string().min(1, "Location is required"),
+  incident_datetime: z.date({
     message: "Incident date is required",
   }),
   incident_time: z.string().min(1, "Incident time is required"),
   severity: z.enum(incidentSeverityValues),
-  description: z.string().nullable().optional(),
+  description: z.string(),
   reference_id: z.string().nullable().optional(),
 });
 
 type IncidentTableFormValues = z.infer<typeof incidentTableFormSchema>;
 
-type LocationOption = {
-  id: number;
-  label: string;
-};
-
 interface IncidentTableFormProps {
   onSubmit: (data: IncidentCreateDto) => void | Promise<void>;
-  locations: LocationOption[];
+  allLocations: LocationDto[];
   editData?: IncidentDto;
   submissionError?: string | null;
   title?: string;
@@ -71,19 +69,28 @@ function severityLabel(severity: IncidentSeverity): string {
 
 export default function IncidentTableForm({
   onSubmit,
-  locations,
+  allLocations,
   editData,
   submissionError,
   title,
 }: IncidentTableFormProps) {
+  // When editing, find the google_place_id from locations array by location_id
+  const editLocationPlaceId = useMemo(() => {
+    if (!editData?.location_id) return "";
+    const location = allLocations.find(
+      (loc) => loc.id === editData.location_id
+    );
+    return location ? location.google_place_id : "";
+  }, [editData?.location_id, allLocations]);
+
   const [formData, setFormData] = useState<IncidentTableFormValues>({
-    location_id: editData?.location_id ?? 0,
-    incident_date: editData?.incident_datetime ?? new Date(),
+    location_place_id: editLocationPlaceId,
+    incident_datetime: editData?.incident_datetime ?? new Date(),
     incident_time: editData?.incident_datetime
       ? format(editData.incident_datetime, "HH:mm")
       : "",
     severity: editData?.severity ?? "in_person_warning",
-    description: editData?.description ?? null,
+    description: editData?.description ?? "",
     reference_id: editData?.reference_id ?? null,
   });
   const locationService = new LocationService();
@@ -91,17 +98,19 @@ export default function IncidentTableForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const address = useMemo(() => {
-    if (formData.location_id <= 0) return "";
+    if (formData.location_place_id === "") return "";
     return (
-      locations.find((loc) => loc.id === formData.location_id)?.label ?? ""
+      allLocations.find(
+        (loc) => loc.google_place_id === formData.location_place_id
+      )?.formatted_address ?? ""
     );
-  }, [formData.location_id, locations]);
+  }, [formData.location_place_id, allLocations]);
 
   const initialAddressSelection: AutocompleteResult | null =
-    address && formData?.location_id
+    address && formData?.location_place_id
       ? {
           formatted_address: address,
-          google_place_id: formData.location_id.toString(),
+          google_place_id: formData.location_place_id,
         }
       : null;
 
@@ -124,6 +133,7 @@ export default function IncidentTableForm({
     setErrors({});
 
     const result = incidentTableFormSchema.safeParse(formData);
+
     if (!result.success) {
       const fieldErrors: Record<string, string> = {};
       result.error.issues.forEach((issue) => {
@@ -137,16 +147,17 @@ export default function IncidentTableForm({
 
     setIsSubmitting(true);
     try {
-      const { incident_date, incident_time, ...rest } = result.data;
+      const { incident_datetime, incident_time } = result.data;
       const [hours, minutes] = incident_time.split(":").map(Number);
-      const incident_datetime = new Date(incident_date);
-      incident_datetime.setHours(hours, minutes, 0, 0);
+      const combined_datetime = new Date(incident_datetime);
+      combined_datetime.setHours(hours, minutes, 0, 0);
 
       await onSubmit({
-        ...rest,
-        incident_datetime,
-        description: result.data.description?.trim() || "",
-        reference_id: result.data.reference_id?.trim() || null,
+        location_place_id: result.data.location_place_id,
+        incident_datetime: combined_datetime,
+        description: result.data.description,
+        severity: result.data.severity,
+        reference_id: result.data.reference_id || null,
       });
     } finally {
       setIsSubmitting(false);
@@ -156,13 +167,12 @@ export default function IncidentTableForm({
   const handleAddressSelect = (address: AutocompleteResult | null) => {
     setFormData((prev) => ({
       ...prev,
-      address: address?.formatted_address || "",
-      placeId: address?.google_place_id || undefined,
+      location_place_id: address?.google_place_id || "",
     }));
-    if (errors.address) {
+    if (errors.location_place_id) {
       setErrors((prev) => {
         const newErrors = { ...prev };
-        delete newErrors.address;
+        delete newErrors.location_place_id;
         return newErrors;
       });
     }
@@ -182,7 +192,7 @@ export default function IncidentTableForm({
 
       <FieldGroup>
         <FieldSet>
-          <Field data-invalid={!!errors.location_id}>
+          <Field data-invalid={!!errors.location_place_id}>
             <FieldLabel>Location</FieldLabel>
             <AddressSearch
               value={address}
@@ -191,38 +201,27 @@ export default function IncidentTableForm({
               locationService={locationService}
               placeholder="Search for the location address..."
               className="w-full"
-              error={errors.address}
+              error={errors.location_place_id}
               chapelHillOnly
             />
-            {errors.location_id && (
-              <FieldError>{errors.location_id}</FieldError>
+            {errors.location_place_id && (
+              <FieldError>{errors.location_place_id}</FieldError>
             )}
           </Field>
 
-          {/* <Field data-invalid={!!errors.incident_datetime}>
-            <FieldLabel>Date and Time</FieldLabel>
-            <Input
-              type="datetime-local"
-              value={toLocalDatetimeString(formData.incident_datetime)}
-              onChange={(e) =>
-                updateField("incident_datetime", new Date(e.target.value))
-              }
-            />
-            {errors.incident_datetime && (
-              <FieldError>{errors.incident_datetime}</FieldError>
-            )}
-          </Field> */}
           <div className="grid grid-cols-2 gap-4">
-            <Field data-invalid={!!errors.incident_date}>
+            <Field data-invalid={!!errors.incident_datetime}>
               <FieldLabel htmlFor="incident-date">Incident Date</FieldLabel>
               <DatePicker
                 id="incident-date"
                 dateFormat="MM/dd/yy"
-                value={formData.incident_date ?? null}
-                onChange={(date) => updateField("incident_date", date as Date)}
+                value={formData.incident_datetime ?? null}
+                onChange={(date) =>
+                  updateField("incident_datetime", date as Date)
+                }
               />
-              {errors.incident_date && (
-                <FieldError>{errors.incident_date}</FieldError>
+              {errors.incident_datetime && (
+                <FieldError>{errors.incident_datetime}</FieldError>
               )}
             </Field>
 

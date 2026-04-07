@@ -99,6 +99,7 @@ export default function IncidentInfoChipDetails({
       incident_datetime: data.incident_datetime,
       description: data.description,
       severity: data.severity,
+      reference_id: data.reference_id ?? null,
     };
 
     queryClient.setQueryData<PaginatedResponse<LocationDto> | undefined>(
@@ -148,6 +149,7 @@ export default function IncidentInfoChipDetails({
                               incident_datetime: data.incident_datetime,
                               description: data.description,
                               severity: data.severity,
+                              reference_id: data.reference_id ?? null,
                             }
                           : inc
                       ),

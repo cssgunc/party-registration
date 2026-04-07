@@ -91,17 +91,6 @@ export const IncidentTable = () => {
     [locations]
   );
 
-  const locationOptions = useMemo(
-    () =>
-      locations
-        .map((location) => ({
-          id: location.id,
-          label: location.formatted_address || `Location #${location.id}`,
-        }))
-        .sort((a, b) => a.label.localeCompare(b.label)),
-    [locations]
-  );
-
   const reopenCreateSidebar = (submissionError?: string | null) => {
     openSidebar(
       "create-incident",
@@ -109,7 +98,7 @@ export const IncidentTable = () => {
       "Add a new incident to the system",
       <IncidentTableForm
         title="New Incident"
-        locations={locationOptions}
+        allLocations={locations}
         onSubmit={handleCreateSubmit}
         submissionError={submissionError}
       />
@@ -126,7 +115,7 @@ export const IncidentTable = () => {
       "Update incident information",
       <IncidentTableForm
         title="Edit Incident"
-        locations={locationOptions}
+        allLocations={locations}
         editData={incident}
         onSubmit={(data) => handleEditSubmit(incident.id, data)}
         submissionError={submissionError}
