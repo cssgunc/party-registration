@@ -1,7 +1,10 @@
+import {
+  ServerTableParams,
+  toAxiosParams,
+} from "@/lib/api/shared/query-params";
 import apiClient from "@/lib/network/apiClient";
 import { PaginatedResponse } from "@/lib/shared";
 import { AxiosInstance } from "axios";
-import { endOfDay } from "date-fns";
 import {
   AdminCreatePartyDto,
   PartyDto,
@@ -34,29 +37,13 @@ export class PartyService {
   /**
    * List parties (GET /api/parties)
    */
-  async listParties({
-    pageNumber,
-    pageSize,
-    startDate,
-    endDate,
-  }: {
-    pageNumber?: number;
-    pageSize?: number;
-    startDate?: Date;
-    endDate?: Date;
-  } = {}): Promise<PaginatedResponse<PartyDto>> {
+  async listParties(
+    params?: ServerTableParams
+  ): Promise<PaginatedResponse<PartyDto>> {
     try {
-      const params: Record<string, number | string> = {};
-      if (pageNumber !== undefined) params.page_number = pageNumber;
-      if (pageSize !== undefined) params.page_size = pageSize;
-      if (startDate !== undefined)
-        params.party_datetime_gte = startDate.toISOString();
-      if (endDate !== undefined)
-        params.party_datetime_lte = endOfDay(endDate).toISOString();
-
       const response = await this.client.get<
         PaginatedResponse<PartyDtoBackend>
-      >("/parties", { params });
+      >("/parties", { params: params ? toAxiosParams(params) : undefined });
       return {
         ...response.data,
         items: response.data.items.map(convertParty),
