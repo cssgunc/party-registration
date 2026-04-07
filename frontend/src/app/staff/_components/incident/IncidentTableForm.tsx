@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import {
   IncidentCreateDto,
   IncidentDto,
@@ -43,7 +44,7 @@ const incidentTableFormSchema = z.object({
   }),
   incident_time: z.string().min(1, "Incident time is required"),
   severity: z.enum(incidentSeverityValues),
-  description: z.string(),
+  description: z.string().nullable().optional(),
   reference_id: z.string().nullable().optional(),
 });
 
@@ -82,7 +83,7 @@ export default function IncidentTableForm({
       ? format(editData.incident_datetime, "HH:mm")
       : "",
     severity: editData?.severity ?? "in_person_warning",
-    description: editData?.description ?? "",
+    description: editData?.description ?? null,
     reference_id: editData?.reference_id ?? null,
   });
   const locationService = new LocationService();
@@ -144,7 +145,7 @@ export default function IncidentTableForm({
       await onSubmit({
         ...rest,
         incident_datetime,
-        description: result.data.description.trim(),
+        description: result.data.description?.trim() || "",
         reference_id: result.data.reference_id?.trim() || null,
       });
     } finally {
@@ -279,11 +280,11 @@ export default function IncidentTableForm({
 
           <Field data-invalid={!!errors.description}>
             <FieldLabel>Description</FieldLabel>
-            <textarea
-              value={formData.description}
+            <Textarea
+              value={formData.description ?? ""}
               onChange={(e) => updateField("description", e.target.value)}
-              placeholder="What happened?"
-              className="w-full min-h-24 px-3 py-2 rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-vertical"
+              placeholder="Optional"
+              className="w-full min-h-24 px-3 py-2 rounded-md border border-input bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-vertical"
             />
             {errors.description && (
               <FieldError>{errors.description}</FieldError>
