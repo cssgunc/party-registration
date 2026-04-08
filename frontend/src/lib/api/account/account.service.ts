@@ -1,3 +1,7 @@
+import {
+  ServerTableParams,
+  toAxiosParams,
+} from "@/lib/api/shared/query-params";
 import apiClient from "@/lib/network/apiClient";
 import { PaginatedResponse } from "@/lib/shared";
 import { AxiosInstance } from "axios";
@@ -5,7 +9,7 @@ import type {
   PoliceAccountDto,
   PoliceAccountUpdate,
 } from "../police/police.types";
-import { AccountData, AccountDto, AccountRole } from "./account.types";
+import { AccountData, AccountDto } from "./account.types";
 
 /**
  * Service class for account-related operations
@@ -16,16 +20,15 @@ export class AccountService {
   /**
    * List accounts (GET /api/accounts)
    */
-  async listAccounts(roles?: AccountRole[]): Promise<AccountDto[]> {
+  async listAccounts(
+    params?: ServerTableParams
+  ): Promise<PaginatedResponse<AccountDto>> {
     try {
-      const params = roles ? { role_in: roles } : {};
       const response = await this.client.get<PaginatedResponse<AccountDto>>(
         "/accounts",
-        {
-          params,
-        }
+        { params: params ? toAxiosParams(params) : undefined }
       );
-      return response.data.items;
+      return response.data;
     } catch (error) {
       console.error("Failed to fetch accounts:", error);
       throw new Error("Failed to fetch accounts");

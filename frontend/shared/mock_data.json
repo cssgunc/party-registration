@@ -4384,7 +4384,7 @@
       "id": 1,
       "location_id": 29,
       "incident_datetime": "NOW-1d@21:30",
-      "severity": "complaint",
+      "severity": "citation",
       "description": "Guests blocking driveway."
     },
     {
@@ -4426,7 +4426,7 @@
       "id": 7,
       "location_id": 17,
       "incident_datetime": "NOW-132d@20:15",
-      "severity": "complaint",
+      "severity": "citation",
       "description": "Multiple vehicles parked on lawn."
     },
     {
@@ -4454,14 +4454,14 @@
       "id": 11,
       "location_id": 14,
       "incident_datetime": "NOW-23d@21:00",
-      "severity": "complaint",
+      "severity": "citation",
       "description": ""
     },
     {
       "id": 12,
       "location_id": 14,
       "incident_datetime": "NOW-30d@18:15",
-      "severity": "complaint",
+      "severity": "citation",
       "description": ""
     },
     {
@@ -4475,28 +4475,28 @@
       "id": 14,
       "location_id": 41,
       "incident_datetime": "NOW-266d@21:30",
-      "severity": "complaint",
+      "severity": "citation",
       "description": "Repeat violation at this address."
     },
     {
       "id": 15,
       "location_id": 1,
       "incident_datetime": "NOW-313d@21:30",
-      "severity": "complaint",
+      "severity": "citation",
       "description": ""
     },
     {
       "id": 16,
       "location_id": 1,
       "incident_datetime": "NOW-31d@18:45",
-      "severity": "complaint",
+      "severity": "citation",
       "description": ""
     },
     {
       "id": 17,
       "location_id": 1,
       "incident_datetime": "NOW-300d@20:15",
-      "severity": "complaint",
+      "severity": "citation",
       "description": "Property damage to neighboring fence."
     },
     {
@@ -4510,35 +4510,35 @@
       "id": 19,
       "location_id": 15,
       "incident_datetime": "NOW-1d@21:00",
-      "severity": "complaint",
+      "severity": "citation",
       "description": "Loud music after quiet hours."
     },
     {
       "id": 20,
       "location_id": 15,
       "incident_datetime": "NOW-300d@20:30",
-      "severity": "complaint",
+      "severity": "citation",
       "description": ""
     },
     {
       "id": 21,
       "location_id": 38,
       "incident_datetime": "NOW-260d@19:30",
-      "severity": "complaint",
+      "severity": "citation",
       "description": "Guests blocking driveway."
     },
     {
       "id": 22,
       "location_id": 38,
       "incident_datetime": "NOW-321d@21:00",
-      "severity": "complaint",
+      "severity": "citation",
       "description": ""
     },
     {
       "id": 23,
       "location_id": 38,
       "incident_datetime": "NOW-363d@18:15",
-      "severity": "complaint",
+      "severity": "citation",
       "description": "Multiple vehicles parked on lawn."
     },
     {
@@ -4552,28 +4552,28 @@
       "id": 25,
       "location_id": 52,
       "incident_datetime": "NOW-159d@20:15",
-      "severity": "complaint",
+      "severity": "citation",
       "description": ""
     },
     {
       "id": 26,
       "location_id": 52,
       "incident_datetime": "NOW-23d@20:30",
-      "severity": "complaint",
+      "severity": "citation",
       "description": "Verbal altercation reported."
     },
     {
       "id": 27,
       "location_id": 52,
       "incident_datetime": "NOW-105d@20:15",
-      "severity": "complaint",
+      "severity": "citation",
       "description": ""
     },
     {
       "id": 28,
       "location_id": 52,
       "incident_datetime": "NOW-363d@18:45",
-      "severity": "complaint",
+      "severity": "citation",
       "description": ""
     },
     {
@@ -4587,21 +4587,21 @@
       "id": 30,
       "location_id": 62,
       "incident_datetime": "NOW-158d@20:30",
-      "severity": "complaint",
+      "severity": "citation",
       "description": ""
     },
     {
       "id": 31,
       "location_id": 62,
       "incident_datetime": "NOW-116d@20:30",
-      "severity": "complaint",
+      "severity": "citation",
       "description": ""
     },
     {
       "id": 32,
       "location_id": 62,
       "incident_datetime": "NOW-29d@20:45",
-      "severity": "complaint",
+      "severity": "citation",
       "description": ""
     },
     {
@@ -4629,7 +4629,7 @@
       "id": 36,
       "location_id": 27,
       "incident_datetime": "NOW-145d@19:15",
-      "severity": "complaint",
+      "severity": "citation",
       "description": ""
     },
     {
@@ -4650,7 +4650,7 @@
       "id": 39,
       "location_id": 11,
       "incident_datetime": "NOW-33d@21:15",
-      "severity": "complaint",
+      "severity": "citation",
       "description": ""
     },
     {
@@ -4671,28 +4671,28 @@
       "id": 42,
       "location_id": 13,
       "incident_datetime": "NOW-22d@20:00",
-      "severity": "complaint",
+      "severity": "citation",
       "description": "Repeat violation at this address."
     },
     {
       "id": 43,
       "location_id": 13,
       "incident_datetime": "NOW-279d@19:15",
-      "severity": "complaint",
+      "severity": "citation",
       "description": "Loud music after quiet hours."
     },
     {
       "id": 44,
       "location_id": 13,
       "incident_datetime": "NOW-161d@21:00",
-      "severity": "complaint",
+      "severity": "citation",
       "description": "Noise complaint reported by neighbors."
     },
     {
       "id": 45,
       "location_id": 53,
       "incident_datetime": "NOW-256d@18:15",
-      "severity": "complaint",
+      "severity": "citation",
       "description": "Repeat violation at this address."
     }
   ]

@@ -34,6 +34,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  ServerColumnMap,
+  ServerTableParams,
+  buildServerTableParams,
+} from "@/lib/api/shared/query-params";
+import { cn } from "@/lib/utils";
+import {
   ColumnDef,
   ColumnFiltersState,
   PaginationState,
@@ -49,7 +55,7 @@ import {
 } from "@tanstack/react-table";
 import { MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
 import { useSession } from "next-auth/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { DeleteConfirmDialog } from "../dialog/DeleteConfirmDialog";
 import { useSidebar } from "../sidebar/SidebarContext";
 import { ColumnHeader } from "./ColumnHeader";
@@ -62,6 +68,8 @@ declare module "@tanstack/react-table" {
   interface ColumnMeta<TData, TValue> {
     filterType?: FilterType;
     selectOptions?: string[];
+    /** "client" = always filter this column on the loaded page, even in server mode */
+    filterMode?: "client" | "server";
   }
 }
 
@@ -73,6 +81,7 @@ export type TableProps<T> = {
   onDelete?: (row: T) => void;
   onCreateNewRow?: () => void;
   isLoading?: boolean;
+  isFetching?: boolean;
   error?: Error | null;
   getDeleteDescription?: (row: T) => string;
   isDeleting?: boolean;
@@ -80,6 +89,9 @@ export type TableProps<T> = {
   sortBy?: (a: T, b: T) => number;
   pageSize?: number;
   pageSizeOptions?: number[];
+  serverMeta?: { totalRecords: number; totalPages: number };
+  onStateChange?: (params: ServerTableParams) => void;
+  columnMap?: ServerColumnMap;
 };
 
 export function TableTemplate<T extends object>({
@@ -90,22 +102,28 @@ export function TableTemplate<T extends object>({
   onDelete,
   onCreateNewRow,
   isLoading,
+  isFetching,
   error,
   getDeleteDescription,
   isDeleting,
   initialSort = [],
   sortBy,
-  pageSize = 8,
-  pageSizeOptions = [5, 8, 10, 20],
+  pageSize = 50,
+  pageSizeOptions = [10, 25, 50, 100],
+  serverMeta,
+  onStateChange,
+  columnMap,
 }: TableProps<T>) {
+  const isServerMode = !!serverMeta;
   const { isOpen, openSidebar, closeSidebar } = useSidebar();
   const { data: session } = useSession();
   const role = session?.role;
-  // Apply custom sorting if provided
+
   const sortedData = useMemo(
     () => (sortBy ? [...data].sort(sortBy) : data),
     [data, sortBy]
   );
+
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize,
@@ -116,6 +134,20 @@ export function TableTemplate<T extends object>({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<T | null>(null);
   const [globalFilter, setGlobalFilter] = useState<string>("");
+
+  // Refs to avoid stale closures in debounced effects
+  const paginationRef = useRef(pagination);
+  const sortingRef = useRef(sorting);
+  const columnFiltersRef = useRef(columnFilters);
+  useEffect(() => {
+    paginationRef.current = pagination;
+  }, [pagination]);
+  useEffect(() => {
+    sortingRef.current = sorting;
+  }, [sorting]);
+  useEffect(() => {
+    columnFiltersRef.current = columnFilters;
+  }, [columnFilters]);
 
   useEffect(() => {
     setPagination((prev) => ({
@@ -130,6 +162,109 @@ export function TableTemplate<T extends object>({
       setRowSelection({});
     }
   }, [isOpen, rowSelection]);
+
+  const filterDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Server mode: immediate callback on pagination/sorting change
+  useEffect(() => {
+    if (!isServerMode || !onStateChange || !columnMap) return;
+    onStateChange(
+      buildServerTableParams(
+        paginationRef.current,
+        sortingRef.current,
+        columnFiltersRef.current,
+        columnMap
+      )
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pagination, sorting]);
+
+  // Server mode: debounced callback on filter change (reset page to 0 first)
+  useEffect(() => {
+    if (!isServerMode || !onStateChange || !columnMap) return;
+    if (filterDebounceRef.current) clearTimeout(filterDebounceRef.current);
+    filterDebounceRef.current = setTimeout(() => {
+      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+      onStateChange(
+        buildServerTableParams(
+          { ...paginationRef.current, pageIndex: 0 },
+          sortingRef.current,
+          columnFiltersRef.current,
+          columnMap
+        )
+      );
+    }, 300);
+    return () => {
+      if (filterDebounceRef.current) clearTimeout(filterDebounceRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [columnFilters]);
+
+  function flattenValues<T extends object>(obj: T): string {
+    const result: string[] = [];
+
+    const walk = (val: unknown): void => {
+      if (val == null) return;
+
+      if (
+        typeof val === "string" ||
+        typeof val === "number" ||
+        typeof val === "boolean"
+      ) {
+        result.push(String(val));
+        return;
+      }
+
+      if (val instanceof Date) {
+        result.push(val.toISOString());
+        return;
+      }
+
+      if (Array.isArray(val)) {
+        val.forEach((child) => walk(child));
+        return;
+      }
+
+      if (typeof val === "object") {
+        Object.values(val).forEach((child) => walk(child));
+        return;
+      }
+    };
+
+    walk(obj);
+    return result.join(" ").toLowerCase();
+  }
+
+  // In server mode, apply global search and client-only column filters on the loaded page
+  const displayData = useMemo(() => {
+    if (!isServerMode) return sortedData;
+
+    let filtered = data;
+
+    if (globalFilter) {
+      const q = globalFilter.toLowerCase();
+      filtered = filtered.filter((row) => flattenValues(row).includes(q));
+    }
+
+    for (const filter of columnFilters) {
+      if (!filter.value) continue;
+      const col = columns.find((c) => {
+        const id = c.id ?? (c as { accessorKey?: string }).accessorKey;
+        return id === filter.id;
+      });
+      if (col?.meta?.filterMode !== "client") continue;
+      const accessorFn = (
+        col as { accessorFn?: (row: T, idx: number) => unknown }
+      ).accessorFn;
+      if (!accessorFn) continue;
+      const filterVal = String(filter.value).toLowerCase();
+      filtered = filtered.filter((row) =>
+        String(accessorFn(row, 0)).toLowerCase().includes(filterVal)
+      );
+    }
+
+    return filtered;
+  }, [data, sortedData, globalFilter, columnFilters, isServerMode, columns]);
 
   const handleDeleteClick = (row: T) => {
     setItemToDelete(row);
@@ -147,9 +282,6 @@ export function TableTemplate<T extends object>({
     }
   };
 
-  // Derive details from resourceName if not provided
-
-  // Add actions column if handlers are provided and user is admin
   const columnsWithActions: ColumnDef<T, unknown>[] =
     role === "admin" && (onEdit || onDelete)
       ? [
@@ -193,56 +325,18 @@ export function TableTemplate<T extends object>({
         ]
       : columns;
 
-  function flattenValues<T extends object>(obj: T): string {
-    const result: string[] = [];
-
-    const walk = (val: unknown): void => {
-      if (val == null) return;
-
-      if (
-        typeof val === "string" ||
-        typeof val === "number" ||
-        typeof val === "boolean"
-      ) {
-        result.push(String(val));
-        return;
-      }
-
-      if (val instanceof Date) {
-        result.push(val.toISOString());
-        return;
-      }
-
-      if (Array.isArray(val)) {
-        val.forEach((child) => walk(child));
-        return;
-      }
-
-      if (typeof val === "object") {
-        Object.values(val).forEach((child) => walk(child));
-        return;
-      }
-    };
-
-    walk(obj);
-    return result.join(" ").toLowerCase();
-  }
-
   const customFilterFn = <T extends object>(
     row: Row<T>,
     _columnId: string,
     filterValue: string
   ): boolean => {
     if (!filterValue) return true;
-
     const flattened = flattenValues(row.original);
-    const matches = flattened.includes(filterValue.toLowerCase());
-
-    return matches;
+    return flattened.includes(filterValue.toLowerCase());
   };
 
   const table = useReactTable({
-    data: sortedData,
+    data: displayData,
     columns: columnsWithActions,
     state: {
       sorting,
@@ -251,15 +345,28 @@ export function TableTemplate<T extends object>({
       globalFilter,
       rowSelection,
     },
-    globalFilterFn: customFilterFn,
-    onSortingChange: setSorting,
+    ...(isServerMode
+      ? {
+          manualSorting: true,
+          manualFiltering: true,
+          manualPagination: true,
+          pageCount: serverMeta!.totalPages,
+        }
+      : {
+          globalFilterFn: customFilterFn,
+          getSortedRowModel: getSortedRowModel(),
+          getFilteredRowModel: getFilteredRowModel(),
+          getPaginationRowModel: getPaginationRowModel(),
+        }),
+    onSortingChange: (updater) => {
+      const next = typeof updater === "function" ? updater(sorting) : updater;
+      if (isServerMode) setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+      setSorting(next);
+    },
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
     onGlobalFilterChange: setGlobalFilter,
-    getPaginationRowModel: getPaginationRowModel(),
     onPaginationChange: setPagination,
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
     onRowSelectionChange: setRowSelection,
   });
 
@@ -271,7 +378,9 @@ export function TableTemplate<T extends object>({
   );
   const activePage = table.getState().pagination.pageIndex;
   const activePageSize = table.getState().pagination.pageSize;
-  const filteredRowCount = table.getFilteredRowModel().rows.length;
+  const filteredRowCount = isServerMode
+    ? serverMeta!.totalRecords
+    : table.getFilteredRowModel().rows.length;
   const pageCount = table.getPageCount();
   const maxVisiblePages = 3;
   const pageStart = Math.max(
@@ -289,32 +398,30 @@ export function TableTemplate<T extends object>({
 
   return (
     <div className="h-full min-h-0 flex flex-col gap-4">
-      {/* Header with Create Button */}
+      {/* Header with Search and Create Button */}
       {(resourceName || onCreateNewRow) && (
         <div className="flex justify-between items-center w-full">
-          {(() => {
-            return (
-              <div className="flex justify-between w-full gap-4">
-                <div className="flex-1 min-w-sm max-w-lg bg-card rounded-md">
-                  <Input
-                    type="text"
-                    value={globalFilter}
-                    onChange={(e) => setGlobalFilter(e.target.value)}
-                    placeholder="Search all columns..."
-                    className="p-2 pl-3 h-9 rounded-md "
-                  />
-                </div>
-                <div className="shrink-0">
-                  {onCreateNewRow && role === "admin" && (
-                    <Button onClick={onCreateNewRow} className="h-9">
-                      <Plus className="mr-1" />
-                      <p>New row</p>
-                    </Button>
-                  )}
-                </div>
-              </div>
-            );
-          })()}
+          <div className="flex justify-between w-full gap-4">
+            <div className="flex-1 min-w-sm max-w-lg bg-card rounded-md">
+              <Input
+                type="text"
+                value={globalFilter}
+                onChange={(e) => setGlobalFilter(e.target.value)}
+                placeholder={
+                  isServerMode ? "Search this page..." : "Search all columns..."
+                }
+                className="p-2 pl-3 h-9 rounded-md"
+              />
+            </div>
+            <div className="shrink-0 ml-auto">
+              {onCreateNewRow && role === "admin" && (
+                <Button onClick={onCreateNewRow} className="h-9">
+                  <Plus className="mr-1" />
+                  <p>New row</p>
+                </Button>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
@@ -333,7 +440,12 @@ export function TableTemplate<T extends object>({
       {!isLoading && !error && (
         <div className="flex min-h-0 h-full flex-col justify-between overflow-hidden">
           <Card className="flex-1 min-h-0 py-2 px-4 overflow-hidden rounded-sm w-full max-w-none mx-0">
-            <div className="h-full overflow-y-auto">
+            <div
+              className={cn(
+                "h-full overflow-y-auto",
+                isFetching && "opacity-60 pointer-events-none"
+              )}
+            >
               <Table className="bg-card rounded-sm">
                 <TableHeader>
                   {table.getHeaderGroups().map((headerGroup) => (

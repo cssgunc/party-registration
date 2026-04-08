@@ -57,7 +57,7 @@ export default function IncidentModal({
     defaultValues: {
       incident_datetime: incident?.incident_datetime ?? new Date(),
       description: incident?.description ?? "",
-      severity: incident?.severity ?? ("complaint" as IncidentSeverity),
+      severity: incident?.severity ?? ("in_person_warning" as IncidentSeverity),
     },
   });
 
@@ -161,8 +161,8 @@ export default function IncidentModal({
                       <SelectContent>
                         {(
                           [
-                            "complaint",
-                            "warning",
+                            "in-person warning",
+                            "remotewarning",
                             "citation",
                           ] as IncidentSeverity[]
                         ).map((s) => (

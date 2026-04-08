@@ -15,6 +15,11 @@ import type {
   AccountTableRow,
 } from "@/lib/api/account/account.types";
 import type { PoliceAccountUpdate } from "@/lib/api/police/police.types";
+import {
+  DEFAULT_TABLE_PARAMS,
+  ServerColumnMap,
+  ServerTableParams,
+} from "@/lib/api/shared/query-params";
 import { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
 import { useMemo, useState } from "react";
@@ -28,17 +33,27 @@ import PoliceAccountForm, {
 
 type AccountTableFormValues = z.infer<typeof accountTableFormSchema>;
 
+const SERVER_COLUMN_MAP: ServerColumnMap = {
+  email: { backendField: "email", filterOperator: "contains" },
+  first_name: { backendField: "first_name", filterOperator: "contains" },
+  last_name: { backendField: "last_name", filterOperator: "contains" },
+  onyen: { backendField: "onyen", filterOperator: "contains" },
+  role: { backendField: "role", filterOperator: "eq" },
+};
+
 export const AccountTable = () => {
   const { openSidebar, closeSidebar } = useSidebar();
   const [editingAccount, setEditingAccount] = useState<AccountTableRow | null>(
     null
   );
+  const [serverParams, setServerParams] =
+    useState<ServerTableParams>(DEFAULT_TABLE_PARAMS);
 
-  const accountsQuery = useAccounts();
+  const accountsQuery = useAccounts(serverParams);
   const policeAccountsQuery = usePoliceAccounts();
 
   const tableRows: AccountTableRow[] = useMemo(() => {
-    const regularAccounts: AccountTableRow[] = (accountsQuery.data ?? [])
+    const regularAccounts: AccountTableRow[] = (accountsQuery.data?.items ?? [])
       .filter((a) => a.role === "admin" || a.role === "staff")
       .map((a) => ({ ...a, _isPolice: false }));
 
@@ -323,6 +338,7 @@ export const AccountTable = () => {
         onDelete={handleDelete}
         onCreateNewRow={handleCreate}
         isLoading={isLoading}
+        isFetching={accountsQuery.isFetching}
         error={queryError}
         getDeleteDescription={(row: AccountTableRow) =>
           `Are you sure you want to delete ${row._isPolice ? "police " : ""}account ${row.email}? This action cannot be undone.`
@@ -331,11 +347,16 @@ export const AccountTable = () => {
           deleteAccountMutation.isPending ||
           deletePoliceAccountMutation.isPending
         }
-        sortBy={(a, b) =>
-          a.role.localeCompare(b.role) ||
-          a.last_name.localeCompare(b.last_name) ||
-          a.first_name.localeCompare(b.first_name)
+        serverMeta={
+          accountsQuery.data
+            ? {
+                totalRecords: accountsQuery.data.total_records,
+                totalPages: accountsQuery.data.total_pages,
+              }
+            : undefined
         }
+        onStateChange={setServerParams}
+        columnMap={SERVER_COLUMN_MAP}
       />
     </div>
   );

@@ -4,9 +4,11 @@ import type {
   PoliceAccountDto,
   PoliceAccountUpdate,
 } from "@/lib/api/police/police.types";
-import { OptimisticMutationOptions } from "@/lib/shared";
+import { ServerTableParams } from "@/lib/api/shared/query-params";
+import { OptimisticMutationOptions, PaginatedResponse } from "@/lib/shared";
 import {
   UseQueryOptions,
+  keepPreviousData,
   useMutation,
   useQuery,
   useQueryClient,
@@ -27,10 +29,14 @@ type UpdatePoliceAccountVars = {
   data: PoliceAccountUpdate;
 };
 
-export function useAccounts(options?: UseQueryOptions<AccountDto[]>) {
+export function useAccounts(
+  serverParams?: ServerTableParams,
+  options?: UseQueryOptions<PaginatedResponse<AccountDto>>
+) {
   return useQuery({
-    queryKey: ACCOUNTS_KEY,
-    queryFn: () => accountService.listAccounts(["admin", "staff"]),
+    queryKey: [...ACCOUNTS_KEY, serverParams ?? "all"],
+    queryFn: () => accountService.listAccounts(serverParams),
+    placeholderData: keepPreviousData,
     ...options,
   });
 }
@@ -87,25 +93,32 @@ export function useDeleteAccount(
     ...options,
     mutationFn: (id: number) => accountService.deleteAccount(id),
 
-    onMutate: async (id, context) => {
+    onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: ACCOUNTS_KEY });
-
-      const previous = queryClient.getQueryData<AccountDto[]>(ACCOUNTS_KEY);
-
-      queryClient.setQueryData<AccountDto[]>(ACCOUNTS_KEY, (old) =>
-        old?.filter((a) => a.id !== id)
+      const previous = queryClient.getQueriesData<
+        PaginatedResponse<AccountDto>
+      >({ queryKey: ACCOUNTS_KEY });
+      queryClient.setQueriesData<PaginatedResponse<AccountDto>>(
+        { queryKey: ACCOUNTS_KEY },
+        (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            items: old.items.filter((a) => a.id !== id),
+            total_records: old.total_records - 1,
+          };
+        }
       );
       options?.onOptimisticUpdate?.(id);
-
-      await options?.onMutate?.(id, context);
       return { previous };
     },
 
-    onError: (error, id, onMutateResult, context) => {
-      if (onMutateResult?.previous) {
-        queryClient.setQueryData(ACCOUNTS_KEY, onMutateResult.previous);
+    onError: (_error, _id, context) => {
+      if (context?.previous) {
+        for (const [queryKey, data] of context.previous) {
+          queryClient.setQueryData(queryKey, data);
+        }
       }
-      options?.onError?.(error, id, onMutateResult, context);
     },
 
     onSuccess: (...params) => {
