@@ -14,6 +14,7 @@ import {
 import { LocationService } from "@/lib/api/location/location.service";
 import { LocationDto } from "@/lib/api/location/location.types";
 import { PaginatedResponse } from "@/lib/shared";
+import { formatTime } from "@/lib/utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
 import { AxiosError } from "axios";
@@ -328,10 +329,7 @@ export const IncidentTable = () => {
       },
       cell: ({ row }) => {
         const date = new Date(row.original.incident_datetime);
-        return date.toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        });
+        return formatTime(date);
       },
       filterFn: (row, _columnId, filterValue) => {
         if (!filterValue) return true;

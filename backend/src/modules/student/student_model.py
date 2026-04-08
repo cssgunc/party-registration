@@ -2,6 +2,7 @@ import enum
 from typing import TYPE_CHECKING
 
 from pydantic import AwareDatetime, BaseModel, EmailStr, Field
+from src.core.utils.phone_utils import PhoneNumber
 from src.core.utils.query_utils import PaginatedResponse
 
 if TYPE_CHECKING:
@@ -18,13 +19,13 @@ class StudentData(BaseModel):
 
     contact_preference: ContactPreference
     last_registered: AwareDatetime | None = None
-    phone_number: str = Field(pattern=r"^\+?1?\d{9,15}$")
+    phone_number: PhoneNumber
 
 
 class StudentUpdateDto(BaseModel):
     """DTO for admin creating or updating a student (without names - those are in Account)."""
 
-    phone_number: str = Field(pattern=r"^\+?1?\d{9,15}$")
+    phone_number: PhoneNumber
     contact_preference: ContactPreference
     last_registered: AwareDatetime | None = None
     residence_place_id: str | None = Field(
@@ -35,7 +36,7 @@ class StudentUpdateDto(BaseModel):
 class SelfUpdateStudentDto(BaseModel):
     """DTO for students updating their own information."""
 
-    phone_number: str = Field(pattern=r"^\+?1?\d{9,15}$")
+    phone_number: PhoneNumber
     contact_preference: ContactPreference
 
 

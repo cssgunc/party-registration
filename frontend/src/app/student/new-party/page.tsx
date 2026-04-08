@@ -72,8 +72,7 @@ export default function RegistrationForm() {
         email: values.contactTwoEmail,
         first_name: values.secondContactFirstName,
         last_name: values.secondContactLastName,
-        // Strip non-digit characters from phone number before sending to backend
-        phone_number: values.phoneNumber.replace(/\D/g, ""),
+        phone_number: values.phoneNumber,
         contact_preference: values.contactPreference,
       },
     };
@@ -98,7 +97,7 @@ export default function RegistrationForm() {
   };
 
   return (
-    <div>
+    <div className="h-full overflow-y-auto">
       <main className="mx-4 mt-4">
         <nav className="flex items-center content pb-2 lg:hidden">
           <ArrowLeft className="h-4" />

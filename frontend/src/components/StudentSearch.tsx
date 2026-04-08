@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/popover";
 import { AdminStudentService } from "@/lib/api/student/admin-student.service";
 import { StudentSuggestionDto } from "@/lib/api/student/student.types";
-import { cn } from "@/lib/utils";
+import { cn, formatPhoneNumber } from "@/lib/utils";
 import { CheckIcon, Loader2Icon, UserIcon, XIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -30,12 +30,6 @@ interface StudentSearchProps {
   adminStudentService?: AdminStudentService;
   error?: string;
 }
-
-const formatPhoneNumber = (value: string): string => {
-  return value
-    ? `(${value.slice(0, 3)}) ${value.slice(3, 6)}-${value.slice(6, 10)}`
-    : value;
-};
 
 function highlightMatch(text: string, query: string): React.ReactNode {
   if (!query) return text;

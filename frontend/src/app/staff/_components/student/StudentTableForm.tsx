@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { ResidenceDto } from "@/lib/api/student/student.types";
+import { formatPhoneNumberInput, phoneNumberSchema } from "@/lib/utils";
 import { addBusinessDays, isAfter, startOfDay } from "date-fns";
 import { useState } from "react";
 import * as z from "zod";
@@ -29,14 +30,7 @@ export const studentTableFormSchema = z.object({
   first_name: z.string().min(1, "First name is required"),
   last_name: z.string().min(1, "Second name is required"),
   email: z.email("Please enter a valid email").min(1, "Email is required"),
-  phone_number: z
-    .string()
-    .min(1, "Phone number is required")
-    .refine(
-      (val) => val.replace(/\D/g, "").length >= 10,
-      "Phone number must be at least 10 digits"
-    )
-    .transform((val) => val.replace(/\D/g, "")),
+  phone_number: phoneNumberSchema,
   contact_preference: z.enum(["call", "text"], {
     message: "Please select a contact preference",
   }),
@@ -49,14 +43,6 @@ export const studentTableFormSchema = z.object({
   residence: z.custom<ResidenceDto | null>().default(null),
   residence_place_id: z.string().nullable().optional(),
 });
-
-const formatPhoneNumber = (value: string): string => {
-  const digits = value.replace(/\D/g, "").slice(0, 10);
-  if (!digits) return "";
-  if (digits.length <= 3) return `(${digits}`;
-  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
-  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
-};
 
 type StudentTableFormValues = z.infer<typeof studentTableFormSchema>;
 
@@ -236,7 +222,9 @@ export default function StudentTableForm({
               id="phone-number"
               type="tel"
               placeholder="(123) 456-7890"
-              value={formatPhoneNumber((formData.phone_number as string) || "")}
+              value={formatPhoneNumberInput(
+                (formData.phone_number as string) || ""
+              )}
               onChange={(e) => {
                 const digitsOnly = e.target.value
                   .replace(/\D/g, "")
