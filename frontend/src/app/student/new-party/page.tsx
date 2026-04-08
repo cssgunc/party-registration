@@ -97,7 +97,7 @@ export default function RegistrationForm() {
   };
 
   return (
-    <div>
+    <div className="h-full overflow-y-auto">
       <main className="mx-4 mt-4">
         <nav className="flex items-center content pb-2 lg:hidden">
           <ArrowLeft className="h-4" />
