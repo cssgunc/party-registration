@@ -15,6 +15,15 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import type { IncidentSeverity } from "@/lib/api/incident/incident.types";
 import {
   getCitationCount,
@@ -27,7 +36,9 @@ import { format } from "date-fns";
 import { EllipsisVertical } from "lucide-react";
 import Image from "next/image";
 import type { MouseEvent } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+const PAGE_SIZE = 10;
 
 interface PartyListProps {
   parties?: PartyDto[];
@@ -48,6 +59,47 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
   const [incidentType, setIncidentType] =
     useState<IncidentSeverity>("in_person_warning");
   const [selectedParty, setSelectedParty] = useState<PartyDto | null>(null);
+  const [currentPage, setCurrentPage] = useState(0);
+
+  // Reset to first page when the party list changes (filters/date range updated)
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [parties]);
+
+  // Jump to the correct page when a map pin is selected
+  useEffect(() => {
+    if (!activeParty) return;
+    const idx = parties.findIndex((p) => p.id === activeParty.id);
+    if (idx === -1) return;
+    setCurrentPage(Math.floor(idx / PAGE_SIZE));
+  }, [activeParty, parties]);
+
+  // Scroll to the active party card after the page renders
+  useEffect(() => {
+    if (!activeParty) return;
+    const el = document.querySelector(`[data-party-id="${activeParty.id}"]`);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [activeParty, currentPage]);
+
+  const totalPages = Math.ceil(parties.length / PAGE_SIZE);
+  const paginatedParties = parties.slice(
+    currentPage * PAGE_SIZE,
+    (currentPage + 1) * PAGE_SIZE
+  );
+
+  const maxVisiblePages = 3;
+  const pageStart = Math.max(
+    0,
+    Math.min(
+      currentPage - Math.floor(maxVisiblePages / 2),
+      totalPages - maxVisiblePages
+    )
+  );
+  const pageEnd = Math.min(pageStart + maxVisiblePages, totalPages);
+  const pageIndexes = Array.from(
+    { length: Math.max(pageEnd - pageStart, 0) },
+    (_, i) => pageStart + i
+  );
 
   if (parties.length === 0) {
     return (
@@ -70,13 +122,13 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
 
   return (
     <>
-      <ul className="h-full w-full overflow-y-auto rounded-md border border-border bg-card card-shadow [scroll-behavior:smooth]">
-        {parties.map((party) =>
-          (() => {
+      <div className="flex flex-col min-h-0 flex-1 gap-3">
+        <ul className="flex-1 min-h-0 w-full overflow-y-auto rounded-md border border-border bg-card card-shadow [scroll-behavior:smooth]">
+          {paginatedParties.map((party) => {
+            const remoteWarningCount = getRemoteWarningCount(party.location);
             const inPersonWarningCount = getInPersonWarningCount(
               party.location
             );
-            const remoteWarningCount = getRemoteWarningCount(party.location);
             const citationCount = getCitationCount(party.location);
 
             return (
@@ -229,9 +281,78 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                 </article>
               </li>
             );
-          })()
+          })}
+        </ul>
+
+        {totalPages > 1 && (
+          <div className="flex flex-col items-center gap-2">
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setCurrentPage((p) => Math.max(0, p - 1));
+                    }}
+                    className={cn(
+                      currentPage === 0
+                        ? "pointer-events-none opacity-50"
+                        : "cursor-pointer"
+                    )}
+                  />
+                </PaginationItem>
+                {pageStart > 0 && (
+                  <PaginationItem>
+                    <PaginationEllipsis />
+                  </PaginationItem>
+                )}
+                {pageIndexes.map((pageIndex) => (
+                  <PaginationItem key={pageIndex}>
+                    <PaginationLink
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setCurrentPage(pageIndex);
+                      }}
+                      isActive={currentPage === pageIndex}
+                      className="cursor-pointer"
+                    >
+                      {pageIndex + 1}
+                    </PaginationLink>
+                  </PaginationItem>
+                ))}
+                {pageEnd < totalPages && (
+                  <PaginationItem>
+                    <PaginationEllipsis />
+                  </PaginationItem>
+                )}
+                <PaginationItem>
+                  <PaginationNext
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setCurrentPage((p) => Math.min(totalPages - 1, p + 1));
+                    }}
+                    className={cn(
+                      currentPage === totalPages - 1
+                        ? "pointer-events-none opacity-50"
+                        : "cursor-pointer"
+                    )}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+            <p className="content text-muted-foreground">
+              Results {currentPage * PAGE_SIZE + 1}
+              {" - "}
+              {Math.min((currentPage + 1) * PAGE_SIZE, parties.length)} of{" "}
+              {parties.length}
+            </p>
+          </div>
         )}
-      </ul>
+      </div>
+
       <AddIncidentDialog
         open={incidentDialogOpen}
         onOpenChange={setIncidentDialogOpen}
