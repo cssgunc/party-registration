@@ -1,5 +1,6 @@
 "use client";
 
+import { useSnackbar } from "@/contexts/SnackbarContext";
 import {
   useAccounts,
   useCreateAccount,
@@ -33,6 +34,22 @@ import PoliceAccountForm, {
 
 type AccountTableFormValues = z.infer<typeof accountTableFormSchema>;
 
+const hasAccountChanged = (
+  original: AccountTableRow | null,
+  updated: AccountData
+): boolean => {
+  if (!original) return true;
+
+  return (
+    original.email !== updated.email ||
+    original.first_name !== updated.first_name ||
+    original.last_name !== updated.last_name ||
+    original.pid !== updated.pid ||
+    original.onyen !== updated.onyen ||
+    original.role !== updated.role
+  );
+};
+
 const SERVER_COLUMN_MAP: ServerColumnMap = {
   email: { backendField: "email", filterOperator: "contains" },
   first_name: { backendField: "first_name", filterOperator: "contains" },
@@ -43,6 +60,8 @@ const SERVER_COLUMN_MAP: ServerColumnMap = {
 
 export const AccountTable = () => {
   const { openSidebar, closeSidebar } = useSidebar();
+  const { openSnackbar } = useSnackbar();
+  // const [editingAccount, setEditingAccount] = useState<AccountDto | null>(null);
   const [editingAccount, setEditingAccount] = useState<AccountTableRow | null>(
     null
   );
@@ -108,13 +127,14 @@ export const AccountTable = () => {
     onSuccess: () => {
       closeSidebar();
       setEditingAccount(null);
+      openSnackbar("Student created successfully", "success");
     },
   });
 
   const updateAccountMutation = useUpdateAccount({
     onError: (error: Error, variables: { id: number; data: AccountData }) => {
       console.error("Failed to update account:", error);
-      const errorMessage = `Failed to update account: ${error.message}`;
+      const errorMessage = `${error.message}` || "Failed to update account";
       const editTarget =
         editingAccount &&
         !editingAccount._isPolice &&
@@ -145,7 +165,10 @@ export const AccountTable = () => {
         />
       );
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
+      if (hasAccountChanged(editingAccount, variables.data)) {
+        openSnackbar("Account edited successfully", "success");
+      }
       closeSidebar();
       setEditingAccount(null);
     },
@@ -180,12 +203,14 @@ export const AccountTable = () => {
   const deleteAccountMutation = useDeleteAccount({
     onError: (error: Error) => {
       console.error("Failed to delete account:", error);
+      openSnackbar("Failed to delete account", "error");
     },
   });
 
   const deletePoliceAccountMutation = useDeletePoliceAccount({
     onError: (error: Error) => {
       console.error("Failed to delete police account:", error);
+      openSnackbar("Failed to delete police account", "error");
     },
   });
 

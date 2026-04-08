@@ -4,6 +4,7 @@ import { useSidebar } from "@/app/staff/_components/shared/sidebar/SidebarContex
 import navyFlag from "@/components/icons/navyFlag.svg";
 import redFlag from "@/components/icons/redFlag.svg";
 import yellowFlag from "@/components/icons/yellowFlag.svg";
+import { useSnackbar } from "@/contexts/SnackbarContext";
 import { IncidentService } from "@/lib/api/incident/incident.service";
 import {
   IncidentCreateDto,
@@ -29,6 +30,27 @@ import IncidentTableForm from "./IncidentTableForm";
 const incidentService = new IncidentService();
 const locationService = new LocationService();
 
+const hasIncidentChanged = (
+  original: IncidentDto | null,
+  updated: IncidentCreateDto,
+  locationById: Map<number, LocationDto>
+): boolean => {
+  if (!original) return true;
+
+  // Look up the original location's google_place_id to compare with updated location_place_id
+  const originalLocation = locationById.get(original.location_id);
+  const originalLocationPlaceId = originalLocation?.google_place_id ?? "";
+
+  return (
+    originalLocationPlaceId !== updated.location_place_id ||
+    original.incident_datetime.getTime() !==
+      updated.incident_datetime.getTime() ||
+    original.description !== updated.description ||
+    original.severity !== updated.severity ||
+    original.reference_id !== updated.reference_id
+  );
+};
+
 function severityLabel(severity: IncidentSeverity): string {
   if (severity === "remote_warning") return "Remote Warning";
   if (severity === "in_person_warning") return "In-Person Warning";
@@ -53,6 +75,7 @@ function truncateDescription(
 export const IncidentTable = () => {
   const queryClient = useQueryClient();
   const { openSidebar, closeSidebar } = useSidebar();
+  const { openSnackbar } = useSnackbar();
   const [editingIncident, setEditingIncident] = useState<IncidentDto | null>(
     null
   );
@@ -136,22 +159,18 @@ export const IncidentTable = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["incidents"] });
       queryClient.invalidateQueries({ queryKey: ["locations"] });
+      openSnackbar("Incident created successfully", "success");
       closeSidebar();
       setEditingIncident(null);
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({
-      id,
-      payload,
-    }: {
-      id: number;
-      payload: Partial<IncidentCreateDto>;
-    }) => incidentService.updateIncident(id, payload),
+    mutationFn: ({ id, payload }: { id: number; payload: IncidentCreateDto }) =>
+      incidentService.updateIncident(id, payload),
     onError: (
       error: AxiosError<{ message?: string }>,
-      variables: { id: number; payload: Partial<IncidentCreateDto> }
+      variables: { id: number; payload: IncidentCreateDto }
     ) => {
       const errorMessage =
         error.response?.data?.message ||
@@ -167,9 +186,14 @@ export const IncidentTable = () => {
         reopenEditSidebar(targetIncident, errorMessage);
       }
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["incidents"] });
       queryClient.invalidateQueries({ queryKey: ["locations"] });
+      if (
+        hasIncidentChanged(editingIncident, variables.payload, locationById)
+      ) {
+        openSnackbar("Incident updated successfully", "success");
+      }
       closeSidebar();
       setEditingIncident(null);
     },
@@ -206,6 +230,7 @@ export const IncidentTable = () => {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["incidents"] });
       queryClient.invalidateQueries({ queryKey: ["locations"] });
+      openSnackbar("Incident deleted successfully", "success");
     },
   });
 
