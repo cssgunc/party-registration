@@ -1,8 +1,16 @@
 {
-  "police": {
-    "email": "police@example.com",
-    "password": "securepassword"
-  },
+  "police": [
+    {
+      "id": 1,
+      "email": "police@example.com",
+      "password": "securepassword"
+    },
+    {
+      "id": 2,
+      "email": "police2@example.com",
+      "password": "securepassword"
+    }
+  ],
   "accounts": [
     {
       "id": 1,
