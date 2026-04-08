@@ -13,19 +13,15 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { IncidentDto } from "@/lib/api/incident/incident.types";
 import { PartyDto } from "@/lib/api/party/party.types";
-import { useCurrentStudent } from "@/lib/api/student/student.queries";
+import {
+  useCurrentStudent,
+  useMyParties,
+} from "@/lib/api/student/student.queries";
 import { isFromThisSchoolYear } from "@/lib/utils";
 import { format } from "date-fns";
 import { MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-
-interface RegistrationTrackerProps {
-  data: PartyDto[] | undefined;
-  isPending?: boolean;
-  error?: Error | null;
-  incidents?: IncidentDto[];
-}
 
 const formatPhoneNumber = (phone: string | undefined): string => {
   if (!phone) return "";
@@ -38,25 +34,25 @@ const formatPhoneNumber = (phone: string | undefined): string => {
   return phone;
 };
 
-export default function RegistrationTracker({
-  data: parties = [],
-  isPending = false,
-  error = null,
-  incidents = [],
-}: RegistrationTrackerProps) {
+export default function RegistrationTracker() {
   const [activeTab, setActiveTab] = useState<"active" | "past" | "incidents">(
     "active"
   );
   const [editParty, setEditParty] = useState<PartyDto | null>(null);
   const [deleteParty, setDeleteParty] = useState<PartyDto | null>(null);
 
-  const studentQuery = useCurrentStudent();
-  const student = studentQuery.data;
+  const { data: student } = useCurrentStudent();
+  const partiesQuery = useMyParties();
+
+  const isPartiesPending = partiesQuery.isPending;
+  const isPartiesError = partiesQuery.error;
+
   const courseCompleted = student
     ? isFromThisSchoolYear(student.last_registered)
     : false;
 
   const { activeParties, pastParties } = useMemo(() => {
+    const parties = partiesQuery.data ?? [];
     const now = new Date();
     const active: PartyDto[] = [];
     const past: PartyDto[] = [];
@@ -86,15 +82,17 @@ export default function RegistrationTracker({
     );
 
     return { activeParties: active, pastParties: past };
-  }, [parties]);
+  }, [partiesQuery.data]);
 
   const sortedIncidents = useMemo(() => {
+    const incidents: IncidentDto[] =
+      student?.residence?.location.incidents ?? [];
     return [...incidents].sort(
       (a, b) =>
         new Date(b.incident_datetime).getTime() -
         new Date(a.incident_datetime).getTime()
     );
-  }, [incidents]);
+  }, [student?.residence?.location.incidents]);
 
   const groupedIncidents = useMemo(() => {
     const groups: Record<string, IncidentDto[]> = {};
@@ -224,18 +222,18 @@ export default function RegistrationTracker({
     </div>
   );
 
-  if (error) {
+  if (isPartiesError) {
     return (
       <Card className="w-full bg-card p-4">
         <div className="text-center text-red-600 py-8">
           <p className="font-semibold mb-2">Error loading registrations</p>
-          <p className="text-sm">{error.message}</p>
+          <p className="text-sm">{isPartiesError.message}</p>
         </div>
       </Card>
     );
   }
 
-  if (isPending) {
+  if (isPartiesPending) {
     return (
       <Card className="w-full bg-card p-4">
         <div className="text-center py-8">
