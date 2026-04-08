@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { IncidentDto } from "@/lib/api/incident/incident.types";
 import { PartyDto } from "@/lib/api/party/party.types";
 import { useCurrentStudent } from "@/lib/api/student/student.queries";
-import { isFromThisSchoolYear } from "@/lib/utils";
+import { formatPhoneNumber, isFromThisSchoolYear } from "@/lib/utils";
 import { format } from "date-fns";
 import { MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
@@ -26,17 +26,6 @@ interface RegistrationTrackerProps {
   error?: Error | null;
   incidents?: IncidentDto[];
 }
-
-const formatPhoneNumber = (phone: string | undefined): string => {
-  if (!phone) return "";
-  const cleaned = phone.replace(/\D/g, "");
-  if (cleaned.length === 10) {
-    return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(
-      6
-    )}`;
-  }
-  return phone;
-};
 
 export default function RegistrationTracker({
   data: parties = [],

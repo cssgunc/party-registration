@@ -31,7 +31,7 @@ import {
   getRemoteWarningCount,
 } from "@/lib/api/location/location.types";
 import { PartyDto } from "@/lib/api/party/party.types";
-import { cn } from "@/lib/utils";
+import { cn, formatPhoneNumber } from "@/lib/utils";
 import { format } from "date-fns";
 import { EllipsisVertical } from "lucide-react";
 import Image from "next/image";
@@ -45,14 +45,6 @@ interface PartyListProps {
   onSelect?: (party: PartyDto) => void;
   activeParty?: PartyDto;
 }
-
-const formatPhoneNumber = (phone: string): string => {
-  const cleaned = phone.replace(/\D/g, "");
-  if (cleaned.length === 10) {
-    return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
-  }
-  return phone;
-};
 
 const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
   const [incidentDialogOpen, setIncidentDialogOpen] = useState(false);
