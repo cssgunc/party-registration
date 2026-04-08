@@ -26,6 +26,18 @@ const toEditData = (student: StudentDto) => ({
   residence_place_id: student.residence?.location.google_place_id ?? null,
 });
 
+const getErrorMessage = (error: Error): string => {
+  try {
+    const err = error as unknown as Record<string, unknown>;
+    const detail = (err.response as Record<string, unknown>)?.data as Record<
+      string,
+      unknown
+    >;
+    if (detail?.message) return String(detail.message);
+  } catch {}
+  return "Failed to update student";
+};
+
 const SERVER_COLUMN_MAP: ServerColumnMap = {
   onyen: { backendField: "onyen", filterOperator: "contains" },
   pid: { backendField: "pid", filterOperator: "contains" },
@@ -56,8 +68,8 @@ export const StudentTable = () => {
       setEditingStudent(null);
     },
     onError: (error) => {
-      console.error("Failed to update student:", error);
       if (!editingStudent) return;
+
       openSidebar(
         `edit-student-${editingStudent.id}`,
         "Edit Student",
@@ -65,7 +77,7 @@ export const StudentTable = () => {
         <StudentTableForm
           title="Edit Student"
           onSubmit={(data) => handleEditSubmit(editingStudent, data)}
-          submissionError={`Failed to update student: ${error.message}`}
+          submissionError={getErrorMessage(error)}
           editData={editingStudent}
         />
       );

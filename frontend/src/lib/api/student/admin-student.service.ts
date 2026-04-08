@@ -60,7 +60,7 @@ export class AdminStudentService {
       return convertStudent(response.data);
     } catch (error) {
       console.error(`Failed to fetch student ${id}:`, error);
-      throw new Error("Failed to fetch student");
+      throw error;
     }
   }
 
@@ -76,7 +76,7 @@ export class AdminStudentService {
       return convertStudent(response.data);
     } catch (error) {
       console.error("Failed to create student:", error);
-      throw new Error("Failed to create student");
+      throw error;
     }
   }
 
@@ -92,7 +92,7 @@ export class AdminStudentService {
       return convertStudent(response.data);
     } catch (error) {
       console.error(`Failed to update student ${id}:`, error);
-      throw new Error("Failed to update student");
+      throw error;
     }
   }
 
@@ -110,7 +110,7 @@ export class AdminStudentService {
       return response.data;
     } catch (error) {
       console.error("Failed to fetch student autocomplete:", error);
-      throw new Error("Failed to fetch student suggestions");
+      throw error;
     }
   }
 
@@ -125,7 +125,7 @@ export class AdminStudentService {
       return convertStudent(response.data);
     } catch (error) {
       console.error(`Failed to delete student ${id}:`, error);
-      throw new Error("Failed to delete student");
+      throw error;
     }
   }
 }

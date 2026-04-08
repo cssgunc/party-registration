@@ -17,7 +17,6 @@ import {
   ServerTableParams,
 } from "@/lib/api/shared/query-params";
 import { ColumnDef } from "@tanstack/react-table";
-import { isAxiosError } from "axios";
 import { useState } from "react";
 import * as z from "zod";
 import { useSidebar } from "../shared/sidebar/SidebarContext";
@@ -34,6 +33,19 @@ const SERVER_COLUMN_MAP: ServerColumnMap = {
   role: { backendField: "role", filterOperator: "eq" },
 };
 
+const getErrorMessage = (error: Error): string => {
+  try {
+    const err = error as unknown as Record<string, unknown>;
+    const detail = (err.response as Record<string, unknown>)?.data as Record<
+      string,
+      unknown
+    >;
+    if (detail?.message) return String(detail.message);
+    if (detail?.detail) return String(detail.detail);
+  } catch {}
+  return "Operation failed";
+};
+
 export const AccountTable = () => {
   const { openSidebar, closeSidebar } = useSidebar();
   const [editingAccount, setEditingAccount] = useState<AccountDto | null>(null);
@@ -45,16 +57,7 @@ export const AccountTable = () => {
 
   const createMutation = useCreateAccount({
     onError: (error: Error, variables: AccountData) => {
-      const errorMessage =
-        isAxiosError(error) && error.response
-          ? `${error.response.data.message}`
-          : `Failed to create account: ${error.message}`;
-
-      if (isAxiosError(error) && error.response) {
-        console.error("Failed to create account:", error.response.data);
-      } else {
-        console.error("Failed to create account:", error);
-      }
+      const message = getErrorMessage(error);
 
       openSidebar(
         "create-account",
@@ -63,7 +66,7 @@ export const AccountTable = () => {
         <AccountTableForm
           title="New Account"
           onSubmit={handleCreateSubmit}
-          submissionError={errorMessage}
+          submissionError={message}
           editData={{
             email: variables.email,
             first_name: variables.first_name,
@@ -83,8 +86,7 @@ export const AccountTable = () => {
 
   const updateMutation = useUpdateAccount({
     onError: (error: Error, variables: { id: number; data: AccountData }) => {
-      console.error("Failed to update account:", error);
-      const errorMessage = `Failed to update account: ${error.message}`;
+      const message = getErrorMessage(error);
       const editTarget =
         editingAccount && editingAccount.id === variables.id
           ? editingAccount
@@ -108,7 +110,7 @@ export const AccountTable = () => {
         <AccountTableForm
           title="Edit Account"
           onSubmit={(data) => handleEditSubmit(variables.id, data)}
-          submissionError={errorMessage}
+          submissionError={message}
           editData={editData}
         />
       );
@@ -121,7 +123,8 @@ export const AccountTable = () => {
 
   const deleteMutation = useDeleteAccount({
     onError: (error: Error) => {
-      console.error("Failed to delete account:", error);
+      const message = getErrorMessage(error);
+      console.error("Failed to delete account:", message);
     },
   });
 

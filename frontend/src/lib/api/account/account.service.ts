@@ -40,7 +40,7 @@ export class AccountService {
       return response.data;
     } catch (error) {
       console.error("Failed to create account:", error);
-      throw new Error("Failed to create account");
+      throw error;
     }
   }
 
@@ -59,7 +59,7 @@ export class AccountService {
       return response.data;
     } catch (error) {
       console.error(`Failed to update account ${accountId}:`, error);
-      throw new Error("Failed to update account");
+      throw error;
     }
   }
 
@@ -74,7 +74,7 @@ export class AccountService {
       return response.data;
     } catch (error) {
       console.error(`Failed to delete account ${accountId}:`, error);
-      throw new Error("Failed to delete account");
+      throw error;
     }
   }
 }

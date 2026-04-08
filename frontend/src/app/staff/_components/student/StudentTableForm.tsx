@@ -33,8 +33,8 @@ export const studentTableFormSchema = z.object({
     .string()
     .min(1, "Phone number is required")
     .refine(
-      (val) => val.replace(/\D/g, "").length >= 10,
-      "Phone number must be at least 10 digits"
+      (val) => val.replace(/\D/g, "").length <= 10,
+      "Phone number must be at most 10 digits"
     )
     .transform((val) => val.replace(/\D/g, "")),
   contact_preference: z.enum(["call", "text"], {
@@ -49,12 +49,6 @@ export const studentTableFormSchema = z.object({
   residence: z.custom<ResidenceDto | null>().default(null),
   residence_place_id: z.string().nullable().optional(),
 });
-
-const formatPhoneNumber = (value: string): string => {
-  return value
-    ? `(${value.slice(0, 3)}) ${value.slice(3, 6)}-${value.slice(6, 10)}`
-    : "—";
-};
 
 type StudentTableFormValues = z.infer<typeof studentTableFormSchema>;
 
@@ -232,8 +226,9 @@ export default function StudentTableForm({
             <FieldLabel htmlFor="phone-number">Phone Number</FieldLabel>
             <Input
               id="phone-number"
+              type="tel"
               placeholder="(123) 456-7890"
-              value={formatPhoneNumber((formData.phone_number as string) || "")}
+              value={(formData.phone_number as string) || ""}
               onChange={(e) => updateField("phone_number", e.target.value)}
               aria-invalid={!!errors.phone_number}
             />

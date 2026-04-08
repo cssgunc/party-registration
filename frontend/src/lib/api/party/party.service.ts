@@ -106,7 +106,7 @@ export class PartyService {
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Failed to download parties Excel:", error);
-      throw new Error("Failed to download parties export");
+      throw error;
     }
   }
 
@@ -140,7 +140,7 @@ export class PartyService {
       return convertParty(response.data);
     } catch (error) {
       console.error(`Failed to get party ${partyId}:`, error);
-      throw new Error("Failed to get party");
+      throw error;
     }
   }
 
@@ -155,7 +155,7 @@ export class PartyService {
       return convertParty(response.data);
     } catch (error) {
       console.error(`Failed to delete party ${partyId}:`, error);
-      throw new Error("Failed to delete party");
+      throw error;
     }
   }
 }
