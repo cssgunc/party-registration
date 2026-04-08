@@ -1,4 +1,8 @@
-import { policeLogin, setAuthCookies } from "@/lib/api/auth/auth.service";
+import {
+  decodeJwtPayload,
+  policeLogin,
+  setAuthCookies,
+} from "@/lib/api/auth/auth.service";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
@@ -17,13 +21,16 @@ export async function POST(req: NextRequest) {
   try {
     const data = await policeLogin({ email, password });
 
+    const payload = decodeJwtPayload(data.access_token);
+    const policeId = String(payload.sub);
+
     const res = NextResponse.json({ ok: true });
 
     await setAuthCookies(res, data, {
-      sub: "police",
-      id: "police",
-      email,
-      name: email,
+      sub: policeId,
+      id: policeId,
+      email: payload.email,
+      name: payload.email,
       role: "police",
     });
 

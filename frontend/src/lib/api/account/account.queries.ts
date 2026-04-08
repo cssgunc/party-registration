@@ -1,5 +1,9 @@
 import { AccountService } from "@/lib/api/account/account.service";
 import { AccountData, AccountDto } from "@/lib/api/account/account.types";
+import type {
+  PoliceAccountDto,
+  PoliceAccountUpdate,
+} from "@/lib/api/police/police.types";
 import { ServerTableParams } from "@/lib/api/shared/query-params";
 import { OptimisticMutationOptions, PaginatedResponse } from "@/lib/shared";
 import {
@@ -13,10 +17,16 @@ import {
 const accountService = new AccountService();
 
 export const ACCOUNTS_KEY = ["accounts"] as const;
+export const POLICE_ACCOUNTS_KEY = ["police-accounts"] as const;
 
 type UpdateAccountVars = {
   id: number;
   data: AccountData;
+};
+
+type UpdatePoliceAccountVars = {
+  id: number;
+  data: PoliceAccountUpdate;
 };
 
 export function useAccounts(
@@ -27,6 +37,16 @@ export function useAccounts(
     queryKey: [...ACCOUNTS_KEY, serverParams ?? "all"],
     queryFn: () => accountService.listAccounts(serverParams),
     placeholderData: keepPreviousData,
+    ...options,
+  });
+}
+
+export function usePoliceAccounts(
+  options?: UseQueryOptions<PoliceAccountDto[]>
+) {
+  return useQuery({
+    queryKey: POLICE_ACCOUNTS_KEY,
+    queryFn: () => accountService.listPoliceAccounts(),
     ...options,
   });
 }
@@ -103,6 +123,65 @@ export function useDeleteAccount(
 
     onSuccess: (...params) => {
       queryClient.invalidateQueries({ queryKey: ACCOUNTS_KEY });
+      options?.onSuccess?.(...params);
+    },
+  });
+}
+
+export function useUpdatePoliceAccount(
+  options?: OptimisticMutationOptions<
+    PoliceAccountDto,
+    Error,
+    UpdatePoliceAccountVars
+  >
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...options,
+    mutationFn: ({ id, data }: UpdatePoliceAccountVars) =>
+      accountService.updatePoliceAccount(id, data),
+
+    onSuccess: (...params) => {
+      queryClient.invalidateQueries({ queryKey: POLICE_ACCOUNTS_KEY });
+      options?.onSuccess?.(...params);
+    },
+  });
+}
+
+export function useDeletePoliceAccount(
+  options?: OptimisticMutationOptions<PoliceAccountDto, Error, number>
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...options,
+    mutationFn: (id: number) => accountService.deletePoliceAccount(id),
+
+    onMutate: async (id, context) => {
+      await queryClient.cancelQueries({ queryKey: POLICE_ACCOUNTS_KEY });
+
+      const previous =
+        queryClient.getQueryData<PoliceAccountDto[]>(POLICE_ACCOUNTS_KEY);
+
+      queryClient.setQueryData<PoliceAccountDto[]>(POLICE_ACCOUNTS_KEY, (old) =>
+        old?.filter((a) => a.id !== id)
+      );
+      options?.onOptimisticUpdate?.(id);
+
+      await options?.onMutate?.(id, context);
+      return { previous };
+    },
+
+    onError: (error, id, onMutateResult, context) => {
+      if (onMutateResult?.previous) {
+        queryClient.setQueryData(POLICE_ACCOUNTS_KEY, onMutateResult.previous);
+      }
+      options?.onError?.(error, id, onMutateResult, context);
+    },
+
+    onSuccess: (...params) => {
+      queryClient.invalidateQueries({ queryKey: POLICE_ACCOUNTS_KEY });
       options?.onSuccess?.(...params);
     },
   });

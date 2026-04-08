@@ -106,11 +106,12 @@ async def reset_dev():
         ) as f:
             data = json.load(f)
 
-        police = entities.PoliceEntity(
-            email=data["police"]["email"],
-            hashed_password=hash_password(data["police"]["password"]),
-        )
-        session.add(police)
+        for police_data in data["police"]:
+            police = entities.PoliceEntity(
+                email=police_data["email"],
+                hashed_password=hash_password(police_data["password"]),
+            )
+            session.add(police)
 
         for account_data in data["accounts"]:
             account = entities.AccountEntity(
