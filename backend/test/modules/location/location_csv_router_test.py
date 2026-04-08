@@ -16,7 +16,7 @@ test_location_csv_authentication = generate_auth_required_tests(
 test_location_csv_empty = generate_csv_empty_test(
     "staff",
     "/api/locations/csv",
-    ("Address", "Complaint Count", "Warning Count", "Citation Count"),
+    ("Address", "Remote Warning Count", "In-Person Warning Count", "Citation Count"),
 )
 
 
@@ -45,15 +45,15 @@ class TestLocationCSVRouter:
         location1 = await self.location_utils.create_one()
         location2 = await self.location_utils.create_one()
 
-        # Add incidents to location1: 2 complaints, 1 warning, 3 citations
+        # Add incidents to location1: 2 remote warnings, 1 in-person warning, 3 citations
         await self.incident_utils.create_one(
-            location_id=location1.id, severity=IncidentSeverity.COMPLAINT
+            location_id=location1.id, severity=IncidentSeverity.REMOTE_WARNING
         )
         await self.incident_utils.create_one(
-            location_id=location1.id, severity=IncidentSeverity.COMPLAINT
+            location_id=location1.id, severity=IncidentSeverity.REMOTE_WARNING
         )
         await self.incident_utils.create_one(
-            location_id=location1.id, severity=IncidentSeverity.WARNING
+            location_id=location1.id, severity=IncidentSeverity.IN_PERSON_WARNING
         )
         await self.incident_utils.create_one(
             location_id=location1.id, severity=IncidentSeverity.CITATION
@@ -70,7 +70,7 @@ class TestLocationCSVRouter:
         response = await self.staff_client.get("/api/locations/csv")
         rows = assert_excel_response(
             response,
-            ("Address", "Complaint Count", "Warning Count", "Citation Count"),
+            ("Address", "Remote Warning Count", "In-Person Warning Count", "Citation Count"),
             expected_row_count=3,
         )
 
@@ -80,13 +80,13 @@ class TestLocationCSVRouter:
         # Assert location1 counts
         assert location1.formatted_address in data_rows
         row1 = data_rows[location1.formatted_address]
-        assert row1[1] == 2  # complaints
-        assert row1[2] == 1  # warnings
+        assert row1[1] == 2  # remote warnings
+        assert row1[2] == 1  # in-person warnings
         assert row1[3] == 3  # citations
 
         # Assert location2 has zeros
         assert location2.formatted_address in data_rows
         row2 = data_rows[location2.formatted_address]
-        assert row2[1] == 0  # complaints
-        assert row2[2] == 0  # warnings
+        assert row2[1] == 0  # remote warnings
+        assert row2[2] == 0  # in-person warnings
         assert row2[3] == 0  # citations

@@ -205,8 +205,10 @@ export default function AdvancedPartySearch({
                 )}
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="complaint">Complaint</SelectItem>
-                <SelectItem value="warning">Warning</SelectItem>
+                <SelectItem value="remote_warning">Remote Warning</SelectItem>
+                <SelectItem value="in_person_warning">
+                  In-Person Warning
+                </SelectItem>
                 <SelectItem value="citation">Citation</SelectItem>
               </SelectContent>
             </Select>

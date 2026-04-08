@@ -109,8 +109,10 @@ export default function AddIncidentDialog({
                   <SelectValue placeholder="Enter Incident Type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="complaint">Complaint</SelectItem>
-                  <SelectItem value="warning">Warning</SelectItem>
+                  <SelectItem value="remote_warning">Remote Warning</SelectItem>
+                  <SelectItem value="in_person_warning">
+                    In-Person Warning
+                  </SelectItem>
                   <SelectItem value="citation">Citation</SelectItem>
                 </SelectContent>
               </Select>

@@ -24,10 +24,11 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import type { IncidentSeverity } from "@/lib/api/incident/incident.types";
 import {
   getCitationCount,
-  getComplaintCount,
-  getWarningCount,
+  getInPersonWarningCount,
+  getRemoteWarningCount,
 } from "@/lib/api/location/location.types";
 import { PartyDto } from "@/lib/api/party/party.types";
 import { cn } from "@/lib/utils";
@@ -55,9 +56,8 @@ const formatPhoneNumber = (phone: string): string => {
 
 const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
   const [incidentDialogOpen, setIncidentDialogOpen] = useState(false);
-  const [incidentType, setIncidentType] = useState<
-    "complaint" | "warning" | "citation"
-  >("complaint");
+  const [incidentType, setIncidentType] =
+    useState<IncidentSeverity>("in_person_warning");
   const [selectedParty, setSelectedParty] = useState<PartyDto | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
 
@@ -111,7 +111,7 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
 
   const openIncidentDialog = (
     event: MouseEvent,
-    type: "complaint" | "warning" | "citation",
+    type: IncidentSeverity,
     selectedParty: PartyDto
   ) => {
     event.stopPropagation();
@@ -125,8 +125,10 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
       <div className="flex flex-col min-h-0 flex-1 gap-3">
         <ul className="flex-1 min-h-0 w-full overflow-y-auto rounded-md border border-border bg-card card-shadow [scroll-behavior:smooth]">
           {paginatedParties.map((party) => {
-            const complaintCount = getComplaintCount(party.location);
-            const warningCount = getWarningCount(party.location);
+            const remoteWarningCount = getRemoteWarningCount(party.location);
+            const inPersonWarningCount = getInPersonWarningCount(
+              party.location
+            );
             const citationCount = getCitationCount(party.location);
 
             return (
@@ -165,19 +167,25 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                         <DropdownMenuContent className="w-44" align="end">
                           <DropdownMenuItem
                             onClick={(event) =>
-                              openIncidentDialog(event, "complaint", party)
+                              openIncidentDialog(
+                                event,
+                                "in_person_warning",
+                                party
+                              )
                             }
                           >
-                            <Image src={blackFlag} alt="complaints" />
-                            <span className="content">Add complaint</span>
+                            <Image src={yellowFlag} alt="in-person warning" />
+                            <span className="content">
+                              Add in-person warning
+                            </span>
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={(event) =>
-                              openIncidentDialog(event, "warning", party)
+                              openIncidentDialog(event, "remote_warning", party)
                             }
                           >
-                            <Image src={yellowFlag} alt="warning" />
-                            <span className="content">Add warning</span>
+                            <Image src={blackFlag} alt="warning" />
+                            <span className="content">Add remote warning</span>
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={(event) =>
@@ -237,23 +245,23 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                         <HoverCard openDelay={0} closeDelay={4}>
                           <HoverCardTrigger asChild>
                             <div className="flex items-center gap-1 content-bold font-bold text-foreground">
-                              {complaintCount}
-                              <Image src={blackFlag} alt="complaints" />
+                              {inPersonWarningCount}
+                              <Image src={blackFlag} alt="in-person warning" />
                             </div>
                           </HoverCardTrigger>
                           <HoverCardContent className="w-40">
-                            <p className="content">Complaints</p>
+                            <p className="content">In-Person Warnings</p>
                           </HoverCardContent>
                         </HoverCard>
                         <HoverCard openDelay={0} closeDelay={4}>
                           <HoverCardTrigger asChild>
                             <div className="flex items-center gap-1 content-bold font-bold text-foreground">
-                              {warningCount}
+                              {remoteWarningCount}
                               <Image src={yellowFlag} alt="warnings" />
                             </div>
                           </HoverCardTrigger>
                           <HoverCardContent className="w-40">
-                            <p className="content">Warnings</p>
+                            <p className="content">Remote Warnings</p>
                           </HoverCardContent>
                         </HoverCard>
                         <HoverCard openDelay={0} closeDelay={4}>

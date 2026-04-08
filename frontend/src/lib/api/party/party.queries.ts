@@ -67,7 +67,6 @@ export function useCreateParty(
  */
 export function useUpdateParty() {
   const queryClient = useQueryClient();
-
   return useMutation<
     PartyDto,
     Error,

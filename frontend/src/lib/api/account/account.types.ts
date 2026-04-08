@@ -34,4 +34,19 @@ type AccountDto = {
   role: AccountRole;
 };
 
-export type { AccountData, AccountDto };
+/**
+ * Unified row type for the Accounts table, which mixes regular accounts
+ * and police accounts. Police rows have "-" for IdP-owned fields.
+ */
+type AccountTableRow = {
+  id: number;
+  email: string;
+  first_name: string;
+  last_name: string;
+  pid: string;
+  onyen: string;
+  role: AppRole;
+  _isPolice: boolean;
+};
+
+export type { AccountData, AccountDto, AccountTableRow };

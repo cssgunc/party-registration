@@ -51,9 +51,11 @@ export const studentTableFormSchema = z.object({
 });
 
 const formatPhoneNumber = (value: string): string => {
-  return value
-    ? `(${value.slice(0, 3)}) ${value.slice(3, 6)}-${value.slice(6, 10)}`
-    : "—";
+  const digits = value.replace(/\D/g, "").slice(0, 10);
+  if (!digits) return "";
+  if (digits.length <= 3) return `(${digits}`;
+  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
 };
 
 type StudentTableFormValues = z.infer<typeof studentTableFormSchema>;
@@ -232,10 +234,16 @@ export default function StudentTableForm({
             <FieldLabel htmlFor="phone-number">Phone Number</FieldLabel>
             <Input
               id="phone-number"
+              type="tel"
               placeholder="(123) 456-7890"
               value={formatPhoneNumber((formData.phone_number as string) || "")}
-              onChange={(e) => updateField("phone_number", e.target.value)}
-              aria-invalid={!!errors.phone_number}
+              onChange={(e) => {
+                const digitsOnly = e.target.value
+                  .replace(/\D/g, "")
+                  .slice(0, 10);
+                updateField("phone_number", digitsOnly);
+              }}
+              maxLength={14}
             />
             {errors.phone_number && (
               <FieldError>{errors.phone_number}</FieldError>
