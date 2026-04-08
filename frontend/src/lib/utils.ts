@@ -48,7 +48,7 @@ export const phoneNumberSchema = z
   .string()
   .min(1, "Phone number is required")
   .refine(
-    (val) => val.replace(/\D/g, "").length >= 10,
+    (val) => val.replace(/\D/g, "").length === 10,
     "Phone number must be at least 10 digits"
   )
   .transform((val) => val.replace(/\D/g, ""));
