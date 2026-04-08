@@ -31,7 +31,7 @@ import {
   getRemoteWarningCount,
 } from "@/lib/api/location/location.types";
 import { PartyDto } from "@/lib/api/party/party.types";
-import { cn, formatPhoneNumber } from "@/lib/utils";
+import { cn, formatPhoneNumber, formatTime } from "@/lib/utils";
 import { format } from "date-fns";
 import { EllipsisVertical } from "lucide-react";
 import Image from "next/image";
@@ -139,7 +139,7 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                       <div>
                         <p className="content-bold font-bold text-secondary">
                           {format(party.party_datetime, "M/d/yyyy")} @{" "}
-                          {format(party.party_datetime, "h:mm a")}
+                          {formatTime(party.party_datetime)}
                         </p>
                         <p className="content-bold font-bold text-secondary">
                           {party.location.formatted_address}

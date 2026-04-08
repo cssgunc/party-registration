@@ -14,7 +14,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { IncidentDto } from "@/lib/api/incident/incident.types";
 import { PartyDto } from "@/lib/api/party/party.types";
 import { useCurrentStudent } from "@/lib/api/student/student.queries";
-import { formatPhoneNumber, isFromThisSchoolYear } from "@/lib/utils";
+import {
+  formatPhoneNumber,
+  formatTime,
+  isFromThisSchoolYear,
+} from "@/lib/utils";
 import { format } from "date-fns";
 import { MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
@@ -114,7 +118,7 @@ export default function RegistrationTracker({
           <div>
             <div className="flex content-bold gap-6">
               <p>{format(party.party_datetime, "MM/dd/yyyy")}</p>
-              <p>Start: {format(party.party_datetime, "p")}</p>
+              <p>Start: {formatTime(party.party_datetime)}</p>
             </div>
             {showAddress && (
               <h2 className="content-bold my-2">
@@ -203,7 +207,7 @@ export default function RegistrationTracker({
         {incidents.map((incident) => (
           <div key={incident.id} className="mt-3">
             <p className="content">
-              {format(incident.incident_datetime, "p")} -{" "}
+              {formatTime(incident.incident_datetime)} -{" "}
               <span className="capitalize">{incident.severity}</span>
             </p>
             <p className="content ml-3 mt-1">{incident.description}</p>

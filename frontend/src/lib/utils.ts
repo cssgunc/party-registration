@@ -34,6 +34,13 @@ export function formatPhoneNumberInput(value: string): string {
 }
 
 /**
+ * Format a date as a human-readable time string, e.g. "8:30 PM".
+ */
+export function formatTime(date: Date): string {
+  return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
+/**
  * Zod schema for phone number fields in forms.
  * Validates at least 10 digits and transforms to raw digits on parse.
  */
