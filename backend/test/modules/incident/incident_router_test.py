@@ -119,7 +119,7 @@ class TestIncidentRouter:
         """Test creating incidents with different severity levels."""
         location = await self.location_utils.create_one()
 
-        for severity in IncidentSeverity:
+        for severity in [sev.value for sev in IncidentSeverity]:
             create_dto = await self.incident_utils.next_create_dto(
                 location_place_id=location.google_place_id, severity=severity
             )
@@ -128,7 +128,39 @@ class TestIncidentRouter:
             )
             data = assert_res_success(response, IncidentDto, status=201)
 
-            assert data.severity == severity
+            assert data.severity.value == severity
+
+    @pytest.mark.asyncio
+    async def test_create_incident_with_reference_id(self) -> None:
+        """Test creating an incident with a reference_id."""
+        location = await self.location_utils.create_one()
+        create_dto = await self.incident_utils.next_create_dto(
+            location_place_id=location.google_place_id,
+            reference_id="CAD-2468",
+        )
+
+        response = await self.admin_client.post(
+            "/api/incidents", json=create_dto.model_dump(mode="json")
+        )
+        data = assert_res_success(response, IncidentDto, status=201)
+
+        assert data.reference_id == "CAD-2468"
+
+    @pytest.mark.asyncio
+    async def test_create_incident_reference_id_defaults_none(self) -> None:
+        """Test creating an incident defaults reference_id to None."""
+        location = await self.location_utils.create_one()
+        create_dto = await self.incident_utils.next_create_dto(
+            location_place_id=location.google_place_id,
+            reference_id=None,
+        )
+
+        response = await self.admin_client.post(
+            "/api/incidents", json=create_dto.model_dump(mode="json")
+        )
+        data = assert_res_success(response, IncidentDto, status=201)
+
+        assert data.reference_id is None
 
     @pytest.mark.asyncio
     async def test_create_incident_with_empty_description(self) -> None:
@@ -173,7 +205,9 @@ class TestIncidentRouter:
         """Test successfully updating an incident."""
         incident = await self.incident_utils.create_one()
         update_dto = await self.incident_utils.next_update_dto(
-            description="Updated description", severity=IncidentSeverity.WARNING
+            description="Updated description",
+            severity="in_person_warning",
+            reference_id="CAD-UPDATE-1",
         )
 
         response = await self.admin_client.put(
@@ -184,6 +218,55 @@ class TestIncidentRouter:
 
         assert data.id == incident.id
         self.incident_utils.assert_matches(data, update_dto)
+        assert data.severity.value == "in_person_warning"
+        assert data.reference_id == "CAD-UPDATE-1"
+
+    @pytest.mark.asyncio
+    async def test_update_incident_requires_location_place_id(self) -> None:
+        """Test updating an incident requires location_place_id."""
+        incident = await self.incident_utils.create_one()
+        request_body = IncidentTestUtils.get_sample_update_data()
+        del request_body["location_place_id"]
+
+        response = await self.admin_client.put(f"/api/incidents/{incident.id}", json=request_body)
+
+        assert_res_validation_error(response, expected_fields=["location_place_id"])
+
+    @pytest.mark.asyncio
+    async def test_update_incident_can_change_location(self) -> None:
+        """Test updating an incident can change location via location_place_id."""
+        original_location = await self.location_utils.create_one()
+        incident = await self.incident_utils.create_one(location_id=original_location.id)
+
+        updated_location_data = await self.location_utils.next_data()
+        self.gmaps_utils.mock_place_details(**updated_location_data.model_dump())
+
+        update_dto = await self.incident_utils.next_update_dto(
+            location_place_id=updated_location_data.google_place_id
+        )
+        response = await self.admin_client.put(
+            f"/api/incidents/{incident.id}",
+            json=update_dto.model_dump(mode="json"),
+        )
+        data = assert_res_success(response, IncidentDto)
+
+        assert data.location_id != original_location.id
+
+    @pytest.mark.asyncio
+    async def test_update_incident_can_clear_reference_id(self) -> None:
+        """Test updating an incident can clear reference_id to null."""
+        incident = await self.incident_utils.create_one(reference_id="CAD-CLEAR")
+
+        update_dto = await self.incident_utils.next_update_dto(
+            reference_id=None,
+        )
+        response = await self.admin_client.put(
+            f"/api/incidents/{incident.id}",
+            json=update_dto.model_dump(mode="json"),
+        )
+        data = assert_res_success(response, IncidentDto)
+
+        assert data.reference_id is None
 
     @pytest.mark.asyncio
     async def test_update_incident_not_found(self) -> None:

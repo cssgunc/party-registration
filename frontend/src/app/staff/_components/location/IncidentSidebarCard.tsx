@@ -17,6 +17,7 @@ import {
   IncidentDto,
   IncidentSeverity,
 } from "@/lib/api/incident/incident.types";
+import { formatTime } from "@/lib/utils";
 import { ChevronDown, MoreHorizontal } from "lucide-react";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
@@ -55,11 +56,7 @@ export default function IncidentSidebarCard({
                   })}
                 </p>
                 <p className="content">
-                  {incidents.incident_datetime.toLocaleTimeString("en-US", {
-                    hour: "numeric",
-                    minute: "2-digit",
-                    hour12: true,
-                  })}
+                  {formatTime(incidents.incident_datetime)}
                 </p>
                 <Image
                   src={getSeverityFlag(incidents.severity)}

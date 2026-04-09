@@ -52,7 +52,13 @@ class IncidentService:
             "location.hold_expiration": LocationEntity.hold_expiration,
         }
 
-        _base_allowed_fields = ["id", "incident_datetime", "severity", "description"]
+        _base_allowed_fields = [
+            "id",
+            "incident_datetime",
+            "severity",
+            "description",
+            "reference_id",
+        ]
         allowed_sort_fields = [*_base_allowed_fields, *nested_field_columns.keys()]
         allowed_filter_fields = list(allowed_sort_fields)
 
@@ -85,7 +91,13 @@ class IncidentService:
             "location.hold_expiration": LocationEntity.hold_expiration,
         }
 
-        _base_allowed_fields = ["id", "incident_datetime", "severity", "description"]
+        _base_allowed_fields = [
+            "id",
+            "incident_datetime",
+            "severity",
+            "description",
+            "reference_id",
+        ]
         allowed_sort_fields = [*_base_allowed_fields, *nested_field_columns.keys()]
         allowed_filter_fields = list(allowed_sort_fields)
 
@@ -118,18 +130,19 @@ class IncidentService:
         ]
 
     def export_incidents_to_excel(self, incident_data: list[tuple[IncidentDto, str]]) -> bytes:
-        headers = ["Severity", "Address", "Date", "Time", "Description"]
+        headers = ["Severity", "Address", "Date", "Time", "Description", "Reference ID"]
         exporter = ExcelExporter(
             sheet_title=f"Incidents {datetime.now(UTC).strftime('%Y-%m-%d')}"
         ).set_headers(headers)
         for incident, address in incident_data:
             exporter.add_row(
                 [
-                    incident.severity.value.capitalize(),
+                    incident.severity.value.replace("_", " ").title(),
                     address,
                     incident.incident_datetime.strftime("%Y-%m-%d"),
                     incident.incident_datetime.strftime("%-I:%M %p"),
                     incident.description,
+                    incident.reference_id or "-",
                 ]
             )
         return exporter.to_bytes()
@@ -157,6 +170,7 @@ class IncidentService:
             incident_datetime=data.incident_datetime,
             description=data.description,
             severity=data.severity,
+            reference_id=data.reference_id,
         )
         self.session.add(new_incident)
         await self.session.commit()
@@ -166,9 +180,12 @@ class IncidentService:
     async def update_incident(self, incident_id: int, data: IncidentUpdateDto) -> IncidentDto:
         """Update an existing incident's datetime, description, and severity."""
         incident_entity = await self._get_incident_entity_by_id(incident_id)
+        location = await self.location_service.get_or_create_location(data.location_place_id)
+        incident_entity.location_id = location.id
         incident_entity.incident_datetime = data.incident_datetime
         incident_entity.description = data.description
         incident_entity.severity = data.severity
+        incident_entity.reference_id = data.reference_id
         self.session.add(incident_entity)
         await self.session.commit()
         await self.session.refresh(incident_entity)

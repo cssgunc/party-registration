@@ -36,7 +36,11 @@ import {
 import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { StudentDto } from "@/lib/api/student/student.types";
-import { isFromThisSchoolYear } from "@/lib/utils";
+import {
+  formatPhoneNumberInput,
+  isFromThisSchoolYear,
+  phoneNumberSchema,
+} from "@/lib/utils";
 import { addBusinessDays, isAfter, startOfDay } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { useRef, useState } from "react";
@@ -56,9 +60,7 @@ const partyFormSchema = z.object({
   partyTime: z.string().min(1, "Party time is required"),
   secondContactFirstName: z.string().min(1, "First name is required"),
   secondContactLastName: z.string().min(1, "Last name is required"),
-  phoneNumber: z.string().regex(/^\+?1?\d{9,15}$/, {
-    message: "String must be a valid phone number",
-  }),
+  phoneNumber: phoneNumberSchema,
   contactPreference: z.enum(["call", "text"], {
     message: "Please select a contact preference",
   }),
@@ -171,7 +173,7 @@ export default function PartyRegistrationForm({
     }
     if (student?.phone_number) {
       const c1Digits = student.phone_number.replace(/\D/g, "");
-      const c2Digits = result.data.phoneNumber.replace(/\D/g, "");
+      const c2Digits = result.data.phoneNumber;
       if (c1Digits === c2Digits) {
         contactTwoErrors.phoneNumber =
           "Contact two phone number must be different from your phone number";
@@ -473,9 +475,15 @@ export default function PartyRegistrationForm({
               </FieldLabel>
               <Input
                 id="phone-number"
+                type="tel"
                 placeholder="(123) 456-7890"
-                value={formData.phoneNumber}
-                onChange={(e) => updateField("phoneNumber", e.target.value)}
+                value={formatPhoneNumberInput(formData.phoneNumber ?? "")}
+                onChange={(e) =>
+                  updateField(
+                    "phoneNumber",
+                    e.target.value.replace(/\D/g, "").slice(0, 10)
+                  )
+                }
                 aria-invalid={!!errors.phoneNumber}
                 className="content"
               />
