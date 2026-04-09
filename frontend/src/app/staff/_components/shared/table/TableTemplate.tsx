@@ -617,7 +617,7 @@ export function TableTemplate<T extends object>({
               </PaginationContent>
             </Pagination>
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <span>
+              <span className="whitespace-nowrap">
                 Results{" "}
                 {table.getState().pagination.pageIndex *
                   table.getState().pagination.pageSize +
@@ -632,7 +632,7 @@ export function TableTemplate<T extends object>({
                 of {filteredRowCount}
               </span>
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">
+                <span className="text-sm text-muted-foreground whitespace-nowrap">
                   Rows per page:
                 </span>
                 <Select
