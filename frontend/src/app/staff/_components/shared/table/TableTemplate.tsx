@@ -555,7 +555,10 @@ export function TableTemplate<T extends object>({
           </Card>
 
           {/* Pagination Controls */}
-          <div className="flex flex-col items-center p-2 gap-2 lg:mt-4">
+          <div
+            className="flex flex-row items-center justify-between p-2 gap-4
+  lg:mt-4"
+          >
             <Pagination>
               <PaginationContent>
                 <PaginationItem>
@@ -613,7 +616,7 @@ export function TableTemplate<T extends object>({
                 </PaginationItem>
               </PaginationContent>
             </Pagination>
-            <div className="flex items-center gap-12 md:gap-20 lg:gap-30 text-sm text-muted-foreground">
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <span>
                 Results{" "}
                 {table.getState().pagination.pageIndex *
@@ -628,24 +631,29 @@ export function TableTemplate<T extends object>({
                     table.getState().pagination.pageSize}{" "}
                 of {filteredRowCount}
               </span>
-              <Select
-                value={String(activePageSize)}
-                onValueChange={(value) => {
-                  table.setPageSize(Number(value));
-                  table.setPageIndex(0);
-                }}
-              >
-                <SelectTrigger className="bg-card">
-                  <SelectValue placeholder="Rows" />
-                </SelectTrigger>
-                <SelectContent className="max-h-40 overflow-y-auto ">
-                  {pageSizeOptions.map((size) => (
-                    <SelectItem key={size} value={String(size)}>
-                      {size}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  Rows per page:
+                </span>
+                <Select
+                  value={String(activePageSize)}
+                  onValueChange={(value) => {
+                    table.setPageSize(Number(value));
+                    table.setPageIndex(0);
+                  }}
+                >
+                  <SelectTrigger className="bg-card w-20">
+                    <SelectValue placeholder="Rows" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-40 overflow-y-auto ">
+                    {pageSizeOptions.map((size) => (
+                      <SelectItem key={size} value={String(size)}>
+                        {size}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
         </div>
