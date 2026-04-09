@@ -100,6 +100,7 @@ export default function PoliceAccountForm({
               value={formData.email}
               onChange={(e) => updateField("email", e.target.value)}
               aria-invalid={!!errors.email}
+              autoComplete="off"
             />
             {errors.email && <FieldError>{errors.email}</FieldError>}
           </Field>
@@ -113,6 +114,7 @@ export default function PoliceAccountForm({
               value={formData.password}
               onChange={(e) => updateField("password", e.target.value)}
               aria-invalid={!!errors.password}
+              autoComplete="off"
             />
             {errors.password && <FieldError>{errors.password}</FieldError>}
           </Field>

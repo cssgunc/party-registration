@@ -233,6 +233,7 @@ export default function IncidentTableForm({
                 value={formData.incident_time}
                 onChange={(e) => updateField("incident_time", e.target.value)}
                 aria-invalid={!!errors.incident_time}
+                autoComplete="off"
               />
               {errors.incident_time && (
                 <FieldError>{errors.incident_time}</FieldError>
@@ -268,6 +269,7 @@ export default function IncidentTableForm({
               value={formData.reference_id ?? ""}
               onChange={(e) => updateField("reference_id", e.target.value)}
               placeholder="Optional"
+              autoComplete="off"
             />
             <FieldDescription>
               Add a ticket or report ID if one exists.
