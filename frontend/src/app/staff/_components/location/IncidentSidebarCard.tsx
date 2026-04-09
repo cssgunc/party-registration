@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { IncidentDto } from "@/lib/api/incident/incident.types";
+import { formatTime } from "@/lib/utils";
 import { ChevronDown, MoreHorizontal } from "lucide-react";
 import { useSession } from "next-auth/react";
 
@@ -40,11 +41,7 @@ export default function IncidentSidebarCard({
                 })}
               </p>
               <p className="text-md font-medium">
-                {incidents.incident_datetime.toLocaleTimeString("en-US", {
-                  hour: "numeric",
-                  minute: "2-digit",
-                  hour12: true,
-                })}
+                {formatTime(incidents.incident_datetime)}
               </p>
             </div>
             {role === "admin" && (

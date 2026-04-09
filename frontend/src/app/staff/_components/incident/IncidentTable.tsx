@@ -23,6 +23,7 @@ import {
   ServerColumnMap,
   ServerTableParams,
 } from "@/lib/api/shared/query-params";
+import { formatTime } from "@/lib/utils";
 import { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
 import { format } from "date-fns";
@@ -296,10 +297,7 @@ export const IncidentTable = () => {
       },
       cell: ({ row }) => {
         const date = new Date(row.original.incident_datetime);
-        return date.toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        });
+        return formatTime(date);
       },
       filterFn: (row, _columnId, filterValue) => {
         if (!filterValue) return true;

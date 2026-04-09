@@ -17,7 +17,11 @@ import {
 } from "@/components/ui/select";
 import { useUpdateStudent } from "@/lib/api/student/student.queries";
 import { StudentDto } from "@/lib/api/student/student.types";
-import { isFromThisSchoolYear } from "@/lib/utils";
+import {
+  formatPhoneNumberInput,
+  isFromThisSchoolYear,
+  phoneNumberSchema,
+} from "@/lib/utils";
 import { Pencil, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import * as z from "zod";
@@ -25,13 +29,7 @@ import * as z from "zod";
 const studentInfoSchema = z.object({
   first_name: z.string().min(1, "First name is required"),
   last_name: z.string().min(1, "Last name is required"),
-  phone_number: z
-    .string()
-    .min(1, "Phone number is required")
-    .refine(
-      (val) => val.replace(/\D/g, "").length >= 10,
-      "Phone number must be at least 10 digits"
-    ), // Ensures phone number is at least 10 digits regardless of format (ex: (123) 456-7890 or 1234567890)
+  phone_number: phoneNumberSchema,
   contact_preference: z.enum(["call", "text"], {
     message: "Please select a contact preference",
   }),
@@ -257,9 +255,15 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
                 </FieldLabel>
                 <Input
                   id="phone-number"
-                  placeholder="123-456-7890"
-                  value={formData.phone_number}
-                  onChange={(e) => updateField("phone_number", e.target.value)}
+                  type="tel"
+                  placeholder="(123) 456-7890"
+                  value={formatPhoneNumberInput(formData.phone_number)}
+                  onChange={(e) =>
+                    updateField(
+                      "phone_number",
+                      e.target.value.replace(/\D/g, "").slice(0, 10)
+                    )
+                  }
                   aria-invalid={!!errors.phone_number}
                   className="content"
                 />

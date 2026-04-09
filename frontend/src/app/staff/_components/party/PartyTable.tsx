@@ -13,6 +13,7 @@ import {
   ServerColumnMap,
   ServerTableParams,
 } from "@/lib/api/shared/query-params";
+import { formatTime } from "@/lib/utils";
 import { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
 import { format } from "date-fns";
@@ -285,10 +286,7 @@ export const PartyTable = () => {
       meta: { filterType: "time", filterMode: "client" },
       cell: ({ row }) => {
         const date = new Date(row.original.party_datetime);
-        return date.toLocaleTimeString([], {
-          hour: "numeric",
-          minute: "2-digit",
-        });
+        return formatTime(date);
       },
     },
     {

@@ -24,18 +24,11 @@ import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { PartyDto } from "@/lib/api/party/party.types";
 import { AdminStudentService } from "@/lib/api/student/admin-student.service";
 import { StudentSuggestionDto } from "@/lib/api/student/student.types";
+import { formatPhoneNumberInput, phoneNumberSchema } from "@/lib/utils";
 import { addBusinessDays, format, isAfter, startOfDay } from "date-fns";
 import { useSession } from "next-auth/react";
 import { useMemo, useState } from "react";
 import * as z from "zod";
-
-const formatPhoneNumber = (value: string): string => {
-  const digits = value.replace(/\D/g, "").slice(0, 10);
-  if (!digits) return "";
-  if (digits.length <= 3) return `(${digits}`;
-  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
-  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
-};
 
 export const createPartyTableFormSchema = (isAdmin: boolean) => {
   const partyDateSchema = isAdmin
@@ -70,14 +63,7 @@ export const createPartyTableFormSchema = (isAdmin: boolean) => {
       .min(1, "Contact email is required"),
     contactTwoFirstName: z.string().min(1, "First name is required"),
     contactTwoLastName: z.string().min(1, "Last name is required"),
-    contactTwoPhoneNumber: z
-      .string()
-      .min(1, "Phone number is required")
-      .refine(
-        (val) => val.replace(/\D/g, "").length >= 10,
-        "Phone number must be at least 10 digits"
-      )
-      .transform((val) => val.replace(/\D/g, "")),
+    contactTwoPhoneNumber: phoneNumberSchema,
     contactTwoPreference: z.enum(["call", "text"], {
       message: "Please select a contact preference",
     }),
@@ -350,7 +336,9 @@ export default function PartyTableForm({
               id="contact-two-phone-number"
               type="tel"
               placeholder="(123) 456-7890"
-              value={formatPhoneNumber(formData.contactTwoPhoneNumber || "")}
+              value={formatPhoneNumberInput(
+                formData.contactTwoPhoneNumber || ""
+              )}
               onChange={(e) => {
                 const digitsOnly = e.target.value
                   .replace(/\D/g, "")

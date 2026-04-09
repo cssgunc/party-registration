@@ -2,6 +2,7 @@ import enum
 from typing import Annotated, Literal
 
 from pydantic import AwareDatetime, BaseModel, EmailStr, Field
+from src.core.utils.phone_utils import PhoneNumber
 from src.core.utils.query_utils import PaginatedResponse
 from src.modules.location.location_model import LocationDto
 from src.modules.student.student_model import ContactPreference, StudentDto
@@ -25,9 +26,7 @@ class ContactDto(BaseModel):
     email: EmailStr = Field(..., description="Email address of the contact")
     first_name: str = Field(..., min_length=1, description="First name of the contact")
     last_name: str = Field(..., min_length=1, description="Last name of the contact")
-    phone_number: str = Field(
-        ..., pattern=r"^\+?1?\d{9,15}$", description="Phone number of the contact"
-    )
+    phone_number: PhoneNumber
     contact_preference: ContactPreference = Field(
         ..., description="Preferred contact method: 'call' or 'text'"
     )

@@ -17,24 +17,17 @@ import {
   useCurrentStudent,
   useMyParties,
 } from "@/lib/api/student/student.queries";
-import { isFromThisSchoolYear } from "@/lib/utils";
+import {
+  formatPhoneNumber,
+  formatTime,
+  isFromThisSchoolYear,
+} from "@/lib/utils";
 import { format } from "date-fns";
 import { MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
-const formatPhoneNumber = (phone: string | undefined): string => {
-  if (!phone) return "";
-  const cleaned = phone.replace(/\D/g, "");
-  if (cleaned.length === 10) {
-    return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(
-      6
-    )}`;
-  }
-  return phone;
-};
-
-export default function RegistrationTracker() {
+export default function RegistrationTracker(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<"active" | "past" | "incidents">(
     "active"
   );
@@ -123,7 +116,7 @@ export default function RegistrationTracker() {
           <div>
             <div className="flex content-bold gap-6">
               <p>{format(party.party_datetime, "MM/dd/yyyy")}</p>
-              <p>Start: {format(party.party_datetime, "p")}</p>
+              <p>Start: {formatTime(party.party_datetime)}</p>
             </div>
             {showAddress && (
               <h2 className="content-bold my-2">
@@ -212,7 +205,7 @@ export default function RegistrationTracker() {
         {incidents.map((incident) => (
           <div key={incident.id} className="mt-3">
             <p className="content">
-              {format(incident.incident_datetime, "p")} -{" "}
+              {formatTime(incident.incident_datetime)} -{" "}
               <span className="capitalize">{incident.severity}</span>
             </p>
             <p className="content ml-3 mt-1">{incident.description}</p>
