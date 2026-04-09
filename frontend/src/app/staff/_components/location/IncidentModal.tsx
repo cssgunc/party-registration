@@ -117,11 +117,21 @@ export default function IncidentModal({
                                 "remote_warning",
                                 "citation",
                               ] as IncidentSeverity[]
-                            ).map((s) => (
-                              <SelectItem key={s} value={s}>
-                                {s.charAt(0).toUpperCase() + s.slice(1)}
-                              </SelectItem>
-                            ))}
+                            ).map((s) => {
+                              const label =
+                                s === "in_person_warning"
+                                  ? "In-Person Warning"
+                                  : s === "remote_warning"
+                                    ? "Remote Warning"
+                                    : s === "citation"
+                                      ? "Citation"
+                                      : s;
+                              return (
+                                <SelectItem key={s} value={s}>
+                                  {label}
+                                </SelectItem>
+                              );
+                            })}
                           </SelectContent>
                         </Select>
                       </FormControl>
