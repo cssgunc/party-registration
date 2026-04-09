@@ -50,10 +50,13 @@ export default function IncidentSidebarCard({
               </div>
               <div className="flex justify-between gap-10">
                 <p className="content">
-                  {incidents.incident_datetime.toLocaleDateString("en-US", {
-                    month: "2-digit",
-                    day: "2-digit",
-                  })}
+                  {new Date(incidents.incident_datetime).toLocaleDateString(
+                    "en-US",
+                    {
+                      month: "2-digit",
+                      day: "2-digit",
+                    }
+                  )}
                 </p>
                 <p className="content">
                   {formatTime(incidents.incident_datetime)}
