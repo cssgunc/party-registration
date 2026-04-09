@@ -73,10 +73,10 @@ export default function IncidentModal({
       <DialogContent className="max-w-2xl bg-card">
         <DialogHeader>
           <DialogTitle>
-            <h1 className="flex items-center justify-center gap-2">
+            <p className="flex items-center justify-center gap-2">
               {mode === "create" ? "Creating Incident" : "Editing Incident"} at{" "}
               {location.street_number} {location.street_name} Chapel Hill
-            </h1>
+            </p>
           </DialogTitle>
         </DialogHeader>
 
