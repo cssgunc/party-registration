@@ -32,7 +32,7 @@ function GenericSidebar() {
           >
             <XIcon className="text-muted-foreground size-6 -m-8" />
           </Button>
-          <div className="space-y-4">{content}</div>
+          <div>{content}</div>
         </div>
       </div>
     </>
