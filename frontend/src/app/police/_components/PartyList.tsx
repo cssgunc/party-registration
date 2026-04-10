@@ -1,7 +1,7 @@
 "use client";
 
 import IncidentDialog from "@/components/IncidentDialog";
-import blackFlag from "@/components/icons/navyFlag.svg";
+import navyFlag from "@/components/icons/navyFlag.svg";
 import redFlag from "@/components/icons/redFlag.svg";
 import yellowFlag from "@/components/icons/yellowFlag.svg";
 import {
@@ -44,6 +44,32 @@ import type { MouseEvent } from "react";
 import { useEffect, useState } from "react";
 
 const PAGE_SIZE = 10;
+
+const INCIDENT_MENU_ITEMS: {
+  severity: IncidentSeverity;
+  label: string;
+  flag: string;
+  alt: string;
+}[] = [
+  {
+    severity: "remote_warning",
+    label: "Add remote warning",
+    flag: navyFlag,
+    alt: "remote warning",
+  },
+  {
+    severity: "in_person_warning",
+    label: "Add in-person warning",
+    flag: yellowFlag,
+    alt: "in-person warning",
+  },
+  {
+    severity: "citation",
+    label: "Add citation",
+    flag: redFlag,
+    alt: "citation",
+  },
+];
 
 interface PartyListProps {
   parties?: PartyDto[];
@@ -177,36 +203,19 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                           </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent className="w-52" align="end">
-                          <DropdownMenuItem
-                            onClick={(event) =>
-                              openIncidentDialog(
-                                event,
-                                "in_person_warning",
-                                party
-                              )
-                            }
-                          >
-                            <Image src={yellowFlag} alt="in-person warning" />
-                            <span className="text-sm">
-                              Add in-person warning
-                            </span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={(event) =>
-                              openIncidentDialog(event, "remote_warning", party)
-                            }
-                          >
-                            <Image src={blackFlag} alt="warning" />
-                            <span className="text-sm">Add remote warning</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={(event) =>
-                              openIncidentDialog(event, "citation", party)
-                            }
-                          >
-                            <Image src={redFlag} alt="citation" />
-                            <span className="text-sm">Add citation</span>
-                          </DropdownMenuItem>
+                          {INCIDENT_MENU_ITEMS.map(
+                            ({ severity, label, flag, alt }) => (
+                              <DropdownMenuItem
+                                key={severity}
+                                onClick={(event) =>
+                                  openIncidentDialog(event, severity, party)
+                                }
+                              >
+                                <Image src={flag} alt={alt} />
+                                <span className="text-sm">{label}</span>
+                              </DropdownMenuItem>
+                            )
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
@@ -258,7 +267,7 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                           <HoverCardTrigger asChild>
                             <div className="flex items-center gap-1 content-bold font-bold text-foreground">
                               {remoteWarningCount}
-                              <Image src={blackFlag} alt="remote warnings" />
+                              <Image src={navyFlag} alt="remote warnings" />
                             </div>
                           </HoverCardTrigger>
                           <HoverCardContent>
