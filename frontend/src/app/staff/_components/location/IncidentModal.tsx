@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -31,6 +30,7 @@ import type {
   IncidentCreateDto,
   IncidentDto,
   IncidentSeverity,
+  LocationDto,
 } from "@/lib/api/location/location.types";
 import { useForm } from "react-hook-form";
 
@@ -43,6 +43,7 @@ interface IncidentModalProps {
   incident?: IncidentDto;
   onSubmit: (data: IncidentCreateDto) => void;
   isSubmitting?: boolean;
+  location: LocationDto;
 }
 
 export default function IncidentModal({
@@ -52,6 +53,7 @@ export default function IncidentModal({
   incident,
   onSubmit,
   isSubmitting = false,
+  location,
 }: IncidentModalProps) {
   const form = useForm<IncidentCreateDto>({
     defaultValues: {
@@ -68,16 +70,14 @@ export default function IncidentModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-w-2xl bg-card">
         <DialogHeader>
           <DialogTitle>
-            {mode === "create" ? "Create Incident" : "Edit Incident"}
+            <p className="flex items-center justify-center gap-2">
+              {mode === "create" ? "Creating Incident" : "Editing Incident"} at{" "}
+              {location.street_number} {location.street_name} Chapel Hill
+            </p>
           </DialogTitle>
-          <DialogDescription>
-            {mode === "create"
-              ? "Provide information to create a new incident."
-              : "Update the incident details below."}
-          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
@@ -85,23 +85,78 @@ export default function IncidentModal({
             onSubmit={form.handleSubmit(handleSubmit)}
             className="space-y-4"
           >
-            <FormField
-              control={form.control}
-              name="incident_datetime"
-              render={() => (
-                <FormItem>
-                  <FormLabel>Date & Time</FormLabel>
-                  <FormControl>
-                    <FormField
-                      control={form.control}
-                      name="incident_datetime"
-                      render={({ field }) => {
-                        const date = field.value
-                          ? new Date(field.value)
-                          : new Date();
+            <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-1">
+                <FormLabel className="pb-2">Address</FormLabel>
+                <Input
+                  type="text"
+                  disabled
+                  value={`${location.street_number} ${location.street_name} Chapel Hill`}
+                />
+              </div>
 
-                        return (
-                          <FormItem className="flex flex-row">
+              <div className="col-span-1">
+                <FormField
+                  control={form.control}
+                  name="severity"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Incident Type</FormLabel>
+                      <FormControl>
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Enter incident type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(
+                              [
+                                "in_person_warning",
+                                "remote_warning",
+                                "citation",
+                              ] as IncidentSeverity[]
+                            ).map((s) => {
+                              const label =
+                                s === "in_person_warning"
+                                  ? "In-Person Warning"
+                                  : s === "remote_warning"
+                                    ? "Remote Warning"
+                                    : s === "citation"
+                                      ? "Citation"
+                                      : s;
+                              return (
+                                <SelectItem key={s} value={s}>
+                                  {label}
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="incident_datetime"
+                render={() => (
+                  <FormItem>
+                    <FormLabel>Date</FormLabel>
+                    <FormControl>
+                      <FormField
+                        control={form.control}
+                        name="incident_datetime"
+                        render={({ field }) => {
+                          const date = field.value
+                            ? new Date(field.value)
+                            : new Date();
+
+                          return (
                             <FormControl>
                               <DatePicker
                                 value={date}
@@ -119,7 +174,31 @@ export default function IncidentModal({
                                 placeholder="Pick a date"
                               />
                             </FormControl>
+                          );
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
+              <FormField
+                control={form.control}
+                name="incident_datetime"
+                render={() => (
+                  <FormItem>
+                    <FormLabel>Incident Time</FormLabel>
+                    <FormControl>
+                      <FormField
+                        control={form.control}
+                        name="incident_datetime"
+                        render={({ field }) => {
+                          const date = field.value
+                            ? new Date(field.value)
+                            : new Date();
+
+                          return (
                             <FormControl>
                               <Input
                                 type="time"
@@ -136,47 +215,15 @@ export default function IncidentModal({
                                 }}
                               />
                             </FormControl>
-
-                            <FormMessage />
-                          </FormItem>
-                        );
-                      }}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="severity"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Severity</FormLabel>
-                  <FormControl>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select severity" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {(
-                          [
-                            "in-person warning",
-                            "remotewarning",
-                            "citation",
-                          ] as IncidentSeverity[]
-                        ).map((s) => (
-                          <SelectItem key={s} value={s}>
-                            {s.charAt(0).toUpperCase() + s.slice(1)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                          );
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <FormField
               control={form.control}
@@ -195,17 +242,9 @@ export default function IncidentModal({
               )}
             />
 
-            <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
+            <div className="flex justify-center gap-2">
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Submitting..." : "Submit"}
+                {isSubmitting ? "Saving changes..." : "Save changes"}
               </Button>
             </div>
           </form>
