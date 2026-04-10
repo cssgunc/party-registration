@@ -268,7 +268,6 @@ export default function IncidentTableForm({
               value={formData.reference_id ?? ""}
               onChange={(e) => updateField("reference_id", e.target.value)}
               placeholder="Optional"
-              className="placeholder:italic"
             />
             <FieldDescription>
               Add a ticket or report ID if one exists.
@@ -284,7 +283,7 @@ export default function IncidentTableForm({
               value={formData.description ?? ""}
               onChange={(e) => updateField("description", e.target.value)}
               placeholder="Optional"
-              className="placeholder:italic w-full min-h-24 px-3 py-2 rounded-md border border-input bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-vertical"
+              className=" w-full min-h-24 px-3 py-2 rounded-md border border-input bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-vertical"
             />
             {errors.description && (
               <FieldError>{errors.description}</FieldError>

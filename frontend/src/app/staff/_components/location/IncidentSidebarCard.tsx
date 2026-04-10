@@ -18,7 +18,7 @@ import {
   IncidentSeverity,
 } from "@/lib/api/incident/incident.types";
 import { formatTime } from "@/lib/utils";
-import { ChevronDown, MoreHorizontal } from "lucide-react";
+import { ChevronDown, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
 
@@ -76,11 +76,14 @@ export default function IncidentSidebarCard({
                       <DropdownMenuItem
                         onClick={() => onEditIncidentAction?.(incidents)}
                       >
+                        <Pencil className="mr-2 h-4 w-4" />
                         Edit
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => onDeleteIncidentAction(incidents.id)}
+                        variant="destructive"
                       >
+                        <Trash2 className="mr-2 h-4 w-4" />
                         Delete
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -93,11 +96,14 @@ export default function IncidentSidebarCard({
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="py-2 px-6">
-            <p className="content">
+            <p className="content italic">
               Reference ID: {incidents.reference_id || "None"}
-              <br></br>
-              {incidents.description || "No description provided"}
             </p>
+            {incidents.description ? (
+              <p className="content">{incidents.description}</p>
+            ) : (
+              <p className="content italic">No description provided.</p>
+            )}
           </div>
         </CollapsibleContent>
       </Collapsible>
