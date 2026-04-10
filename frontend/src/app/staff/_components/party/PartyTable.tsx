@@ -1,5 +1,6 @@
 "use client";
 
+import { useSnackbar } from "@/contexts/SnackbarContext";
 import {
   useAdminParties,
   useCreateAdminParty,
@@ -12,6 +13,7 @@ import {
   ServerColumnMap,
   ServerTableParams,
 } from "@/lib/api/shared/query-params";
+import { formatTime } from "@/lib/utils";
 import { ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
 import { useState } from "react";
@@ -22,6 +24,24 @@ import PartyTableForm from "./PartyTableForm";
 import ContactInfoChipDetails from "./details/ContactInfoChipDetails";
 import LocationInfoChipDetails from "./details/LocationInfoChipDetails";
 import StudentInfoChipDetails from "./details/StudentInfoChipDetails";
+
+const hasPartyChanged = (
+  original: PartyDto | null,
+  updated: AdminCreatePartyDto
+): boolean => {
+  if (!original) return true;
+
+  return (
+    original.party_datetime.getTime() !== updated.party_datetime.getTime() ||
+    original.location.google_place_id !== updated.google_place_id ||
+    original.contact_two.email !== updated.contact_two.email ||
+    original.contact_two.first_name !== updated.contact_two.first_name ||
+    original.contact_two.last_name !== updated.contact_two.last_name ||
+    original.contact_two.phone_number !== updated.contact_two.phone_number ||
+    original.contact_two.contact_preference !==
+      updated.contact_two.contact_preference
+  );
+};
 
 const SERVER_COLUMN_MAP: ServerColumnMap = {
   location: {
@@ -58,6 +78,7 @@ const getErrorMessage = (error: Error): string => {
 };
 
 export const PartyTable = () => {
+  const { openSnackbar } = useSnackbar();
   const { openSidebar, closeSidebar } = useSidebar();
   const [editingParty, setEditingParty] = useState<PartyDto | null>(null);
   const [serverParams, setServerParams] =
@@ -82,6 +103,7 @@ export const PartyTable = () => {
       );
     },
     onSuccess: () => {
+      openSnackbar("Party created successfully", "success");
       closeSidebar();
       setEditingParty(null);
     },
@@ -113,7 +135,10 @@ export const PartyTable = () => {
         />
       );
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
+      if (hasPartyChanged(editingParty, variables.payload)) {
+        openSnackbar("Party updated successfully", "success");
+      }
       closeSidebar();
       setEditingParty(null);
     },
@@ -123,6 +148,9 @@ export const PartyTable = () => {
     onError: (error: Error) => {
       const message = getErrorMessage(error);
       console.error("Failed to delete party:", message);
+    },
+    onSuccess: () => {
+      openSnackbar("Party deleted successfully", "success");
     },
   });
 
@@ -264,10 +292,7 @@ export const PartyTable = () => {
       meta: { filterType: "time", filterMode: "client" },
       cell: ({ row }) => {
         const date = new Date(row.original.party_datetime);
-        return date.toLocaleTimeString([], {
-          hour: "numeric",
-          minute: "2-digit",
-        });
+        return formatTime(date);
       },
     },
     {

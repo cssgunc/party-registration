@@ -86,8 +86,8 @@ success "Activated .venv  ($(python --version))"
 
 info "Installing packages: pip install -e '.[dev]' && pip install -e backend ..."
 cd "$REPO_ROOT"
-pip install -e ".[dev]" -q
-pip install -e backend -q
+# pip install -e ".[dev]"
+# pip install -e backend
 success "Python packages installed"
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -226,7 +226,7 @@ success "SQL Server is ready!"
 info "Waiting for SAML IdP to be ready (up to 60 s) ..."
 MAX_WAIT=60
 WAITED=0
-while ! curl -s -o /dev/null -w "%{http_code}" http://localhost:8080 2>/dev/null | grep -qE "^[23]"; do
+while ! curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/simplesaml/ 2>/dev/null | grep -qE "^[23]"; do
   sleep 2
   WAITED=$((WAITED + 2))
   echo -n "."

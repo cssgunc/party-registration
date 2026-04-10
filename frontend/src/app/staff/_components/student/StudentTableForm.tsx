@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { ResidenceDto } from "@/lib/api/student/student.types";
+import { formatPhoneNumberInput, phoneNumberSchema } from "@/lib/utils";
 import { addBusinessDays, isAfter, startOfDay } from "date-fns";
 import { useState } from "react";
 import * as z from "zod";
@@ -29,14 +30,7 @@ export const studentTableFormSchema = z.object({
   first_name: z.string().min(1, "First name is required"),
   last_name: z.string().min(1, "Second name is required"),
   email: z.email("Please enter a valid email").min(1, "Email is required"),
-  phone_number: z
-    .string()
-    .min(1, "Phone number is required")
-    .refine(
-      (val) => val.replace(/\D/g, "").length <= 10,
-      "Phone number must be at most 10 digits"
-    )
-    .transform((val) => val.replace(/\D/g, "")),
+  phone_number: phoneNumberSchema,
   contact_preference: z.enum(["call", "text"], {
     message: "Please select a contact preference",
   }),
@@ -228,9 +222,16 @@ export default function StudentTableForm({
               id="phone-number"
               type="tel"
               placeholder="(123) 456-7890"
-              value={(formData.phone_number as string) || ""}
-              onChange={(e) => updateField("phone_number", e.target.value)}
-              aria-invalid={!!errors.phone_number}
+              value={formatPhoneNumberInput(
+                (formData.phone_number as string) || ""
+              )}
+              onChange={(e) => {
+                const digitsOnly = e.target.value
+                  .replace(/\D/g, "")
+                  .slice(0, 10);
+                updateField("phone_number", digitsOnly);
+              }}
+              maxLength={14}
             />
             {errors.phone_number && (
               <FieldError>{errors.phone_number}</FieldError>

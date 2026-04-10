@@ -1,29 +1,53 @@
 "use client";
 
+import { useSnackbar } from "@/contexts/SnackbarContext";
 import {
   useAccounts,
   useCreateAccount,
   useDeleteAccount,
+  useDeletePoliceAccount,
+  usePoliceAccounts,
   useUpdateAccount,
+  useUpdatePoliceAccount,
 } from "@/lib/api/account/account.queries";
 import type {
   AccountData,
-  AccountDto,
   AccountRole,
+  AccountTableRow,
 } from "@/lib/api/account/account.types";
+import type { PoliceAccountUpdate } from "@/lib/api/police/police.types";
 import {
   DEFAULT_TABLE_PARAMS,
   ServerColumnMap,
   ServerTableParams,
 } from "@/lib/api/shared/query-params";
 import { ColumnDef } from "@tanstack/react-table";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import * as z from "zod";
 import { useSidebar } from "../shared/sidebar/SidebarContext";
 import { TableTemplate } from "../shared/table/TableTemplate";
 import AccountTableForm, { accountTableFormSchema } from "./AccountTableForm";
+import PoliceAccountForm, {
+  type PoliceAccountFormValues,
+} from "./PoliceAccountForm";
 
 type AccountTableFormValues = z.infer<typeof accountTableFormSchema>;
+
+const hasAccountChanged = (
+  original: AccountTableRow | null,
+  updated: AccountData
+): boolean => {
+  if (!original) return true;
+
+  return (
+    original.email !== updated.email ||
+    original.first_name !== updated.first_name ||
+    original.last_name !== updated.last_name ||
+    original.pid !== updated.pid ||
+    original.onyen !== updated.onyen ||
+    original.role !== updated.role
+  );
+};
 
 const SERVER_COLUMN_MAP: ServerColumnMap = {
   email: { backendField: "email", filterOperator: "contains" },
@@ -48,14 +72,39 @@ const getErrorMessage = (error: Error): string => {
 
 export const AccountTable = () => {
   const { openSidebar, closeSidebar } = useSidebar();
-  const [editingAccount, setEditingAccount] = useState<AccountDto | null>(null);
+  const { openSnackbar } = useSnackbar();
+  // const [editingAccount, setEditingAccount] = useState<AccountDto | null>(null);
+  const [editingAccount, setEditingAccount] = useState<AccountTableRow | null>(
+    null
+  );
   const [serverParams, setServerParams] =
     useState<ServerTableParams>(DEFAULT_TABLE_PARAMS);
 
   const accountsQuery = useAccounts(serverParams);
-  const accounts = accountsQuery.data?.items ?? [];
+  const policeAccountsQuery = usePoliceAccounts();
 
-  const createMutation = useCreateAccount({
+  const tableRows: AccountTableRow[] = useMemo(() => {
+    const regularAccounts: AccountTableRow[] = (accountsQuery.data?.items ?? [])
+      .filter((a) => a.role === "admin" || a.role === "staff")
+      .map((a) => ({ ...a, _isPolice: false }));
+
+    const policeRows: AccountTableRow[] = (policeAccountsQuery.data ?? []).map(
+      (p) => ({
+        id: p.id,
+        email: p.email,
+        first_name: "-",
+        last_name: "-",
+        pid: "-",
+        onyen: "-",
+        role: "police" as const,
+        _isPolice: true,
+      })
+    );
+
+    return [...regularAccounts, ...policeRows];
+  }, [accountsQuery.data, policeAccountsQuery.data]);
+
+  const createAccountMutation = useCreateAccount({
     onError: (error: Error, variables: AccountData) => {
       const message = getErrorMessage(error);
 
@@ -65,7 +114,7 @@ export const AccountTable = () => {
         "Add a new account to the system",
         <AccountTableForm
           title="New Account"
-          onSubmit={handleCreateSubmit}
+          onSubmit={handleAccountCreateSubmit}
           submissionError={message}
           editData={{
             email: variables.email,
@@ -81,14 +130,17 @@ export const AccountTable = () => {
     onSuccess: () => {
       closeSidebar();
       setEditingAccount(null);
+      openSnackbar("Student created successfully", "success");
     },
   });
 
-  const updateMutation = useUpdateAccount({
+  const updateAccountMutation = useUpdateAccount({
     onError: (error: Error, variables: { id: number; data: AccountData }) => {
       const message = getErrorMessage(error);
       const editTarget =
-        editingAccount && editingAccount.id === variables.id
+        editingAccount &&
+        !editingAccount._isPolice &&
+        editingAccount.id === variables.id
           ? editingAccount
           : null;
 
@@ -99,7 +151,7 @@ export const AccountTable = () => {
             last_name: editTarget.last_name,
             pid: editTarget.pid ?? "",
             onyen: editTarget.onyen ?? "",
-            role: editTarget.role,
+            role: editTarget.role as AccountRole,
           }
         : variables.data;
 
@@ -109,9 +161,38 @@ export const AccountTable = () => {
         "Update account information",
         <AccountTableForm
           title="Edit Account"
-          onSubmit={(data) => handleEditSubmit(variables.id, data)}
+          onSubmit={(data) => handleAccountEditSubmit(variables.id, data)}
           submissionError={message}
           editData={editData}
+        />
+      );
+    },
+    onSuccess: (data, variables) => {
+      if (hasAccountChanged(editingAccount, variables.data)) {
+        openSnackbar("Account edited successfully", "success");
+      }
+      closeSidebar();
+      setEditingAccount(null);
+    },
+  });
+
+  const updatePoliceAccountMutation = useUpdatePoliceAccount({
+    onError: (
+      error: Error,
+      variables: { id: number; data: PoliceAccountUpdate }
+    ) => {
+      console.error("Failed to update police account:", error);
+      const errorMessage = `Failed to update police account: ${error.message}`;
+
+      openSidebar(
+        `edit-police-${variables.id}`,
+        "Edit Police Account",
+        "Update police account credentials",
+        <PoliceAccountForm
+          title="Edit Police Account"
+          onSubmit={(data) => handlePoliceEditSubmit(variables.id, data)}
+          submissionError={errorMessage}
+          editData={{ email: variables.data.email }}
         />
       );
     },
@@ -121,36 +202,62 @@ export const AccountTable = () => {
     },
   });
 
-  const deleteMutation = useDeleteAccount({
+  const deleteAccountMutation = useDeleteAccount({
     onError: (error: Error) => {
       const message = getErrorMessage(error);
       console.error("Failed to delete account:", message);
+      openSnackbar("Failed to delete account", "error");
     },
   });
 
-  const handleEdit = (account: AccountDto) => {
-    setEditingAccount(account);
-    openSidebar(
-      `edit-account-${account.id}`,
-      "Edit Account",
-      "Update account information",
-      <AccountTableForm
-        title="Edit Account"
-        onSubmit={(data) => handleEditSubmit(account.id, data)}
-        editData={{
-          email: account.email,
-          first_name: account.first_name,
-          last_name: account.last_name,
-          pid: account.pid ?? "",
-          onyen: account.onyen ?? "",
-          role: account.role,
-        }}
-      />
-    );
+  const deletePoliceAccountMutation = useDeletePoliceAccount({
+    onError: (error: Error) => {
+      console.error("Failed to delete police account:", error);
+      openSnackbar("Failed to delete police account", "error");
+    },
+  });
+
+  const handleEdit = (row: AccountTableRow) => {
+    setEditingAccount(row);
+
+    if (row._isPolice) {
+      openSidebar(
+        `edit-police-${row.id}`,
+        "Edit Police Account",
+        "Update police account credentials",
+        <PoliceAccountForm
+          title="Edit Police Account"
+          onSubmit={(data) => handlePoliceEditSubmit(row.id, data)}
+          editData={{ email: row.email }}
+        />
+      );
+    } else {
+      openSidebar(
+        `edit-account-${row.id}`,
+        "Edit Account",
+        "Update account information",
+        <AccountTableForm
+          title="Edit Account"
+          onSubmit={(data) => handleAccountEditSubmit(row.id, data)}
+          editData={{
+            email: row.email,
+            first_name: row.first_name,
+            last_name: row.last_name,
+            pid: row.pid ?? "",
+            onyen: row.onyen ?? "",
+            role: row.role as AccountRole,
+          }}
+        />
+      );
+    }
   };
 
-  const handleDelete = (account: AccountDto) => {
-    deleteMutation.mutate(account.id);
+  const handleDelete = (row: AccountTableRow) => {
+    if (row._isPolice) {
+      deletePoliceAccountMutation.mutate(row.id);
+    } else {
+      deleteAccountMutation.mutate(row.id);
+    }
   };
 
   const handleCreate = () => {
@@ -159,12 +266,15 @@ export const AccountTable = () => {
       "create-account",
       "New Account",
       "Add a new account to the system",
-      <AccountTableForm title="New Account" onSubmit={handleCreateSubmit} />
+      <AccountTableForm
+        title="New Account"
+        onSubmit={handleAccountCreateSubmit}
+      />
     );
   };
 
-  const handleCreateSubmit = async (data: AccountTableFormValues) => {
-    createMutation.mutate({
+  const handleAccountCreateSubmit = async (data: AccountTableFormValues) => {
+    createAccountMutation.mutate({
       email: data.email,
       first_name: data.first_name,
       last_name: data.last_name,
@@ -174,11 +284,11 @@ export const AccountTable = () => {
     });
   };
 
-  const handleEditSubmit = async (
+  const handleAccountEditSubmit = async (
     accountId: number,
     data: AccountTableFormValues
   ) => {
-    updateMutation.mutate({
+    updateAccountMutation.mutate({
       id: accountId,
       data: {
         email: data.email,
@@ -191,7 +301,20 @@ export const AccountTable = () => {
     });
   };
 
-  const columns: ColumnDef<AccountDto>[] = [
+  const handlePoliceEditSubmit = async (
+    policeId: number,
+    data: PoliceAccountFormValues
+  ) => {
+    updatePoliceAccountMutation.mutate({
+      id: policeId,
+      data: {
+        email: data.email,
+        password: data.password,
+      },
+    });
+  };
+
+  const columns: ColumnDef<AccountTableRow>[] = [
     {
       accessorKey: "email",
       header: "Email",
@@ -213,8 +336,13 @@ export const AccountTable = () => {
       enableColumnFilter: true,
     },
     {
+      accessorKey: "pid",
+      header: "PID",
+      enableColumnFilter: true,
+    },
+    {
       accessorKey: "role",
-      header: "Admin Type",
+      header: "Role",
       enableColumnFilter: true,
       cell: ({ row }) => {
         const role = row.getValue("role") as string;
@@ -223,22 +351,30 @@ export const AccountTable = () => {
     },
   ];
 
+  const isLoading = accountsQuery.isLoading || policeAccountsQuery.isLoading;
+  const queryError =
+    (accountsQuery.error as Error | null) ??
+    (policeAccountsQuery.error as Error | null);
+
   return (
     <div className="h-full min-h-0 flex flex-col">
       <TableTemplate
-        data={accounts}
+        data={tableRows}
         columns={columns}
         resourceName="Account"
         onEdit={handleEdit}
         onDelete={handleDelete}
         onCreateNewRow={handleCreate}
-        isLoading={accountsQuery.isLoading}
+        isLoading={isLoading}
         isFetching={accountsQuery.isFetching}
-        error={accountsQuery.error as Error | null}
-        getDeleteDescription={(account: AccountDto) =>
-          `Are you sure you want to delete account ${account.email}? This action cannot be undone.`
+        error={queryError}
+        getDeleteDescription={(row: AccountTableRow) =>
+          `Are you sure you want to delete ${row._isPolice ? "police " : ""}account ${row.email}? This action cannot be undone.`
         }
-        isDeleting={deleteMutation.isPending}
+        isDeleting={
+          deleteAccountMutation.isPending ||
+          deletePoliceAccountMutation.isPending
+        }
         serverMeta={
           accountsQuery.data
             ? {

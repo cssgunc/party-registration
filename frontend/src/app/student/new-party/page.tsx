@@ -4,6 +4,7 @@ import PartyRegistrationForm, {
   PartyFormValues,
 } from "@/app/student/_components/PartyRegistrationForm";
 import { Card } from "@/components/ui/card";
+import { useSnackbar } from "@/contexts/SnackbarContext";
 import { useRegisterParty } from "@/lib/api/party/party.queries";
 import { StudentCreatePartyDto } from "@/lib/api/party/party.types";
 import {
@@ -21,6 +22,7 @@ export default function RegistrationForm() {
   const partiesQuery = useMyParties();
   const studentQuery = useCurrentStudent();
   const router = useRouter();
+  const { openSnackbar } = useSnackbar();
 
   /**
    * Get initial values from the student's most recent party (if they have one).
@@ -70,8 +72,7 @@ export default function RegistrationForm() {
         email: values.contactTwoEmail,
         first_name: values.secondContactFirstName,
         last_name: values.secondContactLastName,
-        // Strip non-digit characters from phone number before sending to backend
-        phone_number: values.phoneNumber.replace(/\D/g, ""),
+        phone_number: values.phoneNumber,
         contact_preference: values.contactPreference,
       },
     };
@@ -87,16 +88,16 @@ export default function RegistrationForm() {
         partyData,
         residencePlaceId: hasValidResidence ? undefined : placeId,
       });
-      alert("Party created successfully!");
+      openSnackbar("Party created successfully!", "success");
       router.push("/student");
     } catch (err) {
       console.log(err);
-      alert("Failed to create party");
+      openSnackbar("Failed to create party", "error");
     }
   };
 
   return (
-    <div>
+    <div className="h-full overflow-y-auto">
       <main className="mx-4 mt-4">
         <nav className="flex items-center content pb-2 lg:hidden">
           <ArrowLeft className="h-4" />

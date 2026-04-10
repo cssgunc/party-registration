@@ -24,16 +24,11 @@ import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { PartyDto } from "@/lib/api/party/party.types";
 import { AdminStudentService } from "@/lib/api/student/admin-student.service";
 import { StudentSuggestionDto } from "@/lib/api/student/student.types";
+import { formatPhoneNumberInput, phoneNumberSchema } from "@/lib/utils";
 import { addBusinessDays, format, isAfter, startOfDay } from "date-fns";
 import { useSession } from "next-auth/react";
 import { useMemo, useState } from "react";
 import * as z from "zod";
-
-const formatPhoneNumber = (value: string): string => {
-  return value
-    ? `(${value.slice(0, 3)}) ${value.slice(3, 6)}-${value.slice(6, 10)}`
-    : "—";
-};
 
 export const createPartyTableFormSchema = (isAdmin: boolean) => {
   const partyDateSchema = isAdmin
@@ -68,14 +63,7 @@ export const createPartyTableFormSchema = (isAdmin: boolean) => {
       .min(1, "Contact email is required"),
     contactTwoFirstName: z.string().min(1, "First name is required"),
     contactTwoLastName: z.string().min(1, "Last name is required"),
-    contactTwoPhoneNumber: z
-      .string()
-      .min(1, "Phone number is required")
-      .refine(
-        (val) => val.replace(/\D/g, "").length <= 10,
-        "Phone number must be at most 10 digits"
-      )
-      .transform((val) => val.replace(/\D/g, "")),
+    contactTwoPhoneNumber: phoneNumberSchema,
     contactTwoPreference: z.enum(["call", "text"], {
       message: "Please select a contact preference",
     }),
@@ -346,12 +334,19 @@ export default function PartyTableForm({
             </FieldLabel>
             <Input
               id="contact-two-phone-number"
-              placeholder="123-456-7890"
-              value={formatPhoneNumber(formData.contactTwoPhoneNumber || "")}
-              onChange={(e) =>
-                updateField("contactTwoPhoneNumber", e.target.value)
-              }
+              type="tel"
+              placeholder="(123) 456-7890"
+              value={formatPhoneNumberInput(
+                formData.contactTwoPhoneNumber || ""
+              )}
+              onChange={(e) => {
+                const digitsOnly = e.target.value
+                  .replace(/\D/g, "")
+                  .slice(0, 10);
+                updateField("contactTwoPhoneNumber", digitsOnly);
+              }}
               aria-invalid={!!errors.contactTwoPhoneNumber}
+              maxLength={14}
             />
             {errors.contactTwoPhoneNumber && (
               <FieldError>{errors.contactTwoPhoneNumber}</FieldError>
