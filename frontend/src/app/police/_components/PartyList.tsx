@@ -39,7 +39,7 @@ import { usePoliceCreateIncident } from "@/lib/api/party/police-party.queries";
 import { cn, formatPhoneNumber, formatTime } from "@/lib/utils";
 import { format } from "date-fns";
 import { EllipsisVertical } from "lucide-react";
-import Image from "next/image";
+import Image, { StaticImageData } from "next/image";
 import type { MouseEvent } from "react";
 import { useEffect, useState } from "react";
 
@@ -48,7 +48,7 @@ const PAGE_SIZE = 10;
 const INCIDENT_MENU_ITEMS: {
   severity: IncidentSeverity;
   label: string;
-  flag: string;
+  flag: StaticImageData;
   alt: string;
 }[] = [
   {
