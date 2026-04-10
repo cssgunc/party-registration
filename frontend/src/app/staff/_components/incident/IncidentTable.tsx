@@ -9,14 +9,16 @@ import {
   useCreateIncident,
   useDeleteIncident,
   useIncidents,
-  useUpdateIncident,
 } from "@/lib/api/incident/incident.queries";
 import {
   IncidentCreateDto,
   IncidentDto,
   IncidentSeverity,
 } from "@/lib/api/incident/incident.types";
-import { useLocations } from "@/lib/api/location/location.queries";
+import {
+  useLocations,
+  useUpdateIncidentInLocation,
+} from "@/lib/api/location/location.queries";
 import { LocationDto } from "@/lib/api/location/location.types";
 import {
   DEFAULT_TABLE_PARAMS,
@@ -179,7 +181,7 @@ export const IncidentTable = () => {
     },
   });
 
-  const updateMutation = useUpdateIncident({
+  const updateMutation = useUpdateIncidentInLocation({
     onError: (
       error: Error,
       variables: { id: number; payload: Partial<IncidentCreateDto> }

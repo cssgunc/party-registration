@@ -1,6 +1,6 @@
 "use client";
 
-import AddIncidentDialog from "@/app/police/_components/AddIncidentDialog";
+import IncidentDialog from "@/components/IncidentDialog";
 import blackFlag from "@/components/icons/navyFlag.svg";
 import redFlag from "@/components/icons/redFlag.svg";
 import yellowFlag from "@/components/icons/yellowFlag.svg";
@@ -24,13 +24,18 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import type { IncidentSeverity } from "@/lib/api/incident/incident.types";
+import { useSnackbar } from "@/contexts/SnackbarContext";
+import type {
+  IncidentCreateDto,
+  IncidentSeverity,
+} from "@/lib/api/incident/incident.types";
 import {
   getCitationCount,
   getInPersonWarningCount,
   getRemoteWarningCount,
 } from "@/lib/api/location/location.types";
 import { PartyDto } from "@/lib/api/party/party.types";
+import { usePoliceCreateIncident } from "@/lib/api/party/police-party.queries";
 import { cn, formatPhoneNumber, formatTime } from "@/lib/utils";
 import { format } from "date-fns";
 import { EllipsisVertical } from "lucide-react";
@@ -52,6 +57,21 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
     useState<IncidentSeverity>("in_person_warning");
   const [selectedParty, setSelectedParty] = useState<PartyDto | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
+  const { openSnackbar } = useSnackbar();
+
+  const createMutation = usePoliceCreateIncident({
+    onSuccess: () => {
+      openSnackbar("Incident created successfully", "success");
+      setIncidentDialogOpen(false);
+    },
+    onError: (error) => {
+      openSnackbar(error.message || "Failed to create incident", "error");
+    },
+  });
+
+  const handleCreateIncident = (data: IncidentCreateDto) => {
+    createMutation.mutate(data);
+  };
 
   // Reset to first page when the party list changes (filters/date range updated)
   useEffect(() => {
@@ -156,7 +176,7 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                             <EllipsisVertical height={16} />
                           </button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent className="w-44" align="end">
+                        <DropdownMenuContent className="w-52" align="end">
                           <DropdownMenuItem
                             onClick={(event) =>
                               openIncidentDialog(
@@ -167,7 +187,7 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                             }
                           >
                             <Image src={yellowFlag} alt="in-person warning" />
-                            <span className="content">
+                            <span className="text-sm">
                               Add in-person warning
                             </span>
                           </DropdownMenuItem>
@@ -177,7 +197,7 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                             }
                           >
                             <Image src={blackFlag} alt="warning" />
-                            <span className="content">Add remote warning</span>
+                            <span className="text-sm">Add remote warning</span>
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={(event) =>
@@ -185,7 +205,7 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                             }
                           >
                             <Image src={redFlag} alt="citation" />
-                            <span className="content">Add citation</span>
+                            <span className="text-sm">Add citation</span>
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -237,23 +257,26 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                         <HoverCard openDelay={0} closeDelay={4}>
                           <HoverCardTrigger asChild>
                             <div className="flex items-center gap-1 content-bold font-bold text-foreground">
-                              {inPersonWarningCount}
-                              <Image src={blackFlag} alt="in-person warning" />
+                              {remoteWarningCount}
+                              <Image src={blackFlag} alt="remote warnings" />
                             </div>
                           </HoverCardTrigger>
-                          <HoverCardContent className="w-40">
-                            <p className="content">In-Person Warnings</p>
+                          <HoverCardContent>
+                            <p>Remote Warnings</p>
                           </HoverCardContent>
                         </HoverCard>
                         <HoverCard openDelay={0} closeDelay={4}>
                           <HoverCardTrigger asChild>
                             <div className="flex items-center gap-1 content-bold font-bold text-foreground">
-                              {remoteWarningCount}
-                              <Image src={yellowFlag} alt="warnings" />
+                              {inPersonWarningCount}
+                              <Image
+                                src={yellowFlag}
+                                alt="in person warnings"
+                              />
                             </div>
                           </HoverCardTrigger>
-                          <HoverCardContent className="w-40">
-                            <p className="content">Remote Warnings</p>
+                          <HoverCardContent>
+                            <p>In-Person Warnings</p>
                           </HoverCardContent>
                         </HoverCard>
                         <HoverCard openDelay={0} closeDelay={4}>
@@ -263,8 +286,8 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                               <Image src={redFlag} alt="citations" />
                             </div>
                           </HoverCardTrigger>
-                          <HoverCardContent className="w-40">
-                            <p className="content">Citations</p>
+                          <HoverCardContent>
+                            <p>Citations</p>
                           </HoverCardContent>
                         </HoverCard>
                       </div>
@@ -345,11 +368,13 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
         )}
       </div>
 
-      <AddIncidentDialog
+      <IncidentDialog
         open={incidentDialogOpen}
         onOpenChange={setIncidentDialogOpen}
-        incidentType={incidentType}
-        party={selectedParty}
+        defaultSeverity={incidentType}
+        location={selectedParty?.location ?? null}
+        onSubmit={handleCreateIncident}
+        isSubmitting={createMutation.isPending}
         key={incidentDialogOpen ? selectedParty?.id : undefined}
       />
     </>

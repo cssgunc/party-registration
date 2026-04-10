@@ -15,11 +15,12 @@ type StringRole = "staff" | "admin" | "student" | "police" | "unauthenticated";
  * that fires immediately when an optimistic cache update is applied, before
  * the server responds. Use this to close sidebars / update UI eagerly.
  */
-type OptimisticMutationOptions<TData, TError, TVariables> = UseMutationOptions<
+type OptimisticMutationOptions<
   TData,
   TError,
-  TVariables
-> & {
+  TVariables,
+  TContext = unknown,
+> = UseMutationOptions<TData, TError, TVariables, TContext> & {
   onOptimisticUpdate?: (vars: TVariables) => void;
 };
 
