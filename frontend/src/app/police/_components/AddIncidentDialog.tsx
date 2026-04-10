@@ -20,6 +20,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useSnackbar } from "@/contexts/SnackbarContext";
 import { useCreateIncident } from "@/lib/api/incident/incident.queries";
+import { INCIDENT_SEVERITIES } from "@/lib/api/incident/incident.types";
 import { IncidentSeverity } from "@/lib/api/location/location.types";
 import { PartyDto } from "@/lib/api/party/party.types";
 import { format } from "date-fns";
@@ -27,14 +28,8 @@ import { ClockIcon } from "lucide-react";
 import { useState } from "react";
 import * as z from "zod";
 
-const incidentSeverityValues: IncidentSeverity[] = [
-  "remote_warning",
-  "in_person_warning",
-  "citation",
-];
-
 const addIncidentSchema = z.object({
-  severity: z.enum(incidentSeverityValues),
+  severity: z.enum(INCIDENT_SEVERITIES),
   partyDate: z.date({ message: "Date is required" }),
   partyTime: z.string().min(1, "Time is required"),
   description: z.string(),
