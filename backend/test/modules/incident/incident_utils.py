@@ -18,7 +18,8 @@ class IncidentOverrides(TypedDict, total=False):
     location_id: int
     incident_datetime: datetime
     description: str
-    severity: IncidentSeverity
+    severity: IncidentSeverity | str
+    reference_id: str | None
 
 
 class IncidentTestUtils(
@@ -45,7 +46,8 @@ class IncidentTestUtils(
                 datetime(2026, 1, 1, 0, 0, 0, tzinfo=UTC) + timedelta(days=count)
             ).isoformat(),
             "description": f"Incident {count}",
-            "severity": IncidentSeverity.COMPLAINT.value,
+            "severity": "remote_warning",
+            "reference_id": None,
         }
 
     @classmethod
@@ -58,9 +60,10 @@ class IncidentTestUtils(
 
     @classmethod
     def get_sample_update_data(cls) -> dict:
-        """Get sample data for IncidentUpdateDto (no location_place_id)."""
+        """Get sample data for IncidentUpdateDto."""
         data = cls.generate_defaults(0)
         del data["location_id"]
+        data["location_place_id"] = "ChIJSamplePlace0000"
         return data
 
     async def next_create_dto(
@@ -70,17 +73,23 @@ class IncidentTestUtils(
         if location_place_id is None:
             location = await self.location_utils.create_one()
             location_place_id = location.google_place_id
-        fields = {"incident_datetime", "description", "severity"}
+        fields = {"incident_datetime", "description", "severity", "reference_id"}
         data = self.get_or_default(cast(IncidentOverrides, field_overrides), fields)
         self.count += 1
         return IncidentCreateDto(location_place_id=location_place_id, **data)
 
-    async def next_update_dto(self, **field_overrides: Any) -> IncidentUpdateDto:
+    async def next_update_dto(
+        self, *, location_place_id: str | None = None, **field_overrides: Any
+    ) -> IncidentUpdateDto:
         """Generate the next IncidentUpdateDto."""
-        fields = {"incident_datetime", "description", "severity"}
+        if location_place_id is None:
+            location = await self.location_utils.create_one()
+            location_place_id = location.google_place_id
+
+        fields = {"incident_datetime", "description", "severity", "reference_id"}
         data = self.get_or_default(cast(IncidentOverrides, field_overrides), fields)
         self.count += 1
-        return IncidentUpdateDto(**data)
+        return IncidentUpdateDto(location_place_id=location_place_id, **data)
 
     @override
     async def next_dict(self, **overrides: Unpack[IncidentOverrides]) -> dict:

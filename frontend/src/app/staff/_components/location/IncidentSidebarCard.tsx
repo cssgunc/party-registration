@@ -1,4 +1,7 @@
 "use client";
+import navyFlag from "@/components/icons/navyFlag.svg";
+import redFlag from "@/components/icons/redFlag.svg";
+import yellowFlag from "@/components/icons/yellowFlag.svg";
 import {
   Collapsible,
   CollapsibleContent,
@@ -10,10 +13,20 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { IncidentDto } from "@/lib/api/location/location.types";
-import { ChevronDown, MoreHorizontal } from "lucide-react";
+import {
+  IncidentDto,
+  IncidentSeverity,
+} from "@/lib/api/incident/incident.types";
+import { formatTime } from "@/lib/utils";
+import { ChevronDown, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { useSession } from "next-auth/react";
+import Image from "next/image";
 
+function getSeverityFlag(severity: IncidentSeverity) {
+  if (severity === "remote_warning") return navyFlag;
+  if (severity === "in_person_warning") return yellowFlag;
+  return redFlag;
+}
 type IncidentSidebarCardProps = {
   incidents: IncidentDto;
   onDeleteIncidentAction: (incidentId: number) => void;
@@ -30,50 +43,68 @@ export default function IncidentSidebarCard({
     <div>
       <Collapsible>
         <CollapsibleTrigger className="w-full text-left group" asChild>
-          <div className="flex flex-row justify-between">
-            <div className="flex gap-4">
-              <ChevronDown className="mr-2 cursor-pointer transition-transform duration-100 group-data-[state=open]:rotate-180" />
-              <p className="text-md font-medium">
-                {incidents.incident_datetime.toLocaleDateString("en-US", {
-                  month: "2-digit",
-                  day: "2-digit",
-                })}
-              </p>
-              <p className="text-md font-medium">
-                {incidents.incident_datetime.toLocaleTimeString("en-US", {
-                  hour: "numeric",
-                  minute: "2-digit",
-                  hour12: true,
-                })}
-              </p>
+          <div>
+            <div className="flex flex-row w-full items-center justify-left py-2">
+              <div className="flex justify-between">
+                <ChevronDown className="mr-2 cursor-pointer transition-transform duration-100 group-data-[state=open]:rotate-180" />
+              </div>
+              <div className="flex justify-between gap-10">
+                <p className="content">
+                  {new Date(incidents.incident_datetime).toLocaleDateString(
+                    "en-US",
+                    {
+                      month: "2-digit",
+                      day: "2-digit",
+                    }
+                  )}
+                </p>
+                <p className="content">
+                  {formatTime(incidents.incident_datetime)}
+                </p>
+                <Image
+                  src={getSeverityFlag(incidents.severity)}
+                  alt={incidents.severity}
+                  width={16}
+                  height={16}
+                />
+                {role === "admin" && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger className="ml-2">
+                      <MoreHorizontal />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuItem
+                        onClick={() => onEditIncidentAction?.(incidents)}
+                      >
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => onDeleteIncidentAction(incidents.id)}
+                        variant="destructive"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
             </div>
-            {role === "admin" && (
-              <DropdownMenu>
-                <DropdownMenuTrigger className="ml-2">
-                  <MoreHorizontal />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem
-                    onClick={() => onEditIncidentAction?.(incidents)}
-                  >
-                    Edit
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => onDeleteIncidentAction(incidents.id)}
-                  >
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
+            <div className="border-t border-gray-300" />
           </div>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <p className="text-sm">
-            {incidents.description || "No description provided."}
-            <br></br>
-            <strong>Severity:</strong> {incidents.severity || "N/A"}
-          </p>
+          <div className="py-2 px-6">
+            <p className="content italic">
+              Reference ID: {incidents.reference_id || "None"}
+            </p>
+            {incidents.description ? (
+              <p className="content">{incidents.description}</p>
+            ) : (
+              <p className="content italic">No description provided.</p>
+            )}
+          </div>
         </CollapsibleContent>
       </Collapsible>
     </div>

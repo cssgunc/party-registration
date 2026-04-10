@@ -32,12 +32,15 @@ export function usePoliceParties(
     queryFn: async () => {
       const params: ServerTableParams = {
         page_number: 1,
-        page_size: 200,
         filters: {},
       };
       if (startDate)
         params.filters.party_datetime_gte = startDate.toISOString();
-      if (endDate) params.filters.party_datetime_lte = endDate.toISOString();
+      if (endDate) {
+        const endOfDay = new Date(endDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        params.filters.party_datetime_lte = endOfDay.toISOString();
+      }
       const page = await partyService.listParties(params);
       return page.items;
     },

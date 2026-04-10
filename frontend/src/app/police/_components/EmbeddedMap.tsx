@@ -1,6 +1,7 @@
 "use client";
 
 import { PartyDto } from "@/lib/api/party/party.types";
+import { formatPhoneNumber } from "@/lib/utils";
 import {
   APIProvider,
   AdvancedMarker,
@@ -88,16 +89,6 @@ type PoiMarkersProps = {
 const PoiMarkers = ({ pois, activePoiKey, onSelect }: PoiMarkersProps) => {
   const map = useMap();
   const [selectedPoi, setSelectedPoi] = useState<(typeof pois)[0] | null>(null);
-
-  const formatPhoneNumber = (phone: string): string => {
-    const cleaned = phone.replace(/\D/g, "");
-    if (cleaned.length === 10) {
-      return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(
-        6
-      )}`;
-    }
-    return phone;
-  };
 
   const getShortAddress = (location: PartyDto["location"]): string => {
     const parts = [];

@@ -30,7 +30,7 @@ export type ServerColumnMap = Record<string, ServerColumnConfig>;
 
 export type ServerTableParams = {
   page_number: number;
-  page_size: number;
+  page_size?: number;
   sort_by?: string;
   sort_order?: "asc" | "desc";
   filters: Record<string, string>;
@@ -109,8 +109,8 @@ export function toAxiosParams(
 ): Record<string, string | number> {
   const result: Record<string, string | number> = {
     page_number: params.page_number,
-    page_size: params.page_size,
   };
+  if (params.page_size !== undefined) result.page_size = params.page_size;
   if (params.sort_by) result.sort_by = params.sort_by;
   if (params.sort_order) result.sort_order = params.sort_order;
   return { ...result, ...params.filters };
