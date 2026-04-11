@@ -9,14 +9,25 @@ from test.utils.http.assertions import (
     assert_res_success,
     assert_res_validation_error,
 )
-from test.utils.http.test_templates import generate_auth_required_tests
+from test.utils.http.test_templates import assert_excel_response, generate_auth_required_tests
 
 test_police_auth = generate_auth_required_tests(
-    ({"admin"}, "GET", "/api/accounts/police", None),
-    ({"admin"}, "POST", "/api/accounts/police", {"email": "x@unc.edu", "password": "pass"}),
-    ({"admin"}, "GET", "/api/accounts/police/1", None),
-    ({"admin"}, "PUT", "/api/accounts/police/1", {"email": "x@unc.edu", "password": "pass"}),
-    ({"admin"}, "DELETE", "/api/accounts/police/1", None),
+    ({"admin", "police_admin"}, "GET", "/api/police", None),
+    (
+        {"admin", "police_admin"},
+        "POST",
+        "/api/police",
+        {"email": "x@unc.edu", "password": "pass", "role": "officer"},
+    ),
+    ({"admin", "police_admin"}, "GET", "/api/police/1", None),
+    (
+        {"admin", "police_admin"},
+        "PUT",
+        "/api/police/1",
+        {"email": "x@unc.edu", "password": "pass", "role": "officer"},
+    ),
+    ({"admin", "police_admin"}, "DELETE", "/api/police/1", None),
+    ({"admin", "police_admin"}, "GET", "/api/police/csv", None),
 )
 
 
@@ -32,7 +43,7 @@ class TestPoliceListRouter:
     @pytest.mark.asyncio
     async def test_list_police_empty(self) -> None:
         """Test listing police when none exist returns empty paginated response."""
-        response = await self.admin_client.get("/api/accounts/police")
+        response = await self.admin_client.get("/api/police")
         assert_res_paginated(response, PoliceAccountDto, total_records=0)
 
     @pytest.mark.asyncio
@@ -40,7 +51,7 @@ class TestPoliceListRouter:
         """Test listing police returns all created accounts."""
         police1, police2 = await self.police_utils.create_many(i=2)
 
-        response = await self.admin_client.get("/api/accounts/police")
+        response = await self.admin_client.get("/api/police")
         paginated = assert_res_paginated(response, PoliceAccountDto, total_records=2)
 
         returned = {item.id: item for item in paginated.items}
@@ -53,7 +64,7 @@ class TestPoliceListRouter:
         await self.police_utils.create_many(i=3)
 
         response = await self.admin_client.get(
-            "/api/accounts/police", params={"sort_by": "email", "sort_order": "asc"}
+            "/api/police", params={"sort_by": "email", "sort_order": "asc"}
         )
 
         paginated = assert_res_paginated(response, PoliceAccountDto, total_records=3)
@@ -67,7 +78,7 @@ class TestPoliceListRouter:
         await self.police_utils.create_many(i=2)
 
         response = await self.admin_client.get(
-            "/api/accounts/police", params={"email_contains": police.email}
+            "/api/police", params={"email_contains": police.email}
         )
 
         paginated = assert_res_paginated(response, PoliceAccountDto)
@@ -80,13 +91,30 @@ class TestPoliceListRouter:
         await self.police_utils.create_many(i=3)
 
         response = await self.admin_client.get(
-            "/api/accounts/police", params={"page_number": 1, "page_size": 2}
+            "/api/police", params={"page_number": 1, "page_size": 2}
         )
-
         paginated = assert_res_paginated(
             response, PoliceAccountDto, total_records=3, page_number=1, page_size=2
         )
         assert len(paginated.items) == 2
+
+    @pytest.mark.asyncio
+    async def test_list_police_filter_by_role(self) -> None:
+        await self.police_utils.create_one(role="police_admin")
+        await self.police_utils.create_many(i=2, role="officer")
+
+        response = await self.admin_client.get("/api/police", params={"role": "police_admin"})
+        paginated = assert_res_paginated(response, PoliceAccountDto, total_records=1)
+        assert paginated.items[0].role.value == "police_admin"
+
+    @pytest.mark.asyncio
+    async def test_get_police_csv(self) -> None:
+        await self.police_utils.create_one(role="police_admin")
+        await self.police_utils.create_one(role="officer")
+
+        response = await self.admin_client.get("/api/police/csv")
+        rows = assert_excel_response(response, expected_headers=("Email", "Role"))
+        assert len(rows) == 3
 
 
 class TestPoliceCRUDRouter:
@@ -103,9 +131,7 @@ class TestPoliceCRUDRouter:
         """Test creating a new police account returns 201 with PoliceAccountDto."""
         data = await self.police_utils.next_data()
 
-        response = await self.admin_client.post(
-            "/api/accounts/police", json=data.model_dump(mode="json")
-        )
+        response = await self.admin_client.post("/api/police", json=data.model_dump(mode="json"))
 
         result = assert_res_success(response, PoliceAccountDto, status=201)
         assert result.email == data.email
@@ -117,9 +143,7 @@ class TestPoliceCRUDRouter:
         police = await self.police_utils.create_one()
         data = await self.police_utils.next_data(email=police.email)
 
-        response = await self.admin_client.post(
-            "/api/accounts/police", json=data.model_dump(mode="json")
-        )
+        response = await self.admin_client.post("/api/police", json=data.model_dump(mode="json"))
 
         assert_res_failure(response, PoliceConflictException(police.email))
 
@@ -128,7 +152,7 @@ class TestPoliceCRUDRouter:
         """Test creating a police account with invalid email returns 422."""
         data = await self.police_utils.next_dict(email="not-an-email")
 
-        response = await self.admin_client.post("/api/accounts/police", json=data)
+        response = await self.admin_client.post("/api/police", json=data)
 
         assert_res_validation_error(response, expected_fields=["email"])
 
@@ -137,7 +161,7 @@ class TestPoliceCRUDRouter:
         """Test getting a police account by ID."""
         police = await self.police_utils.create_one()
 
-        response = await self.admin_client.get(f"/api/accounts/police/{police.id}")
+        response = await self.admin_client.get(f"/api/police/{police.id}")
 
         result = assert_res_success(response, PoliceAccountDto)
         self.police_utils.assert_matches(police, result)
@@ -145,7 +169,7 @@ class TestPoliceCRUDRouter:
     @pytest.mark.asyncio
     async def test_get_police_by_id_not_found(self) -> None:
         """Test getting a non-existent police account returns 404."""
-        response = await self.admin_client.get("/api/accounts/police/99999")
+        response = await self.admin_client.get("/api/police/99999")
 
         assert_res_failure(response, PoliceNotFoundException(99999))
 
@@ -156,13 +180,14 @@ class TestPoliceCRUDRouter:
         update_data = await self.police_utils.next_data()
 
         response = await self.admin_client.put(
-            f"/api/accounts/police/{police.id}",
+            f"/api/police/{police.id}",
             json=update_data.model_dump(mode="json"),
         )
 
         result = assert_res_success(response, PoliceAccountDto)
         assert result.id == police.id
         assert result.email == update_data.email
+        assert result.role == update_data.role
 
     @pytest.mark.asyncio
     async def test_update_police_not_found(self) -> None:
@@ -170,7 +195,7 @@ class TestPoliceCRUDRouter:
         data = await self.police_utils.next_data()
 
         response = await self.admin_client.put(
-            "/api/accounts/police/99999", json=data.model_dump(mode="json")
+            "/api/police/99999", json=data.model_dump(mode="json")
         )
 
         assert_res_failure(response, PoliceNotFoundException(99999))
@@ -183,7 +208,7 @@ class TestPoliceCRUDRouter:
         data = await self.police_utils.next_data(email=police2.email)
 
         response = await self.admin_client.put(
-            f"/api/accounts/police/{police1.id}",
+            f"/api/police/{police1.id}",
             json=data.model_dump(mode="json"),
         )
 
@@ -197,7 +222,7 @@ class TestPoliceCRUDRouter:
         data = await self.police_utils.next_data(password=plain_password)
 
         await self.admin_client.put(
-            f"/api/accounts/police/{police.id}",
+            f"/api/police/{police.id}",
             json=data.model_dump(mode="json"),
         )
 
@@ -212,7 +237,7 @@ class TestPoliceCRUDRouter:
         """Test deleting a police account."""
         police = await self.police_utils.create_one()
 
-        response = await self.admin_client.delete(f"/api/accounts/police/{police.id}")
+        response = await self.admin_client.delete(f"/api/police/{police.id}")
 
         result = assert_res_success(response, PoliceAccountDto)
         self.police_utils.assert_matches(police, result)
@@ -223,6 +248,6 @@ class TestPoliceCRUDRouter:
     @pytest.mark.asyncio
     async def test_delete_police_not_found(self) -> None:
         """Test deleting a non-existent police account returns 404."""
-        response = await self.admin_client.delete("/api/accounts/police/99999")
+        response = await self.admin_client.delete("/api/police/99999")
 
         assert_res_failure(response, PoliceNotFoundException(99999))

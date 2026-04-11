@@ -1,5 +1,12 @@
+from enum import StrEnum
+
 from pydantic import BaseModel, EmailStr
 from src.core.utils.query_utils import PaginatedResponse
+
+
+class PoliceRole(StrEnum):
+    OFFICER = "officer"
+    POLICE_ADMIN = "police_admin"
 
 
 class PoliceAccountDto(BaseModel):
@@ -7,6 +14,7 @@ class PoliceAccountDto(BaseModel):
 
     id: int
     email: EmailStr
+    role: PoliceRole
 
 
 class PoliceAccountUpdate(BaseModel):
@@ -14,6 +22,7 @@ class PoliceAccountUpdate(BaseModel):
 
     email: EmailStr
     password: str
+    role: PoliceRole
 
 
 class PaginatedPoliceResponse(PaginatedResponse["PoliceAccountDto"]):

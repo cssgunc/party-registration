@@ -1,9 +1,12 @@
+type PoliceRole = "officer" | "police_admin";
+
 /**
  * DTO for Police Account responses
  */
 type PoliceAccountDto = {
   id: number;
   email: string;
+  role: PoliceRole;
 };
 
 /**
@@ -12,6 +15,7 @@ type PoliceAccountDto = {
 type PoliceAccountUpdate = {
   email: string;
   password: string;
+  role: PoliceRole;
 };
 
-export type { PoliceAccountDto, PoliceAccountUpdate };
+export type { PoliceAccountDto, PoliceAccountUpdate, PoliceRole };

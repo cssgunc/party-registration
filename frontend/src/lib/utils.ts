@@ -1,3 +1,4 @@
+import type { AppRole } from "@/lib/api/account/account.types";
 import { type ClassValue, clsx } from "clsx";
 import { isAfter, isBefore, startOfDay } from "date-fns";
 import { twMerge } from "tailwind-merge";
@@ -68,4 +69,16 @@ export function isFromThisSchoolYear(date: Date | null | undefined): boolean {
     : augustFirst;
 
   return isAfter(startOfDay(date), startOfDay(mostRecentAugust1));
+}
+
+const ROLE_LABELS: Record<AppRole, string> = {
+  student: "Student",
+  staff: "Staff",
+  admin: "Admin",
+  officer: "Officer",
+  police_admin: "Police Admin",
+};
+
+export function formatRoleLabel(role: AppRole): string {
+  return ROLE_LABELS[role];
 }

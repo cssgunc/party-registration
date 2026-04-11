@@ -3,13 +3,14 @@ from typing import Any, TypedDict, Unpack, override
 import bcrypt
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.modules.police.police_entity import PoliceEntity
-from src.modules.police.police_model import PoliceAccountDto, PoliceAccountUpdate
+from src.modules.police.police_model import PoliceAccountDto, PoliceAccountUpdate, PoliceRole
 from test.utils.resource_test_utils import ResourceTestUtils
 
 
 class PoliceUpdateOverrides(TypedDict, total=False):
     email: str
     password: str
+    role: PoliceRole
 
 
 class PoliceTestUtils(
@@ -34,6 +35,7 @@ class PoliceTestUtils(
         return {
             "email": f"police{count}@unc.edu",
             "password": PoliceTestUtils.TEST_PASSWORD,
+            "role": PoliceRole.OFFICER,
         }
 
     @override
@@ -48,6 +50,9 @@ class PoliceTestUtils(
 
         assert resource1.email == resource2.email, (
             f"Email mismatch: {resource1.email} != {resource2.email}"
+        )
+        assert resource1.role == resource2.role, (
+            f"Role mismatch: {resource1.role} != {resource2.role}"
         )
 
         if isinstance(resource1, PoliceEntity) and isinstance(resource2, PoliceEntity):
