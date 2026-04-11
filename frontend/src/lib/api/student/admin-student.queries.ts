@@ -20,7 +20,7 @@ type UpdateStudentVars = {
 };
 
 type CreateStudentVars = {
-  data: Omit<StudentDto, "id">;
+  data: StudentUpdateDto & Pick<StudentDto, "email" | "onyen" | "pid">;
 };
 
 export function useStudents(

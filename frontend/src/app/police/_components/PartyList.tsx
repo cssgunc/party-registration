@@ -204,12 +204,14 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                         <p className="ml-4 text-sm text-secondary">
                           Preference:{" "}
                           {party.contact_one.contact_preference
-                            .charAt(0)
-                            .toUpperCase() +
-                            party.contact_one.contact_preference
-                              .slice(1)
-                              .toLowerCase()}
-                          s
+                            ? party.contact_one.contact_preference
+                                .charAt(0)
+                                .toUpperCase() +
+                              party.contact_one.contact_preference
+                                .slice(1)
+                                .toLowerCase() +
+                              "s"
+                            : "—"}
                         </p>
                       </section>
 

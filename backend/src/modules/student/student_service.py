@@ -69,6 +69,11 @@ class ResidenceAlreadyChosenException(BadRequestException):
         )
 
 
+class StudentInfoNotProvidedException(BadRequestException):
+    def __init__(self):
+        super().__init__("Student must provide contact information before registering a party")
+
+
 class StudentService:
     _NESTED_FIELD_COLUMNS: ClassVar[dict] = {
         "id": AccountEntity.id,
@@ -113,6 +118,22 @@ class StudentService:
             select(StudentEntity).where(StudentEntity.phone_number == phone_number)
         )
         return result.scalar_one_or_none()
+
+    @staticmethod
+    def _build_dto_from_account(account: AccountEntity) -> StudentDto:
+        """Build a partial StudentDto from an Account that has no Student entity yet."""
+        return StudentDto(
+            id=account.id,
+            pid=account.pid,
+            email=account.email,
+            first_name=account.first_name,
+            last_name=account.last_name,
+            onyen=account.onyen,
+            phone_number=None,
+            contact_preference=None,
+            last_registered=None,
+            residence=None,
+        )
 
     async def _get_account_entity_by_id(self, account_id: int) -> AccountEntity:
         result = await self.session.execute(
@@ -219,8 +240,12 @@ class StudentService:
                 if student.residence is not None
                 else "-"
             )
-            phone = ExcelExporter.format_phone(student.phone_number)
-            contact_preference = student.contact_preference.value.capitalize()
+            phone = (
+                ExcelExporter.format_phone(student.phone_number) if student.phone_number else "-"
+            )
+            contact_preference = (
+                student.contact_preference.value.capitalize() if student.contact_preference else "-"
+            )
             exporter.add_row(
                 [
                     student.onyen,
@@ -248,6 +273,30 @@ class StudentService:
     async def assert_student_exists(self, account_id: int) -> None:
         """Assert that a student with the given account ID exists."""
         await self._get_student_entity_by_account_id(account_id)
+
+    async def assert_student_entity_exists(self, account_id: int) -> None:
+        """Assert that a Student entity exists for this account. Used before party creation."""
+        result = await self.session.execute(
+            select(StudentEntity).where(StudentEntity.account_id == account_id)
+        )
+        if result.scalar_one_or_none() is None:
+            raise StudentInfoNotProvidedException()
+
+    async def get_student_me_dto(self, account_id: int) -> StudentDto:
+        """
+        Get StudentDto for the authenticated student. Returns a partial DTO (null phone/preference)
+        if the Student entity does not exist yet — i.e., the student has not yet provided info.
+        """
+        result = await self.session.execute(
+            select(StudentEntity)
+            .where(StudentEntity.account_id == account_id)
+            .options(selectinload(StudentEntity.account), selectinload(StudentEntity.residence))
+        )
+        student_entity = result.scalar_one_or_none()
+        if student_entity is not None:
+            return student_entity.to_dto()
+        account = await self._get_account_entity_by_id(account_id)
+        return self._build_dto_from_account(account)
 
     async def create_student(self, data: StudentUpdateDto, account_id: int) -> StudentDto:
         await self._validate_account_for_student(account_id)
@@ -317,10 +366,35 @@ class StudentService:
         return student_entity.to_dto()
 
     async def update_student_self(self, account_id: int, data: SelfUpdateStudentDto) -> StudentDto:
-        student_entity = await self._get_student_entity_by_account_id(account_id)
+        result = await self.session.execute(
+            select(StudentEntity)
+            .where(StudentEntity.account_id == account_id)
+            .options(selectinload(StudentEntity.account), selectinload(StudentEntity.residence))
+        )
+        student_entity = result.scalar_one_or_none()
+
+        if student_entity is None:
+            # Upsert: create Student entity for the first time
+            account = await self._get_account_entity_by_id(account_id)
+            if account.role != AccountRole.STUDENT:
+                raise InvalidAccountRoleException(account_id, account.role)
+            if await self._get_student_entity_by_phone(data.phone_number):
+                raise StudentConflictException(data.phone_number)
+            student_data = StudentData(
+                contact_preference=data.contact_preference,
+                phone_number=data.phone_number,
+            )
+            student_entity = StudentEntity.from_data(student_data, account_id)
+            try:
+                self.session.add(student_entity)
+                await self.session.commit()
+            except IntegrityError as e:
+                await self.session.rollback()
+                raise StudentConflictException(data.phone_number) from e
+            await self.session.refresh(student_entity, ["account", "residence"])
+            return student_entity.to_dto()
+
         account = student_entity.account
-        if account is None:
-            raise AccountNotFoundException(account_id)
         if account.role != AccountRole.STUDENT:
             raise InvalidAccountRoleException(account_id, account.role)
         if (

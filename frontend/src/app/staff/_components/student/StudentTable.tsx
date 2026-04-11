@@ -39,6 +39,8 @@ const hasStudentChanged = (
 
 const toEditData = (student: StudentDto) => ({
   ...student,
+  phone_number: student.phone_number ?? "",
+  contact_preference: student.contact_preference ?? undefined,
   residence_place_id: student.residence?.location.google_place_id ?? null,
 });
 
@@ -83,7 +85,7 @@ export const StudentTable = () => {
           title="Edit Student"
           onSubmit={(data) => handleEditSubmit(editingStudent, data)}
           submissionError={`Failed to update student: ${error.message}`}
-          editData={editingStudent}
+          editData={toEditData(editingStudent)}
         />
       );
     },
@@ -178,6 +180,7 @@ export const StudentTable = () => {
       cell: ({ row }) => {
         const preference =
           row.getValue<StudentDto["contact_preference"]>("contact_preference");
+        if (!preference) return "—";
         return preference === "call" ? "Call" : "Text";
       },
     },
@@ -219,15 +222,22 @@ export const StudentTable = () => {
           <Checkbox
             checked={isRegistered}
             onCheckedChange={(checked: boolean) => {
+              const { phone_number, contact_preference } = student;
+              if (!phone_number || !contact_preference) return;
               checkboxMutation.mutate({
                 id: student.id,
                 data: {
-                  ...student,
+                  first_name: student.first_name,
+                  last_name: student.last_name,
+                  phone_number,
+                  contact_preference,
                   last_registered: checked ? new Date() : null,
+                  residence_place_id:
+                    student.residence?.location.google_place_id ?? null,
                 },
               });
             }}
-            disabled={checkboxMutation.isPending}
+            disabled={checkboxMutation.isPending || !student.phone_number}
           />
         );
       },

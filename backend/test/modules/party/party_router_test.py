@@ -362,7 +362,6 @@ class TestPartyCreateAdminRouter:
         """Test admin cannot create party with contact_two phone matching contact_one."""
         location = await self.location_utils.create_one()
         student = await self.student_utils.create_one()
-        student_dto = await student.load_dto(self.student_utils.session)
 
         payload = await self.party_utils.next_admin_create_dto(
             google_place_id=location.google_place_id,
@@ -371,7 +370,7 @@ class TestPartyCreateAdminRouter:
                 email="different@email.com",
                 first_name="Other",
                 last_name="Person",
-                phone_number=student_dto.phone_number,
+                phone_number=student.phone_number,
                 contact_preference=ContactPreference.TEXT,
             ),
         )
@@ -487,7 +486,6 @@ class TestPartyCreateStudentRouter:
     @pytest.mark.asyncio
     async def test_create_party_as_student_duplicate_phone(self, current_student: StudentEntity):
         """Test student cannot create party with contact_two phone matching their own."""
-        student_dto = await current_student.load_dto(self.student_utils.session)
         # Set up student residence
         location = await self.location_utils.create_one()
         await self.student_utils.set_student_residence(current_student, location.id)
@@ -497,7 +495,7 @@ class TestPartyCreateStudentRouter:
                 email="different@email.com",
                 first_name="Other",
                 last_name="Person",
-                phone_number=student_dto.phone_number,
+                phone_number=current_student.phone_number,
                 contact_preference=ContactPreference.TEXT,
             ),
         )
@@ -597,7 +595,6 @@ class TestPartyUpdateAdminRouter:
         """Test admin cannot update party with contact_two phone matching contact_one."""
         location = await self.location_utils.create_one()
         student = await self.student_utils.create_one()
-        student_dto = await student.load_dto(self.student_utils.session)
 
         # Create a party first
         create_payload = await self.party_utils.next_admin_create_dto(
@@ -617,7 +614,7 @@ class TestPartyUpdateAdminRouter:
                 email="different@email.com",
                 first_name="Other",
                 last_name="Person",
-                phone_number=student_dto.phone_number,
+                phone_number=student.phone_number,
                 contact_preference=ContactPreference.TEXT,
             ),
         )
@@ -776,7 +773,6 @@ class TestPartyUpdateStudentRouter:
     @pytest.mark.asyncio
     async def test_update_party_as_student_duplicate_phone(self, current_student: StudentEntity):
         """Test student cannot update party with contact_two phone matching their own."""
-        student_dto = await current_student.load_dto(self.student_utils.session)
         # Set up student residence
         location = await self.location_utils.create_one()
         await self.student_utils.set_student_residence(current_student, location.id)
@@ -794,7 +790,7 @@ class TestPartyUpdateStudentRouter:
                 email="different@email.com",
                 first_name="Other",
                 last_name="Person",
-                phone_number=student_dto.phone_number,
+                phone_number=current_student.phone_number,
                 contact_preference=ContactPreference.TEXT,
             ),
         )

@@ -2,16 +2,19 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from src.modules.location.location_service import LocationNotFoundException
-from src.modules.party.party_model import ContactDto
+from src.modules.party.party_model import ContactDto, StudentCreatePartyDto
 from src.modules.party.party_service import (
     ContactTwoMatchesContactOneException,
     PartyNotFoundException,
     PartyService,
 )
 from src.modules.student.student_model import ContactPreference
-from src.modules.student.student_service import StudentNotFoundException
+from src.modules.student.student_service import (
+    StudentInfoNotProvidedException,
+    StudentNotFoundException,
+)
 from test.modules.location.location_utils import LocationTestUtils
-from test.modules.party.party_utils import PartyTestUtils
+from test.modules.party.party_utils import PartyTestUtils, get_valid_party_datetime
 from test.modules.student.student_utils import StudentTestUtils
 from test.utils.geo import get_lat_offset_outside_radius, get_lat_offset_within_radius
 
@@ -661,3 +664,41 @@ class TestPartyServiceContactTwoValidation:
             self.party_service._validate_contact_two_differs_from_contact_one(
                 "student@unc.edu", "9195551111", contact_two
             )
+
+
+class TestPartyStudentInfoValidation:
+    """Tests that party creation requires a Student entity (not just an Account)."""
+
+    party_service: PartyService
+    student_utils: StudentTestUtils
+    party_utils: PartyTestUtils
+
+    @pytest.fixture(autouse=True)
+    def _setup(
+        self,
+        party_service: PartyService,
+        student_utils: StudentTestUtils,
+        party_utils: PartyTestUtils,
+    ):
+        self.party_service = party_service
+        self.student_utils = student_utils
+        self.party_utils = party_utils
+
+    @pytest.mark.asyncio
+    async def test_create_party_from_student_dto_requires_student_entity(self):
+        """Party creation fails with StudentInfoNotProvidedException when no Student entity."""
+        account = await self.student_utils.account_utils.create_one(role="student")
+        dto = StudentCreatePartyDto(
+            type="student",
+            party_datetime=get_valid_party_datetime(),
+            contact_two=ContactDto(
+                email="other@unc.edu",
+                first_name="Other",
+                last_name="Person",
+                phone_number="9195559999",
+                contact_preference=ContactPreference.TEXT,
+            ),
+        )
+
+        with pytest.raises(StudentInfoNotProvidedException):
+            await self.party_service.create_party_from_student_dto(dto, account.id)

@@ -70,7 +70,8 @@ class StudentDto(BaseModel):
     - email: account email
     - first_name, last_name: from account
     - onyen: from account
-    - phone_number, last_registered: from student
+    - phone_number, contact_preference: from student (null if student info not yet provided)
+    - last_registered: from student
     - residence: residence information if set
     """
 
@@ -80,8 +81,8 @@ class StudentDto(BaseModel):
     first_name: str
     last_name: str
     onyen: str
-    phone_number: str
-    contact_preference: ContactPreference
+    phone_number: str | None = None
+    contact_preference: ContactPreference | None = None
     last_registered: AwareDatetime | None = None
     residence: ResidenceDto | None = None
 

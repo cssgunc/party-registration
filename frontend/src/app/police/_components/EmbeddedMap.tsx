@@ -169,11 +169,13 @@ const PoiMarkers = ({ pois, activePoiKey, onSelect }: PoiMarkersProps) => {
                 </span>
                 <span className="text-gray-600">
                   {selectedPoi.party.contact_one.contact_preference
-                    .charAt(0)
-                    .toUpperCase() +
-                    selectedPoi.party.contact_one.contact_preference
-                      .slice(1)
-                      .toLowerCase()}
+                    ? selectedPoi.party.contact_one.contact_preference
+                        .charAt(0)
+                        .toUpperCase() +
+                      selectedPoi.party.contact_one.contact_preference
+                        .slice(1)
+                        .toLowerCase()
+                    : "—"}
                 </span>
               </div>
             </div>

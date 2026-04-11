@@ -25,8 +25,8 @@ type StudentDto = {
   first_name: string;
   last_name: string;
   onyen: string;
-  phone_number: string;
-  contact_preference: ContactPreference;
+  phone_number: string | null;
+  contact_preference: ContactPreference | null;
   last_registered: Date | null;
   residence: ResidenceDto | null;
 };
