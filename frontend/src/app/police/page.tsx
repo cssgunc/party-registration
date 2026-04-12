@@ -1,6 +1,7 @@
 "use client";
 
 import EmbeddedMap from "@/app/police/_components/EmbeddedMap";
+import ExactMatchCard from "@/app/police/_components/ExactMatchCard";
 import PartyCsvExportButton from "@/app/police/_components/PartyCsvExportButton";
 import PartyList from "@/app/police/_components/PartyList";
 import SplitDateRangeFilter from "@/app/police/_components/SplitDateRangeFilter";
@@ -49,18 +50,19 @@ export default function PolicePage() {
     error,
   } = usePoliceParties({ startDate, endDate });
 
-  const { data: nearbyParties, isLoading: isLoadingNearby } = usePartiesNearby({
+  const { data: nearbyData, isLoading: isLoadingNearby } = usePartiesNearby({
     placeId: searchAddress?.google_place_id,
     startDate,
     endDate,
   });
 
-  // Use nearby parties if address search is active, otherwise use all parties
+  // Use nearby list if address search is active, otherwise use all parties
+  // The exact_match is shown separately above the party list
   const baseParties = useMemo(() => {
-    return searchAddress && nearbyParties !== undefined
-      ? nearbyParties
+    return searchAddress && nearbyData !== undefined
+      ? nearbyData.nearby
       : allParties;
-  }, [allParties, nearbyParties, searchAddress]);
+  }, [allParties, nearbyData, searchAddress]);
 
   const filteredParties = useMemo(() => {
     function normalize(value: string): string {
@@ -201,11 +203,21 @@ export default function PolicePage() {
               </div>
             )}
             {!isLoading && !isLoadingNearby && !error && (
-              <PartyList
-                parties={filteredParties}
-                onSelect={(party) => handleActiveParty(party)}
-                activeParty={activeParty}
-              />
+              <>
+                {searchAddress && nearbyData?.exact_match && (
+                  <div className="mb-3">
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Exact Match
+                    </p>
+                    <ExactMatchCard exactMatch={nearbyData.exact_match} />
+                  </div>
+                )}
+                <PartyList
+                  parties={filteredParties}
+                  onSelect={(party) => handleActiveParty(party)}
+                  activeParty={activeParty}
+                />
+              </>
             )}
           </div>
         </aside>

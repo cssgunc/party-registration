@@ -10,8 +10,11 @@ import {
   AdminCreatePartyDto,
   PartyDto,
   PartyDtoBackend,
+  ProximitySearchResponse,
+  ProximitySearchResponseBackend,
   StudentCreatePartyDto,
   convertParty,
+  convertProximitySearchResponse,
 } from "./party.types";
 
 export class PartyService {
@@ -62,9 +65,9 @@ export class PartyService {
     placeId: string,
     startDate: Date,
     endDate: Date
-  ): Promise<PartyDto[]> {
+  ): Promise<ProximitySearchResponse> {
     try {
-      const response = await this.client.get<PartyDtoBackend[]>(
+      const response = await this.client.get<ProximitySearchResponseBackend>(
         "/parties/nearby",
         {
           params: {
@@ -74,7 +77,7 @@ export class PartyService {
           },
         }
       );
-      return response.data.map(convertParty);
+      return convertProximitySearchResponse(response.data);
     } catch (error) {
       console.error("Failed to get nearby parties:", error);
       throw new Error("Failed to get nearby parties");

@@ -7,7 +7,7 @@ import pytest_asyncio
 from httpx import AsyncClient
 from src.modules.account.account_entity import AccountEntity
 from src.modules.location.location_service import LocationHoldActiveException
-from src.modules.party.party_model import ContactDto, PartyDto, PartyStatus
+from src.modules.party.party_model import ContactDto, PartyDto, PartyStatus, ProximitySearchResponse
 from src.modules.party.party_service import (
     ContactTwoMatchesContactOneException,
     NoResidenceException,
@@ -909,7 +909,7 @@ class TestPartyNearbyRouter:
 
     @pytest.mark.asyncio
     async def test_get_parties_nearby_empty(self):
-        """Test nearby search with no parties."""
+        """Test nearby search with no parties and no DB location returns empty exact match."""
         location_data = await self.location_utils.next_data()
         self.gmaps_utils.mock_place_details(**location_data.model_dump())
 
@@ -920,16 +920,19 @@ class TestPartyNearbyRouter:
             "end_date": (now + timedelta(days=7)).strftime("%Y-%m-%d"),
         }
         response = await self.admin_client.get("/api/parties/nearby", params=params)
-        data = assert_res_success(response, list[PartyDto])
-        assert data == []
+        data = assert_res_success(response, ProximitySearchResponse)
+        assert data.exact_match.google_place_id == location_data.google_place_id
+        assert data.exact_match.location is None
+        assert data.exact_match.party is None
+        assert data.nearby == []
 
     @pytest.mark.asyncio
     async def test_get_parties_nearby_within_radius(self):
-        """Test nearby search returns parties within radius."""
+        """Test nearby search returns parties within radius, sorted by distance."""
         search_lat = 40.7128
         search_lon = -74.0060
 
-        # Create search center location data and mock
+        # Create search center location data and mock (not saved to DB)
         search_location_data = await self.location_utils.next_data(
             latitude=search_lat,
             longitude=search_lon,
@@ -955,7 +958,7 @@ class TestPartyNearbyRouter:
             party_datetime=now + timedelta(hours=2),
         )
 
-        party_outside = await self.party_utils.create_one(
+        _party_outside = await self.party_utils.create_one(
             location_id=location_outside.id,
             party_datetime=now + timedelta(hours=2),
         )
@@ -966,11 +969,11 @@ class TestPartyNearbyRouter:
             "end_date": (now + timedelta(days=1)).strftime("%Y-%m-%d"),
         }
         response = await self.admin_client.get("/api/parties/nearby", params=params)
-        data = assert_res_success(response, list[PartyDto])
+        data = assert_res_success(response, ProximitySearchResponse)
 
-        party_ids = [p.id for p in data]
-        assert party_within.id in party_ids
-        assert party_outside.id not in party_ids
+        nearby_ids = [p.id for p in data.nearby]
+        assert party_within.id in nearby_ids
+        assert _party_outside.id not in nearby_ids
 
     @pytest.mark.asyncio
     async def test_get_parties_nearby_with_date_range(self):
@@ -978,7 +981,7 @@ class TestPartyNearbyRouter:
         search_lat = 40.7128
         search_lon = -74.0060
 
-        # Create search center location data and mock
+        # Create search center location data and mock (not saved to DB)
         search_location_data = await self.location_utils.next_data(
             latitude=search_lat,
             longitude=search_lon,
@@ -998,7 +1001,7 @@ class TestPartyNearbyRouter:
             party_datetime=base_time,
         )
 
-        # Party outside date range (next day)
+        # Party outside date range (two days later)
         _party_invalid = await self.party_utils.create_one(
             location_id=location.id,
             party_datetime=base_time + timedelta(days=2),
@@ -1011,10 +1014,96 @@ class TestPartyNearbyRouter:
         }
 
         response = await self.admin_client.get("/api/parties/nearby", params=params)
-        data = assert_res_success(response, list[PartyDto])
+        data = assert_res_success(response, ProximitySearchResponse)
 
-        assert len(data) == 1
-        assert data[0].id == party_valid.id
+        assert len(data.nearby) == 1
+        assert data.nearby[0].id == party_valid.id
+
+    @pytest.mark.asyncio
+    async def test_exact_match_no_db_location(self):
+        """Exact match location and party are null when place ID is not in the DB."""
+        location_data = await self.location_utils.next_data()
+        self.gmaps_utils.mock_place_details(**location_data.model_dump())
+
+        now = datetime.now(UTC)
+        params = {
+            "place_id": location_data.google_place_id,
+            "start_date": now.strftime("%Y-%m-%d"),
+            "end_date": (now + timedelta(days=1)).strftime("%Y-%m-%d"),
+        }
+        response = await self.admin_client.get("/api/parties/nearby", params=params)
+        data = assert_res_success(response, ProximitySearchResponse)
+
+        assert data.exact_match.google_place_id == location_data.google_place_id
+        assert data.exact_match.formatted_address == location_data.formatted_address
+        assert data.exact_match.location is None
+        assert data.exact_match.party is None
+
+    @pytest.mark.asyncio
+    async def test_exact_match_with_db_location_no_party(self):
+        """Exact match has location but null party when no party exists in date range."""
+        search_lat = 40.7128
+        search_lon = -74.0060
+
+        db_location = await self.location_utils.create_one(
+            latitude=search_lat,
+            longitude=search_lon,
+        )
+        self.gmaps_utils.mock_place_details(
+            google_place_id=db_location.google_place_id,
+            formatted_address=db_location.formatted_address,
+            latitude=float(db_location.latitude),
+            longitude=float(db_location.longitude),
+        )
+
+        now = datetime.now(UTC)
+        params = {
+            "place_id": db_location.google_place_id,
+            "start_date": now.strftime("%Y-%m-%d"),
+            "end_date": (now + timedelta(days=1)).strftime("%Y-%m-%d"),
+        }
+        response = await self.admin_client.get("/api/parties/nearby", params=params)
+        data = assert_res_success(response, ProximitySearchResponse)
+
+        assert data.exact_match.location is not None
+        assert data.exact_match.location.id == db_location.id
+        assert data.exact_match.party is None
+
+    @pytest.mark.asyncio
+    async def test_exact_match_with_party(self):
+        """Exact match party is populated when a confirmed party exists at the location in range."""
+        search_lat = 40.7128
+        search_lon = -74.0060
+
+        db_location = await self.location_utils.create_one(
+            latitude=search_lat,
+            longitude=search_lon,
+        )
+        self.gmaps_utils.mock_place_details(
+            google_place_id=db_location.google_place_id,
+            formatted_address=db_location.formatted_address,
+            latitude=float(db_location.latitude),
+            longitude=float(db_location.longitude),
+        )
+
+        now = datetime.now(UTC)
+        party = await self.party_utils.create_one(
+            location_id=db_location.id,
+            party_datetime=now + timedelta(hours=2),
+        )
+
+        params = {
+            "place_id": db_location.google_place_id,
+            "start_date": now.strftime("%Y-%m-%d"),
+            "end_date": (now + timedelta(days=1)).strftime("%Y-%m-%d"),
+        }
+        response = await self.admin_client.get("/api/parties/nearby", params=params)
+        data = assert_res_success(response, ProximitySearchResponse)
+
+        assert data.exact_match.location is not None
+        assert data.exact_match.location.id == db_location.id
+        assert data.exact_match.party is not None
+        assert data.exact_match.party.id == party.id
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(

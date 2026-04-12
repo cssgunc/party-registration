@@ -61,6 +61,8 @@ export interface IncidentDialogProps {
   onOpenChange: (open: boolean) => void;
   mode?: "create" | "edit";
   location: LocationDto | null;
+  /** Overrides location.google_place_id for incident creation (used for unregistered locations) */
+  locationPlaceId?: string;
   incident?: IncidentDto;
   defaultSeverity?: IncidentSeverity;
   onSubmit: (data: IncidentCreateDto) => void;
@@ -72,6 +74,7 @@ export default function IncidentDialog({
   onOpenChange,
   mode = "create",
   location,
+  locationPlaceId,
   incident,
   defaultSeverity = "in_person_warning",
   onSubmit,
@@ -125,7 +128,7 @@ export default function IncidentDialog({
 
     setErrors({});
     onSubmit({
-      location_place_id: location?.google_place_id ?? "",
+      location_place_id: locationPlaceId ?? location?.google_place_id ?? "",
       incident_datetime,
       description,
       severity,

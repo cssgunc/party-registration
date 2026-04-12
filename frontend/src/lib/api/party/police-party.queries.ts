@@ -9,7 +9,12 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { PartyService } from "./party.service";
-import { PARTIES_KEY, PartyDto } from "./party.types";
+import {
+  NEARBY_KEY,
+  PARTIES_KEY,
+  PartyDto,
+  ProximitySearchResponse,
+} from "./party.types";
 
 const policeLocationService = new LocationService();
 const partyService = new PartyService();
@@ -61,10 +66,10 @@ export function usePartiesNearby(
     startDate,
     endDate,
   }: { placeId?: string; startDate?: Date; endDate?: Date },
-  options?: UseQueryOptions<PartyDto[]>
+  options?: UseQueryOptions<ProximitySearchResponse>
 ) {
-  return useQuery({
-    queryKey: [...PARTIES_KEY, "nearby", placeId, startDate, endDate],
+  return useQuery<ProximitySearchResponse>({
+    queryKey: [...NEARBY_KEY, placeId, startDate, endDate],
     queryFn: () =>
       partyService.getPartiesNearby(placeId!, startDate!, endDate!),
     enabled: !!placeId && !!startDate && !!endDate,

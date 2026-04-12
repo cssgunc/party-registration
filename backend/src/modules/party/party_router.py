@@ -17,14 +17,16 @@ from src.core.exceptions import (
 )
 from src.core.utils.query_utils import PAGINATED_OPENAPI_PARAMS
 from src.modules.account.account_model import AccountDto, AccountRole
-from src.modules.location.location_service import LocationService
+from src.modules.location.location_service import LocationNotFoundException, LocationService
 from src.modules.police.police_model import PoliceAccountDto
 
 from .party_model import (
     AdminCreatePartyDto,
     CreatePartyDto,
+    ExactMatchDto,
     PaginatedPartiesResponse,
     PartyDto,
+    ProximitySearchResponse,
     StudentCreatePartyDto,
 )
 from .party_service import PartyService
@@ -121,22 +123,24 @@ async def get_parties_nearby(
     party_service: PartyService = Depends(),
     location_service: LocationService = Depends(),
     _=Depends(authenticate_police_or_admin),
-) -> list[PartyDto]:
+) -> ProximitySearchResponse:
     """
-    Returns parties within a radius of a location specified by Google Maps place ID,
-    filtered by date range.
+    Returns a ProximitySearchResponse with an exact_match and a list of nearby parties.
+
+    The exact_match always reflects the searched place ID:
+    - location is null if the place has no DB record yet
+    - party is null if no confirmed party exists at that location in the date range
+
+    The nearby list contains confirmed parties within 0.25 miles, sorted by distance.
 
     Query Parameters:
     - place_id: Google Maps place ID from autocomplete selection
     - start_date: Start date for the search range (YYYY-MM-DD format)
     - end_date: End date for the search range (YYYY-MM-DD format)
 
-    Returns:
-    - List of parties within the search radius and date range
-
     Raises:
     - 400: If place ID is invalid or dates are in wrong format
-    - 404: If place ID is not found
+    - 404: If place ID is not found in Google Maps
     - 403: If user is not a police officer or admin
     """
     # Parse date strings to datetime objects
@@ -152,18 +156,40 @@ async def get_parties_nearby(
     if start_datetime > end_datetime:
         raise BadRequestException("Start date must be less than or equal to end date")
 
-    # Get location coordinates from place ID
+    # Resolve coordinates and address from Google Maps
     location_data = await location_service.get_place_details(place_id)
 
-    # Perform proximity search with date range
-    parties = await party_service.get_parties_by_radius_and_date_range(
+    # Try to find the location in the DB (may not exist for unregistered addresses)
+    try:
+        db_location = await location_service.get_location_by_place_id(place_id)
+    except LocationNotFoundException:
+        db_location = None
+
+    # Find a party at this exact location within the date range (if DB location exists)
+    exact_party = None
+    if db_location is not None:
+        exact_party = await party_service.get_party_at_location_in_date_range(
+            location_id=db_location.id,
+            start_date=start_datetime,
+            end_date=end_datetime,
+        )
+
+    exact_match = ExactMatchDto(
+        google_place_id=place_id,
+        formatted_address=location_data.formatted_address,
+        location=db_location,
+        party=exact_party,
+    )
+
+    # Perform proximity search with date range (sorted by distance)
+    nearby = await party_service.get_parties_by_radius_and_date_range(
         latitude=location_data.latitude,
         longitude=location_data.longitude,
         start_date=start_datetime,
         end_date=end_datetime,
     )
 
-    return parties
+    return ProximitySearchResponse(exact_match=exact_match, nearby=nearby)
 
 
 @party_router.get("/csv", openapi_extra=PAGINATED_OPENAPI_PARAMS)
