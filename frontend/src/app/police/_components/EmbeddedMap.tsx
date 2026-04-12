@@ -11,7 +11,7 @@ import {
   useMap,
 } from "@vis.gl/react-google-maps";
 import { format } from "date-fns";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type Poi = {
   key: string;
@@ -32,17 +32,20 @@ const EmbeddedMap = ({
   center,
   onSelect,
 }: EmbeddedMapProps) => {
-  const locations =
-    parties && parties.length > 0
-      ? parties.map((party) => ({
-          key: party.id.toString(),
-          location: {
-            lat: party.location.latitude,
-            lng: party.location.longitude,
-          },
-          party,
-        }))
-      : [];
+  const locations = useMemo(
+    () =>
+      parties && parties.length > 0
+        ? parties.map((party) => ({
+            key: party.id.toString(),
+            location: {
+              lat: party.location.latitude,
+              lng: party.location.longitude,
+            },
+            party,
+          }))
+        : [],
+    [parties]
+  );
 
   const activePoiKey = activeParty ? activeParty.id.toString() : undefined;
   const defaultZoom = center ? 17 : 14;
@@ -86,6 +89,8 @@ type PoiMarkersProps = {
   onSelect?: (party: PartyDto | null) => void;
 };
 
+const SELECTED_ZOOM = 17;
+
 const PoiMarkers = ({ pois, activePoiKey, onSelect }: PoiMarkersProps) => {
   const map = useMap();
   const [selectedPoi, setSelectedPoi] = useState<(typeof pois)[0] | null>(null);
@@ -102,13 +107,17 @@ const PoiMarkers = ({ pois, activePoiKey, onSelect }: PoiMarkersProps) => {
     if (!map || !activePoiKey) return;
 
     const target = pois.find((p) => p.key === activePoiKey);
-    if (target) map.panTo(target.location);
+    if (target) {
+      map.panTo(target.location);
+      map.setZoom(SELECTED_ZOOM);
+    }
   }, [activePoiKey, map, pois]);
 
   const handleClick = useCallback(
     (poi: (typeof pois)[0]) => (ev: google.maps.MapMouseEvent) => {
       if (!map || !ev.latLng) return;
       map.panTo(ev.latLng);
+      map.setZoom(SELECTED_ZOOM);
       setSelectedPoi(poi);
 
       if (poi.party && onSelect) {
