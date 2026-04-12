@@ -1,8 +1,8 @@
 "use client";
 
 import logout from "@/components/icons/log-out.svg";
-import pfp from "@/components/icons/pfp_temp.svg";
 import user from "@/components/icons/user.svg";
+import { UserAvatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -22,6 +22,11 @@ export default function Header({ className }: { className?: string }) {
   const pathname = usePathname();
   const { data: session, status } = useSession();
   const role = session?.role;
+  const displayName =
+    [session?.firstName, session?.lastName].filter(Boolean).join(" ").trim() ||
+    session?.user?.name ||
+    session?.user?.email ||
+    "User";
 
   if (pathname.startsWith("/login")) {
     return null;
@@ -39,8 +44,16 @@ export default function Header({ className }: { className?: string }) {
       {status === "authenticated" ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="cursor-pointer">
-              <Image src={pfp} alt="pfp" width={50} height={50} />
+            <button
+              className="cursor-pointer"
+              aria-label={`Open user menu for ${displayName}`}
+            >
+              <UserAvatar
+                firstName={session?.firstName}
+                lastName={session?.lastName}
+                name={session?.user?.name}
+                email={session?.user?.email}
+              />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-60" align="end">
