@@ -1,12 +1,20 @@
+import {
+  UpdateIncidentVars,
+  useDeleteIncident,
+  useUpdateIncident,
+} from "@/lib/api/incident/incident.queries";
+import { ServerTableParams } from "@/lib/api/shared/query-params";
 import { OptimisticMutationOptions, PaginatedResponse } from "@/lib/shared";
 import {
+  QueryKey,
   UseQueryOptions,
+  keepPreviousData,
   useMutation,
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
 import { LocationService } from "./location.service";
-import { LocationCreate, LocationDto } from "./location.types";
+import { IncidentDto, LocationCreate, LocationDto } from "./location.types";
 
 const locationService = new LocationService();
 
@@ -18,11 +26,13 @@ type UpdateLocationVars = {
 };
 
 export function useLocations(
+  serverParams?: ServerTableParams,
   options?: UseQueryOptions<PaginatedResponse<LocationDto>>
 ) {
   return useQuery({
-    queryKey: LOCATIONS_KEY,
-    queryFn: () => locationService.getLocations(),
+    queryKey: [...LOCATIONS_KEY, serverParams ?? "all"],
+    queryFn: () => locationService.getLocations(serverParams),
+    placeholderData: keepPreviousData,
     ...options,
   });
 }
@@ -70,29 +80,116 @@ export function useDeleteLocation(
     ...options,
     mutationFn: (id: number) => locationService.deleteLocation(id),
 
+    onSuccess: (...params) => {
+      queryClient.invalidateQueries({ queryKey: LOCATIONS_KEY });
+      options?.onSuccess?.(...params);
+    },
+  });
+}
+
+type LocationsSnapshot = [
+  QueryKey,
+  PaginatedResponse<LocationDto> | undefined,
+][];
+
+export function useUpdateIncidentInLocation(
+  options?: OptimisticMutationOptions<
+    IncidentDto,
+    Error,
+    UpdateIncidentVars,
+    { previousLocations: LocationsSnapshot }
+  >
+) {
+  const queryClient = useQueryClient();
+
+  return useUpdateIncident({
+    ...options,
+    onMutate: async (vars, context) => {
+      await queryClient.cancelQueries({ queryKey: LOCATIONS_KEY });
+
+      const previousLocations = queryClient.getQueriesData<
+        PaginatedResponse<LocationDto>
+      >({ queryKey: LOCATIONS_KEY });
+
+      queryClient.setQueriesData<PaginatedResponse<LocationDto>>(
+        { queryKey: LOCATIONS_KEY },
+        (old) =>
+          old
+            ? {
+                ...old,
+                items: old.items.map((loc) => ({
+                  ...loc,
+                  incidents: loc.incidents.map((inc) =>
+                    inc.id === vars.id ? { ...inc, ...vars.payload } : inc
+                  ),
+                })),
+              }
+            : old
+      );
+
+      await options?.onMutate?.(vars, context);
+      return { previousLocations };
+    },
+    onError: (error, vars, onMutateResult, context) => {
+      onMutateResult?.previousLocations.forEach(([queryKey, data]) => {
+        queryClient.setQueryData(queryKey, data);
+      });
+      options?.onError?.(error, vars, onMutateResult, context);
+    },
+    onSuccess: (...params) => {
+      queryClient.invalidateQueries({ queryKey: LOCATIONS_KEY });
+      options?.onSuccess?.(...params);
+    },
+  });
+}
+
+type DeleteLocationsSnapshot = [
+  QueryKey,
+  PaginatedResponse<LocationDto> | undefined,
+][];
+
+export function useDeleteIncidentInLocation(
+  options?: OptimisticMutationOptions<
+    void,
+    Error,
+    number,
+    { previousLocations: DeleteLocationsSnapshot }
+  >
+) {
+  const queryClient = useQueryClient();
+
+  return useDeleteIncident({
+    ...options,
     onMutate: async (id, context) => {
       await queryClient.cancelQueries({ queryKey: LOCATIONS_KEY });
 
-      const previous =
-        queryClient.getQueryData<PaginatedResponse<LocationDto>>(LOCATIONS_KEY);
+      const previousLocations = queryClient.getQueriesData<
+        PaginatedResponse<LocationDto>
+      >({ queryKey: LOCATIONS_KEY });
 
-      queryClient.setQueryData<PaginatedResponse<LocationDto>>(
-        LOCATIONS_KEY,
-        (old) => old && { ...old, items: old.items.filter((l) => l.id !== id) }
+      queryClient.setQueriesData<PaginatedResponse<LocationDto>>(
+        { queryKey: LOCATIONS_KEY },
+        (old) =>
+          old
+            ? {
+                ...old,
+                items: old.items.map((loc) => ({
+                  ...loc,
+                  incidents: loc.incidents.filter((inc) => inc.id !== id),
+                })),
+              }
+            : old
       );
-      options?.onOptimisticUpdate?.(id);
 
       await options?.onMutate?.(id, context);
-      return { previous };
+      return { previousLocations };
     },
-
     onError: (error, id, onMutateResult, context) => {
-      if (onMutateResult?.previous) {
-        queryClient.setQueryData(LOCATIONS_KEY, onMutateResult.previous);
-      }
+      onMutateResult?.previousLocations.forEach(([queryKey, data]) => {
+        queryClient.setQueryData(queryKey, data);
+      });
       options?.onError?.(error, id, onMutateResult, context);
     },
-
     onSuccess: (...params) => {
       queryClient.invalidateQueries({ queryKey: LOCATIONS_KEY });
       options?.onSuccess?.(...params);

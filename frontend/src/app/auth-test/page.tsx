@@ -1,6 +1,7 @@
 "use client";
 
-import { SessionProvider, signOut, useSession } from "next-auth/react";
+import { signOut } from "@/lib/auth/signout";
+import { SessionProvider, useSession } from "next-auth/react";
 import Link from "next/link";
 import { useState } from "react";
 

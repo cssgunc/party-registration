@@ -35,6 +35,9 @@ export function FilterInput<T>({
 }: FilterInputProps<T>) {
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [timeValue, setTimeValue] = useState("");
+  const [textValue, setTextValue] = useState(
+    (column?.getFilterValue() as string) ?? ""
+  );
 
   if (!column) {
     return (
@@ -72,10 +75,16 @@ export function FilterInput<T>({
     onClose();
   };
 
+  const handleTextApply = () => {
+    column.setFilterValue(textValue || undefined);
+    onClose();
+  };
+
   const handleClear = () => {
     column.setFilterValue(undefined);
     setDateRange(undefined);
     setTimeValue("");
+    setTextValue("");
     onClose();
   };
 
@@ -216,15 +225,18 @@ export function FilterInput<T>({
                 id="filter-input"
                 type="text"
                 placeholder="Type a value..."
-                value={(filterValue as string) ?? ""}
-                onChange={(e) => column.setFilterValue(e.target.value)}
+                value={textValue}
+                onChange={(e) => setTextValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleTextApply();
+                }}
               />
             </div>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={handleClear}>
                 Clear
               </Button>
-              <Button size="sm" onClick={onClose}>
+              <Button size="sm" onClick={handleTextApply}>
                 Apply
               </Button>
             </div>

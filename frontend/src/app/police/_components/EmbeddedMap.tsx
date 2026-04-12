@@ -1,5 +1,6 @@
 "use client";
 
+import { PhoneLink } from "@/components/PhoneLink";
 import { PartyDto } from "@/lib/api/party/party.types";
 import {
   APIProvider,
@@ -10,7 +11,7 @@ import {
   useMap,
 } from "@vis.gl/react-google-maps";
 import { format } from "date-fns";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type Poi = {
   key: string;
@@ -31,17 +32,20 @@ const EmbeddedMap = ({
   center,
   onSelect,
 }: EmbeddedMapProps) => {
-  const locations =
-    parties && parties.length > 0
-      ? parties.map((party) => ({
-          key: party.id.toString(),
-          location: {
-            lat: party.location.latitude,
-            lng: party.location.longitude,
-          },
-          party,
-        }))
-      : [];
+  const locations = useMemo(
+    () =>
+      parties && parties.length > 0
+        ? parties.map((party) => ({
+            key: party.id.toString(),
+            location: {
+              lat: party.location.latitude,
+              lng: party.location.longitude,
+            },
+            party,
+          }))
+        : [],
+    [parties]
+  );
 
   const activePoiKey = activeParty ? activeParty.id.toString() : undefined;
   const defaultZoom = center ? 17 : 14;
@@ -55,7 +59,7 @@ const EmbeddedMap = ({
   const mapKey = center ? `${center.lat}-${center.lng}` : "default";
 
   return (
-    <div className="md:w-full h-full overflow-hidden rounded-2xl shadow-md">
+    <div className="w-full h-full overflow-hidden rounded-md">
       <APIProvider
         apiKey={API_KEY}
         onLoad={() => console.log("Maps API loaded.")}
@@ -85,19 +89,11 @@ type PoiMarkersProps = {
   onSelect?: (party: PartyDto | null) => void;
 };
 
+const SELECTED_ZOOM = 17;
+
 const PoiMarkers = ({ pois, activePoiKey, onSelect }: PoiMarkersProps) => {
   const map = useMap();
   const [selectedPoi, setSelectedPoi] = useState<(typeof pois)[0] | null>(null);
-
-  const formatPhoneNumber = (phone: string): string => {
-    const cleaned = phone.replace(/\D/g, "");
-    if (cleaned.length === 10) {
-      return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(
-        6
-      )}`;
-    }
-    return phone;
-  };
 
   const getShortAddress = (location: PartyDto["location"]): string => {
     const parts = [];
@@ -111,13 +107,17 @@ const PoiMarkers = ({ pois, activePoiKey, onSelect }: PoiMarkersProps) => {
     if (!map || !activePoiKey) return;
 
     const target = pois.find((p) => p.key === activePoiKey);
-    if (target) map.panTo(target.location);
+    if (target) {
+      map.panTo(target.location);
+      map.setZoom(SELECTED_ZOOM);
+    }
   }, [activePoiKey, map, pois]);
 
   const handleClick = useCallback(
     (poi: (typeof pois)[0]) => (ev: google.maps.MapMouseEvent) => {
       if (!map || !ev.latLng) return;
       map.panTo(ev.latLng);
+      map.setZoom(SELECTED_ZOOM);
       setSelectedPoi(poi);
 
       if (poi.party && onSelect) {
@@ -161,23 +161,19 @@ const PoiMarkers = ({ pois, activePoiKey, onSelect }: PoiMarkersProps) => {
           }
         >
           <div className="space-y-1.5 text-sm">
-            <div className="text-gray-700">
+            <p className="text-gray-700">
               {format(selectedPoi.party.party_datetime, "MMM d, yyyy")} at{" "}
               {format(selectedPoi.party.party_datetime, "h:mm a")}
-            </div>
+            </p>
             <div className="border-t pt-1.5">
-              <div>
+              <p>
                 {selectedPoi.party.contact_one.first_name}{" "}
                 {selectedPoi.party.contact_one.last_name}
-              </div>
+              </p>
               <div className="flex justify-between items-center text-xs">
-                <a
-                  href={`tel:${selectedPoi.party.contact_one.phone_number.replace(/\D/g, "")}`}
-                >
-                  {formatPhoneNumber(
-                    selectedPoi.party.contact_one.phone_number
-                  )}
-                </a>
+                <PhoneLink
+                  phoneNumber={selectedPoi.party.contact_one.phone_number}
+                />
                 <span className="text-gray-600">
                   {selectedPoi.party.contact_one.contact_preference
                     .charAt(0)

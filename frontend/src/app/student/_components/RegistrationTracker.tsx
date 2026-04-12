@@ -11,43 +11,41 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { IncidentDto } from "@/lib/api/location/location.types";
+import { IncidentDto } from "@/lib/api/incident/incident.types";
 import { PartyDto } from "@/lib/api/party/party.types";
+import {
+  useCurrentStudent,
+  useMyParties,
+} from "@/lib/api/student/student.queries";
+import {
+  formatPhoneNumber,
+  formatTime,
+  isFromThisSchoolYear,
+} from "@/lib/utils";
 import { format } from "date-fns";
-import { MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 
-interface RegistrationTrackerProps {
-  data: PartyDto[] | undefined;
-  isPending?: boolean;
-  error?: Error | null;
-  incidents?: IncidentDto[];
-}
-
-const formatPhoneNumber = (phone: string | undefined): string => {
-  if (!phone) return "";
-  const cleaned = phone.replace(/\D/g, "");
-  if (cleaned.length === 10) {
-    return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(
-      6
-    )}`;
-  }
-  return phone;
-};
-
-export default function RegistrationTracker({
-  data: parties = [],
-  isPending = false,
-  error = null,
-  incidents = [],
-}: RegistrationTrackerProps) {
+export default function RegistrationTracker(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<"active" | "past" | "incidents">(
     "active"
   );
   const [editParty, setEditParty] = useState<PartyDto | null>(null);
   const [deleteParty, setDeleteParty] = useState<PartyDto | null>(null);
 
+  const { data: student } = useCurrentStudent();
+  const partiesQuery = useMyParties();
+
+  const isPartiesPending = partiesQuery.isPending;
+  const isPartiesError = partiesQuery.error;
+
+  const courseCompleted = student
+    ? isFromThisSchoolYear(student.last_registered)
+    : false;
+
   const { activeParties, pastParties } = useMemo(() => {
+    const parties = partiesQuery.data ?? [];
     const now = new Date();
     const active: PartyDto[] = [];
     const past: PartyDto[] = [];
@@ -77,21 +75,23 @@ export default function RegistrationTracker({
     );
 
     return { activeParties: active, pastParties: past };
-  }, [parties]);
+  }, [partiesQuery.data]);
 
   const sortedIncidents = useMemo(() => {
+    const incidents: IncidentDto[] =
+      student?.residence?.location.incidents ?? [];
     return [...incidents].sort(
       (a, b) =>
         new Date(b.incident_datetime).getTime() -
         new Date(a.incident_datetime).getTime()
     );
-  }, [incidents]);
+  }, [student?.residence?.location.incidents]);
 
   const groupedIncidents = useMemo(() => {
     const groups: Record<string, IncidentDto[]> = {};
 
     sortedIncidents.forEach((incident) => {
-      const dateKey = format(incident.incident_datetime, "PPP");
+      const dateKey = format(incident.incident_datetime, "MM/dd/yyyy");
       if (!groups[dateKey]) {
         groups[dateKey] = [];
       }
@@ -104,37 +104,40 @@ export default function RegistrationTracker({
   const PartyCard = ({
     party,
     showActions,
+    showAddress,
   }: {
     party: PartyDto;
     showActions?: boolean;
+    showAddress?: boolean;
   }) => (
-    <Card className="px-4 py-4 border-b border-gray-100 last:border-b-0">
-      <div className="space-y-2">
+    <div className="px-4 py-4 border-b border-gray-200 rounded-none">
+      <div>
         <div className="flex items-start justify-between">
           <div>
-            <div className="font-semibold">
-              {party.location.formatted_address}
+            <div className="flex content-bold gap-6">
+              <p>{format(party.party_datetime, "MM/dd/yyyy")}</p>
+              <p>Start: {formatTime(party.party_datetime)}</p>
             </div>
-            <div className="text-sm text-gray-600">
-              {format(party.party_datetime, "PPP")} at{" "}
-              {format(party.party_datetime, "p")}
-            </div>
+            {showAddress && (
+              <h2 className="content-bold my-2">
+                {party.location.formatted_address}
+              </h2>
+            )}
           </div>
 
           {showActions && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 shrink-0"
-                >
-                  <MoreVertical className="h-4 w-4" />
-                  <span className="sr-only">Party actions</span>
+                <Button className="shrink-0 bg-transparent hover:bg-transparent">
+                  <MoreVertical className="h-4 w-4 content cursor-pointer" />
+                  <p className="sr-only">Party actions</p>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setEditParty(party)}>
+                <DropdownMenuItem
+                  onClick={() => setEditParty(party)}
+                  className="content"
+                >
                   <Pencil className="h-4 w-4" />
                   Edit
                 </DropdownMenuItem>
@@ -151,49 +154,42 @@ export default function RegistrationTracker({
         </div>
 
         {/* Contacts Side by Side */}
-        <div className="mt-3 gap-4 md:grid md:grid-cols-2">
+        <div className="sm:grid sm:grid-cols-2">
           {/* Contact One */}
-          <div>
-            <div className="text-sm font-medium text-gray-700">Contact 1:</div>
-            <div className="text-sm ml-3">
-              <div>
-                {party.contact_one.first_name} {party.contact_one.last_name}
-              </div>
-              <div>{formatPhoneNumber(party.contact_one.phone_number)}</div>
-              <div className="text-gray-600">
-                Prefers:{" "}
-                {party.contact_one.contact_preference
-                  ? party.contact_one.contact_preference
-                      .charAt(0)
-                      .toUpperCase() +
-                    party.contact_one.contact_preference.slice(1).toLowerCase()
-                  : "N/A"}
-              </div>
-            </div>
+
+          <div className="content ml-3">
+            <p>
+              {party.contact_one.first_name} {party.contact_one.last_name}
+            </p>
+            <p>{formatPhoneNumber(party.contact_one.phone_number)}</p>
+            <p>
+              Preference:
+              <span className="capitalize">
+                {" "}
+                {party.contact_one.contact_preference}
+              </span>
+            </p>
+            <p>{party.contact_one.email}</p>
           </div>
 
           {/* Contact Two */}
-          <div className="mt-2 md:mt-0">
-            <div className="text-sm font-medium text-gray-700">Contact 2:</div>
-            <div className="text-sm ml-3">
-              <div>
-                {party.contact_two.first_name} {party.contact_two.last_name}
-              </div>
-              <div>{formatPhoneNumber(party.contact_two.phone_number)}</div>
-              <div className="text-gray-600">
-                Prefers:{" "}
-                {party.contact_two.contact_preference
-                  ? party.contact_two.contact_preference
-                      .charAt(0)
-                      .toUpperCase() +
-                    party.contact_two.contact_preference.slice(1).toLowerCase()
-                  : "N/A"}
-              </div>
-            </div>
+          <div className="ml-3 mt-6 sm:ml-0 sm:mt-0 content">
+            <p>
+              {party.contact_two.first_name} {party.contact_two.last_name}
+            </p>
+            <p>{formatPhoneNumber(party.contact_two.phone_number)}</p>
+            <p>
+              Preference:
+              <span className="capitalize">
+                {" "}
+                {party.contact_two.contact_preference}
+              </span>
+            </p>
+            <p>{party.contact_two.email}</p>
           </div>
         </div>
       </div>
-    </Card>
+    </div>
   );
 
   const IncidentCard = ({
@@ -203,105 +199,143 @@ export default function RegistrationTracker({
     date: string;
     incidents: IncidentDto[];
   }) => (
-    <div className="px-4 py-4 border-b border-gray-100 last:border-b-0">
+    <div className="px-4 py-4 border-b border-gray-200 rounded-none">
       <div className="space-y-2">
-        <div className="text-sm text-gray-600 font-bold">{date}</div>
+        <h2 className="content-bold">{date}</h2>
         {incidents.map((incident) => (
-          <div key={incident.id} className="mt-3 gap-4 md:grid md:grid-cols-2">
-            <div>
-              <div className="text-sm text-gray-700">
-                {format(incident.incident_datetime, "p")} -{" "}
-                <span className="capitalize">{incident.severity}</span>
-              </div>
-              <div className="text-sm text-gray-700 ml-3">
-                {incident.description}
-              </div>
-            </div>
+          <div key={incident.id} className="mt-3">
+            <p className="content">
+              {formatTime(incident.incident_datetime)} -{" "}
+              <span className="capitalize">{incident.severity}</span>
+            </p>
+            <p className="content ml-3 mt-1">{incident.description}</p>
           </div>
         ))}
       </div>
     </div>
   );
 
-  if (error) {
+  if (isPartiesError) {
     return (
-      <div className="w-full bg-white border border-gray-200 rounded-md p-4">
+      <Card className="w-full bg-card p-4">
         <div className="text-center text-red-600 py-8">
           <p className="font-semibold mb-2">Error loading registrations</p>
-          <p className="text-sm">{error.message}</p>
+          <p className="text-sm">{isPartiesError.message}</p>
         </div>
-      </div>
+      </Card>
     );
   }
 
-  if (isPending) {
+  if (isPartiesPending) {
     return (
-      <div className="w-full bg-white border border-gray-200 rounded-md p-4">
-        <div className="text-center text-gray-600 py-8">
-          <p>Loading registrations...</p>
+      <Card className="w-full bg-card p-4">
+        <div className="text-center py-8">
+          <p className="content-sub">Loading registrations...</p>
         </div>
-      </div>
+      </Card>
     );
   }
 
   return (
-    <div className="w-full">
+    <div>
       <Tabs
         value={activeTab}
         onValueChange={(value) =>
           setActiveTab(value as "active" | "past" | "incidents")
         }
       >
-        <TabsList className="w-fit my-2">
-          <TabsTrigger value="active" className="cursor-pointer">
-            Active
-          </TabsTrigger>
-          <TabsTrigger value="past" className="cursor-pointer">
-            Past Events
-          </TabsTrigger>
-          <TabsTrigger value="incidents" className="cursor-pointer">
-            Incidents
-          </TabsTrigger>
-        </TabsList>
+        <div className="flex justify-between items-center mt-2">
+          <TabsList className="w-fit flex gap-4">
+            <TabsTrigger
+              value="active"
+              className="px-0 subhead-content cursor-pointer"
+            >
+              Active
+            </TabsTrigger>
+            <TabsTrigger
+              value="past"
+              className="px-0 subhead-content cursor-pointer"
+            >
+              Past
+            </TabsTrigger>
+            <TabsTrigger
+              value="incidents"
+              className="px-0 subhead-content cursor-pointer"
+            >
+              Incidents
+            </TabsTrigger>
+          </TabsList>
+          <div>
+            {courseCompleted ? (
+              <Link href="/student/new-party">
+                <Button className="px-4 py-2">
+                  <Plus className="h-4 w-4 inline-block" />
+                  New Party
+                </Button>
+              </Link>
+            ) : (
+              <Button
+                className="px-4 py-2"
+                disabled
+                title="Complete the Party Smart Course to register a party"
+              >
+                New Party
+              </Button>
+            )}
+          </div>
+        </div>
 
-        <TabsContent value="active">
-          <div className="w-full bg-white border border-gray-200 rounded-md max-h-[600px] overflow-y-auto">
-            {activeParties.length === 0 ? (
-              <div className="text-center text-gray-400 py-8">
-                No active registrations
+        <Card className="w-full">
+          <TabsContent value="active">
+            <div className="w-full bg-card rounded-md overflow-hidden">
+              <div className="h-[calc(100vh-28rem)] overflow-y-auto">
+                {activeParties.length === 0 ? (
+                  <p className="text-center content-sub py-8">
+                    No active registrations
+                  </p>
+                ) : (
+                  activeParties.map((party) => (
+                    <PartyCard key={party.id} party={party} showActions />
+                  ))
+                )}
               </div>
-            ) : (
-              activeParties.map((party) => (
-                <PartyCard key={party.id} party={party} showActions />
-              ))
-            )}
-          </div>
-        </TabsContent>
+            </div>
+          </TabsContent>
 
-        <TabsContent value="past" className="mt-4">
-          <div className="w-full bg-white border border-gray-200 rounded-md max-h-[600px] overflow-y-auto">
-            {pastParties.length === 0 ? (
-              <div className="text-center text-gray-400 py-8">
-                No past registrations
+          <TabsContent value="past">
+            <div className="w-full bg-card rounded-md overflow-hidden">
+              <div className="h-[calc(100vh-28rem)] overflow-y-auto">
+                {pastParties.length === 0 ? (
+                  <p className="text-center content-sub py-8">
+                    No past registrations
+                  </p>
+                ) : (
+                  pastParties.map((party) => (
+                    <PartyCard key={party.id} party={party} showAddress />
+                  ))
+                )}
               </div>
-            ) : (
-              pastParties.map((party) => (
-                <PartyCard key={party.id} party={party} />
-              ))
-            )}
-          </div>
-        </TabsContent>
-        <TabsContent value="incidents" className="mt-4">
-          <div className="w-full bg-white border border-gray-200 rounded-md max-h-[600px] overflow-y-auto">
-            {sortedIncidents.length === 0 ? (
-              <div className="text-center text-gray-400 py-8">No incidents</div>
-            ) : (
-              groupedIncidents.map(([date, dayIncidents]) => (
-                <IncidentCard key={date} date={date} incidents={dayIncidents} />
-              ))
-            )}
-          </div>
-        </TabsContent>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="incidents">
+            <div className="w-full bg-card rounded-md overflow-hidden">
+              <div className="h-[calc(100vh-28rem)] overflow-y-auto">
+                {sortedIncidents.length === 0 ? (
+                  <p className="text-center content-sub py-8">No incidents</p>
+                ) : (
+                  groupedIncidents.map(([date, dayIncidents]) => (
+                    <IncidentCard
+                      key={date}
+                      date={date}
+                      incidents={dayIncidents}
+                    />
+                  ))
+                )}
+              </div>
+            </div>
+          </TabsContent>
+        </Card>
       </Tabs>
 
       {editParty && (

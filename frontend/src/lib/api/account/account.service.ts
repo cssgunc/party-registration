@@ -1,7 +1,15 @@
+import {
+  ServerTableParams,
+  toAxiosParams,
+} from "@/lib/api/shared/query-params";
 import apiClient from "@/lib/network/apiClient";
 import { PaginatedResponse } from "@/lib/shared";
 import { AxiosInstance } from "axios";
-import { AccountData, AccountDto, AccountRole } from "./account.types";
+import type {
+  PoliceAccountDto,
+  PoliceAccountUpdate,
+} from "../police/police.types";
+import { AccountData, AccountDto } from "./account.types";
 
 /**
  * Service class for account-related operations
@@ -12,16 +20,15 @@ export class AccountService {
   /**
    * List accounts (GET /api/accounts)
    */
-  async listAccounts(roles?: AccountRole[]): Promise<AccountDto[]> {
+  async listAccounts(
+    params?: ServerTableParams
+  ): Promise<PaginatedResponse<AccountDto>> {
     try {
-      const params = roles ? { role_in: roles } : {};
       const response = await this.client.get<PaginatedResponse<AccountDto>>(
         "/accounts",
-        {
-          params,
-        }
+        { params: params ? toAxiosParams(params) : undefined }
       );
-      return response.data.items;
+      return response.data;
     } catch (error) {
       console.error("Failed to fetch accounts:", error);
       throw new Error("Failed to fetch accounts");
@@ -72,6 +79,56 @@ export class AccountService {
     } catch (error) {
       console.error(`Failed to delete account ${accountId}:`, error);
       throw new Error("Failed to delete account");
+    }
+  }
+
+  /**
+   * List police accounts (GET /api/accounts/police)
+   */
+  async listPoliceAccounts(): Promise<PoliceAccountDto[]> {
+    try {
+      const response =
+        await this.client.get<PaginatedResponse<PoliceAccountDto>>(
+          "/accounts/police"
+        );
+      return response.data.items;
+    } catch (error) {
+      console.error("Failed to fetch police accounts:", error);
+      throw new Error("Failed to fetch police accounts");
+    }
+  }
+
+  /**
+   * Update police account (PUT /api/accounts/police/{police_id})
+   */
+  async updatePoliceAccount(
+    policeId: number,
+    data: PoliceAccountUpdate
+  ): Promise<PoliceAccountDto> {
+    try {
+      const response = await this.client.put<PoliceAccountDto>(
+        `/accounts/police/${policeId}`,
+        data
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Failed to update police account ${policeId}:`, error);
+      throw new Error("Failed to update police account");
+    }
+  }
+
+  /**
+   * Delete police account (DELETE /api/accounts/police/{police_id})
+   */
+  async deletePoliceAccount(policeId: number): Promise<PoliceAccountDto> {
+    try {
+      const response = await this.client.delete<PoliceAccountDto>(
+        `/accounts/police/${policeId}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Failed to delete police account ${policeId}:`, error);
+      throw new Error("Failed to delete police account");
     }
   }
 }

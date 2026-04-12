@@ -1,33 +1,37 @@
 from enum import Enum
 
 from pydantic import AwareDatetime, BaseModel, Field
-from src.core.query_utils import PaginatedResponse
+from src.core.utils.query_utils import PaginatedResponse
 
 
 class IncidentSeverity(Enum):
-    COMPLAINT = "complaint"
-    WARNING = "warning"
+    REMOTE_WARNING = "remote_warning"
+    IN_PERSON_WARNING = "in_person_warning"
     CITATION = "citation"
 
 
-class IncidentUpdateDto(BaseModel):
-    """Request body for updating an incident."""
+class IncidentFields(BaseModel):
+    """Incident fields shared across create/update/internal data models."""
 
     incident_datetime: AwareDatetime
     description: str = ""
     severity: IncidentSeverity
+    reference_id: str | None = None
 
 
-class IncidentCreateDto(BaseModel):
+class IncidentUpdateDto(IncidentFields):
+    """Request body for updating an incident."""
+
+    location_place_id: str = Field(min_length=1)
+
+
+class IncidentCreateDto(IncidentFields):
     """Request body for creating an incident (includes location_place_id)."""
 
     location_place_id: str = Field(min_length=1)
-    incident_datetime: AwareDatetime
-    description: str = ""
-    severity: IncidentSeverity
 
 
-class IncidentData(IncidentUpdateDto):
+class IncidentData(IncidentFields):
     """Full incident data including location_id (for internal use)."""
 
     location_id: int
