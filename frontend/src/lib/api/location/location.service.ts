@@ -1,7 +1,5 @@
-import {
-  ServerTableParams,
-  toAxiosParams,
-} from "@/lib/api/shared/query-params";
+import { downloadExcelFile } from "@/lib/api/shared/download-file";
+import { ListQueryParams, toAxiosParams } from "@/lib/api/shared/query-params";
 import apiClient from "@/lib/network/apiClient";
 import { PaginatedResponse } from "@/lib/shared";
 import { AxiosInstance } from "axios";
@@ -64,7 +62,7 @@ export class LocationService {
    * Get locations (GET /api/locations)
    */
   async getLocations(
-    params?: ServerTableParams
+    params?: ListQueryParams
   ): Promise<PaginatedResponse<LocationDto>> {
     try {
       const response = await this.client.get<
@@ -77,6 +75,22 @@ export class LocationService {
     } catch (error) {
       console.error("Failed to fetch locations:", error);
       throw new Error("Failed to fetch locations");
+    }
+  }
+
+  /**
+   * Download locations as Excel (GET /api/locations/csv)
+   */
+  async downloadLocationsCsv(params?: ListQueryParams): Promise<void> {
+    try {
+      const response = await this.client.get("/locations/csv", {
+        params: params ? toAxiosParams(params) : undefined,
+        responseType: "blob",
+      });
+      downloadExcelFile(response, "locations.xlsx");
+    } catch (error) {
+      console.error("Failed to download locations Excel:", error);
+      throw new Error("Failed to download locations export");
     }
   }
 

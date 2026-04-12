@@ -6,6 +6,7 @@ import {
   useCreateAccount,
   useDeleteAccount,
   useDeletePoliceAccount,
+  useDownloadAccountsCsv,
   usePoliceAccounts,
   useUpdateAccount,
   useUpdatePoliceAccount,
@@ -70,6 +71,8 @@ export const AccountTable = () => {
 
   const accountsQuery = useAccounts(serverParams);
   const policeAccountsQuery = usePoliceAccounts();
+  const { mutate: exportCsv, isPending: isExporting } =
+    useDownloadAccountsCsv();
 
   const tableRows: AccountTableRow[] = useMemo(() => {
     const regularAccounts: AccountTableRow[] = (accountsQuery.data?.items ?? [])
@@ -382,6 +385,8 @@ export const AccountTable = () => {
         }
         onStateChange={setServerParams}
         columnMap={SERVER_COLUMN_MAP}
+        onExportCsv={exportCsv}
+        isExporting={isExporting}
       />
     </div>
   );

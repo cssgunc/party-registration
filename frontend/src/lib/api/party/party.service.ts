@@ -1,7 +1,5 @@
-import {
-  ServerTableParams,
-  toAxiosParams,
-} from "@/lib/api/shared/query-params";
+import { downloadExcelFile } from "@/lib/api/shared/download-file";
+import { ListQueryParams, toAxiosParams } from "@/lib/api/shared/query-params";
 import apiClient from "@/lib/network/apiClient";
 import { PaginatedResponse } from "@/lib/shared";
 import { AxiosInstance } from "axios";
@@ -39,7 +37,7 @@ export class PartyService {
    * List parties (GET /api/parties)
    */
   async listParties(
-    params?: ServerTableParams
+    params?: ListQueryParams
   ): Promise<PaginatedResponse<PartyDto>> {
     try {
       const response = await this.client.get<
@@ -84,27 +82,13 @@ export class PartyService {
   /**
    * Download parties as Excel (GET /api/parties/csv)
    */
-  async downloadPartiesCsv(startDate: Date, endDate: Date): Promise<void> {
+  async downloadPartiesCsv(params?: ListQueryParams): Promise<void> {
     try {
       const response = await this.client.get("/parties/csv", {
-        params: {
-          start_date: startDate.toISOString().split("T")[0],
-          end_date: endDate.toISOString().split("T")[0],
-        },
+        params: params ? toAxiosParams(params) : undefined,
         responseType: "blob",
       });
-
-      const blob = new Blob([response.data], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `parties_${startDate.toISOString().split("T")[0]}_to_${endDate.toISOString().split("T")[0]}.xlsx`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      downloadExcelFile(response, "parties.xlsx");
     } catch (error) {
       console.error("Failed to download parties Excel:", error);
       throw new Error("Failed to download parties export");

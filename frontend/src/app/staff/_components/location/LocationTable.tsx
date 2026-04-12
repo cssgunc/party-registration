@@ -4,6 +4,7 @@ import { useSnackbar } from "@/contexts/SnackbarContext";
 import {
   useCreateLocation,
   useDeleteLocation,
+  useDownloadLocationsCsv,
   useLocations,
   useUpdateLocation,
 } from "@/lib/api/location/location.queries";
@@ -56,6 +57,9 @@ export const LocationTable = () => {
 
   const locationsQuery = useLocations(serverParams);
   const locations = locationsQuery.data?.items ?? [];
+
+  const { mutate: exportCsv, isPending: isExporting } =
+    useDownloadLocationsCsv();
 
   const createMutation = useCreateLocation({
     onError: (error: Error) => {
@@ -278,6 +282,8 @@ export const LocationTable = () => {
         }
         onStateChange={setServerParams}
         columnMap={SERVER_COLUMN_MAP}
+        onExportCsv={exportCsv}
+        isExporting={isExporting}
       />
     </div>
   );

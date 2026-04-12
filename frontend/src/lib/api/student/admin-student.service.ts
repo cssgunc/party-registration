@@ -1,7 +1,5 @@
-import {
-  ServerTableParams,
-  toAxiosParams,
-} from "@/lib/api/shared/query-params";
+import { downloadExcelFile } from "@/lib/api/shared/download-file";
+import { ListQueryParams, toAxiosParams } from "@/lib/api/shared/query-params";
 import apiClient from "@/lib/network/apiClient";
 import { PaginatedResponse } from "@/lib/shared";
 import { AxiosInstance } from "axios";
@@ -25,7 +23,7 @@ export class AdminStudentService {
    * Fetches a paginated list of students (GET /api/students)
    */
   async listStudents(
-    params?: ServerTableParams
+    params?: ListQueryParams
   ): Promise<PaginatedResponse<StudentDto>> {
     try {
       const response = await this.client.get<
@@ -46,6 +44,22 @@ export class AdminStudentService {
         console.error("Error status:", axiosError.response?.status);
       }
       throw error;
+    }
+  }
+
+  /**
+   * Downloads students as Excel (GET /api/students/csv)
+   */
+  async downloadStudentsCsv(params?: ListQueryParams): Promise<void> {
+    try {
+      const response = await this.client.get("/students/csv", {
+        params: params ? toAxiosParams(params) : undefined,
+        responseType: "blob",
+      });
+      downloadExcelFile(response, "students.xlsx");
+    } catch (error) {
+      console.error("Failed to download students Excel:", error);
+      throw new Error("Failed to download students export");
     }
   }
 

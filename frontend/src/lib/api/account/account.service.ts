@@ -1,7 +1,5 @@
-import {
-  ServerTableParams,
-  toAxiosParams,
-} from "@/lib/api/shared/query-params";
+import { downloadExcelFile } from "@/lib/api/shared/download-file";
+import { ListQueryParams, toAxiosParams } from "@/lib/api/shared/query-params";
 import apiClient from "@/lib/network/apiClient";
 import { PaginatedResponse } from "@/lib/shared";
 import { AxiosInstance } from "axios";
@@ -21,7 +19,7 @@ export class AccountService {
    * List accounts (GET /api/accounts)
    */
   async listAccounts(
-    params?: ServerTableParams
+    params?: ListQueryParams
   ): Promise<PaginatedResponse<AccountDto>> {
     try {
       const response = await this.client.get<PaginatedResponse<AccountDto>>(
@@ -32,6 +30,22 @@ export class AccountService {
     } catch (error) {
       console.error("Failed to fetch accounts:", error);
       throw new Error("Failed to fetch accounts");
+    }
+  }
+
+  /**
+   * Download accounts as Excel (GET /api/accounts/csv)
+   */
+  async downloadAccountsCsv(params?: ListQueryParams): Promise<void> {
+    try {
+      const response = await this.client.get("/accounts/csv", {
+        params: params ? toAxiosParams(params) : undefined,
+        responseType: "blob",
+      });
+      downloadExcelFile(response, "accounts.xlsx");
+    } catch (error) {
+      console.error("Failed to download accounts Excel:", error);
+      throw new Error("Failed to download accounts export");
     }
   }
 

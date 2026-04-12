@@ -1,3 +1,6 @@
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
 from fastapi import APIRouter, Depends, Request, Response, status
 from src.core.authentication import authenticate_police_or_admin, authenticate_police_staff_or_admin
 from src.core.utils.query_utils import PAGINATED_OPENAPI_PARAMS
@@ -39,10 +42,11 @@ async def get_incidents_csv(
 ) -> Response:
     incident_data = await incident_service.get_incidents_for_export(request)
     excel_content = incident_service.export_incidents_to_excel(incident_data)
+    filename = f"incidents_{datetime.now(ZoneInfo('America/New_York')).strftime('%Y_%m_%d')}.xlsx"
     return Response(
         content=excel_content,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": "attachment; filename=incidents.xlsx"},
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
 
 

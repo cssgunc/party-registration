@@ -8,6 +8,7 @@ import { useSnackbar } from "@/contexts/SnackbarContext";
 import {
   useCreateIncident,
   useDeleteIncident,
+  useDownloadIncidentsCsv,
   useIncidents,
 } from "@/lib/api/incident/incident.queries";
 import {
@@ -112,6 +113,8 @@ export const IncidentTable = () => {
 
   const incidentsQuery = useIncidents(serverParams);
   const locationsQuery = useLocations();
+  const { mutate: exportCsv, isPending: isExporting } =
+    useDownloadIncidentsCsv();
 
   const incidents = useMemo(
     () => incidentsQuery.data?.items ?? [],
@@ -393,6 +396,8 @@ export const IncidentTable = () => {
         }
         onStateChange={setServerParams}
         columnMap={SERVER_COLUMN_MAP}
+        onExportCsv={exportCsv}
+        isExporting={isExporting}
       />
     </div>
   );

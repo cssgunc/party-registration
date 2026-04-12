@@ -1,7 +1,5 @@
-import {
-  ServerTableParams,
-  toAxiosParams,
-} from "@/lib/api/shared/query-params";
+import { downloadExcelFile } from "@/lib/api/shared/download-file";
+import { ListQueryParams, toAxiosParams } from "@/lib/api/shared/query-params";
 import apiClient from "@/lib/network/apiClient";
 import { PaginatedResponse } from "@/lib/shared";
 import { AxiosInstance } from "axios";
@@ -34,12 +32,14 @@ export class IncidentService {
    * (GET /api/incidents)
    */
   async listIncidents(
-    params?: ServerTableParams
+    params?: ListQueryParams
   ): Promise<PaginatedResponse<IncidentDto>> {
     try {
       const response = await this.client.get<
         PaginatedResponse<IncidentDtoBackend>
-      >("/incidents", { params: params ? toAxiosParams(params) : undefined });
+      >("/incidents", {
+        params: params ? toAxiosParams(params) : undefined,
+      });
       return {
         ...response.data,
         items: response.data.items.map(convertIncident),
@@ -47,6 +47,22 @@ export class IncidentService {
     } catch (error) {
       console.error("Failed to list incidents:", error);
       throw new Error("Failed to list incidents");
+    }
+  }
+
+  /**
+   * Download incidents as Excel (GET /api/incidents/csv)
+   */
+  async downloadIncidentsCsv(params?: ListQueryParams): Promise<void> {
+    try {
+      const response = await this.client.get("/incidents/csv", {
+        params: params ? toAxiosParams(params) : undefined,
+        responseType: "blob",
+      });
+      downloadExcelFile(response, "incidents.xlsx");
+    } catch (error) {
+      console.error("Failed to download incidents Excel:", error);
+      throw new Error("Failed to download incidents export");
     }
   }
 

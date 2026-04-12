@@ -6,6 +6,7 @@ import {
   PartyDto,
   StudentCreatePartyDto,
 } from "@/lib/api/party/party.types";
+import { ListQueryParams } from "@/lib/api/shared/query-params";
 import StudentService from "@/lib/api/student/student.service";
 import { CURRENT_STUDENT_KEY } from "@/lib/api/student/student.types";
 import { OptimisticMutationOptions } from "@/lib/shared";
@@ -92,5 +93,11 @@ export function useDeleteParty() {
       // Invalidate parties list to refetch after deletion
       queryClient.invalidateQueries({ queryKey: MY_PARTIES_KEY });
     },
+  });
+}
+
+export function useDownloadPartiesCsv() {
+  return useMutation<void, Error, ListQueryParams | undefined>({
+    mutationFn: (params) => partyService.downloadPartiesCsv(params),
   });
 }

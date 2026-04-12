@@ -1,5 +1,8 @@
 import { AccountService } from "@/lib/api/account/account.service";
-import { ServerTableParams } from "@/lib/api/shared/query-params";
+import {
+  ListQueryParams,
+  ServerTableParams,
+} from "@/lib/api/shared/query-params";
 import { OptimisticMutationOptions, PaginatedResponse } from "@/lib/shared";
 import {
   UseQueryOptions,
@@ -71,6 +74,12 @@ export function useCreateStudent(
       queryClient.invalidateQueries({ queryKey: STUDENTS_KEY });
       options?.onSuccess?.(...params);
     },
+  });
+}
+
+export function useDownloadStudentsCsv() {
+  return useMutation<void, Error, ListQueryParams | undefined>({
+    mutationFn: (params) => studentService.downloadStudentsCsv(params),
   });
 }
 
