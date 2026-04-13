@@ -16,6 +16,7 @@ import {
 import { StudentDto, StudentUpdateDto } from "@/lib/api/student/student.types";
 import { isFromThisSchoolYear } from "@/lib/utils";
 import { ColumnDef } from "@tanstack/react-table";
+import { isAxiosError } from "axios";
 import { useState } from "react";
 import LocationInfoChipDetails from "../party/details/LocationInfoChipDetails";
 import { GenericInfoChip } from "../shared/sidebar/GenericInfoChip";
@@ -43,15 +44,16 @@ const toEditData = (student: StudentDto) => ({
 });
 
 const getErrorMessage = (error: Error): string => {
-  try {
-    const err = error as unknown as Record<string, unknown>;
-    const detail = (err.response as Record<string, unknown>)?.data as Record<
-      string,
-      unknown
-    >;
+  if (isAxiosError(error)) {
+    const detail = error.response?.data as {
+      message?: string;
+      detail?: string;
+    };
     if (detail?.message) return String(detail.message);
-  } catch {}
-  return "Failed to update student";
+    if (detail?.detail) return String(detail.detail);
+    if (error.message) return error.message;
+  }
+  return "Operation failed";
 };
 
 const SERVER_COLUMN_MAP: ServerColumnMap = {

@@ -22,6 +22,7 @@ import {
   ServerTableParams,
 } from "@/lib/api/shared/query-params";
 import { ColumnDef } from "@tanstack/react-table";
+import { isAxiosError } from "axios";
 import { useMemo, useState } from "react";
 import * as z from "zod";
 import { useSidebar } from "../shared/sidebar/SidebarContext";
@@ -58,15 +59,15 @@ const SERVER_COLUMN_MAP: ServerColumnMap = {
 };
 
 const getErrorMessage = (error: Error): string => {
-  try {
-    const err = error as unknown as Record<string, unknown>;
-    const detail = (err.response as Record<string, unknown>)?.data as Record<
-      string,
-      unknown
-    >;
+  if (isAxiosError(error)) {
+    const detail = error.response?.data as {
+      message?: string;
+      detail?: string;
+    };
     if (detail?.message) return String(detail.message);
     if (detail?.detail) return String(detail.detail);
-  } catch {}
+    if (error.message) return error.message;
+  }
   return "Operation failed";
 };
 
