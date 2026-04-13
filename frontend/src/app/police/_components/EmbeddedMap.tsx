@@ -1,7 +1,7 @@
 "use client";
 
+import { PhoneLink } from "@/components/PhoneLink";
 import { PartyDto } from "@/lib/api/party/party.types";
-import { formatPhoneNumber } from "@/lib/utils";
 import {
   APIProvider,
   AdvancedMarker,
@@ -171,11 +171,9 @@ const PoiMarkers = ({ pois, activePoiKey, onSelect }: PoiMarkersProps) => {
                 {selectedPoi.party.contact_one.last_name}
               </p>
               <div className="flex justify-between items-center text-xs">
-                <span>
-                  {formatPhoneNumber(
-                    selectedPoi.party.contact_one.phone_number
-                  )}
-                </span>
+                <PhoneLink
+                  phoneNumber={selectedPoi.party.contact_one.phone_number}
+                />
                 <span className="text-gray-600">
                   {selectedPoi.party.contact_one.contact_preference
                     .charAt(0)

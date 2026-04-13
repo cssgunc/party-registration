@@ -1,6 +1,7 @@
 "use client";
 
 import IncidentDialog from "@/components/IncidentDialog";
+import { PhoneLink } from "@/components/PhoneLink";
 import navyFlag from "@/components/icons/navyFlag.svg";
 import redFlag from "@/components/icons/redFlag.svg";
 import yellowFlag from "@/components/icons/yellowFlag.svg";
@@ -36,7 +37,7 @@ import {
 } from "@/lib/api/location/location.types";
 import { PartyDto } from "@/lib/api/party/party.types";
 import { usePoliceCreateIncident } from "@/lib/api/party/police-party.queries";
-import { cn, formatPhoneNumber, formatTime } from "@/lib/utils";
+import { cn, formatTime } from "@/lib/utils";
 import { format } from "date-fns";
 import { EllipsisVertical } from "lucide-react";
 import Image, { StaticImageData } from "next/image";
@@ -221,14 +222,17 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                     </div>
 
                     {/* Contacts + flags */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="mt-3 grid grid-cols-2 gap-4">
                       <section>
                         <p className="content text-secondary">
                           {party.contact_one.first_name}{" "}
                           {party.contact_one.last_name}
                         </p>
                         <p className="ml-4 text-sm text-secondary">
-                          {formatPhoneNumber(party.contact_one.phone_number)}
+                          <PhoneLink
+                            phoneNumber={party.contact_one.phone_number}
+                            onClick={(event) => event.stopPropagation()}
+                          />
                         </p>
                         <p className="ml-4 text-sm text-secondary">
                           Preference:{" "}
@@ -238,7 +242,6 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                             party.contact_one.contact_preference
                               .slice(1)
                               .toLowerCase()}
-                          s
                         </p>
                       </section>
 
@@ -248,7 +251,10 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                           {party.contact_two.last_name}
                         </p>
                         <p className="ml-4 text-sm text-secondary">
-                          {formatPhoneNumber(party.contact_two.phone_number)}
+                          <PhoneLink
+                            phoneNumber={party.contact_two.phone_number}
+                            onClick={(event) => event.stopPropagation()}
+                          />
                         </p>
                         <p className="ml-4 text-sm text-secondary">
                           Preference:{" "}
@@ -258,7 +264,6 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                             party.contact_two.contact_preference
                               .slice(1)
                               .toLowerCase()}
-                          s
                         </p>
                       </section>
 
