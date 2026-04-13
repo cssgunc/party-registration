@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, Request, Response, status
 from src.core.authentication import authenticate_police_admin_or_admin
+from src.core.exceptions import ForbiddenException
 from src.core.utils.query_utils import PAGINATED_OPENAPI_PARAMS
+from src.modules.account.account_model import AccountDto
 from src.modules.police.police_model import (
     PaginatedPoliceResponse,
     PoliceAccountCreate,
@@ -68,6 +70,8 @@ async def update_police(
 async def delete_police(
     police_id: int,
     police_service: PoliceService = Depends(),
-    _=Depends(authenticate_police_admin_or_admin),
+    principal: AccountDto | PoliceAccountDto = Depends(authenticate_police_admin_or_admin),
 ) -> PoliceAccountDto:
+    if isinstance(principal, PoliceAccountDto) and principal.id == police_id:
+        raise ForbiddenException("Police admins cannot delete their own account")
     return await police_service.delete_police(police_id)

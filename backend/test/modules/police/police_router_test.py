@@ -1,5 +1,6 @@
 import pytest
 from httpx import AsyncClient
+from src.core.exceptions import ForbiddenException
 from src.modules.police.police_model import PoliceAccountDto
 from src.modules.police.police_service import PoliceConflictException, PoliceNotFoundException
 from test.modules.police.police_utils import PoliceTestUtils
@@ -119,11 +120,18 @@ class TestPoliceListRouter:
 
 class TestPoliceCRUDRouter:
     admin_client: AsyncClient
+    police_admin_client: AsyncClient
     police_utils: PoliceTestUtils
 
     @pytest.fixture(autouse=True)
-    def _setup(self, admin_client: AsyncClient, police_utils: PoliceTestUtils):
+    def _setup(
+        self,
+        admin_client: AsyncClient,
+        police_admin_client: AsyncClient,
+        police_utils: PoliceTestUtils,
+    ):
         self.admin_client = admin_client
+        self.police_admin_client = police_admin_client
         self.police_utils = police_utils
 
     @pytest.mark.asyncio
@@ -250,3 +258,10 @@ class TestPoliceCRUDRouter:
         response = await self.admin_client.delete("/api/police/99999")
 
         assert_res_failure(response, PoliceNotFoundException(99999))
+
+    @pytest.mark.asyncio
+    async def test_police_admin_cannot_delete_own_account(self) -> None:
+        response = await self.police_admin_client.delete("/api/police/99999")
+        assert_res_failure(
+            response, ForbiddenException("Police admins cannot delete their own account")
+        )
