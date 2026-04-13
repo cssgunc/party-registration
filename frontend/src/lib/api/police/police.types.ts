@@ -10,12 +10,25 @@ type PoliceAccountDto = {
 };
 
 /**
- * DTO for updating Police credentials
+ * DTO for creating police accounts
  */
-type PoliceAccountUpdate = {
+type PoliceAccountCreate = {
   email: string;
   password: string;
   role: PoliceRole;
 };
 
-export type { PoliceAccountDto, PoliceAccountUpdate, PoliceRole };
+/**
+ * DTO for updating police account details
+ */
+type PoliceAccountUpdate = {
+  email: string;
+  role: PoliceRole;
+};
+
+export type {
+  PoliceAccountCreate,
+  PoliceAccountDto,
+  PoliceAccountUpdate,
+  PoliceRole,
+};

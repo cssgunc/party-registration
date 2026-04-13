@@ -3,6 +3,7 @@ from src.core.authentication import authenticate_police_admin_or_admin
 from src.core.utils.query_utils import PAGINATED_OPENAPI_PARAMS
 from src.modules.police.police_model import (
     PaginatedPoliceResponse,
+    PoliceAccountCreate,
     PoliceAccountDto,
     PoliceAccountUpdate,
 )
@@ -22,7 +23,7 @@ async def list_police(
 
 @police_router.post("", status_code=status.HTTP_201_CREATED)
 async def create_police(
-    data: PoliceAccountUpdate,
+    data: PoliceAccountCreate,
     police_service: PoliceService = Depends(),
     _=Depends(authenticate_police_admin_or_admin),
 ) -> PoliceAccountDto:
@@ -60,7 +61,7 @@ async def update_police(
     police_service: PoliceService = Depends(),
     _=Depends(authenticate_police_admin_or_admin),
 ) -> PoliceAccountDto:
-    return await police_service.update_police(police_id, data.email, data.password, data.role)
+    return await police_service.update_police(police_id, data.email, data.role)
 
 
 @police_router.delete("/{police_id}")

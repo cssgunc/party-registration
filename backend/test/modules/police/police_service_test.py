@@ -76,7 +76,6 @@ class TestPoliceService:
         result = await self.police_service.update_police(
             police_entity.id,
             "updated@unc.edu",
-            "newpassword",
             police_entity.role,
         )
 
@@ -91,7 +90,6 @@ class TestPoliceService:
         result = await self.police_service.update_police(
             police_entity.id,
             police_entity.email,
-            "newpassword",
             PoliceRole.POLICE_ADMIN,
         )
         assert result.role == PoliceRole.POLICE_ADMIN
@@ -104,7 +102,6 @@ class TestPoliceService:
             await self.police_service.update_police(
                 99999,
                 "updated@unc.edu",
-                "newpassword",
                 data.role,
             )
 
@@ -118,9 +115,23 @@ class TestPoliceService:
             await self.police_service.update_police(
                 police1.id,
                 police2.email,
-                "newpassword",
                 police1.role,
             )
+
+    @pytest.mark.asyncio
+    async def test_update_police_does_not_change_password(self) -> None:
+        police_entity = await self.police_utils.create_one()
+        original_hashed_password = police_entity.hashed_password
+
+        await self.police_service.update_police(
+            police_entity.id,
+            "updated-no-password@unc.edu",
+            police_entity.role,
+        )
+
+        all_police = await self.police_utils.get_all()
+        updated = next(p for p in all_police if p.id == police_entity.id)
+        assert updated.hashed_password == original_hashed_password
 
     @pytest.mark.asyncio
     async def test_delete_police_success(self) -> None:

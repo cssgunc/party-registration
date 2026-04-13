@@ -17,11 +17,18 @@ class PoliceAccountDto(BaseModel):
     role: PoliceRole
 
 
-class PoliceAccountUpdate(BaseModel):
-    """DTO for creating or updating Police credentials."""
+class PoliceAccountCreate(BaseModel):
+    """DTO for creating Police credentials."""
 
     email: EmailStr
     password: str
+    role: PoliceRole
+
+
+class PoliceAccountUpdate(BaseModel):
+    """DTO for updating police account details."""
+
+    email: EmailStr
     role: PoliceRole
 
 

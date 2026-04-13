@@ -22,7 +22,6 @@ import * as z from "zod";
 
 export const policeAccountFormSchema = z.object({
   email: z.email({ pattern: z.regexes.html5Email }).min(1, "Email is required"),
-  password: z.string().min(1, "Password is required"),
   role: z.enum(["officer", "police_admin"]),
 });
 
@@ -43,7 +42,6 @@ export default function PoliceAccountForm({
 }: PoliceAccountFormProps) {
   const [formData, setFormData] = useState<Partial<PoliceAccountFormValues>>({
     email: editData?.email ?? "",
-    password: "",
     role: editData?.role ?? "officer",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -112,19 +110,6 @@ export default function PoliceAccountForm({
               aria-invalid={!!errors.email}
             />
             {errors.email && <FieldError>{errors.email}</FieldError>}
-          </Field>
-
-          <Field data-invalid={!!errors.password}>
-            <FieldLabel htmlFor="police-password">Password</FieldLabel>
-            <Input
-              id="police-password"
-              type="password"
-              placeholder="Enter new password"
-              value={formData.password}
-              onChange={(e) => updateField("password", e.target.value)}
-              aria-invalid={!!errors.password}
-            />
-            {errors.password && <FieldError>{errors.password}</FieldError>}
           </Field>
 
           <Field data-invalid={!!errors.role}>

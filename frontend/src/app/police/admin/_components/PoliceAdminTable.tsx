@@ -113,7 +113,6 @@ export default function PoliceAdminTable() {
       id: policeId,
       data: {
         email: data.email,
-        password: data.password,
         role: data.role,
       },
     });

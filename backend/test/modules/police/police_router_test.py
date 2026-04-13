@@ -24,7 +24,7 @@ test_police_auth = generate_auth_required_tests(
         {"admin", "police_admin"},
         "PUT",
         "/api/police/1",
-        {"email": "x@unc.edu", "password": "pass", "role": "officer"},
+        {"email": "x@unc.edu", "role": "officer"},
     ),
     ({"admin", "police_admin"}, "DELETE", "/api/police/1", None),
     ({"admin", "police_admin"}, "GET", "/api/police/csv", None),
@@ -177,7 +177,7 @@ class TestPoliceCRUDRouter:
     async def test_update_police_success(self) -> None:
         """Test updating a police account."""
         police = await self.police_utils.create_one()
-        update_data = await self.police_utils.next_data()
+        update_data = await self.police_utils.next_update_data()
 
         response = await self.admin_client.put(
             f"/api/police/{police.id}",
@@ -192,7 +192,7 @@ class TestPoliceCRUDRouter:
     @pytest.mark.asyncio
     async def test_update_police_not_found(self) -> None:
         """Test updating a non-existent police account returns 404."""
-        data = await self.police_utils.next_data()
+        data = await self.police_utils.next_update_data()
 
         response = await self.admin_client.put(
             "/api/police/99999", json=data.model_dump(mode="json")
@@ -205,7 +205,7 @@ class TestPoliceCRUDRouter:
         """Test updating to a duplicate email returns 409."""
         police1 = await self.police_utils.create_one()
         police2 = await self.police_utils.create_one()
-        data = await self.police_utils.next_data(email=police2.email)
+        data = await self.police_utils.next_update_data(email=police2.email)
 
         response = await self.admin_client.put(
             f"/api/police/{police1.id}",
@@ -215,11 +215,11 @@ class TestPoliceCRUDRouter:
         assert_res_failure(response, PoliceConflictException(police2.email))
 
     @pytest.mark.asyncio
-    async def test_update_police_password_is_hashed(self) -> None:
-        """Test that password is hashed when updating police credentials."""
+    async def test_update_police_password_unchanged(self) -> None:
+        """Test updating police account does not modify password hash."""
         police = await self.police_utils.create_one()
-        plain_password = "my_plain_password_123"
-        data = await self.police_utils.next_data(password=plain_password)
+        original_hashed_password = police.hashed_password
+        data = await self.police_utils.next_update_data()
 
         await self.admin_client.put(
             f"/api/police/{police.id}",
@@ -229,8 +229,7 @@ class TestPoliceCRUDRouter:
         all_police = await self.police_utils.get_all()
         all_by_id = {p.id: p for p in all_police}
         updated = all_by_id[police.id]
-        assert updated.hashed_password != plain_password
-        assert self.police_utils.verify_password(plain_password, updated.hashed_password)
+        assert updated.hashed_password == original_hashed_password
 
     @pytest.mark.asyncio
     async def test_delete_police_success(self) -> None:

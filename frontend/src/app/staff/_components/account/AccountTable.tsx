@@ -310,7 +310,6 @@ export const AccountTable = () => {
       id: policeId,
       data: {
         email: data.email,
-        password: data.password,
         role: data.role as PoliceRole,
       },
     });

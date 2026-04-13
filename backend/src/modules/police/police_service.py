@@ -106,9 +106,7 @@ class PoliceService:
             )
         return exporter.to_bytes()
 
-    async def update_police(
-        self, police_id: int, email: str, password: str, role: PoliceRole
-    ) -> PoliceAccountDto:
+    async def update_police(self, police_id: int, email: str, role: PoliceRole) -> PoliceAccountDto:
         police = await self._get_police_entity_by_id(police_id)
 
         if email.lower() != police.email.lower():
@@ -117,7 +115,6 @@ class PoliceService:
                 raise PoliceConflictException(email)
 
         police.email = email
-        police.hashed_password = hash_password(password)
         police.role = role
 
         try:
