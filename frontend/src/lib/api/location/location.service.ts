@@ -32,17 +32,12 @@ export class LocationService {
       return [];
     }
 
-    try {
-      const input: AutocompleteInput = { address: inputText.trim() };
-      const response = await this.client.post<AutocompleteResult[]>(
-        "/locations/autocomplete",
-        input
-      );
-      return response.data;
-    } catch (error) {
-      console.error("Failed to fetch address autocomplete:", error);
-      throw new Error("Failed to fetch address suggestions");
-    }
+    const input: AutocompleteInput = { address: inputText.trim() };
+    const response = await this.client.post<AutocompleteResult[]>(
+      "/locations/autocomplete",
+      input
+    );
+    return response.data;
   }
 
   /**
