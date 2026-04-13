@@ -2,13 +2,15 @@
   "police": [
     {
       "id": 1,
-      "email": "police@example.com",
-      "password": "securepassword"
+      "email": "officer@example.com",
+      "password": "securepassword",
+      "role": "officer"
     },
     {
       "id": 2,
-      "email": "police2@example.com",
-      "password": "securepassword"
+      "email": "policeadmin@example.com",
+      "password": "securepassword",
+      "role": "police_admin"
     }
   ],
   "accounts": [

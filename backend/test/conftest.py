@@ -26,7 +26,7 @@ from src.modules.auth.auth_service import AuthService
 from src.modules.incident.incident_service import IncidentService
 from src.modules.location.location_service import LocationService
 from src.modules.party.party_service import PartyService
-from src.modules.police.police_model import PoliceAccountDto
+from src.modules.police.police_model import PoliceAccountDto, PoliceRole
 from src.modules.police.police_service import PoliceService
 from src.modules.student.student_service import StudentService
 
@@ -123,8 +123,12 @@ async def create_test_client(
         # Generate JWT token based on role
         # Use fake DTOs — middleware reads from JWT only, no DB lookup needed.
         # Tests needing a real DB account use the student_client / student_account fixtures.
-        if role == "police":
-            police = PoliceAccountDto(id=99999, email="police@unc.edu")
+        if role in ("officer", "police_admin"):
+            police = PoliceAccountDto(
+                id=99999,
+                email=f"{role}@unc.edu",
+                role=PoliceRole(role),
+            )
             token, _ = auth_service.create_police_access_token(police)
         elif role in ("admin", "staff", "student"):
             fake_account = AccountDto(
@@ -197,7 +201,13 @@ async def student_client(
 
 @pytest_asyncio.fixture
 async def police_client(create_test_client: CreateClientCallable):
-    async for client in create_test_client("police"):
+    async for client in create_test_client("officer"):
+        yield client
+
+
+@pytest_asyncio.fixture
+async def police_admin_client(create_test_client: CreateClientCallable):
+    async for client in create_test_client("police_admin"):
         yield client
 
 

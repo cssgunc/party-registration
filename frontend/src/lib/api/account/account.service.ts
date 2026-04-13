@@ -63,36 +63,60 @@ export class AccountService {
   }
 
   /**
-   * List police accounts (GET /api/accounts/police)
+   * List police accounts (GET /api/police)
    */
-  async listPoliceAccounts(): Promise<PoliceAccountDto[]> {
-    const response =
-      await this.client.get<PaginatedResponse<PoliceAccountDto>>(
-        "/accounts/police"
-      );
-    return response.data.items;
+  async listPoliceAccounts(
+    params?: ServerTableParams
+  ): Promise<PaginatedResponse<PoliceAccountDto>> {
+    const response = await this.client.get<PaginatedResponse<PoliceAccountDto>>(
+      "/police",
+      { params: params ? toAxiosParams(params) : undefined }
+    );
+    return response.data;
   }
 
   /**
-   * Update police account (PUT /api/accounts/police/{police_id})
+   * Download police accounts as Excel (GET /api/police/csv)
+   */
+  async downloadPoliceAccountsCsv(params?: ServerTableParams): Promise<void> {
+    const response = await this.client.get("/police/csv", {
+      params: params ? toAxiosParams(params) : undefined,
+      responseType: "blob",
+    });
+
+    const blob = new Blob([response.data], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "police_accounts.xlsx";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  /**
+   * Update police account (PUT /api/police/{police_id})
    */
   async updatePoliceAccount(
     policeId: number,
     data: PoliceAccountUpdate
   ): Promise<PoliceAccountDto> {
     const response = await this.client.put<PoliceAccountDto>(
-      `/accounts/police/${policeId}`,
+      `/police/${policeId}`,
       data
     );
     return response.data;
   }
 
   /**
-   * Delete police account (DELETE /api/accounts/police/{police_id})
+   * Delete police account (DELETE /api/police/{police_id})
    */
   async deletePoliceAccount(policeId: number): Promise<PoliceAccountDto> {
     const response = await this.client.delete<PoliceAccountDto>(
-      `/accounts/police/${policeId}`
+      `/police/${policeId}`
     );
     return response.data;
   }
