@@ -9,7 +9,7 @@ from src.modules.auth.auth_service import (
     InvalidInternalSecretException,
     InvalidRefreshTokenException,
 )
-from src.modules.police.police_model import PoliceAccountDto
+from src.modules.police.police_model import PoliceAccountDto, PoliceRole
 from src.modules.student.student_model import StudentDto
 
 from test.modules.account.account_utils import AccountTestUtils
@@ -259,7 +259,12 @@ class TestAuthRouter:
 
         payload = self.auth_utils.decode_token(data.access_token)
         self.auth_utils.assert_police_token_payload(
-            payload, PoliceAccountDto(id=police_entity.id, email=police_entity.email)
+            payload,
+            PoliceAccountDto(
+                id=police_entity.id,
+                email=police_entity.email,
+                role=PoliceRole.OFFICER,
+            ),
         )
 
     @pytest.mark.asyncio

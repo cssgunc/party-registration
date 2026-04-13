@@ -10,7 +10,7 @@ from src.core.authentication import StringRole
 from src.core.exceptions import CredentialsException, ForbiddenException
 from test.utils.http.assertions import assert_res_failure, assert_res_paginated
 
-all_roles: set[StringRole] = {"admin", "staff", "student", "police"}
+all_roles: set[StringRole] = {"admin", "staff", "student", "officer", "police_admin"}
 
 
 def generate_auth_required_tests(*params: tuple[set[StringRole], str, str, dict | None]):
