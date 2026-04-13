@@ -49,6 +49,16 @@ const getErrorMessage = (error: Error): string => {
       message?: string;
       detail?: string;
     };
+    switch (error.response?.status) {
+      case 409:
+        return "This phone number is taken by another student.";
+      case 404:
+        return "Student not found.";
+      case 403:
+        return "You do not have permission to perform this action.";
+      case 500:
+        return "Server error. Please try again later.";
+    }
     if (detail?.message) return String(detail.message);
     if (detail?.detail) return String(detail.detail);
     if (error.message) return error.message;

@@ -22,7 +22,6 @@ import {
   isFromThisSchoolYear,
   phoneNumberSchema,
 } from "@/lib/utils";
-import { isAxiosError } from "axios";
 import { Pencil, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import * as z from "zod";
@@ -93,8 +92,9 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
       console.error("Failed to update student info:", error);
 
       // Check if it's an authentication error
-      if (isAxiosError(error)) {
-        if (error.response?.status === 401) {
+      if (error && typeof error === "object" && "response" in error) {
+        const axiosError = error as { response?: { status: number } };
+        if (axiosError.response?.status === 401) {
           setErrors({
             submit:
               "Authentication required. Please log in to update your profile.",
