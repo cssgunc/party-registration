@@ -529,13 +529,13 @@ class TestPartyListSearch:
         self.party_utils = party_utils
         self.admin_client = admin_client
 
+    @pytest.mark.parametrize("search_term", ["searchme", "SEARCHME"])
     @pytest.mark.asyncio
-    async def test_search_by_contact_two_email(self):
-        """Search should match parties whose contact two email contains the term."""
+    async def test_search_matches_contact_two_email(self, search_term: str):
         party1 = await self.party_utils.create_one(contact_two_email="searchme@example.com")
         _party2 = await self.party_utils.create_one(contact_two_email="other@example.com")
 
-        response = await self.admin_client.get("/api/parties?search=searchme")
+        response = await self.admin_client.get(f"/api/parties?search={search_term}")
         paginated = assert_res_paginated(response, PartyDto, total_records=1)
         self.party_utils.assert_matches(paginated.items[0], party1)
 
@@ -552,15 +552,5 @@ class TestPartyListSearch:
         _party2 = await self.party_utils.create_one(location_id=loc_oak.id)
 
         response = await self.admin_client.get("/api/parties?search=Main")
-        paginated = assert_res_paginated(response, PartyDto, total_records=1)
-        self.party_utils.assert_matches(paginated.items[0], party1)
-
-    @pytest.mark.asyncio
-    async def test_search_is_case_insensitive(self):
-        """Search should be case-insensitive."""
-        party1 = await self.party_utils.create_one(contact_two_email="searchme@example.com")
-        _party2 = await self.party_utils.create_one(contact_two_email="other@example.com")
-
-        response = await self.admin_client.get("/api/parties?search=SEARCHME")
         paginated = assert_res_paginated(response, PartyDto, total_records=1)
         self.party_utils.assert_matches(paginated.items[0], party1)

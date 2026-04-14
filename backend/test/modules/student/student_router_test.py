@@ -944,42 +944,20 @@ class TestStudentListSearch:
         self.student_utils = student_utils
         self.admin_client = admin_client
 
+    @pytest.mark.parametrize(
+        "create_kwargs,search_term",
+        [
+            ({"first_name": "Uniquelynamed"}, "Uniquelynamed"),
+            ({"email": "searchme@unc.edu"}, "searchme"),
+            ({"phone_number": "9195550001"}, "9195550001"),
+            ({"first_name": "Uniquelynamed"}, "uniquelynamed"),
+        ],
+    )
     @pytest.mark.asyncio
-    async def test_search_by_first_name(self):
-        """Search should match students whose first name contains the term."""
-        student1 = await self.student_utils.create_one(first_name="Uniquelynamed")
-        _student2 = await self.student_utils.create_one(first_name="Otherperson")
+    async def test_search_matches_field(self, create_kwargs: dict, search_term: str):
+        student1 = await self.student_utils.create_one(**create_kwargs)
+        _student2 = await self.student_utils.create_one()
 
-        response = await self.admin_client.get("/api/students?search=Uniquelynamed")
-        paginated = assert_res_paginated(response, StudentDto, total_records=1)
-        self.student_utils.assert_matches(student1, paginated.items[0])
-
-    @pytest.mark.asyncio
-    async def test_search_by_email(self):
-        """Search should match students whose email contains the term."""
-        student1 = await self.student_utils.create_one(email="searchme@unc.edu")
-        _student2 = await self.student_utils.create_one(email="other@unc.edu")
-
-        response = await self.admin_client.get("/api/students?search=searchme")
-        paginated = assert_res_paginated(response, StudentDto, total_records=1)
-        self.student_utils.assert_matches(student1, paginated.items[0])
-
-    @pytest.mark.asyncio
-    async def test_search_by_phone_number(self):
-        """Search should match students whose phone number contains the term."""
-        student1 = await self.student_utils.create_one(phone_number="9195550001")
-        _student2 = await self.student_utils.create_one(phone_number="9195550002")
-
-        response = await self.admin_client.get("/api/students?search=9195550001")
-        paginated = assert_res_paginated(response, StudentDto, total_records=1)
-        self.student_utils.assert_matches(student1, paginated.items[0])
-
-    @pytest.mark.asyncio
-    async def test_search_is_case_insensitive(self):
-        """Search should be case-insensitive."""
-        student1 = await self.student_utils.create_one(first_name="Uniquelynamed")
-        _student2 = await self.student_utils.create_one(first_name="Otherperson")
-
-        response = await self.admin_client.get("/api/students?search=uniquelynamed")
+        response = await self.admin_client.get(f"/api/students?search={search_term}")
         paginated = assert_res_paginated(response, StudentDto, total_records=1)
         self.student_utils.assert_matches(student1, paginated.items[0])

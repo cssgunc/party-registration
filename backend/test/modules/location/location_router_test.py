@@ -490,9 +490,9 @@ class TestLocationListSearch:
         self.location_utils = location_utils
         self.admin_client = admin_client
 
+    @pytest.mark.parametrize("search_term", ["Elm", "elm"])
     @pytest.mark.asyncio
-    async def test_search_by_formatted_address(self):
-        """Search should match locations whose formatted address contains the term."""
+    async def test_search_matches_formatted_address(self, search_term: str):
         loc1 = await self.location_utils.create_one(
             formatted_address="123 Elm St, Chapel Hill, NC 27514, US"
         )
@@ -500,20 +500,6 @@ class TestLocationListSearch:
             formatted_address="456 Oak Ave, Chapel Hill, NC 27514, US"
         )
 
-        response = await self.admin_client.get("/api/locations?search=Elm")
-        paginated = assert_res_paginated(response, LocationDto, total_records=1)
-        self.location_utils.assert_matches(loc1, paginated.items[0])
-
-    @pytest.mark.asyncio
-    async def test_search_is_case_insensitive(self):
-        """Search should be case-insensitive."""
-        loc1 = await self.location_utils.create_one(
-            formatted_address="123 Elm St, Chapel Hill, NC 27514, US"
-        )
-        _loc2 = await self.location_utils.create_one(
-            formatted_address="456 Oak Ave, Chapel Hill, NC 27514, US"
-        )
-
-        response = await self.admin_client.get("/api/locations?search=elm")
+        response = await self.admin_client.get(f"/api/locations?search={search_term}")
         paginated = assert_res_paginated(response, LocationDto, total_records=1)
         self.location_utils.assert_matches(loc1, paginated.items[0])

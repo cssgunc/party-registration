@@ -139,7 +139,6 @@ export function TableTemplate<T extends object>({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<T | null>(null);
   const [globalFilter, setGlobalFilter] = useState<string>("");
-  const [searchInput, setSearchInput] = useState<string>("");
 
   // Refs to avoid stale closures in debounced effects
   const paginationRef = useRef(pagination);
@@ -171,23 +170,10 @@ export function TableTemplate<T extends object>({
 
   const filterDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const inputDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const globalFilterRef = useRef(globalFilter);
   useEffect(() => {
     globalFilterRef.current = globalFilter;
   }, [globalFilter]);
-
-  // Debounce searchInput → globalFilter to keep the input responsive while
-  // avoiding expensive re-renders and API calls on every keystroke.
-  useEffect(() => {
-    if (inputDebounceRef.current) clearTimeout(inputDebounceRef.current);
-    inputDebounceRef.current = setTimeout(() => {
-      setGlobalFilter(searchInput);
-    }, 500);
-    return () => {
-      if (inputDebounceRef.current) clearTimeout(inputDebounceRef.current);
-    };
-  }, [searchInput]);
 
   // Server mode: immediate callback on pagination/sorting change
   useEffect(() => {
@@ -453,8 +439,8 @@ export function TableTemplate<T extends object>({
             <div className="flex-1 min-w-sm max-w-lg bg-card rounded-md">
               <Input
                 type="text"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
+                value={globalFilter}
+                onChange={(e) => setGlobalFilter(e.target.value)}
                 placeholder="Search all columns..."
                 className="p-2 pl-3 h-9 rounded-md"
               />

@@ -232,32 +232,19 @@ class TestAccountListSearch:
         self.account_utils = account_utils
         self.admin_client = admin_client
 
+    @pytest.mark.parametrize(
+        "create_kwargs,search_term",
+        [
+            ({"first_name": "Uniquelynamed"}, "Uniquelynamed"),
+            ({"email": "searchme@unc.edu"}, "searchme"),
+            ({"first_name": "Uniquelynamed"}, "uniquelynamed"),
+        ],
+    )
     @pytest.mark.asyncio
-    async def test_search_by_first_name(self):
-        """Search should match accounts whose first name contains the term."""
-        account1 = await self.account_utils.create_one(first_name="Uniquelynamed")
-        _account2 = await self.account_utils.create_one(first_name="Otherperson")
+    async def test_search_matches_field(self, create_kwargs: dict, search_term: str):
+        account1 = await self.account_utils.create_one(**create_kwargs)
+        _account2 = await self.account_utils.create_one()
 
-        response = await self.admin_client.get("/api/accounts?search=Uniquelynamed")
-        paginated = assert_res_paginated(response, AccountDto, total_records=1)
-        self.account_utils.assert_matches(paginated.items[0], account1.to_dto())
-
-    @pytest.mark.asyncio
-    async def test_search_by_email(self):
-        """Search should match accounts whose email contains the term."""
-        account1 = await self.account_utils.create_one(email="searchme@unc.edu")
-        _account2 = await self.account_utils.create_one(email="other@unc.edu")
-
-        response = await self.admin_client.get("/api/accounts?search=searchme")
-        paginated = assert_res_paginated(response, AccountDto, total_records=1)
-        self.account_utils.assert_matches(paginated.items[0], account1.to_dto())
-
-    @pytest.mark.asyncio
-    async def test_search_is_case_insensitive(self):
-        """Search should be case-insensitive."""
-        account1 = await self.account_utils.create_one(first_name="Uniquelynamed")
-        _account2 = await self.account_utils.create_one(first_name="Otherperson")
-
-        response = await self.admin_client.get("/api/accounts?search=uniquelynamed")
+        response = await self.admin_client.get(f"/api/accounts?search={search_term}")
         paginated = assert_res_paginated(response, AccountDto, total_records=1)
         self.account_utils.assert_matches(paginated.items[0], account1.to_dto())
