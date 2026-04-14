@@ -1,11 +1,11 @@
-/**
- * Incident severity levels
- */
-type IncidentSeverity = "remote_warning" | "in_person_warning" | "citation";
+const INCIDENT_SEVERITIES = [
+  "remote_warning",
+  "in_person_warning",
+  "citation",
+] as const;
 
-/**
- * Incident create/update DTO
- */
+type IncidentSeverity = (typeof INCIDENT_SEVERITIES)[number];
+
 type IncidentCreateDto = {
   location_place_id: string;
   incident_datetime: Date;
@@ -14,9 +14,6 @@ type IncidentCreateDto = {
   reference_id?: string | null;
 };
 
-/**
- * Incident DTO (full response from backend)
- */
 type IncidentDto = {
   id: number;
   location_id: number;
@@ -26,16 +23,10 @@ type IncidentDto = {
   reference_id?: string | null;
 };
 
-/**
- * Incident DTO backend format (with string dates)
- */
 type IncidentDtoBackend = Omit<IncidentDto, "incident_datetime"> & {
   incident_datetime: string;
 };
 
-/**
- * Convert incident from backend format (string dates) to frontend format (Date objects)
- */
 function convertIncident(backend: IncidentDtoBackend): IncidentDto {
   return {
     ...backend,
@@ -50,4 +41,4 @@ export type {
   IncidentSeverity,
 };
 
-export { convertIncident };
+export { convertIncident, INCIDENT_SEVERITIES };

@@ -50,6 +50,7 @@ function parseRelativeDate(dateStr: string | null): Date | null {
 export const POLICE_ACCOUNTS: PoliceAccountDto[] = mockData.police.map((p) => ({
   id: p.id,
   email: p.email,
+  role: p.role as PoliceAccountDto["role"],
 }));
 
 // Parse Accounts

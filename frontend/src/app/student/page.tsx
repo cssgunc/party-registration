@@ -2,10 +2,7 @@
 
 import RegistrationTracker from "@/app/student/_components/RegistrationTracker";
 import StatusComponent from "@/app/student/_components/StatusComponent";
-import {
-  useCurrentStudent,
-  useMyParties,
-} from "@/lib/api/student/student.queries";
+import { useCurrentStudent } from "@/lib/api/student/student.queries";
 import { isFromThisSchoolYear } from "@/lib/utils";
 import { Info } from "lucide-react";
 import Link from "next/link";
@@ -14,16 +11,9 @@ import PartySmartInfo from "./_components/PartySmartInfo";
 
 export default function StudentDashboard() {
   const studentQuery = useCurrentStudent();
-  const partiesQuery = useMyParties();
-  {
-    /*const courseCompleted = isFromThisSchoolYear(
-    studentQuery.data?.last_registered
-  );*/
-  }
   const validResidence = isFromThisSchoolYear(
     studentQuery?.data?.residence?.residence_chosen_date
   );
-  const incidents = studentQuery.data?.residence?.location.incidents ?? [];
 
   return (
     <div className="flex flex-col items-center pt-6">
@@ -44,7 +34,7 @@ export default function StudentDashboard() {
                 )}
               </div>
             </div>
-            <RegistrationTracker {...partiesQuery} incidents={incidents} />
+            <RegistrationTracker />
           </div>
 
           <div className="mt-8">

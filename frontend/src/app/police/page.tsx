@@ -5,7 +5,6 @@ import PartyCsvExportButton from "@/app/police/_components/PartyCsvExportButton"
 import PartyList from "@/app/police/_components/PartyList";
 import SplitDateRangeFilter from "@/app/police/_components/SplitDateRangeFilter";
 import AddressSearch from "@/components/AddressSearch";
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
@@ -149,7 +148,6 @@ export default function PolicePage() {
           <header className="flex items-center justify-between gap-3 px-1 pb-4">
             <h1 className="page-title text-secondary">Party Search</h1>
             <div className="flex items-center gap-2">
-              <Button size="sm">Tracker</Button>
               <PartyCsvExportButton startDate={startDate} endDate={endDate} />
             </div>
           </header>

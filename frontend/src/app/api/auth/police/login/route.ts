@@ -3,6 +3,7 @@ import {
   policeLogin,
   setAuthCookies,
 } from "@/lib/api/auth/auth.service";
+import { PoliceRole } from "@/lib/api/police/police.types";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
@@ -22,6 +23,13 @@ export async function POST(req: NextRequest) {
     const data = await policeLogin({ email, password });
 
     const payload = decodeJwtPayload(data.access_token);
+    const payloadRole = payload.role;
+    if (payloadRole !== "officer" && payloadRole !== "police_admin") {
+      return NextResponse.json(
+        { error: "Invalid token role" },
+        { status: 401 }
+      );
+    }
     const policeId = String(payload.sub);
 
     const res = NextResponse.json({ ok: true });
@@ -31,7 +39,7 @@ export async function POST(req: NextRequest) {
       id: policeId,
       email: payload.email,
       name: payload.email,
-      role: "police",
+      role: payloadRole as PoliceRole,
     });
 
     return res;

@@ -15,12 +15,16 @@ import type {
   AccountRole,
   AccountTableRow,
 } from "@/lib/api/account/account.types";
-import type { PoliceAccountUpdate } from "@/lib/api/police/police.types";
+import type {
+  PoliceAccountUpdate,
+  PoliceRole,
+} from "@/lib/api/police/police.types";
 import {
   DEFAULT_TABLE_PARAMS,
   ServerColumnMap,
   ServerTableParams,
 } from "@/lib/api/shared/query-params";
+import { formatRoleLabel } from "@/lib/utils";
 import { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
 import { useMemo, useState } from "react";
@@ -58,6 +62,27 @@ const SERVER_COLUMN_MAP: ServerColumnMap = {
   role: { backendField: "role", filterOperator: "eq" },
 };
 
+const getErrorMessage = (error: Error): string => {
+  if (isAxiosError(error)) {
+    const detail = error.response?.data as {
+      message?: string;
+      detail?: string;
+    };
+    switch (error.response?.status) {
+      case 404:
+        return "Account not found.";
+      case 403:
+        return "You do not have permission to perform this action.";
+      case 500:
+        return "Server error. Please try again later.";
+    }
+    if (detail?.message) return String(detail.message);
+    if (detail?.detail) return String(detail.detail);
+    if (error.message) return error.message;
+  }
+  return "Operation failed";
+};
+
 export const AccountTable = () => {
   const { openSidebar, closeSidebar } = useSidebar();
   const { openSnackbar } = useSnackbar();
@@ -84,7 +109,7 @@ export const AccountTable = () => {
         last_name: "-",
         pid: "-",
         onyen: "-",
-        role: "police" as const,
+        role: p.role,
         _isPolice: true,
       })
     );
@@ -94,16 +119,7 @@ export const AccountTable = () => {
 
   const createAccountMutation = useCreateAccount({
     onError: (error: Error, variables: AccountData) => {
-      const errorMessage =
-        isAxiosError(error) && error.response
-          ? `${error.response.data.message}`
-          : `Failed to create account: ${error.message}`;
-
-      if (isAxiosError(error) && error.response) {
-        console.error("Failed to create account:", error.response.data);
-      } else {
-        console.error("Failed to create account:", error);
-      }
+      const message = getErrorMessage(error);
 
       openSidebar(
         "create-account",
@@ -112,7 +128,7 @@ export const AccountTable = () => {
         <AccountTableForm
           title="New Account"
           onSubmit={handleAccountCreateSubmit}
-          submissionError={errorMessage}
+          submissionError={message}
           editData={{
             email: variables.email,
             first_name: variables.first_name,
@@ -127,14 +143,13 @@ export const AccountTable = () => {
     onSuccess: () => {
       closeSidebar();
       setEditingAccount(null);
-      openSnackbar("Student created successfully", "success");
+      openSnackbar("Account created successfully", "success");
     },
   });
 
   const updateAccountMutation = useUpdateAccount({
     onError: (error: Error, variables: { id: number; data: AccountData }) => {
-      console.error("Failed to update account:", error);
-      const errorMessage = `${error.message}` || "Failed to update account";
+      const message = getErrorMessage(error);
       const editTarget =
         editingAccount &&
         !editingAccount._isPolice &&
@@ -160,7 +175,7 @@ export const AccountTable = () => {
         <AccountTableForm
           title="Edit Account"
           onSubmit={(data) => handleAccountEditSubmit(variables.id, data)}
-          submissionError={errorMessage}
+          submissionError={message}
           editData={editData}
         />
       );
@@ -190,7 +205,7 @@ export const AccountTable = () => {
           title="Edit Police Account"
           onSubmit={(data) => handlePoliceEditSubmit(variables.id, data)}
           submissionError={errorMessage}
-          editData={{ email: variables.data.email }}
+          editData={{ email: variables.data.email, role: variables.data.role }}
         />
       );
     },
@@ -202,7 +217,8 @@ export const AccountTable = () => {
 
   const deleteAccountMutation = useDeleteAccount({
     onError: (error: Error) => {
-      console.error("Failed to delete account:", error);
+      const message = getErrorMessage(error);
+      console.error("Failed to delete account:", message);
       openSnackbar("Failed to delete account", "error");
     },
   });
@@ -225,7 +241,7 @@ export const AccountTable = () => {
         <PoliceAccountForm
           title="Edit Police Account"
           onSubmit={(data) => handlePoliceEditSubmit(row.id, data)}
-          editData={{ email: row.email }}
+          editData={{ email: row.email, role: row.role as PoliceRole }}
         />
       );
     } else {
@@ -306,7 +322,7 @@ export const AccountTable = () => {
       id: policeId,
       data: {
         email: data.email,
-        password: data.password,
+        role: data.role as PoliceRole,
       },
     });
   };
@@ -342,8 +358,8 @@ export const AccountTable = () => {
       header: "Role",
       enableColumnFilter: true,
       cell: ({ row }) => {
-        const role = row.getValue("role") as string;
-        return role.charAt(0).toUpperCase() + role.slice(1);
+        const role = row.getValue("role") as AccountTableRow["role"];
+        return formatRoleLabel(role);
       },
     },
   ];

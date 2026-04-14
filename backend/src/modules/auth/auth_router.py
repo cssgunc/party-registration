@@ -96,7 +96,7 @@ async def refresh_access_token(
 async def logout(
     data: RefreshTokenDto,
     auth_service: AuthService = Depends(),
-    _=Depends(authenticate_by_role("student", "admin", "staff", "police")),
+    _=Depends(authenticate_by_role("student", "admin", "staff", "officer", "police_admin")),
 ) -> None:
     """
     Logout by revoking the refresh token.
