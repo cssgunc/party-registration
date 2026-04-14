@@ -90,16 +90,11 @@ export class AdminStudentService {
     id: number,
     data: IsRegisteredUpdate
   ): Promise<StudentDto> {
-    try {
-      const response = await this.client.patch<StudentDtoBackend>(
-        `/students/${id}/is-registered`,
-        data
-      );
-      return convertStudent(response.data);
-    } catch (error) {
-      console.error(`Failed to update is_registered for student ${id}:`, error);
-      throw new Error("Failed to update student registration status");
-    }
+    const response = await this.client.patch<StudentDtoBackend>(
+      `/students/${id}/is-registered`,
+      data
+    );
+    return convertStudent(response.data);
   }
 
   /**

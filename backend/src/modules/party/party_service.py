@@ -158,9 +158,11 @@ class PartyService:
             raise PartySmartNotCompletedException()
 
     def _validate_contact_two_differs_from_contact_one(
-        self, contact_one_email: str, contact_one_phone: str, contact_two: ContactDto
+        self, contact_one_email: str, contact_one_phone: str | None, contact_two: ContactDto
     ) -> None:
         """Validate that contact two's email and phone number differ from contact one's."""
+        if contact_one_phone is None:
+            raise StudentInfoNotProvidedException()
         if contact_two.email.strip().lower() == contact_one_email.strip().lower():
             raise ContactTwoMatchesContactOneException("email")
         # Normalize phone numbers to digits only for comparison
@@ -418,10 +420,10 @@ class PartyService:
         )
 
         # Validate contact two differs from contact one
-        if student.phone_number is None:
-            raise StudentInfoNotProvidedException()
         self._validate_contact_two_differs_from_contact_one(
-            student.email, student.phone_number, dto.contact_two
+            student.email,
+            student.phone_number,
+            dto.contact_two,
         )
 
         # Create party data with contact_two information directly
@@ -462,7 +464,7 @@ class PartyService:
         )
 
         # Validate contact two differs from contact one
-        if contact_one.phone_number is None:
+        if contact_one.phone_number is None or contact_one.contact_preference is None:
             raise StudentInfoNotProvidedException()
         self._validate_contact_two_differs_from_contact_one(
             contact_one.email, contact_one.phone_number, dto.contact_two
@@ -504,10 +506,10 @@ class PartyService:
         )
 
         # Validate contact two differs from contact one
-        if student.phone_number is None:
-            raise StudentInfoNotProvidedException()
         self._validate_contact_two_differs_from_contact_one(
-            student.email, student.phone_number, dto.contact_two
+            student.email,
+            student.phone_number,
+            dto.contact_two,
         )
 
         # Update party fields
@@ -538,7 +540,7 @@ class PartyService:
         )
 
         # Validate contact two differs from contact one
-        if contact_one.phone_number is None:
+        if contact_one.phone_number is None or contact_one.contact_preference is None:
             raise StudentInfoNotProvidedException()
         self._validate_contact_two_differs_from_contact_one(
             contact_one.email, contact_one.phone_number, dto.contact_two

@@ -66,6 +66,21 @@ class TestStudentService:
             await self.student_service.create_student(data, account_id=account2.id)
 
     @pytest.mark.asyncio
+    async def test_multiple_null_phone_numbers_do_not_conflict(self) -> None:
+        """Regression: SQL Server treats two NULLs as a unique constraint violation.
+        Multiple unonboarded students (null phone_number) must coexist without conflict."""
+        account1 = await self.account_utils.create_one(role=AccountRole.STUDENT.value)
+        account2 = await self.account_utils.create_one(role=AccountRole.STUDENT.value)
+
+        await self.student_service.ensure_student_entity_exists(account1.id)
+        await self.student_service.ensure_student_entity_exists(account2.id)
+
+        student1 = await self.student_service.get_student_by_id(account1.id)
+        student2 = await self.student_service.get_student_by_id(account2.id)
+        assert student1.phone_number is None
+        assert student2.phone_number is None
+
+    @pytest.mark.asyncio
     async def test_get_students(self):
         students = await self.student_utils.create_many(i=3)
 
