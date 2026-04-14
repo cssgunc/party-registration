@@ -16,13 +16,37 @@ import { usePoliceSignup } from "@/lib/api/auth/auth.queries";
 import { isAxiosError } from "axios";
 import Link from "next/link";
 import { FormEvent, useState } from "react";
+import * as z from "zod";
+
+const allowedDomain = process.env.NEXT_PUBLIC_CHPD_EMAIL_DOMAIN;
+
+const policeSignupSchema = z
+  .object({
+    email: z
+      .email("Please enter a valid email")
+      .refine((val) => val.toLowerCase().endsWith(`@${allowedDomain}`), {
+        message: `Email must use the @${allowedDomain} domain`,
+      }),
+    password: z.string().min(8, "Password must be at least 8 characters"),
+    confirm_password: z.string().min(1, "Please confirm your password"),
+  })
+  .refine((data) => data.password === data.confirm_password, {
+    message: "Passwords do not match",
+    path: ["confirm_password"],
+  });
+
+type PoliceSignupFormValues = z.infer<typeof policeSignupSchema>;
 
 export default function PoliceSignupPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [formData, setFormData] = useState<Partial<PoliceSignupFormValues>>({
+    email: "",
+    password: "",
+    confirm_password: "",
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [isComplete, setIsComplete] = useState(false);
+
   const policeSignupMutation = usePoliceSignup({
     onSuccess: () => {
       setIsComplete(true);
@@ -30,39 +54,54 @@ export default function PoliceSignupPage() {
     onError: (requestError: Error) => {
       if (isAxiosError(requestError)) {
         if (requestError.response?.status === 409) {
-          setError("An account with that email already exists.");
+          setSubmissionError("An account with that email already exists.");
           return;
         }
 
         if (typeof requestError.response?.data?.detail === "string") {
-          setError(requestError.response.data.detail);
+          setSubmissionError(requestError.response.data.detail);
           return;
         }
       }
 
-      setError("Something went wrong. Please try again.");
+      setSubmissionError("Something went wrong. Please try again.");
     },
   });
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError(null);
-
-    const allowedDomain = process.env.NEXT_PUBLIC_CHPD_EMAIL_DOMAIN;
-    if (!email.toLowerCase().endsWith(`@${allowedDomain}`)) {
-      setError(`Email must use the @${allowedDomain} domain.`);
-      return;
+  const updateField = <K extends keyof PoliceSignupFormValues>(
+    field: K,
+    value: PoliceSignupFormValues[K]
+  ) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
     }
+  };
 
-    if (password !== confirmPassword) {
-      setError("Passwords do not match.");
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSubmissionError(null);
+
+    const result = policeSignupSchema.safeParse(formData);
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      result.error.issues.forEach((issue) => {
+        if (issue.path[0]) {
+          fieldErrors[issue.path[0].toString()] = issue.message;
+        }
+      });
+      setErrors(fieldErrors);
       return;
     }
 
     policeSignupMutation.mutate({
-      email,
-      password,
-      confirm_password: confirmPassword,
+      email: result.data.email,
+      password: result.data.password,
+      confirm_password: result.data.confirm_password,
     });
   }
 
@@ -91,7 +130,7 @@ export default function PoliceSignupPage() {
                   Check your email to verify your account before logging in.
                 </p>
                 <ResendVerificationButton
-                  email={email}
+                  email={formData.email ?? ""}
                   initialCooldownSeconds={60}
                 />
                 <Link
@@ -110,10 +149,13 @@ export default function PoliceSignupPage() {
                     type="email"
                     autoComplete="email"
                     placeholder="officer@department.gov"
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                    required
+                    value={formData.email}
+                    onChange={(e) => updateField("email", e.target.value)}
+                    aria-invalid={!!errors.email}
                   />
+                  {errors.email && (
+                    <p className="text-sm text-destructive">{errors.email}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -122,10 +164,15 @@ export default function PoliceSignupPage() {
                     id="password"
                     type="password"
                     autoComplete="new-password"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    required
+                    value={formData.password}
+                    onChange={(e) => updateField("password", e.target.value)}
+                    aria-invalid={!!errors.password}
                   />
+                  {errors.password && (
+                    <p className="text-sm text-destructive">
+                      {errors.password}
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -134,15 +181,22 @@ export default function PoliceSignupPage() {
                     id="confirm-password"
                     type="password"
                     autoComplete="new-password"
-                    value={confirmPassword}
-                    onChange={(event) => setConfirmPassword(event.target.value)}
-                    required
+                    value={formData.confirm_password}
+                    onChange={(e) =>
+                      updateField("confirm_password", e.target.value)
+                    }
+                    aria-invalid={!!errors.confirm_password}
                   />
+                  {errors.confirm_password && (
+                    <p className="text-sm text-destructive">
+                      {errors.confirm_password}
+                    </p>
+                  )}
                 </div>
 
-                {error && (
+                {submissionError && (
                   <p className="text-center text-sm text-destructive">
-                    {error}
+                    {submissionError}
                   </p>
                 )}
 

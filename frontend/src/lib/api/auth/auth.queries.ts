@@ -1,15 +1,26 @@
 import {
+  policeLoginViaRoute,
   retryPoliceVerification,
   signupPolice,
   verifyPoliceEmail,
 } from "@/lib/api/auth/auth.service";
 import type {
+  PoliceLoginRequest,
   PoliceSignupRequest,
   RetryPoliceVerificationRequest,
   VerifyPoliceEmailRequest,
 } from "@/lib/api/auth/auth.types";
 import { OptimisticMutationOptions } from "@/lib/shared";
 import { useMutation } from "@tanstack/react-query";
+
+export function usePoliceLogin(
+  options?: OptimisticMutationOptions<void, Error, PoliceLoginRequest>
+) {
+  return useMutation({
+    ...options,
+    mutationFn: (data: PoliceLoginRequest) => policeLoginViaRoute(data),
+  });
+}
 
 export function usePoliceSignup(
   options?: OptimisticMutationOptions<void, Error, PoliceSignupRequest>

@@ -5,9 +5,19 @@ import PartySmartLogo from "@/components/PartySmartLogo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { usePoliceLogin } from "@/lib/api/auth/auth.queries";
+import { isAxiosError } from "axios";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useState } from "react";
+import * as z from "zod";
+
+const policeLoginSchema = z.object({
+  email: z.email("Please enter a valid email"),
+  password: z.string().min(1, "Password is required"),
+});
+
+type PoliceLoginFormValues = z.infer<typeof policeLoginSchema>;
 
 export default function PoliceLoginPage() {
   return (
@@ -21,46 +31,74 @@ function PoliceLoginForm() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/police";
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [formData, setFormData] = useState<Partial<PoliceLoginFormValues>>({
+    email: "",
+    password: "",
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [showResendVerification, setShowResendVerification] = useState(false);
-  const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setShowResendVerification(false);
-    setLoading(true);
-
-    try {
-      const res = await fetch("/api/auth/police/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        if (res.status === 403 && data.detail === "EMAIL_NOT_VERIFIED") {
-          setError(
+  const policeLoginMutation = usePoliceLogin({
+    onSuccess: () => {
+      // Use window.location.href instead of router.push to ensure the newly-set session cookie is used for rendering
+      window.location.href = callbackUrl;
+    },
+    onError: (requestError: Error) => {
+      if (isAxiosError(requestError)) {
+        if (
+          requestError.response?.status === 403 &&
+          requestError.response.data?.detail === "EMAIL_NOT_VERIFIED"
+        ) {
+          setSubmissionError(
             "Your account hasn't been verified yet. Please check your email for a verification link."
           );
           setShowResendVerification(true);
           return;
         }
 
-        setError(data.error || "Invalid credentials");
-        return;
+        if (typeof requestError.response?.data?.error === "string") {
+          setSubmissionError(requestError.response.data.error);
+          return;
+        }
       }
 
-      // Use window.location.href instead of router.push to ensure the newly-set session cookie is used for rendering
-      window.location.href = callbackUrl;
-    } catch {
-      setError("Something went wrong. Please try again.");
-    } finally {
-      setLoading(false);
+      setSubmissionError("Something went wrong. Please try again.");
+    },
+  });
+
+  const updateField = <K extends keyof PoliceLoginFormValues>(
+    field: K,
+    value: PoliceLoginFormValues[K]
+  ) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
     }
+  };
+
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setSubmissionError(null);
+    setShowResendVerification(false);
+
+    const result = policeLoginSchema.safeParse(formData);
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      result.error.issues.forEach((issue) => {
+        if (issue.path[0]) {
+          fieldErrors[issue.path[0].toString()] = issue.message;
+        }
+      });
+      setErrors(fieldErrors);
+      return;
+    }
+
+    policeLoginMutation.mutate(result.data);
   }
 
   return (
@@ -83,11 +121,14 @@ function PoliceLoginForm() {
               id="email"
               type="email"
               placeholder="officer@department.gov"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
+              value={formData.email}
+              onChange={(e) => updateField("email", e.target.value)}
               autoComplete="email"
+              aria-invalid={!!errors.email}
             />
+            {errors.email && (
+              <p className="text-sm text-destructive">{errors.email}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -95,23 +136,32 @@ function PoliceLoginForm() {
             <Input
               id="password"
               type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
+              value={formData.password}
+              onChange={(e) => updateField("password", e.target.value)}
               autoComplete="current-password"
+              aria-invalid={!!errors.password}
             />
+            {errors.password && (
+              <p className="text-sm text-destructive">{errors.password}</p>
+            )}
           </div>
 
-          {error && (
-            <p className="text-sm text-destructive text-center">{error}</p>
+          {submissionError && (
+            <p className="text-sm text-destructive text-center">
+              {submissionError}
+            </p>
           )}
 
-          {showResendVerification && email && (
-            <ResendVerificationButton email={email} />
+          {showResendVerification && formData.email && (
+            <ResendVerificationButton email={formData.email} />
           )}
 
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Signing in..." : "Sign In"}
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={policeLoginMutation.isPending}
+          >
+            {policeLoginMutation.isPending ? "Signing in..." : "Sign In"}
           </Button>
         </form>
 

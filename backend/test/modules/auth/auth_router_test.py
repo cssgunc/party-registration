@@ -666,6 +666,42 @@ class TestPoliceSignupRouter:
 
         assert response.status_code == 422
 
+    @pytest.mark.asyncio
+    async def test_signup_short_password_returns_422(self) -> None:
+        """Test signup with a password shorter than 8 characters returns 422."""
+        data = await self.police_utils.next_data()
+        payload = {
+            "email": data.email,
+            "password": "short",
+            "confirm_password": "short",
+        }
+
+        response = await self.unauthenticated_client.post(
+            "/api/auth/police/signup",
+            json=payload,
+        )
+
+        assert response.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_signup_wrong_domain_returns_400(self) -> None:
+        """Test signup with an email from a non-CHPD domain returns 400."""
+        payload = {
+            "email": "officer@notchpd.com",
+            "password": self.police_utils.TEST_PASSWORD,
+            "confirm_password": self.police_utils.TEST_PASSWORD,
+        }
+
+        response = await self.unauthenticated_client.post(
+            "/api/auth/police/signup",
+            json=payload,
+        )
+
+        assert_res_failure(
+            response,
+            BadRequestException(f"CHPD email must use the @{env.CHPD_EMAIL_DOMAIN} domain"),
+        )
+
 
 class TestPoliceEmailVerificationRouter:
     unauthenticated_client: AsyncClient

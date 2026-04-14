@@ -153,6 +153,12 @@ export async function policeLogin(
   return resp.data;
 }
 
+export async function policeLoginViaRoute(
+  data: PoliceLoginRequest
+): Promise<void> {
+  await axios.post("/api/auth/police/login", data);
+}
+
 export async function signupPolice(data: PoliceSignupRequest): Promise<void> {
   await axios.post(`${base}/auth/police/signup`, data);
 }
