@@ -45,11 +45,25 @@ export function useAccounts(
 }
 
 export function usePoliceAccounts(
+  serverParams?: ServerTableParams,
   options?: UseQueryOptions<PoliceAccountDto[]>
 ) {
   return useQuery({
-    queryKey: POLICE_ACCOUNTS_KEY,
-    queryFn: () => accountService.listPoliceAccounts(),
+    queryKey: [...POLICE_ACCOUNTS_KEY, serverParams ?? "all"],
+    queryFn: async () =>
+      (await accountService.listPoliceAccounts(serverParams)).items,
+    ...options,
+  });
+}
+
+export function usePoliceAccountsPaginated(
+  serverParams?: ServerTableParams,
+  options?: UseQueryOptions<PaginatedResponse<PoliceAccountDto>>
+) {
+  return useQuery({
+    queryKey: [...POLICE_ACCOUNTS_KEY, "paginated", serverParams ?? "all"],
+    queryFn: () => accountService.listPoliceAccounts(serverParams),
+    placeholderData: keepPreviousData,
     ...options,
   });
 }
@@ -193,5 +207,18 @@ export function useDeletePoliceAccount(
       queryClient.invalidateQueries({ queryKey: POLICE_ACCOUNTS_KEY });
       options?.onSuccess?.(...params);
     },
+  });
+}
+
+export function useDownloadPoliceAccountsCsv(
+  options?: OptimisticMutationOptions<
+    void,
+    Error,
+    ServerTableParams | undefined
+  >
+) {
+  return useMutation({
+    ...options,
+    mutationFn: (params) => accountService.downloadPoliceAccountsCsv(params),
   });
 }

@@ -102,6 +102,8 @@ export type TableProps<T> = {
   columnMap?: ServerColumnMap;
   onExportCsv?: (params: ListQueryParams) => void;
   isExporting?: boolean;
+  canManageRows?: boolean;
+  canDeleteRow?: (row: T) => boolean;
 };
 
 export function TableTemplate<T extends object>({
@@ -125,11 +127,14 @@ export function TableTemplate<T extends object>({
   columnMap,
   onExportCsv,
   isExporting,
+  canManageRows,
+  canDeleteRow,
 }: TableProps<T>) {
   const isServerMode = !!serverMeta;
   const { isOpen, openSidebar, closeSidebar } = useSidebar();
   const { data: session } = useSession();
   const role = session?.role;
+  const hasManagePermission = canManageRows ?? role === "admin";
 
   const sortedData = useMemo(
     () => (sortBy ? [...data].sort(sortBy) : data),
@@ -289,13 +294,17 @@ export function TableTemplate<T extends object>({
   };
 
   const confirmDelete = () => {
-    if (itemToDelete && onDelete) {
+    if (
+      itemToDelete &&
+      onDelete &&
+      (canDeleteRow ? canDeleteRow(itemToDelete) : true)
+    ) {
       onDelete(itemToDelete);
     }
   };
 
   const columnsWithActions: ColumnDef<T, unknown>[] =
-    role === "admin" && (onEdit || onDelete)
+    hasManagePermission && (onEdit || onDelete)
       ? [
           ...columns,
           {
@@ -320,15 +329,16 @@ export function TableTemplate<T extends object>({
                         Edit
                       </DropdownMenuItem>
                     )}
-                    {onDelete && (
-                      <DropdownMenuItem
-                        onClick={() => handleDeleteClick(row.original)}
-                        variant="destructive"
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    )}
+                    {onDelete &&
+                      (canDeleteRow ? canDeleteRow(row.original) : true) && (
+                        <DropdownMenuItem
+                          onClick={() => handleDeleteClick(row.original)}
+                          variant="destructive"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -453,7 +463,7 @@ export function TableTemplate<T extends object>({
                   )}
                 </Button>
               )}
-              {onCreateNewRow && role === "admin" && (
+              {onCreateNewRow && hasManagePermission && (
                 <Button onClick={onCreateNewRow} className="h-9">
                   <Plus className="mr-1" />
                   <p>New row</p>

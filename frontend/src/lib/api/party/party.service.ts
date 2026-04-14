@@ -21,16 +21,8 @@ export class PartyService {
   async createParty(
     data: StudentCreatePartyDto | AdminCreatePartyDto
   ): Promise<PartyDto> {
-    try {
-      const response = await this.client.post<PartyDtoBackend>(
-        "/parties",
-        data
-      );
-      return convertParty(response.data);
-    } catch (error) {
-      console.error("Failed to create party:", error);
-      throw error;
-    }
+    const response = await this.client.post<PartyDtoBackend>("/parties", data);
+    return convertParty(response.data);
   }
 
   /**
@@ -39,18 +31,14 @@ export class PartyService {
   async listParties(
     params?: ListQueryParams
   ): Promise<PaginatedResponse<PartyDto>> {
-    try {
-      const response = await this.client.get<
-        PaginatedResponse<PartyDtoBackend>
-      >("/parties", { params: params ? toAxiosParams(params) : undefined });
-      return {
-        ...response.data,
-        items: response.data.items.map(convertParty),
-      };
-    } catch (error) {
-      console.error("Failed to list parties:", error);
-      throw new Error("Failed to list parties");
-    }
+    const response = await this.client.get<PaginatedResponse<PartyDtoBackend>>(
+      "/parties",
+      { params: params ? toAxiosParams(params) : undefined }
+    );
+    return {
+      ...response.data,
+      items: response.data.items.map(convertParty),
+    };
   }
 
   /**
@@ -61,38 +49,28 @@ export class PartyService {
     startDate: Date,
     endDate: Date
   ): Promise<PartyDto[]> {
-    try {
-      const response = await this.client.get<PartyDtoBackend[]>(
-        "/parties/nearby",
-        {
-          params: {
-            place_id: placeId,
-            start_date: format(startDate, "yyyy-MM-dd"),
-            end_date: format(endDate, "yyyy-MM-dd"),
-          },
-        }
-      );
-      return response.data.map(convertParty);
-    } catch (error) {
-      console.error("Failed to get nearby parties:", error);
-      throw new Error("Failed to get nearby parties");
-    }
+    const response = await this.client.get<PartyDtoBackend[]>(
+      "/parties/nearby",
+      {
+        params: {
+          place_id: placeId,
+          start_date: format(startDate, "yyyy-MM-dd"),
+          end_date: format(endDate, "yyyy-MM-dd"),
+        },
+      }
+    );
+    return response.data.map(convertParty);
   }
 
   /**
    * Download parties as Excel (GET /api/parties/csv)
    */
   async downloadPartiesCsv(params?: ListQueryParams): Promise<void> {
-    try {
-      const response = await this.client.get("/parties/csv", {
-        params: params ? toAxiosParams(params) : undefined,
-        responseType: "blob",
-      });
-      downloadExcelFile(response, "parties.xlsx");
-    } catch (error) {
-      console.error("Failed to download parties Excel:", error);
-      throw new Error("Failed to download parties export");
-    }
+    const response = await this.client.get("/parties/csv", {
+      params: params ? toAxiosParams(params) : undefined,
+      responseType: "blob",
+    });
+    downloadExcelFile(response, "parties.xlsx");
   }
 
   /**
@@ -102,45 +80,30 @@ export class PartyService {
     partyId: number,
     data: StudentCreatePartyDto | AdminCreatePartyDto
   ): Promise<PartyDto> {
-    try {
-      const response = await this.client.put<PartyDtoBackend>(
-        `/parties/${partyId}`,
-        data
-      );
-      return convertParty(response.data);
-    } catch (error) {
-      console.error(`Failed to update party ${partyId}:`, error);
-      throw error;
-    }
+    const response = await this.client.put<PartyDtoBackend>(
+      `/parties/${partyId}`,
+      data
+    );
+    return convertParty(response.data);
   }
 
   /**
    * Get party by ID (GET /api/parties/{party_id})
    */
   async getParty(partyId: number): Promise<PartyDto> {
-    try {
-      const response = await this.client.get<PartyDtoBackend>(
-        `/parties/${partyId}`
-      );
-      return convertParty(response.data);
-    } catch (error) {
-      console.error(`Failed to get party ${partyId}:`, error);
-      throw new Error("Failed to get party");
-    }
+    const response = await this.client.get<PartyDtoBackend>(
+      `/parties/${partyId}`
+    );
+    return convertParty(response.data);
   }
 
   /**
    * Delete party (DELETE /api/parties/{party_id})
    */
   async deleteParty(partyId: number): Promise<PartyDto> {
-    try {
-      const response = await this.client.delete<PartyDtoBackend>(
-        `/parties/${partyId}`
-      );
-      return convertParty(response.data);
-    } catch (error) {
-      console.error(`Failed to delete party ${partyId}:`, error);
-      throw new Error("Failed to delete party");
-    }
+    const response = await this.client.delete<PartyDtoBackend>(
+      `/parties/${partyId}`
+    );
+    return convertParty(response.data);
   }
 }

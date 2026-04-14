@@ -26,6 +26,7 @@ $config = [
 
         // ── Students ────────────────────────────────────────────
 
+        // Existing Student
         'student1:student1pass' => [
             'uid'                  => ['stevenmorrison'],
             'givenName'            => ['Steven'],
@@ -38,6 +39,7 @@ $config = [
             'affiliation'          => ['student'],
         ],
 
+        // Brand New Student
         'student2:student2pass' => [
             'uid'                  => ['monicamalone'],
             'givenName'            => ['Monica'],
@@ -59,6 +61,19 @@ $config = [
             'pid'                  => ['730925227'],
             'eduPersonNickname'    => ['Laura'],
             'uncPreferredSurname'  => ['Gonzales'],
+            'affiliation'          => ['student'],
+        ],
+
+        // Never Signed Up
+        'student4:student4pass' => [
+            'uid'                  => ['kevinpatel'],
+            'givenName'            => ['Kevin'],
+            'sn'                   => ['Patel'],
+            'displayName'          => ['Kevin Patel'],
+            'mail'                 => ['kevinpatel@unc.edu'],
+            'pid'                  => ['730648913'],
+            'eduPersonNickname'    => ['Kevin'],
+            'uncPreferredSurname'  => ['Patel'],
             'affiliation'          => ['student'],
         ],
 

@@ -35,7 +35,7 @@ async def autocomplete_address(
     input_data: AutocompleteInput,
     location_service: LocationService = Depends(),
     user: AccountDto | PoliceAccountDto = Depends(
-        authenticate_by_role("police", "student", "admin", "staff")
+        authenticate_by_role("officer", "police_admin", "student", "admin", "staff")
     ),
 ) -> list[AutocompleteResult]:
     """
@@ -69,7 +69,7 @@ async def get_place_details(
     place_id: str,
     location_service: LocationService = Depends(),
     user: AccountDto | PoliceAccountDto = Depends(
-        authenticate_by_role("police", "student", "admin", "staff")
+        authenticate_by_role("officer", "police_admin", "student", "admin", "staff")
     ),
 ) -> AddressData:
     """

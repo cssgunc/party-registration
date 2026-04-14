@@ -17,6 +17,7 @@ import {
 import { StudentDto, StudentUpdateDto } from "@/lib/api/student/student.types";
 import { isFromThisSchoolYear } from "@/lib/utils";
 import { ColumnDef } from "@tanstack/react-table";
+import { isAxiosError } from "axios";
 import { useState } from "react";
 import LocationInfoChipDetails from "../party/details/LocationInfoChipDetails";
 import { GenericInfoChip } from "../shared/sidebar/GenericInfoChip";
@@ -42,6 +43,29 @@ const toEditData = (student: StudentDto) => ({
   ...student,
   residence_place_id: student.residence?.location.google_place_id ?? null,
 });
+
+const getErrorMessage = (error: Error): string => {
+  if (isAxiosError(error)) {
+    const detail = error.response?.data as {
+      message?: string;
+      detail?: string;
+    };
+    switch (error.response?.status) {
+      case 409:
+        return "This phone number is taken by another student.";
+      case 404:
+        return "Student not found.";
+      case 403:
+        return "You do not have permission to perform this action.";
+      case 500:
+        return "Server error. Please try again later.";
+    }
+    if (detail?.message) return String(detail.message);
+    if (detail?.detail) return String(detail.detail);
+    if (error.message) return error.message;
+  }
+  return "Operation failed";
+};
 
 const SERVER_COLUMN_MAP: ServerColumnMap = {
   onyen: { backendField: "onyen", filterOperator: "contains" },
@@ -77,8 +101,8 @@ export const StudentTable = () => {
       setEditingStudent(null);
     },
     onError: (error) => {
-      console.error("Failed to update student:", error);
       if (!editingStudent) return;
+
       openSidebar(
         `edit-student-${editingStudent.id}`,
         "Edit Student",
@@ -86,7 +110,7 @@ export const StudentTable = () => {
         <StudentTableForm
           title="Edit Student"
           onSubmit={(data) => handleEditSubmit(editingStudent, data)}
-          submissionError={`Failed to update student: ${error.message}`}
+          submissionError={getErrorMessage(error)}
           editData={editingStudent}
         />
       );

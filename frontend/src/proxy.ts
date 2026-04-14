@@ -5,7 +5,8 @@ import { NextRequest, NextResponse } from "next/server";
 const ALLOWED_ROLES_FOR_PATH: Record<string, AppRole[]> = {
   "/student": ["student"],
   "/staff": ["staff", "admin"],
-  "/police": ["police", "admin"],
+  "/police/admin": ["police_admin"],
+  "/police": ["officer", "police_admin", "admin"],
 };
 
 function getRequiredRolesForPath(pathname: string): AppRole[] | null {
@@ -18,7 +19,8 @@ function getRequiredRolesForPath(pathname: string): AppRole[] | null {
 function getDefaultRoleForPath(pathname: string): AppRole | null {
   if (pathname.startsWith("/student")) return "student";
   if (pathname.startsWith("/staff")) return "staff";
-  if (pathname.startsWith("/police")) return "police";
+  if (pathname.startsWith("/police/admin")) return "police_admin";
+  if (pathname.startsWith("/police")) return "officer";
   return null;
 }
 
@@ -29,8 +31,10 @@ function getDashboardPath(role: AppRole | undefined): string {
     case "staff":
     case "admin":
       return "/staff";
-    case "police":
+    case "officer":
       return "/police";
+    case "police_admin":
+      return "/police/admin";
     default:
       return "/login";
   }
@@ -64,7 +68,7 @@ export async function proxy(req: NextRequest) {
 
   const defaultRole = getDefaultRoleForPath(pathname);
 
-  if (defaultRole === "police") {
+  if (defaultRole === "officer" || defaultRole === "police_admin") {
     const loginUrl = new URL("/login/police", req.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);

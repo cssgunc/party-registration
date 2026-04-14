@@ -18,51 +18,31 @@ export class StudentService {
   constructor(private client: AxiosInstance = apiClient) {}
 
   async getCurrentStudent(): Promise<StudentDto> {
-    try {
-      const response = await this.client.get<StudentDtoBackend>("/students/me");
-      return convertStudent(response.data);
-    } catch (error) {
-      console.error("Failed to get current student:", error);
-      throw new Error("Failed to get current student");
-    }
+    const response = await this.client.get<StudentDtoBackend>("/students/me");
+    return convertStudent(response.data);
   }
 
   async updateMe(data: StudentData): Promise<StudentDto> {
-    try {
-      const response = await this.client.put<StudentDtoBackend>(
-        "/students/me",
-        data
-      );
-      return convertStudent(response.data);
-    } catch (error) {
-      console.error("Failed to update student:", error);
-      throw new Error("Failed to update student");
-    }
+    const response = await this.client.put<StudentDtoBackend>(
+      "/students/me",
+      data
+    );
+    return convertStudent(response.data);
   }
 
   async updateResidence(data: ResidenceUpdateDto): Promise<LocationDto> {
-    try {
-      const response = await this.client.put<LocationDtoBackend>(
-        "/students/me/residence",
-        data
-      );
-      return convertLocation(response.data);
-    } catch (error) {
-      console.error("Failed to update residence:", error);
-      throw new Error("Failed to update residence");
-    }
+    const response = await this.client.put<LocationDtoBackend>(
+      "/students/me/residence",
+      data
+    );
+    return convertLocation(response.data);
   }
 
   async getMyParties(): Promise<PartyDto[]> {
-    try {
-      const response = await this.client.get<PartyDtoBackend[]>(
-        "/students/me/parties"
-      );
-      return response.data.map(convertParty);
-    } catch (error) {
-      console.error("Failed to get student parties:", error);
-      throw new Error("Failed to get student parties");
-    }
+    const response = await this.client.get<PartyDtoBackend[]>(
+      "/students/me/parties"
+    );
+    return response.data.map(convertParty);
   }
 }
 
