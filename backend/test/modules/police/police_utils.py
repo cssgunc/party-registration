@@ -43,7 +43,7 @@ class PoliceTestUtils(
     @staticmethod
     def generate_defaults(count: int) -> dict[str, Any]:
         return {
-            "email": f"police{count}@unc.edu",
+            "email": f"police{count}@{env.CHPD_EMAIL_DOMAIN}",
             "password": PoliceTestUtils.TEST_PASSWORD,
             "confirm_password": PoliceTestUtils.TEST_PASSWORD,
             "role": PoliceRole.OFFICER.value,

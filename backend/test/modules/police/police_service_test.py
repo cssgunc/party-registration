@@ -247,22 +247,24 @@ class TestPoliceSignup:
         mock_email_service.send_email.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_signup_duplicate_email_raises_conflict(self) -> None:
+    async def test_signup_duplicate_email_raises_conflict(
+        self, mock_email_service: AsyncMock
+    ) -> None:
         """Test signing up with an existing email raises PoliceConflictException."""
         existing = await self.police_utils.create_one()
 
         with pytest.raises(PoliceConflictException):
             await self.police_service.signup_police(existing.email, "somepassword")
 
-    @pytest.mark.asyncio
-    async def test_signup_duplicate_email_does_not_send_email(
-        self, mock_email_service: AsyncMock
-    ) -> None:
-        """Test that a failed signup does not send an email."""
-        existing = await self.police_utils.create_one()
+        mock_email_service.send_email.assert_not_awaited()
 
-        with pytest.raises(PoliceConflictException):
-            await self.police_service.signup_police(existing.email, "somepassword")
+    @pytest.mark.asyncio
+    async def test_signup_restricts_to_chpd_domain(self, mock_email_service: AsyncMock) -> None:
+        """Test signing up with an existing email raises PoliceConflictException."""
+        data = await self.police_utils.next_data(email="test@notchpd.com")
+
+        with pytest.raises(BadRequestException):
+            await self.police_service.signup_police(data.email, data.password)
 
         mock_email_service.send_email.assert_not_awaited()
 

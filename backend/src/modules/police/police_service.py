@@ -103,6 +103,9 @@ class PoliceService:
         return exporter.to_bytes()
 
     async def signup_police(self, email: str, password: str) -> None:
+        if not email.endswith(f"@{env.CHPD_EMAIL_DOMAIN}"):
+            raise BadRequestException(f"CHPD email must use the @{env.CHPD_EMAIL_DOMAIN} domain")
+
         police = PoliceEntity(
             email=email,
             hashed_password=hash_password(password),

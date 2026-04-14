@@ -15,6 +15,7 @@ class Config(BaseSettings):
         extra="ignore",
     )
 
+    # Database configuration
     MSSQL_DATABASE: str = "ocsl"
     MSSQL_USER: str = "sa"
     MSSQL_PASSWORD: str = "YourStrong!Passw0rd"
@@ -23,9 +24,10 @@ class Config(BaseSettings):
     MSSQL_DRIVER: str = "ODBC Driver 18 for SQL Server"
     MSSQL_TRUST_SERVER_CERTIFICATE: str = "yes"
 
-    HOST: str = "localhost"
+    # Frontend configuration
     FRONTEND_BASE_URL: str = "http://localhost:3000"
-    PARTY_SEARCH_RADIUS_MILES: float = 0.25
+
+    # Google Maps
     GOOGLE_MAPS_API_KEY: str
 
     # JWT Configuration
@@ -45,6 +47,10 @@ class Config(BaseSettings):
     SMTP_PASSWORD: str = ""
     SMTP_TLS: bool = False
     EMAIL_FROM: str = "ocsl-no-reply@unc.edu"
+
+    # App Configuration
+    PARTY_SEARCH_RADIUS_MILES: float = 0.25
+    CHPD_EMAIL_DOMAIN: str = "chapelhillnc.gov"
     EMAIL_VERIFICATION_TOKEN_EXPIRE_HOURS: int = 24
 
 

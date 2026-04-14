@@ -48,6 +48,12 @@ export default function PoliceSignupPage() {
     event.preventDefault();
     setError(null);
 
+    const allowedDomain = process.env.NEXT_PUBLIC_CHPD_EMAIL_DOMAIN;
+    if (!email.toLowerCase().endsWith(`@${allowedDomain}`)) {
+      setError(`Email must use the @${allowedDomain} domain.`);
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError("Passwords do not match.");
       return;
