@@ -10,6 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { SkeletonText } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { IncidentDto } from "@/lib/api/incident/incident.types";
 import { PartyDto } from "@/lib/api/party/party.types";
@@ -219,7 +220,7 @@ export default function RegistrationTracker({
 
   if (error) {
     return (
-      <Card className="w-full bg-card p-4">
+      <Card className="w-full bg-card p-4 h-[calc(100vh-28rem)]">
         <div className="text-center text-red-600 py-8">
           <p className="font-semibold mb-2">Error loading registrations</p>
           <p className="text-sm">{error.message}</p>
@@ -230,9 +231,13 @@ export default function RegistrationTracker({
 
   if (isPending) {
     return (
-      <Card className="w-full bg-card p-4">
-        <div className="text-center py-8">
-          <p className="content-sub">Loading registrations...</p>
+      <Card className="w-full bg-card p-2 sm:p-4 h-[calc(100vh-28rem)] overflow-y-hidden">
+        <div className="px-4 py-4 gap-4 sm:gap-7 flex flex-col">
+          <SkeletonText className="pb-5 max-w-full" />
+          <SkeletonText className="pb-5 max-w-full" />
+          <SkeletonText className="pb-5 max-w-full" />
+          <SkeletonText className="pb-5 max-w-full" />
+          <SkeletonText className="max-w-full" />
         </div>
       </Card>
     );

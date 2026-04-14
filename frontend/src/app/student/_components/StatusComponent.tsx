@@ -1,4 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
+import { SkeletonText } from "@/components/ui/skeleton";
 import { isFromThisSchoolYear } from "@/lib/utils";
 import { AlertTriangleIcon, CheckCircle, ExternalLink } from "lucide-react";
 import Link from "next/link";
@@ -30,10 +31,8 @@ export default function StatusComponent({
   if (isPending) {
     return (
       <Card className="p-4 rounded-md shadow-sm w-full bg-card">
-        <CardContent className="p-0">
-          <div className="text-center text-muted-foreground py-4">
-            <p className="content-sub">Loading course status...</p>
-          </div>
+        <CardContent className="p-0 overflow-y-hidden">
+          <SkeletonText />
         </CardContent>
       </Card>
     );
@@ -55,7 +54,6 @@ export default function StatusComponent({
                 </span>
               </p>
             </div>
-
             <p className="italic content">Expires August 1st</p>
           </>
         ) : (

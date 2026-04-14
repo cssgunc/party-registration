@@ -25,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -425,25 +426,19 @@ export function TableTemplate<T extends object>({
         </div>
       )}
 
-      {isLoading && (
-        <span className="text-center py-8 text-muted-foreground">
-          Loading...
-        </span>
-      )}
+      <div className="flex min-h-0 h-full flex-col justify-between overflow-hidden">
+        <Card className="flex-1 min-h-0 py-2 px-4 overflow-hidden rounded-sm w-full max-w-none mx-0">
+          {error && (
+            <span className="text-center py-8 text-destructive">
+              <p>Error: {error.message}</p>
+            </span>
+          )}
 
-      {error && (
-        <span className="text-center py-8 text-destructive">
-          <p>Error: {error.message}</p>
-        </span>
-      )}
-
-      {!isLoading && !error && (
-        <div className="flex min-h-0 h-full flex-col justify-between overflow-hidden">
-          <Card className="flex-1 min-h-0 py-2 px-4 overflow-hidden rounded-sm w-full max-w-none mx-0">
+          {!error && (
             <div
               className={cn(
                 "h-full overflow-y-auto",
-                isFetching && "opacity-60 pointer-events-none"
+                (isFetching || isLoading) && "opacity-60 pointer-events-none"
               )}
             >
               <Table className="bg-card rounded-sm">
@@ -460,7 +455,14 @@ export function TableTemplate<T extends object>({
                           }
                         >
                           {header.isPlaceholder ? null : header.column.id ===
-                            "actions" ? null : (
+                            "actions" ? null : isLoading ? (
+                            typeof header.column.columnDef.header ===
+                            "string" ? (
+                              header.column.columnDef.header
+                            ) : (
+                              header.column.id
+                            )
+                          ) : (
                             <ColumnHeader
                               column={header.column}
                               title={
@@ -503,31 +505,66 @@ export function TableTemplate<T extends object>({
                   ))}
                 </TableHeader>
                 <TableBody>
-                  {visibleRows.length ? (
-                    visibleRows.map((row) => (
-                      <TableRow
-                        key={row.id}
-                        className={
-                          row.getIsSelected()
-                            ? "bg-accent hover:bg-secondary"
-                            : ""
-                        }
-                      >
-                        {row.getVisibleCells().map((cell) => (
-                          <TableCell
-                            key={cell.id}
-                            className={
-                              cell.column.getIsFiltered() ? "bg-card" : ""
-                            }
+                  {isLoading ? (
+                    Array.from({ length: Math.max(activePageSize, 5) }).map(
+                      (_, rowIndex) => (
+                        <TableRow key={`loading-row-${rowIndex}`}>
+                          {table.getVisibleLeafColumns().map((column) => (
+                            <TableCell
+                              key={`loading-cell-${rowIndex}-${column.id}`}
+                            >
+                              <Skeleton
+                                className={
+                                  column.id === "actions"
+                                    ? "h-8 w-8 ml-auto"
+                                    : "h-4 w-full"
+                                }
+                              />
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      )
+                    )
+                  ) : visibleRows.length ? (
+                    <>
+                      {visibleRows.map((row) => (
+                        <TableRow
+                          key={row.id}
+                          className={
+                            row.getIsSelected()
+                              ? "bg-accent hover:bg-secondary"
+                              : ""
+                          }
+                        >
+                          {row.getVisibleCells().map((cell) => (
+                            <TableCell
+                              key={cell.id}
+                              className={
+                                cell.column.getIsFiltered() ? "bg-card" : ""
+                              }
+                            >
+                              {flexRender(
+                                cell.column.columnDef.cell,
+                                cell.getContext()
+                              )}
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                      {Array.from({ length: fillerRowCount }).map(
+                        (_, index) => (
+                          <TableRow
+                            key={`filler-row-${index}`}
+                            className="pointer-events-none"
                           >
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext()
-                            )}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))
+                            <TableCell
+                              colSpan={columnsWithActions.length}
+                              className="h-12.25"
+                            />
+                          </TableRow>
+                        )
+                      )}
+                    </>
                   ) : (
                     <TableRow>
                       <TableCell
@@ -538,118 +575,109 @@ export function TableTemplate<T extends object>({
                       </TableCell>
                     </TableRow>
                   )}
-                  {Array.from({ length: fillerRowCount }).map((_, index) => (
-                    <TableRow
-                      key={`filler-row-${index}`}
-                      className="pointer-events-none"
-                    >
-                      <TableCell
-                        colSpan={columnsWithActions.length}
-                        className="h-12.25"
-                      />
-                    </TableRow>
-                  ))}
                 </TableBody>
               </Table>
-            </div>
-          </Card>
 
-          {/* Pagination Controls */}
-          <div className="flex flex-col items-center p-2 gap-2 lg:mt-4">
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      table.previousPage();
-                    }}
-                    className={
-                      !table.getCanPreviousPage()
-                        ? "pointer-events-none opacity-50"
-                        : "cursor-pointer"
-                    }
-                  />
-                </PaginationItem>
-                {pageStart > 0 && (
-                  <PaginationItem>
-                    <PaginationEllipsis />
-                  </PaginationItem>
-                )}
-                {pageIndexes.map((pageIndex) => (
-                  <PaginationItem key={pageIndex}>
-                    <PaginationLink
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        table.setPageIndex(pageIndex);
+              {/* Pagination Controls */}
+              {!isLoading && (
+                <div className="flex flex-col items-center p-2 gap-2 lg:mt-4">
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            table.previousPage();
+                          }}
+                          className={
+                            !table.getCanPreviousPage()
+                              ? "pointer-events-none opacity-50"
+                              : "cursor-pointer"
+                          }
+                        />
+                      </PaginationItem>
+                      {pageStart > 0 && (
+                        <PaginationItem>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      )}
+                      {pageIndexes.map((pageIndex) => (
+                        <PaginationItem key={pageIndex}>
+                          <PaginationLink
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              table.setPageIndex(pageIndex);
+                            }}
+                            isActive={activePage === pageIndex}
+                            className="cursor-pointer"
+                          >
+                            {pageIndex + 1}
+                          </PaginationLink>
+                        </PaginationItem>
+                      ))}
+                      {pageEnd < pageCount && (
+                        <PaginationItem>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      )}
+                      <PaginationItem>
+                        <PaginationNext
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            table.nextPage();
+                          }}
+                          className={
+                            !table.getCanNextPage()
+                              ? "pointer-events-none opacity-50"
+                              : "cursor-pointer"
+                          }
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                  <div className="flex items-center gap-12 md:gap-20 lg:gap-30 text-sm text-muted-foreground">
+                    <span>
+                      Results{" "}
+                      {table.getState().pagination.pageIndex *
+                        table.getState().pagination.pageSize +
+                        1}{" "}
+                      -{" "}
+                      {filteredRowCount <
+                      (table.getState().pagination.pageIndex + 1) *
+                        table.getState().pagination.pageSize
+                        ? filteredRowCount
+                        : (table.getState().pagination.pageIndex + 1) *
+                          table.getState().pagination.pageSize}{" "}
+                      of {filteredRowCount}
+                    </span>
+                    <Select
+                      value={String(activePageSize)}
+                      onValueChange={(value) => {
+                        table.setPageSize(Number(value));
+                        table.setPageIndex(0);
                       }}
-                      isActive={activePage === pageIndex}
-                      className="cursor-pointer"
                     >
-                      {pageIndex + 1}
-                    </PaginationLink>
-                  </PaginationItem>
-                ))}
-                {pageEnd < pageCount && (
-                  <PaginationItem>
-                    <PaginationEllipsis />
-                  </PaginationItem>
-                )}
-                <PaginationItem>
-                  <PaginationNext
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      table.nextPage();
-                    }}
-                    className={
-                      !table.getCanNextPage()
-                        ? "pointer-events-none opacity-50"
-                        : "cursor-pointer"
-                    }
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-            <div className="flex items-center gap-12 md:gap-20 lg:gap-30 text-sm text-muted-foreground">
-              <span>
-                Results{" "}
-                {table.getState().pagination.pageIndex *
-                  table.getState().pagination.pageSize +
-                  1}{" "}
-                -{" "}
-                {filteredRowCount <
-                (table.getState().pagination.pageIndex + 1) *
-                  table.getState().pagination.pageSize
-                  ? filteredRowCount
-                  : (table.getState().pagination.pageIndex + 1) *
-                    table.getState().pagination.pageSize}{" "}
-                of {filteredRowCount}
-              </span>
-              <Select
-                value={String(activePageSize)}
-                onValueChange={(value) => {
-                  table.setPageSize(Number(value));
-                  table.setPageIndex(0);
-                }}
-              >
-                <SelectTrigger className="bg-card">
-                  <SelectValue placeholder="Rows" />
-                </SelectTrigger>
-                <SelectContent className="max-h-40 overflow-y-auto ">
-                  {pageSizeOptions.map((size) => (
-                    <SelectItem key={size} value={String(size)}>
-                      {size}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                      <SelectTrigger className="bg-card">
+                        <SelectValue placeholder="Rows" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-40 overflow-y-auto ">
+                        {pageSizeOptions.map((size) => (
+                          <SelectItem key={size} value={String(size)}>
+                            {size}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
-        </div>
-      )}
+          )}
+        </Card>
+      </div>
 
       {/* Delete Confirmation Dialog */}
       {onDelete && (
