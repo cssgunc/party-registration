@@ -11,6 +11,7 @@ import {
 import {
   useDeleteStudent,
   useStudents,
+  useUpdateIsRegistered,
   useUpdateStudent,
 } from "@/lib/api/student/admin-student.queries";
 import { StudentDto, StudentUpdateDto } from "@/lib/api/student/student.types";
@@ -67,7 +68,7 @@ export const StudentTable = () => {
   const studentsQuery = useStudents(serverParams);
   const students = studentsQuery.data?.items ?? [];
 
-  const checkboxMutation = useUpdateStudent();
+  const checkboxMutation = useUpdateIsRegistered();
 
   const editFormMutation = useUpdateStudent({
     onOptimisticUpdate: () => {
@@ -222,22 +223,12 @@ export const StudentTable = () => {
           <Checkbox
             checked={isRegistered}
             onCheckedChange={(checked: boolean) => {
-              const { phone_number, contact_preference } = student;
-              if (!phone_number || !contact_preference) return;
               checkboxMutation.mutate({
                 id: student.id,
-                data: {
-                  first_name: student.first_name,
-                  last_name: student.last_name,
-                  phone_number,
-                  contact_preference,
-                  last_registered: checked ? new Date() : null,
-                  residence_place_id:
-                    student.residence?.location.google_place_id ?? null,
-                },
+                data: { is_registered: checked },
               });
             }}
-            disabled={checkboxMutation.isPending || !student.phone_number}
+            disabled={checkboxMutation.isPending}
           />
         );
       },

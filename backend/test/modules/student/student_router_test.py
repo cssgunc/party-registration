@@ -327,6 +327,7 @@ class TestStudentCRUDRouter:
     async def test_create_student_duplicate_phone(self):
         """Test creating students with duplicate phone numbers."""
         student = await self.student_utils.create_one()
+        assert student.phone_number is not None
         payload = await self.student_utils.next_student_create(phone_number=student.phone_number)
 
         response = await self.admin_client.post(
@@ -405,6 +406,7 @@ class TestStudentCRUDRouter:
     async def test_update_student_phone_conflict(self):
         """Test updating student with phone number that already exists."""
         students = await self.student_utils.create_many(i=2)
+        assert students[0].phone_number is not None
         updated_data = await self.student_utils.next_update_dto(
             phone_number=students[0].phone_number
         )
@@ -777,6 +779,7 @@ class TestStudentMeRouter:
     async def test_update_me_phone_conflict(self, current_student: StudentEntity):
         """Test updating me with phone number that already exists."""
         other_student = await self.student_utils.create_one()
+        assert other_student.phone_number is not None
         updated_data = SelfUpdateStudentDto(
             contact_preference=ContactPreference.TEXT,
             phone_number=other_student.phone_number,

@@ -20,10 +20,12 @@ class StudentEntity(MappedAsDataclass, EntityBase):
     account_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("accounts.id"), primary_key=True, autoincrement=False, index=True
     )
-    contact_preference: Mapped[ContactPreference] = mapped_column(
-        Enum(ContactPreference, native_enum=False, length=20), nullable=False
+    contact_preference: Mapped[ContactPreference | None] = mapped_column(
+        Enum(ContactPreference, native_enum=False, length=20), nullable=True, default=None
     )
-    phone_number: Mapped[str] = mapped_column(String(20), nullable=False, unique=True)
+    phone_number: Mapped[str | None] = mapped_column(
+        String(20), nullable=True, unique=True, default=None
+    )
     last_registered: Mapped[datetime | None] = mapped_column(
         DATETIMEOFFSET, nullable=True, default=None
     )

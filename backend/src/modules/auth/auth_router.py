@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Header, status
 from src.core.authentication import authenticate_by_role
 from src.core.config import env
+from src.modules.account.account_entity import AccountRole
 from src.modules.account.account_model import AccountData
 from src.modules.account.account_service import AccountService
 from src.modules.auth.auth_model import (
@@ -11,6 +12,7 @@ from src.modules.auth.auth_model import (
 )
 from src.modules.auth.auth_service import AuthService, InvalidInternalSecretException
 from src.modules.police.police_service import PoliceService
+from src.modules.student.student_service import StudentService
 
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
 
@@ -36,6 +38,7 @@ async def exchange_account_data_for_tokens(
     data: AccountData,
     account_service: AccountService = Depends(),
     auth_service: AuthService = Depends(),
+    student_service: StudentService = Depends(),
     _: None = Depends(verify_internal_secret),
 ) -> TokensDto:
     """
@@ -47,6 +50,8 @@ async def exchange_account_data_for_tokens(
     Requires internal API secret in X-Internal-Secret header.
     """
     account = await account_service.upsert_idp_account(data)
+    if account.role == AccountRole.STUDENT:
+        await student_service.ensure_student_entity_exists(account.id)
     return await auth_service.exchange_account_for_tokens(account)
 
 

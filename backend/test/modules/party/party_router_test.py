@@ -362,6 +362,7 @@ class TestPartyCreateAdminRouter:
         """Test admin cannot create party with contact_two phone matching contact_one."""
         location = await self.location_utils.create_one()
         student = await self.student_utils.create_one()
+        assert student.phone_number is not None
 
         payload = await self.party_utils.next_admin_create_dto(
             google_place_id=location.google_place_id,
@@ -486,6 +487,7 @@ class TestPartyCreateStudentRouter:
     @pytest.mark.asyncio
     async def test_create_party_as_student_duplicate_phone(self, current_student: StudentEntity):
         """Test student cannot create party with contact_two phone matching their own."""
+        assert current_student.phone_number is not None
         # Set up student residence
         location = await self.location_utils.create_one()
         await self.student_utils.set_student_residence(current_student, location.id)
@@ -595,6 +597,7 @@ class TestPartyUpdateAdminRouter:
         """Test admin cannot update party with contact_two phone matching contact_one."""
         location = await self.location_utils.create_one()
         student = await self.student_utils.create_one()
+        assert student.phone_number is not None
 
         # Create a party first
         create_payload = await self.party_utils.next_admin_create_dto(
@@ -773,6 +776,7 @@ class TestPartyUpdateStudentRouter:
     @pytest.mark.asyncio
     async def test_update_party_as_student_duplicate_phone(self, current_student: StudentEntity):
         """Test student cannot update party with contact_two phone matching their own."""
+        assert current_student.phone_number is not None
         # Set up student residence
         location = await self.location_utils.create_one()
         await self.student_utils.set_student_residence(current_student, location.id)

@@ -275,12 +275,29 @@ class StudentService:
         await self._get_student_entity_by_account_id(account_id)
 
     async def assert_student_entity_exists(self, account_id: int) -> None:
-        """Assert that a Student entity exists for this account. Used before party creation."""
+        """Assert that a Student entity exists with contact info for this account.
+        Used before party creation to ensure student has provided phone and contact preference."""
         result = await self.session.execute(
             select(StudentEntity).where(StudentEntity.account_id == account_id)
         )
-        if result.scalar_one_or_none() is None:
+        entity = result.scalar_one_or_none()
+        if entity is None or entity.phone_number is None or entity.contact_preference is None:
             raise StudentInfoNotProvidedException()
+
+    async def ensure_student_entity_exists(self, account_id: int) -> None:
+        """Ensure a StudentEntity exists for this account, creating one with null
+        phone/preference if missing. Called after SSO login for student accounts."""
+        result = await self.session.execute(
+            select(StudentEntity).where(StudentEntity.account_id == account_id)
+        )
+        if result.scalar_one_or_none() is not None:
+            return
+        student_entity = StudentEntity(account_id=account_id)
+        try:
+            self.session.add(student_entity)
+            await self.session.commit()
+        except IntegrityError:
+            await self.session.rollback()
 
     async def get_student_me_dto(self, account_id: int) -> StudentDto:
         """
@@ -483,7 +500,7 @@ class StudentService:
                 matched_field_value = account.onyen
             else:
                 matched_field_name = "phone_number"
-                matched_field_value = student.phone_number
+                matched_field_value = student.phone_number or ""
 
             suggestions.append(
                 StudentSuggestionDto(

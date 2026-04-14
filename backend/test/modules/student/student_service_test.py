@@ -1,9 +1,11 @@
 from datetime import UTC, datetime
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.modules.account.account_entity import AccountRole
 from src.modules.location.location_service import LocationService
+from src.modules.student.student_entity import StudentEntity
 from src.modules.student.student_model import ContactPreference, SelfUpdateStudentDto, StudentDto
 from src.modules.student.student_service import (
     AccountNotFoundException,
@@ -112,6 +114,7 @@ class TestStudentService:
         student1 = await self.student_utils.create_one()
         student2 = await self.student_utils.create_one()
 
+        assert student1.phone_number is not None
         with pytest.raises(StudentConflictException):
             await self.student_service.update_student(
                 student2.account_id,
@@ -272,6 +275,45 @@ class TestStudentService:
 
         # Should not raise
         await self.student_service.assert_student_entity_exists(student_entity.account_id)
+
+    @pytest.mark.asyncio
+    async def test_assert_student_entity_exists_raises_when_null_info(
+        self, test_session: AsyncSession
+    ):
+        """assert_student_entity_exists raises when entity exists but phone/preference are null."""
+        account = await self.account_utils.create_one(role=AccountRole.STUDENT.value)
+        entity = StudentEntity(account_id=account.id)
+        test_session.add(entity)
+        await test_session.commit()
+
+        with pytest.raises(StudentInfoNotProvidedException):
+            await self.student_service.assert_student_entity_exists(account.id)
+
+    @pytest.mark.asyncio
+    async def test_ensure_student_entity_exists_creates_entity(self, test_session: AsyncSession):
+        """ensure_student_entity_exists creates a StudentEntity with null phone/preference."""
+        account = await self.account_utils.create_one(role=AccountRole.STUDENT.value)
+
+        await self.student_service.ensure_student_entity_exists(account.id)
+
+        result = await test_session.execute(
+            select(StudentEntity).where(StudentEntity.account_id == account.id)
+        )
+        entity = result.scalar_one_or_none()
+        assert entity is not None
+        assert entity.phone_number is None
+        assert entity.contact_preference is None
+
+    @pytest.mark.asyncio
+    async def test_ensure_student_entity_exists_noop_when_entity_exists(self):
+        """ensure_student_entity_exists does not overwrite an existing entity."""
+        student_entity = await self.student_utils.create_one()
+
+        await self.student_service.ensure_student_entity_exists(student_entity.account_id)
+
+        fetched = await self.student_service.get_student_by_id(student_entity.account_id)
+        assert fetched.phone_number is not None
+        assert fetched.contact_preference is not None
 
 
 class TestStudentResidenceService:

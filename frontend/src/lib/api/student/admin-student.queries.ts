@@ -9,7 +9,12 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { AdminStudentService } from "./admin-student.service";
-import { STUDENTS_KEY, StudentDto, StudentUpdateDto } from "./student.types";
+import {
+  IsRegisteredUpdate,
+  STUDENTS_KEY,
+  StudentDto,
+  StudentUpdateDto,
+} from "./student.types";
 
 const studentService = new AdminStudentService();
 const accountService = new AccountService();
@@ -66,6 +71,28 @@ export function useCreateStudent(
       });
       return studentService.createStudent({ account_id: account.id, data });
     },
+
+    onSuccess: (...params) => {
+      queryClient.invalidateQueries({ queryKey: STUDENTS_KEY });
+      options?.onSuccess?.(...params);
+    },
+  });
+}
+
+type UpdateIsRegisteredVars = {
+  id: number;
+  data: IsRegisteredUpdate;
+};
+
+export function useUpdateIsRegistered(
+  options?: OptimisticMutationOptions<StudentDto, Error, UpdateIsRegisteredVars>
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...options,
+    mutationFn: ({ id, data }: UpdateIsRegisteredVars) =>
+      studentService.updateIsRegistered(id, data),
 
     onSuccess: (...params) => {
       queryClient.invalidateQueries({ queryKey: STUDENTS_KEY });

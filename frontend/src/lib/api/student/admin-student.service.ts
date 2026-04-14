@@ -6,6 +6,7 @@ import apiClient from "@/lib/network/apiClient";
 import { PaginatedResponse } from "@/lib/shared";
 import { AxiosInstance } from "axios";
 import {
+  IsRegisteredUpdate,
   StudentAutocompleteInput,
   StudentCreateDto,
   StudentDto,
@@ -111,6 +112,25 @@ export class AdminStudentService {
     } catch (error) {
       console.error("Failed to fetch student autocomplete:", error);
       throw new Error("Failed to fetch student suggestions");
+    }
+  }
+
+  /**
+   * Updates student registration status (PATCH /api/students/{student_id}/is-registered)
+   */
+  async updateIsRegistered(
+    id: number,
+    data: IsRegisteredUpdate
+  ): Promise<StudentDto> {
+    try {
+      const response = await this.client.patch<StudentDtoBackend>(
+        `/students/${id}/is-registered`,
+        data
+      );
+      return convertStudent(response.data);
+    } catch (error) {
+      console.error(`Failed to update is_registered for student ${id}:`, error);
+      throw new Error("Failed to update student registration status");
     }
   }
 

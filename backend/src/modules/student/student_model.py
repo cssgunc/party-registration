@@ -17,9 +17,9 @@ class ContactPreference(enum.Enum):
 class StudentData(BaseModel):
     """Student data without names (names are stored in Account)."""
 
-    contact_preference: ContactPreference
+    contact_preference: ContactPreference | None = None
     last_registered: AwareDatetime | None = None
-    phone_number: PhoneNumber
+    phone_number: PhoneNumber | None = None
 
 
 class StudentUpdateDto(BaseModel):
