@@ -31,7 +31,11 @@ from test.utils.http.assertions import (
     assert_res_success,
     assert_res_validation_error,
 )
-from test.utils.http.test_templates import generate_auth_required_tests, generate_filter_sort_tests
+from test.utils.http.test_templates import (
+    generate_auth_required_tests,
+    generate_filter_sort_tests,
+    generate_search_tests,
+)
 
 test_student_sort, test_student_filter = generate_filter_sort_tests(
     "/api/students",
@@ -55,6 +59,11 @@ test_student_sort, test_student_filter = generate_filter_sort_tests(
         ("contact_preference", "text"),
         ("phone_number_contains", "555"),
     ],
+)
+
+test_student_search_no_results, test_student_search_ok = generate_search_tests(
+    "/api/students",
+    StudentDto,
 )
 
 test_student_authentication = generate_auth_required_tests(
@@ -974,11 +983,3 @@ class TestStudentListSearch:
         response = await self.admin_client.get("/api/students?search=uniquelynamed")
         paginated = assert_res_paginated(response, StudentDto, total_records=1)
         self.student_utils.assert_matches(student1, paginated.items[0])
-
-    @pytest.mark.asyncio
-    async def test_search_no_results(self):
-        """Search with no matching term returns empty results."""
-        await self.student_utils.create_many(i=3)
-
-        response = await self.admin_client.get("/api/students?search=zzznomatch")
-        assert_res_paginated(response, StudentDto, total_records=0)

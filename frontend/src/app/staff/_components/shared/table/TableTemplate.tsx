@@ -92,6 +92,8 @@ export type TableProps<T> = {
   serverMeta?: { totalRecords: number; totalPages: number };
   onStateChange?: (params: ServerTableParams) => void;
   columnMap?: ServerColumnMap;
+  canManageRows?: boolean;
+  canDeleteRow?: (row: T) => boolean;
 };
 
 export function TableTemplate<T extends object>({
@@ -113,11 +115,14 @@ export function TableTemplate<T extends object>({
   serverMeta,
   onStateChange,
   columnMap,
+  canManageRows,
+  canDeleteRow,
 }: TableProps<T>) {
   const isServerMode = !!serverMeta;
   const { isOpen, openSidebar, closeSidebar } = useSidebar();
   const { data: session } = useSession();
   const role = session?.role;
+  const hasManagePermission = canManageRows ?? role === "admin";
 
   const sortedData = useMemo(
     () => (sortBy ? [...data].sort(sortBy) : data),
@@ -134,6 +139,7 @@ export function TableTemplate<T extends object>({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<T | null>(null);
   const [globalFilter, setGlobalFilter] = useState<string>("");
+  const [searchInput, setSearchInput] = useState<string>("");
 
   // Refs to avoid stale closures in debounced effects
   const paginationRef = useRef(pagination);
@@ -165,10 +171,23 @@ export function TableTemplate<T extends object>({
 
   const filterDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inputDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const globalFilterRef = useRef(globalFilter);
   useEffect(() => {
     globalFilterRef.current = globalFilter;
   }, [globalFilter]);
+
+  // Debounce searchInput → globalFilter to keep the input responsive while
+  // avoiding expensive re-renders and API calls on every keystroke.
+  useEffect(() => {
+    if (inputDebounceRef.current) clearTimeout(inputDebounceRef.current);
+    inputDebounceRef.current = setTimeout(() => {
+      setGlobalFilter(searchInput);
+    }, 500);
+    return () => {
+      if (inputDebounceRef.current) clearTimeout(inputDebounceRef.current);
+    };
+  }, [searchInput]);
 
   // Server mode: immediate callback on pagination/sorting change
   useEffect(() => {
@@ -301,13 +320,17 @@ export function TableTemplate<T extends object>({
   };
 
   const confirmDelete = () => {
-    if (itemToDelete && onDelete) {
+    if (
+      itemToDelete &&
+      onDelete &&
+      (canDeleteRow ? canDeleteRow(itemToDelete) : true)
+    ) {
       onDelete(itemToDelete);
     }
   };
 
   const columnsWithActions: ColumnDef<T, unknown>[] =
-    role === "admin" && (onEdit || onDelete)
+    hasManagePermission && (onEdit || onDelete)
       ? [
           ...columns,
           {
@@ -332,15 +355,16 @@ export function TableTemplate<T extends object>({
                         Edit
                       </DropdownMenuItem>
                     )}
-                    {onDelete && (
-                      <DropdownMenuItem
-                        onClick={() => handleDeleteClick(row.original)}
-                        variant="destructive"
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    )}
+                    {onDelete &&
+                      (canDeleteRow ? canDeleteRow(row.original) : true) && (
+                        <DropdownMenuItem
+                          onClick={() => handleDeleteClick(row.original)}
+                          variant="destructive"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -429,14 +453,14 @@ export function TableTemplate<T extends object>({
             <div className="flex-1 min-w-sm max-w-lg bg-card rounded-md">
               <Input
                 type="text"
-                value={globalFilter}
-                onChange={(e) => setGlobalFilter(e.target.value)}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="Search all columns..."
                 className="p-2 pl-3 h-9 rounded-md"
               />
             </div>
             <div className="shrink-0 ml-auto">
-              {onCreateNewRow && role === "admin" && (
+              {onCreateNewRow && hasManagePermission && (
                 <Button onClick={onCreateNewRow} className="h-9">
                   <Plus className="mr-1" />
                   <p>New row</p>

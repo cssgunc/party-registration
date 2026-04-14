@@ -10,7 +10,11 @@ from test.utils.http.assertions import (
     assert_res_success,
     assert_res_validation_error,
 )
-from test.utils.http.test_templates import generate_auth_required_tests, generate_filter_sort_tests
+from test.utils.http.test_templates import (
+    generate_auth_required_tests,
+    generate_filter_sort_tests,
+    generate_search_tests,
+)
 
 test_account_sort, test_account_filter = generate_filter_sort_tests(
     "/api/accounts",
@@ -31,6 +35,11 @@ test_account_sort, test_account_filter = generate_filter_sort_tests(
         ("pid", 0),
         ("role", "admin"),
     ],
+)
+
+test_account_search_no_results, test_account_search_ok = generate_search_tests(
+    "/api/accounts",
+    AccountDto,
 )
 
 test_account_authentication = generate_auth_required_tests(
@@ -252,11 +261,3 @@ class TestAccountListSearch:
         response = await self.admin_client.get("/api/accounts?search=uniquelynamed")
         paginated = assert_res_paginated(response, AccountDto, total_records=1)
         self.account_utils.assert_matches(paginated.items[0], account1.to_dto())
-
-    @pytest.mark.asyncio
-    async def test_search_no_results(self):
-        """Search with no matching term returns empty results."""
-        await self.account_utils.create_many(i=3)
-
-        response = await self.admin_client.get("/api/accounts?search=zzznomatch")
-        assert_res_paginated(response, AccountDto, total_records=0)

@@ -10,7 +10,7 @@ from src.core.authentication import StringRole
 from src.core.exceptions import CredentialsException, ForbiddenException
 from test.utils.http.assertions import assert_res_failure, assert_res_paginated
 
-all_roles: set[StringRole] = {"admin", "staff", "student", "police"}
+all_roles: set[StringRole] = {"admin", "staff", "student", "officer", "police_admin"}
 
 
 def generate_auth_required_tests(*params: tuple[set[StringRole], str, str, dict | None]):
@@ -168,3 +168,36 @@ def generate_filter_sort_tests(
         assert_res_paginated(response, dto_class)
 
     return test_allowed_sort_fields, test_allowed_filter_fields
+
+
+def generate_search_tests(
+    endpoint: str,
+    dto_class: type[BaseModel],
+):
+    """Generate generic search tests for a paginated list endpoint.
+
+    Produces two tests:
+    - test_search_no_results: a nonsense term returns an empty page
+    - test_search_returns_ok: any search term is accepted without error
+
+    Field-specific search tests (which fields are searched, case insensitivity)
+    belong in each module's test file since they require module-specific fixtures.
+
+    Args:
+        endpoint: The API endpoint path (e.g., "/api/accounts").
+        dto_class: The DTO class to validate paginated response items against.
+    """
+
+    @pytest.mark.asyncio
+    async def test_search_no_results(admin_client: AsyncClient):
+        """A nonsense search term should return an empty page."""
+        response = await admin_client.get(f"{endpoint}?search=zzznomatch__xyzzy")
+        assert_res_paginated(response, dto_class, total_records=0)
+
+    @pytest.mark.asyncio
+    async def test_search_returns_ok(admin_client: AsyncClient):
+        """search param is accepted by the endpoint without error."""
+        response = await admin_client.get(f"{endpoint}?search=test")
+        assert_res_paginated(response, dto_class)
+
+    return test_search_no_results, test_search_returns_ok

@@ -11,7 +11,11 @@ from src.modules.location.location_service import (
 )
 from test.modules.location.location_utils import GmapsMockUtils, LocationTestUtils
 from test.utils.http.assertions import assert_res_failure, assert_res_paginated, assert_res_success
-from test.utils.http.test_templates import generate_auth_required_tests, generate_filter_sort_tests
+from test.utils.http.test_templates import (
+    generate_auth_required_tests,
+    generate_filter_sort_tests,
+    generate_search_tests,
+)
 
 test_location_sort, test_location_filter = generate_filter_sort_tests(
     "/api/locations",
@@ -50,6 +54,11 @@ test_location_sort, test_location_filter = generate_filter_sort_tests(
     ],
 )
 
+test_location_search_no_results, test_location_search_ok = generate_search_tests(
+    "/api/locations",
+    LocationDto,
+)
+
 test_location_authentication = generate_auth_required_tests(
     ({"admin", "staff"}, "GET", "/api/locations", None),
     ({"admin"}, "POST", "/api/locations", {"google_place_id": "ChIJ123abc"}),
@@ -57,7 +66,7 @@ test_location_authentication = generate_auth_required_tests(
     ({"admin"}, "PUT", "/api/locations/1", {"google_place_id": "ChIJ123abc"}),
     ({"admin"}, "DELETE", "/api/locations/1", None),
     (
-        {"admin", "staff", "student", "police"},
+        {"admin", "staff", "student", "officer", "police_admin"},
         "POST",
         "/api/locations/autocomplete",
         {"address": "123 Main St"},
@@ -508,11 +517,3 @@ class TestLocationListSearch:
         response = await self.admin_client.get("/api/locations?search=elm")
         paginated = assert_res_paginated(response, LocationDto, total_records=1)
         self.location_utils.assert_matches(loc1, paginated.items[0])
-
-    @pytest.mark.asyncio
-    async def test_search_no_results(self):
-        """Search with no matching term returns empty results."""
-        await self.location_utils.create_many(i=3)
-
-        response = await self.admin_client.get("/api/locations?search=zzznomatch")
-        assert_res_paginated(response, LocationDto, total_records=0)

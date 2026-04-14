@@ -6,9 +6,9 @@ from src.core.exceptions import CredentialsException, ForbiddenException
 from src.modules.account.account_model import AccountDto, AccountRole
 from src.modules.auth.auth_model import AccountAccessTokenPayload, PoliceAccessTokenPayload
 from src.modules.auth.auth_service import AuthService
-from src.modules.police.police_model import PoliceAccountDto
+from src.modules.police.police_model import PoliceAccountDto, PoliceRole
 
-StringRole = Literal["student", "admin", "staff", "police"]
+StringRole = Literal["student", "admin", "staff", "officer", "police_admin"]
 
 
 class HTTPBearer401(HTTPBearer):
@@ -35,9 +35,13 @@ def authenticate_by_role(*roles: StringRole):
         payload = auth_service.decode_access_token(token)
 
         if isinstance(payload, PoliceAccessTokenPayload):
-            if "police" not in roles:
+            if payload.role not in roles:
                 raise ForbiddenException(detail="Insufficient privileges")
-            return PoliceAccountDto(id=payload.sub, email=payload.email)
+            return PoliceAccountDto(
+                id=payload.sub,
+                email=payload.email,
+                role=PoliceRole(payload.role),
+            )
 
         elif isinstance(payload, AccountAccessTokenPayload):
             account = AccountDto(
@@ -61,7 +65,7 @@ def authenticate_by_role(*roles: StringRole):
 
 async def authenticate_user(
     account: AccountDto | PoliceAccountDto = Depends(
-        authenticate_by_role("student", "staff", "admin", "police")
+        authenticate_by_role("student", "staff", "admin", "officer", "police_admin")
     ),
 ) -> AccountDto | PoliceAccountDto:
     """
@@ -104,14 +108,22 @@ async def authenticate_student(
 
 
 async def authenticate_police_or_admin(
-    account: AccountDto | PoliceAccountDto = Depends(authenticate_by_role("police", "admin")),
+    account: AccountDto | PoliceAccountDto = Depends(
+        authenticate_by_role("officer", "police_admin", "admin")
+    ),
 ) -> PoliceAccountDto | AccountDto:
     return account
 
 
 async def authenticate_police_staff_or_admin(
     account: AccountDto | PoliceAccountDto = Depends(
-        authenticate_by_role("police", "staff", "admin")
+        authenticate_by_role("officer", "police_admin", "staff", "admin")
     ),
+) -> PoliceAccountDto | AccountDto:
+    return account
+
+
+async def authenticate_police_admin_or_admin(
+    account: AccountDto | PoliceAccountDto = Depends(authenticate_by_role("police_admin", "admin")),
 ) -> PoliceAccountDto | AccountDto:
     return account

@@ -8,18 +8,25 @@ type PaginatedResponse<T> = {
   total_pages: number;
 };
 
-type StringRole = "staff" | "admin" | "student" | "police" | "unauthenticated";
+type StringRole =
+  | "staff"
+  | "admin"
+  | "student"
+  | "officer"
+  | "police_admin"
+  | "unauthenticated";
 
 /**
  * Extends UseMutationOptions with an optional `onOptimisticUpdate` callback
  * that fires immediately when an optimistic cache update is applied, before
  * the server responds. Use this to close sidebars / update UI eagerly.
  */
-type OptimisticMutationOptions<TData, TError, TVariables> = UseMutationOptions<
+type OptimisticMutationOptions<
   TData,
   TError,
-  TVariables
-> & {
+  TVariables,
+  TContext = unknown,
+> = UseMutationOptions<TData, TError, TVariables, TContext> & {
   onOptimisticUpdate?: (vars: TVariables) => void;
 };
 

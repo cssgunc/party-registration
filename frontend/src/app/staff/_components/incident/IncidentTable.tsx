@@ -5,42 +5,37 @@ import navyFlag from "@/components/icons/navyFlag.svg";
 import redFlag from "@/components/icons/redFlag.svg";
 import yellowFlag from "@/components/icons/yellowFlag.svg";
 import { useSnackbar } from "@/contexts/SnackbarContext";
-import { IncidentService } from "@/lib/api/incident/incident.service";
+import {
+  useCreateIncident,
+  useDeleteIncident,
+  useIncidents,
+} from "@/lib/api/incident/incident.queries";
 import {
   IncidentCreateDto,
   IncidentDto,
   IncidentSeverity,
 } from "@/lib/api/incident/incident.types";
-import { LocationService } from "@/lib/api/location/location.service";
+import {
+  useLocations,
+  useUpdateIncidentInLocation,
+} from "@/lib/api/location/location.queries";
 import { LocationDto } from "@/lib/api/location/location.types";
 import {
   DEFAULT_TABLE_PARAMS,
   ServerColumnMap,
   ServerTableParams,
 } from "@/lib/api/shared/query-params";
-import { PaginatedResponse } from "@/lib/shared";
 import { formatTime } from "@/lib/utils";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnDef } from "@tanstack/react-table";
-import { AxiosError } from "axios";
-import { format, isWithinInterval, startOfDay } from "date-fns";
+import { isAxiosError } from "axios";
+import { format } from "date-fns";
 import Image from "next/image";
 import { useMemo, useState } from "react";
-import { DateRange } from "react-day-picker";
 import LocationInfoChipDetails from "../party/details/LocationInfoChipDetails";
 import { GenericInfoChip } from "../shared/sidebar/GenericInfoChip";
 import { TableTemplate } from "../shared/table/TableTemplate";
 import IncidentDescriptionChipDetails from "./IncidentDescriptionChipDetails";
 import IncidentTableForm from "./IncidentTableForm";
-
-const incidentService = new IncidentService();
-const locationService = new LocationService();
-
-const SERVER_COLUMN_MAP: ServerColumnMap = {
-  severity: { backendField: "severity", filterOperator: "eq" },
-  reference_id: { backendField: "reference_id", filterOperator: "contains" },
-  description: { backendField: "description", filterOperator: "contains" },
-};
 
 const hasIncidentChanged = (
   original: IncidentDto | null,
@@ -49,7 +44,6 @@ const hasIncidentChanged = (
 ): boolean => {
   if (!original) return true;
 
-  // Look up the original location's google_place_id to compare with updated location_place_id
   const originalLocation = locationById.get(original.location_id);
   const originalLocationPlaceId = originalLocation?.google_place_id ?? "";
 
@@ -84,8 +78,30 @@ function truncateDescription(
   return description.substring(0, limit) + "...";
 }
 
+const SERVER_COLUMN_MAP: ServerColumnMap = {
+  location: {
+    backendField: "location.formatted_address",
+    filterOperator: "contains",
+  },
+  incident_date: {
+    backendField: "incident_datetime",
+    filterOperator: "dateRange",
+  },
+  severity: {
+    backendField: "severity",
+    filterOperator: "eq",
+  },
+  reference_id: {
+    backendField: "reference_id",
+    filterOperator: "contains",
+  },
+  description: {
+    backendField: "description",
+    filterOperator: "contains",
+  },
+};
+
 export const IncidentTable = () => {
-  const queryClient = useQueryClient();
   const { openSidebar, closeSidebar } = useSidebar();
   const { openSnackbar } = useSnackbar();
   const [editingIncident, setEditingIncident] = useState<IncidentDto | null>(
@@ -94,17 +110,8 @@ export const IncidentTable = () => {
   const [serverParams, setServerParams] =
     useState<ServerTableParams>(DEFAULT_TABLE_PARAMS);
 
-  const incidentsQuery = useQuery<PaginatedResponse<IncidentDto>>({
-    queryKey: ["incidents", serverParams],
-    queryFn: () => incidentService.listIncidents(serverParams),
-    retry: 1,
-  });
-
-  const locationsQuery = useQuery<PaginatedResponse<LocationDto>>({
-    queryKey: ["locations"],
-    queryFn: () => locationService.getLocations(),
-    retry: 1,
-  });
+  const incidentsQuery = useIncidents(serverParams);
+  const locationsQuery = useLocations();
 
   const incidents = useMemo(
     () => incidentsQuery.data?.items ?? [],
@@ -160,36 +167,28 @@ export const IncidentTable = () => {
     );
   };
 
-  const createMutation = useMutation({
-    mutationFn: (payload: IncidentCreateDto) =>
-      incidentService.createIncident(payload),
-    onError: (error: AxiosError<{ message?: string }>) => {
-      const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        "Failed to create incident";
+  const createMutation = useCreateIncident({
+    onError: (error: Error) => {
+      const errorMessage = isAxiosError(error)
+        ? error.response?.data?.message || error.message
+        : error.message || "Failed to create incident";
       reopenCreateSidebar(errorMessage);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["incidents"] });
-      queryClient.invalidateQueries({ queryKey: ["locations"] });
       openSnackbar("Incident created successfully", "success");
       closeSidebar();
       setEditingIncident(null);
     },
   });
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: number; payload: IncidentCreateDto }) =>
-      incidentService.updateIncident(id, payload),
+  const updateMutation = useUpdateIncidentInLocation({
     onError: (
-      error: AxiosError<{ message?: string }>,
-      variables: { id: number; payload: IncidentCreateDto }
+      error: Error,
+      variables: { id: number; payload: Partial<IncidentCreateDto> }
     ) => {
-      const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        "Failed to update incident";
+      const errorMessage = isAxiosError(error)
+        ? error.response?.data?.message || error.message
+        : error.message || "Failed to update incident";
 
       const targetIncident =
         editingIncident && editingIncident.id === variables.id
@@ -200,11 +199,13 @@ export const IncidentTable = () => {
         reopenEditSidebar(targetIncident, errorMessage);
       }
     },
-    onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["incidents"] });
-      queryClient.invalidateQueries({ queryKey: ["locations"] });
+    onSuccess: (_data, variables) => {
       if (
-        hasIncidentChanged(editingIncident, variables.payload, locationById)
+        hasIncidentChanged(
+          editingIncident,
+          variables.payload as IncidentCreateDto,
+          locationById
+        )
       ) {
         openSnackbar("Incident updated successfully", "success");
       }
@@ -213,37 +214,11 @@ export const IncidentTable = () => {
     },
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: (id: number) => incidentService.deleteIncident(id),
-    onMutate: async (id: number) => {
-      await queryClient.cancelQueries({ queryKey: ["incidents"] });
-
-      const previous = queryClient.getQueryData<PaginatedResponse<IncidentDto>>(
-        ["incidents"]
-      );
-
-      queryClient.setQueryData<PaginatedResponse<IncidentDto> | undefined>(
-        ["incidents"],
-        (old) =>
-          old
-            ? {
-                ...old,
-                items: old.items.filter((incident) => incident.id !== id),
-              }
-            : old
-      );
-
-      return { previous };
-    },
-    onError: (error: Error, _vars, context) => {
+  const deleteMutation = useDeleteIncident({
+    onError: (error: Error) => {
       console.error("Failed to delete incident:", error);
-      if (context?.previous) {
-        queryClient.setQueryData(["incidents"], context.previous);
-      }
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["incidents"] });
-      queryClient.invalidateQueries({ queryKey: ["locations"] });
+    onSuccess: () => {
       openSnackbar("Incident deleted successfully", "success");
     },
   });
@@ -312,25 +287,6 @@ export const IncidentTable = () => {
         const date = row.original.incident_datetime;
         return date.toLocaleDateString();
       },
-      filterFn: (row, _columnId, filterValue) => {
-        if (!filterValue) return true;
-
-        const dateRange = filterValue as DateRange;
-        const date = startOfDay(new Date(row.original.incident_datetime));
-
-        if (dateRange.from && !dateRange.to) {
-          return date.getTime() === startOfDay(dateRange.from).getTime();
-        }
-
-        if (dateRange.from && dateRange.to) {
-          return isWithinInterval(date, {
-            start: startOfDay(dateRange.from),
-            end: startOfDay(dateRange.to),
-          });
-        }
-
-        return true;
-      },
     },
     {
       id: "incident_time",
@@ -339,6 +295,7 @@ export const IncidentTable = () => {
       enableColumnFilter: true,
       meta: {
         filterType: "time",
+        filterMode: "client",
       },
       cell: ({ row }) => {
         const date = new Date(row.original.incident_datetime);
@@ -408,7 +365,7 @@ export const IncidentTable = () => {
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="h-full min-h-0 flex flex-col">
       <TableTemplate
         data={incidents}
         columns={columns}
@@ -417,6 +374,7 @@ export const IncidentTable = () => {
         onDelete={handleDelete}
         onCreateNewRow={handleCreate}
         isLoading={incidentsQuery.isLoading || locationsQuery.isLoading}
+        isFetching={incidentsQuery.isFetching}
         error={
           (incidentsQuery.error as Error | null) ||
           (locationsQuery.error as Error | null)
@@ -425,9 +383,6 @@ export const IncidentTable = () => {
           `Are you sure you want to delete incident #${incident.id}? This action cannot be undone.`
         }
         isDeleting={deleteMutation.isPending}
-        sortBy={(a, b) =>
-          b.incident_datetime.getTime() - a.incident_datetime.getTime()
-        }
         serverMeta={
           incidentsQuery.data
             ? {

@@ -7,7 +7,7 @@ from httpx import AsyncClient
 from src.modules.incident.incident_model import IncidentDto, IncidentSeverity
 from test.modules.incident.incident_utils import IncidentTestUtils
 from test.utils.http.assertions import assert_res_paginated
-from test.utils.http.test_templates import generate_filter_sort_tests
+from test.utils.http.test_templates import generate_filter_sort_tests, generate_search_tests
 
 test_incident_sort, test_incident_filter = generate_filter_sort_tests(
     "/api/incidents",
@@ -31,6 +31,12 @@ test_incident_sort, test_incident_filter = generate_filter_sort_tests(
         ("location.google_place_id", "nonexistent"),
         ("location.formatted_address_contains", "xyz"),
     ],
+)
+
+
+test_incident_search_no_results, test_incident_search_ok = generate_search_tests(
+    "/api/incidents",
+    IncidentDto,
 )
 
 
@@ -251,7 +257,12 @@ class TestIncidentListNestedFiltering:
 
 
 class TestIncidentListSearch:
-    """Tests for full-table search on GET /api/incidents."""
+    """Tests for full-table search on GET /api/incidents.
+
+    Core search behaviors (case insensitivity, nested fields, combined with filter)
+    are covered by TestQueryUtilsSearch in test_query_utils.py, which uses incidents
+    as its vehicle. Only incident-specific field coverage belongs here.
+    """
 
     admin_client: AsyncClient
     incident_utils: IncidentTestUtils
@@ -262,69 +273,11 @@ class TestIncidentListSearch:
         self.admin_client = admin_client
 
     @pytest.mark.asyncio
-    async def test_search_by_description(self):
-        """Search should match incidents whose description contains the term."""
-        incident1 = await self.incident_utils.create_one(description="noise complaint downtown")
-        _incident2 = await self.incident_utils.create_one(description="unrelated event")
-
-        response = await self.admin_client.get("/api/incidents?search=downtown")
-        paginated = assert_res_paginated(response, IncidentDto, total_records=1)
-        self.incident_utils.assert_matches(paginated.items[0], incident1.to_dto())
-
-    @pytest.mark.asyncio
     async def test_search_by_reference_id(self):
-        """Search should match incidents whose reference_id contains the term."""
+        """reference_id is included in the search fields."""
         incident1 = await self.incident_utils.create_one(reference_id="CAD-5555")
         _incident2 = await self.incident_utils.create_one(reference_id="CAD-9999")
 
         response = await self.admin_client.get("/api/incidents?search=5555")
         paginated = assert_res_paginated(response, IncidentDto, total_records=1)
         self.incident_utils.assert_matches(paginated.items[0], incident1.to_dto())
-
-    @pytest.mark.asyncio
-    async def test_search_by_location_formatted_address(self):
-        """Search should match incidents whose location address contains the term."""
-        loc_main = await self.incident_utils.location_utils.create_one(
-            formatted_address="123 Elm St, Chapel Hill, NC 27514, US"
-        )
-        loc_oak = await self.incident_utils.location_utils.create_one(
-            formatted_address="456 Oak Ave, Durham, NC 27701, US"
-        )
-        incident1 = await self.incident_utils.create_one(location_id=loc_main.id)
-        _incident2 = await self.incident_utils.create_one(location_id=loc_oak.id)
-
-        response = await self.admin_client.get("/api/incidents?search=Elm")
-        paginated = assert_res_paginated(response, IncidentDto, total_records=1)
-        self.incident_utils.assert_matches(paginated.items[0], incident1.to_dto())
-
-    @pytest.mark.asyncio
-    async def test_search_is_case_insensitive(self):
-        """Search should be case-insensitive."""
-        incident1 = await self.incident_utils.create_one(description="Loud Music")
-        _incident2 = await self.incident_utils.create_one(description="quiet party")
-
-        response = await self.admin_client.get("/api/incidents?search=loud")
-        paginated = assert_res_paginated(response, IncidentDto, total_records=1)
-        self.incident_utils.assert_matches(paginated.items[0], incident1.to_dto())
-
-    @pytest.mark.asyncio
-    async def test_search_combined_with_filter(self):
-        """Search and filters should both apply (AND logic)."""
-        incident1 = await self.incident_utils.create_one(
-            description="loud music", severity="remote_warning"
-        )
-        _incident2 = await self.incident_utils.create_one(
-            description="loud music", severity="citation"
-        )
-
-        response = await self.admin_client.get("/api/incidents?search=loud&severity=remote_warning")
-        paginated = assert_res_paginated(response, IncidentDto, total_records=1)
-        self.incident_utils.assert_matches(paginated.items[0], incident1.to_dto())
-
-    @pytest.mark.asyncio
-    async def test_search_no_results(self):
-        """Search with no matching term returns empty results."""
-        await self.incident_utils.create_many(i=3)
-
-        response = await self.admin_client.get("/api/incidents?search=zzznomatch")
-        assert_res_paginated(response, IncidentDto, total_records=0)

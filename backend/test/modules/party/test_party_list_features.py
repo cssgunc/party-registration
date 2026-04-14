@@ -16,7 +16,7 @@ from httpx import AsyncClient
 from src.modules.party.party_model import PartyDto
 from test.modules.party.party_utils import PartyTestUtils, get_valid_party_datetime
 from test.utils.http.assertions import assert_res_paginated
-from test.utils.http.test_templates import generate_filter_sort_tests
+from test.utils.http.test_templates import generate_filter_sort_tests, generate_search_tests
 from test.utils.pagination_test_utils import assert_basic_pagination, assert_sorting
 
 test_party_sort, test_party_filter = generate_filter_sort_tests(
@@ -49,6 +49,12 @@ test_party_sort, test_party_filter = generate_filter_sort_tests(
         ("contact_one.first_name_contains", "xyz"),
         ("contact_two.email_contains", "xyz"),
     ],
+)
+
+
+test_party_search_no_results, test_party_search_ok = generate_search_tests(
+    "/api/parties",
+    PartyDto,
 )
 
 
@@ -558,11 +564,3 @@ class TestPartyListSearch:
         response = await self.admin_client.get("/api/parties?search=SEARCHME")
         paginated = assert_res_paginated(response, PartyDto, total_records=1)
         self.party_utils.assert_matches(paginated.items[0], party1)
-
-    @pytest.mark.asyncio
-    async def test_search_no_results(self):
-        """Search with no matching term returns empty results."""
-        await self.party_utils.create_many(i=3)
-
-        response = await self.admin_client.get("/api/parties?search=zzznomatch")
-        assert_res_paginated(response, PartyDto, total_records=0)
