@@ -6,9 +6,12 @@ import type {
   ExchangeTokenResponse,
   PoliceLoginRequest,
   PoliceLoginResponse,
+  PoliceSignupRequest,
   RefreshTokenRequest,
   RefreshTokenResponse,
+  RetryPoliceVerificationRequest,
   TokenPair,
+  VerifyPoliceEmailRequest,
 } from "./auth.types";
 
 const base =
@@ -148,6 +151,22 @@ export async function policeLogin(
     { headers: internalHeaders() }
   );
   return resp.data;
+}
+
+export async function signupPolice(data: PoliceSignupRequest): Promise<void> {
+  await axios.post(`${base}/auth/police/signup`, data);
+}
+
+export async function retryPoliceVerification(
+  data: RetryPoliceVerificationRequest
+): Promise<void> {
+  await axios.post(`${base}/auth/police/retry-verification`, data);
+}
+
+export async function verifyPoliceEmail(
+  data: VerifyPoliceEmailRequest
+): Promise<void> {
+  await axios.post(`${base}/auth/police/verify`, data);
 }
 
 /**

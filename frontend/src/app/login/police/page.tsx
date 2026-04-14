@@ -1,5 +1,6 @@
 "use client";
 
+import ResendVerificationButton from "@/app/police/_components/ResendVerificationButton";
 import PartySmartLogo from "@/components/PartySmartLogo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,11 +24,13 @@ function PoliceLoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [showResendVerification, setShowResendVerification] = useState(false);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    setShowResendVerification(false);
     setLoading(true);
 
     try {
@@ -39,7 +42,15 @@ function PoliceLoginForm() {
 
       if (!res.ok) {
         const data = await res.json();
-        setError(data.error || "Login failed");
+        if (res.status === 403 && data.detail === "EMAIL_NOT_VERIFIED") {
+          setError(
+            "Your account hasn't been verified yet. Please check your email for a verification link."
+          );
+          setShowResendVerification(true);
+          return;
+        }
+
+        setError(data.error || "Invalid credentials");
         return;
       }
 
@@ -95,10 +106,21 @@ function PoliceLoginForm() {
             <p className="text-sm text-destructive text-center">{error}</p>
           )}
 
+          {showResendVerification && email && (
+            <ResendVerificationButton email={email} />
+          )}
+
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Signing in..." : "Sign In"}
           </Button>
         </form>
+
+        <p className="text-center text-sm text-muted-foreground">
+          Need an account?{" "}
+          <Link href="/police/signup" className="text-primary underline">
+            Sign up
+          </Link>
+        </p>
 
         <p className="text-center text-sm text-muted-foreground">
           Not a police officer?{" "}

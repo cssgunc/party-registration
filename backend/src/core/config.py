@@ -22,7 +22,9 @@ class Config(BaseSettings):
     MSSQL_PORT: int = 1433
     MSSQL_DRIVER: str = "ODBC Driver 18 for SQL Server"
     MSSQL_TRUST_SERVER_CERTIFICATE: str = "yes"
+
     HOST: str = "localhost"
+    FRONTEND_BASE_URL: str = "http://localhost:3000"
     PARTY_SEARCH_RADIUS_MILES: float = 0.25
     GOOGLE_MAPS_API_KEY: str
 
@@ -35,6 +37,15 @@ class Config(BaseSettings):
 
     # Internal API Secret
     INTERNAL_API_SECRET: str
+
+    # Email / SMTP
+    SMTP_HOST: str = "mailpit"
+    SMTP_PORT: int = 1025
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_TLS: bool = False
+    EMAIL_FROM: str = "ocsl-no-reply@unc.edu"
+    EMAIL_VERIFICATION_TOKEN_EXPIRE_HOURS: int = 24
 
 
 env = Config()  # pyright: ignore[reportCallIssue]
