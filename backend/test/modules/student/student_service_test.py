@@ -312,8 +312,7 @@ class TestStudentService:
         await self.student_service.ensure_student_entity_exists(student_entity.account_id)
 
         fetched = await self.student_service.get_student_by_id(student_entity.account_id)
-        assert fetched.phone_number is not None
-        assert fetched.contact_preference is not None
+        self.student_utils.assert_matches(fetched, student_entity)
 
 
 class TestStudentResidenceService:
