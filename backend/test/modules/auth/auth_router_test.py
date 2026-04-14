@@ -7,7 +7,6 @@ from src.core.exceptions import (
     BadRequestException,
     CredentialsException,
     ForbiddenException,
-    NotFoundException,
 )
 from src.modules.account.account_model import AccountData, AccountDto, AccountRole
 from src.modules.auth.auth_model import AccessTokenDto, PoliceCredentialsDto, TokensDto
@@ -787,18 +786,18 @@ class TestPoliceRetryVerificationRouter:
         assert updated.verification_token != original_token
 
     @pytest.mark.asyncio
-    async def test_retry_verification_missing_account_returns_400(self) -> None:
-        """Retry verification returns 400 when the email is not registered."""
+    async def test_retry_verification_missing_account_returns_204(self) -> None:
+        """Retry verification returns 204 for an unknown email to prevent enumeration."""
         response = await self.unauthenticated_client.post(
             "/api/auth/police/retry-verification",
             json={"email": "missing@unc.edu"},
         )
 
-        assert_res_failure(response, NotFoundException("No account found with that email"))
+        assert response.status_code == 204
 
     @pytest.mark.asyncio
-    async def test_retry_verification_verified_account_returns_400(self) -> None:
-        """Retry verification returns 400 when the account is already verified."""
+    async def test_retry_verification_verified_account_returns_204(self) -> None:
+        """Retry verification returns 204 for an already-verified account to prevent enumeration."""
         entity = await self.police_utils.create_verified_one()
 
         response = await self.unauthenticated_client.post(
@@ -806,4 +805,4 @@ class TestPoliceRetryVerificationRouter:
             json={"email": entity.email},
         )
 
-        assert_res_failure(response, BadRequestException("Account is already verified"))
+        assert response.status_code == 204
