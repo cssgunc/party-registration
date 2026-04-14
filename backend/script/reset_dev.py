@@ -20,6 +20,7 @@ from src.core.database import engine as async_engine
 from src.core.utils.bcrypt_utils import hash_password
 from src.modules.account.account_model import AccountRole
 from src.modules.incident.incident_model import IncidentSeverity
+from src.modules.police.police_model import PoliceRole
 from src.modules.student.student_model import ContactPreference, StudentData
 
 
@@ -110,6 +111,7 @@ async def reset_dev():
             police = entities.PoliceEntity(
                 email=police_data["email"],
                 hashed_password=hash_password(police_data["password"]),
+                role=PoliceRole(police_data.get("role", PoliceRole.OFFICER.value)),
             )
             session.add(police)
 
