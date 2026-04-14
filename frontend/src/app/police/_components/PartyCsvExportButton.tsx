@@ -42,7 +42,7 @@ export default function PartyCsvExportButton({
       <Button
         onClick={handleDownload}
         disabled={!startDate || !endDate || isDownloading}
-        variant="outline"
+        variant="default"
         size="icon-sm"
         aria-label="Download CSV"
         title="Download CSV"

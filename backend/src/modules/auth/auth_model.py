@@ -27,7 +27,7 @@ class PoliceAccessTokenPayload(BaseModel):
 
     sub: int  # Police account ID
     email: str
-    role: Literal["police"]
+    role: Literal["officer", "police_admin"]
     exp: AwareDatetime
     iat: AwareDatetime
 

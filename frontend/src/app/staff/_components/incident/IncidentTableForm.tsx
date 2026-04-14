@@ -285,7 +285,7 @@ export default function IncidentTableForm({
               value={formData.description ?? ""}
               onChange={(e) => updateField("description", e.target.value)}
               placeholder="Optional"
-              className="w-full min-h-24 px-3 py-2 rounded-md border border-input bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-vertical"
+              className=" w-full min-h-24 px-3 py-2 rounded-md border border-input bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-vertical"
             />
             {errors.description && (
               <FieldError>{errors.description}</FieldError>
