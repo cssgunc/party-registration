@@ -14,7 +14,7 @@ from test.utils.http.test_templates import (
 INCIDENT_HEADERS = ("Severity", "Address", "Date", "Time", "Description", "Reference ID")
 
 test_incident_csv_authentication = generate_auth_required_tests(
-    ({"admin", "staff", "police"}, "GET", "/api/incidents/csv", None),
+    ({"admin", "staff", "officer", "police_admin"}, "GET", "/api/incidents/csv", None),
 )
 
 test_incident_csv_empty = generate_csv_empty_test(

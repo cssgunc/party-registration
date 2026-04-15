@@ -3,19 +3,25 @@ from typing import Any, TypedDict, Unpack, override
 import bcrypt
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.modules.police.police_entity import PoliceEntity
-from src.modules.police.police_model import PoliceAccountDto, PoliceAccountUpdate
+from src.modules.police.police_model import (
+    PoliceAccountCreate,
+    PoliceAccountDto,
+    PoliceAccountUpdate,
+    PoliceRole,
+)
 from test.utils.resource_test_utils import ResourceTestUtils
 
 
 class PoliceUpdateOverrides(TypedDict, total=False):
     email: str
     password: str
+    role: PoliceRole
 
 
 class PoliceTestUtils(
     ResourceTestUtils[
         PoliceEntity,
-        PoliceAccountUpdate,
+        PoliceAccountCreate,
         PoliceAccountDto,
     ]
 ):
@@ -25,7 +31,7 @@ class PoliceTestUtils(
         super().__init__(
             session,
             entity_class=PoliceEntity,
-            data_class=PoliceAccountUpdate,
+            data_class=PoliceAccountCreate,
         )
 
     @override
@@ -34,13 +40,14 @@ class PoliceTestUtils(
         return {
             "email": f"police{count}@unc.edu",
             "password": PoliceTestUtils.TEST_PASSWORD,
+            "role": PoliceRole.OFFICER,
         }
 
     @override
     def assert_matches(
         self,
-        resource1: PoliceEntity | PoliceAccountUpdate | PoliceAccountDto | None,
-        resource2: PoliceEntity | PoliceAccountUpdate | PoliceAccountDto | None,
+        resource1: PoliceEntity | PoliceAccountCreate | PoliceAccountDto | None,
+        resource2: PoliceEntity | PoliceAccountCreate | PoliceAccountDto | None,
     ) -> None:
         """Assert that two police resources match."""
         assert resource1 is not None, "First resource is None"
@@ -48,6 +55,9 @@ class PoliceTestUtils(
 
         assert resource1.email == resource2.email, (
             f"Email mismatch: {resource1.email} != {resource2.email}"
+        )
+        assert resource1.role == resource2.role, (
+            f"Role mismatch: {resource1.role} != {resource2.role}"
         )
 
         if isinstance(resource1, PoliceEntity) and isinstance(resource2, PoliceEntity):
@@ -65,8 +75,8 @@ class PoliceTestUtils(
         if isinstance(resource1, PoliceAccountDto) and isinstance(resource2, PoliceEntity):
             assert resource1.id == resource2.id, f"ID mismatch: {resource1.id} != {resource2.id}"
 
-        if isinstance(resource1, PoliceAccountUpdate) and isinstance(
-            resource2, PoliceAccountUpdate
+        if isinstance(resource1, PoliceAccountCreate) and isinstance(
+            resource2, PoliceAccountCreate
         ):
             assert resource1.password == resource2.password, (
                 f"Password mismatch: {resource1.password} != {resource2.password}"
@@ -95,8 +105,18 @@ class PoliceTestUtils(
         return await super().next_dict(**overrides)
 
     @override
-    async def next_data(self, **overrides: Unpack[PoliceUpdateOverrides]) -> PoliceAccountUpdate:
+    async def next_data(self, **overrides: Unpack[PoliceUpdateOverrides]) -> PoliceAccountCreate:
         return await super().next_data(**overrides)
+
+    async def next_update_dict(self, **overrides: Unpack[PoliceUpdateOverrides]) -> dict:
+        data = await self.next_data(**overrides)
+        return {"email": data.email, "role": data.role.value}
+
+    async def next_update_data(
+        self, **overrides: Unpack[PoliceUpdateOverrides]
+    ) -> PoliceAccountUpdate:
+        data = await self.next_data(**overrides)
+        return PoliceAccountUpdate(email=data.email, role=data.role)
 
     @override
     async def next_entity(self, **overrides: Unpack[PoliceUpdateOverrides]) -> PoliceEntity:

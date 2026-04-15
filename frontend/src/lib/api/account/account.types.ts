@@ -1,13 +1,15 @@
+import type { PoliceRole } from "@/lib/api/police/police.types";
+
 /**
  * Account role types matching backend AccountRole enum
  */
 export type AccountRole = "student" | "staff" | "admin";
 
 /**
- * All application-level roles, including police which authenticates
+ * All application-level roles, including police identities which authenticate
  * separately from SAML-based accounts.
  */
-export type AppRole = AccountRole | "police";
+export type AppRole = AccountRole | PoliceRole;
 
 /**
  * DTO for creating/updating an Account
