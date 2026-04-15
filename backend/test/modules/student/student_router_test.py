@@ -336,6 +336,7 @@ class TestStudentCRUDRouter:
     async def test_create_student_duplicate_phone(self):
         """Test creating students with duplicate phone numbers."""
         student = await self.student_utils.create_one()
+        assert student.phone_number is not None
         payload = await self.student_utils.next_student_create(phone_number=student.phone_number)
 
         response = await self.admin_client.post(
@@ -414,6 +415,7 @@ class TestStudentCRUDRouter:
     async def test_update_student_phone_conflict(self):
         """Test updating student with phone number that already exists."""
         students = await self.student_utils.create_many(i=2)
+        assert students[0].phone_number is not None
         updated_data = await self.student_utils.next_update_dto(
             phone_number=students[0].phone_number
         )
@@ -720,11 +722,32 @@ class TestStudentMeRouter:
         self.student_utils.assert_matches(current_student, data)
 
     @pytest.mark.asyncio
-    async def test_get_me_not_found(self, student_account: AccountEntity):
-        """Test get me when student record doesn't exist for the authenticated account."""
-        # student_client JWT has student_account.id; no student record exists for it
+    async def test_get_me_no_entity_returns_partial_dto(self, student_account: AccountEntity):
+        """GET /me returns partial DTO (null phone/preference) when no Student entity exists yet."""
         response = await self.student_client.get("/api/students/me")
-        assert_res_failure(response, StudentNotFoundException(student_account.id))
+        data = assert_res_success(response, StudentDto)
+
+        assert isinstance(data, StudentDto)
+        assert data.phone_number is None
+        assert data.contact_preference is None
+        assert data.last_registered is None
+        assert data.residence is None
+
+    @pytest.mark.asyncio
+    async def test_update_me_creates_entity_when_none_exists(self, student_account: AccountEntity):
+        """PUT /me creates a Student entity when none exists (upsert on first call)."""
+        updated_data = SelfUpdateStudentDto(
+            contact_preference=ContactPreference.TEXT,
+            phone_number="9195550042",
+        )
+
+        response = await self.student_client.put(
+            "/api/students/me",
+            json=updated_data.model_dump(mode="json"),
+        )
+        data = assert_res_success(response, StudentDto)
+
+        self.student_utils.assert_matches(data, updated_data)
 
     @pytest.mark.asyncio
     async def test_update_me_success(self, current_student: StudentEntity):
@@ -765,6 +788,7 @@ class TestStudentMeRouter:
     async def test_update_me_phone_conflict(self, current_student: StudentEntity):
         """Test updating me with phone number that already exists."""
         other_student = await self.student_utils.create_one()
+        assert other_student.phone_number is not None
         updated_data = SelfUpdateStudentDto(
             contact_preference=ContactPreference.TEXT,
             phone_number=other_student.phone_number,
