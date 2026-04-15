@@ -13,6 +13,7 @@ import {
 } from "@/lib/api/student/student.queries";
 import { isFromThisSchoolYear } from "@/lib/utils";
 import { ArrowLeft, Info } from "lucide-react";
+import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
@@ -98,6 +99,9 @@ export default function RegistrationForm() {
 
   return (
     <div className="h-full overflow-y-auto">
+      <Head>
+        <title>My Custom Tab Name</title>
+      </Head>
       <main className="mx-4 mt-4">
         <nav className="flex items-center content pb-2 lg:hidden">
           <ArrowLeft className="h-4" />
