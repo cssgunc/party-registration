@@ -31,7 +31,7 @@ async def get_me(
     student_service: StudentService = Depends(),
     user: "AccountDto" = Depends(authenticate_student),
 ) -> StudentDto:
-    return await student_service.get_student_by_id(user.id)
+    return await student_service.get_student_me_dto(user.id)
 
 
 @student_router.put("/me")

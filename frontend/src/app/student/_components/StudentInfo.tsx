@@ -65,8 +65,8 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
   const [formData, setFormData] = useState<StudentInfoFormData>({
     first_name: initialData.first_name,
     last_name: initialData.last_name,
-    phone_number: initialData.phone_number,
-    contact_preference: initialData.contact_preference,
+    phone_number: initialData.phone_number ?? "",
+    contact_preference: initialData.contact_preference ?? "call",
     address: initialData.residence?.location.formatted_address ?? "",
     location_place_id: "",
     formatted_address: initialData.residence?.location.formatted_address ?? "",
@@ -227,7 +227,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
             <div className="mt-3 sm:mt-6 ">
               <p className="subhead-content mb-2">Phone Number</p>
               <p className="content">
-                {formatPhoneNumber(displayData.phone_number)}
+                {formatPhoneNumber(displayData.phone_number) || "—"}
               </p>
             </div>
 
@@ -237,7 +237,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
                 {displayData.contact_preference
                   ? displayData.contact_preference.charAt(0).toUpperCase() +
                     displayData.contact_preference.slice(1)
-                  : "Not set"}
+                  : "—"}
               </p>
             </div>
           </div>
@@ -315,7 +315,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
                   id="phone-number"
                   type="tel"
                   placeholder="(123) 456-7890"
-                  value={formatPhoneNumberInput(formData.phone_number)}
+                  value={formatPhoneNumberInput(formData.phone_number ?? "")}
                   onChange={(e) =>
                     updateField(
                       "phone_number",

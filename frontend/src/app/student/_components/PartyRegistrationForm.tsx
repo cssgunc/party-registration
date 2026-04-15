@@ -67,6 +67,8 @@ const partyFormSchema = z.object({
   contactTwoEmail: z
     .email({ pattern: z.regexes.html5Email })
     .min(1, "Contact email is required"),
+  studentPhoneNumber: phoneNumberSchema.optional(),
+  studentContactPreference: z.enum(["call", "text"]).optional(),
 });
 
 type PartyFormValues = z.infer<typeof partyFormSchema>;
@@ -142,7 +144,9 @@ export default function PartyRegistrationForm({
     !!formData.secondContactLastName &&
     !!formData.phoneNumber &&
     !!formData.contactPreference &&
-    !!formData.contactTwoEmail;
+    !!formData.contactTwoEmail &&
+    (student?.phone_number != null ||
+      (!!formData.studentPhoneNumber && !!formData.studentContactPreference));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -161,6 +165,22 @@ export default function PartyRegistrationForm({
       return;
     }
 
+    // If student hasn't provided contact info yet, validate inline fields
+    if (!student?.phone_number) {
+      const studentInfoErrors: Record<string, string> = {};
+      if (!result.data.studentPhoneNumber) {
+        studentInfoErrors.studentPhoneNumber = "Phone number is required";
+      }
+      if (!result.data.studentContactPreference) {
+        studentInfoErrors.studentContactPreference =
+          "Contact preference is required";
+      }
+      if (Object.keys(studentInfoErrors).length > 0) {
+        setErrors((prev) => ({ ...prev, ...studentInfoErrors }));
+        return;
+      }
+    }
+
     // Validate contact two differs from contact one (the student)
     const contactTwoErrors: Record<string, string> = {};
     if (
@@ -171,8 +191,10 @@ export default function PartyRegistrationForm({
       contactTwoErrors.contactTwoEmail =
         "Contact two email must be different from your email";
     }
-    if (student?.phone_number) {
-      const c1Digits = student.phone_number.replace(/\D/g, "");
+    const studentPhone =
+      student?.phone_number ?? result.data.studentPhoneNumber;
+    if (studentPhone) {
+      const c1Digits = studentPhone.replace(/\D/g, "");
       const c2Digits = result.data.phoneNumber;
       if (c1Digits === c2Digits) {
         contactTwoErrors.phoneNumber =
@@ -392,7 +414,9 @@ export default function PartyRegistrationForm({
           <div className="flex flex-col gap-4">
             <h2 className="subhead-content">Your Contact Information</h2>
             <p className="content-sub italic">
-              You can edit preferences in your Account Settings.
+              {student?.phone_number != null
+                ? "You can edit preferences in your Account Settings."
+                : "Please provide your contact information to complete registration."}
             </p>
             <div className="sm:grid sm:grid-cols-2 sm:gap-4">
               <Field className="mb-4 sm:mb-2">
@@ -403,17 +427,76 @@ export default function PartyRegistrationForm({
                 <FieldLabel className="content-bold">Last Name</FieldLabel>
                 <p className="content">{student?.last_name}</p>
               </Field>
-              <Field className="mb-4 sm:mb-2">
+              <Field
+                data-invalid={!!errors.studentPhoneNumber}
+                className="mb-4 sm:mb-2"
+              >
                 <FieldLabel className="content-bold">Phone Number</FieldLabel>
-                <p className="content">{student?.phone_number}</p>
+                {student?.phone_number != null ? (
+                  <p className="content">{student.phone_number}</p>
+                ) : (
+                  <>
+                    <Input
+                      id="student-phone-number"
+                      type="tel"
+                      placeholder="(123) 456-7890"
+                      value={formatPhoneNumberInput(
+                        formData.studentPhoneNumber ?? ""
+                      )}
+                      onChange={(e) =>
+                        updateField(
+                          "studentPhoneNumber",
+                          e.target.value.replace(/\D/g, "").slice(0, 10)
+                        )
+                      }
+                      aria-invalid={!!errors.studentPhoneNumber}
+                      className="content"
+                    />
+                    {errors.studentPhoneNumber && (
+                      <FieldError>{errors.studentPhoneNumber}</FieldError>
+                    )}
+                  </>
+                )}
               </Field>
-              <Field className="mb-4 sm:mb-2">
+              <Field
+                data-invalid={!!errors.studentContactPreference}
+                className="mb-4 sm:mb-2"
+              >
                 <FieldLabel className="content-bold">
                   Contact Preference
                 </FieldLabel>
-                <p className="content capitalize">
-                  {student?.contact_preference}
-                </p>
+                {student?.phone_number != null ? (
+                  <p className="content capitalize">
+                    {student.contact_preference}
+                  </p>
+                ) : (
+                  <>
+                    <Select
+                      value={formData.studentContactPreference}
+                      onValueChange={(value: "call" | "text") =>
+                        updateField("studentContactPreference", value)
+                      }
+                    >
+                      <SelectTrigger
+                        aria-invalid={!!errors.studentContactPreference}
+                        className="content"
+                      >
+                        <SelectValue placeholder="Select your preference" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="call" className="content">
+                          Call
+                        </SelectItem>
+                        <SelectItem value="text" className="content">
+                          Text
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {errors.studentContactPreference && (
+                      <FieldError>{errors.studentContactPreference}</FieldError>
+                    )}
+                  </>
+                )}
               </Field>
               <Field className="sm:mb-2">
                 <FieldLabel className="content-bold">Email</FieldLabel>

@@ -7,7 +7,7 @@ from httpx import AsyncClient
 from src.modules.incident.incident_model import IncidentDto, IncidentSeverity
 from test.modules.incident.incident_utils import IncidentTestUtils
 from test.utils.http.assertions import assert_res_paginated
-from test.utils.http.test_templates import generate_filter_sort_tests
+from test.utils.http.test_templates import generate_filter_sort_tests, generate_search_tests
 
 test_incident_sort, test_incident_filter = generate_filter_sort_tests(
     "/api/incidents",
@@ -31,6 +31,12 @@ test_incident_sort, test_incident_filter = generate_filter_sort_tests(
         ("location.google_place_id", "nonexistent"),
         ("location.formatted_address_contains", "xyz"),
     ],
+)
+
+
+test_incident_search_no_results, test_incident_search_ok = generate_search_tests(
+    "/api/incidents",
+    IncidentDto,
 )
 
 
@@ -246,5 +252,32 @@ class TestIncidentListNestedFiltering:
         response = await self.admin_client.get(
             "/api/incidents?location.formatted_address_contains=Main"
         )
+        paginated = assert_res_paginated(response, IncidentDto, total_records=1)
+        self.incident_utils.assert_matches(paginated.items[0], incident1.to_dto())
+
+
+class TestIncidentListSearch:
+    """Tests for full-table search on GET /api/incidents.
+
+    Core search behaviors (case insensitivity, nested fields, combined with filter)
+    are covered by TestQueryUtilsSearch in test_query_utils.py, which uses incidents
+    as its vehicle. Only incident-specific field coverage belongs here.
+    """
+
+    admin_client: AsyncClient
+    incident_utils: IncidentTestUtils
+
+    @pytest.fixture(autouse=True)
+    def _setup(self, incident_utils: IncidentTestUtils, admin_client: AsyncClient):
+        self.incident_utils = incident_utils
+        self.admin_client = admin_client
+
+    @pytest.mark.asyncio
+    async def test_search_by_reference_id(self):
+        """reference_id is included in the search fields."""
+        incident1 = await self.incident_utils.create_one(reference_id="CAD-5555")
+        _incident2 = await self.incident_utils.create_one(reference_id="CAD-9999")
+
+        response = await self.admin_client.get("/api/incidents?search=5555")
         paginated = assert_res_paginated(response, IncidentDto, total_records=1)
         self.incident_utils.assert_matches(paginated.items[0], incident1.to_dto())
