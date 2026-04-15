@@ -47,7 +47,9 @@ export function UserAvatar({
       )}
       aria-hidden="true"
     >
-      <span className="text-sm font-semibold text-white">{initials}</span>
+      <span className="text-sm font-semibold text-white leading-none">
+        {initials}
+      </span>
     </div>
   );
 }
