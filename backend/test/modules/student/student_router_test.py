@@ -31,7 +31,11 @@ from test.utils.http.assertions import (
     assert_res_success,
     assert_res_validation_error,
 )
-from test.utils.http.test_templates import generate_auth_required_tests, generate_filter_sort_tests
+from test.utils.http.test_templates import (
+    generate_auth_required_tests,
+    generate_filter_sort_tests,
+    generate_search_tests,
+)
 
 test_student_sort, test_student_filter = generate_filter_sort_tests(
     "/api/students",
@@ -55,6 +59,11 @@ test_student_sort, test_student_filter = generate_filter_sort_tests(
         ("contact_preference", "text"),
         ("phone_number_contains", "555"),
     ],
+)
+
+test_student_search_no_results, test_student_search_ok = generate_search_tests(
+    "/api/students",
+    StudentDto,
 )
 
 test_student_authentication = generate_auth_required_tests(
@@ -946,3 +955,33 @@ class TestStudentResidenceRouter:
         response = await self.student_client.put("/api/students/me/residence", json=payload)
         data = assert_res_success(response, LocationDto)
         self.location_utils.assert_matches(data, location2)
+
+
+class TestStudentListSearch:
+    """Tests for full-table search on GET /api/students."""
+
+    admin_client: AsyncClient
+    student_utils: StudentTestUtils
+
+    @pytest.fixture(autouse=True)
+    def _setup(self, student_utils: StudentTestUtils, admin_client: AsyncClient):
+        self.student_utils = student_utils
+        self.admin_client = admin_client
+
+    @pytest.mark.parametrize(
+        "create_kwargs,search_term",
+        [
+            ({"first_name": "Uniquelynamed"}, "Uniquelynamed"),
+            ({"email": "searchme@unc.edu"}, "searchme"),
+            ({"phone_number": "9195550001"}, "9195550001"),
+            ({"first_name": "Uniquelynamed"}, "uniquelynamed"),
+        ],
+    )
+    @pytest.mark.asyncio
+    async def test_search_matches_field(self, create_kwargs: dict, search_term: str):
+        student1 = await self.student_utils.create_one(**create_kwargs)
+        _student2 = await self.student_utils.create_one()
+
+        response = await self.admin_client.get(f"/api/students?search={search_term}")
+        paginated = assert_res_paginated(response, StudentDto, total_records=1)
+        self.student_utils.assert_matches(student1, paginated.items[0])

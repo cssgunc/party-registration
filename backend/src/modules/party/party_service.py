@@ -279,6 +279,21 @@ class PartyService:
             )
         )
 
+        search_columns = [
+            LocationEntity.formatted_address,
+            LocationEntity.google_place_id,
+            AccountEntity.first_name,
+            AccountEntity.last_name,
+            AccountEntity.email,
+            AccountEntity.onyen,
+            AccountEntity.pid,
+            StudentEntity.phone_number,
+            PartyEntity.contact_two_email,
+            PartyEntity.contact_two_first_name,
+            PartyEntity.contact_two_last_name,
+            PartyEntity.contact_two_phone_number,
+        ]
+
         # Use the generic pagination utility
         return await get_paginated_results(
             session=self.session,
@@ -289,6 +304,7 @@ class PartyService:
             allowed_sort_fields=allowed_sort_fields,
             allowed_filter_fields=allowed_filter_fields,
             nested_field_columns=nested_field_columns,
+            search_columns=search_columns,
         )
 
     async def get_party_by_id(self, party_id: int) -> PartyDto:
