@@ -1,4 +1,5 @@
 "use client";
+import AddressSearch from "@/components/AddressSearch";
 import { Button } from "@/components/ui/button";
 import {
   Field,
@@ -15,6 +16,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { LocationService } from "@/lib/api/location/location.service";
+import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { useUpdateStudent } from "@/lib/api/student/student.queries";
 import { StudentDto } from "@/lib/api/student/student.types";
 import {
@@ -26,6 +29,8 @@ import { Pencil, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import * as z from "zod";
 
+const locationService = new LocationService();
+
 const studentInfoSchema = z.object({
   first_name: z.string().min(1, "First name is required"),
   last_name: z.string().min(1, "Last name is required"),
@@ -33,7 +38,7 @@ const studentInfoSchema = z.object({
   contact_preference: z.enum(["call", "text"], {
     message: "Please select a contact preference",
   }),
-  address: z.string().min(1, "Address is required"),
+  address: z.string().optional(),
 });
 
 // Grab the type of the form data from the schema so we can use it in the component
@@ -214,6 +219,20 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
     );
   }
 
+  const handleAddressSelect = (address: AutocompleteResult | null) => {
+    setFormData((prev) => ({
+      ...prev,
+      location_place_id: address?.google_place_id || "",
+    }));
+    if (errors.location_place_id) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors.location_place_id;
+        return newErrors;
+      });
+    }
+  };
+
   return (
     <form
       onSubmit={handleSubmit}
@@ -308,16 +327,17 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
                 <Field data-invalid={!!errors.address} className="mb-2">
                   <FieldLabel
                     htmlFor="address"
-                    className="subhead-content mt-3 sm:mt-0"
+                    className="subhead-content sm:mt-0"
                   >
                     {school_year} Address
                   </FieldLabel>
-                  <Input
-                    id="address"
-                    placeholder="123 Main St, Chapel Hill NC 27514"
-                    value={formData.address}
-                    onChange={(e) => updateField("address", e.target.value)}
-                    className="content"
+                  <AddressSearch
+                    onSelect={handleAddressSelect}
+                    locationService={locationService}
+                    placeholder="Search for the location address..."
+                    className="w-full"
+                    error={errors.location_place_id}
+                    chapelHillOnly
                   />
                   {errors.address && <FieldError>{errors.address}</FieldError>}
                 </Field>
