@@ -24,7 +24,7 @@ export class IncidentService {
   }
 
   /**
-   * List incidents with pagination and optional filtering
+   * List incidents with pagination, filtering, sorting, and search
    * (GET /api/incidents)
    */
   async listIncidents(
