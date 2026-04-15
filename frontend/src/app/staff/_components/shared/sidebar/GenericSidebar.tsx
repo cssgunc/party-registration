@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { XIcon } from "lucide-react";
 
 function GenericSidebar() {
-  const { isOpen, closeSidebar, content } = useSidebar();
+  const { isOpen, closeSidebar, content, title, description } = useSidebar();
 
   return (
     <>
@@ -33,6 +33,12 @@ function GenericSidebar() {
           >
             <XIcon className="text-muted-foreground size-6 -m-8" />
           </Button>
+          {title && (
+            <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+          )}
+          {description && (
+            <p className="text-sm text-muted-foreground">{description}</p>
+          )}
         </div>
         {/* Scrollable content */}
         <div className="overflow-y-auto flex-1 px-6 pb-6">{content}</div>
