@@ -101,18 +101,25 @@ export function usePoliceCreateIncident(options?: {
         reference_id: payload.reference_id ?? null,
       };
 
-      queryClient.setQueriesData<PartyDto[]>({ queryKey: PARTIES_KEY }, (old) =>
-        old?.map((party) =>
-          party.location.google_place_id === payload.location_place_id
-            ? {
-                ...party,
-                location: {
-                  ...party.location,
-                  incidents: [optimisticIncident, ...party.location.incidents],
-                },
-              }
-            : party
-        )
+      queryClient.setQueriesData<PartyDto[]>(
+        { queryKey: PARTIES_KEY },
+        (old) => {
+          if (!Array.isArray(old)) return old;
+          return old.map((party) =>
+            party.location.google_place_id === payload.location_place_id
+              ? {
+                  ...party,
+                  location: {
+                    ...party.location,
+                    incidents: [
+                      optimisticIncident,
+                      ...party.location.incidents,
+                    ],
+                  },
+                }
+              : party
+          );
+        }
       );
 
       return { previousData };

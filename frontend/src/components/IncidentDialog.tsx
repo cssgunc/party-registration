@@ -45,8 +45,11 @@ const SEVERITY_LABELS: Record<IncidentSeverity, string> = {
   citation: "Citation",
 };
 
-const getDisplayAddress = (location: LocationDto | null): string => {
-  if (!location) return "";
+const getDisplayAddress = (
+  location: LocationDto | null,
+  fallback?: string
+): string => {
+  if (!location) return fallback ?? "";
   const { street_number, street_name, city } = location;
   const street = [street_number, street_name].filter(Boolean).join(" ");
   return city
@@ -63,6 +66,8 @@ export interface IncidentDialogProps {
   location: LocationDto | null;
   /** Overrides location.google_place_id for incident creation (used for unregistered locations) */
   locationPlaceId?: string;
+  /** Fallback address string when location is null (used for unregistered locations) */
+  formattedAddress?: string;
   incident?: IncidentDto;
   defaultSeverity?: IncidentSeverity;
   onSubmit: (data: IncidentCreateDto) => void;
@@ -75,6 +80,7 @@ export default function IncidentDialog({
   mode = "create",
   location,
   locationPlaceId,
+  formattedAddress,
   incident,
   defaultSeverity = "in_person_warning",
   onSubmit,
@@ -137,7 +143,7 @@ export default function IncidentDialog({
   };
 
   const title = mode === "edit" ? "Edit Incident" : "Add Incident";
-  const addressDisplay = getDisplayAddress(location);
+  const addressDisplay = getDisplayAddress(location, formattedAddress);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -156,7 +162,7 @@ export default function IncidentDialog({
             <Label htmlFor="incident-address">Selected Address</Label>
             <Input
               id="incident-address"
-              value={location?.formatted_address || ""}
+              value={location?.formatted_address || formattedAddress || ""}
               disabled
             />
           </div>

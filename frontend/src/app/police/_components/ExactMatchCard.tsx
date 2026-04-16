@@ -334,6 +334,7 @@ export default function ExactMatchCard({ exactMatch }: ExactMatchCardProps) {
         defaultSeverity={incidentType}
         location={exactMatch.location}
         locationPlaceId={exactMatch.google_place_id}
+        formattedAddress={exactMatch.formatted_address}
         onSubmit={handleStrippedCreate}
         isSubmitting={strippedCreateMutation.isPending}
         key={incidentDialogOpen ? exactMatch.google_place_id : undefined}

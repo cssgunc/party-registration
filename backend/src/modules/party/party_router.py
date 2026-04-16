@@ -189,6 +189,9 @@ async def get_parties_nearby(
         end_date=end_datetime,
     )
 
+    if exact_party is not None:
+        nearby = [p for p in nearby if p.id != exact_party.id]
+
     return ProximitySearchResponse(exact_match=exact_match, nearby=nearby)
 
 

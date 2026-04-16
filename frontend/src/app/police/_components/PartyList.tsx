@@ -35,7 +35,7 @@ import {
   getInPersonWarningCount,
   getRemoteWarningCount,
 } from "@/lib/api/location/location.types";
-import { PartyDto } from "@/lib/api/party/party.types";
+import { ExactMatchDto, PartyDto } from "@/lib/api/party/party.types";
 import { usePoliceCreateIncident } from "@/lib/api/party/police-party.queries";
 import { cn, formatTime } from "@/lib/utils";
 import { format } from "date-fns";
@@ -43,6 +43,7 @@ import { AlertTriangle, EllipsisVertical } from "lucide-react";
 import Image, { StaticImageData } from "next/image";
 import type { MouseEvent } from "react";
 import { useEffect, useState } from "react";
+import ExactMatchCard from "./ExactMatchCard";
 
 const PAGE_SIZE = 10;
 
@@ -80,13 +81,19 @@ interface PartyListProps {
   parties?: PartyDto[];
   onSelect?: (party: PartyDto) => void;
   activeParty?: PartyDto;
+  exactMatch?: ExactMatchDto;
 }
 
 const formatPreference = (pref: string): string => {
   return `${pref.charAt(0).toUpperCase() + pref.slice(1).toLowerCase()}`;
 };
 
-const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
+const PartyList = ({
+  parties = [],
+  onSelect,
+  activeParty,
+  exactMatch,
+}: PartyListProps) => {
   const [incidentDialogOpen, setIncidentDialogOpen] = useState(false);
   const [incidentType, setIncidentType] =
     useState<IncidentSeverity>("in_person_warning");
@@ -148,7 +155,7 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
     (_, i) => pageStart + i
   );
 
-  if (parties.length === 0) {
+  if (parties.length === 0 && !exactMatch) {
     return (
       <div className="w-full rounded-md border border-border bg-card px-4 py-8 text-center input-shadow">
         <p className="content text-muted-foreground">No parties found</p>
@@ -171,6 +178,19 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
     <>
       <div className="flex flex-col min-h-0 flex-1 gap-3">
         <ul className="flex-1 min-h-0 w-full overflow-y-auto rounded-md border border-border bg-card card-shadow [scroll-behavior:smooth]">
+          {exactMatch && (
+            <li className="border-b border-border px-4 py-4">
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Exact Match
+              </p>
+              <ExactMatchCard exactMatch={exactMatch} />
+              {parties.length > 0 && (
+                <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Nearby Parties
+                </p>
+              )}
+            </li>
+          )}
           {paginatedParties.map((party) => {
             const countBySeverity: Record<IncidentSeverity, number> = {
               remote_warning: getRemoteWarningCount(party.location),

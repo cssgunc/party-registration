@@ -1,7 +1,6 @@
 "use client";
 
 import EmbeddedMap from "@/app/police/_components/EmbeddedMap";
-import ExactMatchCard from "@/app/police/_components/ExactMatchCard";
 import PartyCsvExportButton from "@/app/police/_components/PartyCsvExportButton";
 import PartyList from "@/app/police/_components/PartyList";
 import SplitDateRangeFilter from "@/app/police/_components/SplitDateRangeFilter";
@@ -203,21 +202,12 @@ export default function PolicePage() {
               </div>
             )}
             {!isLoading && !isLoadingNearby && !error && (
-              <>
-                {searchAddress && nearbyData?.exact_match && (
-                  <div className="mb-3">
-                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Exact Match
-                    </p>
-                    <ExactMatchCard exactMatch={nearbyData.exact_match} />
-                  </div>
-                )}
-                <PartyList
-                  parties={filteredParties}
-                  onSelect={(party) => handleActiveParty(party)}
-                  activeParty={activeParty}
-                />
-              </>
+              <PartyList
+                parties={filteredParties}
+                onSelect={(party) => handleActiveParty(party)}
+                activeParty={activeParty}
+                exactMatch={searchAddress ? nearbyData?.exact_match : undefined}
+              />
             )}
           </div>
         </aside>
