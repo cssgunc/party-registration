@@ -10,6 +10,7 @@ import { StudentCreatePartyDto } from "@/lib/api/party/party.types";
 import {
   useCurrentStudent,
   useMyParties,
+  useUpdateStudent,
 } from "@/lib/api/student/student.queries";
 import { isFromThisSchoolYear } from "@/lib/utils";
 import { ArrowLeft, Info } from "lucide-react";
@@ -20,6 +21,7 @@ import { useMemo } from "react";
 
 export default function RegistrationForm() {
   const registerPartyMutation = useRegisterParty();
+  const updateStudentMutation = useUpdateStudent();
   const partiesQuery = useMyParties();
   const studentQuery = useCurrentStudent();
   const router = useRouter();
@@ -81,6 +83,15 @@ export default function RegistrationForm() {
 
   const handleSubmit = async (values: PartyFormValues, placeId: string) => {
     try {
+      // If student provided contact info inline (first-time onboarding), save it first
+      if (values.studentPhoneNumber && values.studentContactPreference) {
+        await updateStudentMutation.mutateAsync({
+          phone_number: values.studentPhoneNumber,
+          contact_preference: values.studentContactPreference,
+          last_registered: studentQuery.data?.last_registered ?? null,
+        });
+      }
+
       const partyData = formToData(values, placeId);
       const hasValidResidence = isFromThisSchoolYear(
         studentQuery.data?.residence?.residence_chosen_date
@@ -129,6 +140,7 @@ export default function RegistrationForm() {
               <PartyRegistrationForm
                 onSubmit={handleSubmit}
                 initialValues={initialValues}
+                student={studentQuery.data}
               />
             </div>
           </div>

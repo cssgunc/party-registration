@@ -86,7 +86,6 @@ const getErrorMessage = (error: Error): string => {
 export const AccountTable = () => {
   const { openSidebar, closeSidebar } = useSidebar();
   const { openSnackbar } = useSnackbar();
-  // const [editingAccount, setEditingAccount] = useState<AccountDto | null>(null);
   const [editingAccount, setEditingAccount] = useState<AccountTableRow | null>(
     null
   );
