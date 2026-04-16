@@ -34,6 +34,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  ServerColumnMap,
+  ServerTableParams,
+  buildServerTableParams,
+} from "@/lib/api/shared/query-params";
+import { cn } from "@/lib/utils";
+import {
   ColumnDef,
   ColumnFiltersState,
   PaginationState,
@@ -49,7 +55,7 @@ import {
 } from "@tanstack/react-table";
 import { MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
 import { useSession } from "next-auth/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { DeleteConfirmDialog } from "../dialog/DeleteConfirmDialog";
 import { useSidebar } from "../sidebar/SidebarContext";
 import { ColumnHeader } from "./ColumnHeader";
@@ -62,6 +68,8 @@ declare module "@tanstack/react-table" {
   interface ColumnMeta<TData, TValue> {
     filterType?: FilterType;
     selectOptions?: string[];
+    /** "client" = always filter this column on the loaded page, even in server mode */
+    filterMode?: "client" | "server";
   }
 }
 
@@ -73,6 +81,7 @@ export type TableProps<T> = {
   onDelete?: (row: T) => void;
   onCreateNewRow?: () => void;
   isLoading?: boolean;
+  isFetching?: boolean;
   error?: Error | null;
   getDeleteDescription?: (row: T) => string;
   isDeleting?: boolean;
@@ -81,6 +90,11 @@ export type TableProps<T> = {
   sortBy?: (a: T, b: T) => number;
   pageSize?: number;
   pageSizeOptions?: number[];
+  serverMeta?: { totalRecords: number; totalPages: number };
+  onStateChange?: (params: ServerTableParams) => void;
+  columnMap?: ServerColumnMap;
+  canManageRows?: boolean;
+  canDeleteRow?: (row: T) => boolean;
 };
 
 export function TableTemplate<T extends object>({
@@ -91,23 +105,32 @@ export function TableTemplate<T extends object>({
   onDelete,
   onCreateNewRow,
   isLoading,
+  isFetching,
   error,
   getDeleteDescription,
   isDeleting,
   isDeleteDisabled,
   initialSort = [],
   sortBy,
-  pageSize = 8,
-  pageSizeOptions = [5, 8, 10, 20],
+  pageSize = 50,
+  pageSizeOptions = [10, 25, 50, 100],
+  serverMeta,
+  onStateChange,
+  columnMap,
+  canManageRows,
+  canDeleteRow,
 }: TableProps<T>) {
+  const isServerMode = !!serverMeta;
   const { isOpen, openSidebar, closeSidebar } = useSidebar();
   const { data: session } = useSession();
   const role = session?.role;
-  // Apply custom sorting if provided
+  const hasManagePermission = canManageRows ?? role === "admin";
+
   const sortedData = useMemo(
     () => (sortBy ? [...data].sort(sortBy) : data),
     [data, sortBy]
   );
+
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize,
@@ -118,6 +141,20 @@ export function TableTemplate<T extends object>({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<T | null>(null);
   const [globalFilter, setGlobalFilter] = useState<string>("");
+
+  // Refs to avoid stale closures in debounced effects
+  const paginationRef = useRef(pagination);
+  const sortingRef = useRef(sorting);
+  const columnFiltersRef = useRef(columnFilters);
+  useEffect(() => {
+    paginationRef.current = pagination;
+  }, [pagination]);
+  useEffect(() => {
+    sortingRef.current = sorting;
+  }, [sorting]);
+  useEffect(() => {
+    columnFiltersRef.current = columnFilters;
+  }, [columnFilters]);
 
   useEffect(() => {
     setPagination((prev) => ({
@@ -133,67 +170,71 @@ export function TableTemplate<T extends object>({
     }
   }, [isOpen, rowSelection]);
 
-  const handleDeleteClick = (row: T) => {
-    setItemToDelete(row);
-    setDeleteDialogOpen(true);
-  };
+  const filterDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const globalFilterRef = useRef(globalFilter);
+  useEffect(() => {
+    globalFilterRef.current = globalFilter;
+  }, [globalFilter]);
 
-  const handleEditClick = (rowId: string, row: T) => {
-    setRowSelection({ [rowId]: true });
-    onEdit?.(row);
-  };
+  // Server mode: immediate callback on pagination/sorting change
+  useEffect(() => {
+    if (!isServerMode || !onStateChange || !columnMap) return;
+    onStateChange(
+      buildServerTableParams(
+        paginationRef.current,
+        sortingRef.current,
+        columnFiltersRef.current,
+        columnMap,
+        globalFilterRef.current || undefined
+      )
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pagination, sorting]);
 
-  const confirmDelete = () => {
-    if (itemToDelete && onDelete) {
-      onDelete(itemToDelete);
-    }
-  };
+  // Server mode: debounced callback on filter change (reset page to 0 first)
+  useEffect(() => {
+    if (!isServerMode || !onStateChange || !columnMap) return;
+    if (filterDebounceRef.current) clearTimeout(filterDebounceRef.current);
+    filterDebounceRef.current = setTimeout(() => {
+      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+      onStateChange(
+        buildServerTableParams(
+          { ...paginationRef.current, pageIndex: 0 },
+          sortingRef.current,
+          columnFiltersRef.current,
+          columnMap,
+          globalFilterRef.current || undefined
+        )
+      );
+    }, 300);
+    return () => {
+      if (filterDebounceRef.current) clearTimeout(filterDebounceRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [columnFilters]);
 
-  // Derive details from resourceName if not provided
-
-  // Add actions column if handlers are provided and user is admin
-  const columnsWithActions: ColumnDef<T, unknown>[] =
-    role === "admin" && (onEdit || onDelete)
-      ? [
-          ...columns,
-          {
-            id: "actions",
-            enableSorting: false,
-            enableColumnFilter: false,
-            cell: ({ row }) => (
-              <div className="flex justify-end">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                      <MoreHorizontal className="h-4 w-4" />
-                      <span className="sr-only">Open menu</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    {onEdit && (
-                      <DropdownMenuItem
-                        onClick={() => handleEditClick(row.id, row.original)}
-                      >
-                        <Pencil className="mr-2 h-4 w-4" />
-                        Edit
-                      </DropdownMenuItem>
-                    )}
-                    {onDelete && !isDeleteDisabled?.(row.original) && (
-                      <DropdownMenuItem
-                        onClick={() => handleDeleteClick(row.original)}
-                        variant="destructive"
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            ),
-          },
-        ]
-      : columns;
+  // Server mode: debounced callback on search (globalFilter) change
+  useEffect(() => {
+    if (!isServerMode || !onStateChange || !columnMap) return;
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+      onStateChange(
+        buildServerTableParams(
+          { ...paginationRef.current, pageIndex: 0 },
+          sortingRef.current,
+          columnFiltersRef.current,
+          columnMap,
+          globalFilter || undefined
+        )
+      );
+    }, 300);
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [globalFilter]);
 
   function flattenValues<T extends object>(obj: T): string {
     const result: string[] = [];
@@ -230,21 +271,110 @@ export function TableTemplate<T extends object>({
     return result.join(" ").toLowerCase();
   }
 
+  // In server mode, apply client-only column filters on the loaded page (global search is backend)
+  const displayData = useMemo(() => {
+    if (!isServerMode) return sortedData;
+
+    let filtered = data;
+
+    for (const filter of columnFilters) {
+      if (!filter.value) continue;
+      const col = columns.find((c) => {
+        const id = c.id ?? (c as { accessorKey?: string }).accessorKey;
+        return id === filter.id;
+      });
+      if (col?.meta?.filterMode !== "client") continue;
+      const accessorFn = (
+        col as { accessorFn?: (row: T, idx: number) => unknown }
+      ).accessorFn;
+      if (!accessorFn) continue;
+      const filterVal = String(filter.value).toLowerCase();
+      filtered = filtered.filter((row) =>
+        String(accessorFn(row, 0)).toLowerCase().includes(filterVal)
+      );
+    }
+
+    return filtered;
+  }, [data, sortedData, columnFilters, isServerMode, columns]);
+
+  const handleDeleteClick = (row: T) => {
+    setItemToDelete(row);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleEditClick = (rowId: string, row: T) => {
+    setRowSelection({ [rowId]: true });
+    onEdit?.(row);
+  };
+
+  const confirmDelete = () => {
+    if (
+      itemToDelete &&
+      onDelete &&
+      (canDeleteRow ? canDeleteRow(itemToDelete) : true)
+    ) {
+      onDelete(itemToDelete);
+    }
+  };
+
+  const columnsWithActions: ColumnDef<T, unknown>[] =
+    hasManagePermission && (onEdit || onDelete)
+      ? [
+          ...columns,
+          {
+            id: "actions",
+            enableSorting: false,
+            enableColumnFilter: false,
+            cell: ({ row }) => (
+              <div className="flex justify-end">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                      <MoreHorizontal className="h-4 w-4" />
+                      <span className="sr-only">Open menu</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {onEdit && (
+                      <DropdownMenuItem
+                        onClick={() => handleEditClick(row.id, row.original)}
+                      >
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Edit
+                      </DropdownMenuItem>
+                    )}
+                    {onDelete &&
+                      (canDeleteRow
+                        ? canDeleteRow(row.original)
+                        : !isDeleteDisabled?.(row.original)) && (
+                        <DropdownMenuItem
+                          onClick={() => handleDeleteClick(row.original)}
+                          variant="destructive"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            ),
+          },
+        ]
+      : columns;
+
   const customFilterFn = <T extends object>(
     row: Row<T>,
     _columnId: string,
     filterValue: string
   ): boolean => {
     if (!filterValue) return true;
-
     const flattened = flattenValues(row.original);
-    const matches = flattened.includes(filterValue.toLowerCase());
-
-    return matches;
+    return flattened.includes(filterValue.toLowerCase());
   };
 
   const table = useReactTable({
-    data: sortedData,
+    data: displayData,
     columns: columnsWithActions,
     state: {
       sorting,
@@ -253,15 +383,28 @@ export function TableTemplate<T extends object>({
       globalFilter,
       rowSelection,
     },
-    globalFilterFn: customFilterFn,
-    onSortingChange: setSorting,
+    ...(isServerMode
+      ? {
+          manualSorting: true,
+          manualFiltering: true,
+          manualPagination: true,
+          pageCount: serverMeta!.totalPages,
+        }
+      : {
+          globalFilterFn: customFilterFn,
+          getSortedRowModel: getSortedRowModel(),
+          getFilteredRowModel: getFilteredRowModel(),
+          getPaginationRowModel: getPaginationRowModel(),
+        }),
+    onSortingChange: (updater) => {
+      const next = typeof updater === "function" ? updater(sorting) : updater;
+      if (isServerMode) setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+      setSorting(next);
+    },
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
     onGlobalFilterChange: setGlobalFilter,
-    getPaginationRowModel: getPaginationRowModel(),
     onPaginationChange: setPagination,
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
     onRowSelectionChange: setRowSelection,
   });
 
@@ -273,7 +416,9 @@ export function TableTemplate<T extends object>({
   );
   const activePage = table.getState().pagination.pageIndex;
   const activePageSize = table.getState().pagination.pageSize;
-  const filteredRowCount = table.getFilteredRowModel().rows.length;
+  const filteredRowCount = isServerMode
+    ? serverMeta!.totalRecords
+    : table.getFilteredRowModel().rows.length;
   const pageCount = table.getPageCount();
   const maxVisiblePages = 3;
   const pageStart = Math.max(
@@ -291,32 +436,28 @@ export function TableTemplate<T extends object>({
 
   return (
     <div className="h-full min-h-0 flex flex-col gap-4">
-      {/* Header with Create Button */}
+      {/* Header with Search and Create Button */}
       {(resourceName || onCreateNewRow) && (
         <div className="flex justify-between items-center w-full">
-          {(() => {
-            return (
-              <div className="flex justify-between w-full gap-4">
-                <div className="flex-1 min-w-sm max-w-lg bg-card rounded-md">
-                  <Input
-                    type="text"
-                    value={globalFilter}
-                    onChange={(e) => setGlobalFilter(e.target.value)}
-                    placeholder="Search all columns..."
-                    className="p-2 pl-3 h-9 rounded-md "
-                  />
-                </div>
-                <div className="shrink-0">
-                  {onCreateNewRow && role === "admin" && (
-                    <Button onClick={onCreateNewRow} className="h-9">
-                      <Plus className="mr-1" />
-                      <p>New row</p>
-                    </Button>
-                  )}
-                </div>
-              </div>
-            );
-          })()}
+          <div className="flex justify-between w-full gap-4">
+            <div className="flex-1 min-w-sm max-w-lg bg-card rounded-md">
+              <Input
+                type="text"
+                value={globalFilter}
+                onChange={(e) => setGlobalFilter(e.target.value)}
+                placeholder="Search all columns..."
+                className="p-2 pl-3 h-9 rounded-md"
+              />
+            </div>
+            <div className="shrink-0 ml-auto">
+              {onCreateNewRow && hasManagePermission && (
+                <Button onClick={onCreateNewRow} className="h-9">
+                  <Plus className="mr-1" />
+                  <p>New row</p>
+                </Button>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
@@ -335,7 +476,12 @@ export function TableTemplate<T extends object>({
       {!isLoading && !error && (
         <div className="flex min-h-0 h-full flex-col justify-between overflow-hidden">
           <Card className="flex-1 min-h-0 py-2 px-4 overflow-hidden rounded-sm w-full max-w-none mx-0">
-            <div className="h-full overflow-y-auto">
+            <div
+              className={cn(
+                "h-full overflow-y-auto",
+                isFetching && "opacity-60 pointer-events-none"
+              )}
+            >
               <Table className="bg-card rounded-sm">
                 <TableHeader>
                   {table.getHeaderGroups().map((headerGroup) => (

@@ -3,6 +3,7 @@
 import AddressSearch from "@/components/AddressSearch";
 import DatePicker from "@/components/DatePicker";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +22,11 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -29,9 +35,14 @@ import {
 } from "@/components/ui/select";
 import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
-import { ResidenceDto } from "@/lib/api/student/student.types";
-import { isFromThisSchoolYear } from "@/lib/utils";
+import { StudentDto } from "@/lib/api/student/student.types";
+import {
+  formatPhoneNumberInput,
+  isFromThisSchoolYear,
+  phoneNumberSchema,
+} from "@/lib/utils";
 import { addBusinessDays, isAfter, startOfDay } from "date-fns";
+import { CalendarIcon } from "lucide-react";
 import { useRef, useState } from "react";
 import * as z from "zod";
 
@@ -49,15 +60,15 @@ const partyFormSchema = z.object({
   partyTime: z.string().min(1, "Party time is required"),
   secondContactFirstName: z.string().min(1, "First name is required"),
   secondContactLastName: z.string().min(1, "Last name is required"),
-  phoneNumber: z.string().regex(/^\+?1?\d{9,15}$/, {
-    message: "String must be a valid phone number",
-  }),
+  phoneNumber: phoneNumberSchema,
   contactPreference: z.enum(["call", "text"], {
     message: "Please select a contact preference",
   }),
   contactTwoEmail: z
     .email({ pattern: z.regexes.html5Email })
     .min(1, "Contact email is required"),
+  studentPhoneNumber: phoneNumberSchema.optional(),
+  studentContactPreference: z.enum(["call", "text"]).optional(),
 });
 
 type PartyFormValues = z.infer<typeof partyFormSchema>;
@@ -84,13 +95,10 @@ interface PartyRegistrationFormProps {
   onSubmit: (data: PartyFormValues, placeId: string) => void | Promise<void>;
   locationService?: LocationService;
   initialValues?: PartyFormInitialValues;
-  /** The authenticated student's email (contact one) for duplicate validation */
-  studentEmail?: string;
-  /** The authenticated student's phone number (contact one) for duplicate validation */
-  studentPhoneNumber?: string;
+  /** The authenticated student */
+  student?: StudentDto | null;
   /** Whether this form is used for creating or editing a party */
   mode?: "create" | "edit";
-  studentResidence?: ResidenceDto | null;
 }
 
 // Default party time (e.g., 8:00 PM)
@@ -102,10 +110,7 @@ export default function PartyRegistrationForm({
   onSubmit,
   locationService = new LocationService(),
   initialValues,
-  studentEmail,
-  studentPhoneNumber,
-  mode = "create",
-  studentResidence,
+  student,
 }: PartyRegistrationFormProps) {
   const [formData, setFormData] = useState<Partial<PartyFormValues>>({
     address: initialValues?.address ?? "",
@@ -139,7 +144,9 @@ export default function PartyRegistrationForm({
     !!formData.secondContactLastName &&
     !!formData.phoneNumber &&
     !!formData.contactPreference &&
-    !!formData.contactTwoEmail;
+    !!formData.contactTwoEmail &&
+    (student?.phone_number != null ||
+      (!!formData.studentPhoneNumber && !!formData.studentContactPreference));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -158,19 +165,37 @@ export default function PartyRegistrationForm({
       return;
     }
 
+    // If student hasn't provided contact info yet, validate inline fields
+    if (!student?.phone_number) {
+      const studentInfoErrors: Record<string, string> = {};
+      if (!result.data.studentPhoneNumber) {
+        studentInfoErrors.studentPhoneNumber = "Phone number is required";
+      }
+      if (!result.data.studentContactPreference) {
+        studentInfoErrors.studentContactPreference =
+          "Contact preference is required";
+      }
+      if (Object.keys(studentInfoErrors).length > 0) {
+        setErrors((prev) => ({ ...prev, ...studentInfoErrors }));
+        return;
+      }
+    }
+
     // Validate contact two differs from contact one (the student)
     const contactTwoErrors: Record<string, string> = {};
     if (
-      studentEmail &&
+      student?.email &&
       result.data.contactTwoEmail.trim().toLowerCase() ===
-        studentEmail.trim().toLowerCase()
+        student.email.trim().toLowerCase()
     ) {
       contactTwoErrors.contactTwoEmail =
         "Contact two email must be different from your email";
     }
-    if (studentPhoneNumber) {
-      const c1Digits = studentPhoneNumber.replace(/\D/g, "");
-      const c2Digits = result.data.phoneNumber.replace(/\D/g, "");
+    const studentPhone =
+      student?.phone_number ?? result.data.studentPhoneNumber;
+    if (studentPhone) {
+      const c1Digits = studentPhone.replace(/\D/g, "");
+      const c2Digits = result.data.phoneNumber;
       if (c1Digits === c2Digits) {
         contactTwoErrors.phoneNumber =
           "Contact two phone number must be different from your phone number";
@@ -249,190 +274,363 @@ export default function PartyRegistrationForm({
       : undefined;
 
   const validResidence = isFromThisSchoolYear(
-    studentResidence?.residence_chosen_date
+    student?.residence?.residence_chosen_date
   );
 
   return (
     <form onSubmit={handleSubmit}>
       <FieldGroup>
         <FieldSet>
-          {!validResidence && (
-            <Field data-invalid={!!errors.address}>
-              <FieldLabel htmlFor="party-address">Party Address</FieldLabel>
-              <AddressSearch
-                value={formData.address}
-                onSelect={handleAddressSelect}
-                locationService={locationService}
-                placeholder="Search for the party address..."
-                className="w-full"
-                error={errors.address}
-                initialSelection={initialAddress}
-                chapelHillOnly
-              />
-              <FieldDescription className="italics">
-                This will be added to your profile as your {school_year}{" "}
-                location. You may change it after {change_date}.
-              </FieldDescription>
-              {errors.address && <FieldError>{errors.address}</FieldError>}
-            </Field>
-          )}
-          {validResidence && (
-            <div className="col-span-2">
-              <div className="text-[#09294E] font-semibold text-sm mb-2">
-                Party Address
-              </div>
-              <div className="text-gray-600 text-base pb-3">
-                {studentResidence?.location.formatted_address}
+          <div className="flex flex-col gap-4 lg:gap-6">
+            <div className="sm:grid sm:grid-cols-2 sm:gap-6 lg:gap-8 mt-2">
+              <Field data-invalid={!!errors.partyDate}>
+                <FieldLabel htmlFor="party-date" className="content-bold">
+                  Event Date
+                </FieldLabel>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      id="party-date"
+                      variant="outline"
+                      aria-invalid={!!errors.partyDate}
+                      className={`w-full justify-between items-center content bg-white input-shadow ${
+                        !formData.partyDate && "text-muted-foreground"
+                      }`}
+                    >
+                      {formData.partyDate ? (
+                        (formData.partyDate, "PPP")
+                      ) : (
+                        <span>Pick a date</span>
+                      )}
+                      <CalendarIcon className="h-4 w-4 text-black shrink-0" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={formData.partyDate}
+                      onSelect={(date) =>
+                        updateField("partyDate", date as Date)
+                      }
+                      disabled={(date) =>
+                        !isAfter(
+                          startOfDay(date),
+                          addBusinessDays(startOfDay(new Date()), 1)
+                        )
+                      }
+                    />
+                  </PopoverContent>
+                </Popover>
+                {errors.partyDate && (
+                  <FieldError>{errors.partyDate}</FieldError>
+                )}
+              </Field>
+
+              <div className="grid grid-cols-2 gap-4">
+                <Field data-invalid={!!errors.partyDate}>
+                  <FieldLabel htmlFor="party-date">Party Date</FieldLabel>
+                  <DatePicker
+                    id="party-date"
+                    value={formData.partyDate ?? null}
+                    onChange={(date) => updateField("partyDate", date as Date)}
+                    disabled={(date) =>
+                      !isAfter(
+                        startOfDay(date),
+                        addBusinessDays(startOfDay(new Date()), 1)
+                      )
+                    }
+                    aria-invalid={!!errors.partyDate}
+                  />
+                  <FieldDescription>
+                    Must be at least 2 business days from today
+                  </FieldDescription>
+                  {errors.partyDate && (
+                    <FieldError>{errors.partyDate}</FieldError>
+                  )}
+                </Field>
               </div>
 
-              <div className="flex flex-row gap-4">
-                <div className="text-gray-600 text-base italic flex-1">
-                  You cannot change your address until {change_date}. If you are
-                  experiencing hardship, contact [email] for changes
+              <Field data-invalid={!!errors.partyTime}>
+                <FieldLabel
+                  htmlFor="party-time"
+                  className="content-bold mt-4 sm:mt-0"
+                >
+                  Event Time
+                </FieldLabel>
+                <Input
+                  id="party-time"
+                  type="time"
+                  value={formData.partyTime}
+                  onChange={(e) => updateField("partyTime", e.target.value)}
+                  aria-invalid={!!errors.partyTime}
+                  className={`w-full justify-between items-center content bg-white input-shadow ${
+                    !formData.partyDate && "text-muted-foreground"
+                  }`}
+                />
+                {errors.partyTime && (
+                  <FieldError>{errors.partyTime}</FieldError>
+                )}
+              </Field>
+            </div>
+
+            {!validResidence && (
+              <Field data-invalid={!!errors.address}>
+                <FieldLabel htmlFor="party-address" className="content-bold">
+                  Party Address
+                </FieldLabel>
+                <AddressSearch
+                  value={formData.address}
+                  onSelect={handleAddressSelect}
+                  locationService={locationService}
+                  placeholder="Search for the party address..."
+                  className="w-full"
+                  error={errors.address}
+                  initialSelection={initialAddress}
+                />
+                <FieldDescription className="content-sub italic">
+                  This will be added to your profile as your {school_year}{" "}
+                  location. You may change it after {change_date}.
+                </FieldDescription>
+                {errors.address && <FieldError>{errors.address}</FieldError>}
+              </Field>
+            )}
+            {validResidence && (
+              <div className="col-span-2">
+                <p className="content-bold mb-2">Party Address</p>
+                <p className="content pb-3">
+                  {student?.residence?.location.formatted_address}
+                </p>
+
+                <div className="flex flex-row gap-4">
+                  <p className="content-sub italic">
+                    You cannot change your address until {change_date}. If you
+                    are experiencing hardship, contact [email] for changes
+                  </p>
                 </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <Field data-invalid={!!errors.partyDate}>
-              <FieldLabel htmlFor="party-date">Party Date</FieldLabel>
-              <DatePicker
-                id="party-date"
-                value={formData.partyDate ?? null}
-                onChange={(date) => updateField("partyDate", date as Date)}
-                disabled={(date) =>
-                  !isAfter(
-                    startOfDay(date),
-                    addBusinessDays(startOfDay(new Date()), 1)
+          <div className="flex flex-col gap-4">
+            <h2 className="subhead-content">Your Contact Information</h2>
+            <p className="content-sub italic">
+              {student?.phone_number != null
+                ? "You can edit preferences in your Account Settings."
+                : "Please provide your contact information to complete registration."}
+            </p>
+            <div className="sm:grid sm:grid-cols-2 sm:gap-4">
+              <Field className="mb-4 sm:mb-2">
+                <FieldLabel className="content-bold">First Name</FieldLabel>
+                <p className="content">{student?.first_name}</p>
+              </Field>
+              <Field className="mb-4 sm:mb-2">
+                <FieldLabel className="content-bold">Last Name</FieldLabel>
+                <p className="content">{student?.last_name}</p>
+              </Field>
+              <Field
+                data-invalid={!!errors.studentPhoneNumber}
+                className="mb-4 sm:mb-2"
+              >
+                <FieldLabel className="content-bold">Phone Number</FieldLabel>
+                {student?.phone_number != null ? (
+                  <p className="content">{student.phone_number}</p>
+                ) : (
+                  <>
+                    <Input
+                      id="student-phone-number"
+                      type="tel"
+                      placeholder="(123) 456-7890"
+                      value={formatPhoneNumberInput(
+                        formData.studentPhoneNumber ?? ""
+                      )}
+                      onChange={(e) =>
+                        updateField(
+                          "studentPhoneNumber",
+                          e.target.value.replace(/\D/g, "").slice(0, 10)
+                        )
+                      }
+                      aria-invalid={!!errors.studentPhoneNumber}
+                      className="content"
+                    />
+                    {errors.studentPhoneNumber && (
+                      <FieldError>{errors.studentPhoneNumber}</FieldError>
+                    )}
+                  </>
+                )}
+              </Field>
+              <Field
+                data-invalid={!!errors.studentContactPreference}
+                className="mb-4 sm:mb-2"
+              >
+                <FieldLabel className="content-bold">
+                  Contact Preference
+                </FieldLabel>
+                {student?.phone_number != null ? (
+                  <p className="content capitalize">
+                    {student.contact_preference}
+                  </p>
+                ) : (
+                  <>
+                    <Select
+                      value={formData.studentContactPreference}
+                      onValueChange={(value: "call" | "text") =>
+                        updateField("studentContactPreference", value)
+                      }
+                    >
+                      <SelectTrigger
+                        aria-invalid={!!errors.studentContactPreference}
+                        className="content"
+                      >
+                        <SelectValue placeholder="Select your preference" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="call" className="content">
+                          Call
+                        </SelectItem>
+                        <SelectItem value="text" className="content">
+                          Text
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {errors.studentContactPreference && (
+                      <FieldError>{errors.studentContactPreference}</FieldError>
+                    )}
+                  </>
+                )}
+              </Field>
+              <Field className="sm:mb-2">
+                <FieldLabel className="content-bold">Email</FieldLabel>
+                <p className="content">{student?.email}</p>
+              </Field>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-4 lg:gap-6">
+            <h2 className="subhead-content">Second Contact Information</h2>
+            <div className="lg:flex lg:flex-row lg:gap-8">
+              <Field data-invalid={!!errors.secondContactFirstName}>
+                <FieldLabel
+                  htmlFor="second-contact-first-name"
+                  className="content-bold"
+                >
+                  First Name
+                </FieldLabel>
+                <Input
+                  id="second-contact-first-name"
+                  placeholder=""
+                  value={formData.secondContactFirstName}
+                  onChange={(e) =>
+                    updateField("secondContactFirstName", e.target.value)
+                  }
+                  aria-invalid={!!errors.secondContactFirstName}
+                  className="content mb-4 lg:mb-0"
+                />
+                {errors.secondContactFirstName && (
+                  <FieldError>{errors.secondContactFirstName}</FieldError>
+                )}
+              </Field>
+
+              <Field data-invalid={!!errors.secondContactLastName}>
+                <FieldLabel
+                  htmlFor="second-contact-last-name"
+                  className="content-bold"
+                >
+                  Last Name
+                </FieldLabel>
+                <Input
+                  id="second-contact-last-name"
+                  placeholder=""
+                  value={formData.secondContactLastName}
+                  onChange={(e) =>
+                    updateField("secondContactLastName", e.target.value)
+                  }
+                  aria-invalid={!!errors.secondContactLastName}
+                  className="content"
+                />
+                {errors.secondContactLastName && (
+                  <FieldError>{errors.secondContactLastName}</FieldError>
+                )}
+              </Field>
+            </div>
+            <Field data-invalid={!!errors.phoneNumber}>
+              <FieldLabel htmlFor="phone-number" className="content-bold">
+                Phone Number
+              </FieldLabel>
+              <Input
+                id="phone-number"
+                type="tel"
+                placeholder="(123) 456-7890"
+                value={formatPhoneNumberInput(formData.phoneNumber ?? "")}
+                onChange={(e) =>
+                  updateField(
+                    "phoneNumber",
+                    e.target.value.replace(/\D/g, "").slice(0, 10)
                   )
                 }
-                aria-invalid={!!errors.partyDate}
+                aria-invalid={!!errors.phoneNumber}
+                className="content"
               />
-              <FieldDescription>
-                Must be at least 2 business days from today
-              </FieldDescription>
-              {errors.partyDate && <FieldError>{errors.partyDate}</FieldError>}
-            </Field>
-
-            <Field data-invalid={!!errors.partyTime}>
-              <FieldLabel htmlFor="party-time">Party Time</FieldLabel>
-              <Input
-                id="party-time"
-                type="time"
-                value={formData.partyTime}
-                onChange={(e) => updateField("partyTime", e.target.value)}
-                aria-invalid={!!errors.partyTime}
-              />
-              <FieldDescription>Select the start time</FieldDescription>
-              {errors.partyTime && <FieldError>{errors.partyTime}</FieldError>}
-            </Field>
-          </div>
-          <div className="font-semibold text-lg">
-            Second Contact Information
-          </div>
-          <div className="flex flex-row gap-6">
-            <Field data-invalid={!!errors.secondContactFirstName}>
-              <FieldLabel htmlFor="second-contact-first-name">
-                First Name
-              </FieldLabel>
-              <Input
-                id="second-contact-first-name"
-                placeholder=""
-                value={formData.secondContactFirstName}
-                onChange={(e) =>
-                  updateField("secondContactFirstName", e.target.value)
-                }
-                aria-invalid={!!errors.secondContactFirstName}
-              />
-              {errors.secondContactFirstName && (
-                <FieldError>{errors.secondContactFirstName}</FieldError>
+              {errors.phoneNumber && (
+                <FieldError>{errors.phoneNumber}</FieldError>
               )}
             </Field>
 
-            <Field data-invalid={!!errors.secondContactLastName}>
-              <FieldLabel htmlFor="second-contact-last-name">
-                Last Name
+            <Field data-invalid={!!errors.contactPreference}>
+              <FieldLabel htmlFor="contact-preference" className="content-bold">
+                Contact Preference
               </FieldLabel>
-              <Input
-                id="second-contact-last-name"
-                placeholder=""
-                value={formData.secondContactLastName}
-                onChange={(e) =>
-                  updateField("secondContactLastName", e.target.value)
+              <Select
+                value={formData.contactPreference}
+                onValueChange={(value) =>
+                  updateField("contactPreference", value as "call" | "text")
                 }
-                aria-invalid={!!errors.secondContactLastName}
-              />
-              {errors.secondContactLastName && (
-                <FieldError>{errors.secondContactLastName}</FieldError>
-              )}
-            </Field>
-          </div>
-          <Field data-invalid={!!errors.phoneNumber}>
-            <FieldLabel htmlFor="phone-number">Phone Number</FieldLabel>
-            <Input
-              id="phone-number"
-              placeholder="(123) 456-7890"
-              value={formData.phoneNumber}
-              onChange={(e) => updateField("phoneNumber", e.target.value)}
-              aria-invalid={!!errors.phoneNumber}
-            />
-            <FieldDescription>
-              We will use this to contact Contact two about the party
-            </FieldDescription>
-            {errors.phoneNumber && (
-              <FieldError>{errors.phoneNumber}</FieldError>
-            )}
-          </Field>
-
-          <Field data-invalid={!!errors.contactPreference}>
-            <FieldLabel htmlFor="contact-preference">
-              Contact Preference
-            </FieldLabel>
-            <Select
-              value={formData.contactPreference}
-              onValueChange={(value) =>
-                updateField("contactPreference", value as "call" | "text")
-              }
-            >
-              <SelectTrigger
-                id="contact-preference"
-                aria-invalid={!!errors.contactPreference}
               >
-                <SelectValue placeholder="Select your preference" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="call">Call</SelectItem>
-                <SelectItem value="text">Text</SelectItem>
-              </SelectContent>
-            </Select>
-            <FieldDescription>
-              How should we contact the second contact?
-            </FieldDescription>
-            {errors.contactPreference && (
-              <FieldError>{errors.contactPreference}</FieldError>
-            )}
-          </Field>
+                <SelectTrigger
+                  id="contact-preference"
+                  aria-invalid={!!errors.contactPreference}
+                  className="content"
+                >
+                  <SelectValue placeholder="Select your preference" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="call" className="content">
+                    Call
+                  </SelectItem>
+                  <SelectItem value="text" className="content">
+                    Text
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.contactPreference && (
+                <FieldError>{errors.contactPreference}</FieldError>
+              )}
+            </Field>
 
-          <Field data-invalid={!!errors.contactTwoEmail}>
-            <FieldLabel htmlFor="contact-email">Contact Email</FieldLabel>
-            <Input
-              id="contact-email"
-              type="email"
-              placeholder="student@unc.edu"
-              value={formData.contactTwoEmail}
-              onChange={(e) => updateField("contactTwoEmail", e.target.value)}
-              aria-invalid={!!errors.contactTwoEmail}
-            />
-            <FieldDescription>
-              Email address of the second contact person
-            </FieldDescription>
-            {errors.contactTwoEmail && (
-              <FieldError>{errors.contactTwoEmail}</FieldError>
-            )}
-          </Field>
+            <Field data-invalid={!!errors.contactTwoEmail}>
+              <FieldLabel htmlFor="contact-email" className="content-bold">
+                Contact Email
+              </FieldLabel>
+              <Input
+                id="contact-email"
+                type="email"
+                placeholder="student@unc.edu"
+                value={formData.contactTwoEmail}
+                onChange={(e) => updateField("contactTwoEmail", e.target.value)}
+                aria-invalid={!!errors.contactTwoEmail}
+                className="content"
+              />
+              {errors.contactTwoEmail && (
+                <FieldError>{errors.contactTwoEmail}</FieldError>
+              )}
+            </Field>
+          </div>
 
-          <Field orientation="horizontal">
+          <Field className="flex flex-col items-center">
+            <p className="content text-center my-2 lg:my-4">
+              Please ensure all information provided is correct before
+              submitting. After submitting, all contacts will receive email
+              confirmation for your event
+            </p>
             <Button
               type="submit"
               disabled={isSubmitting || !isFormComplete}
@@ -441,12 +639,9 @@ export default function PartyRegistrationForm({
                   ? "Please fill in all required fields"
                   : undefined
               }
+              className="!w-fit"
             >
-              {isSubmitting
-                ? "Submitting..."
-                : mode === "edit"
-                  ? "Save"
-                  : "Register Party"}
+              {isSubmitting ? "Submitting..." : "Submit Event"}
             </Button>
           </Field>
         </FieldSet>

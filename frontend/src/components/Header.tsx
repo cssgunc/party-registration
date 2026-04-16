@@ -10,8 +10,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { signOut } from "@/lib/auth/signout";
 import { cn } from "@/lib/utils";
-import { signOut, useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -48,6 +49,14 @@ export default function Header({ className }: { className?: string }) {
                 <DropdownMenuItem>
                   <Image src={user} alt="user" />
                   <span>Edit Profile Information</span>
+                </DropdownMenuItem>
+              </Link>
+            )}
+            {role === "police_admin" && (
+              <Link href="/police/admin">
+                <DropdownMenuItem>
+                  <Image src={user} alt="user" />
+                  <span>Police Admin Dashboard</span>
                 </DropdownMenuItem>
               </Link>
             )}

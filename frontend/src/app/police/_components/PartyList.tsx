@@ -1,30 +1,80 @@
 "use client";
 
-import AddIncidentDialog from "@/app/police/_components/addIncidentDialog";
-import blackFlag from "@/components/icons/navyFlag.svg";
+import IncidentDialog from "@/components/IncidentDialog";
+import { PhoneLink } from "@/components/PhoneLink";
+import navyFlag from "@/components/icons/navyFlag.svg";
 import redFlag from "@/components/icons/redFlag.svg";
 import yellowFlag from "@/components/icons/yellowFlag.svg";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { useSnackbar } from "@/contexts/SnackbarContext";
+import type {
+  IncidentCreateDto,
+  IncidentSeverity,
+} from "@/lib/api/incident/incident.types";
 import {
   getCitationCount,
-  getComplaintCount,
-  getWarningCount,
+  getInPersonWarningCount,
+  getRemoteWarningCount,
 } from "@/lib/api/location/location.types";
 import { PartyDto } from "@/lib/api/party/party.types";
+import { usePoliceCreateIncident } from "@/lib/api/party/police-party.queries";
+import { cn, formatTime } from "@/lib/utils";
 import { format } from "date-fns";
-import { EllipsisVertical } from "lucide-react";
-import Image from "next/image";
+import { AlertTriangle, EllipsisVertical } from "lucide-react";
+import Image, { StaticImageData } from "next/image";
 import type { MouseEvent } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+const PAGE_SIZE = 10;
+
+const INCIDENT_MENU_ITEMS: {
+  severity: IncidentSeverity;
+  label: string;
+  hoverLabel: string;
+  flag: StaticImageData;
+  alt: string;
+}[] = [
+  {
+    severity: "remote_warning",
+    label: "Add remote warning",
+    hoverLabel: "Remote Warnings",
+    flag: navyFlag,
+    alt: "remote warning",
+  },
+  {
+    severity: "in_person_warning",
+    label: "Add in-person warning",
+    hoverLabel: "In-Person Warnings",
+    flag: yellowFlag,
+    alt: "in-person warning",
+  },
+  {
+    severity: "citation",
+    label: "Add citation",
+    hoverLabel: "Citations",
+    flag: redFlag,
+    alt: "citation",
+  },
+];
 
 interface PartyListProps {
   parties?: PartyDto[];
@@ -32,39 +82,84 @@ interface PartyListProps {
   activeParty?: PartyDto;
 }
 
-const formatPhoneNumber = (phone: string): string => {
-  // Remove all non-digit characters
-  const cleaned = phone.replace(/\D/g, "");
-
-  // Format as (XXX) XXX-XXXX
-  if (cleaned.length === 10) {
-    return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(
-      6
-    )}`;
-  }
-
-  // Return original if not 10 digits
-  return phone;
+const formatPreference = (pref: string | null | undefined): string => {
+  if (!pref) return "—";
+  return `${pref.charAt(0).toUpperCase() + pref.slice(1).toLowerCase()}`;
 };
 
 const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
   const [incidentDialogOpen, setIncidentDialogOpen] = useState(false);
-  const [incidentType, setIncidentType] = useState<
-    "complaint" | "warning" | "citation"
-  >("complaint");
+  const [incidentType, setIncidentType] =
+    useState<IncidentSeverity>("in_person_warning");
   const [selectedParty, setSelectedParty] = useState<PartyDto | null>(null);
+  const [currentPage, setCurrentPage] = useState(0);
+  const { openSnackbar } = useSnackbar();
+
+  const createMutation = usePoliceCreateIncident({
+    onSuccess: () => {
+      openSnackbar("Incident created successfully", "success");
+      setIncidentDialogOpen(false);
+    },
+    onError: (error) => {
+      openSnackbar(error.message || "Failed to create incident", "error");
+    },
+  });
+
+  const handleCreateIncident = (data: IncidentCreateDto) => {
+    createMutation.mutate(data);
+  };
+
+  // Reset to first page when the party list changes (filters/date range updated)
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [parties]);
+
+  // Jump to the correct page when a map pin is selected
+  useEffect(() => {
+    if (!activeParty) return;
+    const idx = parties.findIndex((p) => p.id === activeParty.id);
+    if (idx === -1) return;
+    setCurrentPage(Math.floor(idx / PAGE_SIZE));
+  }, [activeParty, parties]);
+
+  // Scroll to the active party card after the page renders
+  useEffect(() => {
+    if (!activeParty) return;
+    const el = document.querySelector(`[data-party-id="${activeParty.id}"]`);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [activeParty, currentPage]);
+
+  const totalPages = Math.ceil(parties.length / PAGE_SIZE);
+  const paginatedParties = parties.slice(
+    currentPage * PAGE_SIZE,
+    (currentPage + 1) * PAGE_SIZE
+  );
+
+  const maxVisiblePages = 3;
+  const pageStart = Math.max(
+    0,
+    Math.min(
+      currentPage - Math.floor(maxVisiblePages / 2),
+      totalPages - maxVisiblePages
+    )
+  );
+  const pageEnd = Math.min(pageStart + maxVisiblePages, totalPages);
+  const pageIndexes = Array.from(
+    { length: Math.max(pageEnd - pageStart, 0) },
+    (_, i) => pageStart + i
+  );
 
   if (parties.length === 0) {
     return (
-      <div className="w-full bg-white border border-gray-200 rounded-md p-4">
-        <div className="text-gray-400 text-center">No parties found</div>
+      <div className="w-full rounded-md border border-border bg-card px-4 py-8 text-center input-shadow">
+        <p className="content text-muted-foreground">No parties found</p>
       </div>
     );
   }
 
   const openIncidentDialog = (
     event: MouseEvent,
-    type: "complaint" | "warning" | "citation",
+    type: IncidentSeverity,
     selectedParty: PartyDto
   ) => {
     event.stopPropagation();
@@ -74,176 +169,241 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
   };
 
   return (
-    <div className="w-full bg-white border border-gray-200 rounded-md h-full overflow-y-auto [scroll-behavior:smooth] [transition:scroll_0.3s_ease-in-out]">
-      {parties.map((party) =>
-        (() => {
-          const complaintCount = getComplaintCount(party.location);
-          const warningCount = getWarningCount(party.location);
-          const citationCount = getCitationCount(party.location);
+    <>
+      <div className="flex flex-col min-h-0 flex-1 gap-3">
+        <ul className="flex-1 min-h-0 w-full overflow-y-auto rounded-md border border-border bg-card card-shadow [scroll-behavior:smooth]">
+          {paginatedParties.map((party) => {
+            const countBySeverity: Record<IncidentSeverity, number> = {
+              remote_warning: getRemoteWarningCount(party.location),
+              in_person_warning: getInPersonWarningCount(party.location),
+              citation: getCitationCount(party.location),
+            };
 
-          return (
-            <div
-              key={party.id}
-              data-party-id={party.id}
-              onClick={() => onSelect?.(party)}
-              className={`px-4 py-4 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 cursor-pointer ${
-                activeParty?.id === party.id ? "bg-blue-100" : ""
-              }`}
-            >
-              <div className="space-y-2">
-                {/* Address and Date/Time */}
-                <div>
-                  <div className="font-semibold flex flex-row justify-between">
-                    {party.location.formatted_address}
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <button
-                          type="button"
-                          onClick={(event) => event.stopPropagation()}
-                          className="rounded-md p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
-                        >
-                          <EllipsisVertical height={20} />
-                        </button>
-                      </PopoverTrigger>
-                      <PopoverContent className="!w-[180px]" align="end">
-                        <div className="flex flex-col">
-                          <div
-                            className="flex flex-row cursor-pointer"
-                            onClick={(event) =>
-                              openIncidentDialog(event, "complaint", party)
-                            }
+            return (
+              <li key={party.id}>
+                <article
+                  data-party-id={party.id}
+                  onClick={() => onSelect?.(party)}
+                  className={cn(
+                    "cursor-pointer border-b border-border px-4 py-4 last:border-b-0 hover:bg-secondary/5",
+                    activeParty?.id === party.id && "bg-secondary/5"
+                  )}
+                >
+                  <div className="space-y-2">
+                    {/* Date, address, menu */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="content-bold font-bold text-secondary">
+                          {format(party.party_datetime, "M/d/yyyy")} @{" "}
+                          {formatTime(party.party_datetime)}
+                        </p>
+                        <p className="content-bold font-bold text-secondary">
+                          {party.location.formatted_address}
+                        </p>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={(event) => event.stopPropagation()}
+                            className="rounded-md p-1 text-secondary hover:bg-muted"
+                            aria-label="Open incident menu"
                           >
-                            <Image src={blackFlag} alt="complaints" />
-                            Add complaint
-                          </div>
-                          <div
-                            className="flex flex-row cursor-pointer"
-                            onClick={(event) =>
-                              openIncidentDialog(event, "warning", party)
-                            }
-                          >
-                            <Image src={yellowFlag} alt="warning" />
-                            Add warning
-                          </div>
-                          <div
-                            className="flex flex-row cursor-pointer"
-                            onClick={(event) =>
-                              openIncidentDialog(event, "citation", party)
-                            }
-                          >
-                            <Image src={redFlag} alt="citation" />
-                            Add citation
-                          </div>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                  <div className="text-sm text-gray-600">
-                    {format(party.party_datetime, "PPP")} at{" "}
-                    {format(party.party_datetime, "p")}
-                  </div>
-                </div>
+                            <EllipsisVertical height={16} />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-52" align="end">
+                          {INCIDENT_MENU_ITEMS.map(
+                            ({ severity, label, flag, alt }) => (
+                              <DropdownMenuItem
+                                key={severity}
+                                onClick={(event) =>
+                                  openIncidentDialog(event, severity, party)
+                                }
+                              >
+                                <Image src={flag} alt={alt} />
+                                <span className="text-sm">{label}</span>
+                              </DropdownMenuItem>
+                            )
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
 
-                {/* Contacts Side by Side */}
-                <div className="mt-3 grid grid-cols-2 gap-4">
-                  {/* Contact One */}
-                  <div>
-                    <div className="text-sm font-medium text-gray-700">
-                      Contact 1:
+                    {/* Contacts with dotted separator */}
+                    <div className="grid grid-rows-2 gap-y-2 mb-2 mr-4">
+                      <div className="flex flex-row justify-between gap-x-0.5">
+                        <p className="content text-secondary self-end mb-[-6px]">
+                          {party.contact_one.first_name}{" "}
+                          {party.contact_one.last_name}
+                        </p>
+                        <span className="flex-1 h-[2px] bg-[radial-gradient(circle,currentColor_1px,transparent_1px)] bg-[length:6px_2px] bg-repeat-x self-end text-[var(--secondary)]"></span>
+                        <div className="flex flex-row gap-x-1 mb-[-6px]">
+                          <PhoneLink
+                            phoneNumber={party.contact_one.phone_number ?? "—"}
+                            onClick={(event) => event.stopPropagation()}
+                          />
+                          <p className="content text-secondary">{" - "}</p>
+                          <p className="content text-secondary">
+                            {formatPreference(
+                              party.contact_one.contact_preference
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex flex-row justify-between gap-x-0.5">
+                        <p className="content text-secondary self-end mb-[-6px]">
+                          {party.contact_two.first_name}{" "}
+                          {party.contact_two.last_name}
+                        </p>
+                        <span className="flex-1 h-[2px] bg-[radial-gradient(circle,currentColor_1px,transparent_1px)] bg-[length:6px_2px] bg-repeat-x self-end text-[var(--secondary)]"></span>
+                        <div className="flex flex-row gap-x-1 mb-[-6px]">
+                          <PhoneLink
+                            phoneNumber={party.contact_two.phone_number}
+                            onClick={(event) => event.stopPropagation()}
+                          />
+                          <p className="content text-secondary">{" - "}</p>
+                          <p className="content text-secondary">
+                            {formatPreference(
+                              party.contact_two.contact_preference
+                            )}
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-sm ml-3">
-                      <div>
-                        {party.contact_one.first_name}{" "}
-                        {party.contact_one.last_name}
-                      </div>
-                      <div>
-                        {formatPhoneNumber(party.contact_one.phone_number)}
-                      </div>
-                      <div className="text-gray-600">
-                        Preference:{" "}
-                        {party.contact_one.contact_preference
-                          .charAt(0)
-                          .toUpperCase() +
-                          party.contact_one.contact_preference
-                            .slice(1)
-                            .toLowerCase()}
-                      </div>
-                    </div>
-                  </div>
 
-                  {/* Contact Two */}
-                  <div>
-                    <div className="text-sm font-medium text-gray-700">
-                      Contact 2:
-                    </div>
-                    <div className="text-sm ml-3">
-                      <div>
-                        {party.contact_two.first_name}{" "}
-                        {party.contact_two.last_name}
+                    {/* Flags + date */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        {INCIDENT_MENU_ITEMS.map(
+                          ({ severity, flag, alt, hoverLabel }) => (
+                            <HoverCard
+                              key={severity}
+                              openDelay={0}
+                              closeDelay={4}
+                            >
+                              <HoverCardTrigger asChild>
+                                <div className="flex items-center gap-1 content-bold font-bold text-foreground">
+                                  {countBySeverity[severity]}
+                                  <Image src={flag} alt={alt} />
+                                </div>
+                              </HoverCardTrigger>
+                              <HoverCardContent>
+                                <p>{hoverLabel}</p>
+                              </HoverCardContent>
+                            </HoverCard>
+                          )
+                        )}
                       </div>
-                      <div>
-                        {formatPhoneNumber(party.contact_two.phone_number)}
-                      </div>
-                      <div className="text-gray-600">
-                        Preference:{" "}
-                        {party.contact_two.contact_preference
-                          .charAt(0)
-                          .toUpperCase() +
-                          party.contact_two.contact_preference
-                            .slice(1)
-                            .toLowerCase()}
-                      </div>
+                      {party.location.hold_expiration && (
+                        <div className="flex flex-row gap-2 justify-end items-center mr-4">
+                          <HoverCard openDelay={0} closeDelay={4}>
+                            <HoverCardTrigger asChild>
+                              <AlertTriangle
+                                size="18px"
+                                className="text-destructive"
+                              />
+                            </HoverCardTrigger>
+                            <HoverCardContent>
+                              <p className="font-semibold">Hold Expiration</p>
+                              <p>
+                                Parties are blocked from registration at this
+                                address until expiration
+                              </p>
+                            </HoverCardContent>
+                          </HoverCard>
+                          <p className="text-destructive">
+                            {format(party.location.hold_expiration, "MM/dd/yy")}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
-                  <div className="flex flex-row items-center gap-2">
-                    <HoverCard openDelay={0} closeDelay={4}>
-                      <HoverCardTrigger asChild>
-                        <div className="flex items-center gap-1 text-sm text-gray-700 font-bold">
-                          {complaintCount}
-                          <Image src={blackFlag} alt="complaints" />
-                        </div>
-                      </HoverCardTrigger>
-                      <HoverCardContent className="w-64">
-                        Complaints
-                      </HoverCardContent>
-                    </HoverCard>
-                    <HoverCard openDelay={0} closeDelay={4}>
-                      <HoverCardTrigger asChild>
-                        <div className="flex items-center gap-1 text-sm text-gray-700 font-bold">
-                          {warningCount}
-                          <Image src={yellowFlag} alt="warnings" />
-                        </div>
-                      </HoverCardTrigger>
-                      <HoverCardContent className="w-64">
-                        Warnings
-                      </HoverCardContent>
-                    </HoverCard>
-                    <HoverCard openDelay={0} closeDelay={4}>
-                      <HoverCardTrigger asChild>
-                        <div className="flex items-center gap-1 text-sm text-gray-700 font-bold">
-                          {citationCount}
-                          <Image src={redFlag} alt="citations" />
-                        </div>
-                      </HoverCardTrigger>
-                      <HoverCardContent className="w-64">
-                        Citations
-                      </HoverCardContent>
-                    </HoverCard>
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })()
-      )}
-      <AddIncidentDialog
+                </article>
+              </li>
+            );
+          })}
+        </ul>
+
+        {totalPages > 1 && (
+          <div className="flex flex-col items-center gap-2">
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setCurrentPage((p) => Math.max(0, p - 1));
+                    }}
+                    className={cn(
+                      currentPage === 0
+                        ? "pointer-events-none opacity-50"
+                        : "cursor-pointer"
+                    )}
+                  />
+                </PaginationItem>
+                {pageStart > 0 && (
+                  <PaginationItem>
+                    <PaginationEllipsis />
+                  </PaginationItem>
+                )}
+                {pageIndexes.map((pageIndex) => (
+                  <PaginationItem key={pageIndex}>
+                    <PaginationLink
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setCurrentPage(pageIndex);
+                      }}
+                      isActive={currentPage === pageIndex}
+                      className="cursor-pointer"
+                    >
+                      {pageIndex + 1}
+                    </PaginationLink>
+                  </PaginationItem>
+                ))}
+                {pageEnd < totalPages && (
+                  <PaginationItem>
+                    <PaginationEllipsis />
+                  </PaginationItem>
+                )}
+                <PaginationItem>
+                  <PaginationNext
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setCurrentPage((p) => Math.min(totalPages - 1, p + 1));
+                    }}
+                    className={cn(
+                      currentPage === totalPages - 1
+                        ? "pointer-events-none opacity-50"
+                        : "cursor-pointer"
+                    )}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+            <p className="content text-muted-foreground">
+              Results {currentPage * PAGE_SIZE + 1}
+              {" - "}
+              {Math.min((currentPage + 1) * PAGE_SIZE, parties.length)} of{" "}
+              {parties.length}
+            </p>
+          </div>
+        )}
+      </div>
+
+      <IncidentDialog
         open={incidentDialogOpen}
         onOpenChange={setIncidentDialogOpen}
-        incidentType={incidentType}
-        party={selectedParty}
+        defaultSeverity={incidentType}
+        location={selectedParty?.location ?? null}
+        onSubmit={handleCreateIncident}
+        isSubmitting={createMutation.isPending}
         key={incidentDialogOpen ? selectedParty?.id : undefined}
       />
-    </div>
+    </>
   );
 };
 

@@ -62,8 +62,8 @@ class TestQueryUtilsSorting:
     @pytest.mark.asyncio
     async def test_sort_enum_field(self):
         """Sorting by an enum field (severity) orders alphabetically by value."""
-        await self.incident_utils.create_one(severity=IncidentSeverity.WARNING)
-        await self.incident_utils.create_one(severity=IncidentSeverity.COMPLAINT)
+        await self.incident_utils.create_one(severity="in_person_warning")
+        await self.incident_utils.create_one(severity="remote_warning")
         await self.incident_utils.create_one(severity=IncidentSeverity.CITATION)
 
         response = await self.admin_client.get("/api/incidents?sort_by=severity&sort_order=asc")
@@ -105,10 +105,10 @@ class TestQueryUtilsFilterOperators:
     @pytest.mark.asyncio
     async def test_filter_equals(self):
         """EQUALS operator filters to exact enum match."""
-        i1 = await self.incident_utils.create_one(severity=IncidentSeverity.COMPLAINT)
-        await self.incident_utils.create_one(severity=IncidentSeverity.WARNING)
+        i1 = await self.incident_utils.create_one(severity="remote_warning")
+        await self.incident_utils.create_one(severity="in_person_warning")
 
-        response = await self.admin_client.get("/api/incidents?severity=complaint")
+        response = await self.admin_client.get("/api/incidents?severity=remote_warning")
         paginated = assert_res_paginated(response, IncidentDto, total_records=1)
         self.incident_utils.assert_matches(paginated.items[0], i1.to_dto())
 
@@ -220,7 +220,7 @@ class TestQueryUtilsTypeValidation:
     @pytest.mark.asyncio
     async def test_enum_field_comparison_operator_returns_400(self):
         """Using GT/GTE/LT/LTE on an enum field returns 400."""
-        response = await self.admin_client.get("/api/incidents?severity_gt=complaint")
+        response = await self.admin_client.get("/api/incidents?severity_gt=remote_warning")
         assert_res_failure(
             response, BadRequestException("Operator 'gt' is not supported for string/enum fields")
         )
@@ -232,6 +232,78 @@ class TestQueryUtilsTypeValidation:
         assert_res_failure(
             response, BadRequestException("Operator 'contains' is only supported for string fields")
         )
+
+
+class TestQueryUtilsSearch:
+    """Test full-table search via the ?search= param using the incidents endpoint."""
+
+    admin_client: AsyncClient
+    incident_utils: IncidentTestUtils
+
+    @pytest.fixture(autouse=True)
+    def _setup(self, incident_utils: IncidentTestUtils, admin_client: AsyncClient):
+        self.incident_utils = incident_utils
+        self.admin_client = admin_client
+
+    @pytest.mark.asyncio
+    async def test_search_matches_string_field(self):
+        """Search term matching a string column (description) returns that incident."""
+        i1 = await self.incident_utils.create_one(description="loud music playing")
+        await self.incident_utils.create_one(description="illegal parking")
+
+        response = await self.admin_client.get("/api/incidents?search=loud")
+        paginated = assert_res_paginated(response, IncidentDto, total_records=1)
+        self.incident_utils.assert_matches(paginated.items[0], i1.to_dto())
+
+    @pytest.mark.asyncio
+    async def test_search_is_case_insensitive(self):
+        """Search is case-insensitive."""
+        i1 = await self.incident_utils.create_one(description="Loud Music")
+        await self.incident_utils.create_one(description="illegal parking")
+
+        response = await self.admin_client.get("/api/incidents?search=LOUD")
+        paginated = assert_res_paginated(response, IncidentDto, total_records=1)
+        self.incident_utils.assert_matches(paginated.items[0], i1.to_dto())
+
+    @pytest.mark.asyncio
+    async def test_search_matches_nested_field(self):
+        """Search term matching a nested column (location.formatted_address)
+        returns that incident."""
+        loc_elm = await self.incident_utils.location_utils.create_one(
+            formatted_address="123 Elm St"
+        )
+        loc_oak = await self.incident_utils.location_utils.create_one(
+            formatted_address="456 Oak Ave"
+        )
+        i1 = await self.incident_utils.create_one(location_id=loc_elm.id)
+        await self.incident_utils.create_one(location_id=loc_oak.id)
+
+        response = await self.admin_client.get("/api/incidents?search=Elm")
+        paginated = assert_res_paginated(response, IncidentDto, total_records=1)
+        self.incident_utils.assert_matches(paginated.items[0], i1.to_dto())
+
+    @pytest.mark.asyncio
+    async def test_search_combined_with_filter(self):
+        """Search and filter are AND-ed together."""
+        i1 = await self.incident_utils.create_one(
+            description="loud music", severity="remote_warning"
+        )
+        await self.incident_utils.create_one(description="loud music", severity="in_person_warning")
+        await self.incident_utils.create_one(
+            description="illegal parking", severity="remote_warning"
+        )
+
+        response = await self.admin_client.get("/api/incidents?search=loud&severity=remote_warning")
+        paginated = assert_res_paginated(response, IncidentDto, total_records=1)
+        self.incident_utils.assert_matches(paginated.items[0], i1.to_dto())
+
+    @pytest.mark.asyncio
+    async def test_search_no_results(self):
+        """Search with no matching records returns empty list."""
+        await self.incident_utils.create_one(description="loud music")
+
+        response = await self.admin_client.get("/api/incidents?search=zzznomatch")
+        assert_res_paginated(response, IncidentDto, total_records=0)
 
 
 class TestQueryUtilsNestedFields:

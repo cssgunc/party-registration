@@ -133,12 +133,65 @@ class TestIncidentService:
     @pytest.mark.asyncio
     async def test_update_incident_severity(self) -> None:
         """Test updating an incident's severity."""
-        incident_entity = await self.incident_utils.create_one(severity=IncidentSeverity.COMPLAINT)
-        update_dto = await self.incident_utils.next_update_dto(severity=IncidentSeverity.CITATION)
+        incident_entity = await self.incident_utils.create_one(severity=IncidentSeverity.CITATION)
+        update_dto = await self.incident_utils.next_update_dto(severity="in_person_warning")
 
         updated = await self.incident_service.update_incident(incident_entity.id, update_dto)
 
-        assert updated.severity == IncidentSeverity.CITATION
+        assert updated.severity.value == "in_person_warning"
+
+    @pytest.mark.asyncio
+    async def test_update_incident_location_from_place_id(self) -> None:
+        """Test updating an incident's location from location_place_id."""
+        location = await self.location_utils.create_one()
+        incident_entity = await self.incident_utils.create_one(location_id=location.id)
+
+        updated_location_data = await self.location_utils.next_data()
+        self.gmaps_utils.mock_place_details(**updated_location_data.model_dump())
+        update_dto = await self.incident_utils.next_update_dto(
+            location_place_id=updated_location_data.google_place_id
+        )
+
+        updated = await self.incident_service.update_incident(incident_entity.id, update_dto)
+
+        assert updated.location_id != location.id
+        all_locations = await self.location_utils.get_all()
+        created_location = next(
+            (
+                candidate
+                for candidate in all_locations
+                if candidate.google_place_id == updated_location_data.google_place_id
+            ),
+            None,
+        )
+        assert created_location is not None
+        assert updated.location_id == created_location.id
+
+    @pytest.mark.asyncio
+    async def test_create_incident_with_reference_id(self) -> None:
+        """Test creating an incident with an explicit reference ID."""
+        location = await self.location_utils.create_one()
+        create_dto = await self.incident_utils.next_create_dto(
+            location_place_id=location.google_place_id,
+            reference_id="CAD-7788",
+        )
+
+        incident = await self.incident_service.create_incident(create_dto)
+
+        assert incident.reference_id == "CAD-7788"
+
+    @pytest.mark.asyncio
+    async def test_create_incident_reference_id_defaults_none(self) -> None:
+        """Test creating an incident defaults reference_id to None."""
+        location = await self.location_utils.create_one()
+        create_dto = await self.incident_utils.next_create_dto(
+            location_place_id=location.google_place_id,
+            reference_id=None,
+        )
+
+        incident = await self.incident_service.create_incident(create_dto)
+
+        assert incident.reference_id is None
 
     @pytest.mark.asyncio
     async def test_update_incident_not_found(self) -> None:
@@ -204,10 +257,12 @@ class TestIncidentService:
             location_place_id=location.google_place_id,
             incident_datetime=datetime(2025, 12, 25, 14, 30, 45, tzinfo=UTC),
             description="Detailed description of the incident issue",
-            severity=IncidentSeverity.WARNING,
+            severity="remote_warning",
+            reference_id="CAD-12345",
         )
 
         created = await self.incident_service.create_incident(create_dto)
         fetched = await self.incident_service.get_incident_by_id(created.id)
 
         self.incident_utils.assert_matches(fetched, create_dto)
+        assert fetched.reference_id == "CAD-12345"

@@ -1,15 +1,19 @@
+from typing import ClassVar
+
 from fastapi import Depends, Request
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.core.bcrypt_utils import hash_password, verify_password
 from src.core.database import get_session
 from src.core.exceptions import ConflictException, CredentialsException, NotFoundException
-from src.core.query_utils import get_paginated_results, parse_pagination_params
+from src.core.utils.bcrypt_utils import hash_password, verify_password
+from src.core.utils.excel_utils import ExcelExporter
+from src.core.utils.query_utils import get_paginated_results, parse_pagination_params
 from src.modules.police.police_entity import PoliceEntity
 from src.modules.police.police_model import (
     PaginatedPoliceResponse,
     PoliceAccountDto,
+    PoliceRole,
 )
 
 
@@ -24,6 +28,8 @@ class PoliceConflictException(ConflictException):
 
 
 class PoliceService:
+    _ALLOWED_FIELDS: ClassVar[tuple[str, ...]] = ("id", "email", "role")
+
     def __init__(self, session: AsyncSession = Depends(get_session)):
         self.session = session
 
@@ -42,12 +48,16 @@ class PoliceService:
         )
         return result.scalar_one_or_none()
 
-    async def create_police(self, email: str, password: str) -> PoliceAccountDto:
+    async def create_police(self, email: str, password: str, role: PoliceRole) -> PoliceAccountDto:
         existing = await self._get_police_entity_by_email(email)
         if existing is not None:
             raise PoliceConflictException(email)
 
-        police = PoliceEntity(email=email, hashed_password=hash_password(password))
+        police = PoliceEntity(
+            email=email,
+            hashed_password=hash_password(password),
+            role=role,
+        )
         try:
             self.session.add(police)
             await self.session.commit()
@@ -62,7 +72,7 @@ class PoliceService:
         return police.to_dto()
 
     async def get_police_paginated(self, request: Request) -> PaginatedPoliceResponse:
-        allowed_fields = ["id", "email"]
+        allowed_fields = list(self._ALLOWED_FIELDS)
         base_query = select(PoliceEntity)
         query_params = parse_pagination_params(
             request,
@@ -80,7 +90,23 @@ class PoliceService:
         )
         return PaginatedPoliceResponse(**result.model_dump())
 
-    async def update_police(self, police_id: int, email: str, password: str) -> PoliceAccountDto:
+    async def get_police_for_export(self, request: Request) -> list[PoliceAccountDto]:
+        return (await self.get_police_paginated(request)).items
+
+    def export_police_to_excel(self, police_accounts: list[PoliceAccountDto]) -> bytes:
+        headers = ["Email", "Role"]
+        exporter = ExcelExporter(sheet_title="Police Accounts")
+        exporter.set_headers(headers)
+        for police in police_accounts:
+            exporter.add_row(
+                [
+                    police.email,
+                    "Police Admin" if police.role == PoliceRole.POLICE_ADMIN else "Officer",
+                ]
+            )
+        return exporter.to_bytes()
+
+    async def update_police(self, police_id: int, email: str, role: PoliceRole) -> PoliceAccountDto:
         police = await self._get_police_entity_by_id(police_id)
 
         if email.lower() != police.email.lower():
@@ -89,7 +115,7 @@ class PoliceService:
                 raise PoliceConflictException(email)
 
         police.email = email
-        police.hashed_password = hash_password(password)
+        police.role = role
 
         try:
             self.session.add(police)

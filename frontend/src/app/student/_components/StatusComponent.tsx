@@ -1,8 +1,7 @@
-import alertTriangleIcon from "@/components/icons/alert-triangle.svg";
-import checkIcon from "@/components/icons/check-circle.svg";
 import { Card, CardContent } from "@/components/ui/card";
 import { isFromThisSchoolYear } from "@/lib/utils";
-import Image from "next/image";
+import { AlertTriangleIcon, CheckCircle, ExternalLink } from "lucide-react";
+import Link from "next/link";
 
 type CompletionCardProps = {
   last_registered: Date | null | undefined;
@@ -17,7 +16,7 @@ export default function StatusComponent({
 }: CompletionCardProps) {
   if (error) {
     return (
-      <Card className="p-4 rounded-md shadow-sm w-full bg-white">
+      <Card className="p-4 rounded-md shadow-sm w-full bg-card">
         <CardContent className="p-0">
           <div className="text-center text-destructive py-4">
             <p className="font-semibold mb-1">Error loading course status</p>
@@ -30,10 +29,10 @@ export default function StatusComponent({
 
   if (isPending) {
     return (
-      <Card className="p-4 rounded-md shadow-sm w-full bg-white">
+      <Card className="p-4 rounded-md shadow-sm w-full bg-card">
         <CardContent className="p-0">
           <div className="text-center text-muted-foreground py-4">
-            <p>Loading course status...</p>
+            <p className="content-sub">Loading course status...</p>
           </div>
         </CardContent>
       </Card>
@@ -43,29 +42,38 @@ export default function StatusComponent({
   const isCompleted = isFromThisSchoolYear(last_registered);
 
   return (
-    <Card className="p-4 rounded-md shadow-sm w-full bg-white">
+    <Card className="p-4 rounded-md shadow-sm w-full bg-card">
       <CardContent className="p-0 flex flex-col gap-1 text-sm">
         {isCompleted ? (
           <>
             <div className="flex items-center gap-2 text-gray-800">
-              <Image src={checkIcon} alt="check icon" />
-              <span>
+              <CheckCircle className="w-4 h-4" />
+              <p className="content">
                 Completed on{" "}
-                <strong>{last_registered?.toLocaleDateString()}</strong>
-              </span>
+                <span className="content-bold">
+                  {last_registered?.toLocaleDateString()}
+                </span>
+              </p>
             </div>
 
-            <div className="italic text-[#09294E]">Expires August 1st</div>
+            <p className="italic content">Expires August 1st</p>
           </>
         ) : (
-          <div>
-            <div className="flex items-center gap-2 text-gray-800">
-              <Image src={alertTriangleIcon} alt="alert icon" />
-              <span>Course not completed</span>
+          <div className="content">
+            <div className="flex items-center gap-2 mb-1">
+              <AlertTriangleIcon className="w-4 h-4" />
+              <p>Course not completed</p>
             </div>
-            <a href="#" className="text-blue-600 underline text-sm">
-              Schedule a meeting
-            </a>
+            <div className="flex items-center">
+              <a href="#" className="content underline ml-6">
+                Schedule a meeting
+              </a>
+              <Link href="/">
+                {" "}
+                {/*change*/}
+                <ExternalLink className="w-4 h-4 ml-2" />
+              </Link>
+            </div>
           </div>
         )}
       </CardContent>

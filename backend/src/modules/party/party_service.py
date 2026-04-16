@@ -1,29 +1,29 @@
-import io
 import math
 from datetime import UTC, datetime, timedelta
 
 from fastapi import Depends, Request
-from openpyxl import Workbook
-from openpyxl.styles import Font
-from openpyxl.utils import get_column_letter
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from src.core.config import env
 from src.core.database import get_session
-from src.core.date_utils import is_same_academic_year
 from src.core.exceptions import (
     BadRequestException,
     ConflictException,
     ForbiddenException,
     NotFoundException,
 )
-from src.core.query_utils import get_paginated_results, parse_pagination_params
+from src.core.utils.date_utils import is_same_academic_year
+from src.core.utils.excel_utils import ExcelExporter
+from src.core.utils.query_utils import (
+    get_paginated_results,
+    parse_pagination_params,
+)
 from src.modules.account.account_entity import AccountEntity
 from src.modules.location.location_model import LocationDto
 from src.modules.student.student_model import StudentDto
-from src.modules.student.student_service import StudentService
+from src.modules.student.student_service import StudentInfoNotProvidedException, StudentService
 
 from ..location.location_entity import LocationEntity
 from ..location.location_service import LocationService
@@ -158,9 +158,11 @@ class PartyService:
             raise PartySmartNotCompletedException()
 
     def _validate_contact_two_differs_from_contact_one(
-        self, contact_one_email: str, contact_one_phone: str, contact_two: ContactDto
+        self, contact_one_email: str, contact_one_phone: str | None, contact_two: ContactDto
     ) -> None:
         """Validate that contact two's email and phone number differ from contact one's."""
+        if contact_one_phone is None:
+            raise StudentInfoNotProvidedException()
         if contact_two.email.strip().lower() == contact_one_email.strip().lower():
             raise ContactTwoMatchesContactOneException("email")
         # Normalize phone numbers to digits only for comparison
@@ -273,8 +275,24 @@ class PartyService:
             .options(
                 selectinload(PartyEntity.location),
                 selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.residence),
             )
         )
+
+        search_columns = [
+            LocationEntity.formatted_address,
+            LocationEntity.google_place_id,
+            AccountEntity.first_name,
+            AccountEntity.last_name,
+            AccountEntity.email,
+            AccountEntity.onyen,
+            AccountEntity.pid,
+            StudentEntity.phone_number,
+            PartyEntity.contact_two_email,
+            PartyEntity.contact_two_first_name,
+            PartyEntity.contact_two_last_name,
+            PartyEntity.contact_two_phone_number,
+        ]
 
         # Use the generic pagination utility
         return await get_paginated_results(
@@ -286,6 +304,7 @@ class PartyService:
             allowed_sort_fields=allowed_sort_fields,
             allowed_filter_fields=allowed_filter_fields,
             nested_field_columns=nested_field_columns,
+            search_columns=search_columns,
         )
 
     async def get_party_by_id(self, party_id: int) -> PartyDto:
@@ -386,6 +405,9 @@ class PartyService:
         Validate student can register a party and get their residence location.
         Returns tuple of (location, student).
         """
+        # Validate student has provided contact info before any other checks
+        await self.student_service.assert_student_entity_exists(student_account_id)
+
         # Validate student party prerequisites (date and Party Smart)
         await self._validate_student_party_prerequisites(student_account_id, party_datetime)
 
@@ -415,7 +437,9 @@ class PartyService:
 
         # Validate contact two differs from contact one
         self._validate_contact_two_differs_from_contact_one(
-            student.email, student.phone_number, dto.contact_two
+            student.email,
+            student.phone_number,
+            dto.contact_two,
         )
 
         # Create party data with contact_two information directly
@@ -456,6 +480,8 @@ class PartyService:
         )
 
         # Validate contact two differs from contact one
+        if contact_one.phone_number is None or contact_one.contact_preference is None:
+            raise StudentInfoNotProvidedException()
         self._validate_contact_two_differs_from_contact_one(
             contact_one.email, contact_one.phone_number, dto.contact_two
         )
@@ -497,7 +523,9 @@ class PartyService:
 
         # Validate contact two differs from contact one
         self._validate_contact_two_differs_from_contact_one(
-            student.email, student.phone_number, dto.contact_two
+            student.email,
+            student.phone_number,
+            dto.contact_two,
         )
 
         # Update party fields
@@ -528,6 +556,8 @@ class PartyService:
         )
 
         # Validate contact two differs from contact one
+        if contact_one.phone_number is None or contact_one.contact_preference is None:
+            raise StudentInfoNotProvidedException()
         self._validate_contact_two_differs_from_contact_one(
             contact_one.email, contact_one.phone_number, dto.contact_two
         )
@@ -699,107 +729,100 @@ class PartyService:
         r = 3959
         return c * r
 
-    def _format_phone_number(self, phone: str) -> str:
+    async def get_parties_for_export(self, request: Request) -> list[PartyDto]:
         """
-        Format a 10-digit phone number as (XXX) XXX-XXXX.
-
-        Args:
-            phone: Phone number string (expected to be 10 digits)
-
-        Returns:
-            Formatted phone number
+        Get all parties (no pagination) for export, respecting sort/filter query params.
         """
-        digits = "".join(c for c in phone if c.isdigit())
+        return (await self.get_parties_paginated(request)).items
 
-        if len(digits) == 10:
-            return f"({digits[:3]}) {digits[3:6]}-{digits[6:]}"
-
-        return phone
-
-    async def export_parties_to_excel(self, parties: list[PartyDto]) -> bytes:
+    def export_parties_to_excel(self, parties: list[PartyDto], *, is_police: bool) -> bytes:
         """
         Export a list of parties to Excel format with formatting.
 
         Args:
-            parties: List of Party models to export
+            parties: List of PartyDto models to export
+            is_police: If True, use the police format (11 columns, full names only).
+                       If False, use the staff/admin format (14 columns, includes residence).
 
         Returns:
             Excel file content as bytes
         """
-        wb = Workbook()
-        ws = wb.active
-        assert ws is not None  # New workbook always has an active sheet
-        ws.title = "Parties"
+        exporter = ExcelExporter(sheet_title=f"Parties {datetime.now(UTC).strftime('%Y-%m-%d')}")
 
-        # Define headers
-        headers = [
-            "Address",
-            "Date of Party",
-            "Time of Party",
-            "Contact One Full Name",
-            "Contact One Email",
-            "Contact One Phone Number",
-            "Contact One Contact Preference",
-            "Contact Two Full Name",
-            "Contact Two Email",
-            "Contact Two Phone Number",
-            "Contact Two Contact Preference",
-        ]
+        if is_police:
+            headers = [
+                "Address",
+                "Date of Party",
+                "Time of Party",
+                "Contact One Full Name",
+                "Contact One Email",
+                "Contact One Phone Number",
+                "Contact One Contact Preference",
+                "Contact Two Full Name",
+                "Contact Two Email",
+                "Contact Two Phone Number",
+                "Contact Two Contact Preference",
+            ]
+            exporter.set_headers(headers)
 
-        ws.append(headers)
-        for cell in ws[1]:
-            cell.font = Font(bold=True)
+            for party in parties:
+                c1 = party.contact_one
+                c2 = party.contact_two
+                exporter.add_row(
+                    [
+                        party.location.formatted_address,
+                        party.party_datetime.strftime("%Y-%m-%d"),
+                        party.party_datetime.strftime("%-I:%M %p"),
+                        f"{c1.first_name} {c1.last_name}",
+                        c1.email,
+                        ExcelExporter.format_phone(c1.phone_number or ""),
+                        c1.contact_preference.value.capitalize() if c1.contact_preference else "-",
+                        f"{c2.first_name} {c2.last_name}",
+                        c2.email,
+                        ExcelExporter.format_phone(c2.phone_number),
+                        c2.contact_preference.value.capitalize(),
+                    ]
+                )
+        else:
+            headers = [
+                "Address",
+                "Date of Party",
+                "Time of Party",
+                "Contact One First Name",
+                "Contact One Last Name",
+                "Contact One Email",
+                "Contact One Phone Number",
+                "Contact One Contact Preference",
+                "Contact One Residence",
+                "Contact Two First Name",
+                "Contact Two Last Name",
+                "Contact Two Email",
+                "Contact Two Phone Number",
+                "Contact Two Contact Preference",
+            ]
+            exporter.set_headers(headers)
 
-        for party in parties:
-            # Format address
-            formatted_address = party.location.formatted_address
+            for party in parties:
+                c1 = party.contact_one
+                c2 = party.contact_two
+                residence_address = c1.residence.location.formatted_address if c1.residence else ""
+                exporter.add_row(
+                    [
+                        party.location.formatted_address,
+                        party.party_datetime.strftime("%Y-%m-%d"),
+                        party.party_datetime.strftime("%-I:%M %p"),
+                        c1.first_name,
+                        c1.last_name,
+                        c1.email,
+                        ExcelExporter.format_phone(c1.phone_number or ""),
+                        c1.contact_preference.value.capitalize() if c1.contact_preference else "-",
+                        residence_address,
+                        c2.first_name,
+                        c2.last_name,
+                        c2.email,
+                        ExcelExporter.format_phone(c2.phone_number),
+                        c2.contact_preference.value.capitalize(),
+                    ]
+                )
 
-            # Format date and time
-            party_date = party.party_datetime.strftime("%Y-%m-%d")
-            party_time = party.party_datetime.strftime("%-I:%M %p")
-
-            # Contact one info
-            contact_one_full_name = f"{party.contact_one.first_name} {party.contact_one.last_name}"
-            contact_one_email = party.contact_one.email
-            contact_one_phone = self._format_phone_number(party.contact_one.phone_number)
-            contact_one_preference = party.contact_one.contact_preference.value.capitalize()
-
-            # Contact two info
-            contact_two_full_name = f"{party.contact_two.first_name} {party.contact_two.last_name}"
-            contact_two_email = party.contact_two.email
-            contact_two_phone = self._format_phone_number(party.contact_two.phone_number)
-            contact_two_preference = party.contact_two.contact_preference.value.capitalize()
-
-            ws.append(
-                [
-                    formatted_address,
-                    party_date,
-                    party_time,
-                    contact_one_full_name,
-                    contact_one_email,
-                    contact_one_phone,
-                    contact_one_preference,
-                    contact_two_full_name,
-                    contact_two_email,
-                    contact_two_phone,
-                    contact_two_preference,
-                ]
-            )
-
-        # Auto-fit column widths based on content
-        for col_idx, column in enumerate(ws.columns, start=1):
-            max_length = 0
-            column_letter = get_column_letter(col_idx)
-            for cell in column:
-                try:
-                    if cell.value:
-                        max_length = max(max_length, len(str(cell.value)))
-                except (AttributeError, TypeError):
-                    pass
-            adjusted_width = min(max_length + 2, 50)
-            ws.column_dimensions[column_letter].width = adjusted_width
-
-        output = io.BytesIO()
-        wb.save(output)
-        output.seek(0)
-        return output.getvalue()
+        return exporter.to_bytes()

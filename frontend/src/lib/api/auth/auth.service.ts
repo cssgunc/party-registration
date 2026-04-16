@@ -14,6 +14,16 @@ import type {
 const base =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api";
 
+/**
+ * Decodes the payload of a JWT without verifying its signature.
+ * Only use on tokens already validated by the backend.
+ */
+export function decodeJwtPayload(token: string): Record<string, unknown> {
+  const base64Url = token.split(".")[1];
+  const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+  return JSON.parse(Buffer.from(base64, "base64").toString());
+}
+
 function internalHeaders() {
   return { "X-Internal-Secret": process.env.INTERNAL_API_SECRET };
 }
@@ -26,7 +36,7 @@ function getSessionCookieName() {
 
 /**
  * Encodes a NextAuth session JWT and sets both the session cookie and the
- * path-restricted refresh token cookie on the given response.
+ * refresh token cookie on the given response.
  *
  * @param res       The NextResponse to attach cookies to.
  * @param tokens    The token pair returned by the backend.
@@ -66,7 +76,7 @@ export async function setAuthCookies(
   res.cookies.set("refresh_token", tokens.refresh_token, {
     httpOnly: true,
     sameSite: "lax",
-    path: "/api/auth/token/refresh",
+    path: "/",
     maxAge: refreshMaxAge,
     secure: !!isSecure,
   });
@@ -138,4 +148,21 @@ export async function policeLogin(
     { headers: internalHeaders() }
   );
   return resp.data;
+}
+
+/**
+ * Calls the backend's /auth/logout route to revoke the refresh token.
+ * @param refreshTokenValue The refresh token to revoke
+ * @param accessToken The access token to use for authentication
+ * @returns void
+ */
+export async function revokeRefreshToken(
+  refreshTokenValue: string,
+  accessToken: string
+): Promise<void> {
+  await axios.post(
+    `${base}/auth/logout`,
+    { refresh_token: refreshTokenValue },
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
 }

@@ -2,7 +2,8 @@ import enum
 from typing import TYPE_CHECKING
 
 from pydantic import AwareDatetime, BaseModel, EmailStr, Field
-from src.core.query_utils import PaginatedResponse
+from src.core.utils.phone_utils import PhoneNumber
+from src.core.utils.query_utils import PaginatedResponse
 
 if TYPE_CHECKING:
     from src.modules.location.location_model import LocationDto
@@ -16,15 +17,15 @@ class ContactPreference(enum.Enum):
 class StudentData(BaseModel):
     """Student data without names (names are stored in Account)."""
 
-    contact_preference: ContactPreference
+    contact_preference: ContactPreference | None = None
     last_registered: AwareDatetime | None = None
-    phone_number: str = Field(pattern=r"^\+?1?\d{9,15}$")
+    phone_number: PhoneNumber | None = None
 
 
 class StudentUpdateDto(BaseModel):
     """DTO for admin creating or updating a student (without names - those are in Account)."""
 
-    phone_number: str = Field(pattern=r"^\+?1?\d{9,15}$")
+    phone_number: PhoneNumber
     contact_preference: ContactPreference
     last_registered: AwareDatetime | None = None
     residence_place_id: str | None = Field(
@@ -35,7 +36,7 @@ class StudentUpdateDto(BaseModel):
 class SelfUpdateStudentDto(BaseModel):
     """DTO for students updating their own information."""
 
-    phone_number: str = Field(pattern=r"^\+?1?\d{9,15}$")
+    phone_number: PhoneNumber
     contact_preference: ContactPreference
 
 
@@ -69,7 +70,8 @@ class StudentDto(BaseModel):
     - email: account email
     - first_name, last_name: from account
     - onyen: from account
-    - phone_number, last_registered: from student
+    - phone_number, contact_preference: from student (null if student info not yet provided)
+    - last_registered: from student
     - residence: residence information if set
     """
 
@@ -79,8 +81,8 @@ class StudentDto(BaseModel):
     first_name: str
     last_name: str
     onyen: str
-    phone_number: str
-    contact_preference: ContactPreference
+    phone_number: str | None = None
+    contact_preference: ContactPreference | None = None
     last_registered: AwareDatetime | None = None
     residence: ResidenceDto | None = None
 

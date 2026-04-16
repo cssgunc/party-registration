@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Response
 from src.core.authentication import (
     authenticate_admin,
     authenticate_staff_or_admin,
     authenticate_student,
 )
-from src.core.query_utils import PAGINATED_OPENAPI_PARAMS
+from src.core.utils.query_utils import PAGINATED_OPENAPI_PARAMS
 from src.modules.account.account_model import AccountDto
 from src.modules.location.location_model import LocationDto
 from src.modules.party.party_model import PartyDto
@@ -31,7 +31,7 @@ async def get_me(
     student_service: StudentService = Depends(),
     user: "AccountDto" = Depends(authenticate_student),
 ) -> StudentDto:
-    return await student_service.get_student_by_id(user.id)
+    return await student_service.get_student_me_dto(user.id)
 
 
 @student_router.put("/me")
@@ -83,6 +83,21 @@ async def list_students(
     - total_pages: Total number of pages
     """
     return await student_service.get_students_paginated(request=request)
+
+
+@student_router.get("/csv", openapi_extra=PAGINATED_OPENAPI_PARAMS)
+async def get_students_csv(
+    request: Request,
+    student_service: StudentService = Depends(),
+    _=Depends(authenticate_staff_or_admin),
+) -> Response:
+    students = await student_service.get_students_for_export(request)
+    excel_content = student_service.export_students_to_excel(students)
+    return Response(
+        content=excel_content,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=students.xlsx"},
+    )
 
 
 @student_router.post("/autocomplete")

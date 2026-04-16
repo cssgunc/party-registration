@@ -4,7 +4,8 @@ import { hasActiveHold } from "@/lib/api/location/location.service";
 import {
   LocationDto,
   getCitationCount,
-  getWarningCount,
+  getInPersonWarningCount,
+  getRemoteWarningCount,
 } from "@/lib/api/location/location.types";
 import { GenericChipDetails } from "../../shared/sidebar/GenericChipDetails";
 
@@ -25,8 +26,16 @@ function LocationInfoChipDetails({ data }: LocationInfoChipDetailsProps) {
             <p className="p-2">{d.formatted_address}</p>
           </div>
           <div>
-            <label className="block text-sm font-medium">Warning Count</label>
-            <p className="p-2">{getWarningCount(d)}</p>
+            <label className="block text-sm font-medium">
+              In-Person Warning Count
+            </label>
+            <p className="p-2">{getInPersonWarningCount(d)}</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium">
+              Remote Warning Count
+            </label>
+            <p className="p-2">{getRemoteWarningCount(d)}</p>
           </div>
           <div>
             <label className="block text-sm font-medium">Citation Count</label>

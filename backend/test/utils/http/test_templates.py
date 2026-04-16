@@ -1,14 +1,16 @@
 from collections.abc import AsyncGenerator, Callable
+from io import BytesIO
 from typing import Any
 
+import openpyxl
 import pytest
-from httpx import AsyncClient
+from httpx import AsyncClient, Response
 from pydantic import BaseModel
 from src.core.authentication import StringRole
 from src.core.exceptions import CredentialsException, ForbiddenException
 from test.utils.http.assertions import assert_res_failure, assert_res_paginated
 
-all_roles: set[StringRole] = {"admin", "staff", "student", "police"}
+all_roles: set[StringRole] = {"admin", "staff", "student", "officer", "police_admin"}
 
 
 def generate_auth_required_tests(*params: tuple[set[StringRole], str, str, dict | None]):
@@ -66,6 +68,71 @@ def generate_auth_required_tests(*params: tuple[set[StringRole], str, str, dict 
     return test_authentication
 
 
+def generate_csv_empty_test(
+    client_role: StringRole,
+    endpoint: str,
+    expected_headers: tuple,
+):
+    """Generate a test verifying an Excel CSV export endpoint returns only a header row when empty.
+
+    Args:
+        client_role: The role of the client used to make the request.
+        endpoint: The endpoint path (e.g., "/api/students/csv").
+        expected_headers: Tuple of expected column header strings.
+    """
+
+    @pytest.mark.asyncio
+    async def test_csv_empty(
+        create_test_client: Callable[..., AsyncGenerator[AsyncClient, Any]],
+    ):
+        async for client in create_test_client(client_role):
+            response = await client.get(endpoint)
+            assert response.status_code == 200
+            assert (
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                in response.headers["content-type"]
+            )
+            workbook = openpyxl.load_workbook(BytesIO(response.content))
+            sheet = workbook.active
+            assert sheet is not None
+            rows = list(sheet.values)
+            assert len(rows) == 1
+            assert rows[0] == expected_headers
+            assert sheet["A1"].font.bold is True
+
+    return test_csv_empty
+
+
+def assert_excel_response(
+    response: Response,
+    expected_headers: tuple,
+    expected_row_count: int | None = None,
+) -> list:
+    """Assert standard Excel response properties and return all rows (including header).
+
+    Args:
+        response: The HTTP response from the CSV endpoint.
+        expected_headers: Tuple of expected column header strings.
+        expected_row_count: If provided, assert the total number of rows (header + data).
+
+    Returns:
+        List of row tuples from the workbook (rows[0] is the header row).
+    """
+    assert response.status_code == 200
+    assert (
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        in response.headers["content-type"]
+    )
+    workbook = openpyxl.load_workbook(BytesIO(response.content))
+    sheet = workbook.active
+    assert sheet is not None
+    rows = list(sheet.values)
+    assert rows[0] == expected_headers
+    if expected_row_count is not None:
+        assert len(rows) == expected_row_count
+    return rows
+
+
 def generate_filter_sort_tests(
     endpoint: str,
     dto_class: type[BaseModel],
@@ -101,3 +168,36 @@ def generate_filter_sort_tests(
         assert_res_paginated(response, dto_class)
 
     return test_allowed_sort_fields, test_allowed_filter_fields
+
+
+def generate_search_tests(
+    endpoint: str,
+    dto_class: type[BaseModel],
+):
+    """Generate generic search tests for a paginated list endpoint.
+
+    Produces two tests:
+    - test_search_no_results: a nonsense term returns an empty page
+    - test_search_returns_ok: any search term is accepted without error
+
+    Field-specific search tests (which fields are searched, case insensitivity)
+    belong in each module's test file since they require module-specific fixtures.
+
+    Args:
+        endpoint: The API endpoint path (e.g., "/api/accounts").
+        dto_class: The DTO class to validate paginated response items against.
+    """
+
+    @pytest.mark.asyncio
+    async def test_search_no_results(admin_client: AsyncClient):
+        """A nonsense search term should return an empty page."""
+        response = await admin_client.get(f"{endpoint}?search=zzznomatch__xyzzy")
+        assert_res_paginated(response, dto_class, total_records=0)
+
+    @pytest.mark.asyncio
+    async def test_search_returns_ok(admin_client: AsyncClient):
+        """search param is accepted by the endpoint without error."""
+        response = await admin_client.get(f"{endpoint}?search=test")
+        assert_res_paginated(response, dto_class)
+
+    return test_search_no_results, test_search_returns_ok

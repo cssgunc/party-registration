@@ -58,7 +58,7 @@ export function EditPartyDialog({
         email: values.contactTwoEmail,
         first_name: values.secondContactFirstName,
         last_name: values.secondContactLastName,
-        phone_number: values.phoneNumber.replace(/\D/g, ""),
+        phone_number: values.phoneNumber,
         contact_preference: values.contactPreference,
       },
     };
@@ -86,8 +86,7 @@ export function EditPartyDialog({
         <PartyRegistrationForm
           onSubmit={handleSubmit}
           initialValues={initialValues}
-          studentEmail={studentQuery.data?.email}
-          studentPhoneNumber={studentQuery.data?.phone_number}
+          student={studentQuery.data}
           mode="edit"
         />
       </DialogContent>

@@ -1,21 +1,23 @@
 import { AccountService } from "@/lib/api/account/account.service";
+import { ServerTableParams } from "@/lib/api/shared/query-params";
 import { OptimisticMutationOptions, PaginatedResponse } from "@/lib/shared";
 import {
   UseQueryOptions,
+  keepPreviousData,
   useMutation,
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
 import { AdminStudentService } from "./admin-student.service";
-import { STUDENTS_KEY, StudentDto, StudentUpdateDto } from "./student.types";
+import {
+  IsRegisteredUpdate,
+  STUDENTS_KEY,
+  StudentDto,
+  StudentUpdateDto,
+} from "./student.types";
 
 const studentService = new AdminStudentService();
 const accountService = new AccountService();
-
-// Used to determine whether to optimistically update the cache on updates
-const UNIQUE_STUDENT_FIELDS = [
-  "phone_number",
-] as const satisfies (keyof StudentUpdateDto)[];
 
 type UpdateStudentVars = {
   id: number;
@@ -23,15 +25,17 @@ type UpdateStudentVars = {
 };
 
 type CreateStudentVars = {
-  data: Omit<StudentDto, "id">;
+  data: StudentUpdateDto & Pick<StudentDto, "email" | "onyen" | "pid">;
 };
 
 export function useStudents(
+  serverParams?: ServerTableParams,
   options?: UseQueryOptions<PaginatedResponse<StudentDto>>
 ) {
   return useQuery({
-    queryKey: STUDENTS_KEY,
-    queryFn: () => studentService.listStudents(),
+    queryKey: [...STUDENTS_KEY, serverParams ?? "all"],
+    queryFn: () => studentService.listStudents(serverParams),
+    placeholderData: keepPreviousData,
     ...options,
   });
 }
@@ -45,42 +49,6 @@ export function useUpdateStudent(
     ...options,
     mutationFn: ({ id, data }: UpdateStudentVars) =>
       studentService.updateStudent(id, data),
-
-    onMutate: async (vars, context) => {
-      await queryClient.cancelQueries({ queryKey: STUDENTS_KEY });
-
-      const previous =
-        queryClient.getQueryData<PaginatedResponse<StudentDto>>(STUDENTS_KEY);
-
-      const current = previous?.items.find((s) => s.id === vars.id);
-      const hasUniqueFieldChange = UNIQUE_STUDENT_FIELDS.some(
-        (field) => current?.[field] !== vars.data[field]
-      );
-
-      if (!hasUniqueFieldChange) {
-        queryClient.setQueryData<PaginatedResponse<StudentDto>>(
-          STUDENTS_KEY,
-          (old) =>
-            old && {
-              ...old,
-              items: old.items.map((s) =>
-                s.id === vars.id ? { ...s, ...vars.data } : s
-              ),
-            }
-        );
-        options?.onOptimisticUpdate?.(vars);
-      }
-
-      await options?.onMutate?.(vars, context);
-      return { previous };
-    },
-
-    onError: (error, vars, onMutateResult, context) => {
-      if (onMutateResult?.previous) {
-        queryClient.setQueryData(STUDENTS_KEY, onMutateResult.previous);
-      }
-      options?.onError?.(error, vars, onMutateResult, context);
-    },
 
     onSuccess: (...params) => {
       queryClient.invalidateQueries({ queryKey: STUDENTS_KEY });
@@ -111,6 +79,28 @@ export function useCreateStudent(
   });
 }
 
+type UpdateIsRegisteredVars = {
+  id: number;
+  data: IsRegisteredUpdate;
+};
+
+export function useUpdateIsRegistered(
+  options?: OptimisticMutationOptions<StudentDto, Error, UpdateIsRegisteredVars>
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...options,
+    mutationFn: ({ id, data }: UpdateIsRegisteredVars) =>
+      studentService.updateIsRegistered(id, data),
+
+    onSuccess: (...params) => {
+      queryClient.invalidateQueries({ queryKey: STUDENTS_KEY });
+      options?.onSuccess?.(...params);
+    },
+  });
+}
+
 export function useDeleteStudent(
   options?: OptimisticMutationOptions<StudentDto, Error, number>
 ) {
@@ -119,29 +109,6 @@ export function useDeleteStudent(
   return useMutation({
     ...options,
     mutationFn: (id: number) => studentService.deleteStudent(id),
-
-    onMutate: async (id, context) => {
-      await queryClient.cancelQueries({ queryKey: STUDENTS_KEY });
-
-      const previous =
-        queryClient.getQueryData<PaginatedResponse<StudentDto>>(STUDENTS_KEY);
-
-      queryClient.setQueryData<PaginatedResponse<StudentDto>>(
-        STUDENTS_KEY,
-        (old) => old && { ...old, items: old.items.filter((s) => s.id !== id) }
-      );
-      options?.onOptimisticUpdate?.(id);
-
-      await options?.onMutate?.(id, context);
-      return { previous };
-    },
-
-    onError: (error, id, onMutateResult, context) => {
-      if (onMutateResult?.previous) {
-        queryClient.setQueryData(STUDENTS_KEY, onMutateResult.previous);
-      }
-      options?.onError?.(error, id, onMutateResult, context);
-    },
 
     onSuccess: (...params) => {
       queryClient.invalidateQueries({ queryKey: STUDENTS_KEY });

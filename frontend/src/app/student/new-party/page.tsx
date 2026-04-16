@@ -4,22 +4,27 @@ import PartyRegistrationForm, {
   PartyFormValues,
 } from "@/app/student/_components/PartyRegistrationForm";
 import { Card } from "@/components/ui/card";
+import { useSnackbar } from "@/contexts/SnackbarContext";
 import { useRegisterParty } from "@/lib/api/party/party.queries";
 import { StudentCreatePartyDto } from "@/lib/api/party/party.types";
 import {
   useCurrentStudent,
   useMyParties,
+  useUpdateStudent,
 } from "@/lib/api/student/student.queries";
 import { isFromThisSchoolYear } from "@/lib/utils";
+import { ArrowLeft, Info } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 
 export default function RegistrationForm() {
   const registerPartyMutation = useRegisterParty();
+  const updateStudentMutation = useUpdateStudent();
   const partiesQuery = useMyParties();
   const studentQuery = useCurrentStudent();
   const router = useRouter();
+  const { openSnackbar } = useSnackbar();
 
   /**
    * Get initial values from the student's most recent party (if they have one).
@@ -69,8 +74,7 @@ export default function RegistrationForm() {
         email: values.contactTwoEmail,
         first_name: values.secondContactFirstName,
         last_name: values.secondContactLastName,
-        // Strip non-digit characters from phone number before sending to backend
-        phone_number: values.phoneNumber.replace(/\D/g, ""),
+        phone_number: values.phoneNumber,
         contact_preference: values.contactPreference,
       },
     };
@@ -78,6 +82,15 @@ export default function RegistrationForm() {
 
   const handleSubmit = async (values: PartyFormValues, placeId: string) => {
     try {
+      // If student provided contact info inline (first-time onboarding), save it first
+      if (values.studentPhoneNumber && values.studentContactPreference) {
+        await updateStudentMutation.mutateAsync({
+          phone_number: values.studentPhoneNumber,
+          contact_preference: values.studentContactPreference,
+          last_registered: studentQuery.data?.last_registered ?? null,
+        });
+      }
+
       const partyData = formToData(values, placeId);
       const hasValidResidence = isFromThisSchoolYear(
         studentQuery.data?.residence?.residence_chosen_date
@@ -86,31 +99,49 @@ export default function RegistrationForm() {
         partyData,
         residencePlaceId: hasValidResidence ? undefined : placeId,
       });
-      alert("Party created successfully!");
+      openSnackbar("Party created successfully!", "success");
       router.push("/student");
     } catch (err) {
       console.log(err);
-      alert("Failed to create party");
+      openSnackbar("Failed to create party", "error");
     }
   };
 
   return (
-    <div>
-      <Card className="px-14 lg:px-48 pb-8">
-        <Link className="py-8" href="/student">
-          Back
-        </Link>
-        <div className="font-semibold py-3 text-2xl max-w-md">
-          Off Campus Student Life Party Registration Form
-        </div>
-        <PartyRegistrationForm
-          onSubmit={handleSubmit}
-          initialValues={initialValues}
-          studentEmail={studentQuery.data?.email}
-          studentPhoneNumber={studentQuery.data?.phone_number}
-          studentResidence={studentQuery.data?.residence}
-        />
-      </Card>
+    <div className="h-full overflow-y-auto">
+      <main className="mx-4 mt-4">
+        <nav className="flex items-center content pb-2 lg:hidden">
+          <ArrowLeft className="h-4" />
+          <Link href="/student">Back</Link>
+        </nav>
+        <Card className="mb-12">
+          <div>
+            <nav className="hidden content lg:flex lg:items-center lg:px-8 lg:py-6">
+              <ArrowLeft className="h-4" />
+              <Link href="/student">Back</Link>
+            </nav>
+            <div className="px-8 py-6 lg:px-18 lg:py-0 lg:pb-12">
+              <h1 className="page-title max-w-md md:mb-4">
+                Off Campus Student Life Party Registration Form
+              </h1>
+
+              <Link
+                href="/student/about-party-smart"
+                className="flex items-center py-2 md:hidden"
+              >
+                <Info className="h-4 mr-1 content" />
+                <p className="content underline">Learn About Party Smart</p>
+              </Link>
+
+              <PartyRegistrationForm
+                onSubmit={handleSubmit}
+                initialValues={initialValues}
+                student={studentQuery.data}
+              />
+            </div>
+          </div>
+        </Card>
+      </main>
     </div>
   );
 }

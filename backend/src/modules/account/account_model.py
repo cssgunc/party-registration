@@ -1,7 +1,7 @@
 from enum import Enum, StrEnum
 
 from pydantic import BaseModel, EmailStr, Field
-from src.core.query_utils import PaginatedResponse
+from src.core.utils.query_utils import PaginatedResponse
 
 
 class AccountRole(Enum):
@@ -14,7 +14,8 @@ class Role(StrEnum):
     STUDENT = "student"
     STAFF = "staff"
     ADMIN = "admin"
-    POLICE = "police"
+    OFFICER = "officer"
+    POLICE_ADMIN = "police_admin"
 
 
 class AccountData(BaseModel):

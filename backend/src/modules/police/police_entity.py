@@ -1,10 +1,10 @@
 from typing import Self
 
-from sqlalchemy import Integer, String
+from sqlalchemy import Enum, Integer, String
 from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column
-from src.core.bcrypt_utils import hash_password
 from src.core.database import EntityBase
-from src.modules.police.police_model import PoliceAccountDto, PoliceAccountUpdate
+from src.core.utils.bcrypt_utils import hash_password
+from src.modules.police.police_model import PoliceAccountCreate, PoliceAccountDto, PoliceRole
 
 
 class PoliceEntity(MappedAsDataclass, EntityBase):
@@ -13,12 +13,21 @@ class PoliceEntity(MappedAsDataclass, EntityBase):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, init=False)
     email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
+    role: Mapped[PoliceRole] = mapped_column(
+        Enum(PoliceRole, native_enum=False, length=20),
+        nullable=False,
+        default=PoliceRole.OFFICER,
+    )
 
     @classmethod
-    def from_data(cls, data: PoliceAccountUpdate) -> Self:
-        """Create a PoliceEntity from a PoliceAccountUpdate model."""
-        return cls(email=data.email, hashed_password=hash_password(data.password))
+    def from_data(cls, data: PoliceAccountCreate) -> Self:
+        """Create a PoliceEntity from a PoliceAccountCreate model."""
+        return cls(
+            email=data.email,
+            hashed_password=hash_password(data.password),
+            role=data.role,
+        )
 
     def to_dto(self) -> PoliceAccountDto:
         """Convert the entity to a PoliceAccountDto."""
-        return PoliceAccountDto(id=self.id, email=self.email)
+        return PoliceAccountDto(id=self.id, email=self.email, role=self.role)
