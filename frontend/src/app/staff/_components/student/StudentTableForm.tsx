@@ -48,7 +48,7 @@ type StudentTableFormValues = z.infer<typeof studentTableFormSchema>;
 
 interface StudentTableFormProps {
   onSubmit: (data: StudentTableFormValues) => void | Promise<void>;
-  editData?: StudentTableFormValues;
+  editData?: Partial<StudentTableFormValues>;
   submissionError?: string | null;
   title?: string;
 }

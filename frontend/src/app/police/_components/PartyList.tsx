@@ -90,7 +90,8 @@ interface PartyListProps {
   activeParty?: PartyDto;
 }
 
-const formatPreference = (pref: string): string => {
+const formatPreference = (pref: string | null | undefined): string => {
+  if (!pref) return "—";
   return `${pref.charAt(0).toUpperCase() + pref.slice(1).toLowerCase()}`;
 };
 
@@ -248,7 +249,7 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                         <span className="flex-1 h-[2px] bg-[radial-gradient(circle,currentColor_1px,transparent_1px)] bg-[length:6px_2px] bg-repeat-x self-end text-[var(--secondary)]"></span>
                         <div className="flex flex-row gap-x-1 mb-[-6px]">
                           <PhoneLink
-                            phoneNumber={party.contact_one.phone_number}
+                            phoneNumber={party.contact_one.phone_number ?? "—"}
                             onClick={(event) => event.stopPropagation()}
                           />
                           <p className="content text-secondary">{" - "}</p>
