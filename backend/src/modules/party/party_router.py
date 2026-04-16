@@ -76,7 +76,7 @@ async def create_party(
 async def list_parties(
     request: Request,
     party_service: PartyService = Depends(),
-    _=Depends(authenticate_by_role("admin", "staff", "police")),
+    _=Depends(authenticate_by_role("admin", "staff", "officer", "police_admin")),
 ) -> PaginatedPartiesResponse:
     """
     Returns all party registrations with pagination, sorting, and filtering.

@@ -14,7 +14,8 @@ class Role(StrEnum):
     STUDENT = "student"
     STAFF = "staff"
     ADMIN = "admin"
-    POLICE = "police"
+    OFFICER = "officer"
+    POLICE_ADMIN = "police_admin"
 
 
 class AccountData(BaseModel):

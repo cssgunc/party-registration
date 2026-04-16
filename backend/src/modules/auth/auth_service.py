@@ -85,7 +85,7 @@ class AuthService:
         payload = PoliceAccessTokenPayload(
             sub=police.id,
             email=police.email,
-            role="police",
+            role=police.role.value,
             exp=expires_at,
             iat=datetime.now(UTC),
         )

@@ -26,16 +26,8 @@ export class PartyService {
   async createParty(
     data: StudentCreatePartyDto | AdminCreatePartyDto
   ): Promise<PartyDto> {
-    try {
-      const response = await this.client.post<PartyDtoBackend>(
-        "/parties",
-        data
-      );
-      return convertParty(response.data);
-    } catch (error) {
-      console.error("Failed to create party:", error);
-      throw error;
-    }
+    const response = await this.client.post<PartyDtoBackend>("/parties", data);
+    return convertParty(response.data);
   }
 
   /**
@@ -44,18 +36,14 @@ export class PartyService {
   async listParties(
     params?: ServerTableParams
   ): Promise<PaginatedResponse<PartyDto>> {
-    try {
-      const response = await this.client.get<
-        PaginatedResponse<PartyDtoBackend>
-      >("/parties", { params: params ? toAxiosParams(params) : undefined });
-      return {
-        ...response.data,
-        items: response.data.items.map(convertParty),
-      };
-    } catch (error) {
-      console.error("Failed to list parties:", error);
-      throw new Error("Failed to list parties");
-    }
+    const response = await this.client.get<PaginatedResponse<PartyDtoBackend>>(
+      "/parties",
+      { params: params ? toAxiosParams(params) : undefined }
+    );
+    return {
+      ...response.data,
+      items: response.data.items.map(convertParty),
+    };
   }
 
   /**
@@ -66,52 +54,42 @@ export class PartyService {
     startDate: Date,
     endDate: Date
   ): Promise<ProximitySearchResponse> {
-    try {
-      const response = await this.client.get<ProximitySearchResponseBackend>(
-        "/parties/nearby",
-        {
-          params: {
-            place_id: placeId,
-            start_date: format(startDate, "yyyy-MM-dd"),
-            end_date: format(endDate, "yyyy-MM-dd"),
-          },
-        }
-      );
-      return convertProximitySearchResponse(response.data);
-    } catch (error) {
-      console.error("Failed to get nearby parties:", error);
-      throw new Error("Failed to get nearby parties");
-    }
+    const response = await this.client.get<ProximitySearchResponseBackend>(
+      "/parties/nearby",
+      {
+        params: {
+          place_id: placeId,
+          start_date: format(startDate, "yyyy-MM-dd"),
+          end_date: format(endDate, "yyyy-MM-dd"),
+        },
+      }
+    );
+    return convertProximitySearchResponse(response.data);
   }
 
   /**
    * Download parties as Excel (GET /api/parties/csv)
    */
   async downloadPartiesCsv(startDate: Date, endDate: Date): Promise<void> {
-    try {
-      const response = await this.client.get("/parties/csv", {
-        params: {
-          start_date: startDate.toISOString().split("T")[0],
-          end_date: endDate.toISOString().split("T")[0],
-        },
-        responseType: "blob",
-      });
+    const response = await this.client.get("/parties/csv", {
+      params: {
+        start_date: startDate.toISOString().split("T")[0],
+        end_date: endDate.toISOString().split("T")[0],
+      },
+      responseType: "blob",
+    });
 
-      const blob = new Blob([response.data], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `parties_${startDate.toISOString().split("T")[0]}_to_${endDate.toISOString().split("T")[0]}.xlsx`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("Failed to download parties Excel:", error);
-      throw new Error("Failed to download parties export");
-    }
+    const blob = new Blob([response.data], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `parties_${startDate.toISOString().split("T")[0]}_to_${endDate.toISOString().split("T")[0]}.xlsx`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   }
 
   /**
@@ -121,45 +99,30 @@ export class PartyService {
     partyId: number,
     data: StudentCreatePartyDto | AdminCreatePartyDto
   ): Promise<PartyDto> {
-    try {
-      const response = await this.client.put<PartyDtoBackend>(
-        `/parties/${partyId}`,
-        data
-      );
-      return convertParty(response.data);
-    } catch (error) {
-      console.error(`Failed to update party ${partyId}:`, error);
-      throw error;
-    }
+    const response = await this.client.put<PartyDtoBackend>(
+      `/parties/${partyId}`,
+      data
+    );
+    return convertParty(response.data);
   }
 
   /**
    * Get party by ID (GET /api/parties/{party_id})
    */
   async getParty(partyId: number): Promise<PartyDto> {
-    try {
-      const response = await this.client.get<PartyDtoBackend>(
-        `/parties/${partyId}`
-      );
-      return convertParty(response.data);
-    } catch (error) {
-      console.error(`Failed to get party ${partyId}:`, error);
-      throw new Error("Failed to get party");
-    }
+    const response = await this.client.get<PartyDtoBackend>(
+      `/parties/${partyId}`
+    );
+    return convertParty(response.data);
   }
 
   /**
    * Delete party (DELETE /api/parties/{party_id})
    */
   async deleteParty(partyId: number): Promise<PartyDto> {
-    try {
-      const response = await this.client.delete<PartyDtoBackend>(
-        `/parties/${partyId}`
-      );
-      return convertParty(response.data);
-    } catch (error) {
-      console.error(`Failed to delete party ${partyId}:`, error);
-      throw new Error("Failed to delete party");
-    }
+    const response = await this.client.delete<PartyDtoBackend>(
+      `/parties/${partyId}`
+    );
+    return convertParty(response.data);
   }
 }

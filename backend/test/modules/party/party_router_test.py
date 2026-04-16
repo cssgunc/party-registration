@@ -33,12 +33,12 @@ from test.utils.http.assertions import (
 from test.utils.http.test_templates import generate_auth_required_tests
 
 test_party_authentication = generate_auth_required_tests(
-    ({"admin", "staff", "police"}, "GET", "/api/parties", None),
-    ({"admin", "staff", "police"}, "GET", "/api/parties/csv", None),
+    ({"admin", "staff", "officer", "police_admin"}, "GET", "/api/parties", None),
+    ({"admin", "staff", "officer", "police_admin"}, "GET", "/api/parties/csv", None),
     ({"admin", "staff"}, "GET", "/api/parties/1", None),
     ({"student", "admin"}, "DELETE", "/api/parties/1", None),
     (
-        {"admin", "police"},
+        {"admin", "officer", "police_admin"},
         "GET",
         "/api/parties/nearby?place_id=ChIJTest&start_date=2025-01-01&end_date=2025-12-31",
         None,

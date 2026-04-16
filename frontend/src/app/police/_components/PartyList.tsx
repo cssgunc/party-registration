@@ -1,6 +1,7 @@
 "use client";
 
 import IncidentDialog from "@/components/IncidentDialog";
+import { PhoneLink } from "@/components/PhoneLink";
 import navyFlag from "@/components/icons/navyFlag.svg";
 import redFlag from "@/components/icons/redFlag.svg";
 import yellowFlag from "@/components/icons/yellowFlag.svg";
@@ -36,9 +37,9 @@ import {
 } from "@/lib/api/location/location.types";
 import { PartyDto } from "@/lib/api/party/party.types";
 import { usePoliceCreateIncident } from "@/lib/api/party/police-party.queries";
-import { cn, formatPhoneNumber, formatTime } from "@/lib/utils";
+import { cn, formatTime } from "@/lib/utils";
 import { format } from "date-fns";
-import { EllipsisVertical } from "lucide-react";
+import { AlertTriangle, EllipsisVertical } from "lucide-react";
 import Image, { StaticImageData } from "next/image";
 import type { MouseEvent } from "react";
 import { useEffect, useState } from "react";
@@ -48,24 +49,28 @@ const PAGE_SIZE = 10;
 const INCIDENT_MENU_ITEMS: {
   severity: IncidentSeverity;
   label: string;
+  hoverLabel: string;
   flag: StaticImageData;
   alt: string;
 }[] = [
   {
     severity: "remote_warning",
     label: "Add remote warning",
+    hoverLabel: "Remote Warnings",
     flag: navyFlag,
     alt: "remote warning",
   },
   {
     severity: "in_person_warning",
     label: "Add in-person warning",
+    hoverLabel: "In-Person Warnings",
     flag: yellowFlag,
     alt: "in-person warning",
   },
   {
     severity: "citation",
     label: "Add citation",
+    hoverLabel: "Citations",
     flag: redFlag,
     alt: "citation",
   },
@@ -76,6 +81,10 @@ interface PartyListProps {
   onSelect?: (party: PartyDto) => void;
   activeParty?: PartyDto;
 }
+
+const formatPreference = (pref: string): string => {
+  return `${pref.charAt(0).toUpperCase() + pref.slice(1).toLowerCase()}`;
+};
 
 const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
   const [incidentDialogOpen, setIncidentDialogOpen] = useState(false);
@@ -163,11 +172,11 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
       <div className="flex flex-col min-h-0 flex-1 gap-3">
         <ul className="flex-1 min-h-0 w-full overflow-y-auto rounded-md border border-border bg-card card-shadow [scroll-behavior:smooth]">
           {paginatedParties.map((party) => {
-            const remoteWarningCount = getRemoteWarningCount(party.location);
-            const inPersonWarningCount = getInPersonWarningCount(
-              party.location
-            );
-            const citationCount = getCitationCount(party.location);
+            const countBySeverity: Record<IncidentSeverity, number> = {
+              remote_warning: getRemoteWarningCount(party.location),
+              in_person_warning: getInPersonWarningCount(party.location),
+              citation: getCitationCount(party.location),
+            };
 
             return (
               <li key={party.id}>
@@ -220,86 +229,93 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                       </DropdownMenu>
                     </div>
 
-                    {/* Contacts + flags */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <section>
-                        <p className="content text-secondary">
+                    {/* Contacts with dotted separator */}
+                    <div className="grid grid-rows-2 gap-y-2 mb-2 mr-4">
+                      <div className="flex flex-row justify-between gap-x-0.5">
+                        <p className="content text-secondary self-end mb-[-6px]">
                           {party.contact_one.first_name}{" "}
                           {party.contact_one.last_name}
                         </p>
-                        <p className="ml-4 text-sm text-secondary">
-                          {formatPhoneNumber(party.contact_one.phone_number)}
-                        </p>
-                        <p className="ml-4 text-sm text-secondary">
-                          Preference:{" "}
-                          {party.contact_one.contact_preference
-                            .charAt(0)
-                            .toUpperCase() +
-                            party.contact_one.contact_preference
-                              .slice(1)
-                              .toLowerCase()}
-                          s
-                        </p>
-                      </section>
-
-                      <section>
-                        <p className="content text-secondary">
+                        <span className="flex-1 h-[2px] bg-[radial-gradient(circle,currentColor_1px,transparent_1px)] bg-[length:6px_2px] bg-repeat-x self-end text-[var(--secondary)]"></span>
+                        <div className="flex flex-row gap-x-1 mb-[-6px]">
+                          <PhoneLink
+                            phoneNumber={party.contact_one.phone_number}
+                            onClick={(event) => event.stopPropagation()}
+                          />
+                          <p className="content text-secondary">{" - "}</p>
+                          <p className="content text-secondary">
+                            {formatPreference(
+                              party.contact_one.contact_preference
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex flex-row justify-between gap-x-0.5">
+                        <p className="content text-secondary self-end mb-[-6px]">
                           {party.contact_two.first_name}{" "}
                           {party.contact_two.last_name}
                         </p>
-                        <p className="ml-4 text-sm text-secondary">
-                          {formatPhoneNumber(party.contact_two.phone_number)}
-                        </p>
-                        <p className="ml-4 text-sm text-secondary">
-                          Preference:{" "}
-                          {party.contact_two.contact_preference
-                            .charAt(0)
-                            .toUpperCase() +
-                            party.contact_two.contact_preference
-                              .slice(1)
-                              .toLowerCase()}
-                          s
-                        </p>
-                      </section>
-
-                      <div className="col-span-2 flex flex-row items-center gap-3">
-                        <HoverCard openDelay={0} closeDelay={4}>
-                          <HoverCardTrigger asChild>
-                            <div className="flex items-center gap-1 content-bold font-bold text-foreground">
-                              {remoteWarningCount}
-                              <Image src={navyFlag} alt="remote warnings" />
-                            </div>
-                          </HoverCardTrigger>
-                          <HoverCardContent>
-                            <p>Remote Warnings</p>
-                          </HoverCardContent>
-                        </HoverCard>
-                        <HoverCard openDelay={0} closeDelay={4}>
-                          <HoverCardTrigger asChild>
-                            <div className="flex items-center gap-1 content-bold font-bold text-foreground">
-                              {inPersonWarningCount}
-                              <Image
-                                src={yellowFlag}
-                                alt="in person warnings"
-                              />
-                            </div>
-                          </HoverCardTrigger>
-                          <HoverCardContent>
-                            <p>In-Person Warnings</p>
-                          </HoverCardContent>
-                        </HoverCard>
-                        <HoverCard openDelay={0} closeDelay={4}>
-                          <HoverCardTrigger asChild>
-                            <div className="flex items-center gap-1 content-bold font-bold text-foreground">
-                              {citationCount}
-                              <Image src={redFlag} alt="citations" />
-                            </div>
-                          </HoverCardTrigger>
-                          <HoverCardContent>
-                            <p>Citations</p>
-                          </HoverCardContent>
-                        </HoverCard>
+                        <span className="flex-1 h-[2px] bg-[radial-gradient(circle,currentColor_1px,transparent_1px)] bg-[length:6px_2px] bg-repeat-x self-end text-[var(--secondary)]"></span>
+                        <div className="flex flex-row gap-x-1 mb-[-6px]">
+                          <PhoneLink
+                            phoneNumber={party.contact_two.phone_number}
+                            onClick={(event) => event.stopPropagation()}
+                          />
+                          <p className="content text-secondary">{" - "}</p>
+                          <p className="content text-secondary">
+                            {formatPreference(
+                              party.contact_two.contact_preference
+                            )}
+                          </p>
+                        </div>
                       </div>
+                    </div>
+
+                    {/* Flags + date */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        {INCIDENT_MENU_ITEMS.map(
+                          ({ severity, flag, alt, hoverLabel }) => (
+                            <HoverCard
+                              key={severity}
+                              openDelay={0}
+                              closeDelay={4}
+                            >
+                              <HoverCardTrigger asChild>
+                                <div className="flex items-center gap-1 content-bold font-bold text-foreground">
+                                  {countBySeverity[severity]}
+                                  <Image src={flag} alt={alt} />
+                                </div>
+                              </HoverCardTrigger>
+                              <HoverCardContent>
+                                <p>{hoverLabel}</p>
+                              </HoverCardContent>
+                            </HoverCard>
+                          )
+                        )}
+                      </div>
+                      {party.location.hold_expiration && (
+                        <div className="flex flex-row gap-2 justify-end items-center mr-4">
+                          <HoverCard openDelay={0} closeDelay={4}>
+                            <HoverCardTrigger asChild>
+                              <AlertTriangle
+                                size="18px"
+                                className="text-destructive"
+                              />
+                            </HoverCardTrigger>
+                            <HoverCardContent>
+                              <p className="font-semibold">Hold Expiration</p>
+                              <p>
+                                Parties are blocked from registration at this
+                                address until expiration
+                              </p>
+                            </HoverCardContent>
+                          </HoverCard>
+                          <p className="text-destructive">
+                            {format(party.location.hold_expiration, "MM/dd/yy")}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </article>
