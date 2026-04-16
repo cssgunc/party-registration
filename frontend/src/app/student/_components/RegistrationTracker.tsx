@@ -88,7 +88,7 @@ export default function RegistrationTracker(): React.JSX.Element {
     const groups: Record<string, IncidentDto[]> = {};
 
     sortedIncidents.forEach((incident) => {
-      const dateKey = format(incident.incident_datetime, "MM/dd/yyyy");
+      const dateKey = format(incident.incident_datetime, "M/d/yyyy");
       if (!groups[dateKey]) {
         groups[dateKey] = [];
       }
