@@ -200,7 +200,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
         <div className="relative flex justify-center mb-6">
           <div className="absolute left-0 flex items-center gap-2">
             <ArrowLeft className="h-4" />
-            <Link href="/student">Back</Link>
+            <Link href="/student">Back to home</Link>
           </div>
           <h1 className="page-title">Profile</h1>
           <button
@@ -279,7 +279,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
       <div className="relative flex justify-center mb-6">
         <div className="absolute left-0 flex items-center gap-2">
           <ArrowLeft className="h-4" />
-          <Link href="/student">Back</Link>
+          <Link href="/student">Back to home</Link>
         </div>
         <h1 className="page-title">Edit Profile Information</h1>
       </div>
