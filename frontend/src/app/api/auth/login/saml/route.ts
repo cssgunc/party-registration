@@ -1,5 +1,6 @@
 import { AccountRole } from "@/lib/api/account/account.types";
 import { exchangeToken, setAuthCookies } from "@/lib/api/auth/auth.service";
+import { getSessionAccountIdFromAccessToken } from "@/lib/api/auth/sessionIdentity";
 import { identityProvider, postAssert, serviceProvider } from "@/lib/saml";
 import { AxiosError } from "axios";
 import { NextRequest, NextResponse } from "next/server";
@@ -146,11 +147,12 @@ export async function POST(req: NextRequest) {
     return errorUrl(status === 403 ? "AccessDenied" : "ExchangeFailed");
   }
 
+  const accountId = getSessionAccountIdFromAccessToken(tokens.access_token);
   const res = NextResponse.redirect(new URL(callbackUrl, origin));
 
   await setAuthCookies(res, tokens, {
-    sub: samlUser.name_id,
-    id: samlUser.name_id,
+    sub: accountId,
+    id: accountId,
     email,
     name: `${firstName} ${lastName}`.trim(),
     firstName,

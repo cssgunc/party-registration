@@ -225,10 +225,13 @@ class TestAccountRouter:
         assert_res_failure(response, AccountNotFoundException(88888))
 
     @pytest.mark.asyncio
-    async def test_delete_own_account(self):
+    async def test_delete_own_account(self, accounts_two_per_role: list[AccountEntity]):
         """Test that an admin cannot delete their own account."""
         response = await self.admin_client.delete("/api/accounts/99999")
         assert_res_failure(response, CannotDeleteOwnAccountException())
+
+        accounts = await self.account_utils.get_all()
+        assert len(accounts) == len(accounts_two_per_role)
 
 
 class TestAccountListSearch:
