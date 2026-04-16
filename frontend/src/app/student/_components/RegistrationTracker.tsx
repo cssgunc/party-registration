@@ -2,6 +2,7 @@
 
 import { DeletePartyDialog } from "@/app/student/_components/DeletePartyDialog";
 import { EditPartyDialog } from "@/app/student/_components/EditPartyDialog";
+import { PhoneLink } from "@/components/PhoneLink";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -17,11 +18,7 @@ import {
   useCurrentStudent,
   useMyParties,
 } from "@/lib/api/student/student.queries";
-import {
-  formatPhoneNumber,
-  formatTime,
-  isFromThisSchoolYear,
-} from "@/lib/utils";
+import { formatTime, isFromThisSchoolYear } from "@/lib/utils";
 import { format } from "date-fns";
 import { MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
@@ -115,8 +112,8 @@ export default function RegistrationTracker(): React.JSX.Element {
         <div className="flex items-start justify-between">
           <div>
             <div className="flex content-bold gap-6">
-              <p>{format(party.party_datetime, "MM/dd/yyyy")}</p>
-              <p>Start: {formatTime(party.party_datetime)}</p>
+              <p>{format(party.party_datetime, "M/d/yyyy")}</p>
+              <p>@ {formatTime(party.party_datetime)}</p>
             </div>
             {showAddress && (
               <h2 className="content-bold my-2">
@@ -153,39 +150,36 @@ export default function RegistrationTracker(): React.JSX.Element {
           )}
         </div>
 
-        {/* Contacts Side by Side */}
-        <div className="sm:grid sm:grid-cols-2">
+        {/* Contacts */}
+        <div className="grid grid-rows-2 gap-y-2 mt-2 mb-2 mr-4 ml-3">
           {/* Contact One */}
-
-          <div className="content ml-3">
-            <p>
+          <div className="flex flex-row justify-between gap-x-0.5">
+            <p className="content self-end mb-[-6px]">
               {party.contact_one.first_name} {party.contact_one.last_name}
             </p>
-            <p>{formatPhoneNumber(party.contact_one.phone_number)}</p>
-            <p>
-              Preference:
-              <span className="capitalize">
-                {" "}
-                {party.contact_one.contact_preference}
-              </span>
-            </p>
-            <p>{party.contact_one.email}</p>
+            <span className="flex-1 h-[2px] bg-[radial-gradient(circle,currentColor_1px,transparent_1px)] bg-[length:6px_2px] bg-repeat-x self-end" />
+            <div className="flex flex-row gap-x-1 mb-[-6px]">
+              <PhoneLink phoneNumber={party.contact_one.phone_number ?? "—"} />
+              <p className="content">{" - "}</p>
+              <p className="content capitalize">
+                {party.contact_one.contact_preference ?? "—"}
+              </p>
+            </div>
           </div>
 
           {/* Contact Two */}
-          <div className="ml-3 mt-6 sm:ml-0 sm:mt-0 content">
-            <p>
+          <div className="flex flex-row justify-between gap-x-0.5">
+            <p className="content self-end mb-[-6px]">
               {party.contact_two.first_name} {party.contact_two.last_name}
             </p>
-            <p>{formatPhoneNumber(party.contact_two.phone_number)}</p>
-            <p>
-              Preference:
-              <span className="capitalize">
-                {" "}
-                {party.contact_two.contact_preference}
-              </span>
-            </p>
-            <p>{party.contact_two.email}</p>
+            <span className="flex-1 h-[2px] bg-[radial-gradient(circle,currentColor_1px,transparent_1px)] bg-[length:6px_2px] bg-repeat-x self-end" />
+            <div className="flex flex-row gap-x-1 mb-[-6px]">
+              <PhoneLink phoneNumber={party.contact_two.phone_number ?? "—"} />
+              <p className="content">{" - "}</p>
+              <p className="content capitalize">
+                {party.contact_two.contact_preference ?? "—"}
+              </p>
+            </div>
           </div>
         </div>
       </div>
