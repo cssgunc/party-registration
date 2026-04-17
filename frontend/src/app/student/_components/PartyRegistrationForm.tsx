@@ -343,12 +343,14 @@ export default function PartyRegistrationForm({
           </div>
 
           <div className="flex flex-col gap-4 lg:gap-6">
-            <h2 className="subhead-content">Your Contact Information</h2>
-            <p className="content-sub italic">
-              {student?.phone_number != null
-                ? "You can edit preferences in your Account Settings."
-                : "Please provide your contact information to complete registration."}
-            </p>
+            <div className="flex flex-col gap-1">
+              <h2 className="subhead-content">Your Contact Information</h2>
+              <p className="content-sub italic">
+                {student?.phone_number != null
+                  ? "You can edit preferences in your Account Settings."
+                  : "Please provide your contact information to complete registration."}
+              </p>
+            </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
               <Field>
                 <FieldLabel className="content-bold">First Name</FieldLabel>

@@ -121,7 +121,7 @@ export default function RegistrationForm() {
               <Link href="/student">Back</Link>
             </nav>
             <div className="px-8 py-6 lg:px-18 lg:py-0 lg:pb-12">
-              <h1 className="page-title md:mb-4">Party Registration</h1>
+              <h1 className="page-title md:mb-4">Register Party</h1>
 
               <Link
                 href="/student/about-party-smart"
