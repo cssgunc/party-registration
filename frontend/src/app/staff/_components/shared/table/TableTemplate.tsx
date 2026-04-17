@@ -343,7 +343,7 @@ export function TableTemplate<T extends object>({
                       </DropdownMenuItem>
                     )}
                     {onDelete &&
-                      (canDeleteRow ? canDeleteRow(row.original) : true) && (
+                      (!canDeleteRow || canDeleteRow(row.original)) && (
                         <DropdownMenuItem
                           onClick={() => handleDeleteClick(row.original)}
                           variant="destructive"
