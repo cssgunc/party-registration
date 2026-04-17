@@ -25,6 +25,13 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useSnackbar } from "@/contexts/SnackbarContext";
 import type {
   IncidentCreateDto,
@@ -44,7 +51,8 @@ import Image, { StaticImageData } from "next/image";
 import type { MouseEvent } from "react";
 import { useEffect, useState } from "react";
 
-const PAGE_SIZE = 10;
+const DEFAULT_PAGE_SIZE = 10;
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
 
 const INCIDENT_MENU_ITEMS: {
   severity: IncidentSeverity;
@@ -93,6 +101,7 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
     useState<IncidentSeverity>("in_person_warning");
   const [selectedParty, setSelectedParty] = useState<PartyDto | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const { openSnackbar } = useSnackbar();
 
   const createMutation = usePoliceCreateIncident({
@@ -119,8 +128,8 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
     if (!activeParty) return;
     const idx = parties.findIndex((p) => p.id === activeParty.id);
     if (idx === -1) return;
-    setCurrentPage(Math.floor(idx / PAGE_SIZE));
-  }, [activeParty, parties]);
+    setCurrentPage(Math.floor(idx / pageSize));
+  }, [activeParty, parties, pageSize]);
 
   // Scroll to the active party card after the page renders
   useEffect(() => {
@@ -129,10 +138,10 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
     if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [activeParty, currentPage]);
 
-  const totalPages = Math.ceil(parties.length / PAGE_SIZE);
+  const totalPages = Math.ceil(parties.length / pageSize);
   const paginatedParties = parties.slice(
-    currentPage * PAGE_SIZE,
-    (currentPage + 1) * PAGE_SIZE
+    currentPage * pageSize,
+    (currentPage + 1) * pageSize
   );
 
   const maxVisiblePages = 3;
@@ -326,70 +335,90 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
         </ul>
 
         {totalPages > 1 && (
-          <div className="flex flex-col items-center gap-2">
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setCurrentPage((p) => Math.max(0, p - 1));
-                    }}
-                    className={cn(
-                      currentPage === 0
-                        ? "pointer-events-none opacity-50"
-                        : "cursor-pointer"
-                    )}
-                  />
-                </PaginationItem>
-                {pageStart > 0 && (
+          <div className="flex items-center justify-between gap-2 md:gap-4 p-2">
+            <div className="min-w-0 flex justify-start overflow-x-auto">
+              <Pagination className="mx-0 w-max justify-start">
+                <PaginationContent>
                   <PaginationItem>
-                    <PaginationEllipsis />
-                  </PaginationItem>
-                )}
-                {pageIndexes.map((pageIndex) => (
-                  <PaginationItem key={pageIndex}>
-                    <PaginationLink
+                    <PaginationPrevious
                       href="#"
                       onClick={(e) => {
                         e.preventDefault();
-                        setCurrentPage(pageIndex);
+                        setCurrentPage((p) => Math.max(0, p - 1));
                       }}
-                      isActive={currentPage === pageIndex}
-                      className="cursor-pointer"
-                    >
-                      {pageIndex + 1}
-                    </PaginationLink>
+                      className={cn(
+                        currentPage === 0
+                          ? "pointer-events-none opacity-50"
+                          : "cursor-pointer"
+                      )}
+                    />
                   </PaginationItem>
-                ))}
-                {pageEnd < totalPages && (
+                  {pageStart > 0 && (
+                    <PaginationItem>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  )}
+                  {pageIndexes.map((pageIndex) => (
+                    <PaginationItem key={pageIndex}>
+                      <PaginationLink
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setCurrentPage(pageIndex);
+                        }}
+                        isActive={currentPage === pageIndex}
+                        className="cursor-pointer"
+                      >
+                        {pageIndex + 1}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ))}
+                  {pageEnd < totalPages && (
+                    <PaginationItem>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  )}
                   <PaginationItem>
-                    <PaginationEllipsis />
+                    <PaginationNext
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setCurrentPage((p) => Math.min(totalPages - 1, p + 1));
+                      }}
+                      className={cn(
+                        currentPage === totalPages - 1
+                          ? "pointer-events-none opacity-50"
+                          : "cursor-pointer"
+                      )}
+                    />
                   </PaginationItem>
-                )}
-                <PaginationItem>
-                  <PaginationNext
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setCurrentPage((p) => Math.min(totalPages - 1, p + 1));
-                    }}
-                    className={cn(
-                      currentPage === totalPages - 1
-                        ? "pointer-events-none opacity-50"
-                        : "cursor-pointer"
-                    )}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-            <p className="content text-muted-foreground">
-              Results {currentPage * PAGE_SIZE + 1}
-              {" - "}
-              {Math.min((currentPage + 1) * PAGE_SIZE, parties.length)} of{" "}
-              {parties.length}
-            </p>
+                </PaginationContent>
+              </Pagination>
+            </div>
+
+            <div className="shrink-0 flex items-center justify-end gap-2">
+              <span className="hidden lg:inline content text-muted-foreground whitespace-nowrap">
+                Rows per page:
+              </span>
+              <Select
+                value={String(pageSize)}
+                onValueChange={(value) => {
+                  setPageSize(Number(value));
+                  setCurrentPage(0);
+                }}
+              >
+                <SelectTrigger className="w-20 bg-card">
+                  <SelectValue placeholder="Rows" />
+                </SelectTrigger>
+                <SelectContent className="max-h-40 overflow-y-auto">
+                  {PAGE_SIZE_OPTIONS.map((size) => (
+                    <SelectItem key={size} value={String(size)}>
+                      {size}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         )}
       </div>

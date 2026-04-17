@@ -122,6 +122,7 @@ export function TableTemplate<T extends object>({
   const { isOpen, openSidebar, closeSidebar } = useSidebar();
   const { data: session } = useSession();
   const role = session?.role;
+  const hideFooterMetaOnSmall = role === "admin";
   const hasManagePermission = canManageRows ?? role === "admin";
 
   const sortedData = useMemo(
@@ -587,66 +588,22 @@ export function TableTemplate<T extends object>({
           </Card>
 
           {/* Pagination Controls */}
-          <div className="flex flex-col items-center p-2 gap-2 lg:mt-4">
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      table.previousPage();
-                    }}
-                    className={
-                      !table.getCanPreviousPage()
-                        ? "pointer-events-none opacity-50"
-                        : "cursor-pointer"
-                    }
-                  />
-                </PaginationItem>
-                {pageStart > 0 && (
-                  <PaginationItem>
-                    <PaginationEllipsis />
-                  </PaginationItem>
-                )}
-                {pageIndexes.map((pageIndex) => (
-                  <PaginationItem key={pageIndex}>
-                    <PaginationLink
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        table.setPageIndex(pageIndex);
-                      }}
-                      isActive={activePage === pageIndex}
-                      className="cursor-pointer"
-                    >
-                      {pageIndex + 1}
-                    </PaginationLink>
-                  </PaginationItem>
-                ))}
-                {pageEnd < pageCount && (
-                  <PaginationItem>
-                    <PaginationEllipsis />
-                  </PaginationItem>
-                )}
-                <PaginationItem>
-                  <PaginationNext
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      table.nextPage();
-                    }}
-                    className={
-                      !table.getCanNextPage()
-                        ? "pointer-events-none opacity-50"
-                        : "cursor-pointer"
-                    }
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-            <div className="flex items-center gap-12 md:gap-20 lg:gap-30 text-sm text-muted-foreground">
-              <span>
+          <div
+            className={cn(
+              "grid items-center p-2 gap-2 md:gap-4 lg:mt-4",
+              hideFooterMetaOnSmall
+                ? "grid-cols-2 md:grid-cols-3"
+                : "grid-cols-3"
+            )}
+          >
+            {/* Left Column: Results Counter */}
+            <div
+              className={cn(
+                "items-center justify-start",
+                hideFooterMetaOnSmall ? "hidden md:flex" : "flex"
+              )}
+            >
+              <span className="text-sm text-muted-foreground whitespace-nowrap">
                 Results{" "}
                 {table.getState().pagination.pageIndex *
                   table.getState().pagination.pageSize +
@@ -660,6 +617,88 @@ export function TableTemplate<T extends object>({
                     table.getState().pagination.pageSize}{" "}
                 of {filteredRowCount}
               </span>
+            </div>
+
+            {/* Center Column: Pagination Navigation */}
+            <div
+              className={cn(
+                "flex",
+                hideFooterMetaOnSmall
+                  ? "justify-start md:justify-center"
+                  : "justify-center"
+              )}
+            >
+              {" "}
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        table.previousPage();
+                      }}
+                      className={
+                        !table.getCanPreviousPage()
+                          ? "pointer-events-none opacity-50"
+                          : "cursor-pointer"
+                      }
+                    />
+                  </PaginationItem>
+                  {pageStart > 0 && (
+                    <PaginationItem>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  )}
+                  {pageIndexes.map((pageIndex) => (
+                    <PaginationItem key={pageIndex}>
+                      <PaginationLink
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          table.setPageIndex(pageIndex);
+                        }}
+                        isActive={activePage === pageIndex}
+                        className="cursor-pointer"
+                      >
+                        {pageIndex + 1}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ))}
+                  {pageEnd < pageCount && (
+                    <PaginationItem>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  )}
+                  <PaginationItem>
+                    <PaginationNext
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        table.nextPage();
+                      }}
+                      className={
+                        !table.getCanNextPage()
+                          ? "pointer-events-none opacity-50"
+                          : "cursor-pointer"
+                      }
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+
+            {/* Right Column: Page Size Selector */}
+            <div className="flex items-center justify-end gap-2">
+              <span
+                className={cn(
+                  "text-sm text-muted-foreground whitespace-nowrap",
+                  hideFooterMetaOnSmall ? "hidden md:inline" : ""
+                )}
+              >
+                {" "}
+                Rows per page:
+              </span>
               <Select
                 value={String(activePageSize)}
                 onValueChange={(value) => {
@@ -667,7 +706,7 @@ export function TableTemplate<T extends object>({
                   table.setPageIndex(0);
                 }}
               >
-                <SelectTrigger className="bg-card">
+                <SelectTrigger className="bg-card w-20">
                   <SelectValue placeholder="Rows" />
                 </SelectTrigger>
                 <SelectContent className="max-h-40 overflow-y-auto ">
