@@ -16,10 +16,33 @@ echo ""
 echo "==================== Setting up the database ==================="
 cd "$REPO_ROOT/backend"
 
+# Resolve sqlcmd robustly (login shells may not preserve /opt/mssql-tools18/bin in PATH)
+SQLCMD_BIN="$(command -v sqlcmd || true)"
+if [ -z "$SQLCMD_BIN" ]; then
+  for candidate in /opt/mssql-tools18/bin/sqlcmd /opt/mssql-tools/bin/sqlcmd; do
+    if [ -x "$candidate" ]; then
+      SQLCMD_BIN="$candidate"
+      break
+    fi
+  done
+fi
+
+if [ -z "$SQLCMD_BIN" ]; then
+  echo "Error: sqlcmd not found. Expected it in PATH or under /opt/mssql-tools*/bin."
+  exit 1
+fi
+
 # SQL Server takes ~30s to start; wait before running db scripts
 echo "Waiting for SQL Server to be ready..."
-until sqlcmd -S db -U sa -P "YourStrong!Passw0rd" -Q "SELECT 1" -C &>/dev/null; do
+MAX_WAIT_SECONDS=120
+WAITED_SECONDS=0
+until "$SQLCMD_BIN" -S db -U sa -P "YourStrong!Passw0rd" -Q "SELECT 1" -C &>/dev/null; do
   sleep 2
+  WAITED_SECONDS=$((WAITED_SECONDS + 2))
+  if [ "$WAITED_SECONDS" -ge "$MAX_WAIT_SECONDS" ]; then
+    echo "Error: Timed out after ${MAX_WAIT_SECONDS}s waiting for SQL Server at host 'db'."
+    exit 1
+  fi
 done
 echo "SQL Server is ready!"
 
