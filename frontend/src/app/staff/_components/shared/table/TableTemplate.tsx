@@ -85,7 +85,6 @@ export type TableProps<T> = {
   error?: Error | null;
   getDeleteDescription?: (row: T) => string;
   isDeleting?: boolean;
-  isDeleteDisabled?: (row: T) => boolean;
   initialSort?: SortingState;
   sortBy?: (a: T, b: T) => number;
   pageSize?: number;
@@ -109,7 +108,6 @@ export function TableTemplate<T extends object>({
   error,
   getDeleteDescription,
   isDeleting,
-  isDeleteDisabled,
   initialSort = [],
   sortBy,
   pageSize = 50,
@@ -344,9 +342,7 @@ export function TableTemplate<T extends object>({
                       </DropdownMenuItem>
                     )}
                     {onDelete &&
-                      (canDeleteRow
-                        ? canDeleteRow(row.original)
-                        : !isDeleteDisabled?.(row.original)) && (
+                      (!canDeleteRow || canDeleteRow(row.original)) && (
                         <DropdownMenuItem
                           onClick={() => handleDeleteClick(row.original)}
                           variant="destructive"

@@ -15,11 +15,6 @@ import type {
   AccountRole,
   AccountTableRow,
 } from "@/lib/api/account/account.types";
-import {
-  canDeleteAccountRow,
-  getAccountDeleteBlockReason,
-  getCurrentAccountId,
-} from "@/lib/api/account/accountDeleteGuard";
 import type {
   PoliceAccountUpdate,
   PoliceRole,
@@ -236,8 +231,6 @@ export const AccountTable = () => {
     },
   });
 
-  const currentAccountId = getCurrentAccountId(session?.id);
-
   const handleEdit = (row: AccountTableRow) => {
     setEditingAccount(row);
 
@@ -274,21 +267,6 @@ export const AccountTable = () => {
   };
 
   const handleDelete = (row: AccountTableRow) => {
-    const deleteBlockReason = getAccountDeleteBlockReason(
-      row,
-      currentAccountId
-    );
-
-    if (deleteBlockReason === "self-delete") {
-      openSnackbar("You cannot delete your own account", "error");
-      return;
-    }
-
-    if (deleteBlockReason === "identity-unavailable") {
-      openSnackbar("Unable to confirm your account identity", "error");
-      return;
-    }
-
     if (row._isPolice) {
       deletePoliceAccountMutation.mutate(row.id);
     } else {
@@ -411,7 +389,9 @@ export const AccountTable = () => {
           deleteAccountMutation.isPending ||
           deletePoliceAccountMutation.isPending
         }
-        canDeleteRow={(row) => canDeleteAccountRow(row, currentAccountId)}
+        canDeleteRow={(row) =>
+          row._isPolice || (session?.id != null && row.id !== session.id)
+        }
         serverMeta={
           accountsQuery.data
             ? {
