@@ -363,10 +363,34 @@ def apply_filters[ModelType: DeclarativeMeta](
 
 
 def apply_search(query: Select, search: str, search_columns: list[Any]) -> Select:
-    """Apply case-insensitive search across multiple string columns using OR ilike."""
+    """Apply case-insensitive search across multiple string columns using OR ilike.
+
+    Each entry in ``search_columns`` may be either:
+    - a single SQLAlchemy column, matched directly with ``ILIKE %search%``; or
+    - a list/tuple of columns, concatenated with a single space and matched as a
+      single value (useful for "full name" style searches across split fields).
+    """
     if not search_columns:
         return query
-    conditions = [col.ilike(f"%{search}%") for col in search_columns]
+    pattern = f"%{search}%"
+    conditions = []
+    for col in search_columns:
+        if isinstance(col, list | tuple):
+            if not col:
+                continue
+            # Concatenate columns with a space between them for full-name style matching.
+            # Use func.concat (instead of the `+` operator) so NULL values are handled
+            # safely by the database (e.g., MSSQL's CONCAT treats NULLs as empty strings).
+            concat_args: list[Any] = []
+            for index, sub_col in enumerate(col):
+                if index > 0:
+                    concat_args.append(" ")
+                concat_args.append(sub_col)
+            conditions.append(func.concat(*concat_args).ilike(pattern))
+        else:
+            conditions.append(col.ilike(pattern))
+    if not conditions:
+        return query
     return query.where(or_(*conditions))
 
 
@@ -575,7 +599,10 @@ async def get_paginated_results[ModelType](
         allowed_sort_fields: Whitelist of fields allowed for sorting
         allowed_filter_fields: Whitelist of fields allowed for filtering
         nested_field_columns: Optional mapping of field names to joined column refs
-        search_columns: Optional list of string columns to search across
+        search_columns: Optional list of columns/groups to search across.
+            Each entry may be a single column or a list/tuple of columns to be
+            concatenated with a space (e.g. ``[first_name, last_name]`` enables
+            matching against the full name).
 
     Returns:
         PaginatedResponse with items and metadata
