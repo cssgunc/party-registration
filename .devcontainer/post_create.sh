@@ -33,10 +33,10 @@ if [ -z "$SQLCMD_BIN" ]; then
 fi
 
 # SQL Server takes ~30s to start; wait before running db scripts
-echo "Waiting for SQL Server to be ready..."
+echo "Waiting for SQL Server to be ready... ('Killed' messages are expected)"
 MAX_WAIT_SECONDS=120
 WAITED_SECONDS=0
-until "$SQLCMD_BIN" -S db -U sa -P "YourStrong!Passw0rd" -Q "SELECT 1" -C &>/dev/null; do
+until timeout --kill-after=3 3 "$SQLCMD_BIN" -S db -U sa -P "YourStrong!Passw0rd" -Q "SELECT 1" -C &>/dev/null; do
   sleep 2
   WAITED_SECONDS=$((WAITED_SECONDS + 2))
   if [ "$WAITED_SECONDS" -ge "$MAX_WAIT_SECONDS" ]; then

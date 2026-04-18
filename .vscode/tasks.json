@@ -16,8 +16,12 @@
     },
     {
       "label": "Reset DB",
-      "type": "shell",
-      "command": "cd ${workspaceFolder}/backend && python -m script.reset_dev",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": ["-m", "script.reset_dev"],
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
       "presentation": {
         "reveal": "silent",
         "close": false
@@ -25,8 +29,12 @@
     },
     {
       "label": "Generate DB Schema",
-      "type": "shell",
-      "command": "cd ${workspaceFolder}/backend && python -m script.generate_schema",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": ["-m", "script.generate_schema"],
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
       "presentation": {
         "reveal": "silent",
         "close": false
