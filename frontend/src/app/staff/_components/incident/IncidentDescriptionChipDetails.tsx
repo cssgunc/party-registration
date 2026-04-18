@@ -13,8 +13,6 @@ function IncidentDescriptionChipDetails({
   return (
     <GenericChipDetails<IncidentDto>
       data={data}
-      title={"Incident Description"}
-      description={"View the full incident description"}
       renderView={(d) => (
         <div className="space-y-3">
           <div>

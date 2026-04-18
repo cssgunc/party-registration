@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { XIcon } from "lucide-react";
 
 function GenericSidebar() {
-  const { isOpen, closeSidebar, content } = useSidebar();
+  const { isOpen, closeSidebar, content, title, description } = useSidebar();
 
   return (
     <>
@@ -21,19 +21,27 @@ function GenericSidebar() {
       {/* Sidebar */}
       <div
         className={cn(
-          "fixed top-0 right-0 w-96 h-full bg-card shadow-lg overflow-auto z-50 transform transition-transform duration-300 ease-in-out",
+          "fixed top-0 right-0 w-full max-w-96 h-full bg-card shadow-lg z-50 flex flex-col transform transition-transform duration-300 ease-in-out",
           isOpen ? "translate-x-0" : "translate-x-full"
         )}
       >
-        <div className="p-6">
+        {/* Header — stays visible because only the content area below scrolls */}
+        <div className="bg-card px-6 pt-6 pb-2">
           <Button
             className="bg-card pb-10 hover:bg-card"
             onClick={closeSidebar}
           >
             <XIcon className="text-muted-foreground size-6 -m-8" />
           </Button>
-          <div>{content}</div>
+          {title && (
+            <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+          )}
+          {description && (
+            <p className="text-sm text-muted-foreground">{description}</p>
+          )}
         </div>
+        {/* Scrollable content */}
+        <div className="overflow-y-auto flex-1 px-6 pb-6">{content}</div>
       </div>
     </>
   );
