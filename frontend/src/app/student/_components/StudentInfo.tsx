@@ -256,6 +256,21 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
     );
   }
 
+  const handleCancel = () => {
+    setFormData({
+      first_name: initialData.first_name,
+      last_name: initialData.last_name,
+      phone_number: initialData.phone_number ?? "",
+      contact_preference: initialData.contact_preference ?? "call",
+      address: initialData.residence?.location.formatted_address ?? "",
+      location_place_id: "",
+      formatted_address:
+        initialData.residence?.location.formatted_address ?? "",
+    });
+    setErrors({});
+    setIsEditing(false);
+  };
+
   const handleAddressSelect = (address: AutocompleteResult | null) => {
     setFormData((prev) => ({
       ...prev,
@@ -404,7 +419,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
           )}
 
           <div className="flex justify-center gap-12">
-            <Button type="reset" onClick={() => setIsEditing(false)}>
+            <Button type="button" onClick={handleCancel}>
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting}>
