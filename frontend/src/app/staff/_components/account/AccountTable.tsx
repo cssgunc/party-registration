@@ -27,6 +27,7 @@ import {
 import { formatRoleLabel } from "@/lib/utils";
 import { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
+import { useSession } from "next-auth/react";
 import { useMemo, useState } from "react";
 import * as z from "zod";
 import { useSidebar } from "../shared/sidebar/SidebarContext";
@@ -86,7 +87,7 @@ const getErrorMessage = (error: Error): string => {
 export const AccountTable = () => {
   const { openSidebar, closeSidebar } = useSidebar();
   const { openSnackbar } = useSnackbar();
-  // const [editingAccount, setEditingAccount] = useState<AccountDto | null>(null);
+  const { data: session } = useSession();
   const [editingAccount, setEditingAccount] = useState<AccountTableRow | null>(
     null
   );
@@ -410,6 +411,9 @@ export const AccountTable = () => {
         isDeleting={
           deleteAccountMutation.isPending ||
           deletePoliceAccountMutation.isPending
+        }
+        canDeleteRow={(row) =>
+          row._isPolice || (session?.id != null && row.id !== session.id)
         }
         serverMeta={
           accountsQuery.data

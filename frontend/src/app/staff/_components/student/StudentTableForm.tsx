@@ -48,7 +48,7 @@ type StudentTableFormValues = z.infer<typeof studentTableFormSchema>;
 
 interface StudentTableFormProps {
   onSubmit: (data: StudentTableFormValues) => void | Promise<void>;
-  editData?: StudentTableFormValues;
+  editData?: Partial<StudentTableFormValues>;
   submissionError?: string | null;
   title?: string;
 }
@@ -147,6 +147,7 @@ export default function StudentTableForm({
               title={
                 isPIDEditMode ? "This field is managed by UNC SSO" : undefined
               }
+              autoComplete="off"
             />
             {errors.pid && <FieldError>{errors.pid}</FieldError>}
           </Field>
@@ -163,6 +164,7 @@ export default function StudentTableForm({
               title={
                 isPIDEditMode ? "This field is managed by UNC SSO" : undefined
               }
+              autoComplete="off"
             />
             {errors.first_name && <FieldError>{errors.first_name}</FieldError>}
           </Field>
@@ -179,6 +181,7 @@ export default function StudentTableForm({
               title={
                 isPIDEditMode ? "This field is managed by UNC SSO" : undefined
               }
+              autoComplete="off"
             />
             {errors.last_name && <FieldError>{errors.last_name}</FieldError>}
           </Field>
@@ -196,6 +199,7 @@ export default function StudentTableForm({
               title={
                 isPIDEditMode ? "This field is managed by UNC SSO" : undefined
               }
+              autoComplete="off"
             />
             {errors.email && <FieldError>{errors.email}</FieldError>}
           </Field>
@@ -212,6 +216,7 @@ export default function StudentTableForm({
               title={
                 isPIDEditMode ? "This field is managed by UNC SSO" : undefined
               }
+              autoComplete="off"
             />
             {errors.onyen && <FieldError>{errors.onyen}</FieldError>}
           </Field>
@@ -232,6 +237,7 @@ export default function StudentTableForm({
                 updateField("phone_number", digitsOnly);
               }}
               maxLength={14}
+              autoComplete="off"
             />
             {errors.phone_number && (
               <FieldError>{errors.phone_number}</FieldError>

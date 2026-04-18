@@ -172,15 +172,19 @@ const PoiMarkers = ({ pois, activePoiKey, onSelect }: PoiMarkersProps) => {
               </p>
               <div className="flex justify-between items-center text-xs">
                 <PhoneLink
-                  phoneNumber={selectedPoi.party.contact_one.phone_number}
+                  phoneNumber={
+                    selectedPoi.party.contact_one.phone_number ?? "—"
+                  }
                 />
                 <span className="text-gray-600">
                   {selectedPoi.party.contact_one.contact_preference
-                    .charAt(0)
-                    .toUpperCase() +
-                    selectedPoi.party.contact_one.contact_preference
-                      .slice(1)
-                      .toLowerCase()}
+                    ? selectedPoi.party.contact_one.contact_preference
+                        .charAt(0)
+                        .toUpperCase() +
+                      selectedPoi.party.contact_one.contact_preference
+                        .slice(1)
+                        .toLowerCase()
+                    : "—"}
                 </span>
               </div>
             </div>

@@ -54,6 +54,11 @@ class AccountByOnyenNotFoundException(NotFoundException):
         super().__init__(f"Account with onyen {onyen} not found")
 
 
+class CannotDeleteOwnAccountException(ForbiddenException):
+    def __init__(self):
+        super().__init__(detail="Admins cannot delete their own account")
+
+
 class AccountService:
     _ALLOWED_FIELDS: ClassVar[list[str]] = [
         "id",
@@ -136,6 +141,14 @@ class AccountService:
             allowed_filter_fields=allowed_filter_fields,
         )
 
+        search_columns = [
+            AccountEntity.email,
+            AccountEntity.first_name,
+            AccountEntity.last_name,
+            AccountEntity.pid,
+            AccountEntity.onyen,
+        ]
+
         # Use the generic pagination utility
         result = await get_paginated_results(
             session=self.session,
@@ -145,6 +158,7 @@ class AccountService:
             query_params=query_params,
             allowed_sort_fields=allowed_sort_fields,
             allowed_filter_fields=allowed_filter_fields,
+            search_columns=search_columns,
         )
         return PaginatedAccountsResponse(**result.model_dump())
 

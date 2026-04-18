@@ -112,6 +112,7 @@ export default function PoliceAccountForm({
               value={formData.email}
               onChange={(e) => updateField("email", e.target.value)}
               aria-invalid={!!errors.email}
+              autoComplete="off"
             />
             {errors.email && <FieldError>{errors.email}</FieldError>}
           </Field>
