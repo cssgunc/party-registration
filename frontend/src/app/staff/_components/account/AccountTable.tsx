@@ -110,7 +110,6 @@ export const AccountTable = () => {
         "New Account",
         "Add a new account to the system",
         <AccountTableForm
-          title="New Account"
           onSubmit={handleAccountCreateSubmit}
           submissionError={errorMessage}
           editData={{
@@ -158,7 +157,6 @@ export const AccountTable = () => {
         "Edit Account",
         "Update account information",
         <AccountTableForm
-          title="Edit Account"
           onSubmit={(data) => handleAccountEditSubmit(variables.id, data)}
           submissionError={errorMessage}
           editData={editData}
@@ -187,7 +185,6 @@ export const AccountTable = () => {
         "Edit Police Account",
         "Update police account credentials",
         <PoliceAccountForm
-          title="Edit Police Account"
           onSubmit={(data) => handlePoliceEditSubmit(variables.id, data)}
           submissionError={errorMessage}
           editData={{ email: variables.data.email }}
@@ -223,7 +220,6 @@ export const AccountTable = () => {
         "Edit Police Account",
         "Update police account credentials",
         <PoliceAccountForm
-          title="Edit Police Account"
           onSubmit={(data) => handlePoliceEditSubmit(row.id, data)}
           editData={{ email: row.email }}
         />
@@ -234,7 +230,6 @@ export const AccountTable = () => {
         "Edit Account",
         "Update account information",
         <AccountTableForm
-          title="Edit Account"
           onSubmit={(data) => handleAccountEditSubmit(row.id, data)}
           editData={{
             email: row.email,
@@ -263,10 +258,7 @@ export const AccountTable = () => {
       "create-account",
       "New Account",
       "Add a new account to the system",
-      <AccountTableForm
-        title="New Account"
-        onSubmit={handleAccountCreateSubmit}
-      />
+      <AccountTableForm onSubmit={handleAccountCreateSubmit} />
     );
   };
 

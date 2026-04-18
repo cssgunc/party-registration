@@ -80,7 +80,6 @@ export const StudentTable = () => {
         "Edit Student",
         "Update student information",
         <StudentTableForm
-          title="Edit Student"
           onSubmit={(data) => handleEditSubmit(editingStudent, data)}
           submissionError={`Failed to update student: ${error.message}`}
           editData={editingStudent}
@@ -112,7 +111,6 @@ export const StudentTable = () => {
       "Edit Student",
       "Update student information",
       <StudentTableForm
-        title="Edit Student"
         onSubmit={(data) => handleEditSubmit(student, data)}
         editData={toEditData(student)}
       />
@@ -200,7 +198,7 @@ export const StudentTable = () => {
         return (
           <GenericInfoChip
             chipKey={`student-${student.id}-residence`}
-            title="Residence Information"
+            title="Info about the Location"
             description="Detailed information about the student's residence"
             shortName={shortName || location.formatted_address}
             sidebarContent={<LocationInfoChipDetails data={location} />}

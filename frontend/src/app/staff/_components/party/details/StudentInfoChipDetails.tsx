@@ -12,8 +12,6 @@ export function StudentInfoChipDetails({ data }: StudentInfoChipDetailsProps) {
   return (
     <GenericChipDetails<StudentDto>
       data={data}
-      title={"Info about the Student"}
-      description={"View information on the Student you just clicked on"}
       renderView={(d) => (
         <div className="space-y-3">
           <div>

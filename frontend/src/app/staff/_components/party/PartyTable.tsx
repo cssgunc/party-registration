@@ -87,7 +87,6 @@ export const PartyTable = () => {
         "New Party",
         "Add a new party to the system",
         <PartyTableForm
-          title="New Party"
           onSubmit={handleCreateSubmit}
           submissionError={errorMessage}
         />
@@ -123,7 +122,6 @@ export const PartyTable = () => {
         "Edit Party",
         "Update party information",
         <PartyTableForm
-          title="Edit Party"
           onSubmit={(data) => handleEditSubmit(editTarget.id, data)}
           editData={editTarget}
           submissionError={errorMessage}
@@ -172,7 +170,7 @@ export const PartyTable = () => {
       "create-party",
       "New Party",
       "Add a new party to the system",
-      <PartyTableForm title="New Party" onSubmit={handleCreateSubmit} />
+      <PartyTableForm onSubmit={handleCreateSubmit} />
     );
   };
 
@@ -259,7 +257,7 @@ export const PartyTable = () => {
         return (
           <GenericInfoChip
             chipKey={`party-${row.original.id}-location`}
-            title="Location Information"
+            title="Info about the Location"
             description="Detailed information about the selected location"
             shortName={location.formatted_address}
             sidebarContent={<LocationInfoChipDetails data={location} />}
@@ -302,7 +300,7 @@ export const PartyTable = () => {
           <GenericInfoChip
             chipKey={`party-${row.original.id}-contact-one`}
             shortName={`${contact.first_name} ${contact.last_name}`}
-            title="Student Information"
+            title="Info about the Student"
             description="Detailed information about the selected student"
             sidebarContent={<StudentInfoChipDetails data={contact} />}
           />
@@ -326,7 +324,7 @@ export const PartyTable = () => {
           <GenericInfoChip
             chipKey={`party-${partyId}-contact-two`}
             shortName={`${contact.first_name} ${contact.last_name}`}
-            title="Contact Information"
+            title="Info about the Contact"
             description="Detailed information about the second contact"
             sidebarContent={<ContactInfoChipDetails data={contact} />}
           />
