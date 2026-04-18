@@ -65,6 +65,27 @@ const SERVER_COLUMN_MAP: ServerColumnMap = {
   },
 };
 
+const getErrorMessage = (error: Error): string => {
+  if (isAxiosError(error)) {
+    const detail = error.response?.data as {
+      message?: string;
+      detail?: string;
+    };
+    switch (error.response?.status) {
+      case 404:
+        return "Party not found.";
+      case 403:
+        return "You do not have permission to perform this action.";
+      case 500:
+        return "Server error. Please try again later.";
+    }
+    if (detail?.message) return String(detail.message);
+    if (detail?.detail) return String(detail.detail);
+    if (error.message) return error.message;
+  }
+  return "Operation failed";
+};
+
 export const PartyTable = () => {
   const { openSnackbar } = useSnackbar();
   const { openSidebar, closeSidebar } = useSidebar();
@@ -77,19 +98,15 @@ export const PartyTable = () => {
 
   const createMutation = useCreateAdminParty({
     onError: (error: Error) => {
-      console.error("Failed to create party:", error);
-      const errorMessage = isAxiosError(error)
-        ? error.response?.data?.message || error.message
-        : error.message || "Failed to create party";
+      const message = getErrorMessage(error);
 
       openSidebar(
         "create-party",
         "New Party",
         "Add a new party to the system",
         <PartyTableForm
-          title="New Party"
           onSubmit={handleCreateSubmit}
-          submissionError={errorMessage}
+          submissionError={message}
         />
       );
     },
@@ -105,11 +122,7 @@ export const PartyTable = () => {
       error: Error,
       variables: { id: number; payload: AdminCreatePartyDto }
     ) => {
-      console.error("Failed to update party:", error);
-      const isNotFound = isAxiosError(error) && error.response?.status === 404;
-      const errorMessage = isNotFound
-        ? "Student not found. Please select a valid student for the first contact."
-        : `Failed to update party: ${error.message}`;
+      const message = getErrorMessage(error);
 
       const editTarget =
         editingParty && editingParty.id === variables.id ? editingParty : null;
@@ -123,10 +136,9 @@ export const PartyTable = () => {
         "Edit Party",
         "Update party information",
         <PartyTableForm
-          title="Edit Party"
           onSubmit={(data) => handleEditSubmit(editTarget.id, data)}
           editData={editTarget}
-          submissionError={errorMessage}
+          submissionError={message}
         />
       );
     },
@@ -141,7 +153,8 @@ export const PartyTable = () => {
 
   const deleteMutation = useDeleteAdminParty({
     onError: (error: Error) => {
-      console.error("Failed to delete party:", error);
+      const message = getErrorMessage(error);
+      console.error("Failed to delete party:", message);
     },
     onSuccess: () => {
       openSnackbar("Party deleted successfully", "success");
@@ -172,7 +185,7 @@ export const PartyTable = () => {
       "create-party",
       "New Party",
       "Add a new party to the system",
-      <PartyTableForm title="New Party" onSubmit={handleCreateSubmit} />
+      <PartyTableForm onSubmit={handleCreateSubmit} />
     );
   };
 
@@ -259,7 +272,7 @@ export const PartyTable = () => {
         return (
           <GenericInfoChip
             chipKey={`party-${row.original.id}-location`}
-            title="Location Information"
+            title="Info about the Location"
             description="Detailed information about the selected location"
             shortName={location.formatted_address}
             sidebarContent={<LocationInfoChipDetails data={location} />}
@@ -302,7 +315,7 @@ export const PartyTable = () => {
           <GenericInfoChip
             chipKey={`party-${row.original.id}-contact-one`}
             shortName={`${contact.first_name} ${contact.last_name}`}
-            title="Student Information"
+            title="Info about the Student"
             description="Detailed information about the selected student"
             sidebarContent={<StudentInfoChipDetails data={contact} />}
           />
@@ -326,7 +339,7 @@ export const PartyTable = () => {
           <GenericInfoChip
             chipKey={`party-${partyId}-contact-two`}
             shortName={`${contact.first_name} ${contact.last_name}`}
-            title="Contact Information"
+            title="Info about the Contact"
             description="Detailed information about the second contact"
             sidebarContent={<ContactInfoChipDetails data={contact} />}
           />

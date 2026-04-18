@@ -92,6 +92,8 @@ export type TableProps<T> = {
   serverMeta?: { totalRecords: number; totalPages: number };
   onStateChange?: (params: ServerTableParams) => void;
   columnMap?: ServerColumnMap;
+  canManageRows?: boolean;
+  canDeleteRow?: (row: T) => boolean;
 };
 
 export function TableTemplate<T extends object>({
@@ -113,11 +115,15 @@ export function TableTemplate<T extends object>({
   serverMeta,
   onStateChange,
   columnMap,
+  canManageRows,
+  canDeleteRow,
 }: TableProps<T>) {
   const isServerMode = !!serverMeta;
   const { isOpen, openSidebar, closeSidebar } = useSidebar();
   const { data: session } = useSession();
   const role = session?.role;
+  const hideFooterMetaOnSmall = role === "admin";
+  const hasManagePermission = canManageRows ?? role === "admin";
 
   const sortedData = useMemo(
     () => (sortBy ? [...data].sort(sortBy) : data),
@@ -164,6 +170,11 @@ export function TableTemplate<T extends object>({
   }, [isOpen, rowSelection]);
 
   const filterDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const globalFilterRef = useRef(globalFilter);
+  useEffect(() => {
+    globalFilterRef.current = globalFilter;
+  }, [globalFilter]);
 
   // Server mode: immediate callback on pagination/sorting change
   useEffect(() => {
@@ -173,7 +184,8 @@ export function TableTemplate<T extends object>({
         paginationRef.current,
         sortingRef.current,
         columnFiltersRef.current,
-        columnMap
+        columnMap,
+        globalFilterRef.current || undefined
       )
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -190,7 +202,8 @@ export function TableTemplate<T extends object>({
           { ...paginationRef.current, pageIndex: 0 },
           sortingRef.current,
           columnFiltersRef.current,
-          columnMap
+          columnMap,
+          globalFilterRef.current || undefined
         )
       );
     }, 300);
@@ -199,6 +212,28 @@ export function TableTemplate<T extends object>({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [columnFilters]);
+
+  // Server mode: debounced callback on search (globalFilter) change
+  useEffect(() => {
+    if (!isServerMode || !onStateChange || !columnMap) return;
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+      onStateChange(
+        buildServerTableParams(
+          { ...paginationRef.current, pageIndex: 0 },
+          sortingRef.current,
+          columnFiltersRef.current,
+          columnMap,
+          globalFilter || undefined
+        )
+      );
+    }, 300);
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [globalFilter]);
 
   function flattenValues<T extends object>(obj: T): string {
     const result: string[] = [];
@@ -235,16 +270,11 @@ export function TableTemplate<T extends object>({
     return result.join(" ").toLowerCase();
   }
 
-  // In server mode, apply global search and client-only column filters on the loaded page
+  // In server mode, apply client-only column filters on the loaded page (global search is backend)
   const displayData = useMemo(() => {
     if (!isServerMode) return sortedData;
 
     let filtered = data;
-
-    if (globalFilter) {
-      const q = globalFilter.toLowerCase();
-      filtered = filtered.filter((row) => flattenValues(row).includes(q));
-    }
 
     for (const filter of columnFilters) {
       if (!filter.value) continue;
@@ -264,7 +294,7 @@ export function TableTemplate<T extends object>({
     }
 
     return filtered;
-  }, [data, sortedData, globalFilter, columnFilters, isServerMode, columns]);
+  }, [data, sortedData, columnFilters, isServerMode, columns]);
 
   const handleDeleteClick = (row: T) => {
     setItemToDelete(row);
@@ -277,13 +307,17 @@ export function TableTemplate<T extends object>({
   };
 
   const confirmDelete = () => {
-    if (itemToDelete && onDelete) {
+    if (
+      itemToDelete &&
+      onDelete &&
+      (canDeleteRow ? canDeleteRow(itemToDelete) : true)
+    ) {
       onDelete(itemToDelete);
     }
   };
 
   const columnsWithActions: ColumnDef<T, unknown>[] =
-    role === "admin" && (onEdit || onDelete)
+    hasManagePermission && (onEdit || onDelete)
       ? [
           ...columns,
           {
@@ -308,15 +342,16 @@ export function TableTemplate<T extends object>({
                         Edit
                       </DropdownMenuItem>
                     )}
-                    {onDelete && (
-                      <DropdownMenuItem
-                        onClick={() => handleDeleteClick(row.original)}
-                        variant="destructive"
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    )}
+                    {onDelete &&
+                      (!canDeleteRow || canDeleteRow(row.original)) && (
+                        <DropdownMenuItem
+                          onClick={() => handleDeleteClick(row.original)}
+                          variant="destructive"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -407,14 +442,12 @@ export function TableTemplate<T extends object>({
                 type="text"
                 value={globalFilter}
                 onChange={(e) => setGlobalFilter(e.target.value)}
-                placeholder={
-                  isServerMode ? "Search this page..." : "Search all columns..."
-                }
+                placeholder="Search all columns..."
                 className="p-2 pl-3 h-9 rounded-md"
               />
             </div>
             <div className="shrink-0 ml-auto">
-              {onCreateNewRow && role === "admin" && (
+              {onCreateNewRow && hasManagePermission && (
                 <Button onClick={onCreateNewRow} className="h-9">
                   <Plus className="mr-1" />
                   <p>New row</p>
@@ -555,66 +588,22 @@ export function TableTemplate<T extends object>({
           </Card>
 
           {/* Pagination Controls */}
-          <div className="flex flex-col items-center p-2 gap-2 lg:mt-4">
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      table.previousPage();
-                    }}
-                    className={
-                      !table.getCanPreviousPage()
-                        ? "pointer-events-none opacity-50"
-                        : "cursor-pointer"
-                    }
-                  />
-                </PaginationItem>
-                {pageStart > 0 && (
-                  <PaginationItem>
-                    <PaginationEllipsis />
-                  </PaginationItem>
-                )}
-                {pageIndexes.map((pageIndex) => (
-                  <PaginationItem key={pageIndex}>
-                    <PaginationLink
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        table.setPageIndex(pageIndex);
-                      }}
-                      isActive={activePage === pageIndex}
-                      className="cursor-pointer"
-                    >
-                      {pageIndex + 1}
-                    </PaginationLink>
-                  </PaginationItem>
-                ))}
-                {pageEnd < pageCount && (
-                  <PaginationItem>
-                    <PaginationEllipsis />
-                  </PaginationItem>
-                )}
-                <PaginationItem>
-                  <PaginationNext
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      table.nextPage();
-                    }}
-                    className={
-                      !table.getCanNextPage()
-                        ? "pointer-events-none opacity-50"
-                        : "cursor-pointer"
-                    }
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-            <div className="flex items-center gap-12 md:gap-20 lg:gap-30 text-sm text-muted-foreground">
-              <span>
+          <div
+            className={cn(
+              "grid items-center p-2 gap-2 md:gap-4 lg:mt-4",
+              hideFooterMetaOnSmall
+                ? "grid-cols-2 md:grid-cols-3"
+                : "grid-cols-3"
+            )}
+          >
+            {/* Left Column: Results Counter */}
+            <div
+              className={cn(
+                "items-center justify-start",
+                hideFooterMetaOnSmall ? "hidden md:flex" : "flex"
+              )}
+            >
+              <span className="text-sm text-muted-foreground whitespace-nowrap">
                 Results{" "}
                 {table.getState().pagination.pageIndex *
                   table.getState().pagination.pageSize +
@@ -628,6 +617,88 @@ export function TableTemplate<T extends object>({
                     table.getState().pagination.pageSize}{" "}
                 of {filteredRowCount}
               </span>
+            </div>
+
+            {/* Center Column: Pagination Navigation */}
+            <div
+              className={cn(
+                "flex",
+                hideFooterMetaOnSmall
+                  ? "justify-start md:justify-center"
+                  : "justify-center"
+              )}
+            >
+              {" "}
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        table.previousPage();
+                      }}
+                      className={
+                        !table.getCanPreviousPage()
+                          ? "pointer-events-none opacity-50"
+                          : "cursor-pointer"
+                      }
+                    />
+                  </PaginationItem>
+                  {pageStart > 0 && (
+                    <PaginationItem>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  )}
+                  {pageIndexes.map((pageIndex) => (
+                    <PaginationItem key={pageIndex}>
+                      <PaginationLink
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          table.setPageIndex(pageIndex);
+                        }}
+                        isActive={activePage === pageIndex}
+                        className="cursor-pointer"
+                      >
+                        {pageIndex + 1}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ))}
+                  {pageEnd < pageCount && (
+                    <PaginationItem>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  )}
+                  <PaginationItem>
+                    <PaginationNext
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        table.nextPage();
+                      }}
+                      className={
+                        !table.getCanNextPage()
+                          ? "pointer-events-none opacity-50"
+                          : "cursor-pointer"
+                      }
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+
+            {/* Right Column: Page Size Selector */}
+            <div className="flex items-center justify-end gap-2">
+              <span
+                className={cn(
+                  "text-sm text-muted-foreground whitespace-nowrap",
+                  hideFooterMetaOnSmall ? "hidden md:inline" : ""
+                )}
+              >
+                {" "}
+                Rows per page:
+              </span>
               <Select
                 value={String(activePageSize)}
                 onValueChange={(value) => {
@@ -635,7 +706,7 @@ export function TableTemplate<T extends object>({
                   table.setPageIndex(0);
                 }}
               >
-                <SelectTrigger className="bg-card">
+                <SelectTrigger className="bg-card w-20">
                   <SelectValue placeholder="Rows" />
                 </SelectTrigger>
                 <SelectContent className="max-h-40 overflow-y-auto ">

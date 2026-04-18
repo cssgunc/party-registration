@@ -65,6 +65,14 @@ export default function Header({ className }: { className?: string }) {
                 </DropdownMenuItem>
               </Link>
             )}
+            {role === "police_admin" && (
+              <Link href="/police/admin">
+                <DropdownMenuItem>
+                  <Image src={user} alt="user" />
+                  <span>Police Admin Dashboard</span>
+                </DropdownMenuItem>
+              </Link>
+            )}
             <DropdownMenuItem
               onClick={() => signOut({ callbackUrl: "/login" })}
             >

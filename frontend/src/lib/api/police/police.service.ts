@@ -16,36 +16,20 @@ export class PoliceService {
    * Increment location warning count (POST /api/police/locations/{location_id}/warnings)
    */
   async incrementWarnings(locationId: number): Promise<LocationDto> {
-    try {
-      const response = await this.client.post<LocationDtoBackend>(
-        `/police/locations/${locationId}/warnings`
-      );
-      return convertLocation(response.data);
-    } catch (error) {
-      console.error(
-        `Failed to increment warnings for location ${locationId}:`,
-        error
-      );
-      throw new Error("Failed to increment warnings");
-    }
+    const response = await this.client.post<LocationDtoBackend>(
+      `/police/locations/${locationId}/warnings`
+    );
+    return convertLocation(response.data);
   }
 
   /**
    * Increment location citation count (POST /api/police/locations/{location_id}/citations)
    */
   async incrementCitations(locationId: number): Promise<LocationDto> {
-    try {
-      const response = await this.client.post<LocationDtoBackend>(
-        `/police/locations/${locationId}/citations`
-      );
-      return convertLocation(response.data);
-    } catch (error) {
-      console.error(
-        `Failed to increment citations for location ${locationId}:`,
-        error
-      );
-      throw new Error("Failed to increment citations");
-    }
+    const response = await this.client.post<LocationDtoBackend>(
+      `/police/locations/${locationId}/citations`
+    );
+    return convertLocation(response.data);
   }
 }
 

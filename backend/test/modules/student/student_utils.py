@@ -7,6 +7,7 @@ from src.modules.student.student_entity import StudentEntity
 from src.modules.student.student_model import (
     ContactPreference,
     DbStudent,
+    SelfUpdateStudentDto,
     StudentCreateDto,
     StudentData,
     StudentDto,
@@ -37,7 +38,7 @@ class StudentTestUtils(
     ResourceTestUtils[
         StudentEntity,
         StudentData,
-        StudentDto | StudentUpdateDto | DbStudent,
+        StudentDto | StudentUpdateDto | DbStudent | SelfUpdateStudentDto,
     ]
 ):
     def __init__(

@@ -46,11 +46,11 @@ interface StudentInfoProps {
 export default function StudentInfo({ initialData }: StudentInfoProps) {
   const updateStudentMutation = useUpdateStudent();
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState<StudentInfoValues>({
+  const [formData, setFormData] = useState<Partial<StudentInfoValues>>({
     first_name: initialData.first_name,
     last_name: initialData.last_name,
-    phone_number: initialData.phone_number,
-    contact_preference: initialData.contact_preference,
+    phone_number: initialData.phone_number ?? "",
+    contact_preference: initialData.contact_preference ?? undefined,
     address: initialData.residence?.location.formatted_address ?? "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -120,7 +120,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
   // Update the form data when the user changes a field while handling errors
   const updateField = <K extends keyof StudentInfoValues>(
     field: K,
-    value: StudentInfoValues[K]
+    value: StudentInfoValues[K] | undefined
   ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
@@ -186,7 +186,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
 
             <div className="mt-3 sm:mt-6 sm:border-b">
               <p className="subhead-content mb-2">Phone Number</p>
-              <p className="content">{displayData.phone_number}</p>
+              <p className="content">{displayData.phone_number || "—"}</p>
             </div>
 
             <div className="mt-3 sm:mt-6 sm:border-b">
@@ -195,7 +195,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
                 {displayData.contact_preference
                   ? displayData.contact_preference.charAt(0).toUpperCase() +
                     displayData.contact_preference.slice(1)
-                  : "Not set"}
+                  : "—"}
               </p>
             </div>
           </div>
@@ -257,7 +257,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
                   id="phone-number"
                   type="tel"
                   placeholder="(123) 456-7890"
-                  value={formatPhoneNumberInput(formData.phone_number)}
+                  value={formatPhoneNumberInput(formData.phone_number ?? "")}
                   onChange={(e) =>
                     updateField(
                       "phone_number",

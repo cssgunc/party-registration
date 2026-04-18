@@ -1,6 +1,6 @@
 import pytest
 from src.core.exceptions import CredentialsException
-from src.modules.police.police_model import PoliceAccountDto
+from src.modules.police.police_model import PoliceAccountDto, PoliceRole
 from src.modules.police.police_service import (
     PoliceConflictException,
     PoliceNotFoundException,
@@ -43,7 +43,7 @@ class TestPoliceService:
         """Test successfully creating a new police account."""
         data = await self.police_utils.next_data()
 
-        result = await self.police_service.create_police(data.email, data.password)
+        result = await self.police_service.create_police(data.email, data.password, data.role)
 
         assert isinstance(result, PoliceAccountDto)
         assert result.email == data.email
@@ -55,7 +55,11 @@ class TestPoliceService:
         police_entity = await self.police_utils.create_one()
 
         with pytest.raises(PoliceConflictException):
-            await self.police_service.create_police(police_entity.email, "newpassword")
+            await self.police_service.create_police(
+                police_entity.email,
+                "newpassword",
+                police_entity.role,
+            )
 
     @pytest.mark.asyncio
     async def test_create_multiple_police(self) -> None:
@@ -70,18 +74,36 @@ class TestPoliceService:
         police_entity = await self.police_utils.create_one()
 
         result = await self.police_service.update_police(
-            police_entity.id, "updated@unc.edu", "newpassword"
+            police_entity.id,
+            "updated@unc.edu",
+            police_entity.role,
         )
 
         assert isinstance(result, PoliceAccountDto)
         assert result.id == police_entity.id
         assert result.email == "updated@unc.edu"
+        assert result.role == police_entity.role
+
+    @pytest.mark.asyncio
+    async def test_update_police_role_success(self) -> None:
+        police_entity = await self.police_utils.create_one(role=PoliceRole.OFFICER)
+        result = await self.police_service.update_police(
+            police_entity.id,
+            police_entity.email,
+            PoliceRole.POLICE_ADMIN,
+        )
+        assert result.role == PoliceRole.POLICE_ADMIN
 
     @pytest.mark.asyncio
     async def test_update_police_not_found(self) -> None:
         """Test updating non-existent police raises PoliceNotFoundException."""
+        data = await self.police_utils.next_data()
         with pytest.raises(PoliceNotFoundException):
-            await self.police_service.update_police(99999, "updated@unc.edu", "newpassword")
+            await self.police_service.update_police(
+                99999,
+                "updated@unc.edu",
+                data.role,
+            )
 
     @pytest.mark.asyncio
     async def test_update_police_duplicate_email(self) -> None:
@@ -90,7 +112,26 @@ class TestPoliceService:
         police2 = await self.police_utils.create_one()
 
         with pytest.raises(PoliceConflictException):
-            await self.police_service.update_police(police1.id, police2.email, "newpassword")
+            await self.police_service.update_police(
+                police1.id,
+                police2.email,
+                police1.role,
+            )
+
+    @pytest.mark.asyncio
+    async def test_update_police_does_not_change_password(self) -> None:
+        police_entity = await self.police_utils.create_one()
+        original_hashed_password = police_entity.hashed_password
+
+        await self.police_service.update_police(
+            police_entity.id,
+            "updated-no-password@unc.edu",
+            police_entity.role,
+        )
+
+        all_police = await self.police_utils.get_all()
+        updated = next(p for p in all_police if p.id == police_entity.id)
+        assert updated.hashed_password == original_hashed_password
 
     @pytest.mark.asyncio
     async def test_delete_police_success(self) -> None:
