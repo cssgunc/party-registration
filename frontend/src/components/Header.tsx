@@ -2,7 +2,6 @@
 
 import logout from "@/components/icons/log-out.svg";
 import user from "@/components/icons/user.svg";
-import { UserAvatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -10,6 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { signOut } from "@/lib/auth/signout";
 import { cn } from "@/lib/utils";
 import { useSession } from "next-auth/react";
