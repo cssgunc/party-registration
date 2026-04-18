@@ -141,7 +141,6 @@ export const IncidentTable = () => {
       "New Incident",
       "Add a new incident to the system",
       <IncidentTableForm
-        title="New Incident"
         allLocations={locations}
         onSubmit={handleCreateSubmit}
         submissionError={submissionError}
@@ -158,7 +157,6 @@ export const IncidentTable = () => {
       "Edit Incident",
       "Update incident information",
       <IncidentTableForm
-        title="Edit Incident"
         allLocations={locations}
         editData={incident}
         onSubmit={(data) => handleEditSubmit(incident.id, data)}
@@ -267,7 +265,7 @@ export const IncidentTable = () => {
         return (
           <GenericInfoChip
             chipKey={`incident-${row.original.id}-location`}
-            title="Location Information"
+            title="Info about the Location"
             description="Detailed information about the selected location"
             shortName={location.formatted_address}
             sidebarContent={<LocationInfoChipDetails data={location} />}
@@ -352,7 +350,7 @@ export const IncidentTable = () => {
         return (
           <GenericInfoChip
             chipKey={`incident-${row.original.id}-description`}
-            title="Description"
+            title="Incident Description"
             description="View the full incident description"
             shortName={truncateDescription(description)}
             sidebarContent={
