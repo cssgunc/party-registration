@@ -114,7 +114,7 @@ class AuthTestUtils:
             payload = PoliceAccessTokenPayload(
                 sub=police.id,
                 email=police.email,
-                role="police",
+                role=police.role.value,
                 exp=expires_at,
                 iat=datetime.now(UTC),
             ).model_dump()
@@ -157,7 +157,7 @@ class AuthTestUtils:
             payload = payload.model_dump(mode="json")
         assert payload["sub"] == police.id
         assert payload["email"] == police.email
-        assert payload["role"] == "police"
+        assert payload["role"] == police.role.value
         for field in ("first_name", "last_name", "pid", "onyen"):
             assert field not in payload, f"Police token should not contain '{field}'"
 

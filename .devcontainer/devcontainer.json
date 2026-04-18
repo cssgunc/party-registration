@@ -2,6 +2,7 @@
   "dockerComposeFile": "docker-compose.yml",
   "workspaceFolder": "/workspace",
   "service": "app",
+  "runServices": ["app", "db", "saml-idp"],
   "remoteUser": "vscode",
   "forwardPorts": [1433, 5050],
   "postCreateCommand": "cd .devcontainer && ./post_create.sh",

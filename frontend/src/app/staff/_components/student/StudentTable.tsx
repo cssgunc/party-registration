@@ -11,11 +11,13 @@ import {
 import {
   useDeleteStudent,
   useStudents,
+  useUpdateIsRegistered,
   useUpdateStudent,
 } from "@/lib/api/student/admin-student.queries";
 import { StudentDto, StudentUpdateDto } from "@/lib/api/student/student.types";
 import { isFromThisSchoolYear } from "@/lib/utils";
 import { ColumnDef } from "@tanstack/react-table";
+import { isAxiosError } from "axios";
 import { useState } from "react";
 import LocationInfoChipDetails from "../party/details/LocationInfoChipDetails";
 import { GenericInfoChip } from "../shared/sidebar/GenericInfoChip";
@@ -39,8 +41,33 @@ const hasStudentChanged = (
 
 const toEditData = (student: StudentDto) => ({
   ...student,
+  phone_number: student.phone_number ?? "",
+  contact_preference: student.contact_preference ?? undefined,
   residence_place_id: student.residence?.location.google_place_id ?? null,
 });
+
+const getErrorMessage = (error: Error): string => {
+  if (isAxiosError(error)) {
+    const detail = error.response?.data as {
+      message?: string;
+      detail?: string;
+    };
+    switch (error.response?.status) {
+      case 409:
+        return "This phone number is taken by another student.";
+      case 404:
+        return "Student not found.";
+      case 403:
+        return "You do not have permission to perform this action.";
+      case 500:
+        return "Server error. Please try again later.";
+    }
+    if (detail?.message) return String(detail.message);
+    if (detail?.detail) return String(detail.detail);
+    if (error.message) return error.message;
+  }
+  return "Operation failed";
+};
 
 const SERVER_COLUMN_MAP: ServerColumnMap = {
   onyen: { backendField: "onyen", filterOperator: "contains" },
@@ -65,7 +92,7 @@ export const StudentTable = () => {
   const studentsQuery = useStudents(serverParams);
   const students = studentsQuery.data?.items ?? [];
 
-  const checkboxMutation = useUpdateStudent();
+  const checkboxMutation = useUpdateIsRegistered();
 
   const editFormMutation = useUpdateStudent({
     onOptimisticUpdate: () => {
@@ -73,16 +100,16 @@ export const StudentTable = () => {
       setEditingStudent(null);
     },
     onError: (error) => {
-      console.error("Failed to update student:", error);
       if (!editingStudent) return;
+
       openSidebar(
         `edit-student-${editingStudent.id}`,
         "Edit Student",
         "Update student information",
         <StudentTableForm
           onSubmit={(data) => handleEditSubmit(editingStudent, data)}
-          submissionError={`Failed to update student: ${error.message}`}
-          editData={editingStudent}
+          submissionError={getErrorMessage(error)}
+          editData={toEditData(editingStudent)}
         />
       );
     },
@@ -176,6 +203,7 @@ export const StudentTable = () => {
       cell: ({ row }) => {
         const preference =
           row.getValue<StudentDto["contact_preference"]>("contact_preference");
+        if (!preference) return "—";
         return preference === "call" ? "Call" : "Text";
       },
     },
@@ -219,10 +247,7 @@ export const StudentTable = () => {
             onCheckedChange={(checked: boolean) => {
               checkboxMutation.mutate({
                 id: student.id,
-                data: {
-                  ...student,
-                  last_registered: checked ? new Date() : null,
-                },
+                data: { is_registered: checked },
               });
             }}
             disabled={checkboxMutation.isPending}

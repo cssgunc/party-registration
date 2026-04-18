@@ -2,7 +2,11 @@ import pytest
 from httpx import AsyncClient
 from src.modules.account.account_entity import AccountEntity, AccountRole
 from src.modules.account.account_model import AccountDto
-from src.modules.account.account_service import AccountConflictException, AccountNotFoundException
+from src.modules.account.account_service import (
+    AccountConflictException,
+    AccountNotFoundException,
+    CannotDeleteOwnAccountException,
+)
 from test.modules.account.account_utils import AccountTestUtils
 from test.utils.http.assertions import (
     assert_res_failure,
@@ -10,7 +14,11 @@ from test.utils.http.assertions import (
     assert_res_success,
     assert_res_validation_error,
 )
-from test.utils.http.test_templates import generate_auth_required_tests, generate_filter_sort_tests
+from test.utils.http.test_templates import (
+    generate_auth_required_tests,
+    generate_filter_sort_tests,
+    generate_search_tests,
+)
 
 test_account_sort, test_account_filter = generate_filter_sort_tests(
     "/api/accounts",
@@ -31,6 +39,11 @@ test_account_sort, test_account_filter = generate_filter_sort_tests(
         ("pid", 0),
         ("role", "admin"),
     ],
+)
+
+test_account_search_no_results, test_account_search_ok = generate_search_tests(
+    "/api/accounts",
+    AccountDto,
 )
 
 test_account_authentication = generate_auth_required_tests(
@@ -208,5 +221,43 @@ class TestAccountRouter:
     @pytest.mark.asyncio
     async def test_delete_account_not_found(self):
         """Test deleting a non-existent account returns 404."""
+        response = await self.admin_client.delete("/api/accounts/88888")
+        assert_res_failure(response, AccountNotFoundException(88888))
+
+    @pytest.mark.asyncio
+    async def test_delete_own_account(self, accounts_two_per_role: list[AccountEntity]):
+        """Test that an admin cannot delete their own account."""
         response = await self.admin_client.delete("/api/accounts/99999")
-        assert_res_failure(response, AccountNotFoundException(99999))
+        assert_res_failure(response, CannotDeleteOwnAccountException())
+
+        accounts = await self.account_utils.get_all()
+        assert len(accounts) == len(accounts_two_per_role)
+
+
+class TestAccountListSearch:
+    """Tests for full-table search on GET /api/accounts."""
+
+    admin_client: AsyncClient
+    account_utils: AccountTestUtils
+
+    @pytest.fixture(autouse=True)
+    def _setup(self, account_utils: AccountTestUtils, admin_client: AsyncClient):
+        self.account_utils = account_utils
+        self.admin_client = admin_client
+
+    @pytest.mark.parametrize(
+        "create_kwargs,search_term",
+        [
+            ({"first_name": "Uniquelynamed"}, "Uniquelynamed"),
+            ({"email": "searchme@unc.edu"}, "searchme"),
+            ({"first_name": "Uniquelynamed"}, "uniquelynamed"),
+        ],
+    )
+    @pytest.mark.asyncio
+    async def test_search_matches_field(self, create_kwargs: dict, search_term: str):
+        account1 = await self.account_utils.create_one(**create_kwargs)
+        _account2 = await self.account_utils.create_one()
+
+        response = await self.admin_client.get(f"/api/accounts?search={search_term}")
+        paginated = assert_res_paginated(response, AccountDto, total_records=1)
+        self.account_utils.assert_matches(paginated.items[0], account1.to_dto())
