@@ -38,8 +38,10 @@ export function GenericInfoChip({
     <Badge
       onClick={handleOpen}
       className={cn(
-        "cursor-pointer px-3 py-1",
-        isSelected ? "bg-primary text-card" : "bg-card text-foreground"
+        "cursor-pointer border border-transparent bg-transparent px-3 py-1 transition-colors",
+        isSelected
+          ? "border-primary/25 bg-primary/10 text-primary hover:bg-primary/15"
+          : "text-foreground hover:bg-accent/60"
       )}
     >
       <Image src={info} alt="info" className="mr-2" />

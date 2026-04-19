@@ -101,9 +101,9 @@ export default function PartyRegistrationInfo() {
           </AccordionContent>
         </AccordionItem>
       </Accordion>
-      <div className="flex flex-col items-center content 2xl:mt-20">
+      <div className="mt-6 flex flex-col items-center text-center content 2xl:mt-20">
         <AlertTriangleIcon />
-        <p className="text-center w-4/5 mt-2 mb-6 2xl:mb-0">
+        <p className="mt-2 mb-6 max-w-md 2xl:mb-0">
           Keep in mind that the party registration program only pertains to
           nuisance noise complaints. Calls to 911 for other violations will
           likely result in local law enforcement showing up without a warning.

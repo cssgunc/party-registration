@@ -194,8 +194,10 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                   data-party-id={party.id}
                   onClick={() => onSelect?.(party)}
                   className={cn(
-                    "cursor-pointer border-b border-border px-4 py-4 last:border-b-0 hover:bg-secondary/5",
-                    activeParty?.id === party.id && "bg-secondary/5"
+                    "cursor-pointer border-b border-border px-4 py-4 last:border-b-0 transition-colors",
+                    activeParty?.id === party.id
+                      ? "bg-primary/10 ring-1 ring-primary/20"
+                      : "bg-card hover:bg-accent/60"
                   )}
                 >
                   <div className="space-y-2">
@@ -215,7 +217,7 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                           <button
                             type="button"
                             onClick={(event) => event.stopPropagation()}
-                            className="rounded-md p-1 text-secondary hover:bg-muted"
+                            className="rounded-md p-1 text-secondary transition-colors hover:bg-accent hover:text-foreground"
                             aria-label="Open incident menu"
                           >
                             <EllipsisVertical height={16} />
@@ -229,9 +231,12 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                                 onClick={(event) =>
                                   openIncidentDialog(event, severity, party)
                                 }
+                                className="text-foreground"
                               >
                                 <Image src={flag} alt={alt} />
-                                <span className="text-sm">{label}</span>
+                                <span className="text-sm text-foreground">
+                                  {label}
+                                </span>
                               </DropdownMenuItem>
                             )
                           )}

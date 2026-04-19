@@ -55,7 +55,7 @@ import {
 } from "@tanstack/react-table";
 import { MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
 import { useSession } from "next-auth/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { DeleteConfirmDialog } from "../dialog/DeleteConfirmDialog";
 import { useSidebar } from "../sidebar/SidebarContext";
 import { ColumnHeader } from "./ColumnHeader";
@@ -94,6 +94,7 @@ export type TableProps<T> = {
   columnMap?: ServerColumnMap;
   canManageRows?: boolean;
   canDeleteRow?: (row: T) => boolean;
+  actionMenuIcon?: ReactNode;
 };
 
 export function TableTemplate<T extends object>({
@@ -117,6 +118,7 @@ export function TableTemplate<T extends object>({
   columnMap,
   canManageRows,
   canDeleteRow,
+  actionMenuIcon,
 }: TableProps<T>) {
   const isServerMode = !!serverMeta;
   const { isOpen, openSidebar, closeSidebar } = useSidebar();
@@ -329,7 +331,7 @@ export function TableTemplate<T extends object>({
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                      <MoreHorizontal className="h-4 w-4" />
+                      {actionMenuIcon ?? <MoreHorizontal className="h-4 w-4" />}
                       <span className="sr-only">Open menu</span>
                     </Button>
                   </DropdownMenuTrigger>

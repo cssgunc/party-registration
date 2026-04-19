@@ -24,7 +24,7 @@ import {
 } from "@/lib/api/shared/query-params";
 import { formatRoleLabel } from "@/lib/utils";
 import { ColumnDef } from "@tanstack/react-table";
-import { Download } from "lucide-react";
+import { Download, Shield } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useMemo, useState } from "react";
 
@@ -193,6 +193,7 @@ export default function PoliceAdminTable() {
         columnMap={SERVER_COLUMN_MAP}
         canManageRows={session?.role === "police_admin"}
         canDeleteRow={(row) => row.id !== currentPoliceId}
+        actionMenuIcon={<Shield className="h-4 w-4" />}
       />
     </div>
   );

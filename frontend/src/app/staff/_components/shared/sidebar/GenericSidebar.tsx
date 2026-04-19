@@ -21,7 +21,7 @@ function GenericSidebar() {
       {/* Sidebar */}
       <div
         className={cn(
-          "fixed top-0 right-0 w-full max-w-96 h-full bg-card shadow-lg z-50 flex flex-col transform transition-transform duration-300 ease-in-out",
+          "fixed top-0 right-0 h-full w-full max-w-[34rem] bg-card shadow-lg z-50 flex flex-col transform transition-transform duration-300 ease-in-out",
           isOpen ? "translate-x-0" : "translate-x-full"
         )}
       >

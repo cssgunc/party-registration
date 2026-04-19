@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/select";
 import { Column } from "@tanstack/react-table";
 import { X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DateRange } from "react-day-picker";
 
 interface FilterInputProps<T> {
@@ -38,6 +38,39 @@ export function FilterInput<T>({
   const [textValue, setTextValue] = useState(
     (column?.getFilterValue() as string) ?? ""
   );
+  const filterValue = column?.getFilterValue();
+
+  useEffect(() => {
+    if (!column) return;
+    if (filterType !== "date" && filterType !== "dateRange") return;
+
+    const toDate = (value: unknown): Date | undefined => {
+      if (!value) return undefined;
+      if (value instanceof Date) {
+        return Number.isNaN(value.getTime()) ? undefined : value;
+      }
+      if (typeof value === "string" || typeof value === "number") {
+        const parsed = new Date(value);
+        return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+      }
+      return undefined;
+    };
+
+    const range = filterValue as
+      | { from?: unknown; to?: unknown }
+      | undefined
+      | null;
+
+    if (!range) {
+      setDateRange(undefined);
+      return;
+    }
+
+    setDateRange({
+      from: toDate(range.from),
+      to: toDate(range.to),
+    });
+  }, [column, filterType, filterValue]);
 
   if (!column) {
     return (
@@ -58,8 +91,6 @@ export function FilterInput<T>({
       </Card>
     );
   }
-
-  const filterValue = column.getFilterValue();
 
   const handleDateRangeApply = () => {
     if (dateRange?.from || dateRange?.to) {
@@ -96,7 +127,7 @@ export function FilterInput<T>({
           <div className="space-y-4 p-4">
             <div className="space-y-2">
               <Label>Date Range</Label>
-              <div className="flex gap-2 justify-center flex-row md:justify-between md:gap-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
                 <DatePicker
                   value={dateRange?.from ?? null}
                   onChange={(date) =>
@@ -107,8 +138,9 @@ export function FilterInput<T>({
                   }
                   placeholder="Start Date"
                   dateFormat="LLL dd, y"
+                  className="w-full"
                 />
-                <div className="self-center flex-0">and</div>
+                <div className="text-sm text-muted-foreground">and</div>
                 <DatePicker
                   value={dateRange?.to ?? null}
                   onChange={(date) =>
@@ -119,6 +151,7 @@ export function FilterInput<T>({
                   }
                   placeholder="End Date"
                   dateFormat="LLL dd, y"
+                  className="w-full"
                 />
               </div>
             </div>

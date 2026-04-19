@@ -177,6 +177,8 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
       initialData?.contact_preference ??
       undefined,
   };
+  const formattedResidenceAddress =
+    initialData.residence?.location.formatted_address?.trim() || "—";
 
   const currentDate = new Date();
   let school_year = "";
@@ -197,19 +199,24 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
   if (!isEditing) {
     return (
       <div className="bg-card rounded-lg p-6 sm:px-10 sm:py-8 w-full flex flex-col">
-        <div className="relative flex justify-center mb-6">
-          <div className="absolute left-0 flex items-center gap-2">
-            <ArrowLeft className="h-4" />
-            <Link href="/student">Back to home</Link>
-          </div>
-          <h1 className="page-title">Profile</h1>
-          <button
-            onClick={() => setIsEditing(true)}
-            className="absolute right-0 bg-transparent"
-            aria-label="Edit profile"
+        <div className="mb-6 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+          <Link
+            href="/student"
+            className="inline-flex items-center gap-2 content justify-self-start"
           >
-            <Pencil className=" content cursor-pointer" />
-          </button>
+            <ArrowLeft className="h-4" />
+            Back to home
+          </Link>
+          <h1 className="page-title">Profile</h1>
+          <div className="justify-self-end">
+            <button
+              onClick={() => setIsEditing(true)}
+              className="bg-transparent"
+              aria-label="Edit profile"
+            >
+              <Pencil className="content cursor-pointer" />
+            </button>
+          </div>
         </div>
 
         <section>
@@ -243,9 +250,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
           </div>
           <div className="mt-3 mb-4 sm:mt-6 ">
             <p className="subhead-content mb-2">{school_year} Address</p>
-            <p className="content">
-              {initialData.residence?.location.formatted_address ?? "None"}
-            </p>
+            <p className="content">{formattedResidenceAddress}</p>
           </div>
         </section>
 
@@ -291,11 +296,14 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
       onSubmit={handleSubmit}
       className="bg-card rounded-lg w-full p-6 sm:p-10"
     >
-      <div className="relative flex justify-center mb-6">
-        <div className="absolute left-0 flex items-center gap-2">
+      <div className="mb-6 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+        <Link
+          href="/student"
+          className="inline-flex items-center gap-2 content justify-self-start"
+        >
           <ArrowLeft className="h-4" />
-          <Link href="/student">Back to home</Link>
-        </div>
+          Back to home
+        </Link>
         <h1 className="page-title">Edit Profile Information</h1>
       </div>
       <FieldGroup>
@@ -397,9 +405,7 @@ export default function StudentInfo({ initialData }: StudentInfoProps) {
                 <p className="subhead-content mt-3 sm:mt-0">
                   {school_year} Address
                 </p>
-                <p className="content my-2">
-                  {initialData.residence?.location.formatted_address}
-                </p>
+                <p className="content my-2">{formattedResidenceAddress}</p>
 
                 <div className="flex flex-row mt-3 gap-2">
                   <TriangleAlert className="w-4 h-4 content" />
