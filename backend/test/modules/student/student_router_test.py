@@ -985,3 +985,17 @@ class TestStudentListSearch:
         response = await self.admin_client.get(f"/api/students?search={search_term}")
         paginated = assert_res_paginated(response, StudentDto, total_records=1)
         self.student_utils.assert_matches(student1, paginated.items[0])
+
+    @pytest.mark.parametrize(
+        "search_term",
+        ["Jane Doe", "jane doe", "JANE DOE", "Jane Do", "ane Doe"],
+    )
+    @pytest.mark.asyncio
+    async def test_search_matches_full_name(self, search_term: str):
+        """Search should match students by their full name (first + last)."""
+        student1 = await self.student_utils.create_one(first_name="Jane", last_name="Doe")
+        _student2 = await self.student_utils.create_one(first_name="Bob", last_name="Smith")
+
+        response = await self.admin_client.get(f"/api/students?search={search_term}")
+        paginated = assert_res_paginated(response, StudentDto, total_records=1)
+        self.student_utils.assert_matches(student1, paginated.items[0])
