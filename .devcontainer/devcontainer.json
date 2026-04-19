@@ -19,9 +19,10 @@
         "ms-python.python",
         "ms-python.vscode-pylance",
         "charliermarsh.ruff",
-        "gruntfuggly.todo-tree",
         "ms-azuretools.vscode-docker",
-        "github.vscode-github-actions"
+        "github.vscode-github-actions",
+        "github.vscode-pull-request-github",
+        "eamodio.gitlens"
       ],
       "settings": {
         "terminal.integrated.defaultProfile.linux": "zsh",
@@ -47,14 +48,11 @@
           "source.organizeImports": "explicit"
         },
         "files.eol": "\n",
-        "typescript.tsdk": "frontend/node_modules/typescript/lib",
-        "typescript.enablePromptUseWorkspaceTsdk": true,
-        "javascript.updateImportsOnFileMove.enabled": "always",
-        "typescript.updateImportsOnFileMove.enabled": "always",
-        "typescript.preferences.importModuleSpecifier": "shortest",
-        "javascript.preferences.importModuleSpecifier": "shortest",
-        "typescript.preferences.quoteStyle": "double",
-        "javascript.preferences.quoteStyle": "double",
+        "js/ts.tsdk.path": "frontend/node_modules/typescript/lib",
+        "js/ts.tsdk.promptToUseWorkspaceVersion": true,
+        "js/ts.updateImportsOnFileMove.enabled": "always",
+        "js/ts.preferences.importModuleSpecifier": "shortest",
+        "js/ts.preferences.quoteStyle": "double",
         "[typescript]": {
           "editor.defaultFormatter": "esbenp.prettier-vscode"
         },
