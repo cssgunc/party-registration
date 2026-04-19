@@ -11,8 +11,6 @@ export function PartyInfoChipDetails({ data }: PartyInfoChipDetailsProps) {
   return (
     <GenericChipDetails<PartyDto>
       data={data}
-      title={"Info about the Party"}
-      description={"View information on the Party you just clicked on"}
       renderView={(d) => (
         <div className="space-y-6">
           <div>

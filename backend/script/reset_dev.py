@@ -112,6 +112,9 @@ async def reset_dev():
                 email=police_data["email"],
                 hashed_password=hash_password(police_data["password"]),
                 role=PoliceRole(police_data.get("role", PoliceRole.OFFICER.value)),
+                is_verified=police_data.get("is_verified", False),
+                verification_token=None,
+                verification_token_expires_at=None,
             )
             session.add(police)
 
