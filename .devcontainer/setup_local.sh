@@ -34,14 +34,14 @@ info "Repo root : $REPO_ROOT"
 info "OS        : $OS"
 
 # ══════════════════════════════════════════════════════════════════════════════
-step "1/8  Python 3.12"
+step "1/8  Python 3.13"
 # ══════════════════════════════════════════════════════════════════════════════
 
 PYTHON=""
-for cmd in python3.12 python3 python; do
+for cmd in python3.13 python3 python; do
   if command -v "$cmd" &>/dev/null; then
     ver=$("$cmd" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null || true)
-    if [[ "$ver" == "3.12" ]]; then
+    if [[ "$ver" == "3.13" ]]; then
       PYTHON="$cmd"
       break
     fi
@@ -49,9 +49,9 @@ for cmd in python3.12 python3 python; do
 done
 
 if [[ -z "$PYTHON" ]]; then
-  error "Python 3.12 not found."
+  error "Python 3.13 not found."
   if [[ "$OS" == "mac" ]]; then
-    error "  Install via Homebrew:  brew install python@3.12"
+    error "  Install via Homebrew:  brew install python@3.13"
     error "  Or download from:      https://www.python.org/downloads/"
   else
     error "  Download from: https://www.python.org/downloads/"
@@ -59,7 +59,7 @@ if [[ -z "$PYTHON" ]]; then
   fi
   exit 1
 fi
-success "Found Python 3.12: $(command -v "$PYTHON")"
+success "Found Python 3.13: $(command -v "$PYTHON")"
 
 # ══════════════════════════════════════════════════════════════════════════════
 step "2/8  Virtual environment + Python packages"

@@ -116,6 +116,8 @@ The development IdP certificate (`SAML_IDP_CERT`) is already populated in `front
 
 The mock IdP users are defined in `.devcontainer/saml-idp/authsources.php` and match the accounts in `frontend/shared/mock_data.json`. Credentials follow the pattern `<username>:<username>pass`.
 
+**SSO Authenticated Accounts**
+
 | Credential                  | Name            | Role    | Email                  |
 | --------------------------- | --------------- | ------- | ---------------------- |
 | `student1` / `student1pass` | Steven Morrison | student | stevenmorrison@unc.edu |
@@ -124,7 +126,12 @@ The mock IdP users are defined in `.devcontainer/saml-idp/authsources.php` and m
 | `staff1` / `staff1pass`     | Jane Smith      | staff   | janesmith@unc.edu      |
 | `admin1` / `admin1pass`     | John Doe        | admin   | johndoe@unc.edu        |
 
-For police login, use the credentials in `frontend/shared/mock_data.json` (`police@example.com` / `securepassword`) via the separate police login form.
+**Police Accounts**
+
+| Email                  | Password            |
+| --------------------------- | --------------- |
+| officer@example.com | securepassword |
+| policeadmin@example.com | securepassword   |
 
 ## Running Backend Tests
 
