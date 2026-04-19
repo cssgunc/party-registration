@@ -24,7 +24,7 @@ $config = [
     'example-userpass' => [
         'exampleauth:UserPass',
 
-        // ── Students ────────────────────────────────────────────
+        // -- Students ----------------------------------------------------
 
         // Established user - already registered and many parties
         'student1:student1pass' => [
@@ -77,7 +77,7 @@ $config = [
             'affiliation'          => ['student'],
         ],
 
-        // ── Staff ───────────────────────────────────────────────
+        // -- Staff ------------------------------------------------------
 
         'staff1:staff1pass' => [
             'uid'                  => ['janesmith'],
@@ -91,7 +91,7 @@ $config = [
             'affiliation'          => ['staff'],
         ],
 
-        // ── Admins ──────────────────────────────────────────────
+        // -- Admins -----------------------------------------------------
 
         'admin1:admin1pass' => [
             'uid'                  => ['johndoe'],
