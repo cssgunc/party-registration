@@ -51,6 +51,7 @@ export const POLICE_ACCOUNTS: PoliceAccountDto[] = mockData.police.map((p) => ({
   id: p.id,
   email: p.email,
   role: p.role as PoliceAccountDto["role"],
+  is_verified: p.is_verified,
 }));
 
 // Parse Accounts

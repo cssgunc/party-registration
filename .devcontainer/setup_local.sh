@@ -157,8 +157,28 @@ fi
 info "Verify that the MSSQL_* vars in backend/.env match backend/.env.template"
 info "(except MSSQL_HOST which should be 'localhost')"
 
+# Ensure SMTP_HOST=localhost (not mailpit, which is only valid inside the devcontainer)
+if grep -q "^SMTP_HOST=mailpit$" "$ENV_FILE"; then
+  if [[ "$OS" == "mac" ]]; then
+    sed -i '' 's/^SMTP_HOST=mailpit$/SMTP_HOST=localhost/' "$ENV_FILE"
+  else
+    sed -i 's/^SMTP_HOST=mailpit$/SMTP_HOST=localhost/' "$ENV_FILE"
+  fi
+  success "Set SMTP_HOST=localhost in backend/.env"
+elif grep -q "^SMTP_HOST=" "$ENV_FILE"; then
+  current_smtp_host=$(grep "^SMTP_HOST=" "$ENV_FILE" | cut -d= -f2)
+  if [[ "$current_smtp_host" == "localhost" ]]; then
+    success "SMTP_HOST already set to localhost"
+  else
+    warn "SMTP_HOST is set to '$current_smtp_host' — expected 'localhost' for local dev."
+  fi
+else
+  warn "SMTP_HOST not found in backend/.env — adding SMTP_HOST=localhost"
+  echo "SMTP_HOST=localhost" >> "$ENV_FILE"
+fi
+
 # ══════════════════════════════════════════════════════════════════════════════
-step "5/8  Start containers (db + saml-idp) + reset dev DB"
+step "5/8  Start containers (db + saml-idp + mailpit) + reset dev DB"
 # ══════════════════════════════════════════════════════════════════════════════
 
 if ! command -v docker &>/dev/null; then
@@ -187,9 +207,9 @@ else
   exit 1
 fi
 
-info "Starting db and saml-idp services ($DC up -d db saml-idp) ..."
+info "Starting db, saml-idp, and mailpit services ($DC up -d db saml-idp mailpit) ..."
 cd "$REPO_ROOT/.devcontainer"
-$DC up -d db saml-idp
+$DC up -d db saml-idp mailpit
 cd "$REPO_ROOT"
 success "Containers started"
 
@@ -240,6 +260,25 @@ while ! curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/simplesaml/
 done
 echo ""
 success "SAML IdP is ready!"
+
+# Wait for Mailpit to accept HTTP connections
+info "Waiting for Mailpit to be ready (up to 30 s) ..."
+MAX_WAIT=30
+WAITED=0
+while ! curl -s -o /dev/null -w "%{http_code}" http://localhost:8025 2>/dev/null | grep -qE "^[23]"; do
+  sleep 2
+  WAITED=$((WAITED + 2))
+  echo -n "."
+  if [[ $WAITED -ge $MAX_WAIT ]]; then
+    echo ""
+    MAILPIT_CONTAINER=$(cd "$REPO_ROOT/.devcontainer" && $DC ps -q mailpit 2>/dev/null | head -1)
+    error "Mailpit did not become ready in ${MAX_WAIT}s."
+    error "  Check logs: docker logs $MAILPIT_CONTAINER"
+    exit 1
+  fi
+done
+echo ""
+success "Mailpit is ready! Web UI: http://localhost:8025"
 
 info "Running python -m script.reset_dev ..."
 cd "$REPO_ROOT/backend"
@@ -376,4 +415,5 @@ fi
 echo "  • In VSCode, select the .venv interpreter:"
 echo "      Ctrl+Shift+P → 'Python: Select Interpreter' → choose .venv"
 echo "  • Containers are running. Stop them with:"
-echo "      cd .devcontainer && $DC stop db saml-idp"
+echo "      cd .devcontainer && $DC stop db saml-idp mailpit"
+echo "  • Mailpit web UI (view sent emails): http://localhost:8025"

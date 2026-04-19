@@ -34,12 +34,29 @@ type PoliceLoginRequest = {
 
 type PoliceLoginResponse = TokenPair;
 
+type PoliceSignupRequest = {
+  email: string;
+  password: string;
+  confirm_password: string;
+};
+
+type RetryPoliceVerificationRequest = {
+  email: string;
+};
+
+type VerifyPoliceEmailRequest = {
+  token: string;
+};
+
 export type {
   ExchangeTokenRequest,
   ExchangeTokenResponse,
   PoliceLoginRequest,
   PoliceLoginResponse,
+  PoliceSignupRequest,
   RefreshTokenRequest,
   RefreshTokenResponse,
+  RetryPoliceVerificationRequest,
   TokenPair,
+  VerifyPoliceEmailRequest,
 };

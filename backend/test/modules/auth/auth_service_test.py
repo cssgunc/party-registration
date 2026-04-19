@@ -40,7 +40,7 @@ class TestAuthService:
 
         payload = self.auth_utils.decode_token(token)
         self.auth_utils.assert_account_token_payload(payload, account)
-        self.auth_utils.assert_expiration_approx(expires_at, 900)
+        self.auth_utils.assert_expiration_approx(expires_at, env.ACCESS_TOKEN_EXPIRE_MINUTES * 60)
 
     @pytest.mark.asyncio
     async def test_create_police_access_token(self, police_utils: PoliceTestUtils) -> None:
@@ -52,7 +52,7 @@ class TestAuthService:
 
         payload = self.auth_utils.decode_token(token)
         self.auth_utils.assert_police_token_payload(payload, police)
-        self.auth_utils.assert_expiration_approx(expires_at, 900)
+        self.auth_utils.assert_expiration_approx(expires_at, env.ACCESS_TOKEN_EXPIRE_MINUTES * 60)
 
     # ========================= JWT Validation Tests =========================
 

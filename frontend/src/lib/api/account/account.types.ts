@@ -48,6 +48,7 @@ type AccountTableRow = {
   pid: string;
   onyen: string;
   role: AppRole;
+  is_verified: boolean | null;
   _isPolice: boolean;
 };
 
