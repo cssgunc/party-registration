@@ -15,7 +15,7 @@ import {
   usePoliceParties,
 } from "@/lib/api/party/police-party.queries";
 import { startOfDay } from "date-fns";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import AdvancedPartySearch, {
   AdvancedPartyFilters,
 } from "./_components/AdvancedPartySearch";
@@ -135,9 +135,9 @@ export default function PolicePage() {
     });
   }, [advancedFilters, baseParties]);
 
-  function handleActiveParty(party: PartyDto | null): void {
+  const handleActiveParty = useCallback((party: PartyDto | null): void => {
     setActiveParty(party ?? undefined);
-  }
+  }, []);
 
   return (
     <main className="lg:h-[calc(100vh-var(--app-header-height))] lg:overflow-hidden overflow-y-auto bg-background px-4 py-4 md:px-6 md:py-6">
@@ -205,7 +205,7 @@ export default function PolicePage() {
             {!isLoading && !isLoadingNearby && !error && (
               <PartyList
                 parties={filteredParties}
-                onSelect={(party) => handleActiveParty(party)}
+                onSelect={handleActiveParty}
                 activeParty={activeParty}
               />
             )}

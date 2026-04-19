@@ -11,7 +11,7 @@ import {
   useMap,
 } from "@vis.gl/react-google-maps";
 import { format } from "date-fns";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 
 type Poi = {
   key: string;
@@ -195,4 +195,4 @@ const PoiMarkers = ({ pois, activePoiKey, onSelect }: PoiMarkersProps) => {
   );
 };
 
-export default EmbeddedMap;
+export default memo(EmbeddedMap);

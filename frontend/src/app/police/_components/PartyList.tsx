@@ -49,7 +49,7 @@ import { format } from "date-fns";
 import { AlertTriangle, EllipsisVertical } from "lucide-react";
 import Image, { StaticImageData } from "next/image";
 import type { MouseEvent } from "react";
-import { useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 
 const DEFAULT_PAGE_SIZE = 10;
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
@@ -95,6 +95,164 @@ const formatPreference = (pref: string | null | undefined): string => {
   return `${pref.charAt(0).toUpperCase() + pref.slice(1).toLowerCase()}`;
 };
 
+interface PartyListCardProps {
+  party: PartyDto;
+  isActive: boolean;
+  onSelect: (party: PartyDto) => void;
+  onOpenIncident: (
+    event: MouseEvent,
+    type: IncidentSeverity,
+    selectedParty: PartyDto
+  ) => void;
+}
+
+const PartyListCard = memo(function PartyListCard({
+  party,
+  isActive,
+  onSelect,
+  onOpenIncident,
+}: PartyListCardProps) {
+  const countBySeverity: Record<IncidentSeverity, number> = useMemo(
+    () => ({
+      remote_warning: getRemoteWarningCount(party.location),
+      in_person_warning: getInPersonWarningCount(party.location),
+      citation: getCitationCount(party.location),
+    }),
+    [party.location]
+  );
+
+  const handleSelect = useCallback(() => {
+    onSelect(party);
+  }, [onSelect, party]);
+
+  return (
+    <li>
+      <article
+        data-party-id={party.id}
+        onClick={handleSelect}
+        className={cn(
+          "cursor-pointer border-b border-border px-4 py-4 last:border-b-0 hover:bg-secondary/5",
+          isActive && "bg-secondary/5"
+        )}
+      >
+        <div className="space-y-2">
+          {/* Date, address, menu */}
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="content-bold font-bold text-secondary">
+                {format(party.party_datetime, "M/d/yyyy")} @{" "}
+                {formatTime(party.party_datetime)}
+              </p>
+              <p className="content-bold font-bold text-secondary">
+                {party.location.formatted_address}
+              </p>
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  onClick={(event) => event.stopPropagation()}
+                  className="rounded-md p-1 text-secondary hover:bg-muted"
+                  aria-label="Open incident menu"
+                >
+                  <EllipsisVertical height={16} />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-52" align="end">
+                {INCIDENT_MENU_ITEMS.map(({ severity, label, flag, alt }) => (
+                  <DropdownMenuItem
+                    key={severity}
+                    onClick={(event) => onOpenIncident(event, severity, party)}
+                  >
+                    <Image src={flag} alt={alt} />
+                    <span className="text-sm">{label}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          {/* Contacts with dotted separator */}
+          <div className="grid grid-rows-2 gap-y-2 mb-2 mr-4">
+            <div className="flex flex-row justify-between gap-x-0.5">
+              <p className="content text-secondary self-end mb-[-6px]">
+                {party.contact_one.first_name} {party.contact_one.last_name}
+              </p>
+              <span className="flex-1 h-[2px] bg-[radial-gradient(circle,currentColor_1px,transparent_1px)] bg-[length:6px_2px] bg-repeat-x self-end text-[var(--secondary)]"></span>
+              <div className="flex flex-row gap-x-1 mb-[-6px]">
+                <PhoneLink
+                  phoneNumber={party.contact_one.phone_number ?? "—"}
+                  onClick={(event) => event.stopPropagation()}
+                />
+                <p className="content text-secondary">{" - "}</p>
+                <p className="content text-secondary">
+                  {formatPreference(party.contact_one.contact_preference)}
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-row justify-between gap-x-0.5">
+              <p className="content text-secondary self-end mb-[-6px]">
+                {party.contact_two.first_name} {party.contact_two.last_name}
+              </p>
+              <span className="flex-1 h-[2px] bg-[radial-gradient(circle,currentColor_1px,transparent_1px)] bg-[length:6px_2px] bg-repeat-x self-end text-[var(--secondary)]"></span>
+              <div className="flex flex-row gap-x-1 mb-[-6px]">
+                <PhoneLink
+                  phoneNumber={party.contact_two.phone_number}
+                  onClick={(event) => event.stopPropagation()}
+                />
+                <p className="content text-secondary">{" - "}</p>
+                <p className="content text-secondary">
+                  {formatPreference(party.contact_two.contact_preference)}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Flags + date */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {INCIDENT_MENU_ITEMS.map(
+                ({ severity, flag, alt, hoverLabel }) => (
+                  <HoverCard key={severity} openDelay={0} closeDelay={4}>
+                    <HoverCardTrigger asChild>
+                      <div className="flex items-center gap-1 content-bold font-bold text-foreground">
+                        {countBySeverity[severity]}
+                        <Image src={flag} alt={alt} />
+                      </div>
+                    </HoverCardTrigger>
+                    <HoverCardContent>
+                      <p>{hoverLabel}</p>
+                    </HoverCardContent>
+                  </HoverCard>
+                )
+              )}
+            </div>
+            {party.location.hold_expiration && (
+              <div className="flex flex-row gap-2 justify-end items-center mr-4">
+                <HoverCard openDelay={0} closeDelay={4}>
+                  <HoverCardTrigger asChild>
+                    <AlertTriangle size="18px" className="text-destructive" />
+                  </HoverCardTrigger>
+                  <HoverCardContent>
+                    <p className="font-semibold">Hold Expiration</p>
+                    <p>
+                      Parties are blocked from registration at this address
+                      until expiration
+                    </p>
+                  </HoverCardContent>
+                </HoverCard>
+                <p className="text-destructive">
+                  {format(party.location.hold_expiration, "MM/dd/yy")}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </article>
+    </li>
+  );
+});
+
 const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
   const [incidentDialogOpen, setIncidentDialogOpen] = useState(false);
   const [incidentType, setIncidentType] =
@@ -114,9 +272,14 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
     },
   });
 
-  const handleCreateIncident = (data: IncidentCreateDto) => {
-    createMutation.mutate(data);
-  };
+  const handleCreateIncident = useCallback(
+    (data: IncidentCreateDto) => {
+      createMutation.mutate(data);
+    },
+    [createMutation]
+  );
+
+  const activePartyId = activeParty?.id;
 
   // Reset to first page when the party list changes (filters/date range updated)
   useEffect(() => {
@@ -125,23 +288,26 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
 
   // Jump to the correct page when a map pin is selected
   useEffect(() => {
-    if (!activeParty) return;
-    const idx = parties.findIndex((p) => p.id === activeParty.id);
+    if (!activePartyId) return;
+    const idx = parties.findIndex((p) => p.id === activePartyId);
     if (idx === -1) return;
     setCurrentPage(Math.floor(idx / pageSize));
-  }, [activeParty, parties, pageSize]);
+  }, [activePartyId, parties, pageSize]);
 
   // Scroll to the active party card after the page renders
   useEffect(() => {
-    if (!activeParty) return;
-    const el = document.querySelector(`[data-party-id="${activeParty.id}"]`);
+    if (!activePartyId) return;
+    const el = document.querySelector(`[data-party-id="${activePartyId}"]`);
     if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }, [activeParty, currentPage]);
+  }, [activePartyId, currentPage]);
 
-  const totalPages = Math.ceil(parties.length / pageSize);
-  const paginatedParties = parties.slice(
-    currentPage * pageSize,
-    (currentPage + 1) * pageSize
+  const totalPages = useMemo(
+    () => Math.ceil(parties.length / pageSize),
+    [parties.length, pageSize]
+  );
+  const paginatedParties = useMemo(
+    () => parties.slice(currentPage * pageSize, (currentPage + 1) * pageSize),
+    [currentPage, pageSize, parties]
   );
 
   const maxVisiblePages = 3;
@@ -153,9 +319,30 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
     )
   );
   const pageEnd = Math.min(pageStart + maxVisiblePages, totalPages);
-  const pageIndexes = Array.from(
-    { length: Math.max(pageEnd - pageStart, 0) },
-    (_, i) => pageStart + i
+  const pageIndexes = useMemo(
+    () =>
+      Array.from(
+        { length: Math.max(pageEnd - pageStart, 0) },
+        (_, i) => pageStart + i
+      ),
+    [pageEnd, pageStart]
+  );
+
+  const openIncidentDialog = useCallback(
+    (event: MouseEvent, type: IncidentSeverity, targetParty: PartyDto) => {
+      event.stopPropagation();
+      setSelectedParty(targetParty);
+      setIncidentType(type);
+      setIncidentDialogOpen(true);
+    },
+    []
+  );
+
+  const handlePartySelect = useCallback(
+    (party: PartyDto) => {
+      onSelect?.(party);
+    },
+    [onSelect]
   );
 
   if (parties.length === 0) {
@@ -166,172 +353,19 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
     );
   }
 
-  const openIncidentDialog = (
-    event: MouseEvent,
-    type: IncidentSeverity,
-    selectedParty: PartyDto
-  ) => {
-    event.stopPropagation();
-    setSelectedParty(selectedParty);
-    setIncidentType(type);
-    setIncidentDialogOpen(true);
-  };
-
   return (
     <>
       <div className="flex flex-col min-h-0 flex-1 gap-3">
         <ul className="flex-1 min-h-0 w-full overflow-y-auto rounded-md border border-border bg-card card-shadow [scroll-behavior:smooth]">
-          {paginatedParties.map((party) => {
-            const countBySeverity: Record<IncidentSeverity, number> = {
-              remote_warning: getRemoteWarningCount(party.location),
-              in_person_warning: getInPersonWarningCount(party.location),
-              citation: getCitationCount(party.location),
-            };
-
-            return (
-              <li key={party.id}>
-                <article
-                  data-party-id={party.id}
-                  onClick={() => onSelect?.(party)}
-                  className={cn(
-                    "cursor-pointer border-b border-border px-4 py-4 last:border-b-0 hover:bg-secondary/5",
-                    activeParty?.id === party.id && "bg-secondary/5"
-                  )}
-                >
-                  <div className="space-y-2">
-                    {/* Date, address, menu */}
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="content-bold font-bold text-secondary">
-                          {format(party.party_datetime, "M/d/yyyy")} @{" "}
-                          {formatTime(party.party_datetime)}
-                        </p>
-                        <p className="content-bold font-bold text-secondary">
-                          {party.location.formatted_address}
-                        </p>
-                      </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button
-                            type="button"
-                            onClick={(event) => event.stopPropagation()}
-                            className="rounded-md p-1 text-secondary hover:bg-muted"
-                            aria-label="Open incident menu"
-                          >
-                            <EllipsisVertical height={16} />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent className="w-52" align="end">
-                          {INCIDENT_MENU_ITEMS.map(
-                            ({ severity, label, flag, alt }) => (
-                              <DropdownMenuItem
-                                key={severity}
-                                onClick={(event) =>
-                                  openIncidentDialog(event, severity, party)
-                                }
-                              >
-                                <Image src={flag} alt={alt} />
-                                <span className="text-sm">{label}</span>
-                              </DropdownMenuItem>
-                            )
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-
-                    {/* Contacts with dotted separator */}
-                    <div className="grid grid-rows-2 gap-y-2 mb-2 mr-4">
-                      <div className="flex flex-row justify-between gap-x-0.5">
-                        <p className="content text-secondary self-end mb-[-6px]">
-                          {party.contact_one.first_name}{" "}
-                          {party.contact_one.last_name}
-                        </p>
-                        <span className="flex-1 h-[2px] bg-[radial-gradient(circle,currentColor_1px,transparent_1px)] bg-[length:6px_2px] bg-repeat-x self-end text-[var(--secondary)]"></span>
-                        <div className="flex flex-row gap-x-1 mb-[-6px]">
-                          <PhoneLink
-                            phoneNumber={party.contact_one.phone_number ?? "—"}
-                            onClick={(event) => event.stopPropagation()}
-                          />
-                          <p className="content text-secondary">{" - "}</p>
-                          <p className="content text-secondary">
-                            {formatPreference(
-                              party.contact_one.contact_preference
-                            )}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex flex-row justify-between gap-x-0.5">
-                        <p className="content text-secondary self-end mb-[-6px]">
-                          {party.contact_two.first_name}{" "}
-                          {party.contact_two.last_name}
-                        </p>
-                        <span className="flex-1 h-[2px] bg-[radial-gradient(circle,currentColor_1px,transparent_1px)] bg-[length:6px_2px] bg-repeat-x self-end text-[var(--secondary)]"></span>
-                        <div className="flex flex-row gap-x-1 mb-[-6px]">
-                          <PhoneLink
-                            phoneNumber={party.contact_two.phone_number}
-                            onClick={(event) => event.stopPropagation()}
-                          />
-                          <p className="content text-secondary">{" - "}</p>
-                          <p className="content text-secondary">
-                            {formatPreference(
-                              party.contact_two.contact_preference
-                            )}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Flags + date */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        {INCIDENT_MENU_ITEMS.map(
-                          ({ severity, flag, alt, hoverLabel }) => (
-                            <HoverCard
-                              key={severity}
-                              openDelay={0}
-                              closeDelay={4}
-                            >
-                              <HoverCardTrigger asChild>
-                                <div className="flex items-center gap-1 content-bold font-bold text-foreground">
-                                  {countBySeverity[severity]}
-                                  <Image src={flag} alt={alt} />
-                                </div>
-                              </HoverCardTrigger>
-                              <HoverCardContent>
-                                <p>{hoverLabel}</p>
-                              </HoverCardContent>
-                            </HoverCard>
-                          )
-                        )}
-                      </div>
-                      {party.location.hold_expiration && (
-                        <div className="flex flex-row gap-2 justify-end items-center mr-4">
-                          <HoverCard openDelay={0} closeDelay={4}>
-                            <HoverCardTrigger asChild>
-                              <AlertTriangle
-                                size="18px"
-                                className="text-destructive"
-                              />
-                            </HoverCardTrigger>
-                            <HoverCardContent>
-                              <p className="font-semibold">Hold Expiration</p>
-                              <p>
-                                Parties are blocked from registration at this
-                                address until expiration
-                              </p>
-                            </HoverCardContent>
-                          </HoverCard>
-                          <p className="text-destructive">
-                            {format(party.location.hold_expiration, "MM/dd/yy")}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </article>
-              </li>
-            );
-          })}
+          {paginatedParties.map((party) => (
+            <PartyListCard
+              key={party.id}
+              party={party}
+              isActive={activePartyId === party.id}
+              onSelect={handlePartySelect}
+              onOpenIncident={openIncidentDialog}
+            />
+          ))}
         </ul>
 
         {totalPages > 1 && (
@@ -436,4 +470,4 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
   );
 };
 
-export default PartyList;
+export default memo(PartyList);
