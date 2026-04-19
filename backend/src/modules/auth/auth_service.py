@@ -63,7 +63,7 @@ class AuthService:
         expires_at = datetime.now(UTC) + expires_delta
 
         payload = AccountAccessTokenPayload(
-            sub=account.id,
+            sub=str(account.id),
             email=account.email,
             first_name=account.first_name,
             last_name=account.last_name,
@@ -83,7 +83,7 @@ class AuthService:
         expires_at = datetime.now(UTC) + expires_delta
 
         payload = PoliceAccessTokenPayload(
-            sub=police.id,
+            sub=str(police.id),
             email=police.email,
             role=police.role.value,
             exp=expires_at,
@@ -102,7 +102,6 @@ class AuthService:
                 token,
                 env.JWT_SECRET_KEY,
                 algorithms=[env.JWT_ALGORITHM],
-                options={"verify_sub": False},
             )
             return TypeAdapter(AccessTokenPayload).validate_python(payload)
         except jwt.ExpiredSignatureError as e:
