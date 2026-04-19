@@ -174,6 +174,30 @@ class TestQueryUtilsFilterOperators:
         self.incident_utils.assert_matches(paginated.items[0], i1.to_dto())
 
     @pytest.mark.asyncio
+    async def test_filter_contains_escapes_percent_wildcard(self):
+        """CONTAINS treats percent signs in user input as literal characters."""
+        i1 = await self.incident_utils.create_one(description="music at 100% volume")
+        await self.incident_utils.create_one(description="music at 1000 volume")
+
+        response = await self.admin_client.get(
+            "/api/incidents", params={"description_contains": "100%"}
+        )
+        paginated = assert_res_paginated(response, IncidentDto, total_records=1)
+        self.incident_utils.assert_matches(paginated.items[0], i1.to_dto())
+
+    @pytest.mark.asyncio
+    async def test_filter_contains_escapes_underscore_wildcard(self):
+        """CONTAINS treats underscores in user input as literal characters."""
+        i1 = await self.incident_utils.create_one(description="room_2 loud noise")
+        await self.incident_utils.create_one(description="roomA2 loud noise")
+
+        response = await self.admin_client.get(
+            "/api/incidents", params={"description_contains": "room_2"}
+        )
+        paginated = assert_res_paginated(response, IncidentDto, total_records=1)
+        self.incident_utils.assert_matches(paginated.items[0], i1.to_dto())
+
+    @pytest.mark.asyncio
     async def test_filter_nested_contains(self):
         """CONTAINS operator on nested location.formatted_address."""
         loc_main = await self.incident_utils.location_utils.create_one(
@@ -187,6 +211,25 @@ class TestQueryUtilsFilterOperators:
 
         response = await self.admin_client.get(
             "/api/incidents?location.formatted_address_contains=Main"
+        )
+        paginated = assert_res_paginated(response, IncidentDto, total_records=1)
+        self.incident_utils.assert_matches(paginated.items[0], i1.to_dto())
+
+    @pytest.mark.asyncio
+    async def test_filter_nested_contains_escapes_wildcards(self):
+        """Nested CONTAINS treats SQL wildcard characters as literals."""
+        loc_literal = await self.incident_utils.location_utils.create_one(
+            formatted_address="123 Main_St"
+        )
+        loc_wildcard_match = await self.incident_utils.location_utils.create_one(
+            formatted_address="123 MainXSt"
+        )
+        i1 = await self.incident_utils.create_one(location_id=loc_literal.id)
+        await self.incident_utils.create_one(location_id=loc_wildcard_match.id)
+
+        response = await self.admin_client.get(
+            "/api/incidents",
+            params={"location.formatted_address_contains": "Main_St"},
         )
         paginated = assert_res_paginated(response, IncidentDto, total_records=1)
         self.incident_utils.assert_matches(paginated.items[0], i1.to_dto())
