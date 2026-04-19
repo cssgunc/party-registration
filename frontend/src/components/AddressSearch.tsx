@@ -179,6 +179,8 @@ export default function AddressSearch({
    * Handle input value changes
    */
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (selectedAddress) return;
+
     const newValue = e.target.value;
     setSearchTerm(newValue);
 
@@ -192,6 +194,8 @@ export default function AddressSearch({
    * Handle input focus - open popover if there's enough text
    */
   const handleFocus = () => {
+    if (selectedAddress) return;
+
     if (searchTerm.length >= 3) {
       setOpen(true);
     }
@@ -236,7 +240,13 @@ export default function AddressSearch({
 
   return (
     <div className={cn("w-full", className)}>
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover
+        open={open}
+        onOpenChange={(nextOpen) => {
+          if (disabled || selectedAddress) return;
+          setOpen(nextOpen);
+        }}
+      >
         <PopoverTrigger asChild>
           <div className="relative">
             <Input
@@ -247,7 +257,13 @@ export default function AddressSearch({
               onKeyDown={handleKeyDown}
               placeholder={placeholder}
               disabled={disabled}
-              className={cn("pr-16", displayError && "border-destructive")}
+              readOnly={!!selectedAddress}
+              className={cn(
+                "pr-16",
+                selectedAddress &&
+                  "bg-muted text-muted-foreground cursor-not-allowed",
+                displayError && "border-destructive"
+              )}
               aria-label="Address search input"
               aria-describedby={displayError ? "address-error" : undefined}
               aria-invalid={!!displayError}
@@ -355,14 +371,6 @@ export default function AddressSearch({
         <p className="mt-2 text-sm text-destructive" role="alert">
           {displayError}
         </p>
-      )}
-
-      {selectedAddress && (
-        <div className="mt-2 p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-md">
-          <p className="text-sm font-medium text-green-900 dark:text-green-100">
-            ✓ Selected: {selectedAddress.formatted_address}
-          </p>
-        </div>
       )}
     </div>
   );
