@@ -114,12 +114,14 @@ export default function RegistrationTracker(): React.JSX.Element {
       <div>
         <div className="flex items-start justify-between">
           <div>
-            <div className="flex content-bold gap-6">
-              <p>{format(party.party_datetime, "MM/dd/yyyy")}</p>
-              <p>Start: {formatTime(party.party_datetime)}</p>
+            <div className="flex content-bold gap-2">
+              <p>
+                {format(party.party_datetime, "M/d/yyyy")} @{" "}
+                {formatTime(party.party_datetime)}
+              </p>
             </div>
             {showAddress && (
-              <h2 className="content-bold my-2">
+              <h2 className="content-sub my-2 leading-2">
                 {party.location.formatted_address}
               </h2>
             )}
@@ -128,7 +130,7 @@ export default function RegistrationTracker(): React.JSX.Element {
           {showActions && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button className="shrink-0 bg-transparent hover:bg-transparent">
+                <Button className="shrink-0 bg-transparent hover:bg-transparent p-0 h-auto">
                   <MoreVertical className="h-4 w-4 content cursor-pointer" />
                   <p className="sr-only">Party actions</p>
                 </Button>
@@ -161,15 +163,16 @@ export default function RegistrationTracker(): React.JSX.Element {
             <p>
               {party.contact_one.first_name} {party.contact_one.last_name}
             </p>
-            <p>{formatPhoneNumber(party.contact_one.phone_number)}</p>
-            <p>
-              Preference:
-              <span className="capitalize">
-                {" "}
-                {party.contact_one.contact_preference}
-              </span>
-            </p>
-            <p>{party.contact_one.email}</p>
+            <div className="ml-3">
+              <p>
+                {formatPhoneNumber(party.contact_one.phone_number)}
+                <span className="capitalize">
+                  {" "}
+                  - {party.contact_one.contact_preference}
+                </span>
+              </p>
+              <p>{party.contact_one.email}</p>
+            </div>
           </div>
 
           {/* Contact Two */}
@@ -177,15 +180,16 @@ export default function RegistrationTracker(): React.JSX.Element {
             <p>
               {party.contact_two.first_name} {party.contact_two.last_name}
             </p>
-            <p>{formatPhoneNumber(party.contact_two.phone_number)}</p>
-            <p>
-              Preference:
-              <span className="capitalize">
-                {" "}
-                {party.contact_two.contact_preference}
-              </span>
-            </p>
-            <p>{party.contact_two.email}</p>
+            <div className="ml-3">
+              <p>
+                {formatPhoneNumber(party.contact_two.phone_number)}
+                <span className="capitalize">
+                  {" "}
+                  - {party.contact_two.contact_preference}
+                </span>
+              </p>
+              <p>{party.contact_two.email}</p>
+            </div>
           </div>
         </div>
       </div>
