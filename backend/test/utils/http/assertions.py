@@ -116,15 +116,15 @@ def assert_res_failure(res: Response, expected_error: HTTPException) -> dict[str
     data = res.json()
     assert data is not None, "Expected response data but got None"
     assert isinstance(data, dict), f"Expected dict response but got {type(data).__name__}"
-    assert "message" in data, "Expected 'message' in response data but got None"
+    assert "detail" in data, "Expected 'detail' in response data but got None"
 
-    message = data["message"]
-    assert isinstance(message, str), (
-        f"Expected 'message' to be a string but got {type(message).__name__}"
+    detail = data["detail"]
+    assert isinstance(detail, str), (
+        f"Expected 'detail' to be a string but got {type(detail).__name__}"
     )
 
-    assert message == expected_error.detail, (
-        f"Expected error message '{expected_error.detail}', got '{message}'"
+    assert detail == expected_error.detail, (
+        f"Expected error detail '{expected_error.detail}', got '{detail}'"
     )
 
     return data
