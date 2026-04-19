@@ -8,6 +8,7 @@ from src.modules.location.location_router import location_router
 from src.modules.party.party_router import party_router
 from src.modules.police.police_router import police_router
 from src.modules.student.student_router import student_router
+from starlette.middleware.base import RequestResponseEndpoint
 
 app = FastAPI()
 
@@ -18,6 +19,26 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+API_SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+    "Content-Security-Policy": (
+        "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+    ),
+}
+
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next: RequestResponseEndpoint):
+    response = await call_next(request)
+
+    if request.url.path.startswith("/api"):
+        for header, value in API_SECURITY_HEADERS.items():
+            response.headers[header] = value
+
+    return response
 
 
 @app.exception_handler(HTTPException)
