@@ -1,13 +1,15 @@
+from datetime import UTC, datetime, timedelta
 from typing import Any, TypedDict, Unpack, override
 
-import bcrypt
 from sqlalchemy.ext.asyncio import AsyncSession
+from src.core.config import env
+from src.core.utils.bcrypt_utils import hash_password
 from src.modules.police.police_entity import PoliceEntity
 from src.modules.police.police_model import (
-    PoliceAccountCreate,
     PoliceAccountDto,
     PoliceAccountUpdate,
     PoliceRole,
+    PoliceSignupDto,
 )
 from test.utils.resource_test_utils import ResourceTestUtils
 
@@ -16,12 +18,15 @@ class PoliceUpdateOverrides(TypedDict, total=False):
     email: str
     password: str
     role: PoliceRole
+    is_verified: bool
+    verification_token: str | None
+    verification_token_expires_at: datetime | None
 
 
 class PoliceTestUtils(
     ResourceTestUtils[
         PoliceEntity,
-        PoliceAccountCreate,
+        PoliceSignupDto,
         PoliceAccountDto,
     ]
 ):
@@ -31,34 +36,67 @@ class PoliceTestUtils(
         super().__init__(
             session,
             entity_class=PoliceEntity,
-            data_class=PoliceAccountCreate,
+            data_class=PoliceSignupDto,
         )
 
     @override
     @staticmethod
     def generate_defaults(count: int) -> dict[str, Any]:
         return {
-            "email": f"police{count}@unc.edu",
+            "email": f"police{count}@{env.CHPD_EMAIL_DOMAIN}",
             "password": PoliceTestUtils.TEST_PASSWORD,
-            "role": PoliceRole.OFFICER,
+            "confirm_password": PoliceTestUtils.TEST_PASSWORD,
+            "role": PoliceRole.OFFICER.value,
+            "is_verified": False,
+            "verification_token": None,
+            "verification_token_expires_at": None,
         }
+
+    @override
+    async def next_data(self, **overrides: Unpack[PoliceUpdateOverrides]) -> PoliceSignupDto:
+        d = await self.next_dict(**overrides)
+        return PoliceSignupDto(
+            email=d["email"],
+            password=d["password"],
+            confirm_password=d["confirm_password"],
+        )
+
+    @override
+    async def next_entity(self, **overrides: Unpack[PoliceUpdateOverrides]) -> PoliceEntity:
+        d = await self.next_dict(**overrides)
+        role = d.get("role", PoliceRole.OFFICER)
+        return PoliceEntity(
+            email=d["email"],
+            hashed_password=hash_password(d["password"]),
+            role=PoliceRole(role) if isinstance(role, str) else role,
+            is_verified=d.get("is_verified", False),
+            verification_token=d.get("verification_token", None),
+            verification_token_expires_at=d.get("verification_token_expires_at", None),
+        )
 
     @override
     def assert_matches(
         self,
-        resource1: PoliceEntity | PoliceAccountCreate | PoliceAccountDto | None,
-        resource2: PoliceEntity | PoliceAccountCreate | PoliceAccountDto | None,
+        resource1: PoliceEntity | PoliceSignupDto | PoliceAccountDto | None,
+        resource2: PoliceEntity | PoliceSignupDto | PoliceAccountDto | None,
     ) -> None:
         """Assert that two police resources match."""
         assert resource1 is not None, "First resource is None"
         assert resource2 is not None, "Second resource is None"
 
-        assert resource1.email == resource2.email, (
-            f"Email mismatch: {resource1.email} != {resource2.email}"
-        )
-        assert resource1.role == resource2.role, (
-            f"Role mismatch: {resource1.role} != {resource2.role}"
-        )
+        if not isinstance(resource1, PoliceSignupDto) and not isinstance(
+            resource2, PoliceSignupDto
+        ):
+            assert resource1.email == resource2.email, (
+                f"Email mismatch: {resource1.email} != {resource2.email}"
+            )
+
+        if isinstance(resource1, (PoliceEntity, PoliceAccountDto)) and isinstance(
+            resource2, (PoliceEntity, PoliceAccountDto)
+        ):
+            assert resource1.role == resource2.role, (
+                f"Role mismatch: {resource1.role} != {resource2.role}"
+            )
 
         if isinstance(resource1, PoliceEntity) and isinstance(resource2, PoliceEntity):
             assert resource1.id == resource2.id, f"ID mismatch: {resource1.id} != {resource2.id}"
@@ -75,22 +113,41 @@ class PoliceTestUtils(
         if isinstance(resource1, PoliceAccountDto) and isinstance(resource2, PoliceEntity):
             assert resource1.id == resource2.id, f"ID mismatch: {resource1.id} != {resource2.id}"
 
-        if isinstance(resource1, PoliceAccountCreate) and isinstance(
-            resource2, PoliceAccountCreate
-        ):
-            assert resource1.password == resource2.password, (
-                f"Password mismatch: {resource1.password} != {resource2.password}"
+    def assert_unverified(self, entity: PoliceEntity) -> None:
+        """Assert that a police entity is in the unverified state."""
+        assert not entity.is_verified, "Expected is_verified=False"
+        assert entity.verification_token is not None, "Expected verification_token to be set"
+        assert entity.verification_token_expires_at is not None, (
+            "Expected verification_token_expires_at to be set"
+        )
+
+    def assert_verified(self, entity: PoliceEntity) -> None:
+        """Assert that a police entity is in the verified state with token cleared."""
+        assert entity.is_verified, "Expected is_verified=True"
+        assert entity.verification_token is None, "Expected verification_token to be None"
+        assert entity.verification_token_expires_at is None, (
+            "Expected verification_token_expires_at to be None"
+        )
+
+    async def create_verified_one(self, **overrides: Unpack[PoliceUpdateOverrides]) -> PoliceEntity:
+        """Create a police entity with is_verified=True."""
+        overrides["is_verified"] = True
+        return await self.create_one(**overrides)
+
+    async def create_with_token(
+        self,
+        token: str = "test_verification_token",
+        expires_at: datetime | None = None,
+    ) -> PoliceEntity:
+        """Create an unverified police entity with a specific verification token."""
+        if expires_at is None:
+            expires_at = datetime.now(UTC) + timedelta(
+                hours=env.EMAIL_VERIFICATION_TOKEN_EXPIRE_HOURS
             )
 
-    def hash_password(self, password: str) -> str:
-        """Hash a password using bcrypt for test setup."""
-        salt = bcrypt.gensalt()
-        hashed = bcrypt.hashpw(password.encode("utf-8"), salt)
-        return hashed.decode("utf-8")
-
-    def verify_password(self, password: str, hashed_password: str) -> bool:
-        """Verify a password against its hash for test assertions."""
-        return bcrypt.checkpw(password.encode("utf-8"), hashed_password.encode("utf-8"))
+        return await self.create_one(
+            verification_token=token, verification_token_expires_at=expires_at, is_verified=False
+        )
 
     # ================================ Typing Overrides ================================
 
@@ -105,19 +162,25 @@ class PoliceTestUtils(
         return await super().next_dict(**overrides)
 
     @override
-    async def next_data(self, **overrides: Unpack[PoliceUpdateOverrides]) -> PoliceAccountCreate:
-        return await super().next_data(**overrides)
+    async def create_one(self, **overrides: Unpack[PoliceUpdateOverrides]) -> PoliceEntity:
+        return await super().create_one(**overrides)
 
     async def next_update_dict(self, **overrides: Unpack[PoliceUpdateOverrides]) -> dict:
-        data = await self.next_data(**overrides)
-        return {"email": data.email, "role": data.role.value}
+        d = await self.next_dict(**overrides)
+        role = d.get("role", PoliceRole.OFFICER)
+        return {
+            "email": d["email"],
+            "role": role.value if isinstance(role, PoliceRole) else role,
+            "is_verified": overrides.get("is_verified", True),
+        }
 
     async def next_update_data(
         self, **overrides: Unpack[PoliceUpdateOverrides]
     ) -> PoliceAccountUpdate:
-        data = await self.next_data(**overrides)
-        return PoliceAccountUpdate(email=data.email, role=data.role)
-
-    @override
-    async def next_entity(self, **overrides: Unpack[PoliceUpdateOverrides]) -> PoliceEntity:
-        return await super().next_entity(**overrides)
+        d = await self.next_dict(**overrides)
+        role = d.get("role", PoliceRole.OFFICER)
+        return PoliceAccountUpdate(
+            email=d["email"],
+            role=PoliceRole(role) if isinstance(role, str) else role,
+            is_verified=overrides.get("is_verified", True),
+        )

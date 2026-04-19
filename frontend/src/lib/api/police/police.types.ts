@@ -7,15 +7,7 @@ type PoliceAccountDto = {
   id: number;
   email: string;
   role: PoliceRole;
-};
-
-/**
- * DTO for creating police accounts
- */
-type PoliceAccountCreate = {
-  email: string;
-  password: string;
-  role: PoliceRole;
+  is_verified: boolean;
 };
 
 /**
@@ -24,11 +16,7 @@ type PoliceAccountCreate = {
 type PoliceAccountUpdate = {
   email: string;
   role: PoliceRole;
+  is_verified: boolean;
 };
 
-export type {
-  PoliceAccountCreate,
-  PoliceAccountDto,
-  PoliceAccountUpdate,
-  PoliceRole,
-};
+export type { PoliceAccountDto, PoliceAccountUpdate, PoliceRole };

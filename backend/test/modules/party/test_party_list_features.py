@@ -554,3 +554,37 @@ class TestPartyListSearch:
         response = await self.admin_client.get("/api/parties?search=Main")
         paginated = assert_res_paginated(response, PartyDto, total_records=1)
         self.party_utils.assert_matches(paginated.items[0], party1)
+
+    @pytest.mark.parametrize(
+        "search_term",
+        ["Jane Doe", "jane doe", "JANE DOE", "Jane Do", "ane Doe"],
+    )
+    @pytest.mark.asyncio
+    async def test_search_matches_contact_one_full_name(self, search_term: str):
+        """Search should match parties by contact_one full name (first + last)."""
+        student_match = await self.party_utils.student_utils.create_one(
+            first_name="Jane", last_name="Doe"
+        )
+        student_other = await self.party_utils.student_utils.create_one(
+            first_name="Bob", last_name="Smith"
+        )
+        party1 = await self.party_utils.create_one(contact_one_id=student_match.account_id)
+        _party2 = await self.party_utils.create_one(contact_one_id=student_other.account_id)
+
+        response = await self.admin_client.get(f"/api/parties?search={search_term}")
+        paginated = assert_res_paginated(response, PartyDto, total_records=1)
+        self.party_utils.assert_matches(paginated.items[0], party1)
+
+    @pytest.mark.asyncio
+    async def test_search_matches_contact_two_full_name(self):
+        """Search should match parties by contact_two full name (first + last)."""
+        party1 = await self.party_utils.create_one(
+            contact_two_first_name="Janice", contact_two_last_name="Quinn"
+        )
+        _party2 = await self.party_utils.create_one(
+            contact_two_first_name="Other", contact_two_last_name="Person"
+        )
+
+        response = await self.admin_client.get("/api/parties?search=Janice Quinn")
+        paginated = assert_res_paginated(response, PartyDto, total_records=1)
+        self.party_utils.assert_matches(paginated.items[0], party1)
