@@ -1,5 +1,9 @@
 import { AccountRole } from "@/lib/api/account/account.types";
-import { exchangeToken, setAuthCookies } from "@/lib/api/auth/auth.service";
+import {
+  decodeJwtPayload,
+  exchangeToken,
+  setAuthCookies,
+} from "@/lib/api/auth/auth.service";
 import { identityProvider, postAssert, serviceProvider } from "@/lib/saml";
 import { AxiosError } from "axios";
 import { NextRequest, NextResponse } from "next/server";
@@ -29,6 +33,17 @@ const ACCOUNT_ROLES: AccountRole[] = ["student", "staff", "admin"];
 
 function isAccountRole(value: unknown): value is AccountRole {
   return ACCOUNT_ROLES.includes(value as AccountRole);
+}
+
+function getSessionAccountIdFromAccessToken(accessToken: string): number {
+  const payload = decodeJwtPayload(accessToken);
+  const subject = payload.sub;
+
+  if (typeof subject !== "string" && typeof subject !== "number") {
+    throw new Error("Backend access token is missing a valid subject");
+  }
+
+  return Number(subject);
 }
 
 /**
@@ -146,11 +161,12 @@ export async function POST(req: NextRequest) {
     return errorUrl(status === 403 ? "AccessDenied" : "ExchangeFailed");
   }
 
+  const accountId = getSessionAccountIdFromAccessToken(tokens.access_token);
   const res = NextResponse.redirect(new URL(callbackUrl, origin));
 
   await setAuthCookies(res, tokens, {
-    sub: samlUser.name_id,
-    id: samlUser.name_id,
+    sub: accountId,
+    id: accountId,
     email,
     name: `${firstName} ${lastName}`.trim(),
     firstName,

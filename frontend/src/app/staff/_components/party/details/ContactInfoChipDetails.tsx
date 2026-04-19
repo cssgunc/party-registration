@@ -11,8 +11,6 @@ export function ContactInfoChipDetails({ data }: ContactInfoChipDetailsProps) {
   return (
     <GenericChipDetails<ContactDto>
       data={data}
-      title={"Info about the Contact"}
-      description={"View information on the Contact you just clicked on"}
       renderView={(d) => (
         <div className="space-y-6">
           <div>

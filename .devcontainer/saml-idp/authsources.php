@@ -24,8 +24,9 @@ $config = [
     'example-userpass' => [
         'exampleauth:UserPass',
 
-        // ── Students ────────────────────────────────────────────
+        // -- Students ----------------------------------------------------
 
+        // Established user - already registered and many parties
         'student1:student1pass' => [
             'uid'                  => ['stevenmorrison'],
             'givenName'            => ['Steven'],
@@ -38,6 +39,7 @@ $config = [
             'affiliation'          => ['student'],
         ],
 
+        // Brand new user - not registered and no parties
         'student2:student2pass' => [
             'uid'                  => ['monicamalone'],
             'givenName'            => ['Monica'],
@@ -62,7 +64,20 @@ $config = [
             'affiliation'          => ['student'],
         ],
 
-        // ── Staff ───────────────────────────────────────────────
+        // Unauthenticated user - never signed up
+        'student4:student4pass' => [
+            'uid'                  => ['alexrivera'],
+            'givenName'            => ['Alex'],
+            'sn'                   => ['Rivera'],
+            'displayName'          => ['Alex Rivera'],
+            'mail'                 => ['alexrivera@unc.edu'],
+            'pid'                  => ['730100001'],
+            'eduPersonNickname'    => ['Alex'],
+            'uncPreferredSurname'  => ['Rivera'],
+            'affiliation'          => ['student'],
+        ],
+
+        // -- Staff ------------------------------------------------------
 
         'staff1:staff1pass' => [
             'uid'                  => ['janesmith'],
@@ -76,7 +91,7 @@ $config = [
             'affiliation'          => ['staff'],
         ],
 
-        // ── Admins ──────────────────────────────────────────────
+        // -- Admins -----------------------------------------------------
 
         'admin1:admin1pass' => [
             'uid'                  => ['johndoe'],
@@ -87,6 +102,19 @@ $config = [
             'pid'                  => ['730737345'],
             'eduPersonNickname'    => ['John'],
             'uncPreferredSurname'  => ['Doe'],
+            'affiliation'          => ['staff'],
+        ],
+
+        // Unauthenticated user - never signed up
+        'admin2:admin2pass' => [
+            'uid'                  => ['priyapatel'],
+            'givenName'            => ['Priya'],
+            'sn'                   => ['Patel'],
+            'displayName'          => ['Priya Patel'],
+            'mail'                 => ['priyapatel@unc.edu'],
+            'pid'                  => ['730100002'],
+            'eduPersonNickname'    => ['Priya'],
+            'uncPreferredSurname'  => ['Patel'],
             'affiliation'          => ['staff'],
         ],
     ],

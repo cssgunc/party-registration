@@ -73,7 +73,6 @@ export const LocationTable = () => {
         "New Location",
         "Add a new location to the system",
         <LocationTableForm
-          title="New Location"
           onSubmit={handleCreateSubmit}
           submissionError={userMessage}
         />
@@ -114,7 +113,6 @@ export const LocationTable = () => {
         "Edit Location",
         "Update location information",
         <LocationTableForm
-          title="Edit Location"
           onSubmit={(data) => handleEditSubmit(editTarget.id, data)}
           editData={{
             address: editTarget.formatted_address || "",
@@ -151,7 +149,6 @@ export const LocationTable = () => {
       "Edit Location",
       "Update location information",
       <LocationTableForm
-        title="Edit Location"
         onSubmit={(data) => handleEditSubmit(location.id, data)}
         editData={{
           address: location.formatted_address || "",
@@ -172,7 +169,7 @@ export const LocationTable = () => {
       "create-location",
       "New Location",
       "Add a new location to the system",
-      <LocationTableForm title="New Location" onSubmit={handleCreateSubmit} />
+      <LocationTableForm onSubmit={handleCreateSubmit} />
     );
   };
 
@@ -220,7 +217,7 @@ export const LocationTable = () => {
               chipKey={`incidents-${row.original.id}`}
               shortName={`${row.original.incidents.length}${" "}
                 ${row.original.incidents.length === 1 ? "incident" : "incidents"}`}
-              title="Incidents at Location"
+              title="Incidents"
               description="Warnings & Citations go here"
               sidebarContent={
                 <IncidentInfoChipDetails

@@ -71,3 +71,15 @@ class PoliceCredentialsDto(BaseModel):
 
     email: EmailStr
     password: str
+
+
+class VerifyEmailDto(BaseModel):
+    """DTO for email verification."""
+
+    token: str
+
+
+class RetryVerificationDto(BaseModel):
+    """DTO for retrying email verification."""
+
+    email: EmailStr

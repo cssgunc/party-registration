@@ -27,6 +27,7 @@ import {
 import { formatRoleLabel } from "@/lib/utils";
 import { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
+import { useSession } from "next-auth/react";
 import { useMemo, useState } from "react";
 import * as z from "zod";
 import { useSidebar } from "../shared/sidebar/SidebarContext";
@@ -86,6 +87,7 @@ const getErrorMessage = (error: Error): string => {
 export const AccountTable = () => {
   const { openSidebar, closeSidebar } = useSidebar();
   const { openSnackbar } = useSnackbar();
+  const { data: session } = useSession();
   const [editingAccount, setEditingAccount] = useState<AccountTableRow | null>(
     null
   );
@@ -98,7 +100,7 @@ export const AccountTable = () => {
   const tableRows: AccountTableRow[] = useMemo(() => {
     const regularAccounts: AccountTableRow[] = (accountsQuery.data?.items ?? [])
       .filter((a) => a.role === "admin" || a.role === "staff")
-      .map((a) => ({ ...a, _isPolice: false }));
+      .map((a) => ({ ...a, is_verified: null, _isPolice: false }));
 
     const policeRows: AccountTableRow[] = (policeAccountsQuery.data ?? []).map(
       (p) => ({
@@ -109,6 +111,7 @@ export const AccountTable = () => {
         pid: "-",
         onyen: "-",
         role: p.role,
+        is_verified: p.is_verified,
         _isPolice: true,
       })
     );
@@ -125,7 +128,6 @@ export const AccountTable = () => {
         "New Account",
         "Add a new account to the system",
         <AccountTableForm
-          title="New Account"
           onSubmit={handleAccountCreateSubmit}
           submissionError={message}
           editData={{
@@ -172,7 +174,6 @@ export const AccountTable = () => {
         "Edit Account",
         "Update account information",
         <AccountTableForm
-          title="Edit Account"
           onSubmit={(data) => handleAccountEditSubmit(variables.id, data)}
           submissionError={message}
           editData={editData}
@@ -201,10 +202,14 @@ export const AccountTable = () => {
         "Edit Police Account",
         "Update police account credentials",
         <PoliceAccountForm
-          title="Edit Police Account"
           onSubmit={(data) => handlePoliceEditSubmit(variables.id, data)}
           submissionError={errorMessage}
-          editData={{ email: variables.data.email, role: variables.data.role }}
+          editData={{
+            email: variables.data.email,
+            role: variables.data.role,
+            is_verified: variables.data.is_verified,
+          }}
+          disableVerificationToggle
         />
       );
     },
@@ -238,9 +243,13 @@ export const AccountTable = () => {
         "Edit Police Account",
         "Update police account credentials",
         <PoliceAccountForm
-          title="Edit Police Account"
           onSubmit={(data) => handlePoliceEditSubmit(row.id, data)}
-          editData={{ email: row.email, role: row.role as PoliceRole }}
+          editData={{
+            email: row.email,
+            role: row.role as PoliceRole,
+            is_verified: row.is_verified ?? false,
+          }}
+          disableVerificationToggle={false}
         />
       );
     } else {
@@ -249,7 +258,6 @@ export const AccountTable = () => {
         "Edit Account",
         "Update account information",
         <AccountTableForm
-          title="Edit Account"
           onSubmit={(data) => handleAccountEditSubmit(row.id, data)}
           editData={{
             email: row.email,
@@ -278,10 +286,7 @@ export const AccountTable = () => {
       "create-account",
       "New Account",
       "Add a new account to the system",
-      <AccountTableForm
-        title="New Account"
-        onSubmit={handleAccountCreateSubmit}
-      />
+      <AccountTableForm onSubmit={handleAccountCreateSubmit} />
     );
   };
 
@@ -322,6 +327,7 @@ export const AccountTable = () => {
       data: {
         email: data.email,
         role: data.role as PoliceRole,
+        is_verified: data.is_verified,
       },
     });
   };
@@ -361,6 +367,17 @@ export const AccountTable = () => {
         return formatRoleLabel(role);
       },
     },
+    {
+      accessorKey: "is_verified",
+      header: "Verified",
+      cell: ({ row }) => {
+        return row.original._isPolice ? (
+          <p>{row.original.is_verified ? "Yes" : "No"}</p>
+        ) : (
+          "—"
+        );
+      },
+    },
   ];
 
   const isLoading = accountsQuery.isLoading || policeAccountsQuery.isLoading;
@@ -386,6 +403,9 @@ export const AccountTable = () => {
         isDeleting={
           deleteAccountMutation.isPending ||
           deletePoliceAccountMutation.isPending
+        }
+        canDeleteRow={(row) =>
+          row._isPolice || (session?.id != null && row.id !== session.id)
         }
         serverMeta={
           accountsQuery.data

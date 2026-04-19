@@ -205,6 +205,9 @@ class StudentService:
         search_columns = [
             AccountEntity.first_name,
             AccountEntity.last_name,
+            # Concatenated full name so searches like "Jane Doe" match across the
+            # split first_name / last_name columns.
+            [AccountEntity.first_name, AccountEntity.last_name],
             AccountEntity.email,
             AccountEntity.onyen,
             AccountEntity.pid,

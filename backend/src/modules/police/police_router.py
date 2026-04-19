@@ -1,11 +1,10 @@
-from fastapi import APIRouter, Depends, Request, Response, status
-from src.core.authentication import authenticate_police_admin_or_admin
+from fastapi import APIRouter, Depends, Request, Response
+from src.core.authentication import authenticate_admin, authenticate_police_admin_or_admin
 from src.core.exceptions import ForbiddenException
 from src.core.utils.query_utils import PAGINATED_OPENAPI_PARAMS
 from src.modules.account.account_model import AccountDto
 from src.modules.police.police_model import (
     PaginatedPoliceResponse,
-    PoliceAccountCreate,
     PoliceAccountDto,
     PoliceAccountUpdate,
 )
@@ -21,15 +20,6 @@ async def list_police(
     _=Depends(authenticate_police_admin_or_admin),
 ) -> PaginatedPoliceResponse:
     return await police_service.get_police_paginated(request)
-
-
-@police_router.post("", status_code=status.HTTP_201_CREATED)
-async def create_police(
-    data: PoliceAccountCreate,
-    police_service: PoliceService = Depends(),
-    _=Depends(authenticate_police_admin_or_admin),
-) -> PoliceAccountDto:
-    return await police_service.create_police(data.email, data.password, data.role)
 
 
 @police_router.get("/csv", openapi_extra=PAGINATED_OPENAPI_PARAMS)
@@ -61,9 +51,9 @@ async def update_police(
     police_id: int,
     data: PoliceAccountUpdate,
     police_service: PoliceService = Depends(),
-    _=Depends(authenticate_police_admin_or_admin),
+    _=Depends(authenticate_admin),
 ) -> PoliceAccountDto:
-    return await police_service.update_police(police_id, data.email, data.role)
+    return await police_service.update_police(police_id, data.email, data.role, data.is_verified)
 
 
 @police_router.delete("/{police_id}")
