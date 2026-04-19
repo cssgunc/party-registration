@@ -301,15 +301,10 @@ export default function RegistrationTracker(): React.JSX.Element {
                     <div className="text-center content-sub py-8 space-y-2">
                       <p>No active registrations yet.</p>
                       <p>
-                        Complete the Party Smart Course section to register your
-                        first party.
+                        Register for the Party Smart Course in the Party Smart
+                        Course section on this page to unlock party
+                        registration.
                       </p>
-                      <Link
-                        href="/student/about-party-smart"
-                        className="inline-block underline"
-                      >
-                        View Party Smart Course
-                      </Link>
                     </div>
                   ) : (
                     <p className="text-center content-sub py-8">
