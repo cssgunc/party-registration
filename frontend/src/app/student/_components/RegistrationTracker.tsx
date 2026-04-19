@@ -77,6 +77,9 @@ export default function RegistrationTracker(): React.JSX.Element {
     return { activeParties: active, pastParties: past };
   }, [partiesQuery.data]);
 
+  const hasNoParties = (partiesQuery.data?.length ?? 0) === 0;
+  const showPartySmartPrompt = hasNoParties && !courseCompleted;
+
   const sortedIncidents = useMemo(() => {
     const incidents: IncidentDto[] =
       student?.residence?.location.incidents ?? [];
@@ -294,9 +297,25 @@ export default function RegistrationTracker(): React.JSX.Element {
             <div className="w-full bg-card rounded-md overflow-hidden">
               <div className="h-[calc(100vh-28rem)] overflow-y-auto">
                 {activeParties.length === 0 ? (
-                  <p className="text-center content-sub py-8">
-                    No active registrations
-                  </p>
+                  showPartySmartPrompt ? (
+                    <div className="text-center content-sub py-8 space-y-2">
+                      <p>No active registrations yet.</p>
+                      <p>
+                        Complete the Party Smart Course section to register your
+                        first party.
+                      </p>
+                      <Link
+                        href="/student/about-party-smart"
+                        className="inline-block underline"
+                      >
+                        View Party Smart Course
+                      </Link>
+                    </div>
+                  ) : (
+                    <p className="text-center content-sub py-8">
+                      No active registrations
+                    </p>
+                  )
                 ) : (
                   activeParties.map((party) => (
                     <PartyCard key={party.id} party={party} showActions />
