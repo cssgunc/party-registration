@@ -1,31 +1,25 @@
 import pytest
 from httpx import AsyncClient
 from src.core.exceptions import ForbiddenException
-from src.modules.police.police_model import PoliceAccountDto
+from src.modules.police.police_model import PoliceAccountDto, PoliceRole
 from src.modules.police.police_service import PoliceConflictException, PoliceNotFoundException
 from test.modules.police.police_utils import PoliceTestUtils
 from test.utils.http.assertions import (
     assert_res_failure,
     assert_res_paginated,
     assert_res_success,
-    assert_res_validation_error,
 )
 from test.utils.http.test_templates import assert_excel_response, generate_auth_required_tests
 
 test_police_auth = generate_auth_required_tests(
     ({"admin", "police_admin"}, "GET", "/api/police", None),
-    (
-        {"admin", "police_admin"},
-        "POST",
-        "/api/police",
-        {"email": "x@unc.edu", "password": "pass", "role": "officer"},
-    ),
     ({"admin", "police_admin"}, "GET", "/api/police/1", None),
+    # PUT: police_admin is excluded because is_verified is a required field they cannot set
     (
-        {"admin", "police_admin"},
+        {"admin"},
         "PUT",
         "/api/police/1",
-        {"email": "x@unc.edu", "role": "officer"},
+        {"email": "x@unc.edu", "role": "officer", "is_verified": True},
     ),
     ({"admin", "police_admin"}, "DELETE", "/api/police/1", None),
     ({"admin", "police_admin"}, "GET", "/api/police/csv", None),
@@ -101,7 +95,7 @@ class TestPoliceListRouter:
 
     @pytest.mark.asyncio
     async def test_list_police_filter_by_role(self) -> None:
-        await self.police_utils.create_one(role="police_admin")
+        await self.police_utils.create_one(role=PoliceRole.POLICE_ADMIN)
         await self.police_utils.create_many(i=2, role="officer")
 
         response = await self.admin_client.get("/api/police", params={"role": "police_admin"})
@@ -110,8 +104,8 @@ class TestPoliceListRouter:
 
     @pytest.mark.asyncio
     async def test_get_police_csv(self) -> None:
-        await self.police_utils.create_one(role="police_admin")
-        await self.police_utils.create_one(role="officer")
+        await self.police_utils.create_one(role=PoliceRole.POLICE_ADMIN)
+        await self.police_utils.create_one(role=PoliceRole.OFFICER)
 
         response = await self.admin_client.get("/api/police/csv")
         rows = assert_excel_response(response, expected_headers=("Email", "Role"))
@@ -133,36 +127,6 @@ class TestPoliceCRUDRouter:
         self.admin_client = admin_client
         self.police_admin_client = police_admin_client
         self.police_utils = police_utils
-
-    @pytest.mark.asyncio
-    async def test_create_police_success(self) -> None:
-        """Test creating a new police account returns 201 with PoliceAccountDto."""
-        data = await self.police_utils.next_data()
-
-        response = await self.admin_client.post("/api/police", json=data.model_dump(mode="json"))
-
-        result = assert_res_success(response, PoliceAccountDto, status=201)
-        assert result.email == data.email
-        assert result.id is not None
-
-    @pytest.mark.asyncio
-    async def test_create_police_duplicate_email(self) -> None:
-        """Test creating a police account with duplicate email returns 409."""
-        police = await self.police_utils.create_one()
-        data = await self.police_utils.next_data(email=police.email)
-
-        response = await self.admin_client.post("/api/police", json=data.model_dump(mode="json"))
-
-        assert_res_failure(response, PoliceConflictException(police.email))
-
-    @pytest.mark.asyncio
-    async def test_create_police_invalid_email(self) -> None:
-        """Test creating a police account with invalid email returns 422."""
-        data = await self.police_utils.next_dict(email="not-an-email")
-
-        response = await self.admin_client.post("/api/police", json=data)
-
-        assert_res_validation_error(response, expected_fields=["email"])
 
     @pytest.mark.asyncio
     async def test_get_police_by_id_success(self) -> None:
@@ -196,6 +160,21 @@ class TestPoliceCRUDRouter:
         assert result.id == police.id
         assert result.email == update_data.email
         assert result.role == update_data.role
+
+    @pytest.mark.asyncio
+    async def test_update_police_set_is_verified(self) -> None:
+        """Test admin can flip is_verified via PUT."""
+        police = await self.police_utils.create_one()
+        assert not police.is_verified
+
+        update_data = await self.police_utils.next_update_data(is_verified=True)
+        response = await self.admin_client.put(
+            f"/api/police/{police.id}",
+            json=update_data.model_dump(mode="json"),
+        )
+
+        result = assert_res_success(response, PoliceAccountDto)
+        assert result.is_verified
 
     @pytest.mark.asyncio
     async def test_update_police_not_found(self) -> None:
@@ -238,6 +217,19 @@ class TestPoliceCRUDRouter:
         all_by_id = {p.id: p for p in all_police}
         updated = all_by_id[police.id]
         assert updated.hashed_password == original_hashed_password
+
+    @pytest.mark.asyncio
+    async def test_police_admin_cannot_set_is_verified(self) -> None:
+        """Test that police_admin is rejected from PUT entirely (admin-only route)."""
+        police = await self.police_utils.create_one()
+        data = await self.police_utils.next_update_data()
+
+        response = await self.police_admin_client.put(
+            f"/api/police/{police.id}",
+            json=data.model_dump(mode="json"),
+        )
+
+        assert_res_failure(response, ForbiddenException("Insufficient privileges"))
 
     @pytest.mark.asyncio
     async def test_delete_police_success(self) -> None:

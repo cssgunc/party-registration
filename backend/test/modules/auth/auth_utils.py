@@ -167,4 +167,6 @@ class AuthTestUtils:
     ) -> None:
         """Assert that an expiration time is approximately the expected number of seconds away."""
         actual_seconds = (expires_at - datetime.now(UTC)).total_seconds()
-        assert abs(actual_seconds - expected_seconds) < tolerance
+        assert abs(actual_seconds - expected_seconds) < tolerance, (
+            f"Expected expiration in ~{expected_seconds} seconds, but got {actual_seconds} seconds"
+        )

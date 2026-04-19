@@ -37,6 +37,12 @@ services:
     volumes:
       - ./saml-idp/authsources.php:/var/www/simplesamlphp/config/authsources.php
 
+  mailpit:
+    image: axllent/mailpit
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+
 volumes:
   party-reg-mssql:
   party-reg-node-modules:
