@@ -5,7 +5,7 @@ import StatusComponent from "@/app/student/_components/StatusComponent";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrentStudent } from "@/lib/api/student/student.queries";
 import { isFromThisSchoolYear } from "@/lib/utils";
-import { Info } from "lucide-react";
+import { AlertTriangleIcon, Info } from "lucide-react";
 import Link from "next/link";
 import PartyRegistrationInfo from "./_components/PartyRegistrationInfo";
 import PartySmartInfo from "./_components/PartySmartInfo";
@@ -23,7 +23,7 @@ export default function StudentDashboard() {
         <div className="2xl:w-1/2 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between">
-              <h1 className="page-title w-1/2">Events</h1>
+              <h1 className="page-title w-1/2">Parties</h1>
               <div className="content text-wrap text-end w-1/2">
                 <div className="flex justify-end">
                   {isStudentLoading ? (
@@ -44,7 +44,7 @@ export default function StudentDashboard() {
           </div>
 
           <div className="mt-8">
-            <h2 className="page-title mb-2">Party Smart Course </h2>
+            <h2 className="page-title mb-2">Registration Status </h2>
             <Link
               href="/student/about-party-registration"
               className="content flex items-center mb-2 2xl:hidden"
@@ -61,6 +61,15 @@ export default function StudentDashboard() {
 
         <div className="hidden 2xl:flex 2xl:flex-col 2xl:w-1/2 2xl:justify-between">
           <PartyRegistrationInfo />
+          <div className="flex flex-col items-center text-center content">
+            <AlertTriangleIcon />
+            <p className="max-w-md">
+              Keep in mind that the party registration program only pertains to
+              nuisance noise complaints. Calls to 911 for other violations will
+              likely result in local law enforcement showing up without a
+              warning.
+            </p>
+          </div>
           <PartySmartInfo />
         </div>
       </div>

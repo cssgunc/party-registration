@@ -73,20 +73,19 @@ export default function PolicePage() {
     error,
   } = usePoliceParties({ startDate, endDate });
 
-  const { data: nearbyParties, isFetching: isFetchingNearby } =
-    usePartiesNearby({
-      placeId: searchAddress?.google_place_id,
-      startDate,
-      endDate,
-    });
+  const { data: nearbyData, isFetching: isFetchingNearby } = usePartiesNearby({
+    placeId: searchAddress?.google_place_id,
+    startDate,
+    endDate,
+  });
 
   const isAddressSearchActive = !!searchAddress?.google_place_id;
-  const activeParties = isAddressSearchActive ? nearbyParties : allParties;
+  const activeParties = isAddressSearchActive ? nearbyData?.nearby : allParties;
   const isPartiesLoading =
-    activeParties === undefined ||
+    activeParties === undefined &&
     (isAddressSearchActive ? isFetchingNearby : isFetchingAll);
 
-  // Use nearby parties if address search is active, otherwise use all parties
+  // Use nearby list if address search is active, otherwise use all parties
   const baseParties = useMemo(() => activeParties ?? [], [activeParties]);
 
   const filteredParties = useMemo(() => {
@@ -272,6 +271,7 @@ export default function PolicePage() {
                 parties={paginatedParties}
                 onSelect={(party) => handleActiveParty(party)}
                 activeParty={activeParty}
+                exactMatch={searchAddress ? nearbyData?.exact_match : undefined}
               />
             )}
           </Card>

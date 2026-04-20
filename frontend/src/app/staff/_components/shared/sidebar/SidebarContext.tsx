@@ -6,12 +6,14 @@ type SidebarContextType = {
   title: string | null;
   description: string | null;
   content: ReactNode | null;
+  headerAction: ReactNode | null;
   selectedKey: string | null;
   openSidebar: (
     key: string,
     title: string,
     description: string,
-    content: ReactNode
+    content: ReactNode,
+    headerAction?: ReactNode
   ) => void;
   closeSidebar: () => void;
 };
@@ -26,17 +28,20 @@ export function SidebarProvider({ children }: SidebarProviderProps) {
   const [title, setTitle] = useState<string | null>(null);
   const [description, setDescription] = useState<string | null>(null);
   const [content, setContent] = useState<ReactNode | null>(null);
+  const [headerAction, setHeaderAction] = useState<ReactNode | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
   const openSidebar = (
     key: string,
     title: string,
     description: string,
-    content: ReactNode
+    content: ReactNode,
+    headerAction?: ReactNode
   ) => {
     setContent(content);
     setTitle(title);
     setDescription(description);
+    setHeaderAction(headerAction ?? null);
     setSelectedKey(key);
     setIsOpen(true);
   };
@@ -44,6 +49,7 @@ export function SidebarProvider({ children }: SidebarProviderProps) {
   const closeSidebar = () => {
     setIsOpen(false);
     setContent(null);
+    setHeaderAction(null);
     setSelectedKey(null);
     setTitle(null);
     setDescription(null);
@@ -56,6 +62,7 @@ export function SidebarProvider({ children }: SidebarProviderProps) {
         title,
         description,
         content,
+        headerAction,
         selectedKey,
         openSidebar,
         closeSidebar,

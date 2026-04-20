@@ -46,22 +46,15 @@ const SEVERITY_LABELS: Record<IncidentSeverity, string> = {
   citation: "Citation",
 };
 
-const getDisplayAddress = (location: LocationDto | null): string => {
-  if (!location) return "";
-  const { street_number, street_name, city } = location;
-  const street = [street_number, street_name].filter(Boolean).join(" ");
-  return city
-    ? street
-      ? `${street}, ${city}`
-      : city
-    : location.formatted_address;
-};
-
 export interface IncidentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   mode?: "create" | "edit";
   location: LocationDto | null;
+  /** Overrides location.google_place_id for incident creation (used for unregistered locations) */
+  locationPlaceId?: string;
+  /** Fallback address string when location is null (used for unregistered locations) */
+  formattedAddress?: string;
   incident?: IncidentDto;
   defaultSeverity?: IncidentSeverity;
   onSubmit: (data: IncidentCreateDto) => void;
@@ -73,6 +66,8 @@ export default function IncidentDialog({
   onOpenChange,
   mode = "create",
   location,
+  locationPlaceId,
+  formattedAddress,
   incident,
   defaultSeverity = "in_person_warning",
   onSubmit,
@@ -126,7 +121,7 @@ export default function IncidentDialog({
 
     setErrors({});
     onSubmit({
-      location_place_id: location?.google_place_id ?? "",
+      location_place_id: locationPlaceId ?? location?.google_place_id ?? "",
       incident_datetime,
       description,
       severity,
@@ -135,7 +130,6 @@ export default function IncidentDialog({
   };
 
   const title = mode === "edit" ? "Edit Incident" : "Add Incident";
-  const addressDisplay = getDisplayAddress(location);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -144,7 +138,6 @@ export default function IncidentDialog({
           <DialogTitle>
             <p className="text-base flex items-center justify-center gap-2">
               {title}
-              {addressDisplay ? ` at ${addressDisplay}` : ""}
             </p>
           </DialogTitle>
         </DialogHeader>
@@ -154,7 +147,7 @@ export default function IncidentDialog({
             <Label htmlFor="incident-address">Selected Address</Label>
             <Input
               id="incident-address"
-              value={location?.formatted_address || ""}
+              value={location?.formatted_address || formattedAddress || ""}
               disabled
             />
           </div>
@@ -240,7 +233,7 @@ export default function IncidentDialog({
 
           <div className="flex justify-center gap-2">
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Saving changes..." : "Save changes"}
+              {isSubmitting ? "Saving changes..." : "Save Changes"}
             </Button>
           </div>
         </form>
