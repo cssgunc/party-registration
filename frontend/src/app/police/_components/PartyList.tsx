@@ -287,7 +287,7 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                     </div>
 
                     {/* Flags + date */}
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between mt-3">
                       <div className="flex items-center gap-3">
                         {INCIDENT_MENU_ITEMS.map(
                           ({ severity, flag, alt, hoverLabel }) => (

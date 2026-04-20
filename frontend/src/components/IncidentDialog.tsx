@@ -236,7 +236,7 @@ export default function IncidentDialog({
 
           <div className="flex justify-center gap-2">
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Saving changes..." : "Save changes"}
+              {isSubmitting ? "Saving changes..." : "Save Changes"}
             </Button>
           </div>
         </form>
