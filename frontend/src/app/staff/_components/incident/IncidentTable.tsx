@@ -168,7 +168,9 @@ export const IncidentTable = () => {
   const createMutation = useCreateIncident({
     onError: (error: Error) => {
       const errorMessage = isAxiosError(error)
-        ? error.response?.data?.message || error.message
+        ? error.response?.data?.detail ||
+          error.response?.data?.message ||
+          error.message
         : error.message || "Failed to create incident";
       reopenCreateSidebar(errorMessage);
     },
@@ -185,7 +187,9 @@ export const IncidentTable = () => {
       variables: { id: number; payload: Partial<IncidentCreateDto> }
     ) => {
       const errorMessage = isAxiosError(error)
-        ? error.response?.data?.message || error.message
+        ? error.response?.data?.detail ||
+          error.response?.data?.message ||
+          error.message
         : error.message || "Failed to update incident";
 
       const targetIncident =

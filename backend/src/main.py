@@ -24,7 +24,7 @@ app.add_middleware(
 def handle_http_exception(req: Request, exc: HTTPException):
     return JSONResponse(
         status_code=exc.status_code,
-        content={"message": exc.detail},
+        content={"detail": exc.detail},
         headers=exc.headers,
     )
 
@@ -33,7 +33,7 @@ def handle_http_exception(req: Request, exc: HTTPException):
 def handle_general_exception(req: Request, exc: Exception):
     return JSONResponse(
         status_code=500,
-        content={"message": "An unexpected error occurred.", "detail": str(exc)},
+        content={"detail": "An unexpected error occurred."},
     )
 
 

@@ -47,9 +47,11 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     if (isAxiosError(error) && error.response?.status === 403) {
       const detail =
-        typeof error.response.data?.message === "string"
-          ? error.response.data.message
-          : "Forbidden";
+        typeof error.response.data?.detail === "string"
+          ? error.response.data.detail
+          : typeof error.response.data?.message === "string"
+            ? error.response.data.message
+            : "Forbidden";
 
       return NextResponse.json({ detail }, { status: 403 });
     }

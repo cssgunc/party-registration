@@ -77,8 +77,8 @@ const getErrorMessage = (error: Error): string => {
       case 500:
         return "Server error. Please try again later.";
     }
-    if (detail?.message) return String(detail.message);
     if (detail?.detail) return String(detail.detail);
+    if (detail?.message) return String(detail.message);
     if (error.message) return error.message;
   }
   return "Operation failed";
