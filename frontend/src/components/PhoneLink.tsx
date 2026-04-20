@@ -1,3 +1,4 @@
+import type { ContactPreference } from "@/lib/api/student/student.types";
 import { cn, formatPhoneNumber } from "@/lib/utils";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 
@@ -9,11 +10,13 @@ export type PhoneLinkProps = Omit<
   "href" | "children"
 > & {
   phoneNumber: string;
+  contactPreference?: ContactPreference | null;
   children?: ReactNode;
 };
 
 export function PhoneLink({
   phoneNumber,
+  contactPreference,
   className,
   children,
   title,
@@ -21,8 +24,10 @@ export function PhoneLink({
 }: PhoneLinkProps) {
   const digits = phoneNumber.replace(/\D/g, "");
   const formatted = formatPhoneNumber(phoneNumber);
+  const hasSupportedPreference =
+    contactPreference === "call" || contactPreference === "text";
 
-  if (!digits) {
+  if (!digits || !hasSupportedPreference) {
     return (
       <span className={className}>
         {children ?? (formatted || phoneNumber)}
@@ -30,11 +35,15 @@ export function PhoneLink({
     );
   }
 
+  const isTextPreference = contactPreference === "text";
+  const href = `${isTextPreference ? "sms" : "tel"}:${digits}`;
+  const actionLabel = isTextPreference ? "Text" : "Call";
+
   return (
     <a
-      href={`tel:${digits}`}
+      href={href}
       className={cn(phoneLinkStyles, className)}
-      title={title ?? `Call ${formatted || digits}`}
+      title={title ?? `${actionLabel} ${formatted || digits}`}
       {...props}
     >
       {children ?? formatted}

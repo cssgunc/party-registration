@@ -51,6 +51,10 @@ export interface IncidentDialogProps {
   onOpenChange: (open: boolean) => void;
   mode?: "create" | "edit";
   location: LocationDto | null;
+  /** Overrides location.google_place_id for incident creation (used for unregistered locations) */
+  locationPlaceId?: string;
+  /** Fallback address string when location is null (used for unregistered locations) */
+  formattedAddress?: string;
   incident?: IncidentDto;
   defaultSeverity?: IncidentSeverity;
   onSubmit: (data: IncidentCreateDto) => void;
@@ -62,6 +66,8 @@ export default function IncidentDialog({
   onOpenChange,
   mode = "create",
   location,
+  locationPlaceId,
+  formattedAddress,
   incident,
   defaultSeverity = "in_person_warning",
   onSubmit,
@@ -115,7 +121,7 @@ export default function IncidentDialog({
 
     setErrors({});
     onSubmit({
-      location_place_id: location?.google_place_id ?? "",
+      location_place_id: locationPlaceId ?? location?.google_place_id ?? "",
       incident_datetime,
       description,
       severity,
@@ -141,7 +147,7 @@ export default function IncidentDialog({
             <Label htmlFor="incident-address">Selected Address</Label>
             <Input
               id="incident-address"
-              value={location?.formatted_address || ""}
+              value={location?.formatted_address || formattedAddress || ""}
               disabled
             />
           </div>
