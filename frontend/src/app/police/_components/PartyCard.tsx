@@ -107,7 +107,7 @@ export default function PartyCard({
       onClick={onClick}
       className={articleClass}
     >
-      <div className="space-y-2">
+      <div className="space-y-1">
         {/* Header: date/time + address + menu */}
         <div className="flex items-start justify-between gap-3">
           <div>

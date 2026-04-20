@@ -215,9 +215,10 @@ export default function PolicePage() {
 
           {/* Search filters */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-1 pb-4">
-            <div className="flex flex-col gap-1 order-2 sm:order-1">
-              <Label>Enter Address</Label>
+            <div className="flex flex-col gap-2 order-2 sm:order-1">
+              <Label htmlFor="address">Enter Address</Label>
               <AddressSearch
+                id="address"
                 className="[&_input]:bg-card [&_input]:border-border"
                 value={searchAddress?.formatted_address || ""}
                 onSelect={setSearchAddress}
@@ -225,7 +226,7 @@ export default function PolicePage() {
                 locationService={locationService}
               />
             </div>
-            <div className="flex flex-col gap-1 order-1 sm:order-2">
+            <div className="flex flex-col gap-2 order-1 sm:order-2">
               <Label htmlFor="date-range">Date Search</Label>
               <SplitDateRangeFilter
                 id="date-range"

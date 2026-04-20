@@ -128,10 +128,10 @@ The mock IdP users are defined in `.devcontainer/saml-idp/authsources.php` and m
 
 **Police Accounts**
 
-| Email                  | Password            |
-| --------------------------- | --------------- |
-| officer@example.com | securepassword |
-| policeadmin@example.com | securepassword   |
+| Email                    | Password       |
+| ------------------------ | -------------- |
+| jcarter@chapelhillnc.gov | securepassword |
+| dreyes@chapelhillnc.gov  | securepassword |
 
 ## Running Backend Tests
 
