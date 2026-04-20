@@ -2,6 +2,7 @@
 
 import { PhoneLink } from "@/components/PhoneLink";
 import { PartyDto } from "@/lib/api/party/party.types";
+import { formatContactPreference } from "@/lib/utils";
 import {
   APIProvider,
   AdvancedMarker,
@@ -220,16 +221,14 @@ const PoiMarkers = ({
                   phoneNumber={
                     selectedPoi.party.contact_one.phone_number ?? "—"
                   }
+                  contactPreference={
+                    selectedPoi.party.contact_one.contact_preference
+                  }
                 />
                 <span className="text-gray-600">
-                  {selectedPoi.party.contact_one.contact_preference
-                    ? selectedPoi.party.contact_one.contact_preference
-                        .charAt(0)
-                        .toUpperCase() +
-                      selectedPoi.party.contact_one.contact_preference
-                        .slice(1)
-                        .toLowerCase()
-                    : "—"}
+                  {formatContactPreference(
+                    selectedPoi.party.contact_one.contact_preference
+                  )}
                 </span>
               </div>
             </div>

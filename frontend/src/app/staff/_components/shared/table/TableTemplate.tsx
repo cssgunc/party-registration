@@ -341,8 +341,8 @@ export function TableTemplate<T extends object>({
               <div className="flex justify-end">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                      <MoreHorizontal className="h-4 w-4" />
+                    <Button variant="ghost" size="sm" className="size-8 p-0">
+                      <MoreHorizontal className="size-4" />
                       <span className="sr-only">Open menu</span>
                     </Button>
                   </DropdownMenuTrigger>
@@ -351,7 +351,7 @@ export function TableTemplate<T extends object>({
                       <DropdownMenuItem
                         onClick={() => handleEditClick(row.id, row.original)}
                       >
-                        <Pencil className="mr-2 h-4 w-4" />
+                        <Pencil className="mr-2 size-4" />
                         Edit
                       </DropdownMenuItem>
                     )}
@@ -361,7 +361,7 @@ export function TableTemplate<T extends object>({
                           onClick={() => handleDeleteClick(row.original)}
                           variant="destructive"
                         >
-                          <Trash2 className="mr-2 h-4 w-4" />
+                          <Trash2 className="mr-2 size-4" />
                           Delete
                         </DropdownMenuItem>
                       )}

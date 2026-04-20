@@ -1,7 +1,7 @@
 "use client";
 
 import PoliceAdminTable from "@/app/police/admin/_components/PoliceAdminTable";
-import GenericSidebar from "@/app/staff/_components/shared/sidebar/GenericSidebar";
+import Sidebar from "@/app/staff/_components/shared/sidebar/Sidebar";
 import { SidebarProvider } from "@/app/staff/_components/shared/sidebar/SidebarContext";
 
 export default function PoliceAdminPage() {
@@ -19,7 +19,7 @@ export default function PoliceAdminPage() {
           </div>
         </div>
       </main>
-      <GenericSidebar />
+      <Sidebar />
     </SidebarProvider>
   );
 }

@@ -34,9 +34,9 @@ export default function PartyCsvExportButton({
         onClick={handleDownload}
         disabled={!startDate || !endDate || isPending}
         variant="default"
-        size="icon-sm"
-        aria-label="Download CSV"
-        title="Download CSV"
+        size="sm"
+        aria-label="Download parties in the list as Excel"
+        title="Download parties in the list as Excel"
       >
         {isPending ? (
           <Loader2 className="size-4 animate-spin" />

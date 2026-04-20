@@ -1,7 +1,5 @@
 "use client";
 
-import logout from "@/components/icons/log-out.svg";
-import user from "@/components/icons/user.svg";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -12,8 +10,8 @@ import {
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { signOut } from "@/lib/auth/signout";
 import { cn } from "@/lib/utils";
+import { LogOut, Shield, User } from "lucide-react";
 import { useSession } from "next-auth/react";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import PartySmartLogo from "./PartySmartLogo";
@@ -44,8 +42,10 @@ export default function Header({ className }: { className?: string }) {
       {status === "authenticated" ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button
-              className="cursor-pointer"
+            <Button
+              variant="ghost"
+              size="icon"
+              className="cursor-pointer rounded-full"
               aria-label={`Open user menu for ${displayName}`}
             >
               <UserAvatar
@@ -54,13 +54,13 @@ export default function Header({ className }: { className?: string }) {
                 name={session?.user?.name}
                 email={session?.user?.email}
               />
-            </button>
+            </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-60" align="end">
             {role === "student" && (
               <Link href="/student/profile">
                 <DropdownMenuItem>
-                  <Image src={user} alt="user" />
+                  <User className="size-4" />
                   <span>Edit Profile Information</span>
                 </DropdownMenuItem>
               </Link>
@@ -68,7 +68,7 @@ export default function Header({ className }: { className?: string }) {
             {role === "police_admin" && (
               <Link href="/police/admin">
                 <DropdownMenuItem>
-                  <Image src={user} alt="user" />
+                  <Shield className="size-4" />
                   <span>Police Admin Dashboard</span>
                 </DropdownMenuItem>
               </Link>
@@ -76,7 +76,7 @@ export default function Header({ className }: { className?: string }) {
             <DropdownMenuItem
               onClick={() => signOut({ callbackUrl: "/login" })}
             >
-              <Image src={logout} alt="logout" />
+              <LogOut className="size-4" />
               <span>Logout</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
