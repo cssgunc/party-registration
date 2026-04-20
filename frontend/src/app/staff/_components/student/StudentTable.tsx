@@ -10,6 +10,7 @@ import {
 } from "@/lib/api/shared/query-params";
 import {
   useDeleteStudent,
+  useDownloadStudentsCsv,
   useStudents,
   useUpdateIsRegistered,
   useUpdateStudent,
@@ -62,8 +63,8 @@ const getErrorMessage = (error: Error): string => {
       case 500:
         return "Server error. Please try again later.";
     }
-    if (detail?.message) return String(detail.message);
     if (detail?.detail) return String(detail.detail);
+    if (detail?.message) return String(detail.message);
     if (error.message) return error.message;
   }
   return "Operation failed";
@@ -91,6 +92,9 @@ export const StudentTable = () => {
 
   const studentsQuery = useStudents(serverParams);
   const students = studentsQuery.data?.items ?? [];
+
+  const { mutate: exportCsv, isPending: isExporting } =
+    useDownloadStudentsCsv();
 
   const checkboxMutation = useUpdateIsRegistered();
 
@@ -282,6 +286,8 @@ export const StudentTable = () => {
         }
         onStateChange={setServerParams}
         columnMap={SERVER_COLUMN_MAP}
+        onExportCsv={exportCsv}
+        isExporting={isExporting}
       />
     </div>
   );

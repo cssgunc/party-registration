@@ -3,7 +3,7 @@ import {
   useDeleteIncident,
   useUpdateIncident,
 } from "@/lib/api/incident/incident.queries";
-import { ServerTableParams } from "@/lib/api/shared/query-params";
+import { ListQueryParams } from "@/lib/api/shared/query-params";
 import { OptimisticMutationOptions, PaginatedResponse } from "@/lib/shared";
 import {
   QueryKey,
@@ -26,7 +26,7 @@ type UpdateLocationVars = {
 };
 
 export function useLocations(
-  serverParams?: ServerTableParams,
+  serverParams?: ListQueryParams,
   options?: UseQueryOptions<PaginatedResponse<LocationDto>>
 ) {
   return useQuery({
@@ -68,6 +68,12 @@ export function useUpdateLocation(
       queryClient.invalidateQueries({ queryKey: LOCATIONS_KEY });
       options?.onSuccess?.(...params);
     },
+  });
+}
+
+export function useDownloadLocationsCsv() {
+  return useMutation<void, Error, ListQueryParams | undefined>({
+    mutationFn: (params) => locationService.downloadLocationsCsv(params),
   });
 }
 

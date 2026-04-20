@@ -158,7 +158,10 @@ export const setupErrorInterceptor = (showError: (message: string) => void) => {
 
       // Get error message
       const message =
-        error.response?.data?.message || error.message || "An error occurred";
+        error.response?.data?.detail ||
+        error.response?.data?.message ||
+        error.message ||
+        "An error occurred";
 
       showError(message);
       return Promise.reject(error);

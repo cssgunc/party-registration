@@ -7,6 +7,7 @@ import {
   useDeleteAdminParty,
   useUpdateAdminParty,
 } from "@/lib/api/party/admin-party.queries";
+import { useDownloadPartiesCsv } from "@/lib/api/party/party.queries";
 import { AdminCreatePartyDto, PartyDto } from "@/lib/api/party/party.types";
 import {
   DEFAULT_TABLE_PARAMS,
@@ -79,8 +80,8 @@ const getErrorMessage = (error: Error): string => {
       case 500:
         return "Server error. Please try again later.";
     }
-    if (detail?.message) return String(detail.message);
     if (detail?.detail) return String(detail.detail);
+    if (detail?.message) return String(detail.message);
     if (error.message) return error.message;
   }
   return "Operation failed";
@@ -95,6 +96,8 @@ export const PartyTable = () => {
 
   const partiesQuery = useAdminParties(serverParams);
   const parties = partiesQuery.data?.items ?? [];
+
+  const { mutate: exportCsv, isPending: isExporting } = useDownloadPartiesCsv();
 
   const createMutation = useCreateAdminParty({
     onError: (error: Error) => {
@@ -376,6 +379,8 @@ export const PartyTable = () => {
         }
         onStateChange={setServerParams}
         columnMap={SERVER_COLUMN_MAP}
+        onExportCsv={exportCsv}
+        isExporting={isExporting}
       />
     </div>
   );

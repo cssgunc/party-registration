@@ -1,5 +1,8 @@
 import { AccountService } from "@/lib/api/account/account.service";
-import { ServerTableParams } from "@/lib/api/shared/query-params";
+import {
+  ListQueryParams,
+  ServerTableParams,
+} from "@/lib/api/shared/query-params";
 import { OptimisticMutationOptions, PaginatedResponse } from "@/lib/shared";
 import {
   UseQueryOptions,
@@ -26,6 +29,11 @@ type UpdateStudentVars = {
 
 type CreateStudentVars = {
   data: StudentUpdateDto & Pick<StudentDto, "email" | "onyen" | "pid">;
+};
+
+type UpdateIsRegisteredVars = {
+  id: number;
+  data: IsRegisteredUpdate;
 };
 
 export function useStudents(
@@ -79,10 +87,11 @@ export function useCreateStudent(
   });
 }
 
-type UpdateIsRegisteredVars = {
-  id: number;
-  data: IsRegisteredUpdate;
-};
+export function useDownloadStudentsCsv() {
+  return useMutation<void, Error, ListQueryParams | undefined>({
+    mutationFn: (params) => studentService.downloadStudentsCsv(params),
+  });
+}
 
 export function useUpdateIsRegistered(
   options?: OptimisticMutationOptions<StudentDto, Error, UpdateIsRegisteredVars>
