@@ -100,9 +100,16 @@ type PoiMarkersProps = {
 };
 
 const SELECTED_ZOOM = 17;
+const METERS_PER_MILE = 1609.344;
+const DEFAULT_SEARCH_RADIUS_MILES = 0.25;
 
-// 0.25 miles in meters, matching backend PARTY_SEARCH_RADIUS_MILES
-const SEARCH_RADIUS_METERS = 402.336;
+const parsedSearchRadiusMiles = Number(
+  process.env.NEXT_PUBLIC_PARTY_SEARCH_RADIUS_MILES
+);
+const SEARCH_RADIUS_METERS =
+  (Number.isFinite(parsedSearchRadiusMiles)
+    ? parsedSearchRadiusMiles
+    : DEFAULT_SEARCH_RADIUS_MILES) * METERS_PER_MILE;
 
 const PoiMarkers = ({
   pois,
@@ -143,6 +150,7 @@ const PoiMarkers = ({
       strokeColor: "#4285F4",
       strokeOpacity: 0.6,
       strokeWeight: 2,
+      clickable: false,
     });
 
     return () => {
