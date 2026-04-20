@@ -1,4 +1,6 @@
+import { downloadExcelFile } from "@/lib/api/shared/download-file";
 import {
+  ListQueryParams,
   ServerTableParams,
   toAxiosParams,
 } from "@/lib/api/shared/query-params";
@@ -21,13 +23,32 @@ export class AccountService {
    * List accounts (GET /api/accounts)
    */
   async listAccounts(
-    params?: ServerTableParams
+    params?: ListQueryParams
   ): Promise<PaginatedResponse<AccountDto>> {
     const response = await this.client.get<PaginatedResponse<AccountDto>>(
       "/accounts",
       { params: params ? toAxiosParams(params) : undefined }
     );
     return response.data;
+  }
+
+  /**
+   * Download accounts as Excel (GET /api/accounts/csv)
+   */
+  async downloadAccountsCsv(params?: ListQueryParams): Promise<void> {
+    const { sort_by, sort_order, search, filters } = params ?? { filters: {} };
+    const exportFilters = { ...filters, role_not_in: "student" };
+    const response = await this.client.get("/accounts/csv", {
+      params: toAxiosParams({
+        page_number: 1,
+        sort_by,
+        sort_order,
+        search,
+        filters: exportFilters,
+      }),
+      responseType: "blob",
+    });
+    downloadExcelFile(response, "accounts.xlsx");
   }
 
   /**

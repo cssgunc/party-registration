@@ -35,6 +35,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  ListQueryParams,
   ServerColumnMap,
   ServerTableParams,
   buildServerTableParams,
@@ -54,7 +55,14 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  Download,
+  Loader2,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DeleteConfirmDialog } from "../dialog/DeleteConfirmDialog";
@@ -93,6 +101,8 @@ export type TableProps<T> = {
   serverMeta?: { totalRecords: number; totalPages: number };
   onStateChange?: (params: ServerTableParams) => void;
   columnMap?: ServerColumnMap;
+  onExportCsv?: (params: ListQueryParams) => void;
+  isExporting?: boolean;
   canManageRows?: boolean;
   canDeleteRow?: (row: T) => boolean;
 };
@@ -116,6 +126,8 @@ export function TableTemplate<T extends object>({
   serverMeta,
   onStateChange,
   columnMap,
+  onExportCsv,
+  isExporting,
   canManageRows,
   canDeleteRow,
 }: TableProps<T>) {
@@ -447,7 +459,34 @@ export function TableTemplate<T extends object>({
                 className="p-2 pl-3 h-9 rounded-md"
               />
             </div>
-            <div className="shrink-0 ml-auto">
+            <div className="shrink-0 ml-auto flex items-center gap-2">
+              {onExportCsv && (
+                <Button
+                  onClick={() => {
+                    const params = columnMap
+                      ? buildServerTableParams(
+                          { pageIndex: 0, pageSize: pagination.pageSize },
+                          sorting,
+                          columnFilters,
+                          columnMap
+                        )
+                      : { page_number: 1, filters: {} };
+                    onExportCsv(params);
+                  }}
+                  disabled={isExporting}
+                  variant="default"
+                  size="icon"
+                  className="h-9 w-9"
+                  aria-label="Export CSV"
+                  title="Export CSV"
+                >
+                  {isExporting ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Download className="size-4" />
+                  )}
+                </Button>
+              )}
               {onCreateNewRow && hasManagePermission && (
                 <Button onClick={onCreateNewRow} className="h-9">
                   <Plus className="mr-1" />

@@ -10,6 +10,7 @@ import {
 } from "@/lib/api/shared/query-params";
 import {
   useDeleteStudent,
+  useDownloadStudentsCsv,
   useStudents,
   useUpdateIsRegistered,
   useUpdateStudent,
@@ -91,6 +92,9 @@ export const StudentTable = () => {
 
   const studentsQuery = useStudents(serverParams);
   const students = studentsQuery.data?.items ?? [];
+
+  const { mutate: exportCsv, isPending: isExporting } =
+    useDownloadStudentsCsv();
 
   const checkboxMutation = useUpdateIsRegistered();
 
@@ -282,6 +286,8 @@ export const StudentTable = () => {
         }
         onStateChange={setServerParams}
         columnMap={SERVER_COLUMN_MAP}
+        onExportCsv={exportCsv}
+        isExporting={isExporting}
       />
     </div>
   );
