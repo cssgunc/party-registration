@@ -11,11 +11,11 @@ import {
 import { cn } from "@/lib/utils";
 import { Column } from "@tanstack/react-table";
 import { ArrowDown, ArrowUp, ChevronDown, Filter, X } from "lucide-react";
-import { useState } from "react";
+import { ReactNode, useState } from "react";
 
 interface ColumnHeaderProps<T> {
   column: Column<T, unknown>;
-  title: string;
+  title: ReactNode;
   onFilterClick?: () => void;
 }
 

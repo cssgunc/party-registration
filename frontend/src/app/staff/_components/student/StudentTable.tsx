@@ -18,6 +18,8 @@ import { StudentDto, StudentUpdateDto } from "@/lib/api/student/student.types";
 import { isFromThisSchoolYear } from "@/lib/utils";
 import { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
+import { HelpCircle } from "lucide-react";
+import { HoverCard } from "radix-ui";
 import { useState } from "react";
 import LocationInfoChipDetails from "../party/details/LocationInfoChipDetails";
 import { GenericInfoChip } from "../shared/sidebar/GenericInfoChip";
@@ -209,7 +211,26 @@ export const StudentTable = () => {
     },
     {
       id: "residence",
-      header: "Residence",
+      header: () => (
+        <div>
+          <HoverCard.Root>
+            <HoverCard.Trigger asChild>
+              <span className="flex gap-2 items-center">
+                Residence <HelpCircle />
+              </span>
+            </HoverCard.Trigger>
+            <HoverCard.Portal>
+              <HoverCard.Content
+                className="bg-white shadow-md p-2 rounded"
+                side="top"
+                align="center"
+              >
+                Filler text in the meantime
+              </HoverCard.Content>
+            </HoverCard.Portal>
+          </HoverCard.Root>
+        </div>
+      ),
       enableColumnFilter: false,
       cell: ({ row }) => {
         const student = row.original;

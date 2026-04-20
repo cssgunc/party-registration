@@ -15,6 +15,8 @@ import {
 } from "@/lib/api/shared/query-params";
 import { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
+import { HelpCircle } from "lucide-react";
+import { HoverCard } from "radix-ui";
 import { useState } from "react";
 import { GenericInfoChip } from "../shared/sidebar/GenericInfoChip";
 import { useSidebar } from "../shared/sidebar/SidebarContext";
@@ -213,7 +215,26 @@ export const LocationTable = () => {
     },
     {
       id: "incidents_info_chip",
-      header: "Incidents",
+      header: () => (
+        <div>
+          <HoverCard.Root>
+            <HoverCard.Trigger asChild>
+              <span className="flex gap-2 items-center">
+                Incidents <HelpCircle />
+              </span>
+            </HoverCard.Trigger>
+            <HoverCard.Portal>
+              <HoverCard.Content
+                className="bg-white shadow-md p-2 rounded"
+                side="top"
+                align="center"
+              >
+                Filler text goes here.
+              </HoverCard.Content>
+            </HoverCard.Portal>
+          </HoverCard.Root>
+        </div>
+      ),
       cell: ({ row }) => {
         return (
           <div className="flex w-auto">
@@ -240,7 +261,26 @@ export const LocationTable = () => {
     },
     {
       accessorKey: "hold_expiration",
-      header: "Active Hold",
+      header: () => (
+        <div>
+          <HoverCard.Root>
+            <HoverCard.Trigger asChild>
+              <span className="flex gap-2 items-center">
+                Active Hold <HelpCircle />
+              </span>
+            </HoverCard.Trigger>
+            <HoverCard.Portal>
+              <HoverCard.Content
+                className="bg-white shadow-md p-2 rounded"
+                side="top"
+                align="center"
+              >
+                Filler text in the meantime
+              </HoverCard.Content>
+            </HoverCard.Portal>
+          </HoverCard.Root>
+        </div>
+      ),
       enableColumnFilter: true,
       meta: { filterType: "dateRange" },
       cell: ({ row }) => {
