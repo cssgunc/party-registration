@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { Info } from "lucide-react";
 import { ReactNode } from "react";
 
-interface GenericInfoChipProps {
+interface InfoChipProps {
   chipKey: string;
   shortName: string;
   title: string;
@@ -14,13 +14,13 @@ interface GenericInfoChipProps {
   sidebarContent: ReactNode;
 }
 
-export function GenericInfoChip({
+export function InfoChip({
   chipKey,
   shortName,
   title,
   description,
   sidebarContent,
-}: GenericInfoChipProps) {
+}: InfoChipProps) {
   const { openSidebar, selectedKey, closeSidebar } = useSidebar();
   const isSelected = selectedKey === chipKey;
 

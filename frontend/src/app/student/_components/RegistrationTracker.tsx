@@ -136,10 +136,7 @@ export default function RegistrationTracker(): React.JSX.Element {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={() => setEditParty(party)}
-                  className="content"
-                >
+                <DropdownMenuItem onClick={() => setEditParty(party)}>
                   <Pencil className="h-4 w-4" />
                   Edit
                 </DropdownMenuItem>

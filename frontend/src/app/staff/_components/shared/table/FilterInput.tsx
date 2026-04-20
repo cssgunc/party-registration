@@ -1,6 +1,7 @@
 "use client";
 
 import DatePicker from "@/components/DatePicker";
+import DateRangeFilter from "@/components/DateRangeFilter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -127,33 +128,17 @@ export function FilterInput<T>({
           <div className="space-y-4 p-4">
             <div className="space-y-2">
               <Label>Date Range</Label>
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-                <DatePicker
-                  value={dateRange?.from ?? null}
-                  onChange={(date) =>
-                    setDateRange((prev) => ({
-                      from: date ?? undefined,
-                      to: prev?.to,
-                    }))
-                  }
-                  placeholder="Start Date"
-                  dateFormat="LLL dd, y"
-                  className="w-full"
-                />
-                <div className="text-sm text-muted-foreground">and</div>
-                <DatePicker
-                  value={dateRange?.to ?? null}
-                  onChange={(date) =>
-                    setDateRange((prev) => ({
-                      from: prev?.from,
-                      to: date ?? undefined,
-                    }))
-                  }
-                  placeholder="End Date"
-                  dateFormat="LLL dd, y"
-                  className="w-full"
-                />
-              </div>
+              <DateRangeFilter
+                startDate={dateRange?.from}
+                endDate={dateRange?.to}
+                onStartDateChange={(date) =>
+                  setDateRange((prev) => ({ from: date, to: prev?.to }))
+                }
+                onEndDateChange={(date) =>
+                  setDateRange((prev) => ({ from: prev?.from, to: date }))
+                }
+                clearable
+              />
             </div>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={handleClear}>

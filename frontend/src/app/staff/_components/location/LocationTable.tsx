@@ -16,7 +16,7 @@ import {
 import { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
 import { useState } from "react";
-import { GenericInfoChip } from "../shared/sidebar/GenericInfoChip";
+import { InfoChip } from "../shared/sidebar/InfoChip";
 import { useSidebar } from "../shared/sidebar/SidebarContext";
 import { TableTemplate } from "../shared/table/TableTemplate";
 import IncidentInfoChipDetails from "./IncidentInfoChipDetails";
@@ -213,7 +213,7 @@ export const LocationTable = () => {
       cell: ({ row }) => {
         return (
           <div className="flex w-auto">
-            <GenericInfoChip
+            <InfoChip
               chipKey={`incidents-${row.original.id}`}
               shortName={`${row.original.incidents.length}${" "}
                 ${row.original.incidents.length === 1 ? "incident" : "incidents"}`}

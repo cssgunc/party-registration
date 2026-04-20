@@ -4,13 +4,12 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { AlertTriangleIcon } from "lucide-react";
 
 export default function PartyRegistrationInfo() {
   return (
     <div className="mt-4 2xl:mt-0">
       <h1 className="page-title">About Party Registration</h1>
-      <Accordion type="single" collapsible className="my-5">
+      <Accordion type="single" collapsible className="mt-5">
         <AccordionItem value="1">
           <AccordionTrigger>How does party registration work?</AccordionTrigger>
           <AccordionContent>
@@ -101,14 +100,6 @@ export default function PartyRegistrationInfo() {
           </AccordionContent>
         </AccordionItem>
       </Accordion>
-      <div className="mt-6 flex flex-col items-center text-center content 2xl:mt-20">
-        <AlertTriangleIcon />
-        <p className="mt-2 mb-6 max-w-md 2xl:mb-0">
-          Keep in mind that the party registration program only pertains to
-          nuisance noise complaints. Calls to 911 for other violations will
-          likely result in local law enforcement showing up without a warning.
-        </p>
-      </div>
     </div>
   );
 }

@@ -2,9 +2,7 @@
 
 import IncidentDialog from "@/components/IncidentDialog";
 import { PhoneLink } from "@/components/PhoneLink";
-import navyFlag from "@/components/icons/navyFlag.svg";
-import redFlag from "@/components/icons/redFlag.svg";
-import yellowFlag from "@/components/icons/yellowFlag.svg";
+import IncidentFlag from "@/components/icons/IncidentFlag";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,7 +45,6 @@ import { usePoliceCreateIncident } from "@/lib/api/party/police-party.queries";
 import { cn, formatTime } from "@/lib/utils";
 import { format } from "date-fns";
 import { AlertTriangle, EllipsisVertical } from "lucide-react";
-import Image, { StaticImageData } from "next/image";
 import type { MouseEvent } from "react";
 import { useEffect, useState } from "react";
 
@@ -58,29 +55,21 @@ const INCIDENT_MENU_ITEMS: {
   severity: IncidentSeverity;
   label: string;
   hoverLabel: string;
-  flag: StaticImageData;
-  alt: string;
 }[] = [
   {
     severity: "remote_warning",
     label: "Add remote warning",
     hoverLabel: "Remote Warnings",
-    flag: navyFlag,
-    alt: "remote warning",
   },
   {
     severity: "in_person_warning",
     label: "Add in-person warning",
     hoverLabel: "In-Person Warnings",
-    flag: yellowFlag,
-    alt: "in-person warning",
   },
   {
     severity: "citation",
     label: "Add citation",
     hoverLabel: "Citations",
-    flag: redFlag,
-    alt: "citation",
   },
 ];
 
@@ -224,22 +213,20 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                           </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent className="w-52" align="end">
-                          {INCIDENT_MENU_ITEMS.map(
-                            ({ severity, label, flag, alt }) => (
-                              <DropdownMenuItem
-                                key={severity}
-                                onClick={(event) =>
-                                  openIncidentDialog(event, severity, party)
-                                }
-                                className="text-foreground"
-                              >
-                                <Image src={flag} alt={alt} />
-                                <span className="text-sm text-foreground">
-                                  {label}
-                                </span>
-                              </DropdownMenuItem>
-                            )
-                          )}
+                          {INCIDENT_MENU_ITEMS.map(({ severity, label }) => (
+                            <DropdownMenuItem
+                              key={severity}
+                              onClick={(event) =>
+                                openIncidentDialog(event, severity, party)
+                              }
+                              className="text-foreground"
+                            >
+                              <IncidentFlag type={severity} className="mr-1" />
+                              <span className="text-sm text-foreground">
+                                {label}
+                              </span>
+                            </DropdownMenuItem>
+                          ))}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
@@ -289,25 +276,23 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
                     {/* Flags + date */}
                     <div className="flex items-center justify-between mt-3">
                       <div className="flex items-center gap-3">
-                        {INCIDENT_MENU_ITEMS.map(
-                          ({ severity, flag, alt, hoverLabel }) => (
-                            <HoverCard
-                              key={severity}
-                              openDelay={0}
-                              closeDelay={4}
-                            >
-                              <HoverCardTrigger asChild>
-                                <div className="flex items-center gap-1 content-bold font-bold text-foreground">
-                                  {countBySeverity[severity]}
-                                  <Image src={flag} alt={alt} />
-                                </div>
-                              </HoverCardTrigger>
-                              <HoverCardContent>
-                                <p>{hoverLabel}</p>
-                              </HoverCardContent>
-                            </HoverCard>
-                          )
-                        )}
+                        {INCIDENT_MENU_ITEMS.map(({ severity, hoverLabel }) => (
+                          <HoverCard
+                            key={severity}
+                            openDelay={0}
+                            closeDelay={4}
+                          >
+                            <HoverCardTrigger asChild>
+                              <div className="flex items-center gap-1 content-bold font-bold text-foreground">
+                                {countBySeverity[severity]}
+                                <IncidentFlag type={severity} />
+                              </div>
+                            </HoverCardTrigger>
+                            <HoverCardContent>
+                              <p>{hoverLabel}</p>
+                            </HoverCardContent>
+                          </HoverCard>
+                        ))}
                       </div>
                       {party.location.hold_expiration && (
                         <div className="flex flex-row gap-2 justify-end items-center mr-4">

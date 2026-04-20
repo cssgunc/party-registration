@@ -592,7 +592,7 @@ export function TableTemplate<T extends object>({
           {/* Pagination Controls */}
           <div
             className={cn(
-              "grid items-center p-2 gap-2 md:gap-4 lg:mt-4",
+              "grid items-center p-2 gap-2 md:gap-4 lg:mt-2",
               hideFooterMetaOnSmall
                 ? "grid-cols-2 md:grid-cols-3"
                 : "grid-cols-3"

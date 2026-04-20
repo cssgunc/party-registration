@@ -1,7 +1,8 @@
 "use client";
 
+import { InfoChipDetails } from "@/app/staff/_components/shared/sidebar/InfoChipDetails";
 import { ContactDto } from "@/lib/api/party/party.types";
-import { GenericChipDetails } from "../../shared/sidebar/GenericChipDetails";
+import { formatContactPreference, formatPhoneNumber } from "@/lib/utils";
 
 interface ContactInfoChipDetailsProps {
   data: ContactDto;
@@ -9,34 +10,17 @@ interface ContactInfoChipDetailsProps {
 
 export function ContactInfoChipDetails({ data }: ContactInfoChipDetailsProps) {
   return (
-    <GenericChipDetails<ContactDto>
-      data={data}
-      renderView={(d) => (
-        <div className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium">First Name</label>
-            <p>{d.first_name}</p>
-          </div>
-          <div>
-            <label className="block text-sm font-medium">Last Name</label>
-            <p>{d.last_name}</p>
-          </div>
-          <div>
-            <label className="block text-sm font-medium">Email</label>
-            <p>{d.email}</p>
-          </div>
-          <div>
-            <label className="block text-sm font-medium">Phone Number</label>
-            <p>{d.phone_number}</p>
-          </div>
-          <div>
-            <label className="block text-sm font-medium">
-              Contact Preference
-            </label>
-            <p>{d.contact_preference}</p>
-          </div>
-        </div>
-      )}
+    <InfoChipDetails
+      fields={[
+        ["First Name", data.first_name],
+        ["Last Name", data.last_name],
+        ["Email", data.email],
+        ["Phone Number", formatPhoneNumber(data.phone_number)],
+        [
+          "Contact Preference",
+          formatContactPreference(data.contact_preference),
+        ],
+      ]}
     />
   );
 }

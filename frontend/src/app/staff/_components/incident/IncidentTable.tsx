@@ -1,9 +1,7 @@
 "use client";
 
 import { useSidebar } from "@/app/staff/_components/shared/sidebar/SidebarContext";
-import navyFlag from "@/components/icons/navyFlag.svg";
-import redFlag from "@/components/icons/redFlag.svg";
-import yellowFlag from "@/components/icons/yellowFlag.svg";
+import IncidentFlag from "@/components/icons/IncidentFlag";
 import { useSnackbar } from "@/contexts/SnackbarContext";
 import {
   useCreateIncident,
@@ -29,10 +27,9 @@ import { formatTime } from "@/lib/utils";
 import { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
 import { format } from "date-fns";
-import Image from "next/image";
 import { useMemo, useState } from "react";
 import LocationInfoChipDetails from "../party/details/LocationInfoChipDetails";
-import { GenericInfoChip } from "../shared/sidebar/GenericInfoChip";
+import { InfoChip } from "../shared/sidebar/InfoChip";
 import { TableTemplate } from "../shared/table/TableTemplate";
 import IncidentDescriptionChipDetails from "./IncidentDescriptionChipDetails";
 import IncidentTableForm from "./IncidentTableForm";
@@ -61,12 +58,6 @@ function severityLabel(severity: IncidentSeverity): string {
   if (severity === "remote_warning") return "Remote Warning";
   if (severity === "in_person_warning") return "In-Person Warning";
   return "Citation";
-}
-
-function getSeverityFlag(severity: IncidentSeverity) {
-  if (severity === "remote_warning") return navyFlag;
-  if (severity === "in_person_warning") return yellowFlag;
-  return redFlag;
 }
 
 function truncateDescription(
@@ -263,7 +254,7 @@ export const IncidentTable = () => {
           return "—";
         }
         return (
-          <GenericInfoChip
+          <InfoChip
             chipKey={`incident-${row.original.id}-location`}
             title="Info about the Location"
             description="Detailed information about the selected location"
@@ -322,12 +313,13 @@ export const IncidentTable = () => {
       },
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
-          <Image
+          <IncidentFlag type={row.original.severity} />
+          {/* <Image
             src={getSeverityFlag(row.original.severity)}
             alt={row.original.severity}
             width={16}
             height={16}
-          />
+          /> */}
           {severityLabel(row.original.severity)}
         </div>
       ),
@@ -348,7 +340,7 @@ export const IncidentTable = () => {
           return "—";
         }
         return (
-          <GenericInfoChip
+          <InfoChip
             chipKey={`incident-${row.original.id}-description`}
             title="Incident Description"
             description="View the full incident description"
