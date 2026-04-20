@@ -72,7 +72,7 @@ class TestAuthRouter:
         data = assert_res_success(response, TokensDto)
         payload = self.auth_utils.decode_token(data.access_token)
         expected = AccountDto(
-            id=payload["sub"],
+            id=int(payload["sub"]),
             email=account_data.email,
             first_name=account_data.first_name,
             last_name=account_data.last_name,
@@ -107,7 +107,7 @@ class TestAuthRouter:
         data = assert_res_success(response, TokensDto)
         payload = self.auth_utils.decode_token(data.access_token)
         expected = AccountDto(
-            id=payload["sub"],
+            id=int(payload["sub"]),
             email=updated_data.email,
             first_name=updated_data.first_name,
             last_name=updated_data.last_name,

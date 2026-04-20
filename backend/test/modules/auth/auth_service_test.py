@@ -96,7 +96,7 @@ class TestAuthService:
         payload = self.auth_service.decode_access_token(token)
 
         assert isinstance(payload, AccountAccessTokenPayload)
-        assert payload.sub == 99999
+        assert payload.sub == "99999"
 
     @pytest.mark.asyncio
     async def test_decode_access_token_expired(self, account_utils: AccountTestUtils) -> None:
@@ -336,7 +336,7 @@ class TestAuthService:
         new_access = await self.auth_service.refresh_access_token(refresh_token)
 
         payload = self.auth_utils.decode_token(new_access.access_token)
-        assert payload["sub"] == police.id
+        assert payload["sub"] == str(police.id)
         assert payload["email"] == police.email
 
     @pytest.mark.asyncio

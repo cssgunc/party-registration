@@ -99,7 +99,7 @@ class AuthTestUtils:
 
         if account:
             payload = AccountAccessTokenPayload(
-                sub=account.id,
+                sub=str(account.id),
                 email=account.email,
                 first_name=account.first_name,
                 last_name=account.last_name,
@@ -112,7 +112,7 @@ class AuthTestUtils:
         else:
             assert police is not None
             payload = PoliceAccessTokenPayload(
-                sub=police.id,
+                sub=str(police.id),
                 email=police.email,
                 role=police.role.value,
                 exp=expires_at,
@@ -130,7 +130,7 @@ class AuthTestUtils:
             token,
             secret_key,
             algorithms=[env.JWT_ALGORITHM],
-            options={"verify_exp": False, "verify_sub": False},
+            options={"verify_exp": False},
         )
 
     @staticmethod
@@ -140,7 +140,7 @@ class AuthTestUtils:
         """Assert that a decoded access token payload matches the given account."""
         if isinstance(payload, AccountAccessTokenPayload):
             payload = payload.model_dump(mode="json")
-        assert payload["sub"] == account.id
+        assert payload["sub"] == str(account.id)
         assert payload["email"] == account.email
         assert payload["first_name"] == account.first_name
         assert payload["last_name"] == account.last_name
@@ -155,7 +155,7 @@ class AuthTestUtils:
         """Assert that a decoded access token payload matches the given police account."""
         if isinstance(payload, PoliceAccessTokenPayload):
             payload = payload.model_dump(mode="json")
-        assert payload["sub"] == police.id
+        assert payload["sub"] == str(police.id)
         assert payload["email"] == police.email
         assert payload["role"] == police.role.value
         for field in ("first_name", "last_name", "pid", "onyen"):
