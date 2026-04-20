@@ -415,13 +415,13 @@ export default function StudentSearch({
         </PopoverContent>
       </Popover>
 
-      {displayError && (
+      {internalError && (
         <p
           id="student-error"
           className="mt-2 text-sm text-destructive"
           role="alert"
         >
-          {displayError}
+          {internalError}
         </p>
       )}
     </div>

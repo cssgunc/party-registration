@@ -9,6 +9,7 @@ import {
   FieldError,
   FieldGroup,
   FieldLabel,
+  FieldLegend,
   FieldSet,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -78,14 +79,12 @@ interface PartyTableFormProps {
   onSubmit: (data: PartyTableFormValues) => void | Promise<void>;
   editData?: PartyDto;
   submissionError?: string | null;
-  title?: string;
 }
 
 export default function PartyTableForm({
   onSubmit,
   editData,
   submissionError,
-  title,
 }: PartyTableFormProps) {
   const { data: session } = useSession();
   const isAdmin = session?.role === "admin";
@@ -180,13 +179,13 @@ export default function PartyTableForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {title && <h2 className="text-xl font-semibold mb-4">{title}</h2>}
+    <form onSubmit={handleSubmit}>
       <FieldGroup>
-        <FieldSet className="space-y-4">
+        <FieldSet>
           <Field data-invalid={!!errors.address}>
             <FieldLabel htmlFor="party-address">Party Address</FieldLabel>
             <AddressSearch
+              id="party-address"
               value={formData.address}
               initialSelection={
                 editData?.location
@@ -266,114 +265,118 @@ export default function PartyTableForm({
             )}
           </Field>
 
-          <p className="font-semibold text-foreground">
-            Second Contact Information
-          </p>
+          <FieldSet className="pt-2">
+            <FieldLegend className="font-semibold text-foreground">
+              Second Contact Information
+            </FieldLegend>
 
-          <Field data-invalid={!!errors.contactTwoEmail}>
-            <FieldLabel htmlFor="contact-two-email">Contact Email</FieldLabel>
-            <Input
-              id="contact-two-email"
-              type="email"
-              placeholder="student@unc.edu"
-              value={formData.contactTwoEmail}
-              onChange={(e) => updateField("contactTwoEmail", e.target.value)}
-              aria-invalid={!!errors.contactTwoEmail}
-              autoComplete="off"
-            />
-            {errors.contactTwoEmail && (
-              <FieldError>{errors.contactTwoEmail}</FieldError>
-            )}
-          </Field>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field data-invalid={!!errors.contactTwoFirstName}>
-              <FieldLabel htmlFor="contact-two-first-name">
-                First Name
+            <Field data-invalid={!!errors.contactTwoEmail}>
+              <FieldLabel htmlFor="contact-two-email">Contact Email</FieldLabel>
+              <Input
+                id="contact-two-email"
+                type="email"
+                placeholder="student@unc.edu"
+                value={formData.contactTwoEmail}
+                onChange={(e) => updateField("contactTwoEmail", e.target.value)}
+                aria-invalid={!!errors.contactTwoEmail}
+                autoComplete="off"
+              />
+              {errors.contactTwoEmail && (
+                <FieldError>{errors.contactTwoEmail}</FieldError>
+              )}
+            </Field>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field data-invalid={!!errors.contactTwoFirstName}>
+                <FieldLabel htmlFor="contact-two-first-name">
+                  First Name
+                </FieldLabel>
+                <Input
+                  id="contact-two-first-name"
+                  type="text"
+                  placeholder="John"
+                  value={formData.contactTwoFirstName}
+                  onChange={(e) =>
+                    updateField("contactTwoFirstName", e.target.value)
+                  }
+                  aria-invalid={!!errors.contactTwoFirstName}
+                  autoComplete="off"
+                />
+                {errors.contactTwoFirstName && (
+                  <FieldError>{errors.contactTwoFirstName}</FieldError>
+                )}
+              </Field>
+
+              <Field data-invalid={!!errors.contactTwoLastName}>
+                <FieldLabel htmlFor="contact-two-last-name">
+                  Last Name
+                </FieldLabel>
+                <Input
+                  id="contact-two-last-name"
+                  type="text"
+                  placeholder="Doe"
+                  value={formData.contactTwoLastName}
+                  onChange={(e) =>
+                    updateField("contactTwoLastName", e.target.value)
+                  }
+                  aria-invalid={!!errors.contactTwoLastName}
+                  autoComplete="off"
+                />
+                {errors.contactTwoLastName && (
+                  <FieldError>{errors.contactTwoLastName}</FieldError>
+                )}
+              </Field>
+            </div>
+
+            <Field data-invalid={!!errors.contactTwoPhoneNumber}>
+              <FieldLabel htmlFor="contact-two-phone-number">
+                {" "}
+                Phone Number
               </FieldLabel>
               <Input
-                id="contact-two-first-name"
-                type="text"
-                placeholder="John"
-                value={formData.contactTwoFirstName}
-                onChange={(e) =>
-                  updateField("contactTwoFirstName", e.target.value)
-                }
-                aria-invalid={!!errors.contactTwoFirstName}
+                id="contact-two-phone-number"
+                type="tel"
+                placeholder="(123) 456-7890"
+                value={formatPhoneNumberInput(
+                  formData.contactTwoPhoneNumber || ""
+                )}
+                onChange={(e) => {
+                  const digitsOnly = e.target.value
+                    .replace(/\D/g, "")
+                    .slice(0, 10);
+                  updateField("contactTwoPhoneNumber", digitsOnly);
+                }}
+                aria-invalid={!!errors.contactTwoPhoneNumber}
+                maxLength={14}
                 autoComplete="off"
               />
-              {errors.contactTwoFirstName && (
-                <FieldError>{errors.contactTwoFirstName}</FieldError>
+              {errors.contactTwoPhoneNumber && (
+                <FieldError>{errors.contactTwoPhoneNumber}</FieldError>
               )}
             </Field>
 
-            <Field data-invalid={!!errors.contactTwoLastName}>
-              <FieldLabel htmlFor="contact-two-last-name">Last Name</FieldLabel>
-              <Input
-                id="contact-two-last-name"
-                type="text"
-                placeholder="Doe"
-                value={formData.contactTwoLastName}
-                onChange={(e) =>
-                  updateField("contactTwoLastName", e.target.value)
+            <Field data-invalid={!!errors.contactTwoPreference}>
+              <FieldLabel htmlFor="contact-two-preference">
+                Contact Preference
+              </FieldLabel>
+              <Select
+                value={formData.contactTwoPreference}
+                onValueChange={(value) =>
+                  updateField("contactTwoPreference", value as "call" | "text")
                 }
-                aria-invalid={!!errors.contactTwoLastName}
-                autoComplete="off"
-              />
-              {errors.contactTwoLastName && (
-                <FieldError>{errors.contactTwoLastName}</FieldError>
+              >
+                <SelectTrigger id="contact-two-preference">
+                  <SelectValue placeholder="Select preference" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="call">Call</SelectItem>
+                  <SelectItem value="text">Text</SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.contactTwoPreference && (
+                <FieldError>{errors.contactTwoPreference}</FieldError>
               )}
             </Field>
-          </div>
-
-          <Field data-invalid={!!errors.contactTwoPhoneNumber}>
-            <FieldLabel htmlFor="contact-two-phone-number">
-              {" "}
-              Phone Number
-            </FieldLabel>
-            <Input
-              id="contact-two-phone-number"
-              type="tel"
-              placeholder="(123) 456-7890"
-              value={formatPhoneNumberInput(
-                formData.contactTwoPhoneNumber || ""
-              )}
-              onChange={(e) => {
-                const digitsOnly = e.target.value
-                  .replace(/\D/g, "")
-                  .slice(0, 10);
-                updateField("contactTwoPhoneNumber", digitsOnly);
-              }}
-              aria-invalid={!!errors.contactTwoPhoneNumber}
-              maxLength={14}
-              autoComplete="off"
-            />
-            {errors.contactTwoPhoneNumber && (
-              <FieldError>{errors.contactTwoPhoneNumber}</FieldError>
-            )}
-          </Field>
-
-          <Field data-invalid={!!errors.contactTwoPreference}>
-            <FieldLabel htmlFor="contact-two-preference">
-              Contact Preference
-            </FieldLabel>
-            <Select
-              value={formData.contactTwoPreference}
-              onValueChange={(value) =>
-                updateField("contactTwoPreference", value as "call" | "text")
-              }
-            >
-              <SelectTrigger id="contact-two-preference">
-                <SelectValue placeholder="Select preference" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="call">Call</SelectItem>
-                <SelectItem value="text">Text</SelectItem>
-              </SelectContent>
-            </Select>
-            {errors.contactTwoPreference && (
-              <FieldError>{errors.contactTwoPreference}</FieldError>
-            )}
-          </Field>
+          </FieldSet>
 
           <Field orientation="vertical" className="space-y-3">
             {submissionError && (

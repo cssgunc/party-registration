@@ -422,7 +422,10 @@ export default function StudentInfo() {
                 )}
               </Field>
               {!validAddress && (
-                <Field data-invalid={!!errors.address} className="mb-2">
+                <Field
+                  data-invalid={!!errors.location_place_id}
+                  className="mb-2"
+                >
                   <FieldLabel htmlFor="address" className="subhead-content">
                     {school_year} Address
                   </FieldLabel>
@@ -434,7 +437,9 @@ export default function StudentInfo() {
                     error={errors.location_place_id}
                     chapelHillOnly
                   />
-                  {errors.address && <FieldError>{errors.address}</FieldError>}
+                  {errors.location_place_id && (
+                    <FieldError>{errors.location_place_id}</FieldError>
+                  )}
                 </Field>
               )}
             </div>

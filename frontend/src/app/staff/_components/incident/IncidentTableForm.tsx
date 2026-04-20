@@ -58,7 +58,6 @@ interface IncidentTableFormProps {
   allLocations: LocationDto[];
   editData?: IncidentDto;
   submissionError?: string | null;
-  title?: string;
 }
 
 function severityLabel(severity: IncidentSeverity): string {
@@ -72,7 +71,6 @@ export default function IncidentTableForm({
   allLocations,
   editData,
   submissionError,
-  title,
 }: IncidentTableFormProps) {
   // When editing, find the google_place_id from locations array by location_id
   const editLocationPlaceId = useMemo(() => {
@@ -180,8 +178,6 @@ export default function IncidentTableForm({
 
   return (
     <form onSubmit={handleSubmit}>
-      {title && <h2 className="text-xl font-semibold mb-4">{title}</h2>}
-
       <FieldGroup>
         <FieldSet>
           <Field data-invalid={!!errors.location_place_id}>

@@ -30,6 +30,7 @@ interface AddressSearchProps {
   locationService?: LocationService;
   error?: string;
   chapelHillOnly?: boolean;
+  id?: string;
 }
 
 /**
@@ -46,6 +47,7 @@ export default function AddressSearch({
   locationService,
   error: externalError,
   chapelHillOnly = false,
+  id,
 }: AddressSearchProps) {
   const resolvedLocationService = useMemo(
     () => locationService ?? new LocationService(),
@@ -250,6 +252,7 @@ export default function AddressSearch({
         <PopoverTrigger asChild>
           <div className="relative">
             <Input
+              id={id}
               ref={inputRef}
               value={searchTerm}
               onChange={handleInputChange}
@@ -367,9 +370,9 @@ export default function AddressSearch({
         </p>
       )}
 
-      {displayError && (
+      {internalError && (
         <p className="mt-2 text-sm text-destructive" role="alert">
-          {displayError}
+          {internalError}
         </p>
       )}
     </div>

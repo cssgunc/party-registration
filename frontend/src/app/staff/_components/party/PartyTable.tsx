@@ -171,7 +171,6 @@ export const PartyTable = () => {
       "Edit Party",
       "Update party information",
       <PartyTableForm
-        title="Edit Party"
         onSubmit={(data) => handleEditSubmit(party.id, data)}
         editData={party}
       />

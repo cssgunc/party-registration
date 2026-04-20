@@ -27,16 +27,13 @@ function Sidebar() {
         )}
       >
         {/* Header — stays visible because only the content area below scrolls */}
-        <div className="bg-card px-6 pt-6 pb-2">
-          <Button
-            className="bg-card pb-10 hover:bg-card"
-            onClick={closeSidebar}
-          >
+        <div className="bg-card px-6 pt-6 pb-2 mb-2">
+          <Button className="bg-card hover:bg-card pb-6" onClick={closeSidebar}>
             <XIcon className="text-muted-foreground size-6 -m-8" />
           </Button>
           {title && (
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+              <h2 className="subhead-title text-foreground">{title}</h2>
               {headerAction}
             </div>
           )}

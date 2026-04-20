@@ -37,7 +37,7 @@ export function InfoChip({
     <Badge
       onClick={handleOpen}
       className={cn(
-        "cursor-pointer border border-transparent bg-transparent px-3 py-1 transition-colors [&>svg]:size-auto leading-0 -translate-x-4",
+        "cursor-pointer border border-transparent bg-transparent px-3 py-1 transition-colors [&>svg]:size-auto leading-0 -translate-x-4 text-sm font-normal",
         isSelected
           ? "bg-primary text-white hover:bg-primary/15"
           : "text-foreground hover:bg-gray-500/10"
