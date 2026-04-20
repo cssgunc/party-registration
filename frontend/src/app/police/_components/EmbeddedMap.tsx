@@ -76,6 +76,7 @@ const EmbeddedMap = ({
             pois={locations}
             activePoiKey={activePoiKey}
             onSelect={onSelect}
+            searchCenter={center}
           />
         </Map>
       </APIProvider>
@@ -87,11 +88,20 @@ type PoiMarkersProps = {
   pois: (Poi & { party?: PartyDto })[];
   activePoiKey?: string;
   onSelect?: (party: PartyDto | null) => void;
+  searchCenter?: { lat: number; lng: number };
 };
 
 const SELECTED_ZOOM = 17;
 
-const PoiMarkers = ({ pois, activePoiKey, onSelect }: PoiMarkersProps) => {
+// 0.25 miles in meters, matching backend PARTY_SEARCH_RADIUS_MILES
+const SEARCH_RADIUS_METERS = 402.336;
+
+const PoiMarkers = ({
+  pois,
+  activePoiKey,
+  onSelect,
+  searchCenter,
+}: PoiMarkersProps) => {
   const map = useMap();
   const [selectedPoi, setSelectedPoi] = useState<(typeof pois)[0] | null>(null);
 
@@ -112,6 +122,25 @@ const PoiMarkers = ({ pois, activePoiKey, onSelect }: PoiMarkersProps) => {
       map.setZoom(SELECTED_ZOOM);
     }
   }, [activePoiKey, map, pois]);
+
+  useEffect(() => {
+    if (!map || !searchCenter) return;
+
+    const circle = new google.maps.Circle({
+      map,
+      center: searchCenter,
+      radius: SEARCH_RADIUS_METERS,
+      fillColor: "#4285F4",
+      fillOpacity: 0.08,
+      strokeColor: "#4285F4",
+      strokeOpacity: 0.6,
+      strokeWeight: 2,
+    });
+
+    return () => {
+      circle.setMap(null);
+    };
+  }, [map, searchCenter]);
 
   const handleClick = useCallback(
     (poi: (typeof pois)[0]) => (ev: google.maps.MapMouseEvent) => {
