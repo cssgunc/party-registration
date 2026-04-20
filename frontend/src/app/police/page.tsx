@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SkeletonText } from "@/components/ui/skeleton";
+import { Skeleton, SkeletonText } from "@/components/ui/skeleton";
 import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { PartyDto } from "@/lib/api/party/party.types";
@@ -185,6 +185,7 @@ export default function PolicePage() {
     (currentPage + 1) * pageSize
   );
   const showPagination = !isPartiesLoading && totalPages > 1;
+  const showPaginationRow = isPartiesLoading || showPagination;
 
   const maxVisiblePages = 3;
   const pageStart = Math.max(
@@ -274,7 +275,7 @@ export default function PolicePage() {
               />
             )}
           </Card>
-          {showPagination && (
+          {showPaginationRow && (
             <div className="flex items-center justify-between gap-2 md:gap-4 p-2">
               <div className="min-w-0 flex justify-start overflow-x-auto">
                 <Pagination className="mx-0 w-max justify-start">
@@ -284,51 +285,66 @@ export default function PolicePage() {
                         href="#"
                         onClick={(e: MouseEvent<HTMLAnchorElement>) => {
                           e.preventDefault();
+                          if (isPartiesLoading) return;
                           setCurrentPage((p) => Math.max(0, p - 1));
                         }}
                         className={cn(
-                          currentPage === 0
+                          isPartiesLoading || currentPage === 0
                             ? "pointer-events-none opacity-50"
                             : "cursor-pointer"
                         )}
                       />
                     </PaginationItem>
-                    {pageStart > 0 && (
-                      <PaginationItem>
-                        <PaginationEllipsis />
+                    {isPartiesLoading ? (
+                      <PaginationItem className="flex items-center gap-2">
+                        {Array.from({ length: 2 }).map((_, index) => (
+                          <Skeleton
+                            key={index}
+                            className="h-8 w-8 rounded-md"
+                          />
+                        ))}
                       </PaginationItem>
-                    )}
-                    {pageIndexes.map((pageIndex) => (
-                      <PaginationItem key={pageIndex}>
-                        <PaginationLink
-                          href="#"
-                          onClick={(e: MouseEvent<HTMLAnchorElement>) => {
-                            e.preventDefault();
-                            setCurrentPage(pageIndex);
-                          }}
-                          isActive={currentPage === pageIndex}
-                          className="cursor-pointer"
-                        >
-                          {pageIndex + 1}
-                        </PaginationLink>
-                      </PaginationItem>
-                    ))}
-                    {pageEnd < totalPages && (
-                      <PaginationItem>
-                        <PaginationEllipsis />
-                      </PaginationItem>
+                    ) : (
+                      <>
+                        {pageStart > 0 && (
+                          <PaginationItem>
+                            <PaginationEllipsis />
+                          </PaginationItem>
+                        )}
+                        {pageIndexes.map((pageIndex) => (
+                          <PaginationItem key={pageIndex}>
+                            <PaginationLink
+                              href="#"
+                              onClick={(e: MouseEvent<HTMLAnchorElement>) => {
+                                e.preventDefault();
+                                setCurrentPage(pageIndex);
+                              }}
+                              isActive={currentPage === pageIndex}
+                              className="cursor-pointer"
+                            >
+                              {pageIndex + 1}
+                            </PaginationLink>
+                          </PaginationItem>
+                        ))}
+                        {pageEnd < totalPages && (
+                          <PaginationItem>
+                            <PaginationEllipsis />
+                          </PaginationItem>
+                        )}
+                      </>
                     )}
                     <PaginationItem>
                       <PaginationNext
                         href="#"
                         onClick={(e: MouseEvent<HTMLAnchorElement>) => {
                           e.preventDefault();
+                          if (isPartiesLoading) return;
                           setCurrentPage((p) =>
                             Math.min(totalPages - 1, p + 1)
                           );
                         }}
                         className={cn(
-                          currentPage === totalPages - 1
+                          isPartiesLoading || currentPage === totalPages - 1
                             ? "pointer-events-none opacity-50"
                             : "cursor-pointer"
                         )}
@@ -341,26 +357,30 @@ export default function PolicePage() {
                 <span className="hidden lg:inline content text-muted-foreground whitespace-nowrap">
                   Rows per page:
                 </span>
-                <Select
-                  value={String(pageSize)}
-                  onValueChange={(value) => {
-                    setPageSize(
-                      Number(value) as (typeof PAGE_SIZE_OPTIONS)[number]
-                    );
-                    setCurrentPage(0);
-                  }}
-                >
-                  <SelectTrigger className="w-20 bg-card">
-                    <SelectValue placeholder="Rows" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-40 overflow-y-auto">
-                    {PAGE_SIZE_OPTIONS.map((size) => (
-                      <SelectItem key={size} value={String(size)}>
-                        {size}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {isPartiesLoading ? (
+                  <Skeleton className="h-8 w-20 rounded-md" />
+                ) : (
+                  <Select
+                    value={String(pageSize)}
+                    onValueChange={(value) => {
+                      setPageSize(
+                        Number(value) as (typeof PAGE_SIZE_OPTIONS)[number]
+                      );
+                      setCurrentPage(0);
+                    }}
+                  >
+                    <SelectTrigger className="w-20 bg-card">
+                      <SelectValue placeholder="Rows" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-40 overflow-y-auto">
+                      {PAGE_SIZE_OPTIONS.map((size) => (
+                        <SelectItem key={size} value={String(size)}>
+                          {size}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             </div>
           )}

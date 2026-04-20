@@ -126,7 +126,7 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
   return (
     <>
       <div className="flex flex-col min-h-0 flex-1 gap-3">
-        <ul className="flex-1 min-h-0 w-full overflow-y-auto rounded-md border border-border bg-card card-shadow [scroll-behavior:smooth]">
+        <ul className="flex-1 min-h-0 w-full overflow-y-auto [scroll-behavior:smooth]">
           {parties.map((party) => {
             const countBySeverity: Record<IncidentSeverity, number> = {
               remote_warning: getRemoteWarningCount(party.location),

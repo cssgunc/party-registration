@@ -488,14 +488,7 @@ export function TableTemplate<T extends object>({
                           }
                         >
                           {header.isPlaceholder ? null : header.column.id ===
-                            "actions" ? null : isLoading ? (
-                            typeof header.column.columnDef.header ===
-                            "string" ? (
-                              header.column.columnDef.header
-                            ) : (
-                              header.column.id
-                            )
-                          ) : (
+                            "actions" ? null : (
                             <ColumnHeader
                               column={header.column}
                               title={
@@ -505,6 +498,7 @@ export function TableTemplate<T extends object>({
                                   : header.column.id
                               }
                               onFilterClick={() => {
+                                if (isLoading) return;
                                 const columnName =
                                   typeof header.column.columnDef.header ===
                                   "string"
@@ -615,98 +609,72 @@ export function TableTemplate<T extends object>({
         </Card>
 
         {/* Pagination Controls */}
-        {!isLoading && !error && (
-          <div
-            className={cn(
-              "grid items-center p-2 gap-2 md:gap-4 mt-2",
-              hideFooterMetaOnSmall
-                ? "grid-cols-2 md:grid-cols-3"
-                : "grid-cols-3"
-            )}
-          >
-            {/* Left Column: Results Counter */}
-            <div
-              className={cn(
-                "items-center justify-start",
-                hideFooterMetaOnSmall ? "hidden md:flex" : "flex"
-              )}
-            >
-              <span className="text-sm text-muted-foreground whitespace-nowrap">
-                Results{" "}
-                {table.getState().pagination.pageIndex *
-                  table.getState().pagination.pageSize +
-                  1}{" "}
-                -{" "}
-                {filteredRowCount <
-                (table.getState().pagination.pageIndex + 1) *
-                  table.getState().pagination.pageSize
-                  ? filteredRowCount
-                  : (table.getState().pagination.pageIndex + 1) *
-                    table.getState().pagination.pageSize}{" "}
-                of {filteredRowCount}
-              </span>
-            </div>
-
-            {/* Center Column: Pagination Navigation */}
-            <div
-              className={cn(
-                "flex",
-                hideFooterMetaOnSmall
-                  ? "justify-start md:justify-center"
-                  : "justify-center"
-              )}
-            >
-              {" "}
-              <Pagination>
+        {!error && (
+          <div className="flex flex-col gap-2 p-2 mt-2">
+            {/* Row 1: Pagination Navigation */}
+            <div className="flex min-w-0 w-full overflow-x-auto justify-center">
+              <Pagination className="w-max">
                 <PaginationContent>
                   <PaginationItem>
                     <PaginationPrevious
                       href="#"
                       onClick={(e) => {
                         e.preventDefault();
+                        if (isLoading) return;
                         table.previousPage();
                       }}
                       className={
-                        !table.getCanPreviousPage()
+                        isLoading || !table.getCanPreviousPage()
                           ? "pointer-events-none opacity-50"
                           : "cursor-pointer"
                       }
                     />
                   </PaginationItem>
-                  {pageStart > 0 && (
-                    <PaginationItem>
-                      <PaginationEllipsis />
+                  {isLoading ? (
+                    <PaginationItem className="flex items-center gap-2">
+                      {Array.from({ length: 2 }).map((_, index) => (
+                        <Skeleton key={index} className="h-8 w-8 rounded-md" />
+                      ))}
                     </PaginationItem>
-                  )}
-                  {pageIndexes.map((pageIndex) => (
-                    <PaginationItem key={pageIndex}>
-                      <PaginationLink
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          table.setPageIndex(pageIndex);
-                        }}
-                        isActive={activePage === pageIndex}
-                        className="cursor-pointer"
-                      >
-                        {pageIndex + 1}
-                      </PaginationLink>
-                    </PaginationItem>
-                  ))}
-                  {pageEnd < pageCount && (
-                    <PaginationItem>
-                      <PaginationEllipsis />
-                    </PaginationItem>
+                  ) : (
+                    <>
+                      {pageStart > 0 && (
+                        <PaginationItem>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      )}
+                      {pageIndexes.map((pageIndex) => (
+                        <PaginationItem key={pageIndex}>
+                          <PaginationLink
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              table.setPageIndex(pageIndex);
+                            }}
+                            isActive={activePage === pageIndex}
+                            className="cursor-pointer"
+                          >
+                            {pageIndex + 1}
+                          </PaginationLink>
+                        </PaginationItem>
+                      ))}
+                      {pageEnd < pageCount && (
+                        <PaginationItem>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      )}
+                    </>
                   )}
                   <PaginationItem>
                     <PaginationNext
                       href="#"
                       onClick={(e) => {
                         e.preventDefault();
+                        if (isLoading) return;
                         table.nextPage();
                       }}
                       className={
-                        !table.getCanNextPage()
+                        isLoading || !table.getCanNextPage()
                           ? "pointer-events-none opacity-50"
                           : "cursor-pointer"
                       }
@@ -716,35 +684,72 @@ export function TableTemplate<T extends object>({
               </Pagination>
             </div>
 
-            {/* Right Column: Page Size Selector */}
-            <div className="flex items-center justify-end gap-2">
-              <span
+            {/* Row 2: Results + Page Size */}
+            <div
+              className={cn(
+                "flex items-center justify-between gap-2",
+                hideFooterMetaOnSmall ? "md:flex" : "flex"
+              )}
+            >
+              <div
                 className={cn(
-                  "text-sm text-muted-foreground whitespace-nowrap",
-                  hideFooterMetaOnSmall ? "hidden md:inline" : ""
+                  "items-center justify-start",
+                  hideFooterMetaOnSmall ? "hidden md:flex" : "flex"
                 )}
               >
-                {" "}
-                Rows per page:
-              </span>
-              <Select
-                value={String(activePageSize)}
-                onValueChange={(value) => {
-                  table.setPageSize(Number(value));
-                  table.setPageIndex(0);
-                }}
-              >
-                <SelectTrigger className="bg-card w-20">
-                  <SelectValue placeholder="Rows" />
-                </SelectTrigger>
-                <SelectContent className="max-h-40 overflow-y-auto ">
-                  {pageSizeOptions.map((size) => (
-                    <SelectItem key={size} value={String(size)}>
-                      {size}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                {isLoading ? (
+                  <Skeleton className="h-4 w-36" />
+                ) : (
+                  <span className="text-sm text-muted-foreground whitespace-nowrap">
+                    Results{" "}
+                    {table.getState().pagination.pageIndex *
+                      table.getState().pagination.pageSize +
+                      1}{" "}
+                    -{" "}
+                    {filteredRowCount <
+                    (table.getState().pagination.pageIndex + 1) *
+                      table.getState().pagination.pageSize
+                      ? filteredRowCount
+                      : (table.getState().pagination.pageIndex + 1) *
+                        table.getState().pagination.pageSize}{" "}
+                    of {filteredRowCount}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-2">
+                <span
+                  className={cn(
+                    "text-sm text-muted-foreground whitespace-nowrap",
+                    hideFooterMetaOnSmall ? "hidden md:inline" : ""
+                  )}
+                >
+                  {" "}
+                  Rows per page:
+                </span>
+                {isLoading ? (
+                  <Skeleton className="h-8 w-20 rounded-md" />
+                ) : (
+                  <Select
+                    value={String(activePageSize)}
+                    onValueChange={(value) => {
+                      table.setPageSize(Number(value));
+                      table.setPageIndex(0);
+                    }}
+                  >
+                    <SelectTrigger className="bg-card w-20">
+                      <SelectValue placeholder="Rows" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-40 overflow-y-auto ">
+                      {pageSizeOptions.map((size) => (
+                        <SelectItem key={size} value={String(size)}>
+                          {size}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
             </div>
           </div>
         )}

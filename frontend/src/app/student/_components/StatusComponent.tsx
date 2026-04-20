@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { SkeletonText } from "@/components/ui/skeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 import { isFromThisSchoolYear } from "@/lib/utils";
 import { AlertTriangleIcon, CheckCircle, ExternalLink } from "lucide-react";
 import Link from "next/link";
@@ -32,7 +32,8 @@ export default function StatusComponent({
     return (
       <Card className="p-4 rounded-md shadow-sm w-full bg-card">
         <CardContent className="p-0 overflow-y-hidden">
-          <SkeletonText />
+          <Skeleton className="h-4 w-3/4 mb-4" />
+          <Skeleton className="h-4 w-1/2 mb-1" />
         </CardContent>
       </Card>
     );

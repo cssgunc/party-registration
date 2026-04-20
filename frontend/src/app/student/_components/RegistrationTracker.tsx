@@ -10,7 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { SkeletonText } from "@/components/ui/skeleton";
+import { Skeleton, SkeletonText } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { IncidentDto } from "@/lib/api/incident/incident.types";
 import { PartyDto } from "@/lib/api/party/party.types";
@@ -121,11 +121,14 @@ export default function RegistrationTracker(): React.JSX.Element {
                 {formatTime(party.party_datetime)}
               </p>
             </div>
-            {showAddress && (
-              <h2 className="content-sub my-2 leading-2">
-                {party.location.formatted_address}
-              </h2>
-            )}
+            {showAddress &&
+              (isPartiesPending ? (
+                <Skeleton className="h-4 w-3/4 my-2" />
+              ) : (
+                <h2 className="content-sub my-2 leading-2">
+                  {party.location.formatted_address}
+                </h2>
+              ))}
           </div>
 
           {showActions && (
@@ -231,20 +234,6 @@ export default function RegistrationTracker(): React.JSX.Element {
     );
   }
 
-  if (isPartiesPending) {
-    return (
-      <Card className="w-full bg-card p-2 sm:p-4 h-[calc(100vh-28rem)] overflow-y-hidden">
-        <div className="px-4 py-4 gap-4 sm:gap-7 flex flex-col">
-          <SkeletonText className="pb-5 max-w-full" />
-          <SkeletonText className="pb-5 max-w-full" />
-          <SkeletonText className="pb-5 max-w-full" />
-          <SkeletonText className="pb-5 max-w-full" />
-          <SkeletonText className="max-w-full" />
-        </div>
-      </Card>
-    );
-  }
-
   return (
     <div>
       <Tabs
@@ -298,7 +287,15 @@ export default function RegistrationTracker(): React.JSX.Element {
           <TabsContent value="active">
             <div className="w-full bg-card rounded-md overflow-hidden">
               <div className="h-[calc(100vh-28rem)] overflow-y-auto">
-                {activeParties.length === 0 ? (
+                {isPartiesPending ? (
+                  <div className="px-4 py-4 gap-4 sm:gap-7 flex flex-col">
+                    <SkeletonText className="pb-5 max-w-full" />
+                    <SkeletonText className="pb-5 max-w-full" />
+                    <SkeletonText className="pb-5 max-w-full" />
+                    <SkeletonText className="pb-5 max-w-full" />
+                    <SkeletonText className="max-w-full" />
+                  </div>
+                ) : activeParties.length === 0 ? (
                   <p className="text-center content-sub py-8">
                     No active registrations
                   </p>
@@ -314,7 +311,15 @@ export default function RegistrationTracker(): React.JSX.Element {
           <TabsContent value="past">
             <div className="w-full bg-card rounded-md overflow-hidden">
               <div className="h-[calc(100vh-28rem)] overflow-y-auto">
-                {pastParties.length === 0 ? (
+                {isPartiesPending ? (
+                  <div className="px-4 py-4 gap-4 sm:gap-7 flex flex-col">
+                    <SkeletonText className="pb-5 max-w-full" />
+                    <SkeletonText className="pb-5 max-w-full" />
+                    <SkeletonText className="pb-5 max-w-full" />
+                    <SkeletonText className="pb-5 max-w-full" />
+                    <SkeletonText className="max-w-full" />
+                  </div>
+                ) : pastParties.length === 0 ? (
                   <p className="text-center content-sub py-8">
                     No past registrations
                   </p>
@@ -330,7 +335,13 @@ export default function RegistrationTracker(): React.JSX.Element {
           <TabsContent value="incidents">
             <div className="w-full bg-card rounded-md overflow-hidden">
               <div className="h-[calc(100vh-28rem)] overflow-y-auto">
-                {sortedIncidents.length === 0 ? (
+                {isPartiesPending ? (
+                  <div className="px-4 py-4 gap-4 sm:gap-7 flex flex-col">
+                    <SkeletonText className="pb-5 max-w-full" />
+                    <SkeletonText className="pb-5 max-w-full" />
+                    <SkeletonText className="pb-5 max-w-full" />
+                  </div>
+                ) : sortedIncidents.length === 0 ? (
                   <p className="text-center content-sub py-8">No incidents</p>
                 ) : (
                   groupedIncidents.map(([date, dayIncidents]) => (
