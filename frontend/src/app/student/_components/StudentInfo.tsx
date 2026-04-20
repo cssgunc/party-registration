@@ -193,7 +193,6 @@ export default function StudentInfo() {
     contact_preference:
       formData.contact_preference ?? student?.contact_preference ?? undefined,
   };
-
   const currentDate = new Date();
   let school_year = "";
   let change_date = "";
@@ -234,7 +233,7 @@ export default function StudentInfo() {
             aria-label="Edit profile"
             disabled={isLoading || !student}
           >
-            <Pencil className=" content cursor-pointer" />
+            <Pencil className="content cursor-pointer" />
           </button>
         </div>
 
@@ -336,11 +335,14 @@ export default function StudentInfo() {
       onSubmit={handleSubmit}
       className="bg-card rounded-lg w-full p-6 sm:p-10"
     >
-      <div className="relative flex justify-center mb-6">
-        <div className="absolute left-0 flex items-center gap-2">
+      <div className="mb-6 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+        <Link
+          href="/student"
+          className="inline-flex items-center gap-2 content justify-self-start"
+        >
           <ArrowLeft className="h-4" />
-          <Link href="/student">Back to home</Link>
-        </div>
+          Back to home
+        </Link>
         <h1 className="page-title">Edit Profile Information</h1>
       </div>
       <FieldGroup>

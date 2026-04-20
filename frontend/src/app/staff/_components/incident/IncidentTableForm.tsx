@@ -181,14 +181,6 @@ export default function IncidentTableForm({
   return (
     <form onSubmit={handleSubmit}>
       {title && <h2 className="text-xl font-semibold mb-4">{title}</h2>}
-      {submissionError && (
-        <div
-          className="mb-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive"
-          role="alert"
-        >
-          {submissionError}
-        </div>
-      )}
 
       <FieldGroup>
         <FieldSet>
@@ -209,7 +201,7 @@ export default function IncidentTableForm({
             )}
           </Field>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field data-invalid={!!errors.incident_datetime}>
               <FieldLabel htmlFor="incident-date">Incident Date</FieldLabel>
               <DatePicker
@@ -292,7 +284,15 @@ export default function IncidentTableForm({
             )}
           </Field>
 
-          <Field orientation="vertical">
+          <Field orientation="vertical" className="space-y-3">
+            {submissionError && (
+              <div
+                className="rounded-md bg-destructive/10 p-3 text-sm text-destructive"
+                role="alert"
+              >
+                {submissionError}
+              </div>
+            )}
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Submitting..." : "Save"}
             </Button>

@@ -66,8 +66,8 @@ export default function RegistrationTracker(): React.JSX.Element {
 
     active.sort(
       (a, b) =>
-        new Date(b.party_datetime).getTime() -
-        new Date(a.party_datetime).getTime()
+        Math.abs(new Date(a.party_datetime).getTime() - now.getTime()) -
+        Math.abs(new Date(b.party_datetime).getTime() - now.getTime())
     );
     past.sort(
       (a, b) =>
@@ -140,10 +140,7 @@ export default function RegistrationTracker(): React.JSX.Element {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={() => setEditParty(party)}
-                  className="content"
-                >
+                <DropdownMenuItem onClick={() => setEditParty(party)}>
                   <Pencil className="h-4 w-4" />
                   Edit
                 </DropdownMenuItem>

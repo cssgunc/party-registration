@@ -1,5 +1,6 @@
 "use client";
 
+import { InfoChipDetails } from "@/app/staff/_components/shared/sidebar/InfoChipDetails";
 import { hasActiveHold } from "@/lib/api/location/location.service";
 import {
   LocationDto,
@@ -7,7 +8,6 @@ import {
   getInPersonWarningCount,
   getRemoteWarningCount,
 } from "@/lib/api/location/location.types";
-import { GenericChipDetails } from "../../shared/sidebar/GenericChipDetails";
 
 interface LocationInfoChipDetailsProps {
   data: LocationDto;
@@ -15,40 +15,19 @@ interface LocationInfoChipDetailsProps {
 
 function LocationInfoChipDetails({ data }: LocationInfoChipDetailsProps) {
   return (
-    <GenericChipDetails<LocationDto>
-      data={data}
-      renderView={(d) => (
-        <div className="space-y-3">
-          <div>
-            <label className="block text-sm font-medium">Address</label>
-            <p className="p-2">{d.formatted_address}</p>
-          </div>
-          <div>
-            <label className="block text-sm font-medium">
-              In-Person Warning Count
-            </label>
-            <p className="p-2">{getInPersonWarningCount(d)}</p>
-          </div>
-          <div>
-            <label className="block text-sm font-medium">
-              Remote Warning Count
-            </label>
-            <p className="p-2">{getRemoteWarningCount(d)}</p>
-          </div>
-          <div>
-            <label className="block text-sm font-medium">Citation Count</label>
-            <p className="p-2">{getCitationCount(d)}</p>
-          </div>
-          <div>
-            <label className="block text-sm font-medium">Active Hold</label>
-            <p className="p-2">
-              {hasActiveHold(d.hold_expiration)
-                ? "Active: Expires " + d.hold_expiration?.toDateString()
-                : "No"}
-            </p>
-          </div>
-        </div>
-      )}
+    <InfoChipDetails
+      fields={[
+        ["Address", data.formatted_address],
+        ["In-Person Warning Count", getInPersonWarningCount(data)],
+        ["Remote Warning Count", getRemoteWarningCount(data)],
+        ["Citation Count", getCitationCount(data)],
+        [
+          "Active Hold",
+          hasActiveHold(data.hold_expiration)
+            ? "Active: Expires " + data.hold_expiration?.toDateString()
+            : "No",
+        ],
+      ]}
     />
   );
 }

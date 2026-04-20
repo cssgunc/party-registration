@@ -100,14 +100,6 @@ export default function AccountTableForm({
   return (
     <form onSubmit={handleSubmit}>
       {title && <h2 className="text-xl font-semibold mb-4">{title}</h2>}
-      {submissionError && (
-        <div
-          className="mb-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive"
-          role="alert"
-        >
-          {submissionError}
-        </div>
-      )}
       <FieldGroup>
         <FieldSet>
           <Field data-invalid={!!errors.email}>
@@ -215,7 +207,15 @@ export default function AccountTableForm({
             {errors.role && <FieldError>{errors.role}</FieldError>}
           </Field>
 
-          <Field orientation="vertical">
+          <Field orientation="vertical" className="space-y-3">
+            {submissionError && (
+              <div
+                className="rounded-md bg-destructive/10 p-3 text-sm text-destructive"
+                role="alert"
+              >
+                {submissionError}
+              </div>
+            )}
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Submitting..." : "Save Changes"}
             </Button>

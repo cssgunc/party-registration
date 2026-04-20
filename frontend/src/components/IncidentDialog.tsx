@@ -46,20 +46,6 @@ const SEVERITY_LABELS: Record<IncidentSeverity, string> = {
   citation: "Citation",
 };
 
-const getDisplayAddress = (
-  location: LocationDto | null,
-  fallback?: string
-): string => {
-  if (!location) return fallback ?? "";
-  const { street_number, street_name, city } = location;
-  const street = [street_number, street_name].filter(Boolean).join(" ");
-  return city
-    ? street
-      ? `${street}, ${city}`
-      : city
-    : location.formatted_address;
-};
-
 export interface IncidentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -144,7 +130,6 @@ export default function IncidentDialog({
   };
 
   const title = mode === "edit" ? "Edit Incident" : "Add Incident";
-  const addressDisplay = getDisplayAddress(location, formattedAddress);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -153,7 +138,6 @@ export default function IncidentDialog({
           <DialogTitle>
             <p className="text-base flex items-center justify-center gap-2">
               {title}
-              {addressDisplay ? ` at ${addressDisplay}` : ""}
             </p>
           </DialogTitle>
         </DialogHeader>
@@ -249,7 +233,7 @@ export default function IncidentDialog({
 
           <div className="flex justify-center gap-2">
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Saving changes..." : "Save changes"}
+              {isSubmitting ? "Saving changes..." : "Save Changes"}
             </Button>
           </div>
         </form>

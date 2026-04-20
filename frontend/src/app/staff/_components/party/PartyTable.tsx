@@ -19,7 +19,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
 import { format } from "date-fns";
 import { useState } from "react";
-import { GenericInfoChip } from "../shared/sidebar/GenericInfoChip";
+import { InfoChip } from "../shared/sidebar/InfoChip";
 import { useSidebar } from "../shared/sidebar/SidebarContext";
 import { TableTemplate } from "../shared/table/TableTemplate";
 import PartyTableForm from "./PartyTableForm";
@@ -273,7 +273,7 @@ export const PartyTable = () => {
         const location = row.original.location;
         if (!location) return "—";
         return (
-          <GenericInfoChip
+          <InfoChip
             chipKey={`party-${row.original.id}-location`}
             title="Info about the Location"
             description="Detailed information about the selected location"
@@ -315,7 +315,7 @@ export const PartyTable = () => {
       cell: ({ row }) => {
         const contact = row.original.contact_one;
         return contact ? (
-          <GenericInfoChip
+          <InfoChip
             chipKey={`party-${row.original.id}-contact-one`}
             shortName={`${contact.first_name} ${contact.last_name}`}
             title="Info about the Student"
@@ -339,7 +339,7 @@ export const PartyTable = () => {
         const partyId = row.original.id;
         if (!contact) return "—";
         return (
-          <GenericInfoChip
+          <InfoChip
             chipKey={`party-${partyId}-contact-two`}
             shortName={`${contact.first_name} ${contact.last_name}`}
             title="Info about the Contact"

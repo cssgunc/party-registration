@@ -1,6 +1,6 @@
 import { SidebarProvider } from "@/app/staff/_components/shared/sidebar/SidebarContext";
 import type { Metadata } from "next";
-import GenericSidebar from "../_components/shared/sidebar/GenericSidebar";
+import Sidebar from "../_components/shared/sidebar/Sidebar";
 import { STAFF_TABS, TAB_CONFIG, type TabSlug } from "../_lib/tabs";
 
 type Props = {
@@ -27,7 +27,7 @@ export default function StaffLayout({
   return (
     <SidebarProvider>
       {children}
-      <GenericSidebar />
+      <Sidebar />
     </SidebarProvider>
   );
 }

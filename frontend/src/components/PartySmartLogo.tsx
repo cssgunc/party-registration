@@ -9,12 +9,12 @@ export default function PartySmartLogo({ className }: { className?: string }) {
       <Image
         src={PartySmartDesktopLogoSVG}
         alt="OCSL Desktop Logo."
-        className={cn("w-[240px] lg:block hidden", className)}
+        className={cn("h-12 w-auto hidden lg:block", className)}
       />
       <Image
         src={OCSLMobileLogoSVG}
         alt="OCSL Mobile Logo."
-        className={cn("w-32 p-2 lg:hidden block", className)}
+        className={cn("h-12 w-auto lg:hidden block", className)}
       />
     </>
   );

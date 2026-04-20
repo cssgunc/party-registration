@@ -21,7 +21,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
 import { useState } from "react";
 import LocationInfoChipDetails from "../party/details/LocationInfoChipDetails";
-import { GenericInfoChip } from "../shared/sidebar/GenericInfoChip";
+import { InfoChip } from "../shared/sidebar/InfoChip";
 import { TableTemplate } from "../shared/table/TableTemplate";
 import StudentTableForm from "./StudentTableForm";
 
@@ -228,7 +228,7 @@ export const StudentTable = () => {
           .filter(Boolean)
           .join(" ");
         return (
-          <GenericInfoChip
+          <InfoChip
             chipKey={`student-${student.id}-residence`}
             title="Info about the Location"
             description="Detailed information about the student's residence"
