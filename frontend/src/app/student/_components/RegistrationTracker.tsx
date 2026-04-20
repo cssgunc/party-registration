@@ -78,6 +78,9 @@ export default function RegistrationTracker(): React.JSX.Element {
     return { activeParties: active, pastParties: past };
   }, [partiesQuery.data]);
 
+  const hasNoParties = (partiesQuery.data?.length ?? 0) === 0;
+  const showPartySmartPrompt = hasNoParties && !courseCompleted;
+
   const sortedIncidents = useMemo(() => {
     const incidents: IncidentDto[] =
       student?.residence?.location.incidents ?? [];
@@ -264,92 +267,87 @@ export default function RegistrationTracker(): React.JSX.Element {
             {courseCompleted ? (
               <Link href="/student/new-party">
                 <Button className="px-4 py-2">
-                  <Plus className="h-4 w-4 inline-block" />
+                  <Plus className="size-4 inline-block" />
                   New Party
                 </Button>
               </Link>
             ) : (
-              <Button
-                className="px-4 py-2"
-                disabled
-                title="Complete the Party Smart Course to register a party"
-              >
-                New Party
-              </Button>
+              <span title="Complete the Party Smart Course to register a party">
+                <Button className="px-4 py-2" disabled>
+                  <Plus className="size-4 inline-block" />
+                  New Party
+                </Button>
+              </span>
             )}
           </div>
         </div>
 
         <Card className="w-full">
           <TabsContent value="active">
-            <div className="w-full bg-card rounded-md overflow-hidden">
-              <div className="h-[calc(100vh-28rem)] overflow-y-auto">
-                {isPartiesPending ? (
-                  <div className="px-4 py-4 gap-4 sm:gap-7 flex flex-col">
-                    <SkeletonText className="pb-5 max-w-full" />
-                    <SkeletonText className="pb-5 max-w-full" />
-                    <SkeletonText className="pb-5 max-w-full" />
-                    <SkeletonText className="pb-5 max-w-full" />
-                    <SkeletonText className="max-w-full" />
-                  </div>
-                ) : activeParties.length === 0 ? (
-                  <p className="text-center content-sub py-8">
-                    No active registrations
-                  </p>
-                ) : (
-                  activeParties.map((party) => (
-                    <PartyCard key={party.id} party={party} showActions />
-                  ))
-                )}
-              </div>
+            <div className="h-[calc(100vh-28rem)] w-full overflow-y-auto rounded-md bg-card">
+              {isPartiesPending ? (
+                <div className="px-4 py-4 gap-4 sm:gap-7 flex flex-col">
+                  <SkeletonText className="pb-5 max-w-full" />
+                  <SkeletonText className="pb-5 max-w-full" />
+                  <SkeletonText className="pb-5 max-w-full" />
+                  <SkeletonText className="pb-5 max-w-full" />
+                  <SkeletonText className="max-w-full" />
+                </div>
+              ) : activeParties.length === 0 ? (
+                <p className="flex h-full items-center justify-center px-4 text-center content-sub !text-base">
+                  {showPartySmartPrompt
+                    ? "Schedule and attend the Party Smart course below to register your first party!"
+                    : "No active registrations"}
+                </p>
+              ) : (
+                activeParties.map((party) => (
+                  <PartyCard key={party.id} party={party} showActions />
+                ))
+              )}
             </div>
           </TabsContent>
 
           <TabsContent value="past">
-            <div className="w-full bg-card rounded-md overflow-hidden">
-              <div className="h-[calc(100vh-28rem)] overflow-y-auto">
-                {isPartiesPending ? (
-                  <div className="px-4 py-4 gap-4 sm:gap-7 flex flex-col">
-                    <SkeletonText className="pb-5 max-w-full" />
-                    <SkeletonText className="pb-5 max-w-full" />
-                    <SkeletonText className="pb-5 max-w-full" />
-                    <SkeletonText className="pb-5 max-w-full" />
-                    <SkeletonText className="max-w-full" />
-                  </div>
-                ) : pastParties.length === 0 ? (
-                  <p className="text-center content-sub py-8">
-                    No past registrations
-                  </p>
-                ) : (
-                  pastParties.map((party) => (
-                    <PartyCard key={party.id} party={party} showAddress />
-                  ))
-                )}
-              </div>
+            <div className="h-[calc(100vh-28rem)] w-full overflow-y-auto rounded-md bg-card">
+              {isPartiesPending ? (
+                <div className="px-4 py-4 gap-4 sm:gap-7 flex flex-col">
+                  <SkeletonText className="pb-5 max-w-full" />
+                  <SkeletonText className="pb-5 max-w-full" />
+                  <SkeletonText className="pb-5 max-w-full" />
+                  <SkeletonText className="pb-5 max-w-full" />
+                  <SkeletonText className="max-w-full" />
+                </div>
+              ) : pastParties.length === 0 ? (
+                <p className="text-center content-sub py-8">
+                  No past registrations
+                </p>
+              ) : (
+                pastParties.map((party) => (
+                  <PartyCard key={party.id} party={party} showAddress />
+                ))
+              )}
             </div>
           </TabsContent>
 
           <TabsContent value="incidents">
-            <div className="w-full bg-card rounded-md overflow-hidden">
-              <div className="h-[calc(100vh-28rem)] overflow-y-auto">
-                {isPartiesPending ? (
-                  <div className="px-4 py-4 gap-4 sm:gap-7 flex flex-col">
-                    <SkeletonText className="pb-5 max-w-full" />
-                    <SkeletonText className="pb-5 max-w-full" />
-                    <SkeletonText className="pb-5 max-w-full" />
-                  </div>
-                ) : sortedIncidents.length === 0 ? (
-                  <p className="text-center content-sub py-8">No incidents</p>
-                ) : (
-                  groupedIncidents.map(([date, dayIncidents]) => (
-                    <IncidentCard
-                      key={date}
-                      date={date}
-                      incidents={dayIncidents}
-                    />
-                  ))
-                )}
-              </div>
+            <div className="h-[calc(100vh-28rem)] w-full overflow-y-auto rounded-md bg-card">
+              {isPartiesPending ? (
+                <div className="px-4 py-4 gap-4 sm:gap-7 flex flex-col">
+                  <SkeletonText className="pb-5 max-w-full" />
+                  <SkeletonText className="pb-5 max-w-full" />
+                  <SkeletonText className="pb-5 max-w-full" />
+                </div>
+              ) : sortedIncidents.length === 0 ? (
+                <p className="text-center content-sub py-8">No incidents</p>
+              ) : (
+                groupedIncidents.map(([date, dayIncidents]) => (
+                  <IncidentCard
+                    key={date}
+                    date={date}
+                    incidents={dayIncidents}
+                  />
+                ))
+              )}
             </div>
           </TabsContent>
         </Card>
