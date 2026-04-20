@@ -109,7 +109,9 @@ export default function PolicePage() {
       if (advancedFilters.phone) {
         const phoneQuery = normalizePhone(advancedFilters.phone);
         const matchesPhone =
-          normalizePhone(party.contact_one.phone_number).includes(phoneQuery) ||
+          normalizePhone(party.contact_one.phone_number ?? "").includes(
+            phoneQuery
+          ) ||
           normalizePhone(party.contact_two.phone_number).includes(phoneQuery);
         if (!matchesPhone) return false;
       }

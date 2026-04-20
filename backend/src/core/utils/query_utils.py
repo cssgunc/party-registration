@@ -16,7 +16,7 @@ from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel, Field, ValidationError, field_validator
 from pydantic_core import ValidationError as PydanticValidationError
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy import Select, asc, desc, func, inspect, select
+from sqlalchemy import Select, asc, desc, func, inspect, or_, select
 from sqlalchemy import String as SAString
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import DeclarativeMeta
@@ -41,6 +41,7 @@ __all__ = [
     "SortOrder",
     "SortParam",
     "apply_query_params",
+    "apply_search",
     "get_paginated_results",
     "get_total_count",
     "parse_pagination_params",
@@ -86,6 +87,13 @@ PAGINATED_OPENAPI_PARAMS: dict[str, Any] = {
             "schema": {"type": "object", "additionalProperties": True},
             "description": "Filters: field=value, field_contains=value, "
             "field_gt=value, field_gte=value, field_lt=value, field_lte=value",
+        },
+        {
+            "name": "search",
+            "in": "query",
+            "required": False,
+            "schema": {"type": "string"},
+            "description": "Full-table search across searchable string fields (case-insensitive)",
         },
     ]
 }
@@ -167,11 +175,12 @@ class FilterParam(BaseModel):
 
 
 class ListQueryParam(BaseModel):
-    """Combined parameters for pagination, sorting, and filtering."""
+    """Combined parameters for pagination, sorting, filtering, and search."""
 
     pagination: PaginationParams | None = Field(default=None)
     sort: list[SortParam] | None = Field(default=None)
     filters: list[FilterParam] | None = Field(default=None)
+    search: str | None = Field(default=None)
 
 
 def apply_pagination(query: Select, params: PaginationParams | None = None) -> Select:
@@ -353,6 +362,38 @@ def apply_filters[ModelType: DeclarativeMeta](
     return query
 
 
+def apply_search(query: Select, search: str, search_columns: list[Any]) -> Select:
+    """Apply case-insensitive search across multiple string columns using OR ilike.
+
+    Each entry in ``search_columns`` may be either:
+    - a single SQLAlchemy column, matched directly with ``ILIKE %search%``; or
+    - a list/tuple of columns, concatenated with a single space and matched as a
+      single value (useful for "full name" style searches across split fields).
+    """
+    if not search_columns:
+        return query
+    pattern = f"%{search}%"
+    conditions = []
+    for col in search_columns:
+        if isinstance(col, list | tuple):
+            if not col:
+                continue
+            # Concatenate columns with a space between them for full-name style matching.
+            # Use func.concat (instead of the `+` operator) so NULL values are handled
+            # safely by the database (e.g., MSSQL's CONCAT treats NULLs as empty strings).
+            concat_args: list[Any] = []
+            for index, sub_col in enumerate(col):
+                if index > 0:
+                    concat_args.append(" ")
+                concat_args.append(sub_col)
+            conditions.append(func.concat(*concat_args).ilike(pattern))
+        else:
+            conditions.append(col.ilike(pattern))
+    if not conditions:
+        return query
+    return query.where(or_(*conditions))
+
+
 def apply_query_params[ModelType: DeclarativeMeta](
     query: Select,
     model: type[ModelType],
@@ -525,10 +566,13 @@ def parse_pagination_params(
                 value = _parse_filter_value(query_params_dict[param_name])
                 filter_params.append(FilterParam(field=field, operator=operator, value=value))
 
+    search = query_params_dict.get("search") or None
+
     return ListQueryParam(
         pagination=pagination_params,
         sort=sort_params,
         filters=filter_params if filter_params else None,
+        search=search,
     )
 
 
@@ -541,19 +585,24 @@ async def get_paginated_results[ModelType](
     allowed_sort_fields: list[str],
     allowed_filter_fields: list[str],
     nested_field_columns: dict[str, Any] | None = None,
+    search_columns: list[Any] | None = None,
 ) -> PaginatedResponse[ModelType]:
     """
-    Generic function to apply filters, sorting, pagination and return paginated results.
+    Generic function to apply filters, search, sorting, pagination and return paginated results.
 
     Args:
         session: SQLAlchemy async session
         base_query: Base SELECT query with joins/options already applied
         entity_class: The entity class (e.g., PartyEntity)
         dto_converter: Function to convert entity to DTO (e.g., lambda e: e.to_dto())
-        query_params: Query parameters (filters, sort, pagination)
+        query_params: Query parameters (filters, sort, pagination, search)
         allowed_sort_fields: Whitelist of fields allowed for sorting
         allowed_filter_fields: Whitelist of fields allowed for filtering
         nested_field_columns: Optional mapping of field names to joined column refs
+        search_columns: Optional list of columns/groups to search across.
+            Each entry may be a single column or a list/tuple of columns to be
+            concatenated with a space (e.g. ``[first_name, last_name]`` enables
+            matching against the full name).
 
     Returns:
         PaginatedResponse with items and metadata
@@ -567,6 +616,10 @@ async def get_paginated_results[ModelType](
         allowed_filter_fields=allowed_filter_fields,
         nested_field_columns=nested_field_columns,
     )
+
+    # Apply full-table search if provided
+    if query_params.search and search_columns:
+        filtered_query = apply_search(filtered_query, query_params.search, search_columns)
 
     # Get total count after filters but before pagination
     total_records = await get_total_count(session, filtered_query)

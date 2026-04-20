@@ -5,9 +5,13 @@ from src.modules.account.account_model import AccountRole
 
 
 class AccountAccessTokenPayload(BaseModel):
-    """JWT payload for account access tokens."""
+    """JWT payload for account access tokens.
 
-    sub: int  # Account ID
+    `sub` is `str(account.id)`. JWT spec (RFC 7519 §4.1.2) requires `sub` to be a
+    string; convert to int at the boundary when looking up the account row.
+    """
+
+    sub: str
     email: str
     first_name: str
     last_name: str
@@ -23,9 +27,13 @@ class AccountAccessTokenPayload(BaseModel):
 
 
 class PoliceAccessTokenPayload(BaseModel):
-    """JWT payload for police access tokens."""
+    """JWT payload for police access tokens.
 
-    sub: int  # Police account ID
+    `sub` is `str(police.id)`. JWT spec (RFC 7519 §4.1.2) requires `sub` to be a
+    string; convert to int at the boundary when looking up the police row.
+    """
+
+    sub: str
     email: str
     role: Literal["officer", "police_admin"]
     exp: AwareDatetime
@@ -71,3 +79,15 @@ class PoliceCredentialsDto(BaseModel):
 
     email: EmailStr
     password: str
+
+
+class VerifyEmailDto(BaseModel):
+    """DTO for email verification."""
+
+    token: str
+
+
+class RetryVerificationDto(BaseModel):
+    """DTO for retrying email verification."""
+
+    email: EmailStr

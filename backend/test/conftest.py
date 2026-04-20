@@ -6,7 +6,7 @@ os.environ["GOOGLE_MAPS_API_KEY"] = "invalid_google_maps_api_key_for_tests"
 
 from collections.abc import AsyncGenerator, Callable
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import bcrypt
 import googlemaps
@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.ext.asyncio.engine import AsyncEngine
 from src.core.authentication import StringRole
 from src.core.database import EntityBase, database_url, get_session
+from src.core.utils.email_utils import EmailService
 from src.main import app
 from src.modules.account.account_entity import AccountEntity
 from src.modules.account.account_model import AccountDto, AccountRole
@@ -108,6 +109,7 @@ CreateClientCallable = Callable[[StringRole | None], AsyncGenerator[AsyncClient,
 async def create_test_client(
     test_session: AsyncSession,
     auth_service: AuthService,
+    mock_email_service: EmailService,
 ) -> CreateClientCallable:
     """Fixture to create test HTTP clients with different authentication roles."""
 
@@ -119,6 +121,7 @@ async def create_test_client(
             yield test_session
 
         app.dependency_overrides[get_session] = override_get_session
+        app.dependency_overrides[EmailService] = lambda: mock_email_service
 
         # Generate JWT token based on role
         # Use fake DTOs — middleware reads from JWT only, no DB lookup needed.
@@ -128,6 +131,7 @@ async def create_test_client(
                 id=99999,
                 email=f"{role}@unc.edu",
                 role=PoliceRole(role),
+                is_verified=True,
             )
             token, _ = auth_service.create_police_access_token(police)
         elif role in ("admin", "staff", "student"):
@@ -234,8 +238,12 @@ def fast_bcrypt():
 
 
 @pytest.fixture()
-def police_service(test_session: AsyncSession, fast_bcrypt: None):
-    return PoliceService(session=test_session)
+def police_service(
+    test_session: AsyncSession,
+    fast_bcrypt: None,
+    mock_email_service: EmailService,
+):
+    return PoliceService(session=test_session, email_service=mock_email_service)
 
 
 @pytest.fixture()
@@ -250,6 +258,13 @@ def auth_service(
 @pytest.fixture()
 def student_service(test_session: AsyncSession, location_service: LocationService):
     return StudentService(session=test_session, location_service=location_service)
+
+
+@pytest.fixture()
+def mock_email_service() -> EmailService:
+    service = EmailService()
+    service.send_email = AsyncMock()
+    return service
 
 
 @pytest.fixture(autouse=True)
