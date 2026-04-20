@@ -261,7 +261,7 @@ export default function AddressSearch({
               className={cn(
                 "pr-16",
                 selectedAddress &&
-                  "bg-muted text-muted-foreground cursor-not-allowed",
+                  "bg-muted/50 text-muted-foreground cursor-not-allowed",
                 displayError && "border-destructive"
               )}
               aria-label="Address search input"
@@ -273,7 +273,7 @@ export default function AddressSearch({
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
               {isLoading && (
                 <Loader2Icon
-                  className="h-4 w-4 animate-spin text-muted-foreground"
+                  className="size-4 animate-spin text-muted-foreground"
                   aria-label="Loading suggestions"
                 />
               )}
@@ -282,12 +282,12 @@ export default function AddressSearch({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="h-6 w-6 p-0 hover:bg-transparent cursor-pointer"
+                  className="group size-6 p-0 hover:bg-transparent cursor-pointer"
                   onClick={handleClear}
                   aria-label="Clear address selection"
                   tabIndex={-1}
                 >
-                  <XIcon className="h-4 w-4" />
+                  <XIcon className="size-4 text-muted-foreground group-hover:text-text" />
                 </Button>
               )}
             </div>
@@ -302,7 +302,7 @@ export default function AddressSearch({
             <CommandList id="address-suggestions">
               {isLoading && (
                 <div className="flex items-center justify-center py-6">
-                  <Loader2Icon className="h-4 w-4 animate-spin text-muted-foreground" />
+                  <Loader2Icon className="size-4 animate-spin text-muted-foreground" />
                 </div>
               )}
               {displayError && !isLoading && (
@@ -339,13 +339,13 @@ export default function AddressSearch({
                       )}
                       onMouseEnter={() => setHighlightedIndex(index)}
                     >
-                      <MapPinIcon className="mr-2 h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      <MapPinIcon className="mr-2 size-4 text-muted-foreground flex-shrink-0" />
                       <span className="line-clamp-2 text-sm flex-1">
                         {suggestion.formatted_address}
                       </span>
                       <CheckIcon
                         className={cn(
-                          "ml-2 h-4 w-4 flex-shrink-0",
+                          "ml-2 size-4 flex-shrink-0",
                           selectedAddress?.google_place_id ===
                             suggestion.google_place_id
                             ? "opacity-100"
@@ -362,7 +362,7 @@ export default function AddressSearch({
       </Popover>
 
       {chapelHillOnly && (
-        <p className="mt-1 text-sm italic text-muted-foreground">
+        <p className="mt-2 ml-1 content-sub italic">
           Only Chapel Hill addresses are covered by Party Smart
         </p>
       )}

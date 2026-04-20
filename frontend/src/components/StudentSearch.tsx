@@ -310,7 +310,7 @@ export default function StudentSearch({
               className={cn(
                 "pr-16",
                 selectedStudent &&
-                  "bg-muted text-muted-foreground cursor-not-allowed",
+                  "bg-muted/50 text-muted-foreground cursor-not-allowed",
                 displayError && "border-destructive"
               )}
               aria-label="Student search input"
@@ -331,12 +331,12 @@ export default function StudentSearch({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="h-6 w-6 p-0 hover:bg-transparent cursor-pointer"
+                  className="group size-6 p-0 hover:bg-transparent cursor-pointer"
                   onClick={handleClear}
                   aria-label="Clear student selection"
                   tabIndex={-1}
                 >
-                  <XIcon className="h-4 w-4" />
+                  <XIcon className="size-4 text-muted-foreground group-hover:text-text" />
                 </Button>
               )}
             </div>
