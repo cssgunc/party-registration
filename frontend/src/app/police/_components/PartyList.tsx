@@ -16,22 +16,6 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useSnackbar } from "@/contexts/SnackbarContext";
 import type {
   IncidentCreateDto,
@@ -50,9 +34,6 @@ import { AlertTriangle, EllipsisVertical } from "lucide-react";
 import Image, { StaticImageData } from "next/image";
 import type { MouseEvent } from "react";
 import { useEffect, useState } from "react";
-
-const DEFAULT_PAGE_SIZE = 10;
-const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
 
 const INCIDENT_MENU_ITEMS: {
   severity: IncidentSeverity;
@@ -100,8 +81,6 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
   const [incidentType, setIncidentType] =
     useState<IncidentSeverity>("in_person_warning");
   const [selectedParty, setSelectedParty] = useState<PartyDto | null>(null);
-  const [currentPage, setCurrentPage] = useState(0);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const { openSnackbar } = useSnackbar();
 
   const createMutation = usePoliceCreateIncident({
@@ -118,45 +97,12 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
     createMutation.mutate(data);
   };
 
-  // Reset to first page when the party list changes (filters/date range updated)
-  useEffect(() => {
-    setCurrentPage(0);
-  }, [parties]);
-
-  // Jump to the correct page when a map pin is selected
-  useEffect(() => {
-    if (!activeParty) return;
-    const idx = parties.findIndex((p) => p.id === activeParty.id);
-    if (idx === -1) return;
-    setCurrentPage(Math.floor(idx / pageSize));
-  }, [activeParty, parties, pageSize]);
-
   // Scroll to the active party card after the page renders
   useEffect(() => {
     if (!activeParty) return;
     const el = document.querySelector(`[data-party-id="${activeParty.id}"]`);
     if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }, [activeParty, currentPage]);
-
-  const totalPages = Math.ceil(parties.length / pageSize);
-  const paginatedParties = parties.slice(
-    currentPage * pageSize,
-    (currentPage + 1) * pageSize
-  );
-
-  const maxVisiblePages = 3;
-  const pageStart = Math.max(
-    0,
-    Math.min(
-      currentPage - Math.floor(maxVisiblePages / 2),
-      totalPages - maxVisiblePages
-    )
-  );
-  const pageEnd = Math.min(pageStart + maxVisiblePages, totalPages);
-  const pageIndexes = Array.from(
-    { length: Math.max(pageEnd - pageStart, 0) },
-    (_, i) => pageStart + i
-  );
+  }, [activeParty, parties]);
 
   if (parties.length === 0) {
     return (
@@ -180,8 +126,8 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
   return (
     <>
       <div className="flex flex-col min-h-0 flex-1 gap-3">
-        <ul className="flex-1 min-h-0 w-full overflow-y-auto rounded-md border border-border bg-card card-shadow [scroll-behavior:smooth]">
-          {paginatedParties.map((party) => {
+        <ul className="flex-1 min-h-0 w-full overflow-y-auto [scroll-behavior:smooth]">
+          {parties.map((party) => {
             const countBySeverity: Record<IncidentSeverity, number> = {
               remote_warning: getRemoteWarningCount(party.location),
               in_person_warning: getInPersonWarningCount(party.location),
@@ -333,94 +279,6 @@ const PartyList = ({ parties = [], onSelect, activeParty }: PartyListProps) => {
             );
           })}
         </ul>
-
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between gap-2 md:gap-4 p-2">
-            <div className="min-w-0 flex justify-start overflow-x-auto">
-              <Pagination className="mx-0 w-max justify-start">
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setCurrentPage((p) => Math.max(0, p - 1));
-                      }}
-                      className={cn(
-                        currentPage === 0
-                          ? "pointer-events-none opacity-50"
-                          : "cursor-pointer"
-                      )}
-                    />
-                  </PaginationItem>
-                  {pageStart > 0 && (
-                    <PaginationItem>
-                      <PaginationEllipsis />
-                    </PaginationItem>
-                  )}
-                  {pageIndexes.map((pageIndex) => (
-                    <PaginationItem key={pageIndex}>
-                      <PaginationLink
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setCurrentPage(pageIndex);
-                        }}
-                        isActive={currentPage === pageIndex}
-                        className="cursor-pointer"
-                      >
-                        {pageIndex + 1}
-                      </PaginationLink>
-                    </PaginationItem>
-                  ))}
-                  {pageEnd < totalPages && (
-                    <PaginationItem>
-                      <PaginationEllipsis />
-                    </PaginationItem>
-                  )}
-                  <PaginationItem>
-                    <PaginationNext
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setCurrentPage((p) => Math.min(totalPages - 1, p + 1));
-                      }}
-                      className={cn(
-                        currentPage === totalPages - 1
-                          ? "pointer-events-none opacity-50"
-                          : "cursor-pointer"
-                      )}
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
-            </div>
-
-            <div className="shrink-0 flex items-center justify-end gap-2">
-              <span className="hidden lg:inline content text-muted-foreground whitespace-nowrap">
-                Rows per page:
-              </span>
-              <Select
-                value={String(pageSize)}
-                onValueChange={(value) => {
-                  setPageSize(Number(value));
-                  setCurrentPage(0);
-                }}
-              >
-                <SelectTrigger className="w-20 bg-card">
-                  <SelectValue placeholder="Rows" />
-                </SelectTrigger>
-                <SelectContent className="max-h-40 overflow-y-auto">
-                  {PAGE_SIZE_OPTIONS.map((size) => (
-                    <SelectItem key={size} value={String(size)}>
-                      {size}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        )}
       </div>
 
       <IncidentDialog
