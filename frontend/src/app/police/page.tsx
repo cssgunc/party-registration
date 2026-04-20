@@ -16,6 +16,13 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { SkeletonText } from "@/components/ui/skeleton";
 import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
@@ -33,11 +40,14 @@ import AdvancedPartySearch, {
 } from "./_components/AdvancedPartySearch";
 
 const locationService = new LocationService();
-const PAGE_SIZE = 10;
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
 
 export default function PolicePage() {
   const today = startOfDay(new Date());
   const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize, setPageSize] = useState<(typeof PAGE_SIZE_OPTIONS)[number]>(
+    PAGE_SIZE_OPTIONS[0]
+  );
   const [startDate, setStartDate] = useState<Date | undefined>(today);
   const [endDate, setEndDate] = useState<Date | undefined>(today);
   const [searchAddress, setSearchAddress] = useState<AutocompleteResult | null>(
@@ -166,13 +176,13 @@ export default function PolicePage() {
     if (!activeParty) return;
     const idx = filteredParties.findIndex((p) => p.id === activeParty.id);
     if (idx === -1) return;
-    setCurrentPage(Math.floor(idx / PAGE_SIZE));
-  }, [activeParty, filteredParties]);
+    setCurrentPage(Math.floor(idx / pageSize));
+  }, [activeParty, filteredParties, pageSize]);
 
-  const totalPages = Math.ceil(filteredParties.length / PAGE_SIZE);
+  const totalPages = Math.ceil(filteredParties.length / pageSize);
   const paginatedParties = filteredParties.slice(
-    currentPage * PAGE_SIZE,
-    (currentPage + 1) * PAGE_SIZE
+    currentPage * pageSize,
+    (currentPage + 1) * pageSize
   );
   const showPagination = !isPartiesLoading && totalPages > 1;
 
@@ -264,10 +274,10 @@ export default function PolicePage() {
               />
             )}
           </Card>
-          <div className="shrink-0 pt-2 min-h-[72px]">
-            {showPagination ? (
-              <div className="flex flex-col items-center gap-2">
-                <Pagination>
+          {showPagination && (
+            <div className="flex items-center justify-between gap-2 md:gap-4 p-2">
+              <div className="min-w-0 flex justify-start overflow-x-auto">
+                <Pagination className="mx-0 w-max justify-start">
                   <PaginationContent>
                     <PaginationItem>
                       <PaginationPrevious
@@ -326,18 +336,34 @@ export default function PolicePage() {
                     </PaginationItem>
                   </PaginationContent>
                 </Pagination>
-                <p className="content text-muted-foreground">
-                  Results {currentPage * PAGE_SIZE + 1}
-                  {" - "}
-                  {Math.min(
-                    (currentPage + 1) * PAGE_SIZE,
-                    filteredParties.length
-                  )}{" "}
-                  of {filteredParties.length}
-                </p>
               </div>
-            ) : null}
-          </div>
+              <div className="shrink-0 flex items-center justify-end gap-2">
+                <span className="hidden lg:inline content text-muted-foreground whitespace-nowrap">
+                  Rows per page:
+                </span>
+                <Select
+                  value={String(pageSize)}
+                  onValueChange={(value) => {
+                    setPageSize(
+                      Number(value) as (typeof PAGE_SIZE_OPTIONS)[number]
+                    );
+                    setCurrentPage(0);
+                  }}
+                >
+                  <SelectTrigger className="w-20 bg-card">
+                    <SelectValue placeholder="Rows" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-40 overflow-y-auto">
+                    {PAGE_SIZE_OPTIONS.map((size) => (
+                      <SelectItem key={size} value={String(size)}>
+                        {size}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
         </aside>
 
         <section
