@@ -23,15 +23,17 @@ import * as z from "zod";
 export const policeAccountFormSchema = z.object({
   email: z.email({ pattern: z.regexes.html5Email }).min(1, "Email is required"),
   role: z.enum(["officer", "police_admin"]),
+  is_verified: z.boolean(),
 });
 
 export type PoliceAccountFormValues = z.infer<typeof policeAccountFormSchema>;
 
 interface PoliceAccountFormProps {
   onSubmit: (data: PoliceAccountFormValues) => void | Promise<void>;
-  editData?: { email: string; role: PoliceRole };
+  editData?: { email: string; role: PoliceRole; is_verified: boolean };
   submissionError?: string | null;
   title?: string;
+  disableVerificationToggle?: boolean;
 }
 
 export default function PoliceAccountForm({
@@ -39,10 +41,12 @@ export default function PoliceAccountForm({
   editData,
   submissionError,
   title,
+  disableVerificationToggle = false,
 }: PoliceAccountFormProps) {
   const [formData, setFormData] = useState<Partial<PoliceAccountFormValues>>({
     email: editData?.email ?? "",
     role: editData?.role ?? "officer",
+    is_verified: editData?.is_verified ?? false,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -130,6 +134,35 @@ export default function PoliceAccountForm({
               </SelectContent>
             </Select>
             {errors.role && <FieldError>{errors.role}</FieldError>}
+          </Field>
+
+          <Field
+            orientation="vertical"
+            data-disabled={disableVerificationToggle}
+          >
+            <FieldLabel htmlFor="police-is-verified">Is Verified</FieldLabel>
+            <Select
+              value={String(!!formData.is_verified)}
+              onValueChange={(value) =>
+                updateField("is_verified", value === "true")
+              }
+              disabled={disableVerificationToggle}
+            >
+              <SelectTrigger
+                id="police-is-verified"
+                title={
+                  disableVerificationToggle
+                    ? "Only OCSL admins can change this field"
+                    : undefined
+                }
+              >
+                <SelectValue placeholder="Select verification status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="true">Yes</SelectItem>
+                <SelectItem value="false">No</SelectItem>
+              </SelectContent>
+            </Select>
           </Field>
 
           <Field orientation="vertical">

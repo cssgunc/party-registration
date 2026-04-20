@@ -40,7 +40,7 @@ class TestAuthService:
 
         payload = self.auth_utils.decode_token(token)
         self.auth_utils.assert_account_token_payload(payload, account)
-        self.auth_utils.assert_expiration_approx(expires_at, 900)
+        self.auth_utils.assert_expiration_approx(expires_at, env.ACCESS_TOKEN_EXPIRE_MINUTES * 60)
 
     @pytest.mark.asyncio
     async def test_create_police_access_token(self, police_utils: PoliceTestUtils) -> None:
@@ -52,7 +52,7 @@ class TestAuthService:
 
         payload = self.auth_utils.decode_token(token)
         self.auth_utils.assert_police_token_payload(payload, police)
-        self.auth_utils.assert_expiration_approx(expires_at, 900)
+        self.auth_utils.assert_expiration_approx(expires_at, env.ACCESS_TOKEN_EXPIRE_MINUTES * 60)
 
     # ========================= JWT Validation Tests =========================
 
@@ -96,7 +96,7 @@ class TestAuthService:
         payload = self.auth_service.decode_access_token(token)
 
         assert isinstance(payload, AccountAccessTokenPayload)
-        assert payload.sub == 99999
+        assert payload.sub == "99999"
 
     @pytest.mark.asyncio
     async def test_decode_access_token_expired(self, account_utils: AccountTestUtils) -> None:
@@ -336,7 +336,7 @@ class TestAuthService:
         new_access = await self.auth_service.refresh_access_token(refresh_token)
 
         payload = self.auth_utils.decode_token(new_access.access_token)
-        assert payload["sub"] == police.id
+        assert payload["sub"] == str(police.id)
         assert payload["email"] == police.email
 
     @pytest.mark.asyncio

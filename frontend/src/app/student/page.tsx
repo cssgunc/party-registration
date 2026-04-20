@@ -2,6 +2,7 @@
 
 import RegistrationTracker from "@/app/student/_components/RegistrationTracker";
 import StatusComponent from "@/app/student/_components/StatusComponent";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrentStudent } from "@/lib/api/student/student.queries";
 import { isFromThisSchoolYear } from "@/lib/utils";
 import { Info } from "lucide-react";
@@ -11,6 +12,7 @@ import PartySmartInfo from "./_components/PartySmartInfo";
 
 export default function StudentDashboard() {
   const studentQuery = useCurrentStudent();
+  const isStudentLoading = studentQuery.isLoading;
   const validResidence = isFromThisSchoolYear(
     studentQuery?.data?.residence?.residence_chosen_date
   );
@@ -23,15 +25,19 @@ export default function StudentDashboard() {
             <div className="flex items-center justify-between">
               <h1 className="page-title w-1/2">Events</h1>
               <div className="content text-wrap text-end w-1/2">
-                {validResidence && (
-                  <div className="flex justify-end">
-                    <p>
-                      {studentQuery?.data?.residence?.location.street_number}{" "}
-                      {studentQuery?.data?.residence?.location.street_name}{" "}
-                      {studentQuery?.data?.residence?.location.unit}
-                    </p>
-                  </div>
-                )}
+                <div className="flex justify-end">
+                  {isStudentLoading ? (
+                    <Skeleton className="h-4 w-48" />
+                  ) : (
+                    validResidence && (
+                      <p>
+                        {studentQuery?.data?.residence?.location.street_number}{" "}
+                        {studentQuery?.data?.residence?.location.street_name}{" "}
+                        {studentQuery?.data?.residence?.location.unit}
+                      </p>
+                    )
+                  )}
+                </div>
               </div>
             </div>
             <RegistrationTracker />

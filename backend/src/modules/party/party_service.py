@@ -284,6 +284,9 @@ class PartyService:
             LocationEntity.google_place_id,
             AccountEntity.first_name,
             AccountEntity.last_name,
+            # Concatenated full names so searches like "Jane Doe" match across
+            # the split first_name / last_name columns for either contact.
+            [AccountEntity.first_name, AccountEntity.last_name],
             AccountEntity.email,
             AccountEntity.onyen,
             AccountEntity.pid,
@@ -291,6 +294,7 @@ class PartyService:
             PartyEntity.contact_two_email,
             PartyEntity.contact_two_first_name,
             PartyEntity.contact_two_last_name,
+            [PartyEntity.contact_two_first_name, PartyEntity.contact_two_last_name],
             PartyEntity.contact_two_phone_number,
         ]
 
