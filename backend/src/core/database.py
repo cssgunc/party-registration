@@ -74,7 +74,7 @@ class EntityBase(DeclarativeBase):
     pass
 
 
-async def get_session() -> AsyncGenerator[AsyncSession, None]:
+async def get_session() -> AsyncGenerator[AsyncSession]:
     """Generator function offering dependency injection of SQLAlchemy Sessions."""
     async with AsyncSessionLocal() as session:
         yield session

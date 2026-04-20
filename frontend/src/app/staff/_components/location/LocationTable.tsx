@@ -4,6 +4,7 @@ import { useSnackbar } from "@/contexts/SnackbarContext";
 import {
   useCreateLocation,
   useDeleteLocation,
+  useDownloadLocationsCsv,
   useLocations,
   useUpdateLocation,
 } from "@/lib/api/location/location.queries";
@@ -57,11 +58,16 @@ export const LocationTable = () => {
   const locationsQuery = useLocations(serverParams);
   const locations = locationsQuery.data?.items ?? [];
 
+  const { mutate: exportCsv, isPending: isExporting } =
+    useDownloadLocationsCsv();
+
   const createMutation = useCreateLocation({
     onError: (error: Error) => {
       console.error("Failed to create location:", error);
       const errorMessage = isAxiosError(error)
-        ? error.response?.data?.message || error.message
+        ? error.response?.data?.detail ||
+          error.response?.data?.message ||
+          error.message
         : error.message;
       const userMessage =
         isAxiosError(error) && error.status === 409
@@ -73,7 +79,6 @@ export const LocationTable = () => {
         "New Location",
         "Add a new location to the system",
         <LocationTableForm
-          title="New Location"
           onSubmit={handleCreateSubmit}
           submissionError={userMessage}
         />
@@ -93,7 +98,9 @@ export const LocationTable = () => {
     ) => {
       console.error("Failed to update location:", error);
       const errorMessage = isAxiosError(error)
-        ? error.response?.data?.message || error.message
+        ? error.response?.data?.detail ||
+          error.response?.data?.message ||
+          error.message
         : error.message;
       const userMessage =
         isAxiosError(error) && error.status === 409
@@ -114,7 +121,6 @@ export const LocationTable = () => {
         "Edit Location",
         "Update location information",
         <LocationTableForm
-          title="Edit Location"
           onSubmit={(data) => handleEditSubmit(editTarget.id, data)}
           editData={{
             address: editTarget.formatted_address || "",
@@ -151,7 +157,6 @@ export const LocationTable = () => {
       "Edit Location",
       "Update location information",
       <LocationTableForm
-        title="Edit Location"
         onSubmit={(data) => handleEditSubmit(location.id, data)}
         editData={{
           address: location.formatted_address || "",
@@ -172,7 +177,7 @@ export const LocationTable = () => {
       "create-location",
       "New Location",
       "Add a new location to the system",
-      <LocationTableForm title="New Location" onSubmit={handleCreateSubmit} />
+      <LocationTableForm onSubmit={handleCreateSubmit} />
     );
   };
 
@@ -220,7 +225,7 @@ export const LocationTable = () => {
               chipKey={`incidents-${row.original.id}`}
               shortName={`${row.original.incidents.length}${" "}
                 ${row.original.incidents.length === 1 ? "incident" : "incidents"}`}
-              title="Incidents at Location"
+              title="Incidents"
               description="Warnings & Citations go here"
               sidebarContent={
                 <IncidentInfoChipDetails
@@ -278,6 +283,8 @@ export const LocationTable = () => {
         }
         onStateChange={setServerParams}
         columnMap={SERVER_COLUMN_MAP}
+        onExportCsv={exportCsv}
+        isExporting={isExporting}
       />
     </div>
   );

@@ -5,7 +5,6 @@ import PoliceAccountForm, {
 } from "@/app/staff/_components/account/PoliceAccountForm";
 import { useSidebar } from "@/app/staff/_components/shared/sidebar/SidebarContext";
 import { TableTemplate } from "@/app/staff/_components/shared/table/TableTemplate";
-import { Button } from "@/components/ui/button";
 import { useSnackbar } from "@/contexts/SnackbarContext";
 import {
   useDeletePoliceAccount,
@@ -24,7 +23,6 @@ import {
 } from "@/lib/api/shared/query-params";
 import { formatRoleLabel } from "@/lib/utils";
 import { ColumnDef } from "@tanstack/react-table";
-import { Download } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useMemo, useState } from "react";
 
@@ -63,7 +61,12 @@ export default function PoliceAdminTable() {
           title="Edit Police Account"
           onSubmit={(data) => handlePoliceEditSubmit(variables.id, data)}
           submissionError={error.message}
-          editData={{ email: variables.data.email, role: variables.data.role }}
+          editData={{
+            email: variables.data.email,
+            role: variables.data.role,
+            is_verified: variables.data.is_verified,
+          }}
+          disableVerificationToggle
         />
       );
     },
@@ -92,7 +95,12 @@ export default function PoliceAdminTable() {
       <PoliceAccountForm
         title="Edit Police Account"
         onSubmit={(data) => handlePoliceEditSubmit(row.id, data)}
-        editData={{ email: row.email, role: row.role }}
+        editData={{
+          email: row.email,
+          role: row.role,
+          is_verified: row.is_verified,
+        }}
+        disableVerificationToggle
       />
     );
   };
@@ -114,6 +122,7 @@ export default function PoliceAdminTable() {
       data: {
         email: data.email,
         role: data.role,
+        is_verified: data.is_verified,
       },
     });
   };
@@ -132,6 +141,11 @@ export default function PoliceAdminTable() {
         cell: ({ row }) =>
           formatRoleLabel(row.getValue("role") as PoliceAccountDto["role"]),
       },
+      {
+        accessorKey: "is_verified",
+        header: "Verified",
+        cell: ({ row }) => (row.original.is_verified ? "Yes" : "No"),
+      },
     ],
     []
   );
@@ -139,45 +153,33 @@ export default function PoliceAdminTable() {
   const tableData = policeAccountsQuery.data?.items ?? [];
 
   return (
-    <div className="h-full min-h-0 flex flex-col gap-4">
-      <div className="flex justify-end">
-        <Button
-          variant="outline"
-          onClick={() => downloadPoliceAccountsCsv.mutate(serverParams)}
-          disabled={downloadPoliceAccountsCsv.isPending}
-        >
-          <Download className="mr-2 h-4 w-4" />
-          {downloadPoliceAccountsCsv.isPending
-            ? "Exporting..."
-            : "Export Excel"}
-        </Button>
-      </div>
-      <TableTemplate
-        data={tableData}
-        columns={columns}
-        resourceName="Police Account"
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        isLoading={policeAccountsQuery.isLoading}
-        isFetching={policeAccountsQuery.isFetching}
-        error={(policeAccountsQuery.error as Error | null) ?? null}
-        getDeleteDescription={(row: PoliceAccountDto) =>
-          `Are you sure you want to delete police account ${row.email}? This action cannot be undone.`
-        }
-        isDeleting={deletePoliceAccountMutation.isPending}
-        serverMeta={
-          policeAccountsQuery.data
-            ? {
-                totalRecords: policeAccountsQuery.data.total_records,
-                totalPages: policeAccountsQuery.data.total_pages,
-              }
-            : undefined
-        }
-        onStateChange={setServerParams}
-        columnMap={SERVER_COLUMN_MAP}
-        canManageRows={session?.role === "police_admin"}
-        canDeleteRow={(row) => row.id !== currentPoliceId}
-      />
-    </div>
+    <TableTemplate
+      data={tableData}
+      columns={columns}
+      resourceName="Police Account"
+      onEdit={handleEdit}
+      onDelete={handleDelete}
+      isLoading={policeAccountsQuery.isLoading}
+      isFetching={policeAccountsQuery.isFetching}
+      error={(policeAccountsQuery.error as Error | null) ?? null}
+      getDeleteDescription={(row: PoliceAccountDto) =>
+        `Are you sure you want to delete police account ${row.email}? This action cannot be undone.`
+      }
+      isDeleting={deletePoliceAccountMutation.isPending}
+      serverMeta={
+        policeAccountsQuery.data
+          ? {
+              totalRecords: policeAccountsQuery.data.total_records,
+              totalPages: policeAccountsQuery.data.total_pages,
+            }
+          : undefined
+      }
+      onStateChange={setServerParams}
+      columnMap={SERVER_COLUMN_MAP}
+      canManageRows={session?.role === "police_admin"}
+      canDeleteRow={(row) => row.id !== currentPoliceId}
+      onExportCsv={(params) => downloadPoliceAccountsCsv.mutate(params)}
+      isExporting={downloadPoliceAccountsCsv.isPending}
+    />
   );
 }

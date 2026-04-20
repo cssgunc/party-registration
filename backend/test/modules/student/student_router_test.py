@@ -31,7 +31,11 @@ from test.utils.http.assertions import (
     assert_res_success,
     assert_res_validation_error,
 )
-from test.utils.http.test_templates import generate_auth_required_tests, generate_filter_sort_tests
+from test.utils.http.test_templates import (
+    generate_auth_required_tests,
+    generate_filter_sort_tests,
+    generate_search_tests,
+)
 
 test_student_sort, test_student_filter = generate_filter_sort_tests(
     "/api/students",
@@ -55,6 +59,11 @@ test_student_sort, test_student_filter = generate_filter_sort_tests(
         ("contact_preference", "text"),
         ("phone_number_contains", "555"),
     ],
+)
+
+test_student_search_no_results, test_student_search_ok = generate_search_tests(
+    "/api/students",
+    StudentDto,
 )
 
 test_student_authentication = generate_auth_required_tests(
@@ -327,6 +336,7 @@ class TestStudentCRUDRouter:
     async def test_create_student_duplicate_phone(self):
         """Test creating students with duplicate phone numbers."""
         student = await self.student_utils.create_one()
+        assert student.phone_number is not None
         payload = await self.student_utils.next_student_create(phone_number=student.phone_number)
 
         response = await self.admin_client.post(
@@ -405,6 +415,7 @@ class TestStudentCRUDRouter:
     async def test_update_student_phone_conflict(self):
         """Test updating student with phone number that already exists."""
         students = await self.student_utils.create_many(i=2)
+        assert students[0].phone_number is not None
         updated_data = await self.student_utils.next_update_dto(
             phone_number=students[0].phone_number
         )
@@ -711,11 +722,32 @@ class TestStudentMeRouter:
         self.student_utils.assert_matches(current_student, data)
 
     @pytest.mark.asyncio
-    async def test_get_me_not_found(self, student_account: AccountEntity):
-        """Test get me when student record doesn't exist for the authenticated account."""
-        # student_client JWT has student_account.id; no student record exists for it
+    async def test_get_me_no_entity_returns_partial_dto(self, student_account: AccountEntity):
+        """GET /me returns partial DTO (null phone/preference) when no Student entity exists yet."""
         response = await self.student_client.get("/api/students/me")
-        assert_res_failure(response, StudentNotFoundException(student_account.id))
+        data = assert_res_success(response, StudentDto)
+
+        assert isinstance(data, StudentDto)
+        assert data.phone_number is None
+        assert data.contact_preference is None
+        assert data.last_registered is None
+        assert data.residence is None
+
+    @pytest.mark.asyncio
+    async def test_update_me_creates_entity_when_none_exists(self, student_account: AccountEntity):
+        """PUT /me creates a Student entity when none exists (upsert on first call)."""
+        updated_data = SelfUpdateStudentDto(
+            contact_preference=ContactPreference.TEXT,
+            phone_number="9195550042",
+        )
+
+        response = await self.student_client.put(
+            "/api/students/me",
+            json=updated_data.model_dump(mode="json"),
+        )
+        data = assert_res_success(response, StudentDto)
+
+        self.student_utils.assert_matches(data, updated_data)
 
     @pytest.mark.asyncio
     async def test_update_me_success(self, current_student: StudentEntity):
@@ -756,6 +788,7 @@ class TestStudentMeRouter:
     async def test_update_me_phone_conflict(self, current_student: StudentEntity):
         """Test updating me with phone number that already exists."""
         other_student = await self.student_utils.create_one()
+        assert other_student.phone_number is not None
         updated_data = SelfUpdateStudentDto(
             contact_preference=ContactPreference.TEXT,
             phone_number=other_student.phone_number,
@@ -922,3 +955,47 @@ class TestStudentResidenceRouter:
         response = await self.student_client.put("/api/students/me/residence", json=payload)
         data = assert_res_success(response, LocationDto)
         self.location_utils.assert_matches(data, location2)
+
+
+class TestStudentListSearch:
+    """Tests for full-table search on GET /api/students."""
+
+    admin_client: AsyncClient
+    student_utils: StudentTestUtils
+
+    @pytest.fixture(autouse=True)
+    def _setup(self, student_utils: StudentTestUtils, admin_client: AsyncClient):
+        self.student_utils = student_utils
+        self.admin_client = admin_client
+
+    @pytest.mark.parametrize(
+        "create_kwargs,search_term",
+        [
+            ({"first_name": "Uniquelynamed"}, "Uniquelynamed"),
+            ({"email": "searchme@unc.edu"}, "searchme"),
+            ({"phone_number": "9195550001"}, "9195550001"),
+            ({"first_name": "Uniquelynamed"}, "uniquelynamed"),
+        ],
+    )
+    @pytest.mark.asyncio
+    async def test_search_matches_field(self, create_kwargs: dict, search_term: str):
+        student1 = await self.student_utils.create_one(**create_kwargs)
+        _student2 = await self.student_utils.create_one()
+
+        response = await self.admin_client.get(f"/api/students?search={search_term}")
+        paginated = assert_res_paginated(response, StudentDto, total_records=1)
+        self.student_utils.assert_matches(student1, paginated.items[0])
+
+    @pytest.mark.parametrize(
+        "search_term",
+        ["Jane Doe", "jane doe", "JANE DOE", "Jane Do", "ane Doe"],
+    )
+    @pytest.mark.asyncio
+    async def test_search_matches_full_name(self, search_term: str):
+        """Search should match students by their full name (first + last)."""
+        student1 = await self.student_utils.create_one(first_name="Jane", last_name="Doe")
+        _student2 = await self.student_utils.create_one(first_name="Bob", last_name="Smith")
+
+        response = await self.admin_client.get(f"/api/students?search={search_term}")
+        paginated = assert_res_paginated(response, StudentDto, total_records=1)
+        self.student_utils.assert_matches(student1, paginated.items[0])

@@ -8,6 +8,7 @@ import { useSnackbar } from "@/contexts/SnackbarContext";
 import {
   useCreateIncident,
   useDeleteIncident,
+  useDownloadIncidentsCsv,
   useIncidents,
 } from "@/lib/api/incident/incident.queries";
 import {
@@ -112,6 +113,8 @@ export const IncidentTable = () => {
 
   const incidentsQuery = useIncidents(serverParams);
   const locationsQuery = useLocations();
+  const { mutate: exportCsv, isPending: isExporting } =
+    useDownloadIncidentsCsv();
 
   const incidents = useMemo(
     () => incidentsQuery.data?.items ?? [],
@@ -141,7 +144,6 @@ export const IncidentTable = () => {
       "New Incident",
       "Add a new incident to the system",
       <IncidentTableForm
-        title="New Incident"
         allLocations={locations}
         onSubmit={handleCreateSubmit}
         submissionError={submissionError}
@@ -158,7 +160,6 @@ export const IncidentTable = () => {
       "Edit Incident",
       "Update incident information",
       <IncidentTableForm
-        title="Edit Incident"
         allLocations={locations}
         editData={incident}
         onSubmit={(data) => handleEditSubmit(incident.id, data)}
@@ -170,7 +171,9 @@ export const IncidentTable = () => {
   const createMutation = useCreateIncident({
     onError: (error: Error) => {
       const errorMessage = isAxiosError(error)
-        ? error.response?.data?.message || error.message
+        ? error.response?.data?.detail ||
+          error.response?.data?.message ||
+          error.message
         : error.message || "Failed to create incident";
       reopenCreateSidebar(errorMessage);
     },
@@ -187,7 +190,9 @@ export const IncidentTable = () => {
       variables: { id: number; payload: Partial<IncidentCreateDto> }
     ) => {
       const errorMessage = isAxiosError(error)
-        ? error.response?.data?.message || error.message
+        ? error.response?.data?.detail ||
+          error.response?.data?.message ||
+          error.message
         : error.message || "Failed to update incident";
 
       const targetIncident =
@@ -267,7 +272,7 @@ export const IncidentTable = () => {
         return (
           <GenericInfoChip
             chipKey={`incident-${row.original.id}-location`}
-            title="Location Information"
+            title="Info about the Location"
             description="Detailed information about the selected location"
             shortName={location.formatted_address}
             sidebarContent={<LocationInfoChipDetails data={location} />}
@@ -352,7 +357,7 @@ export const IncidentTable = () => {
         return (
           <GenericInfoChip
             chipKey={`incident-${row.original.id}-description`}
-            title="Description"
+            title="Incident Description"
             description="View the full incident description"
             shortName={truncateDescription(description)}
             sidebarContent={
@@ -393,6 +398,8 @@ export const IncidentTable = () => {
         }
         onStateChange={setServerParams}
         columnMap={SERVER_COLUMN_MAP}
+        onExportCsv={exportCsv}
+        isExporting={isExporting}
       />
     </div>
   );

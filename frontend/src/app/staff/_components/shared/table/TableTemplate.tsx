@@ -25,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -34,6 +35,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  ListQueryParams,
   ServerColumnMap,
   ServerTableParams,
   buildServerTableParams,
@@ -53,7 +55,14 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  Download,
+  Loader2,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DeleteConfirmDialog } from "../dialog/DeleteConfirmDialog";
@@ -92,6 +101,8 @@ export type TableProps<T> = {
   serverMeta?: { totalRecords: number; totalPages: number };
   onStateChange?: (params: ServerTableParams) => void;
   columnMap?: ServerColumnMap;
+  onExportCsv?: (params: ListQueryParams) => void;
+  isExporting?: boolean;
   canManageRows?: boolean;
   canDeleteRow?: (row: T) => boolean;
 };
@@ -115,6 +126,8 @@ export function TableTemplate<T extends object>({
   serverMeta,
   onStateChange,
   columnMap,
+  onExportCsv,
+  isExporting,
   canManageRows,
   canDeleteRow,
 }: TableProps<T>) {
@@ -122,6 +135,7 @@ export function TableTemplate<T extends object>({
   const { isOpen, openSidebar, closeSidebar } = useSidebar();
   const { data: session } = useSession();
   const role = session?.role;
+  const hideFooterMetaOnSmall = role === "admin";
   const hasManagePermission = canManageRows ?? role === "admin";
 
   const sortedData = useMemo(
@@ -169,6 +183,11 @@ export function TableTemplate<T extends object>({
   }, [isOpen, rowSelection]);
 
   const filterDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const globalFilterRef = useRef(globalFilter);
+  useEffect(() => {
+    globalFilterRef.current = globalFilter;
+  }, [globalFilter]);
 
   // Server mode: immediate callback on pagination/sorting change
   useEffect(() => {
@@ -178,7 +197,8 @@ export function TableTemplate<T extends object>({
         paginationRef.current,
         sortingRef.current,
         columnFiltersRef.current,
-        columnMap
+        columnMap,
+        globalFilterRef.current || undefined
       )
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -195,7 +215,8 @@ export function TableTemplate<T extends object>({
           { ...paginationRef.current, pageIndex: 0 },
           sortingRef.current,
           columnFiltersRef.current,
-          columnMap
+          columnMap,
+          globalFilterRef.current || undefined
         )
       );
     }, 300);
@@ -204,6 +225,28 @@ export function TableTemplate<T extends object>({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [columnFilters]);
+
+  // Server mode: debounced callback on search (globalFilter) change
+  useEffect(() => {
+    if (!isServerMode || !onStateChange || !columnMap) return;
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+      onStateChange(
+        buildServerTableParams(
+          { ...paginationRef.current, pageIndex: 0 },
+          sortingRef.current,
+          columnFiltersRef.current,
+          columnMap,
+          globalFilter || undefined
+        )
+      );
+    }, 300);
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [globalFilter]);
 
   function flattenValues<T extends object>(obj: T): string {
     const result: string[] = [];
@@ -240,16 +283,11 @@ export function TableTemplate<T extends object>({
     return result.join(" ").toLowerCase();
   }
 
-  // In server mode, apply global search and client-only column filters on the loaded page
+  // In server mode, apply client-only column filters on the loaded page (global search is backend)
   const displayData = useMemo(() => {
     if (!isServerMode) return sortedData;
 
     let filtered = data;
-
-    if (globalFilter) {
-      const q = globalFilter.toLowerCase();
-      filtered = filtered.filter((row) => flattenValues(row).includes(q));
-    }
 
     for (const filter of columnFilters) {
       if (!filter.value) continue;
@@ -269,7 +307,7 @@ export function TableTemplate<T extends object>({
     }
 
     return filtered;
-  }, [data, sortedData, globalFilter, columnFilters, isServerMode, columns]);
+  }, [data, sortedData, columnFilters, isServerMode, columns]);
 
   const handleDeleteClick = (row: T) => {
     setItemToDelete(row);
@@ -318,7 +356,7 @@ export function TableTemplate<T extends object>({
                       </DropdownMenuItem>
                     )}
                     {onDelete &&
-                      (canDeleteRow ? canDeleteRow(row.original) : true) && (
+                      (!canDeleteRow || canDeleteRow(row.original)) && (
                         <DropdownMenuItem
                           onClick={() => handleDeleteClick(row.original)}
                           variant="destructive"
@@ -417,13 +455,38 @@ export function TableTemplate<T extends object>({
                 type="text"
                 value={globalFilter}
                 onChange={(e) => setGlobalFilter(e.target.value)}
-                placeholder={
-                  isServerMode ? "Search this page..." : "Search all columns..."
-                }
+                placeholder="Search all columns..."
                 className="p-2 pl-3 h-9 rounded-md"
               />
             </div>
-            <div className="shrink-0 ml-auto">
+            <div className="shrink-0 ml-auto flex items-center gap-2">
+              {onExportCsv && (
+                <Button
+                  onClick={() => {
+                    const params = columnMap
+                      ? buildServerTableParams(
+                          { pageIndex: 0, pageSize: pagination.pageSize },
+                          sorting,
+                          columnFilters,
+                          columnMap
+                        )
+                      : { page_number: 1, filters: {} };
+                    onExportCsv(params);
+                  }}
+                  disabled={isExporting}
+                  variant="default"
+                  size="icon"
+                  className="h-9 w-9"
+                  aria-label="Export CSV"
+                  title="Export CSV"
+                >
+                  {isExporting ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Download className="size-4" />
+                  )}
+                </Button>
+              )}
               {onCreateNewRow && hasManagePermission && (
                 <Button onClick={onCreateNewRow} className="h-9">
                   <Plus className="mr-1" />
@@ -435,25 +498,19 @@ export function TableTemplate<T extends object>({
         </div>
       )}
 
-      {isLoading && (
-        <span className="text-center py-8 text-muted-foreground">
-          Loading...
-        </span>
-      )}
+      <div className="flex min-h-0 h-full flex-col justify-between overflow-hidden">
+        <Card className="flex-1 min-h-0 py-2 px-4 overflow-hidden rounded-sm w-full max-w-none mx-0">
+          {error && (
+            <span className="text-center py-8 text-destructive">
+              <p>Error: {error.message}</p>
+            </span>
+          )}
 
-      {error && (
-        <span className="text-center py-8 text-destructive">
-          <p>Error: {error.message}</p>
-        </span>
-      )}
-
-      {!isLoading && !error && (
-        <div className="flex min-h-0 h-full flex-col justify-between overflow-hidden">
-          <Card className="flex-1 min-h-0 py-2 px-4 overflow-hidden rounded-sm w-full max-w-none mx-0">
+          {!error && (
             <div
               className={cn(
                 "h-full overflow-y-auto",
-                isFetching && "opacity-60 pointer-events-none"
+                (isFetching || isLoading) && "opacity-60 pointer-events-none"
               )}
             >
               <Table className="bg-card rounded-sm">
@@ -480,6 +537,7 @@ export function TableTemplate<T extends object>({
                                   : header.column.id
                               }
                               onFilterClick={() => {
+                                if (isLoading) return;
                                 const columnName =
                                   typeof header.column.columnDef.header ===
                                   "string"
@@ -513,31 +571,66 @@ export function TableTemplate<T extends object>({
                   ))}
                 </TableHeader>
                 <TableBody>
-                  {visibleRows.length ? (
-                    visibleRows.map((row) => (
-                      <TableRow
-                        key={row.id}
-                        className={
-                          row.getIsSelected()
-                            ? "bg-accent hover:bg-secondary"
-                            : ""
-                        }
-                      >
-                        {row.getVisibleCells().map((cell) => (
-                          <TableCell
-                            key={cell.id}
-                            className={
-                              cell.column.getIsFiltered() ? "bg-card" : ""
-                            }
+                  {isLoading ? (
+                    Array.from({ length: Math.max(activePageSize, 5) }).map(
+                      (_, rowIndex) => (
+                        <TableRow key={`loading-row-${rowIndex}`}>
+                          {table.getVisibleLeafColumns().map((column) => (
+                            <TableCell
+                              key={`loading-cell-${rowIndex}-${column.id}`}
+                            >
+                              <Skeleton
+                                className={
+                                  column.id === "actions"
+                                    ? "h-8 w-8 ml-auto"
+                                    : "h-4 w-full"
+                                }
+                              />
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      )
+                    )
+                  ) : visibleRows.length ? (
+                    <>
+                      {visibleRows.map((row) => (
+                        <TableRow
+                          key={row.id}
+                          className={
+                            row.getIsSelected()
+                              ? "bg-accent hover:bg-secondary"
+                              : ""
+                          }
+                        >
+                          {row.getVisibleCells().map((cell) => (
+                            <TableCell
+                              key={cell.id}
+                              className={
+                                cell.column.getIsFiltered() ? "bg-card" : ""
+                              }
+                            >
+                              {flexRender(
+                                cell.column.columnDef.cell,
+                                cell.getContext()
+                              )}
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                      {Array.from({ length: fillerRowCount }).map(
+                        (_, index) => (
+                          <TableRow
+                            key={`filler-row-${index}`}
+                            className="pointer-events-none"
                           >
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext()
-                            )}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))
+                            <TableCell
+                              colSpan={columnsWithActions.length}
+                              className="h-12.25"
+                            />
+                          </TableRow>
+                        )
+                      )}
+                    </>
                   ) : (
                     <TableRow>
                       <TableCell
@@ -548,118 +641,152 @@ export function TableTemplate<T extends object>({
                       </TableCell>
                     </TableRow>
                   )}
-                  {Array.from({ length: fillerRowCount }).map((_, index) => (
-                    <TableRow
-                      key={`filler-row-${index}`}
-                      className="pointer-events-none"
-                    >
-                      <TableCell
-                        colSpan={columnsWithActions.length}
-                        className="h-12.25"
-                      />
-                    </TableRow>
-                  ))}
                 </TableBody>
               </Table>
             </div>
-          </Card>
+          )}
+        </Card>
 
-          {/* Pagination Controls */}
-          <div className="flex flex-col items-center p-2 gap-2 lg:mt-4">
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      table.previousPage();
-                    }}
-                    className={
-                      !table.getCanPreviousPage()
-                        ? "pointer-events-none opacity-50"
-                        : "cursor-pointer"
-                    }
-                  />
-                </PaginationItem>
-                {pageStart > 0 && (
+        {/* Pagination Controls */}
+        {!error && (
+          <div className="flex items-center justify-between gap-2 p-2 mt-2">
+            {/* Left: Results */}
+            <div
+              className={cn(
+                "items-center justify-start min-w-0",
+                hideFooterMetaOnSmall ? "hidden md:flex" : "flex"
+              )}
+            >
+              {isLoading ? (
+                <Skeleton className="h-4 w-36" />
+              ) : (
+                <span className="text-sm text-muted-foreground whitespace-nowrap">
+                  Results{" "}
+                  {table.getState().pagination.pageIndex *
+                    table.getState().pagination.pageSize +
+                    1}{" "}
+                  -{" "}
+                  {filteredRowCount <
+                  (table.getState().pagination.pageIndex + 1) *
+                    table.getState().pagination.pageSize
+                    ? filteredRowCount
+                    : (table.getState().pagination.pageIndex + 1) *
+                      table.getState().pagination.pageSize}{" "}
+                  of {filteredRowCount}
+                </span>
+              )}
+            </div>
+
+            {/* Center: Pagination Navigation */}
+            <div className="flex min-w-0 overflow-x-auto justify-center">
+              <Pagination className="w-max">
+                <PaginationContent>
                   <PaginationItem>
-                    <PaginationEllipsis />
-                  </PaginationItem>
-                )}
-                {pageIndexes.map((pageIndex) => (
-                  <PaginationItem key={pageIndex}>
-                    <PaginationLink
+                    <PaginationPrevious
                       href="#"
                       onClick={(e) => {
                         e.preventDefault();
-                        table.setPageIndex(pageIndex);
+                        if (isLoading) return;
+                        table.previousPage();
                       }}
-                      isActive={activePage === pageIndex}
-                      className="cursor-pointer"
-                    >
-                      {pageIndex + 1}
-                    </PaginationLink>
+                      className={
+                        isLoading || !table.getCanPreviousPage()
+                          ? "pointer-events-none opacity-50"
+                          : "cursor-pointer"
+                      }
+                    />
                   </PaginationItem>
-                ))}
-                {pageEnd < pageCount && (
+                  {isLoading ? (
+                    <PaginationItem className="flex items-center gap-2">
+                      {Array.from({ length: 2 }).map((_, index) => (
+                        <Skeleton key={index} className="h-8 w-8 rounded-md" />
+                      ))}
+                    </PaginationItem>
+                  ) : (
+                    <>
+                      {pageStart > 0 && (
+                        <PaginationItem>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      )}
+                      {pageIndexes.map((pageIndex) => (
+                        <PaginationItem key={pageIndex}>
+                          <PaginationLink
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              table.setPageIndex(pageIndex);
+                            }}
+                            isActive={activePage === pageIndex}
+                            className="cursor-pointer"
+                          >
+                            {pageIndex + 1}
+                          </PaginationLink>
+                        </PaginationItem>
+                      ))}
+                      {pageEnd < pageCount && (
+                        <PaginationItem>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      )}
+                    </>
+                  )}
                   <PaginationItem>
-                    <PaginationEllipsis />
+                    <PaginationNext
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (isLoading) return;
+                        table.nextPage();
+                      }}
+                      className={
+                        isLoading || !table.getCanNextPage()
+                          ? "pointer-events-none opacity-50"
+                          : "cursor-pointer"
+                      }
+                    />
                   </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+
+            {/* Right: Rows per page */}
+            <div className="flex items-center justify-end gap-2">
+              <span
+                className={cn(
+                  "text-sm text-muted-foreground whitespace-nowrap",
+                  hideFooterMetaOnSmall ? "hidden md:inline" : ""
                 )}
-                <PaginationItem>
-                  <PaginationNext
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      table.nextPage();
-                    }}
-                    className={
-                      !table.getCanNextPage()
-                        ? "pointer-events-none opacity-50"
-                        : "cursor-pointer"
-                    }
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-            <div className="flex items-center gap-12 md:gap-20 lg:gap-30 text-sm text-muted-foreground">
-              <span>
-                Results{" "}
-                {table.getState().pagination.pageIndex *
-                  table.getState().pagination.pageSize +
-                  1}{" "}
-                -{" "}
-                {filteredRowCount <
-                (table.getState().pagination.pageIndex + 1) *
-                  table.getState().pagination.pageSize
-                  ? filteredRowCount
-                  : (table.getState().pagination.pageIndex + 1) *
-                    table.getState().pagination.pageSize}{" "}
-                of {filteredRowCount}
-              </span>
-              <Select
-                value={String(activePageSize)}
-                onValueChange={(value) => {
-                  table.setPageSize(Number(value));
-                  table.setPageIndex(0);
-                }}
               >
-                <SelectTrigger className="bg-card">
-                  <SelectValue placeholder="Rows" />
-                </SelectTrigger>
-                <SelectContent className="max-h-40 overflow-y-auto ">
-                  {pageSizeOptions.map((size) => (
-                    <SelectItem key={size} value={String(size)}>
-                      {size}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                {" "}
+                Rows per page:
+              </span>
+              {isLoading ? (
+                <Skeleton className="h-8 w-20 rounded-md" />
+              ) : (
+                <Select
+                  value={String(activePageSize)}
+                  onValueChange={(value) => {
+                    table.setPageSize(Number(value));
+                    table.setPageIndex(0);
+                  }}
+                >
+                  <SelectTrigger className="bg-card w-20">
+                    <SelectValue placeholder="Rows" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-40 overflow-y-auto ">
+                    {pageSizeOptions.map((size) => (
+                      <SelectItem key={size} value={String(size)}>
+                        {size}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Delete Confirmation Dialog */}
       {onDelete && (

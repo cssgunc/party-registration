@@ -168,9 +168,13 @@ export default function ExactMatchCard({ exactMatch }: ExactMatchCardProps) {
                 <p className="ml-4 text-sm text-secondary">
                   Preference:{" "}
                   {party.contact_one.contact_preference
-                    .charAt(0)
-                    .toUpperCase() +
-                    party.contact_one.contact_preference.slice(1).toLowerCase()}
+                    ? party.contact_one.contact_preference
+                        .charAt(0)
+                        .toUpperCase() +
+                      party.contact_one.contact_preference
+                        .slice(1)
+                        .toLowerCase()
+                    : "-"}
                   s
                 </p>
               </section>

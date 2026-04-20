@@ -16,15 +16,6 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
 import { useSnackbar } from "@/contexts/SnackbarContext";
 import type {
   IncidentCreateDto,
@@ -44,8 +35,6 @@ import Image, { StaticImageData } from "next/image";
 import type { MouseEvent } from "react";
 import { useEffect, useState } from "react";
 import ExactMatchCard from "./ExactMatchCard";
-
-const PAGE_SIZE = 10;
 
 const INCIDENT_MENU_ITEMS: {
   severity: IncidentSeverity;
@@ -84,7 +73,8 @@ interface PartyListProps {
   exactMatch?: ExactMatchDto;
 }
 
-const formatPreference = (pref: string): string => {
+const formatPreference = (pref: string | null | undefined): string => {
+  if (!pref) return "—";
   return `${pref.charAt(0).toUpperCase() + pref.slice(1).toLowerCase()}`;
 };
 
@@ -98,7 +88,6 @@ const PartyList = ({
   const [incidentType, setIncidentType] =
     useState<IncidentSeverity>("in_person_warning");
   const [selectedParty, setSelectedParty] = useState<PartyDto | null>(null);
-  const [currentPage, setCurrentPage] = useState(0);
   const { openSnackbar } = useSnackbar();
 
   const createMutation = usePoliceCreateIncident({
@@ -115,49 +104,16 @@ const PartyList = ({
     createMutation.mutate(data);
   };
 
-  // Reset to first page when the party list changes (filters/date range updated)
-  useEffect(() => {
-    setCurrentPage(0);
-  }, [parties]);
-
-  // Jump to the correct page when a map pin is selected
-  useEffect(() => {
-    if (!activeParty) return;
-    const idx = parties.findIndex((p) => p.id === activeParty.id);
-    if (idx === -1) return;
-    setCurrentPage(Math.floor(idx / PAGE_SIZE));
-  }, [activeParty, parties]);
-
   // Scroll to the active party card after the page renders
   useEffect(() => {
     if (!activeParty) return;
     const el = document.querySelector(`[data-party-id="${activeParty.id}"]`);
     if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }, [activeParty, currentPage]);
-
-  const totalPages = Math.ceil(parties.length / PAGE_SIZE);
-  const paginatedParties = parties.slice(
-    currentPage * PAGE_SIZE,
-    (currentPage + 1) * PAGE_SIZE
-  );
-
-  const maxVisiblePages = 3;
-  const pageStart = Math.max(
-    0,
-    Math.min(
-      currentPage - Math.floor(maxVisiblePages / 2),
-      totalPages - maxVisiblePages
-    )
-  );
-  const pageEnd = Math.min(pageStart + maxVisiblePages, totalPages);
-  const pageIndexes = Array.from(
-    { length: Math.max(pageEnd - pageStart, 0) },
-    (_, i) => pageStart + i
-  );
+  }, [activeParty, parties]);
 
   if (parties.length === 0 && !exactMatch) {
     return (
-      <div className="w-full rounded-md border border-border bg-card px-4 py-8 text-center input-shadow">
+      <div className="w-full px-4 py-8 text-center">
         <p className="content text-muted-foreground">No parties found</p>
       </div>
     );
@@ -177,7 +133,7 @@ const PartyList = ({
   return (
     <>
       <div className="flex flex-col min-h-0 flex-1 gap-3">
-        <ul className="flex-1 min-h-0 w-full overflow-y-auto rounded-md border border-border bg-card card-shadow [scroll-behavior:smooth]">
+        <ul className="flex-1 min-h-0 w-full overflow-y-auto [scroll-behavior:smooth]">
           {exactMatch && (
             <li className="border-b border-border px-4 py-4">
               <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -191,7 +147,7 @@ const PartyList = ({
               )}
             </li>
           )}
-          {paginatedParties.map((party) => {
+          {parties.map((party) => {
             const countBySeverity: Record<IncidentSeverity, number> = {
               remote_warning: getRemoteWarningCount(party.location),
               in_person_warning: getInPersonWarningCount(party.location),
@@ -259,7 +215,7 @@ const PartyList = ({
                         <span className="flex-1 h-[2px] bg-[radial-gradient(circle,currentColor_1px,transparent_1px)] bg-[length:6px_2px] bg-repeat-x self-end text-[var(--secondary)]"></span>
                         <div className="flex flex-row gap-x-1 mb-[-6px]">
                           <PhoneLink
-                            phoneNumber={party.contact_one.phone_number}
+                            phoneNumber={party.contact_one.phone_number ?? "—"}
                             onClick={(event) => event.stopPropagation()}
                           />
                           <p className="content text-secondary">{" - "}</p>
@@ -343,74 +299,6 @@ const PartyList = ({
             );
           })}
         </ul>
-
-        {totalPages > 1 && (
-          <div className="flex flex-col items-center gap-2">
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setCurrentPage((p) => Math.max(0, p - 1));
-                    }}
-                    className={cn(
-                      currentPage === 0
-                        ? "pointer-events-none opacity-50"
-                        : "cursor-pointer"
-                    )}
-                  />
-                </PaginationItem>
-                {pageStart > 0 && (
-                  <PaginationItem>
-                    <PaginationEllipsis />
-                  </PaginationItem>
-                )}
-                {pageIndexes.map((pageIndex) => (
-                  <PaginationItem key={pageIndex}>
-                    <PaginationLink
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setCurrentPage(pageIndex);
-                      }}
-                      isActive={currentPage === pageIndex}
-                      className="cursor-pointer"
-                    >
-                      {pageIndex + 1}
-                    </PaginationLink>
-                  </PaginationItem>
-                ))}
-                {pageEnd < totalPages && (
-                  <PaginationItem>
-                    <PaginationEllipsis />
-                  </PaginationItem>
-                )}
-                <PaginationItem>
-                  <PaginationNext
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setCurrentPage((p) => Math.min(totalPages - 1, p + 1));
-                    }}
-                    className={cn(
-                      currentPage === totalPages - 1
-                        ? "pointer-events-none opacity-50"
-                        : "cursor-pointer"
-                    )}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-            <p className="content text-muted-foreground">
-              Results {currentPage * PAGE_SIZE + 1}
-              {" - "}
-              {Math.min((currentPage + 1) * PAGE_SIZE, parties.length)} of{" "}
-              {parties.length}
-            </p>
-          </div>
-        )}
       </div>
 
       <IncidentDialog

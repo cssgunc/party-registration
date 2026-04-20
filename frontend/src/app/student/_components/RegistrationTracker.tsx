@@ -10,6 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Skeleton, SkeletonText } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { IncidentDto } from "@/lib/api/incident/incident.types";
 import { PartyDto } from "@/lib/api/party/party.types";
@@ -114,21 +115,26 @@ export default function RegistrationTracker(): React.JSX.Element {
       <div>
         <div className="flex items-start justify-between">
           <div>
-            <div className="flex content-bold gap-6">
-              <p>{format(party.party_datetime, "MM/dd/yyyy")}</p>
-              <p>Start: {formatTime(party.party_datetime)}</p>
+            <div className="flex content-bold gap-2">
+              <p>
+                {format(party.party_datetime, "M/d/yyyy")} @{" "}
+                {formatTime(party.party_datetime)}
+              </p>
             </div>
-            {showAddress && (
-              <h2 className="content-bold my-2">
-                {party.location.formatted_address}
-              </h2>
-            )}
+            {showAddress &&
+              (isPartiesPending ? (
+                <Skeleton className="h-4 w-3/4 my-2" />
+              ) : (
+                <h2 className="content-sub my-2 leading-2">
+                  {party.location.formatted_address}
+                </h2>
+              ))}
           </div>
 
           {showActions && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button className="shrink-0 bg-transparent hover:bg-transparent">
+                <Button className="shrink-0 bg-transparent hover:bg-transparent p-0 h-auto">
                   <MoreVertical className="h-4 w-4 content cursor-pointer" />
                   <p className="sr-only">Party actions</p>
                 </Button>
@@ -161,15 +167,16 @@ export default function RegistrationTracker(): React.JSX.Element {
             <p>
               {party.contact_one.first_name} {party.contact_one.last_name}
             </p>
-            <p>{formatPhoneNumber(party.contact_one.phone_number)}</p>
-            <p>
-              Preference:
-              <span className="capitalize">
-                {" "}
-                {party.contact_one.contact_preference}
-              </span>
-            </p>
-            <p>{party.contact_one.email}</p>
+            <div className="ml-3">
+              <p>
+                {formatPhoneNumber(party.contact_one.phone_number)}
+                <span className="capitalize">
+                  {" "}
+                  - {party.contact_one.contact_preference}
+                </span>
+              </p>
+              <p>{party.contact_one.email}</p>
+            </div>
           </div>
 
           {/* Contact Two */}
@@ -177,15 +184,16 @@ export default function RegistrationTracker(): React.JSX.Element {
             <p>
               {party.contact_two.first_name} {party.contact_two.last_name}
             </p>
-            <p>{formatPhoneNumber(party.contact_two.phone_number)}</p>
-            <p>
-              Preference:
-              <span className="capitalize">
-                {" "}
-                {party.contact_two.contact_preference}
-              </span>
-            </p>
-            <p>{party.contact_two.email}</p>
+            <div className="ml-3">
+              <p>
+                {formatPhoneNumber(party.contact_two.phone_number)}
+                <span className="capitalize">
+                  {" "}
+                  - {party.contact_two.contact_preference}
+                </span>
+              </p>
+              <p>{party.contact_two.email}</p>
+            </div>
           </div>
         </div>
       </div>
@@ -217,20 +225,10 @@ export default function RegistrationTracker(): React.JSX.Element {
 
   if (isPartiesError) {
     return (
-      <Card className="w-full bg-card p-4">
+      <Card className="w-full bg-card p-4 h-[calc(100vh-28rem)]">
         <div className="text-center text-red-600 py-8">
           <p className="font-semibold mb-2">Error loading registrations</p>
           <p className="text-sm">{isPartiesError.message}</p>
-        </div>
-      </Card>
-    );
-  }
-
-  if (isPartiesPending) {
-    return (
-      <Card className="w-full bg-card p-4">
-        <div className="text-center py-8">
-          <p className="content-sub">Loading registrations...</p>
         </div>
       </Card>
     );
@@ -289,7 +287,15 @@ export default function RegistrationTracker(): React.JSX.Element {
           <TabsContent value="active">
             <div className="w-full bg-card rounded-md overflow-hidden">
               <div className="h-[calc(100vh-28rem)] overflow-y-auto">
-                {activeParties.length === 0 ? (
+                {isPartiesPending ? (
+                  <div className="px-4 py-4 gap-4 sm:gap-7 flex flex-col">
+                    <SkeletonText className="pb-5 max-w-full" />
+                    <SkeletonText className="pb-5 max-w-full" />
+                    <SkeletonText className="pb-5 max-w-full" />
+                    <SkeletonText className="pb-5 max-w-full" />
+                    <SkeletonText className="max-w-full" />
+                  </div>
+                ) : activeParties.length === 0 ? (
                   <p className="text-center content-sub py-8">
                     No active registrations
                   </p>
@@ -305,7 +311,15 @@ export default function RegistrationTracker(): React.JSX.Element {
           <TabsContent value="past">
             <div className="w-full bg-card rounded-md overflow-hidden">
               <div className="h-[calc(100vh-28rem)] overflow-y-auto">
-                {pastParties.length === 0 ? (
+                {isPartiesPending ? (
+                  <div className="px-4 py-4 gap-4 sm:gap-7 flex flex-col">
+                    <SkeletonText className="pb-5 max-w-full" />
+                    <SkeletonText className="pb-5 max-w-full" />
+                    <SkeletonText className="pb-5 max-w-full" />
+                    <SkeletonText className="pb-5 max-w-full" />
+                    <SkeletonText className="max-w-full" />
+                  </div>
+                ) : pastParties.length === 0 ? (
                   <p className="text-center content-sub py-8">
                     No past registrations
                   </p>
@@ -321,7 +335,13 @@ export default function RegistrationTracker(): React.JSX.Element {
           <TabsContent value="incidents">
             <div className="w-full bg-card rounded-md overflow-hidden">
               <div className="h-[calc(100vh-28rem)] overflow-y-auto">
-                {sortedIncidents.length === 0 ? (
+                {isPartiesPending ? (
+                  <div className="px-4 py-4 gap-4 sm:gap-7 flex flex-col">
+                    <SkeletonText className="pb-5 max-w-full" />
+                    <SkeletonText className="pb-5 max-w-full" />
+                    <SkeletonText className="pb-5 max-w-full" />
+                  </div>
+                ) : sortedIncidents.length === 0 ? (
                   <p className="text-center content-sub py-8">No incidents</p>
                 ) : (
                   groupedIncidents.map(([date, dayIncidents]) => (

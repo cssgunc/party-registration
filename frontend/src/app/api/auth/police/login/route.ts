@@ -4,6 +4,7 @@ import {
   setAuthCookies,
 } from "@/lib/api/auth/auth.service";
 import { PoliceRole } from "@/lib/api/police/police.types";
+import { isAxiosError } from "axios";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
@@ -43,7 +44,18 @@ export async function POST(req: NextRequest) {
     });
 
     return res;
-  } catch {
+  } catch (error) {
+    if (isAxiosError(error) && error.response?.status === 403) {
+      const detail =
+        typeof error.response.data?.detail === "string"
+          ? error.response.data.detail
+          : typeof error.response.data?.message === "string"
+            ? error.response.data.message
+            : "Forbidden";
+
+      return NextResponse.json({ detail }, { status: 403 });
+    }
+
     return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
   }
 }

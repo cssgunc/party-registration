@@ -17,8 +17,6 @@ function LocationInfoChipDetails({ data }: LocationInfoChipDetailsProps) {
   return (
     <GenericChipDetails<LocationDto>
       data={data}
-      title={"Info about the Location"}
-      description={"View information on the Location you just clicked on"}
       renderView={(d) => (
         <div className="space-y-3">
           <div>

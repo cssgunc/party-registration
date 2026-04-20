@@ -25,6 +25,7 @@ import {
   IncidentSeverity,
 } from "@/lib/api/incident/incident.types";
 import { LocationDto } from "@/lib/api/location/location.types";
+import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { useState } from "react";
 import * as z from "zod";
@@ -234,6 +235,9 @@ export default function IncidentDialog({
               id="incident-description"
               rows={4}
               value={formData.description}
+              className={cn(
+                "shadow-xs input-shadow transition-[color,box-shadow] focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:ring-destructive/20"
+              )}
               onChange={(event) =>
                 updateField("description", event.target.value)
               }

@@ -1,7 +1,13 @@
+from datetime import UTC, datetime, timedelta
+
 import pytest
 from httpx import AsyncClient
 from src.core.config import env
-from src.core.exceptions import CredentialsException, ForbiddenException
+from src.core.exceptions import (
+    BadRequestException,
+    CredentialsException,
+    ForbiddenException,
+)
 from src.modules.account.account_model import AccountData, AccountDto, AccountRole
 from src.modules.auth.auth_model import AccessTokenDto, PoliceCredentialsDto, TokensDto
 from src.modules.auth.auth_service import (
@@ -10,6 +16,7 @@ from src.modules.auth.auth_service import (
     InvalidRefreshTokenException,
 )
 from src.modules.police.police_model import PoliceAccountDto, PoliceRole
+from src.modules.police.police_service import PoliceConflictException
 from src.modules.student.student_model import StudentDto
 
 from test.modules.account.account_utils import AccountTestUtils
@@ -65,7 +72,7 @@ class TestAuthRouter:
         data = assert_res_success(response, TokensDto)
         payload = self.auth_utils.decode_token(data.access_token)
         expected = AccountDto(
-            id=payload["sub"],
+            id=int(payload["sub"]),
             email=account_data.email,
             first_name=account_data.first_name,
             last_name=account_data.last_name,
@@ -100,7 +107,7 @@ class TestAuthRouter:
         data = assert_res_success(response, TokensDto)
         payload = self.auth_utils.decode_token(data.access_token)
         expected = AccountDto(
-            id=payload["sub"],
+            id=int(payload["sub"]),
             email=updated_data.email,
             first_name=updated_data.first_name,
             last_name=updated_data.last_name,
@@ -241,8 +248,8 @@ class TestAuthRouter:
 
     @pytest.mark.asyncio
     async def test_police_login_success(self, police_utils: PoliceTestUtils) -> None:
-        """Test police login with valid credentials."""
-        police_entity = await police_utils.create_one()
+        """Test police login with valid credentials for a verified officer."""
+        police_entity = await police_utils.create_verified_one()
 
         credentials = PoliceCredentialsDto(
             email=police_entity.email,
@@ -264,8 +271,27 @@ class TestAuthRouter:
                 id=police_entity.id,
                 email=police_entity.email,
                 role=PoliceRole.OFFICER,
+                is_verified=True,
             ),
         )
+
+    @pytest.mark.asyncio
+    async def test_police_login_unverified_returns_403(self, police_utils: PoliceTestUtils) -> None:
+        """Test that an unverified police officer cannot login."""
+        police_entity = await police_utils.create_one()
+
+        credentials = PoliceCredentialsDto(
+            email=police_entity.email,
+            password=police_utils.TEST_PASSWORD,
+        )
+
+        response = await self.unauthenticated_client.post(
+            "/api/auth/police/login",
+            json=credentials.model_dump(),
+            headers={"X-Internal-Secret": env.INTERNAL_API_SECRET},
+        )
+
+        assert_res_failure(response, ForbiddenException("EMAIL_NOT_VERIFIED"))
 
     @pytest.mark.asyncio
     async def test_police_login_wrong_password(self, police_utils: PoliceTestUtils) -> None:
@@ -567,3 +593,216 @@ class TestAuthMiddleware:
 
         data = assert_res_success(response, StudentDto)
         assert data.id == account_entity.id
+
+
+class TestPoliceSignupRouter:
+    unauthenticated_client: AsyncClient
+    police_utils: PoliceTestUtils
+
+    @pytest.fixture(autouse=True)
+    def _setup(
+        self,
+        unauthenticated_client: AsyncClient,
+        police_utils: PoliceTestUtils,
+        fast_bcrypt: None,
+    ):
+        self.unauthenticated_client = unauthenticated_client
+        self.police_utils = police_utils
+
+    @pytest.mark.asyncio
+    async def test_signup_success_returns_204(self) -> None:
+        """Test police signup returns 204 and creates an unverified record."""
+        data = await self.police_utils.next_data()
+        payload = {
+            "email": data.email,
+            "password": data.password,
+            "confirm_password": data.password,
+        }
+
+        response = await self.unauthenticated_client.post(
+            "/api/auth/police/signup",
+            json=payload,
+        )
+
+        assert response.status_code == 204
+        all_police = await self.police_utils.get_all()
+        created = next(p for p in all_police if p.email == data.email)
+        self.police_utils.assert_unverified(created)
+
+    @pytest.mark.asyncio
+    async def test_signup_duplicate_email_returns_409(self) -> None:
+        """Test signup with a duplicate email returns 409."""
+        existing = await self.police_utils.create_one()
+        # Capture before the HTTP request, which triggers a session rollback that expires entities
+        email = existing.email
+        payload = {
+            "email": email,
+            "password": "somepassword",
+            "confirm_password": "somepassword",
+        }
+
+        response = await self.unauthenticated_client.post(
+            "/api/auth/police/signup",
+            json=payload,
+        )
+
+        assert_res_failure(response, PoliceConflictException(email))
+
+    @pytest.mark.asyncio
+    async def test_signup_passwords_mismatch_returns_422(self) -> None:
+        """Test signup with mismatched passwords returns 422."""
+        data = await self.police_utils.next_data()
+        payload = {
+            "email": data.email,
+            "password": "password1",
+            "confirm_password": "password2",
+        }
+
+        response = await self.unauthenticated_client.post(
+            "/api/auth/police/signup",
+            json=payload,
+        )
+
+        assert response.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_signup_short_password_returns_422(self) -> None:
+        """Test signup with a password shorter than 8 characters returns 422."""
+        data = await self.police_utils.next_data()
+        payload = {
+            "email": data.email,
+            "password": "short",
+            "confirm_password": "short",
+        }
+
+        response = await self.unauthenticated_client.post(
+            "/api/auth/police/signup",
+            json=payload,
+        )
+
+        assert response.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_signup_wrong_domain_returns_400(self) -> None:
+        """Test signup with an email from a non-CHPD domain returns 400."""
+        payload = {
+            "email": "officer@notchpd.com",
+            "password": self.police_utils.TEST_PASSWORD,
+            "confirm_password": self.police_utils.TEST_PASSWORD,
+        }
+
+        response = await self.unauthenticated_client.post(
+            "/api/auth/police/signup",
+            json=payload,
+        )
+
+        assert_res_failure(
+            response,
+            BadRequestException(f"CHPD email must use the @{env.CHPD_EMAIL_DOMAIN} domain"),
+        )
+
+
+class TestPoliceEmailVerificationRouter:
+    unauthenticated_client: AsyncClient
+    police_utils: PoliceTestUtils
+
+    @pytest.fixture(autouse=True)
+    def _setup(
+        self,
+        unauthenticated_client: AsyncClient,
+        police_utils: PoliceTestUtils,
+    ):
+        self.unauthenticated_client = unauthenticated_client
+        self.police_utils = police_utils
+
+    @pytest.mark.asyncio
+    async def test_verify_success_returns_204(self) -> None:
+        """Test email verification with a valid token returns 204 and marks police as verified."""
+        entity = await self.police_utils.create_with_token()
+
+        response = await self.unauthenticated_client.post(
+            "/api/auth/police/verify",
+            json={"token": entity.verification_token},
+        )
+
+        assert response.status_code == 204
+        all_police = await self.police_utils.get_all()
+        updated = next(p for p in all_police if p.id == entity.id)
+        self.police_utils.assert_verified(updated)
+
+    @pytest.mark.asyncio
+    async def test_verify_invalid_token_returns_400(self) -> None:
+        """Test email verification with an invalid token returns 400."""
+        response = await self.unauthenticated_client.post(
+            "/api/auth/police/verify",
+            json={"token": "not_a_real_token"},
+        )
+
+        assert_res_failure(response, BadRequestException("Invalid verification token"))
+
+    @pytest.mark.asyncio
+    async def test_verify_expired_token_returns_400(self) -> None:
+        """Test email verification with an expired token returns 400."""
+        entity = await self.police_utils.create_with_token(
+            expires_at=datetime.now(UTC) - timedelta(hours=1)
+        )
+
+        response = await self.unauthenticated_client.post(
+            "/api/auth/police/verify",
+            json={"token": entity.verification_token},
+        )
+
+        assert_res_failure(response, BadRequestException("Verification token has expired"))
+
+
+class TestPoliceRetryVerificationRouter:
+    unauthenticated_client: AsyncClient
+    police_utils: PoliceTestUtils
+
+    @pytest.fixture(autouse=True)
+    def _setup(
+        self,
+        unauthenticated_client: AsyncClient,
+        police_utils: PoliceTestUtils,
+    ):
+        self.unauthenticated_client = unauthenticated_client
+        self.police_utils = police_utils
+
+    @pytest.mark.asyncio
+    async def test_retry_verification_success_returns_204(self) -> None:
+        """Retry verification returns 204 for an unverified account."""
+        entity = await self.police_utils.create_with_token()
+        original_token = entity.verification_token
+
+        response = await self.unauthenticated_client.post(
+            "/api/auth/police/retry-verification",
+            json={"email": entity.email},
+        )
+
+        assert response.status_code == 204
+        all_police = await self.police_utils.get_all()
+        updated = next(p for p in all_police if p.id == entity.id)
+        self.police_utils.assert_unverified(updated)
+        assert updated.verification_token != original_token
+
+    @pytest.mark.asyncio
+    async def test_retry_verification_missing_account_returns_204(self) -> None:
+        """Retry verification returns 204 for an unknown email to prevent enumeration."""
+        response = await self.unauthenticated_client.post(
+            "/api/auth/police/retry-verification",
+            json={"email": "missing@unc.edu"},
+        )
+
+        assert response.status_code == 204
+
+    @pytest.mark.asyncio
+    async def test_retry_verification_verified_account_returns_204(self) -> None:
+        """Retry verification returns 204 for an already-verified account to prevent enumeration."""
+        entity = await self.police_utils.create_verified_one()
+
+        response = await self.unauthenticated_client.post(
+            "/api/auth/police/retry-verification",
+            json={"email": entity.email},
+        )
+
+        assert response.status_code == 204

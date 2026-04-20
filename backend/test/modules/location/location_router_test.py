@@ -11,7 +11,11 @@ from src.modules.location.location_service import (
 )
 from test.modules.location.location_utils import GmapsMockUtils, LocationTestUtils
 from test.utils.http.assertions import assert_res_failure, assert_res_paginated, assert_res_success
-from test.utils.http.test_templates import generate_auth_required_tests, generate_filter_sort_tests
+from test.utils.http.test_templates import (
+    generate_auth_required_tests,
+    generate_filter_sort_tests,
+    generate_search_tests,
+)
 
 test_location_sort, test_location_filter = generate_filter_sort_tests(
     "/api/locations",
@@ -48,6 +52,11 @@ test_location_sort, test_location_filter = generate_filter_sort_tests(
         ("zip_code", "00000"),
         ("hold_expiration", "2026-01-01"),
     ],
+)
+
+test_location_search_no_results, test_location_search_ok = generate_search_tests(
+    "/api/locations",
+    LocationDto,
 )
 
 test_location_authentication = generate_auth_required_tests(
@@ -468,3 +477,29 @@ class TestLocationAutocompleteRouter:
             response,
             InternalServerException("Failed to fetch address suggestions. Please try again later."),
         )
+
+
+class TestLocationListSearch:
+    """Tests for full-table search on GET /api/locations."""
+
+    admin_client: AsyncClient
+    location_utils: LocationTestUtils
+
+    @pytest.fixture(autouse=True)
+    def _setup(self, location_utils: LocationTestUtils, admin_client: AsyncClient):
+        self.location_utils = location_utils
+        self.admin_client = admin_client
+
+    @pytest.mark.parametrize("search_term", ["Elm", "elm"])
+    @pytest.mark.asyncio
+    async def test_search_matches_formatted_address(self, search_term: str):
+        loc1 = await self.location_utils.create_one(
+            formatted_address="123 Elm St, Chapel Hill, NC 27514, US"
+        )
+        _loc2 = await self.location_utils.create_one(
+            formatted_address="456 Oak Ave, Chapel Hill, NC 27514, US"
+        )
+
+        response = await self.admin_client.get(f"/api/locations?search={search_term}")
+        paginated = assert_res_paginated(response, LocationDto, total_records=1)
+        self.location_utils.assert_matches(loc1, paginated.items[0])

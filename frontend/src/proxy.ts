@@ -9,6 +9,9 @@ const ALLOWED_ROLES_FOR_PATH: Record<string, AppRole[]> = {
   "/police": ["officer", "police_admin", "admin"],
 };
 
+const PUBLIC_PATHS = new Set(["/login", "/login/police"]);
+const PUBLIC_POLICE_PATHS = new Set(["/police/signup", "/police/verify"]);
+
 function getRequiredRolesForPath(pathname: string): AppRole[] | null {
   for (const [prefix, roles] of Object.entries(ALLOWED_ROLES_FOR_PATH)) {
     if (pathname === prefix || pathname.startsWith(`${prefix}/`)) return roles;
@@ -47,7 +50,11 @@ export async function proxy(req: NextRequest) {
   const isAuthenticated = !!token;
   const userRole = token?.role as AppRole | undefined;
 
-  if (pathname === "/login" || pathname === "/login/police") {
+  if (PUBLIC_POLICE_PATHS.has(pathname)) {
+    return NextResponse.next();
+  }
+
+  if (PUBLIC_PATHS.has(pathname)) {
     if (isAuthenticated) {
       return NextResponse.redirect(
         new URL(getDashboardPath(userRole), req.url)

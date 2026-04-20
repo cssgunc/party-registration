@@ -28,24 +28,29 @@ function isDateRange(value: unknown): value is DateRange {
 
 export type ServerColumnMap = Record<string, ServerColumnConfig>;
 
-export type ServerTableParams = {
+export type ListQueryParams = {
   page_number: number;
   page_size?: number;
   sort_by?: string;
   sort_order?: "asc" | "desc";
   filters: Record<string, string>;
+  search?: string;
 };
+
+export type ServerTableParams = ListQueryParams;
 
 export function buildServerTableParams(
   pagination: PaginationState,
   sorting: SortingState,
   columnFilters: ColumnFiltersState,
-  columnMap: ServerColumnMap
+  columnMap: ServerColumnMap,
+  search?: string
 ): ServerTableParams {
   const params: ServerTableParams = {
     page_number: pagination.pageIndex + 1,
     page_size: pagination.pageSize,
     filters: {},
+    ...(search ? { search } : {}),
   };
 
   if (sorting.length > 0) {
@@ -113,5 +118,6 @@ export function toAxiosParams(
   if (params.page_size !== undefined) result.page_size = params.page_size;
   if (params.sort_by) result.sort_by = params.sort_by;
   if (params.sort_order) result.sort_order = params.sort_order;
+  if (params.search) result.search = params.search;
   return { ...result, ...params.filters };
 }

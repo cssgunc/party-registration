@@ -7,6 +7,7 @@ import {
   useDeleteAdminParty,
   useUpdateAdminParty,
 } from "@/lib/api/party/admin-party.queries";
+import { useDownloadPartiesCsv } from "@/lib/api/party/party.queries";
 import { AdminCreatePartyDto, PartyDto } from "@/lib/api/party/party.types";
 import {
   DEFAULT_TABLE_PARAMS,
@@ -79,8 +80,8 @@ const getErrorMessage = (error: Error): string => {
       case 500:
         return "Server error. Please try again later.";
     }
-    if (detail?.message) return String(detail.message);
     if (detail?.detail) return String(detail.detail);
+    if (detail?.message) return String(detail.message);
     if (error.message) return error.message;
   }
   return "Operation failed";
@@ -96,6 +97,8 @@ export const PartyTable = () => {
   const partiesQuery = useAdminParties(serverParams);
   const parties = partiesQuery.data?.items ?? [];
 
+  const { mutate: exportCsv, isPending: isExporting } = useDownloadPartiesCsv();
+
   const createMutation = useCreateAdminParty({
     onError: (error: Error) => {
       const message = getErrorMessage(error);
@@ -105,7 +108,6 @@ export const PartyTable = () => {
         "New Party",
         "Add a new party to the system",
         <PartyTableForm
-          title="New Party"
           onSubmit={handleCreateSubmit}
           submissionError={message}
         />
@@ -137,7 +139,6 @@ export const PartyTable = () => {
         "Edit Party",
         "Update party information",
         <PartyTableForm
-          title="Edit Party"
           onSubmit={(data) => handleEditSubmit(editTarget.id, data)}
           editData={editTarget}
           submissionError={message}
@@ -187,7 +188,7 @@ export const PartyTable = () => {
       "create-party",
       "New Party",
       "Add a new party to the system",
-      <PartyTableForm title="New Party" onSubmit={handleCreateSubmit} />
+      <PartyTableForm onSubmit={handleCreateSubmit} />
     );
   };
 
@@ -274,7 +275,7 @@ export const PartyTable = () => {
         return (
           <GenericInfoChip
             chipKey={`party-${row.original.id}-location`}
-            title="Location Information"
+            title="Info about the Location"
             description="Detailed information about the selected location"
             shortName={location.formatted_address}
             sidebarContent={<LocationInfoChipDetails data={location} />}
@@ -317,7 +318,7 @@ export const PartyTable = () => {
           <GenericInfoChip
             chipKey={`party-${row.original.id}-contact-one`}
             shortName={`${contact.first_name} ${contact.last_name}`}
-            title="Student Information"
+            title="Info about the Student"
             description="Detailed information about the selected student"
             sidebarContent={<StudentInfoChipDetails data={contact} />}
           />
@@ -341,7 +342,7 @@ export const PartyTable = () => {
           <GenericInfoChip
             chipKey={`party-${partyId}-contact-two`}
             shortName={`${contact.first_name} ${contact.last_name}`}
-            title="Contact Information"
+            title="Info about the Contact"
             description="Detailed information about the second contact"
             sidebarContent={<ContactInfoChipDetails data={contact} />}
           />
@@ -378,6 +379,8 @@ export const PartyTable = () => {
         }
         onStateChange={setServerParams}
         columnMap={SERVER_COLUMN_MAP}
+        onExportCsv={exportCsv}
+        isExporting={isExporting}
       />
     </div>
   );

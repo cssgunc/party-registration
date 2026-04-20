@@ -1,3 +1,6 @@
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
 from fastapi import APIRouter, Depends, Request, Response
 from src.core.authentication import (
     authenticate_admin,
@@ -31,7 +34,7 @@ async def get_me(
     student_service: StudentService = Depends(),
     user: "AccountDto" = Depends(authenticate_student),
 ) -> StudentDto:
-    return await student_service.get_student_by_id(user.id)
+    return await student_service.get_student_me_dto(user.id)
 
 
 @student_router.put("/me")
@@ -93,10 +96,11 @@ async def get_students_csv(
 ) -> Response:
     students = await student_service.get_students_for_export(request)
     excel_content = student_service.export_students_to_excel(students)
+    filename = f"students_{datetime.now(ZoneInfo('America/New_York')).strftime('%Y_%m_%d')}.xlsx"
     return Response(
         content=excel_content,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": "attachment; filename=students.xlsx"},
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
 
 

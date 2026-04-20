@@ -1,7 +1,5 @@
-import {
-  ServerTableParams,
-  toAxiosParams,
-} from "@/lib/api/shared/query-params";
+import { downloadExcelFile } from "@/lib/api/shared/download-file";
+import { ListQueryParams, toAxiosParams } from "@/lib/api/shared/query-params";
 import apiClient from "@/lib/network/apiClient";
 import { PaginatedResponse } from "@/lib/shared";
 import { AxiosInstance } from "axios";
@@ -24,19 +22,39 @@ export class IncidentService {
   }
 
   /**
-   * List incidents with pagination and optional filtering
+   * List incidents with pagination, filtering, sorting, and search
    * (GET /api/incidents)
    */
   async listIncidents(
-    params?: ServerTableParams
+    params?: ListQueryParams
   ): Promise<PaginatedResponse<IncidentDto>> {
     const response = await this.client.get<
       PaginatedResponse<IncidentDtoBackend>
-    >("/incidents", { params: params ? toAxiosParams(params) : undefined });
+    >("/incidents", {
+      params: params ? toAxiosParams(params) : undefined,
+    });
     return {
       ...response.data,
       items: response.data.items.map(convertIncident),
     };
+  }
+
+  /**
+   * Download incidents as Excel (GET /api/incidents/csv)
+   */
+  async downloadIncidentsCsv(params?: ListQueryParams): Promise<void> {
+    const { sort_by, sort_order, search, filters } = params ?? { filters: {} };
+    const response = await this.client.get("/incidents/csv", {
+      params: toAxiosParams({
+        page_number: 1,
+        sort_by,
+        sort_order,
+        search,
+        filters: filters ?? {},
+      }),
+      responseType: "blob",
+    });
+    downloadExcelFile(response, "incidents.xlsx");
   }
 
   /**

@@ -233,6 +233,7 @@ export default function IncidentTableForm({
                 value={formData.incident_time}
                 onChange={(e) => updateField("incident_time", e.target.value)}
                 aria-invalid={!!errors.incident_time}
+                autoComplete="off"
               />
               {errors.incident_time && (
                 <FieldError>{errors.incident_time}</FieldError>
@@ -268,6 +269,7 @@ export default function IncidentTableForm({
               value={formData.reference_id ?? ""}
               onChange={(e) => updateField("reference_id", e.target.value)}
               placeholder="Optional"
+              autoComplete="off"
             />
             <FieldDescription>
               Add a ticket or report ID if one exists.
@@ -283,7 +285,7 @@ export default function IncidentTableForm({
               value={formData.description ?? ""}
               onChange={(e) => updateField("description", e.target.value)}
               placeholder="Optional"
-              className=" w-full min-h-24 px-3 py-2 rounded-md border border-input bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-vertical"
+              className=" w-full min-h-24 px-3 py-2 rounded-md border border-input bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-vertical shadow-xs input-shadow transition-[color,box-shadow] focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 "
             />
             {errors.description && (
               <FieldError>{errors.description}</FieldError>

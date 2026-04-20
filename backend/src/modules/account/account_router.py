@@ -1,3 +1,6 @@
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
 from fastapi import APIRouter, Depends, Request, Response
 from src.core.authentication import authenticate_admin
 from src.core.utils.query_utils import PAGINATED_OPENAPI_PARAMS
@@ -7,7 +10,7 @@ from src.modules.account.account_model import (
     AccountUpdateData,
     PaginatedAccountsResponse,
 )
-from src.modules.account.account_service import AccountService
+from src.modules.account.account_service import AccountService, CannotDeleteOwnAccountException
 
 account_router = APIRouter(prefix="/api/accounts", tags=["accounts"])
 
@@ -38,10 +41,11 @@ async def get_accounts_csv(
 ) -> Response:
     accounts = await account_service.get_accounts_for_export(request)
     excel_content = account_service.export_accounts_to_excel(accounts)
+    filename = f"accounts_{datetime.now(ZoneInfo('America/New_York')).strftime('%Y_%m_%d')}.xlsx"
     return Response(
         content=excel_content,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": "attachment; filename=accounts.xlsx"},
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
 
 
@@ -59,6 +63,8 @@ async def update_account(
 async def delete_account(
     account_id: int,
     account_service: AccountService = Depends(),
-    _=Depends(authenticate_admin),
+    current_admin: AccountDto = Depends(authenticate_admin),
 ) -> AccountDto:
+    if account_id == current_admin.id:
+        raise CannotDeleteOwnAccountException()
     return await account_service.delete_account(account_id)

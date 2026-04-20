@@ -24,7 +24,7 @@ const authOptions: NextAuthOptions = {
         session.user.email = token.email ?? null;
       }
 
-      session.id = token.id;
+      session.id = Number(token.id);
       session.firstName = token.firstName;
       session.lastName = token.lastName;
       session.onyen = token.onyen;

@@ -23,7 +23,7 @@ from src.core.utils.query_utils import (
 from src.modules.account.account_entity import AccountEntity
 from src.modules.location.location_model import LocationDto
 from src.modules.student.student_model import StudentDto
-from src.modules.student.student_service import StudentService
+from src.modules.student.student_service import StudentInfoNotProvidedException, StudentService
 
 from ..location.location_entity import LocationEntity
 from ..location.location_service import LocationService
@@ -158,9 +158,11 @@ class PartyService:
             raise PartySmartNotCompletedException()
 
     def _validate_contact_two_differs_from_contact_one(
-        self, contact_one_email: str, contact_one_phone: str, contact_two: ContactDto
+        self, contact_one_email: str, contact_one_phone: str | None, contact_two: ContactDto
     ) -> None:
         """Validate that contact two's email and phone number differ from contact one's."""
+        if contact_one_phone is None:
+            raise StudentInfoNotProvidedException()
         if contact_two.email.strip().lower() == contact_one_email.strip().lower():
             raise ContactTwoMatchesContactOneException("email")
         # Normalize phone numbers to digits only for comparison
@@ -277,6 +279,25 @@ class PartyService:
             )
         )
 
+        search_columns = [
+            LocationEntity.formatted_address,
+            LocationEntity.google_place_id,
+            AccountEntity.first_name,
+            AccountEntity.last_name,
+            # Concatenated full names so searches like "Jane Doe" match across
+            # the split first_name / last_name columns for either contact.
+            [AccountEntity.first_name, AccountEntity.last_name],
+            AccountEntity.email,
+            AccountEntity.onyen,
+            AccountEntity.pid,
+            StudentEntity.phone_number,
+            PartyEntity.contact_two_email,
+            PartyEntity.contact_two_first_name,
+            PartyEntity.contact_two_last_name,
+            [PartyEntity.contact_two_first_name, PartyEntity.contact_two_last_name],
+            PartyEntity.contact_two_phone_number,
+        ]
+
         # Use the generic pagination utility
         return await get_paginated_results(
             session=self.session,
@@ -287,6 +308,7 @@ class PartyService:
             allowed_sort_fields=allowed_sort_fields,
             allowed_filter_fields=allowed_filter_fields,
             nested_field_columns=nested_field_columns,
+            search_columns=search_columns,
         )
 
     async def get_party_by_id(self, party_id: int) -> PartyDto:
@@ -387,6 +409,9 @@ class PartyService:
         Validate student can register a party and get their residence location.
         Returns tuple of (location, student).
         """
+        # Validate student has provided contact info before any other checks
+        await self.student_service.assert_student_entity_exists(student_account_id)
+
         # Validate student party prerequisites (date and Party Smart)
         await self._validate_student_party_prerequisites(student_account_id, party_datetime)
 
@@ -416,7 +441,9 @@ class PartyService:
 
         # Validate contact two differs from contact one
         self._validate_contact_two_differs_from_contact_one(
-            student.email, student.phone_number, dto.contact_two
+            student.email,
+            student.phone_number,
+            dto.contact_two,
         )
 
         # Create party data with contact_two information directly
@@ -457,6 +484,8 @@ class PartyService:
         )
 
         # Validate contact two differs from contact one
+        if contact_one.phone_number is None or contact_one.contact_preference is None:
+            raise StudentInfoNotProvidedException()
         self._validate_contact_two_differs_from_contact_one(
             contact_one.email, contact_one.phone_number, dto.contact_two
         )
@@ -498,7 +527,9 @@ class PartyService:
 
         # Validate contact two differs from contact one
         self._validate_contact_two_differs_from_contact_one(
-            student.email, student.phone_number, dto.contact_two
+            student.email,
+            student.phone_number,
+            dto.contact_two,
         )
 
         # Update party fields
@@ -529,6 +560,8 @@ class PartyService:
         )
 
         # Validate contact two differs from contact one
+        if contact_one.phone_number is None or contact_one.contact_preference is None:
+            raise StudentInfoNotProvidedException()
         self._validate_contact_two_differs_from_contact_one(
             contact_one.email, contact_one.phone_number, dto.contact_two
         )
@@ -772,8 +805,8 @@ class PartyService:
                         party.party_datetime.strftime("%-I:%M %p"),
                         f"{c1.first_name} {c1.last_name}",
                         c1.email,
-                        ExcelExporter.format_phone(c1.phone_number),
-                        c1.contact_preference.value.capitalize(),
+                        ExcelExporter.format_phone(c1.phone_number or ""),
+                        c1.contact_preference.value.capitalize() if c1.contact_preference else "-",
                         f"{c2.first_name} {c2.last_name}",
                         c2.email,
                         ExcelExporter.format_phone(c2.phone_number),
@@ -811,8 +844,8 @@ class PartyService:
                         c1.first_name,
                         c1.last_name,
                         c1.email,
-                        ExcelExporter.format_phone(c1.phone_number),
-                        c1.contact_preference.value.capitalize(),
+                        ExcelExporter.format_phone(c1.phone_number or ""),
+                        c1.contact_preference.value.capitalize() if c1.contact_preference else "-",
                         residence_address,
                         c2.first_name,
                         c2.last_name,

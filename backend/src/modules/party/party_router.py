@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import Response
@@ -212,10 +213,11 @@ async def get_parties_csv(
     parties = await party_service.get_parties_for_export(request)
     is_police = isinstance(principal, PoliceAccountDto)
     excel_content = party_service.export_parties_to_excel(parties, is_police=is_police)
+    filename = f"parties_{datetime.now(ZoneInfo('America/New_York')).strftime('%Y_%m_%d')}.xlsx"
     return Response(
         content=excel_content,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": "attachment; filename=parties.xlsx"},
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
 
 

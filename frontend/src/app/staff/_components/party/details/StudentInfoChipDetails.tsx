@@ -12,8 +12,6 @@ export function StudentInfoChipDetails({ data }: StudentInfoChipDetailsProps) {
   return (
     <GenericChipDetails<StudentDto>
       data={data}
-      title={"Info about the Student"}
-      description={"View information on the Student you just clicked on"}
       renderView={(d) => (
         <div className="space-y-3">
           <div>
@@ -26,15 +24,17 @@ export function StudentInfoChipDetails({ data }: StudentInfoChipDetailsProps) {
           </div>
           <div>
             <label className="block text-sm font-medium">Phone Number</label>
-            <p className="p-2">{d.phone_number}</p>
+            <p className="p-2">{d.phone_number ?? "—"}</p>
           </div>
           <div>
             <label className="block text-sm font-medium">
               Contact Preference
             </label>
             <p className="p-2">
-              {d.contact_preference.charAt(0).toUpperCase() +
-                d.contact_preference.slice(1)}
+              {d.contact_preference
+                ? d.contact_preference.charAt(0).toUpperCase() +
+                  d.contact_preference.slice(1)
+                : "—"}
             </p>
           </div>
           <div>
