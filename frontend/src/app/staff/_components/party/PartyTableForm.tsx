@@ -180,18 +180,10 @@ export default function PartyTableForm({
   };
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit} className="space-y-4">
       {title && <h2 className="text-xl font-semibold mb-4">{title}</h2>}
-      {submissionError && (
-        <div
-          className="mb-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive"
-          role="alert"
-        >
-          {submissionError}
-        </div>
-      )}
       <FieldGroup>
-        <FieldSet>
+        <FieldSet className="space-y-4">
           <Field data-invalid={!!errors.address}>
             <FieldLabel htmlFor="party-address">Party Address</FieldLabel>
             <AddressSearch
@@ -214,7 +206,7 @@ export default function PartyTableForm({
             {errors.address && <FieldError>{errors.address}</FieldError>}
           </Field>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field data-invalid={!!errors.partyDate}>
               <FieldLabel htmlFor="party-date">Party Date</FieldLabel>
               <DatePicker
@@ -274,7 +266,9 @@ export default function PartyTableForm({
             )}
           </Field>
 
-          <p className="font-bold">Second Contact Information </p>
+          <p className="font-semibold text-foreground">
+            Second Contact Information
+          </p>
 
           <Field data-invalid={!!errors.contactTwoEmail}>
             <FieldLabel htmlFor="contact-two-email">Contact Email</FieldLabel>
@@ -381,7 +375,15 @@ export default function PartyTableForm({
             )}
           </Field>
 
-          <Field orientation="vertical">
+          <Field orientation="vertical" className="space-y-3">
+            {submissionError && (
+              <div
+                className="rounded-md bg-destructive/10 p-3 text-sm text-destructive"
+                role="alert"
+              >
+                {submissionError}
+              </div>
+            )}
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Submitting..." : "Save Changes"}
             </Button>

@@ -1,7 +1,5 @@
 "use client";
-import navyFlag from "@/components/icons/navyFlag.svg";
-import redFlag from "@/components/icons/redFlag.svg";
-import yellowFlag from "@/components/icons/yellowFlag.svg";
+import IncidentFlag from "@/components/icons/IncidentFlag";
 import {
   Collapsible,
   CollapsibleContent,
@@ -18,20 +16,11 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import {
-  IncidentDto,
-  IncidentSeverity,
-} from "@/lib/api/incident/incident.types";
+import { IncidentDto } from "@/lib/api/incident/incident.types";
 import { formatTime } from "@/lib/utils";
 import { ChevronDown, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { useSession } from "next-auth/react";
-import Image from "next/image";
 
-function getSeverityFlag(severity: IncidentSeverity) {
-  if (severity === "remote_warning") return navyFlag;
-  if (severity === "in_person_warning") return yellowFlag;
-  return redFlag;
-}
 type IncidentSidebarCardProps = {
   incidents: IncidentDto;
   onDeleteIncidentAction: (incidentId: number) => void;
@@ -67,12 +56,7 @@ export default function IncidentSidebarCard({
                   </p>
                   <HoverCard openDelay={0} closeDelay={4}>
                     <HoverCardTrigger asChild>
-                      <Image
-                        src={getSeverityFlag(incidents.severity)}
-                        alt={incidents.severity}
-                        width={16}
-                        height={16}
-                      />
+                      <IncidentFlag type={incidents.severity} />
                     </HoverCardTrigger>
                     <HoverCardContent>
                       <p>

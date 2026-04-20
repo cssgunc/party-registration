@@ -77,5 +77,8 @@
     ],
     "importOrderSeparation": false,
     "importOrderSortSpecifiers": true
+  },
+  "optionalDependencies": {
+    "lightningcss-darwin-x64": "^1.32.0"
   }
 }
