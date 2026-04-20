@@ -610,9 +610,36 @@ export function TableTemplate<T extends object>({
 
         {/* Pagination Controls */}
         {!error && (
-          <div className="flex flex-col gap-2 p-2 mt-2">
-            {/* Row 1: Pagination Navigation */}
-            <div className="flex min-w-0 w-full overflow-x-auto justify-center">
+          <div className="flex items-center justify-between gap-2 p-2 mt-2">
+            {/* Left: Results */}
+            <div
+              className={cn(
+                "items-center justify-start min-w-0",
+                hideFooterMetaOnSmall ? "hidden md:flex" : "flex"
+              )}
+            >
+              {isLoading ? (
+                <Skeleton className="h-4 w-36" />
+              ) : (
+                <span className="text-sm text-muted-foreground whitespace-nowrap">
+                  Results{" "}
+                  {table.getState().pagination.pageIndex *
+                    table.getState().pagination.pageSize +
+                    1}{" "}
+                  -{" "}
+                  {filteredRowCount <
+                  (table.getState().pagination.pageIndex + 1) *
+                    table.getState().pagination.pageSize
+                    ? filteredRowCount
+                    : (table.getState().pagination.pageIndex + 1) *
+                      table.getState().pagination.pageSize}{" "}
+                  of {filteredRowCount}
+                </span>
+              )}
+            </div>
+
+            {/* Center: Pagination Navigation */}
+            <div className="flex min-w-0 overflow-x-auto justify-center">
               <Pagination className="w-max">
                 <PaginationContent>
                   <PaginationItem>
@@ -684,72 +711,39 @@ export function TableTemplate<T extends object>({
               </Pagination>
             </div>
 
-            {/* Row 2: Results + Page Size */}
-            <div
-              className={cn(
-                "flex items-center justify-between gap-2",
-                hideFooterMetaOnSmall ? "md:flex" : "flex"
-              )}
-            >
-              <div
+            {/* Right: Rows per page */}
+            <div className="flex items-center justify-end gap-2">
+              <span
                 className={cn(
-                  "items-center justify-start",
-                  hideFooterMetaOnSmall ? "hidden md:flex" : "flex"
+                  "text-sm text-muted-foreground whitespace-nowrap",
+                  hideFooterMetaOnSmall ? "hidden md:inline" : ""
                 )}
               >
-                {isLoading ? (
-                  <Skeleton className="h-4 w-36" />
-                ) : (
-                  <span className="text-sm text-muted-foreground whitespace-nowrap">
-                    Results{" "}
-                    {table.getState().pagination.pageIndex *
-                      table.getState().pagination.pageSize +
-                      1}{" "}
-                    -{" "}
-                    {filteredRowCount <
-                    (table.getState().pagination.pageIndex + 1) *
-                      table.getState().pagination.pageSize
-                      ? filteredRowCount
-                      : (table.getState().pagination.pageIndex + 1) *
-                        table.getState().pagination.pageSize}{" "}
-                    of {filteredRowCount}
-                  </span>
-                )}
-              </div>
-
-              <div className="flex items-center justify-end gap-2">
-                <span
-                  className={cn(
-                    "text-sm text-muted-foreground whitespace-nowrap",
-                    hideFooterMetaOnSmall ? "hidden md:inline" : ""
-                  )}
+                {" "}
+                Rows per page:
+              </span>
+              {isLoading ? (
+                <Skeleton className="h-8 w-20 rounded-md" />
+              ) : (
+                <Select
+                  value={String(activePageSize)}
+                  onValueChange={(value) => {
+                    table.setPageSize(Number(value));
+                    table.setPageIndex(0);
+                  }}
                 >
-                  {" "}
-                  Rows per page:
-                </span>
-                {isLoading ? (
-                  <Skeleton className="h-8 w-20 rounded-md" />
-                ) : (
-                  <Select
-                    value={String(activePageSize)}
-                    onValueChange={(value) => {
-                      table.setPageSize(Number(value));
-                      table.setPageIndex(0);
-                    }}
-                  >
-                    <SelectTrigger className="bg-card w-20">
-                      <SelectValue placeholder="Rows" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-40 overflow-y-auto ">
-                      {pageSizeOptions.map((size) => (
-                        <SelectItem key={size} value={String(size)}>
-                          {size}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
+                  <SelectTrigger className="bg-card w-20">
+                    <SelectValue placeholder="Rows" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-40 overflow-y-auto ">
+                    {pageSizeOptions.map((size) => (
+                      <SelectItem key={size} value={String(size)}>
+                        {size}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           </div>
         )}
