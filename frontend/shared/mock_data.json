@@ -4,13 +4,15 @@
       "id": 1,
       "email": "officer@example.com",
       "password": "securepassword",
-      "role": "officer"
+      "role": "officer",
+      "is_verified": true
     },
     {
       "id": 2,
       "email": "policeadmin@example.com",
       "password": "securepassword",
-      "role": "police_admin"
+      "role": "police_admin",
+      "is_verified": true
     }
   ],
   "accounts": [

@@ -12,6 +12,7 @@ import {
   useDeleteStudent,
   useDownloadStudentsCsv,
   useStudents,
+  useUpdateIsRegistered,
   useUpdateStudent,
 } from "@/lib/api/student/admin-student.queries";
 import { StudentDto, StudentUpdateDto } from "@/lib/api/student/student.types";
@@ -41,6 +42,8 @@ const hasStudentChanged = (
 
 const toEditData = (student: StudentDto) => ({
   ...student,
+  phone_number: student.phone_number ?? "",
+  contact_preference: student.contact_preference ?? undefined,
   residence_place_id: student.residence?.location.google_place_id ?? null,
 });
 
@@ -93,7 +96,7 @@ export const StudentTable = () => {
   const { mutate: exportCsv, isPending: isExporting } =
     useDownloadStudentsCsv();
 
-  const checkboxMutation = useUpdateStudent();
+  const checkboxMutation = useUpdateIsRegistered();
 
   const editFormMutation = useUpdateStudent({
     onOptimisticUpdate: () => {
@@ -108,10 +111,9 @@ export const StudentTable = () => {
         "Edit Student",
         "Update student information",
         <StudentTableForm
-          title="Edit Student"
           onSubmit={(data) => handleEditSubmit(editingStudent, data)}
           submissionError={getErrorMessage(error)}
-          editData={editingStudent}
+          editData={toEditData(editingStudent)}
         />
       );
     },
@@ -140,7 +142,6 @@ export const StudentTable = () => {
       "Edit Student",
       "Update student information",
       <StudentTableForm
-        title="Edit Student"
         onSubmit={(data) => handleEditSubmit(student, data)}
         editData={toEditData(student)}
       />
@@ -206,6 +207,7 @@ export const StudentTable = () => {
       cell: ({ row }) => {
         const preference =
           row.getValue<StudentDto["contact_preference"]>("contact_preference");
+        if (!preference) return "—";
         return preference === "call" ? "Call" : "Text";
       },
     },
@@ -228,7 +230,7 @@ export const StudentTable = () => {
         return (
           <GenericInfoChip
             chipKey={`student-${student.id}-residence`}
-            title="Residence Information"
+            title="Info about the Location"
             description="Detailed information about the student's residence"
             shortName={shortName || location.formatted_address}
             sidebarContent={<LocationInfoChipDetails data={location} />}
@@ -249,10 +251,7 @@ export const StudentTable = () => {
             onCheckedChange={(checked: boolean) => {
               checkboxMutation.mutate({
                 id: student.id,
-                data: {
-                  ...student,
-                  last_registered: checked ? new Date() : null,
-                },
+                data: { is_registered: checked },
               });
             }}
             disabled={checkboxMutation.isPending}

@@ -4,6 +4,7 @@ import apiClient from "@/lib/network/apiClient";
 import { PaginatedResponse } from "@/lib/shared";
 import { AxiosInstance } from "axios";
 import {
+  IsRegisteredUpdate,
   StudentAutocompleteInput,
   StudentCreateDto,
   StudentDto,
@@ -94,6 +95,20 @@ export class AdminStudentService {
       input
     );
     return response.data;
+  }
+
+  /**
+   * Updates student registration status (PATCH /api/students/{student_id}/is-registered)
+   */
+  async updateIsRegistered(
+    id: number,
+    data: IsRegisteredUpdate
+  ): Promise<StudentDto> {
+    const response = await this.client.patch<StudentDtoBackend>(
+      `/students/${id}/is-registered`,
+      data
+    );
+    return convertStudent(response.data);
   }
 
   /**

@@ -38,14 +38,14 @@ def authenticate_by_role(*roles: StringRole):
             if payload.role not in roles:
                 raise ForbiddenException(detail="Insufficient privileges")
             return PoliceAccountDto(
-                id=payload.sub,
+                id=int(payload.sub),
                 email=payload.email,
                 role=PoliceRole(payload.role),
             )
 
         elif isinstance(payload, AccountAccessTokenPayload):
             account = AccountDto(
-                id=payload.sub,
+                id=int(payload.sub),
                 email=payload.email,
                 first_name=payload.first_name,
                 last_name=payload.last_name,

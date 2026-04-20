@@ -61,7 +61,12 @@ export default function PoliceAdminTable() {
           title="Edit Police Account"
           onSubmit={(data) => handlePoliceEditSubmit(variables.id, data)}
           submissionError={error.message}
-          editData={{ email: variables.data.email, role: variables.data.role }}
+          editData={{
+            email: variables.data.email,
+            role: variables.data.role,
+            is_verified: variables.data.is_verified,
+          }}
+          disableVerificationToggle
         />
       );
     },
@@ -90,7 +95,12 @@ export default function PoliceAdminTable() {
       <PoliceAccountForm
         title="Edit Police Account"
         onSubmit={(data) => handlePoliceEditSubmit(row.id, data)}
-        editData={{ email: row.email, role: row.role }}
+        editData={{
+          email: row.email,
+          role: row.role,
+          is_verified: row.is_verified,
+        }}
+        disableVerificationToggle
       />
     );
   };
@@ -112,6 +122,7 @@ export default function PoliceAdminTable() {
       data: {
         email: data.email,
         role: data.role,
+        is_verified: data.is_verified,
       },
     });
   };
@@ -129,6 +140,11 @@ export default function PoliceAdminTable() {
         enableColumnFilter: true,
         cell: ({ row }) =>
           formatRoleLabel(row.getValue("role") as PoliceAccountDto["role"]),
+      },
+      {
+        accessorKey: "is_verified",
+        header: "Verified",
+        cell: ({ row }) => (row.original.is_verified ? "Yes" : "No"),
       },
     ],
     []

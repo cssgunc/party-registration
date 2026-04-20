@@ -1,16 +1,19 @@
 from datetime import UTC, datetime
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.modules.account.account_entity import AccountRole
 from src.modules.location.location_service import LocationService
-from src.modules.student.student_model import ContactPreference, StudentDto
+from src.modules.student.student_entity import StudentEntity
+from src.modules.student.student_model import ContactPreference, SelfUpdateStudentDto, StudentDto
 from src.modules.student.student_service import (
     AccountNotFoundException,
     InvalidAccountRoleException,
     ResidenceAlreadyChosenException,
     StudentAlreadyExistsException,
     StudentConflictException,
+    StudentInfoNotProvidedException,
     StudentNotFoundException,
     StudentService,
 )
@@ -63,6 +66,21 @@ class TestStudentService:
             await self.student_service.create_student(data, account_id=account2.id)
 
     @pytest.mark.asyncio
+    async def test_multiple_null_phone_numbers_do_not_conflict(self) -> None:
+        """Regression: SQL Server treats two NULLs as a unique constraint violation.
+        Multiple unonboarded students (null phone_number) must coexist without conflict."""
+        account1 = await self.account_utils.create_one(role=AccountRole.STUDENT.value)
+        account2 = await self.account_utils.create_one(role=AccountRole.STUDENT.value)
+
+        await self.student_service.ensure_student_entity_exists(account1.id)
+        await self.student_service.ensure_student_entity_exists(account2.id)
+
+        student1 = await self.student_service.get_student_by_id(account1.id)
+        student2 = await self.student_service.get_student_by_id(account2.id)
+        assert student1.phone_number is None
+        assert student2.phone_number is None
+
+    @pytest.mark.asyncio
     async def test_get_students(self):
         students = await self.student_utils.create_many(i=3)
 
@@ -111,6 +129,7 @@ class TestStudentService:
         student1 = await self.student_utils.create_one()
         student2 = await self.student_utils.create_one()
 
+        assert student1.phone_number is not None
         with pytest.raises(StudentConflictException):
             await self.student_service.update_student(
                 student2.account_id,
@@ -220,6 +239,95 @@ class TestStudentService:
     async def test_update_is_registered_student_not_found(self):
         with pytest.raises(StudentNotFoundException):
             await self.student_service.update_is_registered(99999, is_registered=True)
+
+    @pytest.mark.asyncio
+    async def test_get_student_me_dto_no_entity(self):
+        """Account with student role but no Student entity returns partial DTO with nulls."""
+        account = await self.account_utils.create_one(role=AccountRole.STUDENT.value)
+
+        dto = await self.student_service.get_student_me_dto(account.id)
+
+        assert isinstance(dto, StudentDto)
+        assert dto.phone_number is None
+        assert dto.contact_preference is None
+        assert dto.last_registered is None
+        assert dto.residence is None
+
+    @pytest.mark.asyncio
+    async def test_get_student_me_dto_with_entity(self):
+        """Account with Student entity returns full DTO."""
+        student_entity = await self.student_utils.create_one()
+
+        dto = await self.student_service.get_student_me_dto(student_entity.account_id)
+
+        self.student_utils.assert_matches(dto, student_entity)
+
+    @pytest.mark.asyncio
+    async def test_update_student_self_upserts_when_no_entity(self):
+        """update_student_self creates a Student entity if one does not exist yet."""
+        account = await self.account_utils.create_one(role=AccountRole.STUDENT.value)
+        data = SelfUpdateStudentDto(
+            phone_number="9195550001",
+            contact_preference=ContactPreference.TEXT,
+        )
+
+        updated = await self.student_service.update_student_self(account.id, data)
+
+        self.student_utils.assert_matches(updated, data)
+
+    @pytest.mark.asyncio
+    async def test_assert_student_entity_exists_raises_when_no_entity(self):
+        """assert_student_entity_exists raises StudentInfoNotProvidedException when no entity."""
+        account = await self.account_utils.create_one(role=AccountRole.STUDENT.value)
+
+        with pytest.raises(StudentInfoNotProvidedException):
+            await self.student_service.assert_student_entity_exists(account.id)
+
+    @pytest.mark.asyncio
+    async def test_assert_student_entity_exists_passes_when_entity_present(self):
+        """assert_student_entity_exists does not raise when Student entity exists."""
+        student_entity = await self.student_utils.create_one()
+
+        # Should not raise
+        await self.student_service.assert_student_entity_exists(student_entity.account_id)
+
+    @pytest.mark.asyncio
+    async def test_assert_student_entity_exists_raises_when_null_info(
+        self, test_session: AsyncSession
+    ):
+        """assert_student_entity_exists raises when entity exists but phone/preference are null."""
+        account = await self.account_utils.create_one(role=AccountRole.STUDENT.value)
+        entity = StudentEntity(account_id=account.id)
+        test_session.add(entity)
+        await test_session.commit()
+
+        with pytest.raises(StudentInfoNotProvidedException):
+            await self.student_service.assert_student_entity_exists(account.id)
+
+    @pytest.mark.asyncio
+    async def test_ensure_student_entity_exists_creates_entity(self, test_session: AsyncSession):
+        """ensure_student_entity_exists creates a StudentEntity with null phone/preference."""
+        account = await self.account_utils.create_one(role=AccountRole.STUDENT.value)
+
+        await self.student_service.ensure_student_entity_exists(account.id)
+
+        result = await test_session.execute(
+            select(StudentEntity).where(StudentEntity.account_id == account.id)
+        )
+        entity = result.scalar_one_or_none()
+        assert entity is not None
+        assert entity.phone_number is None
+        assert entity.contact_preference is None
+
+    @pytest.mark.asyncio
+    async def test_ensure_student_entity_exists_noop_when_entity_exists(self):
+        """ensure_student_entity_exists does not overwrite an existing entity."""
+        student_entity = await self.student_utils.create_one()
+
+        await self.student_service.ensure_student_entity_exists(student_entity.account_id)
+
+        fetched = await self.student_service.get_student_by_id(student_entity.account_id)
+        self.student_utils.assert_matches(fetched, student_entity)
 
 
 class TestStudentResidenceService:

@@ -119,14 +119,13 @@ export default function IncidentInfoChipDetails({
 
   return (
     <div className="">
-      <div className="flex items-center justify-between pb-4">
-        <h1 className="page-title">Incidents</h1>
-        {role === "admin" && (
-          <Button variant="default" size="sm" className="" onClick={handleAdd}>
+      {role === "admin" && (
+        <div className="flex justify-end pb-4">
+          <Button variant="default" size="sm" onClick={handleAdd}>
             Add New
           </Button>
-        )}
-      </div>
+        </div>
+      )}
 
       <p className="text-sm text-gray-500 pb-4">
         View existing incidents, or add a new one.
