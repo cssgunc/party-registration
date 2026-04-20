@@ -7,7 +7,7 @@ import { SidebarProvider } from "@/app/staff/_components/shared/sidebar/SidebarC
 export default function PoliceAdminPage() {
   return (
     <SidebarProvider>
-      <main className="h-[calc(100vh-var(--app-header-height))] overflow-hidden bg-background px-4 py-4 md:px-6 md:py-6">
+      <main className="h-full lg:h-[calc(100vh-var(--app-header-height))] overflow-y-auto lg:overflow-hidden bg-background px-4 py-4 md:px-6 md:py-6">
         <div className="mx-auto h-full max-w-6xl min-h-0 flex flex-col">
           <header className="mb-4">
             <h1 className="page-title text-secondary">
