@@ -43,16 +43,18 @@ export class IncidentService {
    * Download incidents as Excel (GET /api/incidents/csv)
    */
   async downloadIncidentsCsv(params?: ListQueryParams): Promise<void> {
-    try {
-      const response = await this.client.get("/incidents/csv", {
-        params: params ? toAxiosParams(params) : undefined,
-        responseType: "blob",
-      });
-      downloadExcelFile(response, "incidents.xlsx");
-    } catch (error) {
-      console.error("Failed to download incidents Excel:", error);
-      throw new Error("Failed to download incidents export");
-    }
+    const { sort_by, sort_order, search, filters } = params ?? { filters: {} };
+    const response = await this.client.get("/incidents/csv", {
+      params: toAxiosParams({
+        page_number: 1,
+        sort_by,
+        sort_order,
+        search,
+        filters: filters ?? {},
+      }),
+      responseType: "blob",
+    });
+    downloadExcelFile(response, "incidents.xlsx");
   }
 
   /**

@@ -40,16 +40,18 @@ export class AdminStudentService {
    * Downloads students as Excel (GET /api/students/csv)
    */
   async downloadStudentsCsv(params?: ListQueryParams): Promise<void> {
-    try {
-      const response = await this.client.get("/students/csv", {
-        params: params ? toAxiosParams(params) : undefined,
-        responseType: "blob",
-      });
-      downloadExcelFile(response, "students.xlsx");
-    } catch (error) {
-      console.error("Failed to download students Excel:", error);
-      throw new Error("Failed to download students export");
-    }
+    const { sort_by, sort_order, search, filters } = params ?? { filters: {} };
+    const response = await this.client.get("/students/csv", {
+      params: toAxiosParams({
+        page_number: 1,
+        sort_by,
+        sort_order,
+        search,
+        filters: filters ?? {},
+      }),
+      responseType: "blob",
+    });
+    downloadExcelFile(response, "students.xlsx");
   }
 
   /**

@@ -66,8 +66,15 @@ export class PartyService {
    * Download parties as Excel (GET /api/parties/csv)
    */
   async downloadPartiesCsv(params?: ListQueryParams): Promise<void> {
+    const { sort_by, sort_order, search, filters } = params ?? { filters: {} };
     const response = await this.client.get("/parties/csv", {
-      params: params ? toAxiosParams(params) : undefined,
+      params: toAxiosParams({
+        page_number: 1,
+        sort_by,
+        sort_order,
+        search,
+        filters: filters ?? {},
+      }),
       responseType: "blob",
     });
     downloadExcelFile(response, "parties.xlsx");

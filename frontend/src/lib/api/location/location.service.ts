@@ -67,16 +67,18 @@ export class LocationService {
    * Download locations as Excel (GET /api/locations/csv)
    */
   async downloadLocationsCsv(params?: ListQueryParams): Promise<void> {
-    try {
-      const response = await this.client.get("/locations/csv", {
-        params: params ? toAxiosParams(params) : undefined,
-        responseType: "blob",
-      });
-      downloadExcelFile(response, "locations.xlsx");
-    } catch (error) {
-      console.error("Failed to download locations Excel:", error);
-      throw new Error("Failed to download locations export");
-    }
+    const { sort_by, sort_order, search, filters } = params ?? { filters: {} };
+    const response = await this.client.get("/locations/csv", {
+      params: toAxiosParams({
+        page_number: 1,
+        sort_by,
+        sort_order,
+        search,
+        filters: filters ?? {},
+      }),
+      responseType: "blob",
+    });
+    downloadExcelFile(response, "locations.xlsx");
   }
 
   /**

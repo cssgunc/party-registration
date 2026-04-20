@@ -36,16 +36,19 @@ export class AccountService {
    * Download accounts as Excel (GET /api/accounts/csv)
    */
   async downloadAccountsCsv(params?: ListQueryParams): Promise<void> {
-    try {
-      const response = await this.client.get("/accounts/csv", {
-        params: params ? toAxiosParams(params) : undefined,
-        responseType: "blob",
-      });
-      downloadExcelFile(response, "accounts.xlsx");
-    } catch (error) {
-      console.error("Failed to download accounts Excel:", error);
-      throw new Error("Failed to download accounts export");
-    }
+    const { sort_by, sort_order, search, filters } = params ?? { filters: {} };
+    const exportFilters = { ...filters, role_not_in: "student" };
+    const response = await this.client.get("/accounts/csv", {
+      params: toAxiosParams({
+        page_number: 1,
+        sort_by,
+        sort_order,
+        search,
+        filters: exportFilters,
+      }),
+      responseType: "blob",
+    });
+    downloadExcelFile(response, "accounts.xlsx");
   }
 
   /**
