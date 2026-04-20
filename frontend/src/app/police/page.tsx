@@ -201,10 +201,10 @@ export default function PolicePage() {
   );
 
   return (
-    <main className="lg:h-[calc(100vh-var(--app-header-height))] lg:overflow-hidden overflow-y-auto px-4 py-4 md:px-6 md:py-6">
+    <main className="h-full lg:h-[calc(100vh-var(--app-header-height))] overflow-y-auto lg:overflow-hidden px-4 py-4 md:px-6 md:py-6">
       <div className="grid lg:h-full gap-6 lg:grid-cols-[minmax(22rem,34rem)_minmax(0,1fr)]">
         {/* Left panel */}
-        <aside className="flex h-full min-h-0 overflow-hidden flex-col">
+        <aside className="flex flex-col min-h-0 lg:h-full lg:overflow-hidden">
           {/* Header */}
           <header className="flex items-center justify-between gap-3 px-1 pb-4">
             <h1 className="page-title text-secondary">Party Search</h1>
@@ -245,7 +245,7 @@ export default function PolicePage() {
           </div>
 
           {/* Party list */}
-          <Card className="flex h-0 min-h-0 flex-1 flex-col overflow-hidden p-1 w-full">
+          <Card className="flex flex-col p-1 w-full lg:h-0 lg:min-h-0 lg:flex-1 lg:overflow-hidden">
             {isPartiesLoading && (
               <div className="px-4 py-2 gap-4 flex flex-col h-fit">
                 <SkeletonText className="pb-5 max-w-full" />
