@@ -175,6 +175,9 @@ const PoiMarkers = ({ pois, activePoiKey, onSelect }: PoiMarkersProps) => {
                   phoneNumber={
                     selectedPoi.party.contact_one.phone_number ?? "—"
                   }
+                  contactPreference={
+                    selectedPoi.party.contact_one.contact_preference
+                  }
                 />
                 <span className="text-gray-600">
                   {selectedPoi.party.contact_one.contact_preference

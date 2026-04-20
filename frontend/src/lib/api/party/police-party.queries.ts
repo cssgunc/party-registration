@@ -22,6 +22,47 @@ const partyService = new PartyService();
 // Query key constants for police queries
 const PLACE_DETAILS_KEY = ["place-details"] as const;
 
+function addOptimisticIncidentToParty(
+  party: PartyDto,
+  locationPlaceId: string,
+  optimisticIncident: IncidentDto
+) {
+  if (party.location.google_place_id !== locationPlaceId) {
+    return party;
+  }
+
+  return {
+    ...party,
+    location: {
+      ...party.location,
+      incidents: [optimisticIncident, ...party.location.incidents],
+    },
+  };
+}
+
+function addOptimisticIncidentToNearbyResponse(
+  response: ProximitySearchResponse,
+  locationPlaceId: string,
+  optimisticIncident: IncidentDto
+): ProximitySearchResponse {
+  return {
+    ...response,
+    exact_match: response.exact_match.party
+      ? {
+          ...response.exact_match,
+          party: addOptimisticIncidentToParty(
+            response.exact_match.party,
+            locationPlaceId,
+            optimisticIncident
+          ),
+        }
+      : response.exact_match,
+    nearby: response.nearby.map((party) =>
+      addOptimisticIncidentToParty(party, locationPlaceId, optimisticIncident)
+    ),
+  };
+}
+
 export function usePlaceDetails(
   placeId: string | undefined,
   options?: UseQueryOptions<AddressData>
@@ -87,10 +128,15 @@ export function usePoliceCreateIncident(options?: {
   return useCreateIncident({
     onMutate: async (payload) => {
       await queryClient.cancelQueries({ queryKey: PARTIES_KEY });
+      await queryClient.cancelQueries({ queryKey: NEARBY_KEY });
 
       const previousData = queryClient.getQueriesData<PartyDto[]>({
         queryKey: PARTIES_KEY,
       });
+      const previousNearbyData =
+        queryClient.getQueriesData<ProximitySearchResponse>({
+          queryKey: NEARBY_KEY,
+        });
 
       const optimisticIncident: IncidentDto = {
         id: Date.now(),
@@ -106,32 +152,42 @@ export function usePoliceCreateIncident(options?: {
         (old) => {
           if (!Array.isArray(old)) return old;
           return old.map((party) =>
-            party.location.google_place_id === payload.location_place_id
-              ? {
-                  ...party,
-                  location: {
-                    ...party.location,
-                    incidents: [
-                      optimisticIncident,
-                      ...party.location.incidents,
-                    ],
-                  },
-                }
-              : party
+            addOptimisticIncidentToParty(
+              party,
+              payload.location_place_id,
+              optimisticIncident
+            )
           );
         }
       );
 
-      return { previousData };
+      queryClient.setQueriesData<ProximitySearchResponse>(
+        { queryKey: NEARBY_KEY },
+        (old) => {
+          if (!old) return old;
+
+          return addOptimisticIncidentToNearbyResponse(
+            old,
+            payload.location_place_id,
+            optimisticIncident
+          );
+        }
+      );
+
+      return { previousData, previousNearbyData };
     },
     onError: (error: Error, _payload, onMutateResult) => {
       onMutateResult?.previousData.forEach(([queryKey, data]) => {
+        queryClient.setQueryData(queryKey, data);
+      });
+      onMutateResult?.previousNearbyData.forEach(([queryKey, data]) => {
         queryClient.setQueryData(queryKey, data);
       });
       options?.onError?.(error);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: PARTIES_KEY });
+      queryClient.invalidateQueries({ queryKey: NEARBY_KEY });
       options?.onSuccess?.();
     },
   });

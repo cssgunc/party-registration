@@ -82,7 +82,7 @@ export default function PolicePage() {
   const isAddressSearchActive = !!searchAddress?.google_place_id;
   const activeParties = isAddressSearchActive ? nearbyData?.nearby : allParties;
   const isPartiesLoading =
-    activeParties === undefined ||
+    activeParties === undefined &&
     (isAddressSearchActive ? isFetchingNearby : isFetchingAll);
 
   // Use nearby list if address search is active, otherwise use all parties
