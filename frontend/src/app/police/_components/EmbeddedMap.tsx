@@ -58,6 +58,14 @@ const EmbeddedMap = ({
   const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
   const mapKey = center ? `${center.lat}-${center.lng}` : "default";
 
+  // Stabilize reference so the circle effect doesn't re-fire when the parent
+  // passes a new inline object with the same lat/lng values.
+  const searchCenter = useMemo(
+    () => (center ? { lat: center.lat, lng: center.lng } : undefined),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [center?.lat, center?.lng]
+  );
+
   return (
     <div className="w-full h-full overflow-hidden rounded-md">
       <APIProvider
@@ -76,7 +84,7 @@ const EmbeddedMap = ({
             pois={locations}
             activePoiKey={activePoiKey}
             onSelect={onSelect}
-            searchCenter={center}
+            searchCenter={searchCenter}
           />
         </Map>
       </APIProvider>
