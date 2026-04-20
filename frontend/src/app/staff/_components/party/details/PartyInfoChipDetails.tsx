@@ -1,7 +1,7 @@
 "use client";
 
+import { InfoChipDetails } from "@/app/staff/_components/shared/sidebar/InfoChipDetails";
 import { PartyDto } from "@/lib/api/party/party.types";
-import { GenericChipDetails } from "../../shared/sidebar/GenericChipDetails";
 
 interface PartyInfoChipDetailsProps {
   data: PartyDto;
@@ -9,28 +9,13 @@ interface PartyInfoChipDetailsProps {
 
 export function PartyInfoChipDetails({ data }: PartyInfoChipDetailsProps) {
   return (
-    <GenericChipDetails<PartyDto>
-      data={data}
-      renderView={(d) => (
-        <div className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium">Address</label>
-            <p>{d.location.formatted_address}</p>
-          </div>
-          <div>
-            <label className="block text-sm font-medium">Date</label>
-            <p>{d.party_datetime.toDateString()}</p>
-          </div>
-          <div>
-            <label className="block text-sm font-medium">First name</label>
-            <p>{d.contact_one.first_name}</p>
-          </div>
-          <div>
-            <label className="block text-sm font-medium">Last Name</label>
-            <p>{d.contact_one.last_name}</p>
-          </div>
-        </div>
-      )}
+    <InfoChipDetails
+      fields={[
+        ["Address", data.location.formatted_address],
+        ["Date", data.party_datetime.toDateString()],
+        ["First Name", data.contact_one.first_name],
+        ["Last Name", data.contact_one.last_name],
+      ]}
     />
   );
 }

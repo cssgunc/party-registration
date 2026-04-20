@@ -2,6 +2,7 @@
 
 import { PhoneLink } from "@/components/PhoneLink";
 import { PartyDto } from "@/lib/api/party/party.types";
+import { formatContactPreference } from "@/lib/utils";
 import {
   APIProvider,
   AdvancedMarker,
@@ -58,6 +59,14 @@ const EmbeddedMap = ({
   const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
   const mapKey = center ? `${center.lat}-${center.lng}` : "default";
 
+  // Stabilize reference so the circle effect doesn't re-fire when the parent
+  // passes a new inline object with the same lat/lng values.
+  const searchCenter = useMemo(
+    () => (center ? { lat: center.lat, lng: center.lng } : undefined),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [center?.lat, center?.lng]
+  );
+
   return (
     <div className="w-full h-full overflow-hidden rounded-md">
       <APIProvider
@@ -76,6 +85,7 @@ const EmbeddedMap = ({
             pois={locations}
             activePoiKey={activePoiKey}
             onSelect={onSelect}
+            searchCenter={searchCenter}
           />
         </Map>
       </APIProvider>
@@ -87,11 +97,27 @@ type PoiMarkersProps = {
   pois: (Poi & { party?: PartyDto })[];
   activePoiKey?: string;
   onSelect?: (party: PartyDto | null) => void;
+  searchCenter?: { lat: number; lng: number };
 };
 
 const SELECTED_ZOOM = 17;
+const METERS_PER_MILE = 1609.344;
+const DEFAULT_SEARCH_RADIUS_MILES = 0.25;
 
-const PoiMarkers = ({ pois, activePoiKey, onSelect }: PoiMarkersProps) => {
+const parsedSearchRadiusMiles = Number(
+  process.env.NEXT_PUBLIC_PARTY_SEARCH_RADIUS_MILES
+);
+const SEARCH_RADIUS_METERS =
+  (Number.isFinite(parsedSearchRadiusMiles)
+    ? parsedSearchRadiusMiles
+    : DEFAULT_SEARCH_RADIUS_MILES) * METERS_PER_MILE;
+
+const PoiMarkers = ({
+  pois,
+  activePoiKey,
+  onSelect,
+  searchCenter,
+}: PoiMarkersProps) => {
   const map = useMap();
   const [selectedPoi, setSelectedPoi] = useState<(typeof pois)[0] | null>(null);
 
@@ -112,6 +138,26 @@ const PoiMarkers = ({ pois, activePoiKey, onSelect }: PoiMarkersProps) => {
       map.setZoom(SELECTED_ZOOM);
     }
   }, [activePoiKey, map, pois]);
+
+  useEffect(() => {
+    if (!map || !searchCenter) return;
+
+    const circle = new google.maps.Circle({
+      map,
+      center: searchCenter,
+      radius: SEARCH_RADIUS_METERS,
+      fillColor: "#4285F4",
+      fillOpacity: 0.08,
+      strokeColor: "#4285F4",
+      strokeOpacity: 0.6,
+      strokeWeight: 2,
+      clickable: false,
+    });
+
+    return () => {
+      circle.setMap(null);
+    };
+  }, [map, searchCenter]);
 
   const handleClick = useCallback(
     (poi: (typeof pois)[0]) => (ev: google.maps.MapMouseEvent) => {
@@ -175,16 +221,14 @@ const PoiMarkers = ({ pois, activePoiKey, onSelect }: PoiMarkersProps) => {
                   phoneNumber={
                     selectedPoi.party.contact_one.phone_number ?? "—"
                   }
+                  contactPreference={
+                    selectedPoi.party.contact_one.contact_preference
+                  }
                 />
                 <span className="text-gray-600">
-                  {selectedPoi.party.contact_one.contact_preference
-                    ? selectedPoi.party.contact_one.contact_preference
-                        .charAt(0)
-                        .toUpperCase() +
-                      selectedPoi.party.contact_one.contact_preference
-                        .slice(1)
-                        .toLowerCase()
-                    : "—"}
+                  {formatContactPreference(
+                    selectedPoi.party.contact_one.contact_preference
+                  )}
                 </span>
               </div>
             </div>

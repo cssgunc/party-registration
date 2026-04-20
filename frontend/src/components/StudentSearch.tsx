@@ -18,7 +18,7 @@ import { AdminStudentService } from "@/lib/api/student/admin-student.service";
 import { StudentSuggestionDto } from "@/lib/api/student/student.types";
 import { cn, formatPhoneNumber } from "@/lib/utils";
 import { CheckIcon, Loader2Icon, UserIcon, XIcon } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 interface StudentSearchProps {
   value?: string;
@@ -111,6 +111,32 @@ export default function StudentSearch({
   serviceRef.current = adminStudentService;
   selectedStudentRef.current = selectedStudent;
 
+  const initialStudentId = initialSelection?.student_id ?? null;
+  const initialFirstName = initialSelection?.first_name ?? "";
+  const initialLastName = initialSelection?.last_name ?? "";
+  const initialMatchedFieldName = initialSelection?.matched_field_name ?? "";
+  const initialMatchedFieldValue = initialSelection?.matched_field_value ?? "";
+
+  const normalizedInitialSelection = useMemo(
+    () =>
+      initialStudentId === null
+        ? null
+        : {
+            student_id: initialStudentId,
+            first_name: initialFirstName,
+            last_name: initialLastName,
+            matched_field_name: initialMatchedFieldName,
+            matched_field_value: initialMatchedFieldValue,
+          },
+    [
+      initialStudentId,
+      initialFirstName,
+      initialLastName,
+      initialMatchedFieldName,
+      initialMatchedFieldValue,
+    ]
+  );
+
   const displayError = externalError || internalError;
 
   useEffect(() => {
@@ -119,6 +145,25 @@ export default function StudentSearch({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
+
+  useEffect(() => {
+    if (normalizedInitialSelection) {
+      setSelectedStudent(normalizedInitialSelection);
+      setSearchTerm(
+        `${normalizedInitialSelection.first_name} ${normalizedInitialSelection.last_name}`
+      );
+      setSuggestions([]);
+      setOpen(false);
+      return;
+    }
+
+    if (!value) {
+      setSelectedStudent(null);
+      setSearchTerm("");
+      setSuggestions([]);
+      setOpen(false);
+    }
+  }, [normalizedInitialSelection, value]);
 
   useEffect(() => {
     const fetchSuggestions = async (input: string) => {

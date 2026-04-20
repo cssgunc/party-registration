@@ -67,3 +67,15 @@ CreatePartyDto = Annotated[StudentCreatePartyDto | AdminCreatePartyDto, Field(di
 
 
 PaginatedPartiesResponse = PaginatedResponse[PartyDto]
+
+
+class ExactMatchDto(BaseModel):
+    google_place_id: str
+    formatted_address: str
+    location: LocationDto | None = Field(None, description="null if location not in DB")
+    party: PartyDto | None = Field(None, description="null if no party in date range")
+
+
+class ProximitySearchResponse(BaseModel):
+    exact_match: ExactMatchDto
+    nearby: list[PartyDto]

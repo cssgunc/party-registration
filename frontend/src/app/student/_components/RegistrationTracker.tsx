@@ -10,6 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Skeleton, SkeletonText } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { IncidentDto } from "@/lib/api/incident/incident.types";
 import { PartyDto } from "@/lib/api/party/party.types";
@@ -65,8 +66,8 @@ export default function RegistrationTracker(): React.JSX.Element {
 
     active.sort(
       (a, b) =>
-        new Date(b.party_datetime).getTime() -
-        new Date(a.party_datetime).getTime()
+        Math.abs(new Date(a.party_datetime).getTime() - now.getTime()) -
+        Math.abs(new Date(b.party_datetime).getTime() - now.getTime())
     );
     past.sort(
       (a, b) =>
@@ -76,6 +77,9 @@ export default function RegistrationTracker(): React.JSX.Element {
 
     return { activeParties: active, pastParties: past };
   }, [partiesQuery.data]);
+
+  const hasNoParties = (partiesQuery.data?.length ?? 0) === 0;
+  const showPartySmartPrompt = hasNoParties && !courseCompleted;
 
   const sortedIncidents = useMemo(() => {
     const incidents: IncidentDto[] =
@@ -120,11 +124,14 @@ export default function RegistrationTracker(): React.JSX.Element {
                 {formatTime(party.party_datetime)}
               </p>
             </div>
-            {showAddress && (
-              <h2 className="content-sub my-2 leading-2">
-                {party.location.formatted_address}
-              </h2>
-            )}
+            {showAddress &&
+              (isPartiesPending ? (
+                <Skeleton className="h-4 w-3/4 my-2" />
+              ) : (
+                <h2 className="content-sub my-2 leading-2">
+                  {party.location.formatted_address}
+                </h2>
+              ))}
           </div>
 
           {showActions && (
@@ -136,10 +143,7 @@ export default function RegistrationTracker(): React.JSX.Element {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={() => setEditParty(party)}
-                  className="content"
-                >
+                <DropdownMenuItem onClick={() => setEditParty(party)}>
                   <Pencil className="h-4 w-4" />
                   Edit
                 </DropdownMenuItem>
@@ -221,20 +225,10 @@ export default function RegistrationTracker(): React.JSX.Element {
 
   if (isPartiesError) {
     return (
-      <Card className="w-full bg-card p-4">
+      <Card className="w-full bg-card p-4 h-[calc(100vh-28rem)]">
         <div className="text-center text-red-600 py-8">
           <p className="font-semibold mb-2">Error loading registrations</p>
           <p className="text-sm">{isPartiesError.message}</p>
-        </div>
-      </Card>
-    );
-  }
-
-  if (isPartiesPending) {
-    return (
-      <Card className="w-full bg-card p-4">
-        <div className="text-center py-8">
-          <p className="content-sub">Loading registrations...</p>
         </div>
       </Card>
     );
@@ -273,70 +267,87 @@ export default function RegistrationTracker(): React.JSX.Element {
             {courseCompleted ? (
               <Link href="/student/new-party">
                 <Button className="px-4 py-2">
-                  <Plus className="h-4 w-4 inline-block" />
+                  <Plus className="size-4 inline-block" />
                   New Party
                 </Button>
               </Link>
             ) : (
-              <Button
-                className="px-4 py-2"
-                disabled
-                title="Complete the Party Smart Course to register a party"
-              >
-                New Party
-              </Button>
+              <span title="Complete the Party Smart Course to register a party">
+                <Button className="px-4 py-2" disabled>
+                  <Plus className="size-4 inline-block" />
+                  New Party
+                </Button>
+              </span>
             )}
           </div>
         </div>
 
         <Card className="w-full">
           <TabsContent value="active">
-            <div className="w-full bg-card rounded-md overflow-hidden">
-              <div className="h-[calc(100vh-28rem)] overflow-y-auto">
-                {activeParties.length === 0 ? (
-                  <p className="text-center content-sub py-8">
-                    No active registrations
-                  </p>
-                ) : (
-                  activeParties.map((party) => (
-                    <PartyCard key={party.id} party={party} showActions />
-                  ))
-                )}
-              </div>
+            <div className="h-[calc(100vh-28rem)] w-full overflow-y-auto rounded-md bg-card">
+              {isPartiesPending ? (
+                <div className="px-4 py-4 gap-4 sm:gap-7 flex flex-col">
+                  <SkeletonText className="pb-5 max-w-full" />
+                  <SkeletonText className="pb-5 max-w-full" />
+                  <SkeletonText className="pb-5 max-w-full" />
+                  <SkeletonText className="pb-5 max-w-full" />
+                  <SkeletonText className="max-w-full" />
+                </div>
+              ) : activeParties.length === 0 ? (
+                <p className="flex h-full items-center justify-center px-4 text-center content-sub !text-base">
+                  {showPartySmartPrompt
+                    ? "Schedule and attend the Party Smart course below to register your first party!"
+                    : "No active registrations"}
+                </p>
+              ) : (
+                activeParties.map((party) => (
+                  <PartyCard key={party.id} party={party} showActions />
+                ))
+              )}
             </div>
           </TabsContent>
 
           <TabsContent value="past">
-            <div className="w-full bg-card rounded-md overflow-hidden">
-              <div className="h-[calc(100vh-28rem)] overflow-y-auto">
-                {pastParties.length === 0 ? (
-                  <p className="text-center content-sub py-8">
-                    No past registrations
-                  </p>
-                ) : (
-                  pastParties.map((party) => (
-                    <PartyCard key={party.id} party={party} showAddress />
-                  ))
-                )}
-              </div>
+            <div className="h-[calc(100vh-28rem)] w-full overflow-y-auto rounded-md bg-card">
+              {isPartiesPending ? (
+                <div className="px-4 py-4 gap-4 sm:gap-7 flex flex-col">
+                  <SkeletonText className="pb-5 max-w-full" />
+                  <SkeletonText className="pb-5 max-w-full" />
+                  <SkeletonText className="pb-5 max-w-full" />
+                  <SkeletonText className="pb-5 max-w-full" />
+                  <SkeletonText className="max-w-full" />
+                </div>
+              ) : pastParties.length === 0 ? (
+                <p className="text-center content-sub py-8">
+                  No past registrations
+                </p>
+              ) : (
+                pastParties.map((party) => (
+                  <PartyCard key={party.id} party={party} showAddress />
+                ))
+              )}
             </div>
           </TabsContent>
 
           <TabsContent value="incidents">
-            <div className="w-full bg-card rounded-md overflow-hidden">
-              <div className="h-[calc(100vh-28rem)] overflow-y-auto">
-                {sortedIncidents.length === 0 ? (
-                  <p className="text-center content-sub py-8">No incidents</p>
-                ) : (
-                  groupedIncidents.map(([date, dayIncidents]) => (
-                    <IncidentCard
-                      key={date}
-                      date={date}
-                      incidents={dayIncidents}
-                    />
-                  ))
-                )}
-              </div>
+            <div className="h-[calc(100vh-28rem)] w-full overflow-y-auto rounded-md bg-card">
+              {isPartiesPending ? (
+                <div className="px-4 py-4 gap-4 sm:gap-7 flex flex-col">
+                  <SkeletonText className="pb-5 max-w-full" />
+                  <SkeletonText className="pb-5 max-w-full" />
+                  <SkeletonText className="pb-5 max-w-full" />
+                </div>
+              ) : sortedIncidents.length === 0 ? (
+                <p className="text-center content-sub py-8">No incidents</p>
+              ) : (
+                groupedIncidents.map(([date, dayIncidents]) => (
+                  <IncidentCard
+                    key={date}
+                    date={date}
+                    incidents={dayIncidents}
+                  />
+                ))
+              )}
             </div>
           </TabsContent>
         </Card>
