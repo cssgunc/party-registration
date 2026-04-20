@@ -237,18 +237,18 @@ export default function StudentSearch({
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (selectedStudent) return;
+
     const newValue = e.target.value;
     setSearchTerm(newValue);
-    if (selectedStudent) {
-      setSelectedStudent(null);
-      onSelect(null);
-    }
     if (newValue.length >= 1) {
       setOpen(true);
     }
   };
 
   const handleFocus = () => {
+    if (selectedStudent) return;
+
     if (searchTerm.length >= 1) {
       setOpen(true);
     }
@@ -289,7 +289,13 @@ export default function StudentSearch({
 
   return (
     <div className={cn("w-full", className)}>
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover
+        open={open}
+        onOpenChange={(nextOpen) => {
+          if (disabled || selectedStudent) return;
+          setOpen(nextOpen);
+        }}
+      >
         <PopoverTrigger asChild>
           <div className="relative">
             <Input
@@ -300,7 +306,13 @@ export default function StudentSearch({
               onKeyDown={handleKeyDown}
               placeholder={placeholder}
               disabled={disabled}
-              className={cn("pr-16", displayError && "border-destructive")}
+              readOnly={!!selectedStudent}
+              className={cn(
+                "pr-16",
+                selectedStudent &&
+                  "bg-muted/50 text-muted-foreground cursor-not-allowed",
+                displayError && "border-destructive"
+              )}
               aria-label="Student search input"
               aria-describedby={displayError ? "student-error" : undefined}
               aria-invalid={!!displayError}
@@ -319,12 +331,12 @@ export default function StudentSearch({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="h-6 w-6 p-0 hover:bg-transparent cursor-pointer"
+                  className="group size-6 p-0 hover:bg-transparent cursor-pointer"
                   onClick={handleClear}
                   aria-label="Clear student selection"
                   tabIndex={-1}
                 >
-                  <XIcon className="h-4 w-4" />
+                  <XIcon className="size-4 text-muted-foreground group-hover:text-text" />
                 </Button>
               )}
             </div>
@@ -411,14 +423,6 @@ export default function StudentSearch({
         >
           {displayError}
         </p>
-      )}
-
-      {selectedStudent && (
-        <div className="mt-2 p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-md">
-          <p className="text-sm font-medium text-green-900 dark:text-green-100">
-            ✓ Selected: {selectedStudent.first_name} {selectedStudent.last_name}
-          </p>
-        </div>
       )}
     </div>
   );
