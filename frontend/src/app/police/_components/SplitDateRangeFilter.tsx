@@ -42,7 +42,7 @@ export default function SplitDateRangeFilter({
           id={id}
           type="button"
           className={cn(
-            "flex h-9 w-full items-center gap-2 rounded-md border border-border bg-card px-3 text-sm input-shadow",
+            "flex h-9 w-full cursor-pointer items-center gap-2 rounded-md border border-border bg-card px-3 text-sm input-shadow",
             !dateRangeLabel && "text-muted-foreground"
           )}
         >

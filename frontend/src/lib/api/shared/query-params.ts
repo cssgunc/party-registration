@@ -28,7 +28,7 @@ function isDateRange(value: unknown): value is DateRange {
 
 export type ServerColumnMap = Record<string, ServerColumnConfig>;
 
-export type ServerTableParams = {
+export type ListQueryParams = {
   page_number: number;
   page_size?: number;
   sort_by?: string;
@@ -36,6 +36,8 @@ export type ServerTableParams = {
   filters: Record<string, string>;
   search?: string;
 };
+
+export type ServerTableParams = ListQueryParams;
 
 export function buildServerTableParams(
   pagination: PaginationState,

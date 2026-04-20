@@ -1,3 +1,6 @@
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
 from fastapi import APIRouter, Depends, Request, Response
 from src.core.authentication import authenticate_admin
 from src.core.utils.query_utils import PAGINATED_OPENAPI_PARAMS
@@ -38,10 +41,11 @@ async def get_accounts_csv(
 ) -> Response:
     accounts = await account_service.get_accounts_for_export(request)
     excel_content = account_service.export_accounts_to_excel(accounts)
+    filename = f"accounts_{datetime.now(ZoneInfo('America/New_York')).strftime('%Y_%m_%d')}.xlsx"
     return Response(
         content=excel_content,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": "attachment; filename=accounts.xlsx"},
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
 
 

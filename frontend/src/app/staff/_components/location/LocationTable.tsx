@@ -4,6 +4,7 @@ import { useSnackbar } from "@/contexts/SnackbarContext";
 import {
   useCreateLocation,
   useDeleteLocation,
+  useDownloadLocationsCsv,
   useLocations,
   useUpdateLocation,
 } from "@/lib/api/location/location.queries";
@@ -16,7 +17,7 @@ import {
 import { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
 import { useState } from "react";
-import { GenericInfoChip } from "../shared/sidebar/GenericInfoChip";
+import { InfoChip } from "../shared/sidebar/InfoChip";
 import { useSidebar } from "../shared/sidebar/SidebarContext";
 import { TableTemplate } from "../shared/table/TableTemplate";
 import IncidentInfoChipDetails from "./IncidentInfoChipDetails";
@@ -57,11 +58,16 @@ export const LocationTable = () => {
   const locationsQuery = useLocations(serverParams);
   const locations = locationsQuery.data?.items ?? [];
 
+  const { mutate: exportCsv, isPending: isExporting } =
+    useDownloadLocationsCsv();
+
   const createMutation = useCreateLocation({
     onError: (error: Error) => {
       console.error("Failed to create location:", error);
       const errorMessage = isAxiosError(error)
-        ? error.response?.data?.message || error.message
+        ? error.response?.data?.detail ||
+          error.response?.data?.message ||
+          error.message
         : error.message;
       const userMessage =
         isAxiosError(error) && error.status === 409
@@ -92,7 +98,9 @@ export const LocationTable = () => {
     ) => {
       console.error("Failed to update location:", error);
       const errorMessage = isAxiosError(error)
-        ? error.response?.data?.message || error.message
+        ? error.response?.data?.detail ||
+          error.response?.data?.message ||
+          error.message
         : error.message;
       const userMessage =
         isAxiosError(error) && error.status === 409
@@ -213,7 +221,7 @@ export const LocationTable = () => {
       cell: ({ row }) => {
         return (
           <div className="flex w-auto">
-            <GenericInfoChip
+            <InfoChip
               chipKey={`incidents-${row.original.id}`}
               shortName={`${row.original.incidents.length}${" "}
                 ${row.original.incidents.length === 1 ? "incident" : "incidents"}`}
@@ -275,6 +283,8 @@ export const LocationTable = () => {
         }
         onStateChange={setServerParams}
         columnMap={SERVER_COLUMN_MAP}
+        onExportCsv={exportCsv}
+        isExporting={isExporting}
       />
     </div>
   );

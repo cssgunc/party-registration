@@ -6,6 +6,7 @@ import {
   useCreateAccount,
   useDeleteAccount,
   useDeletePoliceAccount,
+  useDownloadAccountsCsv,
   usePoliceAccounts,
   useUpdateAccount,
   useUpdatePoliceAccount,
@@ -77,8 +78,8 @@ const getErrorMessage = (error: Error): string => {
       case 500:
         return "Server error. Please try again later.";
     }
-    if (detail?.message) return String(detail.message);
     if (detail?.detail) return String(detail.detail);
+    if (detail?.message) return String(detail.message);
     if (error.message) return error.message;
   }
   return "Operation failed";
@@ -96,6 +97,8 @@ export const AccountTable = () => {
 
   const accountsQuery = useAccounts(serverParams);
   const policeAccountsQuery = usePoliceAccounts();
+  const { mutate: exportCsv, isPending: isExporting } =
+    useDownloadAccountsCsv();
 
   const tableRows: AccountTableRow[] = useMemo(() => {
     const regularAccounts: AccountTableRow[] = (accountsQuery.data?.items ?? [])
@@ -417,6 +420,8 @@ export const AccountTable = () => {
         }
         onStateChange={setServerParams}
         columnMap={SERVER_COLUMN_MAP}
+        onExportCsv={exportCsv}
+        isExporting={isExporting}
       />
     </div>
   );

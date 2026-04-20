@@ -50,12 +50,7 @@ export default function StaffTabPage() {
   }
 
   return (
-    <div className="h-[calc(100dvh-var(--app-header-height))] overflow-hidden  flex flex-col">
-      {/* Navbar */}
-      <div className="w-full bg-primary h-16 flex-shrink-0 flex items-center justify-between px-6">
-        <div className="text-white font-semibold">Staff Portal</div>
-      </div>
-
+    <div className="h-[calc(100dvh-var(--app-header-height))] overflow-hidden flex flex-col">
       <div className="container mx-auto p-6 flex-1 min-h-0 flex flex-col overflow-hidden">
         <Tabs
           value={tab as TabSlug}
