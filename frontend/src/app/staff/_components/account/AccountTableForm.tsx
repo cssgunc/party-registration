@@ -37,14 +37,12 @@ interface AccountTableFormProps {
   onSubmit: (data: AccountTableFormValues) => void | Promise<void>;
   editData?: AccountTableFormValues;
   submissionError?: string | null;
-  title?: string;
 }
 
 export default function AccountTableForm({
   onSubmit,
   editData,
   submissionError,
-  title,
 }: AccountTableFormProps) {
   const [formData, setFormData] = useState<Partial<AccountTableFormValues>>({
     email: editData?.email ?? "",
@@ -99,7 +97,6 @@ export default function AccountTableForm({
   const isPIDEditMode = !!editData;
   return (
     <form onSubmit={handleSubmit}>
-      {title && <h2 className="text-xl font-semibold mb-4">{title}</h2>}
       <FieldGroup>
         <FieldSet>
           <Field data-invalid={!!errors.email}>

@@ -50,14 +50,12 @@ interface StudentTableFormProps {
   onSubmit: (data: StudentTableFormValues) => void | Promise<void>;
   editData?: Partial<StudentTableFormValues>;
   submissionError?: string | null;
-  title?: string;
 }
 
 export default function StudentTableForm({
   onSubmit,
   editData,
   submissionError,
-  title,
 }: StudentTableFormProps) {
   const initialResidenceSelection: AutocompleteResult | null =
     editData?.residence
@@ -124,7 +122,6 @@ export default function StudentTableForm({
   const isPIDEditMode = !!editData;
   return (
     <form onSubmit={handleSubmit}>
-      {title && <h2 className="text-xl font-semibold mb-4">{title}</h2>}
       <FieldGroup>
         <FieldSet>
           <Field data-invalid={!!errors.pid}>

@@ -171,6 +171,7 @@
   .content-bold {
     @apply text-base font-bold text-text;
   }
+
   .content-sub {
     @apply text-sm font-normal text-sub-text;
   }
