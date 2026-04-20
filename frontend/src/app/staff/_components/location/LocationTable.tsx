@@ -61,7 +61,9 @@ export const LocationTable = () => {
     onError: (error: Error) => {
       console.error("Failed to create location:", error);
       const errorMessage = isAxiosError(error)
-        ? error.response?.data?.message || error.message
+        ? error.response?.data?.detail ||
+          error.response?.data?.message ||
+          error.message
         : error.message;
       const userMessage =
         isAxiosError(error) && error.status === 409
@@ -92,7 +94,9 @@ export const LocationTable = () => {
     ) => {
       console.error("Failed to update location:", error);
       const errorMessage = isAxiosError(error)
-        ? error.response?.data?.message || error.message
+        ? error.response?.data?.detail ||
+          error.response?.data?.message ||
+          error.message
         : error.message;
       const userMessage =
         isAxiosError(error) && error.status === 409
