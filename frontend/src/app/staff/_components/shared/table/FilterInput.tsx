@@ -21,7 +21,6 @@ import { DateRange } from "react-day-picker";
 
 interface FilterInputProps<T> {
   column: Column<T, unknown> | null;
-  columnName: string;
   onClose: () => void;
   filterType?: "text" | "date" | "dateRange" | "time" | "select";
   selectOptions?: string[];
@@ -29,7 +28,6 @@ interface FilterInputProps<T> {
 
 export function FilterInput<T>({
   column,
-  columnName,
   onClose,
   filterType = "text",
   selectOptions = [],
@@ -265,9 +263,6 @@ export function FilterInput<T>({
 
   return (
     <div>
-      <p className="flex items-center justify-between pb-2">
-        Filter: {columnName}
-      </p>
       <div>{renderFilterInput()}</div>
     </div>
   );

@@ -546,11 +546,10 @@ export function TableTemplate<T extends object>({
 
                                 openSidebar(
                                   `filter-${header.column.id}`,
-                                  `Filter: ${columnName}`,
+                                  `Filter ${columnName}`,
                                   `Refine results by ${columnName.toLowerCase()}`,
                                   <FilterInput
                                     column={header.column}
-                                    columnName={columnName}
                                     onClose={() => closeSidebar()}
                                     filterType={
                                       header.column.columnDef.meta

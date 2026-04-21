@@ -18,7 +18,7 @@ function createLoginRequestUrl(relayState?: string): Promise<string> {
     serviceProvider.create_login_request_url(
       identityProvider,
       {
-        force_authn: process.env.NODE_ENV === "production" ? false : true, // Forces users to re-authenticate on every login in development
+        force_authn: true,
         relay_state: relayState,
       },
       (error: Error | null, loginUrl: string) => {
