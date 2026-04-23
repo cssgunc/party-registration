@@ -25,7 +25,8 @@ app.add_middleware(
 API_SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
-    "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+    "Referrer-Policy": "no-referrer",
+    "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
     "Content-Security-Policy": (
         "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
     ),
