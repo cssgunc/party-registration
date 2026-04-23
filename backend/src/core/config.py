@@ -17,15 +17,15 @@ class Config(BaseSettings):
 
     # Database configuration
     MSSQL_DATABASE: str = "ocsl"
-    MSSQL_USER: str = "sa"
-    MSSQL_PASSWORD: str = "YourStrong!Passw0rd"
-    MSSQL_HOST: str = "db"
+    MSSQL_USER: str
+    MSSQL_PASSWORD: str
+    MSSQL_HOST: str
     MSSQL_PORT: int = 1433
     MSSQL_DRIVER: str = "ODBC Driver 18 for SQL Server"
-    MSSQL_TRUST_SERVER_CERTIFICATE: str = "yes"
+    MSSQL_TRUST_SERVER_CERTIFICATE: str
 
     # Frontend configuration
-    FRONTEND_BASE_URL: str = "http://localhost:3000"
+    FRONTEND_BASE_URL: str
 
     # Google Maps
     GOOGLE_MAPS_API_KEY: str
@@ -41,15 +41,18 @@ class Config(BaseSettings):
     INTERNAL_API_SECRET: str
 
     # Email / SMTP
-    SMTP_HOST: str = "mailpit"
-    SMTP_PORT: int = 1025
+    SMTP_HOST: str
+    SMTP_PORT: int
+    SMTP_TLS: bool
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
-    SMTP_TLS: bool = False
     EMAIL_FROM: str = "ocsl-no-reply@unc.edu"
 
+    # Logging
+    SQLALCHEMY_ECHO: bool = False
+
     # App Configuration
-    PARTY_SEARCH_RADIUS_MILES: float = 0.25
+    PARTY_SEARCH_RADIUS_MILES: float = 0.1
     CHPD_EMAIL_DOMAIN: str = "chapelhillnc.gov"
     EMAIL_VERIFICATION_TOKEN_EXPIRE_HOURS: int = 24
 

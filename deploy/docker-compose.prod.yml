@@ -1,0 +1,39 @@
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.backend
+    env_file: .env.prod
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.frontend
+      args:
+        - NEXT_PUBLIC_API_BASE_URL
+        - NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+        - NEXT_PUBLIC_GOOGLE_MAP_ID
+        - NEXT_PUBLIC_POLICE_VERIFICATION_RESEND_COOLDOWN_SECONDS=${NEXT_PUBLIC_POLICE_VERIFICATION_RESEND_COOLDOWN_SECONDS:-}
+        - NEXT_PUBLIC_CHPD_EMAIL_DOMAIN=${NEXT_PUBLIC_CHPD_EMAIL_DOMAIN:-}
+        - NEXT_PUBLIC_PARTY_SEARCH_RADIUS_MILES=${NEXT_PUBLIC_PARTY_SEARCH_RADIUS_MILES:-}
+    env_file: .env.prod
+    volumes:
+      - ./certs:/frontend/certs:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

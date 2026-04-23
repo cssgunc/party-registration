@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from src.core.config import env
 from src.modules.account.account_router import account_router
 from src.modules.auth.auth_router import router as auth_router
 from src.modules.incident.incident_router import incident_router
@@ -13,10 +14,11 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
+    allow_origins=[env.FRONTEND_BASE_URL],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Content-Disposition"],
 )
 
 
@@ -24,7 +26,7 @@ app.add_middleware(
 def handle_http_exception(req: Request, exc: HTTPException):
     return JSONResponse(
         status_code=exc.status_code,
-        content={"message": exc.detail},
+        content={"detail": exc.detail},
         headers=exc.headers,
     )
 
@@ -33,7 +35,7 @@ def handle_http_exception(req: Request, exc: HTTPException):
 def handle_general_exception(req: Request, exc: Exception):
     return JSONResponse(
         status_code=500,
-        content={"message": "An unexpected error occurred.", "detail": str(exc)},
+        content={"detail": "An unexpected error occurred."},
     )
 
 

@@ -1,5 +1,6 @@
 import type { RefreshTokenResponse } from "@/lib/api/auth/auth.types";
 import { signOut } from "@/lib/auth/signout";
+import { clientEnv } from "@/lib/config/env.client";
 import axios, { AxiosRequestConfig, AxiosRequestHeaders } from "axios";
 import { getServerSession } from "next-auth";
 import { getSession } from "next-auth/react";
@@ -7,7 +8,7 @@ import { redirect } from "next/navigation";
 
 const apiClient = axios.create({
   withCredentials: true,
-  baseURL: `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"}/api`,
+  baseURL: clientEnv.NEXT_PUBLIC_API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
@@ -55,7 +56,7 @@ async function refreshAccessToken(): Promise<string | null> {
 async function getAccessToken(): Promise<string | undefined> {
   // SSR context
   if (typeof window === "undefined") {
-    const { authOptions } = await import("@/app/api/auth/[...nextauth]/route");
+    const { authOptions } = await import("@/lib/auth/auth-options");
     const session = await getServerSession(authOptions);
     return session?.accessToken;
   }
@@ -158,7 +159,10 @@ export const setupErrorInterceptor = (showError: (message: string) => void) => {
 
       // Get error message
       const message =
-        error.response?.data?.message || error.message || "An error occurred";
+        error.response?.data?.detail ||
+        error.response?.data?.message ||
+        error.message ||
+        "An error occurred";
 
       showError(message);
       return Promise.reject(error);

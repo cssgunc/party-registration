@@ -118,7 +118,6 @@ export default function PartyRegistrationForm({
   });
 
   const [placeId, setPlaceId] = useState<string>(initialValues?.placeId ?? "");
-
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAddressConfirmation, setShowAddressConfirmation] = useState(false);
@@ -326,19 +325,16 @@ export default function PartyRegistrationForm({
               </Field>
             )}
             {validResidence && (
-              <div className="col-span-2">
-                <p className="content-bold mb-2">Party Address</p>
-                <p className="content pb-3">
+              <Field className="col-span-2 gap-1">
+                <FieldLabel className="content-bold">Party Address</FieldLabel>
+                <p className="content">
                   {student?.residence?.location.formatted_address}
                 </p>
-
-                <div className="flex flex-row gap-4">
-                  <p className="content-sub italic">
-                    You cannot change your address until {change_date}. If you
-                    are experiencing hardship, contact [email] for changes
-                  </p>
-                </div>
-              </div>
+                <p className="content-sub italic">
+                  You cannot change your address until {change_date}. If you are
+                  experiencing hardship, contact [email] for changes
+                </p>
+              </Field>
             )}
           </div>
 
@@ -352,15 +348,18 @@ export default function PartyRegistrationForm({
               </p>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
-              <Field>
+              <Field className="gap-1">
                 <FieldLabel className="content-bold">First Name</FieldLabel>
                 <p className="content">{student?.first_name}</p>
               </Field>
-              <Field>
+              <Field className="gap-1">
                 <FieldLabel className="content-bold">Last Name</FieldLabel>
                 <p className="content">{student?.last_name}</p>
               </Field>
-              <Field data-invalid={!!errors.studentPhoneNumber}>
+              <Field
+                className="gap-1"
+                data-invalid={!!errors.studentPhoneNumber}
+              >
                 <FieldLabel className="content-bold">Phone Number</FieldLabel>
                 {student?.phone_number != null ? (
                   <p className="content">
@@ -390,7 +389,10 @@ export default function PartyRegistrationForm({
                   </>
                 )}
               </Field>
-              <Field data-invalid={!!errors.studentContactPreference}>
+              <Field
+                className="gap-1"
+                data-invalid={!!errors.studentContactPreference}
+              >
                 <FieldLabel className="content-bold">
                   Contact Preference
                 </FieldLabel>
@@ -427,7 +429,7 @@ export default function PartyRegistrationForm({
                   </>
                 )}
               </Field>
-              <Field>
+              <Field className="gap-1">
                 <FieldLabel className="content-bold">Email</FieldLabel>
                 <p className="content">{student?.email}</p>
               </Field>

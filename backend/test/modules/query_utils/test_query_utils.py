@@ -197,6 +197,32 @@ class TestQueryUtilsFilterOperators:
         paginated = assert_res_paginated(response, IncidentDto, total_records=1)
         self.incident_utils.assert_matches(paginated.items[0], i1.to_dto())
 
+    async def test_filter_in(self):
+        """IN operator returns records whose field value is in the provided list."""
+        i1 = await self.incident_utils.create_one(severity="remote_warning")
+        i2 = await self.incident_utils.create_one(severity="in_person_warning")
+        await self.incident_utils.create_one(severity=IncidentSeverity.CITATION)
+
+        response = await self.admin_client.get(
+            "/api/incidents?severity_in=remote_warning,in_person_warning"
+        )
+        paginated = assert_res_paginated(response, IncidentDto, total_records=2)
+        returned_ids = {item.id for item in paginated.items}
+        assert returned_ids == {i1.id, i2.id}
+
+    @pytest.mark.asyncio
+    async def test_filter_not_in(self):
+        """NOT_IN operator excludes records whose field value is in the provided list."""
+        await self.incident_utils.create_one(severity="remote_warning")
+        await self.incident_utils.create_one(severity="in_person_warning")
+        i3 = await self.incident_utils.create_one(severity=IncidentSeverity.CITATION)
+
+        response = await self.admin_client.get(
+            "/api/incidents?severity_not_in=remote_warning,in_person_warning"
+        )
+        paginated = assert_res_paginated(response, IncidentDto, total_records=1)
+        self.incident_utils.assert_matches(paginated.items[0], i3.to_dto())
+
     @pytest.mark.asyncio
     async def test_filter_nested_contains(self):
         """CONTAINS operator on nested location.formatted_address."""

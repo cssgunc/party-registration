@@ -2,18 +2,12 @@
 
 import { Button } from "@/components/ui/button";
 import { useRetryPoliceVerification } from "@/lib/api/auth/auth.queries";
+import { clientEnv } from "@/lib/config/env.client";
 import { isAxiosError } from "axios";
 import { useEffect, useState } from "react";
 
-const DEFAULT_RESEND_COOLDOWN_SECONDS = 60;
-const resendCooldownFromEnv = Number.parseInt(
-  process.env.NEXT_PUBLIC_POLICE_VERIFICATION_RESEND_COOLDOWN_SECONDS ?? "",
-  10
-);
 const resendCooldownSeconds =
-  Number.isFinite(resendCooldownFromEnv) && resendCooldownFromEnv >= 0
-    ? resendCooldownFromEnv
-    : DEFAULT_RESEND_COOLDOWN_SECONDS;
+  clientEnv.NEXT_PUBLIC_POLICE_VERIFICATION_RESEND_COOLDOWN_SECONDS;
 
 type ResendVerificationButtonProps = {
   email: string;

@@ -189,6 +189,7 @@ async def reset_dev():
                 incident_datetime=incident_datetime,
                 severity=IncidentSeverity(incident_data["severity"]),
                 description=incident_data.get("description", ""),
+                reference_id=incident_data.get("reference_id"),
             )
             session.add(incident)
 

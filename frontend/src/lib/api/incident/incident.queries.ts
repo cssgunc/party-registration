@@ -1,4 +1,7 @@
-import { ServerTableParams } from "@/lib/api/shared/query-params";
+import {
+  ListQueryParams,
+  ServerTableParams,
+} from "@/lib/api/shared/query-params";
 import { OptimisticMutationOptions, PaginatedResponse } from "@/lib/shared";
 import {
   UseQueryOptions,
@@ -163,5 +166,11 @@ export function useDeleteIncident<TContext = unknown>(
       queryClient.invalidateQueries({ queryKey: INCIDENTS_KEY });
       options?.onSuccess?.(...params);
     },
+  });
+}
+
+export function useDownloadIncidentsCsv() {
+  return useMutation<void, Error, ListQueryParams | undefined>({
+    mutationFn: (params) => incidentService.downloadIncidentsCsv(params),
   });
 }

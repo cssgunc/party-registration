@@ -84,17 +84,68 @@ type AdminCreatePartyDto = {
 type CreatePartyDto = StudentCreatePartyDto | AdminCreatePartyDto;
 
 /**
+ * Exact match result from proximity search
+ */
+type ExactMatchDto = {
+  google_place_id: string;
+  formatted_address: string;
+  location: LocationDto | null;
+  party: PartyDto | null;
+};
+
+type ExactMatchDtoBackend = Omit<ExactMatchDto, "location" | "party"> & {
+  location: LocationDtoBackend | null;
+  party: PartyDtoBackend | null;
+};
+
+/**
+ * Response from GET /parties/nearby
+ */
+type ProximitySearchResponse = {
+  exact_match: ExactMatchDto;
+  nearby: PartyDto[];
+};
+
+type ProximitySearchResponseBackend = {
+  exact_match: ExactMatchDtoBackend;
+  nearby: PartyDtoBackend[];
+};
+
+function convertProximitySearchResponse(
+  backend: ProximitySearchResponseBackend
+): ProximitySearchResponse {
+  return {
+    exact_match: {
+      google_place_id: backend.exact_match.google_place_id,
+      formatted_address: backend.exact_match.formatted_address,
+      location: backend.exact_match.location
+        ? convertLocation(backend.exact_match.location)
+        : null,
+      party: backend.exact_match.party
+        ? convertParty(backend.exact_match.party)
+        : null,
+    },
+    nearby: backend.nearby.map(convertParty),
+  };
+}
+
+/**
  * Query keys for party-related queries
  * Used across admin and student party queries for cache management
  */
 export const PARTIES_KEY = ["parties"] as const;
+export const NEARBY_KEY = [...PARTIES_KEY, "nearby"] as const;
 export const MY_PARTIES_KEY = [...PARTIES_KEY, "me"] as const;
 
 export type {
   AdminCreatePartyDto,
   ContactDto,
   CreatePartyDto,
+  ExactMatchDto,
   PartyDto,
   PartyDtoBackend,
+  ProximitySearchResponse,
+  ProximitySearchResponseBackend,
   StudentCreatePartyDto,
 };
+export { convertProximitySearchResponse };

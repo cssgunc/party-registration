@@ -18,7 +18,7 @@ import { AdminStudentService } from "@/lib/api/student/admin-student.service";
 import { StudentSuggestionDto } from "@/lib/api/student/student.types";
 import { cn, formatPhoneNumber } from "@/lib/utils";
 import { CheckIcon, Loader2Icon, UserIcon, XIcon } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 interface StudentSearchProps {
   value?: string;
@@ -111,6 +111,32 @@ export default function StudentSearch({
   serviceRef.current = adminStudentService;
   selectedStudentRef.current = selectedStudent;
 
+  const initialStudentId = initialSelection?.student_id ?? null;
+  const initialFirstName = initialSelection?.first_name ?? "";
+  const initialLastName = initialSelection?.last_name ?? "";
+  const initialMatchedFieldName = initialSelection?.matched_field_name ?? "";
+  const initialMatchedFieldValue = initialSelection?.matched_field_value ?? "";
+
+  const normalizedInitialSelection = useMemo(
+    () =>
+      initialStudentId === null
+        ? null
+        : {
+            student_id: initialStudentId,
+            first_name: initialFirstName,
+            last_name: initialLastName,
+            matched_field_name: initialMatchedFieldName,
+            matched_field_value: initialMatchedFieldValue,
+          },
+    [
+      initialStudentId,
+      initialFirstName,
+      initialLastName,
+      initialMatchedFieldName,
+      initialMatchedFieldValue,
+    ]
+  );
+
   const displayError = externalError || internalError;
 
   useEffect(() => {
@@ -119,6 +145,25 @@ export default function StudentSearch({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
+
+  useEffect(() => {
+    if (normalizedInitialSelection) {
+      setSelectedStudent(normalizedInitialSelection);
+      setSearchTerm(
+        `${normalizedInitialSelection.first_name} ${normalizedInitialSelection.last_name}`
+      );
+      setSuggestions([]);
+      setOpen(false);
+      return;
+    }
+
+    if (!value) {
+      setSelectedStudent(null);
+      setSearchTerm("");
+      setSuggestions([]);
+      setOpen(false);
+    }
+  }, [normalizedInitialSelection, value]);
 
   useEffect(() => {
     const fetchSuggestions = async (input: string) => {
@@ -192,18 +237,18 @@ export default function StudentSearch({
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (selectedStudent) return;
+
     const newValue = e.target.value;
     setSearchTerm(newValue);
-    if (selectedStudent) {
-      setSelectedStudent(null);
-      onSelect(null);
-    }
     if (newValue.length >= 1) {
       setOpen(true);
     }
   };
 
   const handleFocus = () => {
+    if (selectedStudent) return;
+
     if (searchTerm.length >= 1) {
       setOpen(true);
     }
@@ -244,7 +289,13 @@ export default function StudentSearch({
 
   return (
     <div className={cn("w-full", className)}>
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover
+        open={open}
+        onOpenChange={(nextOpen) => {
+          if (disabled || selectedStudent) return;
+          setOpen(nextOpen);
+        }}
+      >
         <PopoverTrigger asChild>
           <div className="relative">
             <Input
@@ -255,7 +306,13 @@ export default function StudentSearch({
               onKeyDown={handleKeyDown}
               placeholder={placeholder}
               disabled={disabled}
-              className={cn("pr-16", displayError && "border-destructive")}
+              readOnly={!!selectedStudent}
+              className={cn(
+                "pr-16",
+                selectedStudent &&
+                  "bg-muted/50 text-muted-foreground cursor-not-allowed",
+                displayError && "border-destructive"
+              )}
               aria-label="Student search input"
               aria-describedby={displayError ? "student-error" : undefined}
               aria-invalid={!!displayError}
@@ -274,12 +331,12 @@ export default function StudentSearch({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="h-6 w-6 p-0 hover:bg-transparent cursor-pointer"
+                  className="group size-6 p-0 hover:bg-transparent cursor-pointer"
                   onClick={handleClear}
                   aria-label="Clear student selection"
                   tabIndex={-1}
                 >
-                  <XIcon className="h-4 w-4" />
+                  <XIcon className="size-4 text-muted-foreground group-hover:text-text" />
                 </Button>
               )}
             </div>
@@ -358,22 +415,14 @@ export default function StudentSearch({
         </PopoverContent>
       </Popover>
 
-      {displayError && (
+      {internalError && (
         <p
           id="student-error"
           className="mt-2 text-sm text-destructive"
           role="alert"
         >
-          {displayError}
+          {internalError}
         </p>
-      )}
-
-      {selectedStudent && (
-        <div className="mt-2 p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-md">
-          <p className="text-sm font-medium text-green-900 dark:text-green-100">
-            ✓ Selected: {selectedStudent.first_name} {selectedStudent.last_name}
-          </p>
-        </div>
       )}
     </div>
   );

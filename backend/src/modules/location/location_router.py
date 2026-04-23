@@ -1,3 +1,6 @@
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from src.core.authentication import (
     authenticate_admin,
@@ -111,10 +114,11 @@ async def get_locations_csv(
 ) -> Response:
     locations = await location_service.get_locations_for_export(request)
     excel_content = location_service.export_locations_to_excel(locations)
+    filename = f"locations_{datetime.now(ZoneInfo('America/New_York')).strftime('%Y_%m_%d')}.xlsx"
     return Response(
         content=excel_content,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": "attachment; filename=locations.xlsx"},
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
 
 

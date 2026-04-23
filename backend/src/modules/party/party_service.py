@@ -705,7 +705,7 @@ class PartyService:
         )
         parties = result.scalars().all()
 
-        parties_within_radius: list[PartyEntity] = []
+        parties_with_distance: list[tuple[PartyEntity, float]] = []
         for party in parties:
             if party.location is None:
                 continue
@@ -718,9 +718,35 @@ class PartyService:
             )
 
             if distance <= env.PARTY_SEARCH_RADIUS_MILES:
-                parties_within_radius.append(party)
+                parties_with_distance.append((party, distance))
 
-        return [party.to_dto() for party in parties_within_radius]
+        parties_with_distance.sort(key=lambda x: x[1])
+        return [party.to_dto() for party, _ in parties_with_distance]
+
+    async def get_party_at_location_in_date_range(
+        self,
+        location_id: int,
+        start_date: datetime,
+        end_date: datetime,
+    ) -> PartyDto | None:
+        """Get the first confirmed party at a specific location within a date range."""
+        result = await self.session.execute(
+            select(PartyEntity)
+            .options(
+                selectinload(PartyEntity.location),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.account),
+                selectinload(PartyEntity.contact_one).selectinload(StudentEntity.residence),
+            )
+            .where(
+                PartyEntity.location_id == location_id,
+                PartyEntity.party_datetime >= start_date,
+                PartyEntity.party_datetime <= end_date,
+                PartyEntity.status != PartyStatus.CANCELLED,
+            )
+            .limit(1)
+        )
+        party = result.scalar_one_or_none()
+        return party.to_dto() if party is not None else None
 
     def _calculate_haversine_distance(
         self, lat1: float, lon1: float, lat2: float, lon2: float
