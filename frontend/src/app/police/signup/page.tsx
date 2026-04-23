@@ -13,12 +13,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { usePoliceSignup } from "@/lib/api/auth/auth.queries";
+import { clientEnv } from "@/lib/config/env.client";
 import { isAxiosError } from "axios";
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 import * as z from "zod";
 
-const allowedDomain = process.env.NEXT_PUBLIC_CHPD_EMAIL_DOMAIN;
+const allowedDomain = clientEnv.NEXT_PUBLIC_CHPD_EMAIL_DOMAIN;
 
 const policeSignupSchema = z
   .object({

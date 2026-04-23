@@ -1,3 +1,5 @@
+import { clientEnv } from "@/lib/config/env.client";
+import { serverEnv } from "@/lib/config/env.server";
 import axios from "axios";
 import { encode } from "next-auth/jwt";
 import { NextResponse } from "next/server";
@@ -14,8 +16,7 @@ import type {
   VerifyPoliceEmailRequest,
 } from "./auth.types";
 
-const base =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api";
+const publicApiBase = clientEnv.NEXT_PUBLIC_API_BASE_URL;
 
 /**
  * Decodes the payload of a JWT without verifying its signature.
@@ -28,11 +29,11 @@ export function decodeJwtPayload(token: string): Record<string, unknown> {
 }
 
 function internalHeaders() {
-  return { "X-Internal-Secret": process.env.INTERNAL_API_SECRET };
+  return { "X-Internal-Secret": serverEnv.INTERNAL_API_SECRET };
 }
 
 function getSessionCookieName() {
-  return process.env.NEXTAUTH_URL?.startsWith("https://")
+  return serverEnv.NEXTAUTH_URL.startsWith("https://")
     ? "__Secure-next-auth.session-token"
     : "next-auth.session-token";
 }
@@ -55,7 +56,7 @@ export async function setAuthCookies(
   const accessTokenExpires = new Date(tokens.access_token_expires).getTime();
   const refreshTokenExpires = new Date(tokens.refresh_token_expires).getTime();
   const refreshMaxAge = Math.floor((refreshTokenExpires - Date.now()) / 1000);
-  const isSecure = process.env.NEXTAUTH_URL?.startsWith("https://");
+  const isSecure = serverEnv.NEXTAUTH_URL.startsWith("https://");
 
   const sessionToken = await encode({
     token: {
@@ -64,7 +65,7 @@ export async function setAuthCookies(
       accessTokenExpires,
       refreshTokenExpires,
     },
-    secret: process.env.NEXTAUTH_SECRET!,
+    secret: serverEnv.NEXTAUTH_SECRET,
     maxAge: refreshMaxAge,
   });
 
@@ -99,7 +100,7 @@ export async function refreshSessionCookie(
   const accessTokenExpires = new Date(newAccessTokenExpires).getTime();
   const refreshTokenExpires = existingToken.refreshTokenExpires as number;
   const remainingMaxAge = Math.floor((refreshTokenExpires - Date.now()) / 1000);
-  const isSecure = process.env.NEXTAUTH_URL?.startsWith("https://");
+  const isSecure = serverEnv.NEXTAUTH_URL.startsWith("https://");
 
   const sessionToken = await encode({
     token: {
@@ -107,7 +108,7 @@ export async function refreshSessionCookie(
       accessToken: newAccessToken,
       accessTokenExpires,
     },
-    secret: process.env.NEXTAUTH_SECRET!,
+    secret: serverEnv.NEXTAUTH_SECRET,
     maxAge: remainingMaxAge,
   });
 
@@ -124,7 +125,7 @@ export async function exchangeToken(
   data: ExchangeTokenRequest
 ): Promise<ExchangeTokenResponse> {
   const resp = await axios.post<ExchangeTokenResponse>(
-    `${base}/auth/exchange`,
+    `${serverEnv.API_BASE_URL}/auth/exchange`,
     data,
     { headers: internalHeaders() }
   );
@@ -135,7 +136,7 @@ export async function refreshToken(
   data: RefreshTokenRequest
 ): Promise<RefreshTokenResponse> {
   const resp = await axios.post<RefreshTokenResponse>(
-    `${base}/auth/refresh`,
+    `${serverEnv.API_BASE_URL}/auth/refresh`,
     data,
     { headers: internalHeaders() }
   );
@@ -146,7 +147,7 @@ export async function policeLogin(
   data: PoliceLoginRequest
 ): Promise<PoliceLoginResponse> {
   const resp = await axios.post<PoliceLoginResponse>(
-    `${base}/auth/police/login`,
+    `${serverEnv.API_BASE_URL}/auth/police/login`,
     data,
     { headers: internalHeaders() }
   );
@@ -160,19 +161,19 @@ export async function policeLoginViaRoute(
 }
 
 export async function signupPolice(data: PoliceSignupRequest): Promise<void> {
-  await axios.post(`${base}/auth/police/signup`, data);
+  await axios.post(`${publicApiBase}/auth/police/signup`, data);
 }
 
 export async function retryPoliceVerification(
   data: RetryPoliceVerificationRequest
 ): Promise<void> {
-  await axios.post(`${base}/auth/police/retry-verification`, data);
+  await axios.post(`${publicApiBase}/auth/police/retry-verification`, data);
 }
 
 export async function verifyPoliceEmail(
   data: VerifyPoliceEmailRequest
 ): Promise<void> {
-  await axios.post(`${base}/auth/police/verify`, data);
+  await axios.post(`${publicApiBase}/auth/police/verify`, data);
 }
 
 /**
@@ -186,7 +187,7 @@ export async function revokeRefreshToken(
   accessToken: string
 ): Promise<void> {
   await axios.post(
-    `${base}/auth/logout`,
+    `${publicApiBase}/auth/logout`,
     { refresh_token: refreshTokenValue },
     { headers: { Authorization: `Bearer ${accessToken}` } }
   );

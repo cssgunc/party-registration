@@ -25,6 +25,19 @@ jobs:
           --health-retries 10
           --health-start-period 30s
 
+    env:
+      GOOGLE_MAPS_API_KEY: "test_api_key_not_used"
+      MSSQL_USER: sa
+      MSSQL_PASSWORD: YourStrong!Passw0rd
+      MSSQL_HOST: localhost
+      MSSQL_PORT: 1433
+      MSSQL_DATABASE: ocsl_test
+      MSSQL_DRIVER: ODBC Driver 18 for SQL Server
+      MSSQL_TRUST_SERVER_CERTIFICATE: "yes"
+      JWT_SECRET_KEY: "test-jwt-secret-for-ci"
+      REFRESH_TOKEN_SECRET_KEY: "test-refresh-secret-for-ci"
+      INTERNAL_API_SECRET: "test-internal-secret-for-ci"
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -51,34 +64,13 @@ jobs:
           pip install -e backend/
 
       - name: Create test database
-        env:
-          MSSQL_USER: sa
-          MSSQL_PASSWORD: YourStrong!Passw0rd
-          MSSQL_HOST: localhost
-          MSSQL_PORT: 1433
-          MSSQL_DATABASE: ocsl_test
-          MSSQL_DRIVER: ODBC Driver 18 for SQL Server
-          MSSQL_TRUST_SERVER_CERTIFICATE: "yes"
-          GOOGLE_MAPS_API_KEY: "test_api_key_not_used"
-          JWT_SECRET_KEY: "test-jwt-secret-for-ci"
-          REFRESH_TOKEN_SECRET_KEY: "test-refresh-secret-for-ci"
-          INTERNAL_API_SECRET: "test-internal-secret-for-ci"
         run: PYTHONPATH=backend python -m script.create_test_db
+
+      - name: Check migrations are up to date
+        run: cd backend && alembic check
 
       - name: Run pytest
         run: PYTHONPATH=backend:backend/src pytest backend/test -v --tb=long --junitxml=backend/test-results/junit.xml
-        env:
-          GOOGLE_MAPS_API_KEY: "test_api_key_not_used"
-          MSSQL_USER: sa
-          MSSQL_PASSWORD: YourStrong!Passw0rd
-          MSSQL_HOST: localhost
-          MSSQL_PORT: 1433
-          MSSQL_DATABASE: ocsl_test
-          MSSQL_DRIVER: ODBC Driver 18 for SQL Server
-          MSSQL_TRUST_SERVER_CERTIFICATE: "yes"
-          JWT_SECRET_KEY: "test-jwt-secret-for-ci"
-          REFRESH_TOKEN_SECRET_KEY: "test-refresh-secret-for-ci"
-          INTERNAL_API_SECRET: "test-internal-secret-for-ci"
 
       - name: Publish Test Results
         uses: EnricoMi/publish-unit-test-result-action@v2

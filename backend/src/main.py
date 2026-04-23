@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from src.core.config import env
 from src.modules.account.account_router import account_router
 from src.modules.auth.auth_router import router as auth_router
 from src.modules.incident.incident_router import incident_router
@@ -13,7 +14,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
+    allow_origins=[env.FRONTEND_BASE_URL],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

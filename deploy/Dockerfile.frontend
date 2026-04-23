@@ -1,0 +1,64 @@
+# ── Stage 1: Build ────────────────────────────────────────────────────────────
+# Full Node image with all dev dependencies to compile the Next.js app
+FROM node:22-alpine AS builder
+
+WORKDIR /frontend
+
+# Copy only package manifests first so npm ci is cached until they change
+COPY frontend/package.json frontend/package-lock.json ./
+# Install exact dependency versions from lockfile (no package-lock mutations)
+RUN npm ci
+
+# Copy the rest of the frontend source code
+COPY frontend/ .
+
+# Declare build-time variables for NEXT_PUBLIC_* values.
+# These must be ARGs (not just env_file entries) because Next.js inlines them
+# into the JS bundle during `npm run build` — they aren't readable at runtime.
+ARG NEXT_PUBLIC_API_BASE_URL
+ARG NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+ARG NEXT_PUBLIC_GOOGLE_MAP_ID
+ARG NEXT_PUBLIC_POLICE_VERIFICATION_RESEND_COOLDOWN_SECONDS
+ARG NEXT_PUBLIC_CHPD_EMAIL_DOMAIN
+ARG NEXT_PUBLIC_PARTY_SEARCH_RADIUS_MILES
+
+# Turbopack reads NEXT_PUBLIC_* vars from Next.js .env files, not from Docker
+# ENV instructions. Write them to .env.production so next build picks them up.
+# This file only exists in the builder stage — the runner stage never sees it.
+RUN env | grep '^NEXT_PUBLIC_' > .env.production
+
+# Compile the Next.js app; output: "standalone" in next.config.ts means the
+# build emits a self-contained server.js + trimmed node_modules into .next/standalone/
+RUN npm run build
+
+
+# ── Stage 2: Runtime ──────────────────────────────────────────────────────────
+# Fresh slim image — the builder stage is discarded, keeping the final image small
+FROM node:22-alpine AS runner
+
+# Tell Next.js and Node it's a production environment
+ENV NODE_ENV=production
+ENV TZ=America/New_York
+
+# Create a non-root user so the app doesn't run as root
+RUN adduser --disabled-password --gecos "" appuser
+
+WORKDIR /frontend
+
+# Copy public assets (images, favicons, etc.) from the builder
+COPY --from=builder --chown=appuser:appuser /frontend/public ./public
+# Copy the standalone server bundle (server.js + minimal node_modules)
+COPY --from=builder --chown=appuser:appuser /frontend/.next/standalone ./
+# Copy compiled JS/CSS bundles — standalone doesn't include these automatically
+COPY --from=builder --chown=appuser:appuser /frontend/.next/static ./.next/static
+
+# Switch to the non-root user before the container starts
+USER appuser
+
+# Document that the app listens on port 3000
+EXPOSE 3000
+
+# Bind the standalone server to all interfaces (not just 127.0.0.1)
+ENV HOSTNAME=0.0.0.0
+# Run the standalone server directly with Node — no next CLI needed
+CMD ["node", "server.js"]

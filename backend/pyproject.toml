@@ -18,6 +18,7 @@ dependencies = [
   "openpyxl~=3.1.0",
   "tzdata~=2025.2",
   "aiosmtplib~=3.0.0",
+  "alembic~=1.16.0",
 ]
 
 [tool.pytest.ini_options]

@@ -2,6 +2,7 @@
 
 import { PhoneLink } from "@/components/PhoneLink";
 import { PartyDto } from "@/lib/api/party/party.types";
+import { clientEnv } from "@/lib/config/env.client";
 import { formatContactPreference } from "@/lib/utils";
 import {
   APIProvider,
@@ -56,7 +57,7 @@ const EmbeddedMap = ({
       ? locations[0].location
       : { lat: 35.911232, lng: -79.050331 });
 
-  const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+  const API_KEY = clientEnv.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const mapKey = center ? `${center.lat}-${center.lng}` : "default";
 
   // Stabilize reference so the circle effect doesn't re-fire when the parent
@@ -77,7 +78,7 @@ const EmbeddedMap = ({
           key={mapKey}
           defaultZoom={defaultZoom}
           defaultCenter={mapCenter}
-          mapId={process.env.NEXT_PUBLIC_GOOGLE_MAP_ID!}
+          mapId={clientEnv.NEXT_PUBLIC_GOOGLE_MAP_ID}
           gestureHandling="greedy"
           disableDefaultUI={false}
         >
@@ -102,15 +103,8 @@ type PoiMarkersProps = {
 
 const SELECTED_ZOOM = 17;
 const METERS_PER_MILE = 1609.344;
-const DEFAULT_SEARCH_RADIUS_MILES = 0.25;
-
-const parsedSearchRadiusMiles = Number(
-  process.env.NEXT_PUBLIC_PARTY_SEARCH_RADIUS_MILES
-);
 const SEARCH_RADIUS_METERS =
-  (Number.isFinite(parsedSearchRadiusMiles)
-    ? parsedSearchRadiusMiles
-    : DEFAULT_SEARCH_RADIUS_MILES) * METERS_PER_MILE;
+  clientEnv.NEXT_PUBLIC_PARTY_SEARCH_RADIUS_MILES * METERS_PER_MILE;
 
 const PoiMarkers = ({
   pois,

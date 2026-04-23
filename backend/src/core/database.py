@@ -60,7 +60,7 @@ def database_url(database: str = env.MSSQL_DATABASE) -> URL:
     )
 
 
-engine = create_async_engine(database_url(), echo=True)
+engine = create_async_engine(database_url(), echo=env.SQLALCHEMY_ECHO)
 
 
 AsyncSessionLocal = async_sessionmaker(
