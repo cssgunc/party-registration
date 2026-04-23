@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Header, status
+from fastapi import APIRouter, Depends, Header, Response, status
 from src.core.authentication import authenticate_by_role
 from src.core.config import env
 from src.modules.account.account_entity import AccountRole
@@ -17,7 +17,16 @@ from src.modules.police.police_model import PoliceSignupDto
 from src.modules.police.police_service import PoliceService
 from src.modules.student.student_service import StudentService
 
-router = APIRouter(prefix="/api/auth", tags=["authentication"])
+
+def no_store_response(response: Response) -> None:
+    response.headers["Cache-Control"] = "no-store"
+
+
+router = APIRouter(
+    prefix="/api/auth",
+    tags=["authentication"],
+    dependencies=[Depends(no_store_response)],
+)
 
 
 def verify_internal_secret(
