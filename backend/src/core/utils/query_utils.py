@@ -286,6 +286,14 @@ def _validate_operator_for_field_type(field: Any, operator: FilterOperator) -> N
         raise BadRequestException("Operator 'contains' is only supported for string fields")
 
 
+def _escape_like_wildcards(value: str, escape_char: str = "\\") -> str:
+    """Escape SQL LIKE wildcard characters so user input is treated literally."""
+    escaped = value.replace(escape_char, escape_char * 2)
+    escaped = escaped.replace("%", f"{escape_char}%")
+    escaped = escaped.replace("_", f"{escape_char}_")
+    return escaped
+
+
 def apply_filters[ModelType: DeclarativeMeta](
     query: Select,
     model: type[ModelType],
@@ -349,7 +357,8 @@ def apply_filters[ModelType: DeclarativeMeta](
             query = query.where(field <= value)
         elif filter_param.operator == FilterOperator.CONTAINS:
             # Case-insensitive LIKE for string fields
-            query = query.where(field.ilike(f"%{value}%"))
+            escaped_value = _escape_like_wildcards(str(value))
+            query = query.where(field.ilike(f"%{escaped_value}%", escape="\\"))
         elif filter_param.operator == FilterOperator.IN:
             query = query.where(field.in_(value))
         elif filter_param.operator == FilterOperator.NOT_IN:
