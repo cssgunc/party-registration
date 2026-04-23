@@ -58,7 +58,6 @@ interface IncidentTableFormProps {
   allLocations: LocationDto[];
   editData?: IncidentDto;
   submissionError?: string | null;
-  title?: string;
 }
 
 function severityLabel(severity: IncidentSeverity): string {
@@ -72,7 +71,6 @@ export default function IncidentTableForm({
   allLocations,
   editData,
   submissionError,
-  title,
 }: IncidentTableFormProps) {
   // When editing, find the google_place_id from locations array by location_id
   const editLocationPlaceId = useMemo(() => {
@@ -180,16 +178,6 @@ export default function IncidentTableForm({
 
   return (
     <form onSubmit={handleSubmit}>
-      {title && <h2 className="text-xl font-semibold mb-4">{title}</h2>}
-      {submissionError && (
-        <div
-          className="mb-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive"
-          role="alert"
-        >
-          {submissionError}
-        </div>
-      )}
-
       <FieldGroup>
         <FieldSet>
           <Field data-invalid={!!errors.location_place_id}>
@@ -209,7 +197,7 @@ export default function IncidentTableForm({
             )}
           </Field>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field data-invalid={!!errors.incident_datetime}>
               <FieldLabel htmlFor="incident-date">Incident Date</FieldLabel>
               <DatePicker
@@ -285,14 +273,22 @@ export default function IncidentTableForm({
               value={formData.description ?? ""}
               onChange={(e) => updateField("description", e.target.value)}
               placeholder="Optional"
-              className=" w-full min-h-24 px-3 py-2 rounded-md border border-input bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-vertical"
+              className=" w-full min-h-24 px-3 py-2 rounded-md border border-input bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-vertical shadow-xs input-shadow transition-[color,box-shadow] focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 "
             />
             {errors.description && (
               <FieldError>{errors.description}</FieldError>
             )}
           </Field>
 
-          <Field orientation="vertical">
+          <Field orientation="vertical" className="space-y-3">
+            {submissionError && (
+              <div
+                className="rounded-md bg-destructive/10 p-3 text-sm text-destructive"
+                role="alert"
+              >
+                {submissionError}
+              </div>
+            )}
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Submitting..." : "Save"}
             </Button>

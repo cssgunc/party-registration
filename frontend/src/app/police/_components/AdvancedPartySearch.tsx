@@ -71,7 +71,7 @@ export default function AdvancedPartySearch({
         <Button
           type="button"
           variant="link"
-          className="p-0 h-auto text-secondary content underline"
+          className="p-0 h-auto text-secondary underline text-sm"
           onClick={() => {
             setIsOpen((open) => !open);
             clearAllFilters();
@@ -82,7 +82,7 @@ export default function AdvancedPartySearch({
 
         <div className="flex items-center gap-3">
           {isOpen && (
-            <span className="content text-secondary">
+            <span className="text-sm text-secondary">
               ({selectedCount}) Selected
             </span>
           )}

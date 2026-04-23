@@ -10,6 +10,7 @@ import {
 } from "@/lib/api/shared/query-params";
 import {
   useDeleteStudent,
+  useDownloadStudentsCsv,
   useStudents,
   useUpdateIsRegistered,
   useUpdateStudent,
@@ -20,7 +21,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
 import { useState } from "react";
 import LocationInfoChipDetails from "../party/details/LocationInfoChipDetails";
-import { GenericInfoChip } from "../shared/sidebar/GenericInfoChip";
+import { InfoChip } from "../shared/sidebar/InfoChip";
 import { TableTemplate } from "../shared/table/TableTemplate";
 import StudentTableForm from "./StudentTableForm";
 
@@ -62,8 +63,8 @@ const getErrorMessage = (error: Error): string => {
       case 500:
         return "Server error. Please try again later.";
     }
-    if (detail?.message) return String(detail.message);
     if (detail?.detail) return String(detail.detail);
+    if (detail?.message) return String(detail.message);
     if (error.message) return error.message;
   }
   return "Operation failed";
@@ -91,6 +92,9 @@ export const StudentTable = () => {
 
   const studentsQuery = useStudents(serverParams);
   const students = studentsQuery.data?.items ?? [];
+
+  const { mutate: exportCsv, isPending: isExporting } =
+    useDownloadStudentsCsv();
 
   const checkboxMutation = useUpdateIsRegistered();
 
@@ -224,7 +228,7 @@ export const StudentTable = () => {
           .filter(Boolean)
           .join(" ");
         return (
-          <GenericInfoChip
+          <InfoChip
             chipKey={`student-${student.id}-residence`}
             title="Info about the Location"
             description="Detailed information about the student's residence"
@@ -282,6 +286,8 @@ export const StudentTable = () => {
         }
         onStateChange={setServerParams}
         columnMap={SERVER_COLUMN_MAP}
+        onExportCsv={exportCsv}
+        isExporting={isExporting}
       />
     </div>
   );

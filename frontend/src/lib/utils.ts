@@ -3,6 +3,7 @@ import { type ClassValue, clsx } from "clsx";
 import { isAfter, isBefore, startOfDay } from "date-fns";
 import { twMerge } from "tailwind-merge";
 import * as z from "zod";
+import { ContactPreference } from "./api/student/student.types";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -81,4 +82,17 @@ const ROLE_LABELS: Record<AppRole, string> = {
 
 export function formatRoleLabel(role: AppRole): string {
   return ROLE_LABELS[role];
+}
+
+export function formatContactPreference(
+  preference: ContactPreference | null | undefined
+): string {
+  switch (preference) {
+    case "call":
+      return "Call";
+    case "text":
+      return "Text";
+    default:
+      return "-";
+  }
 }

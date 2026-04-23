@@ -1,0 +1,57 @@
+# Use the official slim Python 3.13 image as the base
+FROM python:3.13-slim
+
+# Set timezone so logs and scheduled tasks use Eastern Time
+ENV TZ=America/New_York
+# Suppress interactive prompts during apt installs
+ENV DEBIAN_FRONTEND=noninteractive
+# Tell Python where to find backend source modules (e.g. "from src.modules...")
+ENV PYTHONPATH=/backend
+
+# Install system libraries needed to compile and run the ODBC driver
+RUN apt-get update \
+    && apt-get install --yes \
+        apt-transport-https \
+        ca-certificates \
+        curl \
+        gnupg \
+        libicu-dev \
+        unixodbc \
+        unixodbc-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Add Microsoft's package repo and install MSSQL ODBC Driver 18
+# (required by pyodbc/aioodbc to connect to SQL Server)
+RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-archive-keyring.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/microsoft-archive-keyring.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" | tee /etc/apt/sources.list.d/mssql-release.list \
+    && apt-get update \
+    && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create a non-root user so the app doesn't run as root
+RUN useradd --create-home appuser
+
+# Set the working directory for all subsequent commands
+WORKDIR /backend
+
+# Copy only the dependency manifest first so pip install is cached
+# until pyproject.toml actually changes (avoids reinstalling on every code change)
+COPY backend/pyproject.toml .
+RUN pip install --no-cache-dir --upgrade pip
+RUN pip install --no-cache-dir -e .
+
+# Copy the rest of the backend source code
+COPY backend/ .
+
+# Copy and set permissions for the entrypoint script before switching to non-root-user
+COPY deploy/backend-entrypoint.sh .
+RUN chmod +x backend-entrypoint.sh
+
+# Switch to the non-root user before the container starts
+USER appuser
+
+# Document that the app listens on port 8000
+EXPOSE 8000
+
+# Run migrations then start the FastAPI app
+ENTRYPOINT ["./backend-entrypoint.sh"]

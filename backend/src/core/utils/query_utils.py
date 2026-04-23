@@ -543,6 +543,10 @@ def parse_pagination_params(
     filter_params: list[FilterParam] = []
 
     # Operator suffix mappings
+    list_operator_suffixes = {
+        "_in": FilterOperator.IN,
+        "_not_in": FilterOperator.NOT_IN,
+    }
     operator_suffixes = {
         "_gt": FilterOperator.GREATER_THAN,
         "_gte": FilterOperator.GREATER_THAN_OR_EQUAL,
@@ -558,6 +562,13 @@ def parse_pagination_params(
             filter_params.append(
                 FilterParam(field=field, operator=FilterOperator.EQUALS, value=value)
             )
+
+        # Check for list operator suffix filters (e.g., role_in=admin,staff)
+        for suffix, operator in list_operator_suffixes.items():
+            param_name = f"{field}{suffix}"
+            if param_name in query_params_dict:
+                value = [_parse_filter_value(v) for v in query_params_dict[param_name].split(",")]
+                filter_params.append(FilterParam(field=field, operator=operator, value=value))
 
         # Check for operator suffix filters (e.g., party_datetime_gte=2024-01-01)
         for suffix, operator in operator_suffixes.items():

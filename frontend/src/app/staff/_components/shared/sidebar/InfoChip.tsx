@@ -1,13 +1,12 @@
 "use client";
 
 import { useSidebar } from "@/app/staff/_components/shared/sidebar/SidebarContext";
-import info from "@/components/icons/info.svg";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import Image from "next/image";
+import { Info } from "lucide-react";
 import { ReactNode } from "react";
 
-interface GenericInfoChipProps {
+interface InfoChipProps {
   chipKey: string;
   shortName: string;
   title: string;
@@ -15,13 +14,13 @@ interface GenericInfoChipProps {
   sidebarContent: ReactNode;
 }
 
-export function GenericInfoChip({
+export function InfoChip({
   chipKey,
   shortName,
   title,
   description,
   sidebarContent,
-}: GenericInfoChipProps) {
+}: InfoChipProps) {
   const { openSidebar, selectedKey, closeSidebar } = useSidebar();
   const isSelected = selectedKey === chipKey;
 
@@ -38,11 +37,13 @@ export function GenericInfoChip({
     <Badge
       onClick={handleOpen}
       className={cn(
-        "cursor-pointer px-3 py-1",
-        isSelected ? "bg-primary text-card" : "bg-card text-foreground"
+        "cursor-pointer border border-transparent bg-transparent px-3 py-1 transition-colors [&>svg]:size-auto leading-0 -translate-x-4 text-sm font-normal",
+        isSelected
+          ? "bg-primary text-white hover:bg-primary/15"
+          : "text-foreground hover:bg-gray-500/10"
       )}
     >
-      <Image src={info} alt="info" className="mr-2" />
+      <Info size={14} className="mr-1 shrink-0 -translate-y-px" />
       {shortName}
     </Badge>
   );

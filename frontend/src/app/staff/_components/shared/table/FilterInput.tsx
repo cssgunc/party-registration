@@ -1,6 +1,7 @@
 "use client";
 
 import DatePicker from "@/components/DatePicker";
+import DateRangeFilter from "@/components/DateRangeFilter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,12 +16,11 @@ import {
 } from "@/components/ui/select";
 import { Column } from "@tanstack/react-table";
 import { X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DateRange } from "react-day-picker";
 
 interface FilterInputProps<T> {
   column: Column<T, unknown> | null;
-  columnName: string;
   onClose: () => void;
   filterType?: "text" | "date" | "dateRange" | "time" | "select";
   selectOptions?: string[];
@@ -28,7 +28,6 @@ interface FilterInputProps<T> {
 
 export function FilterInput<T>({
   column,
-  columnName,
   onClose,
   filterType = "text",
   selectOptions = [],
@@ -38,6 +37,39 @@ export function FilterInput<T>({
   const [textValue, setTextValue] = useState(
     (column?.getFilterValue() as string) ?? ""
   );
+  const filterValue = column?.getFilterValue();
+
+  useEffect(() => {
+    if (!column) return;
+    if (filterType !== "date" && filterType !== "dateRange") return;
+
+    const toDate = (value: unknown): Date | undefined => {
+      if (!value) return undefined;
+      if (value instanceof Date) {
+        return Number.isNaN(value.getTime()) ? undefined : value;
+      }
+      if (typeof value === "string" || typeof value === "number") {
+        const parsed = new Date(value);
+        return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+      }
+      return undefined;
+    };
+
+    const range = filterValue as
+      | { from?: unknown; to?: unknown }
+      | undefined
+      | null;
+
+    if (!range) {
+      setDateRange(undefined);
+      return;
+    }
+
+    setDateRange({
+      from: toDate(range.from),
+      to: toDate(range.to),
+    });
+  }, [column, filterType, filterValue]);
 
   if (!column) {
     return (
@@ -58,8 +90,6 @@ export function FilterInput<T>({
       </Card>
     );
   }
-
-  const filterValue = column.getFilterValue();
 
   const handleDateRangeApply = () => {
     if (dateRange?.from || dateRange?.to) {
@@ -96,31 +126,17 @@ export function FilterInput<T>({
           <div className="space-y-4 p-4">
             <div className="space-y-2">
               <Label>Date Range</Label>
-              <div className="flex gap-2 justify-center flex-row md:justify-between md:gap-4">
-                <DatePicker
-                  value={dateRange?.from ?? null}
-                  onChange={(date) =>
-                    setDateRange((prev) => ({
-                      from: date ?? undefined,
-                      to: prev?.to,
-                    }))
-                  }
-                  placeholder="Start Date"
-                  dateFormat="LLL dd, y"
-                />
-                <div className="self-center flex-0">and</div>
-                <DatePicker
-                  value={dateRange?.to ?? null}
-                  onChange={(date) =>
-                    setDateRange((prev) => ({
-                      from: prev?.from,
-                      to: date ?? undefined,
-                    }))
-                  }
-                  placeholder="End Date"
-                  dateFormat="LLL dd, y"
-                />
-              </div>
+              <DateRangeFilter
+                startDate={dateRange?.from}
+                endDate={dateRange?.to}
+                onStartDateChange={(date) =>
+                  setDateRange((prev) => ({ from: date, to: prev?.to }))
+                }
+                onEndDateChange={(date) =>
+                  setDateRange((prev) => ({ from: prev?.from, to: date }))
+                }
+                clearable
+              />
             </div>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={handleClear}>
@@ -247,9 +263,6 @@ export function FilterInput<T>({
 
   return (
     <div>
-      <p className="flex items-center justify-between pb-2">
-        Filter: {columnName}
-      </p>
       <div>{renderFilterInput()}</div>
     </div>
   );

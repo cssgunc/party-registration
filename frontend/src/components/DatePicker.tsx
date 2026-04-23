@@ -45,6 +45,7 @@ export default function DatePicker({
           aria-invalid={ariaInvalid}
           className={cn(
             "relative w-full justify-start text-left font-normal text-base md:text-sm pl-3 py-1",
+            "shadow-xs input-shadow transition-[color,box-shadow] focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:ring-destructive/20",
             value && clearable ? "pr-16" : "pr-10",
             !value && "text-muted-foreground",
             className

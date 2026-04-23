@@ -31,14 +31,12 @@ interface LocationTableFormProps {
   onSubmit: (data: LocationTableFormValues) => void | Promise<void>;
   editData?: LocationTableFormValues;
   submissionError?: string | null;
-  title?: string;
 }
 
 export default function LocationTableForm({
   onSubmit,
   editData,
   submissionError,
-  title,
 }: LocationTableFormProps) {
   const locationService = new LocationService();
   const initialAddressSelection: AutocompleteResult | null =
@@ -113,20 +111,12 @@ export default function LocationTableForm({
 
   return (
     <form onSubmit={handleSubmit}>
-      {title && <h2 className="text-xl font-semibold mb-4">{title}</h2>}
-      {submissionError && (
-        <div
-          className="mb-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive"
-          role="alert"
-        >
-          {submissionError}
-        </div>
-      )}
       <FieldGroup>
         <FieldSet>
           <Field data-invalid={!!errors.address}>
-            <FieldLabel htmlFor="party-address">Party Address</FieldLabel>
+            <FieldLabel htmlFor="address">Address</FieldLabel>
             <AddressSearch
+              id="address"
               value={formData.address}
               initialSelection={initialAddressSelection}
               onSelect={handleAddressSelect}
@@ -161,7 +151,15 @@ export default function LocationTableForm({
             )}
           </Field>
 
-          <Field orientation="vertical">
+          <Field orientation="vertical" className="space-y-3">
+            {submissionError && (
+              <div
+                className="rounded-md bg-destructive/10 p-3 text-sm text-destructive"
+                role="alert"
+              >
+                {submissionError}
+              </div>
+            )}
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Submitting..." : "Save Changes"}
             </Button>
