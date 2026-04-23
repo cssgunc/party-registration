@@ -76,22 +76,14 @@ def parse_date(date_str: str | None) -> datetime | None:
 async def reset_dev():
     server_engine = create_engine(server_url(sync=True), isolation_level="AUTOCOMMIT")
 
-    db_name = validate_sql_identifier(env.MSSQL_DATABASE)
+    db_name = validate_sql_identifier(env.MYSQL_DATABASE)
 
     with server_engine.connect() as connection:
         print(f"Deleting database '{db_name}' if it exists...")
-        connection.execute(
-            text(f"""
-                IF EXISTS (SELECT * FROM sys.databases WHERE name = '{db_name}')
-                BEGIN
-                    ALTER DATABASE [{db_name}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
-                    DROP DATABASE [{db_name}];
-                END
-            """)
-        )
+        connection.execute(text(f"DROP DATABASE IF EXISTS `{db_name}`"))
 
         print(f"Recreating database '{db_name}'...")
-        connection.execute(text(f"CREATE DATABASE [{db_name}]"))
+        connection.execute(text(f"CREATE DATABASE `{db_name}`"))
 
     async with async_engine.begin() as connection:
         print("Dropping tables...")

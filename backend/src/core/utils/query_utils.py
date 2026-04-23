@@ -197,7 +197,7 @@ def apply_pagination(query: Select, params: PaginationParams | None = None) -> S
     if params is None:
         return query
 
-    # Only apply offset if it's greater than 0 (MSSQL requires ORDER BY with OFFSET)
+    # Only apply offset if it's greater than 0 (MySQL requires ORDER BY with OFFSET)
     if params.skip > 0:
         query = query.offset(params.skip)
     if params.limit is not None:
@@ -389,7 +389,7 @@ def apply_search(query: Select, search: str, search_columns: list[Any]) -> Selec
                 continue
             # Concatenate columns with a space between them for full-name style matching.
             # Use func.concat (instead of the `+` operator) so NULL values are handled
-            # safely by the database (e.g., MSSQL's CONCAT treats NULLs as empty strings).
+            # safely by the database (MySQL's CONCAT treats NULLs as empty strings).
             concat_args: list[Any] = []
             for index, sub_col in enumerate(col):
                 if index > 0:
@@ -440,7 +440,7 @@ def apply_query_params[ModelType: DeclarativeMeta](
     if params.sort:
         query = apply_sorting(query, model, params.sort, allowed_sort_fields, nested_field_columns)
     elif params.pagination and (params.pagination.skip > 0 or params.pagination.limit is not None):
-        # MSSQL requires ORDER BY when using OFFSET or LIMIT
+        # MySQL requires ORDER BY when using OFFSET or LIMIT
         # Default to sorting by primary key if no explicit sort is provided and pagination is active
         # Get the primary key column(s) from the model's mapper
         mapper = inspect(model)

@@ -1,8 +1,8 @@
-"""initial setup
+"""initial_setup
 
-Revision ID: f18af3b77940
+Revision ID: a0853d102a0e
 Revises:
-Create Date: 2026-04-21 14:58:58.873685
+Create Date: 2026-04-23 12:46:30.973998
 
 """
 
@@ -11,9 +11,10 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects import mssql
+import src.core.types
 
-revision: str = "f18af3b77940"
+
+revision: str = "a0853d102a0e"
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -34,6 +35,9 @@ def upgrade() -> None:
             sa.Enum("STUDENT", "STAFF", "ADMIN", name="accountrole", native_enum=False, length=20),
             nullable=False,
         ),
+        sa.CheckConstraint(
+            "CHAR_LENGTH(pid) = 9 AND pid REGEXP '^[0-9]+$'", name="check_pid_format"
+        ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_accounts_email"), "accounts", ["email"], unique=True)
@@ -46,7 +50,7 @@ def upgrade() -> None:
         sa.Column("formatted_address", sa.String(length=500), nullable=False),
         sa.Column("latitude", sa.DECIMAL(precision=10, scale=8), nullable=False),
         sa.Column("longitude", sa.DECIMAL(precision=11, scale=8), nullable=False),
-        sa.Column("hold_expiration", mssql.DATETIMEOFFSET(), nullable=True),
+        sa.Column("hold_expiration", src.core.types.UTCDateTime(fsp=6), nullable=True),
         sa.Column("street_number", sa.String(length=20), nullable=True),
         sa.Column("street_name", sa.String(length=255), nullable=True),
         sa.Column("unit", sa.String(length=50), nullable=True),
@@ -71,9 +75,11 @@ def upgrade() -> None:
             sa.Enum("OFFICER", "POLICE_ADMIN", name="policerole", native_enum=False, length=20),
             nullable=False,
         ),
-        sa.Column("is_verified", sa.Boolean(), server_default=sa.text("0"), nullable=False),
-        sa.Column("verification_token", sa.String(), nullable=True),
-        sa.Column("verification_token_expires_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("is_verified", sa.Boolean(), server_default=sa.text("false"), nullable=False),
+        sa.Column("verification_token", sa.String(length=255), nullable=True),
+        sa.Column(
+            "verification_token_expires_at", src.core.types.UTCDateTime(fsp=6), nullable=True
+        ),
         sa.CheckConstraint(
             "(verification_token IS NULL AND verification_token_expires_at IS NULL) OR (verification_token IS NOT NULL AND verification_token_expires_at IS NOT NULL)",
             name="ck_police_verification_token_expiry_both_null_or_set",
@@ -85,7 +91,7 @@ def upgrade() -> None:
         "incidents",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("location_id", sa.Integer(), nullable=False),
-        sa.Column("incident_datetime", mssql.DATETIMEOFFSET(), nullable=False),
+        sa.Column("incident_datetime", src.core.types.UTCDateTime(fsp=6), nullable=False),
         sa.Column(
             "severity",
             sa.Enum(
@@ -109,8 +115,8 @@ def upgrade() -> None:
         sa.Column("token_hash", sa.String(length=64), nullable=False),
         sa.Column("account_id", sa.Integer(), nullable=True),
         sa.Column("police_id", sa.Integer(), nullable=True),
-        sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("expires_at", src.core.types.UTCDateTime(fsp=6), nullable=False),
+        sa.Column("created_at", src.core.types.UTCDateTime(fsp=6), nullable=False),
         sa.CheckConstraint(
             "(account_id IS NULL AND police_id IS NOT NULL) OR (account_id IS NOT NULL AND police_id IS NULL)",
             name="refresh_token_owner_check",
@@ -137,9 +143,9 @@ def upgrade() -> None:
             nullable=True,
         ),
         sa.Column("phone_number", sa.String(length=20), nullable=True),
-        sa.Column("last_registered", mssql.DATETIMEOFFSET(), nullable=True),
+        sa.Column("last_registered", src.core.types.UTCDateTime(fsp=6), nullable=True),
         sa.Column("residence_id", sa.Integer(), nullable=True),
-        sa.Column("residence_chosen_date", mssql.DATETIMEOFFSET(), nullable=True),
+        sa.Column("residence_chosen_date", src.core.types.UTCDateTime(fsp=6), nullable=True),
         sa.CheckConstraint(
             "(residence_id IS NULL AND residence_chosen_date IS NULL) OR (residence_id IS NOT NULL AND residence_chosen_date IS NOT NULL)",
             name="chk_residence_consistency",
@@ -153,19 +159,13 @@ def upgrade() -> None:
             ["locations.id"],
         ),
         sa.PrimaryKeyConstraint("account_id"),
+        sa.UniqueConstraint("phone_number"),
     )
     op.create_index(op.f("ix_students_account_id"), "students", ["account_id"], unique=False)
-    op.create_index(
-        "ix_students_phone_number_unique",
-        "students",
-        ["phone_number"],
-        unique=True,
-        mssql_where=sa.text("phone_number IS NOT NULL"),
-    )
     op.create_table(
         "parties",
         sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("party_datetime", mssql.DATETIMEOFFSET(), nullable=False),
+        sa.Column("party_datetime", src.core.types.UTCDateTime(fsp=6), nullable=False),
         sa.Column("location_id", sa.Integer(), nullable=False),
         sa.Column("contact_one_id", sa.Integer(), nullable=False),
         sa.Column("contact_two_email", sa.String(length=255), nullable=False),
@@ -192,11 +192,6 @@ def upgrade() -> None:
 def downgrade() -> None:
     # ### commands auto generated by Alembic - please adjust! ###
     op.drop_table("parties")
-    op.drop_index(
-        "ix_students_phone_number_unique",
-        table_name="students",
-        mssql_where=sa.text("phone_number IS NOT NULL"),
-    )
     op.drop_index(op.f("ix_students_account_id"), table_name="students")
     op.drop_table("students")
     op.drop_index(op.f("ix_refresh_tokens_token_hash"), table_name="refresh_tokens")

@@ -10,16 +10,15 @@ jobs:
     runs-on: ubuntu-latest
 
     services:
-      sqlserver:
-        image: mcr.microsoft.com/mssql/server:2022-latest
+      mysql:
+        image: mysql:8.0
         env:
-          ACCEPT_EULA: Y
-          MSSQL_SA_PASSWORD: YourStrong!Passw0rd
-          MSSQL_PID: Express
+          MYSQL_ROOT_PASSWORD: securepassword
+          MYSQL_DATABASE: ocsl_test
         ports:
-          - 1433:1433
+          - 3306:3306
         options: >-
-          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'YourStrong!Passw0rd' -Q 'SELECT 1' -C"
+          --health-cmd "mysqladmin ping -h localhost -u root -psecurepassword --silent"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 10
@@ -27,13 +26,11 @@ jobs:
 
     env:
       GOOGLE_MAPS_API_KEY: "test_api_key_not_used"
-      MSSQL_USER: sa
-      MSSQL_PASSWORD: YourStrong!Passw0rd
-      MSSQL_HOST: localhost
-      MSSQL_PORT: 1433
-      MSSQL_DATABASE: ocsl_test
-      MSSQL_DRIVER: ODBC Driver 18 for SQL Server
-      MSSQL_TRUST_SERVER_CERTIFICATE: "yes"
+      MYSQL_USER: root
+      MYSQL_PASSWORD: securepassword
+      MYSQL_HOST: 127.0.0.1
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: ocsl_test
       JWT_SECRET_KEY: "test-jwt-secret-for-ci"
       REFRESH_TOKEN_SECRET_KEY: "test-refresh-secret-for-ci"
       INTERNAL_API_SECRET: "test-internal-secret-for-ci"
@@ -54,13 +51,6 @@ jobs:
           cache-dependency-path: |
             pyproject.toml
             backend/pyproject.toml
-
-      - name: Install ODBC Driver 18 for SQL Server
-        run: |
-          curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft-archive-keyring.gpg
-          echo "deb [signed-by=/usr/share/keyrings/microsoft-archive-keyring.gpg] https://packages.microsoft.com/ubuntu/22.04/prod jammy main" | sudo tee /etc/apt/sources.list.d/mssql-release.list
-          sudo apt-get update
-          sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18 unixodbc-dev
 
       - name: Install dependencies
         run: |

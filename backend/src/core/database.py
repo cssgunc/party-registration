@@ -9,7 +9,7 @@ from .config import env
 
 
 def validate_sql_identifier(name: str) -> str:
-    """Validate SQL Server identifier to prevent injection."""
+    """Validate database name identifier to prevent injection."""
     if not re.match(r"^[a-zA-Z0-9_]+$", name):
         raise ValueError(f"Invalid database name: {name}")
     if len(name) > 128:
@@ -17,32 +17,23 @@ def validate_sql_identifier(name: str) -> str:
     return name
 
 
-def _mssql_query() -> dict[str, str]:
-    return {
-        "driver": env.MSSQL_DRIVER,
-        "TrustServerCertificate": env.MSSQL_TRUST_SERVER_CERTIFICATE,
-    }
-
-
 def server_url(sync: bool = False) -> URL:
     """
-    Gets the URL for the master database (used for CREATE/DROP DATABASE).
+    Gets the URL for admin operations (CREATE/DROP DATABASE).
 
     :param sync: Whether to use synchronous or asynchronous database driver
     :type sync: bool
     """
     return URL.create(
-        drivername="mssql+pyodbc" if sync else "mssql+aioodbc",
-        username=env.MSSQL_USER,
-        password=env.MSSQL_PASSWORD,
-        host=env.MSSQL_HOST,
-        port=env.MSSQL_PORT,
-        database="master",
-        query=_mssql_query(),
+        drivername="mysql+pymysql" if sync else "mysql+aiomysql",
+        username=env.MYSQL_USER,
+        password=env.MYSQL_PASSWORD,
+        host=env.MYSQL_HOST,
+        port=env.MYSQL_PORT,
     )
 
 
-def database_url(database: str = env.MSSQL_DATABASE) -> URL:
+def database_url(database: str = env.MYSQL_DATABASE) -> URL:
     """
     Gets the URL for the application database.
 
@@ -50,17 +41,20 @@ def database_url(database: str = env.MSSQL_DATABASE) -> URL:
     :type database: str
     """
     return URL.create(
-        drivername="mssql+aioodbc",
-        username=env.MSSQL_USER,
-        password=env.MSSQL_PASSWORD,
-        host=env.MSSQL_HOST,
-        port=env.MSSQL_PORT,
+        drivername="mysql+aiomysql",
+        username=env.MYSQL_USER,
+        password=env.MYSQL_PASSWORD,
+        host=env.MYSQL_HOST,
+        port=env.MYSQL_PORT,
         database=database,
-        query=_mssql_query(),
     )
 
 
-engine = create_async_engine(database_url(), echo=env.SQLALCHEMY_ECHO)
+engine = create_async_engine(
+    database_url(),
+    echo=env.SQLALCHEMY_ECHO,
+    connect_args={"init_command": "SET time_zone = 'UTC'"},
+)
 
 
 AsyncSessionLocal = async_sessionmaker(

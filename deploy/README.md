@@ -12,7 +12,7 @@ Both paths use the same Docker images and compose file. The only difference is h
 
 - Docker Engine + Docker Compose installed on the host
 - Ports `3000` and `8000` open on the host
-- Access to UNC IT's SQL Server with a provisioned database and login
+- Access to a MySQL server with a provisioned database and login
 - SAML SP registered with the UNC IdP (see below)
 
 ---
@@ -56,9 +56,11 @@ The app uses Google Maps for the embedded party map and address autocomplete.
 No manual SQL required. On first startup, the backend automatically runs
 `alembic upgrade head`, which creates all tables from the migration history.
 
-The database user must have `CREATE TABLE` / `ALTER TABLE` / `DROP TABLE`
-privileges for this to succeed. Confirm with UNC IT that the provisioned login
-has DDL rights before running the containers for the first time.
+The database user must have DDL privileges for this to succeed:
+```sql
+GRANT CREATE, ALTER, DROP, INSERT, UPDATE, DELETE, SELECT ON ocsl.* TO 'user'@'%';
+```
+Confirm the provisioned login has these rights before running the containers for the first time.
 
 ---
 
@@ -138,10 +140,9 @@ deploy:
     # Generate .env.prod from GitLab variables
     - |
       cat > deploy/.env.prod << EOF
-      MSSQL_HOST=$MSSQL_HOST
-      MSSQL_USER=$MSSQL_USER
-      MSSQL_PASSWORD=$MSSQL_PASSWORD
-      MSSQL_TRUST_SERVER_CERTIFICATE=$MSSQL_TRUST_SERVER_CERTIFICATE
+      MYSQL_HOST=$MYSQL_HOST
+      MYSQL_USER=$MYSQL_USER
+      MYSQL_PASSWORD=$MYSQL_PASSWORD
       NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
       API_BASE_URL=$API_BASE_URL
       NEXTAUTH_URL=$NEXTAUTH_URL
@@ -230,10 +231,6 @@ SP certs are generated once and must never be regenerated unless you re-register
 ### Rotating `NEXTAUTH_SECRET`
 
 Changing this value immediately invalidates all active user sessions — every logged-in user is signed out. Only rotate if required for security reasons.
-
-### `MSSQL_TRUST_SERVER_CERTIFICATE`
-
-Must be `no` in production. The template defaults to `no`. Do not set it to `yes` unless the database server uses a self-signed certificate and the risk has been accepted.
 
 ### Build time
 

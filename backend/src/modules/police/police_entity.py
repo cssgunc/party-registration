@@ -1,10 +1,11 @@
 from datetime import datetime
 from typing import ClassVar
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, Enum, Integer, String
+from sqlalchemy import Boolean, CheckConstraint, Enum, Integer, String
 from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column
 from sqlalchemy.sql.expression import false
 from src.core.database import EntityBase
+from src.core.types import UTCDateTime
 from src.modules.police.police_model import PoliceAccountDto, PoliceRole
 
 
@@ -29,9 +30,9 @@ class PoliceEntity(MappedAsDataclass, EntityBase):
     is_verified: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=false(), default=False
     )
-    verification_token: Mapped[str | None] = mapped_column(String, nullable=True, default=None)
+    verification_token: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
     verification_token_expires_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True, default=None
+        UTCDateTime, nullable=True, default=None
     )
 
     def to_dto(self) -> PoliceAccountDto:

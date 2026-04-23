@@ -16,13 +16,11 @@ class Config(BaseSettings):
     )
 
     # Database configuration
-    MSSQL_DATABASE: str = "ocsl"
-    MSSQL_USER: str
-    MSSQL_PASSWORD: str
-    MSSQL_HOST: str
-    MSSQL_PORT: int = 1433
-    MSSQL_DRIVER: str = "ODBC Driver 18 for SQL Server"
-    MSSQL_TRUST_SERVER_CERTIFICATE: str
+    MYSQL_DATABASE: str = "ocsl"
+    MYSQL_USER: str
+    MYSQL_PASSWORD: str
+    MYSQL_HOST: str
+    MYSQL_PORT: int = 3306
 
     # Frontend configuration
     FRONTEND_BASE_URL: str

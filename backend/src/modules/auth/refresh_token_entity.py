@@ -1,10 +1,11 @@
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, String
+from sqlalchemy import CheckConstraint, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column, relationship
 from src.core.config import env
 from src.core.database import EntityBase
+from src.core.types import UTCDateTime
 
 if TYPE_CHECKING:
     from src.modules.account.account_entity import AccountEntity
@@ -44,12 +45,12 @@ class RefreshTokenEntity(MappedAsDataclass, EntityBase):
         default=None,
     )
     expires_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
+        UTCDateTime,
         nullable=False,
         default_factory=lambda: datetime.now(UTC) + timedelta(days=env.REFRESH_TOKEN_EXPIRE_DAYS),
     )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
+        UTCDateTime,
         nullable=False,
         default_factory=lambda: datetime.now(UTC),
     )
