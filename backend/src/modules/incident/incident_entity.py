@@ -3,9 +3,9 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Self
 
 from sqlalchemy import Enum, ForeignKey, Integer, String
-from sqlalchemy.dialects.mssql import DATETIMEOFFSET
 from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column, relationship
 from src.core.database import EntityBase
+from src.core.types import UTCDateTime
 from src.modules.incident.incident_model import IncidentData, IncidentDto, IncidentSeverity
 
 if TYPE_CHECKING:
@@ -19,7 +19,7 @@ class IncidentEntity(MappedAsDataclass, EntityBase):
     location_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("locations.id", ondelete="CASCADE"), nullable=False
     )
-    incident_datetime: Mapped[datetime] = mapped_column(DATETIMEOFFSET, nullable=False)
+    incident_datetime: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False)
     severity: Mapped[IncidentSeverity] = mapped_column(
         Enum(IncidentSeverity, native_enum=False, length=20), nullable=False
     )

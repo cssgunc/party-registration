@@ -8,25 +8,6 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Tell Python where to find backend source modules (e.g. "from src.modules...")
 ENV PYTHONPATH=/backend
 
-# Install system libraries needed to compile and run the ODBC driver
-RUN apt-get update \
-    && apt-get install --yes \
-        apt-transport-https \
-        ca-certificates \
-        curl \
-        gnupg \
-        libicu-dev \
-        unixodbc \
-        unixodbc-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# Add Microsoft's package repo and install MSSQL ODBC Driver 18
-# (required by pyodbc/aioodbc to connect to SQL Server)
-RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-archive-keyring.gpg \
-    && echo "deb [signed-by=/usr/share/keyrings/microsoft-archive-keyring.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" | tee /etc/apt/sources.list.d/mssql-release.list \
-    && apt-get update \
-    && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
-    && rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user so the app doesn't run as root
 RUN useradd --create-home appuser

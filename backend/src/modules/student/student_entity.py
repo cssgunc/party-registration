@@ -1,11 +1,11 @@
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Self
 
-from sqlalchemy import CheckConstraint, Enum, ForeignKey, Index, Integer, String, select, text
-from sqlalchemy.dialects.mssql import DATETIMEOFFSET
+from sqlalchemy import CheckConstraint, Enum, ForeignKey, Integer, String, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column, relationship, selectinload
 from src.core.database import EntityBase
+from src.core.types import UTCDateTime
 
 from .student_model import ContactPreference, ResidenceDto, StudentData, StudentDto
 
@@ -23,15 +23,17 @@ class StudentEntity(MappedAsDataclass, EntityBase):
     contact_preference: Mapped[ContactPreference | None] = mapped_column(
         Enum(ContactPreference, native_enum=False, length=20), nullable=True, default=None
     )
-    phone_number: Mapped[str | None] = mapped_column(String(20), nullable=True, default=None)
+    phone_number: Mapped[str | None] = mapped_column(
+        String(20), nullable=True, unique=True, default=None
+    )
     last_registered: Mapped[datetime | None] = mapped_column(
-        DATETIMEOFFSET, nullable=True, default=None
+        UTCDateTime, nullable=True, default=None
     )
     residence_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("locations.id"), nullable=True, default=None
     )
     residence_chosen_date: Mapped[datetime | None] = mapped_column(
-        DATETIMEOFFSET, nullable=True, default=None
+        UTCDateTime, nullable=True, default=None
     )
 
     account: Mapped["AccountEntity"] = relationship("AccountEntity", init=False)
@@ -44,14 +46,6 @@ class StudentEntity(MappedAsDataclass, EntityBase):
             "(residence_id IS NULL AND residence_chosen_date IS NULL) OR "
             "(residence_id IS NOT NULL AND residence_chosen_date IS NOT NULL)",
             name="chk_residence_consistency",
-        ),
-        # SQL Server treats two NULLs as a unique constraint violation, so use a
-        # filtered index that enforces uniqueness only for non-NULL phone numbers.
-        Index(
-            "ix_students_phone_number_unique",
-            "phone_number",
-            unique=True,
-            mssql_where=text("phone_number IS NOT NULL"),
         ),
     )
 

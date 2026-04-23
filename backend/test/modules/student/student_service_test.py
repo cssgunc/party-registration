@@ -67,7 +67,7 @@ class TestStudentService:
 
     @pytest.mark.asyncio
     async def test_multiple_null_phone_numbers_do_not_conflict(self) -> None:
-        """Regression: SQL Server treats two NULLs as a unique constraint violation.
+        """MySQL allows multiple NULLs in a UNIQUE index natively — no filtered index needed.
         Multiple unonboarded students (null phone_number) must coexist without conflict."""
         account1 = await self.account_utils.create_one(role=AccountRole.STUDENT.value)
         account2 = await self.account_utils.create_one(role=AccountRole.STUDENT.value)

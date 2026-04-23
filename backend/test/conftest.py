@@ -47,7 +47,9 @@ DATABASE_URL = database_url("ocsl_test")
 @pytest_asyncio.fixture(autouse=True, scope="session", loop_scope="session")
 async def test_engine():
     """Create engine and tables once per test session."""
-    engine = create_async_engine(DATABASE_URL, echo=False)
+    engine = create_async_engine(
+        DATABASE_URL, echo=False, connect_args={"init_command": "SET time_zone = 'UTC'"}
+    )
     async with engine.begin() as conn:
         await conn.run_sync(EntityBase.metadata.drop_all)
         await conn.run_sync(EntityBase.metadata.create_all)
@@ -69,35 +71,28 @@ async def test_session(test_engine: AsyncEngine):
     async with test_async_session_local() as session:
         yield session
 
-    # Clean up: delete all data and reset identity columns
+    # Clean up: delete all data and reset auto-increment counters
     tables = [table.name for table in EntityBase.metadata.sorted_tables]
     if tables:
-        # Phase 1: delete data inside a transaction
+        # Phase 1: disable FK checks, delete all rows, re-enable FK checks
         async with test_engine.begin() as conn:
-            # Disable all FK constraints so deletes can run in any order
-            for table in tables:
-                await conn.execute(text(f"ALTER TABLE [{table}] NOCHECK CONSTRAINT ALL"))
-
-            # Delete all data in reverse FK order
+            await conn.execute(text("SET foreign_key_checks = 0"))
             for table in reversed(tables):
-                await conn.execute(text(f"DELETE FROM [{table}]"))
+                await conn.execute(text(f"DELETE FROM `{table}`"))
+            await conn.execute(text("SET foreign_key_checks = 1"))
 
-            # Re-enable all FK constraints
-            for table in tables:
-                await conn.execute(text(f"ALTER TABLE [{table}] CHECK CONSTRAINT ALL"))
-
-        # Phase 2: reset identity columns (DBCC cannot run inside a transaction)
+        # Phase 2: reset AUTO_INCREMENT counters (must run after tables are empty)
         async with test_engine.connect() as conn:
             await conn.execution_options(isolation_level="AUTOCOMMIT")
             result = await conn.execute(
                 text(
-                    "SELECT t.name FROM sys.tables t"
-                    " INNER JOIN sys.columns c ON t.object_id = c.object_id"
-                    " WHERE c.is_identity = 1"
-                )
+                    "SELECT TABLE_NAME FROM information_schema.COLUMNS"
+                    " WHERE TABLE_SCHEMA = :schema AND EXTRA = 'auto_increment'"
+                ),
+                {"schema": "ocsl_test"},
             )
             for (table_name,) in result.fetchall():
-                await conn.execute(text(f"DBCC CHECKIDENT ('{table_name}', RESEED, 0)"))
+                await conn.execute(text(f"ALTER TABLE `{table_name}` AUTO_INCREMENT = 1"))
 
 
 # =================================== Clients =======================================

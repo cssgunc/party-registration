@@ -8,6 +8,12 @@ from src.modules.account.account_model import AccountData, AccountDto, AccountRo
 
 class AccountEntity(MappedAsDataclass, EntityBase):
     __tablename__ = "accounts"
+    __table_args__ = (
+        CheckConstraint(
+            "CHAR_LENGTH(pid) = 9 AND pid REGEXP '^[0-9]+$'",
+            name="check_pid_format",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, init=False)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
@@ -15,10 +21,6 @@ class AccountEntity(MappedAsDataclass, EntityBase):
     last_name: Mapped[str] = mapped_column(String(255), nullable=False)
     pid: Mapped[str] = mapped_column(
         String(9),
-        CheckConstraint(
-            "LEN(pid) = 9 AND pid NOT LIKE '%[^0-9]%'",
-            name="check_pid_format",
-        ),
         unique=True,
         index=True,
         nullable=False,
@@ -27,9 +29,6 @@ class AccountEntity(MappedAsDataclass, EntityBase):
     role: Mapped[AccountRole] = mapped_column(
         Enum(AccountRole, native_enum=False, length=20), nullable=False
     )
-
-    # MSSQL uses case-insensitive collation by default (SQL_Latin1_General_CP1_CI_AS)
-    # The unique constraint on email column already provides case-insensitive uniqueness
 
     @classmethod
     def from_data(cls, data: "AccountData") -> Self:

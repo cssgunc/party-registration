@@ -12,20 +12,14 @@ services:
       - party-reg-pre-commit-cache:/home/vscode/.cache/pre-commit
 
   db:
-    image: mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04
-    platform: linux/amd64
+    image: mysql:8.0
     environment:
-      ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: "YourStrong!Passw0rd"
-      MSSQL_PID: "Express"
+      MYSQL_ROOT_PASSWORD: "securepassword"
+      MYSQL_DATABASE: "ocsl"
     ports:
-      - "1433:1433"
+      - "3306:3306"
     volumes:
-      - party-reg-mssql:/var/opt/mssql
-    deploy:
-      resources:
-        limits:
-          memory: 2G
+      - party-reg-mysql:/var/lib/mysql
 
   saml-idp:
     image: kristophjunge/test-saml-idp
@@ -44,6 +38,6 @@ services:
       - "1025:1025"
 
 volumes:
-  party-reg-mssql:
+  party-reg-mysql:
   party-reg-node-modules:
   party-reg-pre-commit-cache:

@@ -34,7 +34,7 @@ info "Repo root : $REPO_ROOT"
 info "OS        : $OS"
 
 # ══════════════════════════════════════════════════════════════════════════════
-step "1/8  Python 3.13"
+step "1/7  Python 3.13"
 # ══════════════════════════════════════════════════════════════════════════════
 
 PYTHON=""
@@ -62,7 +62,7 @@ fi
 success "Found Python 3.13: $(command -v "$PYTHON")"
 
 # ══════════════════════════════════════════════════════════════════════════════
-step "2/8  Virtual environment + Python packages"
+step "2/7  Virtual environment + Python packages"
 # ══════════════════════════════════════════════════════════════════════════════
 
 VENV_DIR="$REPO_ROOT/.venv"
@@ -91,39 +91,7 @@ pip install -e backend
 success "Python packages installed"
 
 # ══════════════════════════════════════════════════════════════════════════════
-step "3/8  ODBC Driver 18 for SQL Server"
-# ══════════════════════════════════════════════════════════════════════════════
-
-ODBC_FOUND=false
-if [[ "$OS" == "mac" ]]; then
-  if odbcinst -q -d 2>/dev/null | grep -q "ODBC Driver 18 for SQL Server"; then
-    ODBC_FOUND=true
-  elif [[ -f "/usr/local/lib/libmsodbcsql.18.dylib" ]] || \
-       [[ -f "/opt/homebrew/lib/libmsodbcsql.18.dylib" ]]; then
-    ODBC_FOUND=true
-  fi
-elif [[ "$OS" == "windows" ]]; then
-  if reg query "HKLM\\SOFTWARE\\ODBC\\ODBCINST.INI\\ODBC Driver 18 for SQL Server" \
-      &>/dev/null 2>&1; then
-    ODBC_FOUND=true
-  fi
-fi
-
-if [[ "$ODBC_FOUND" == "false" ]]; then
-  error "ODBC Driver 18 for SQL Server not found."
-  if [[ "$OS" == "mac" ]]; then
-    error "  Install via Homebrew:"
-    error "    brew tap microsoft/mssql-release && brew install msodbcsql18"
-    error "  Docs: https://learn.microsoft.com/en-us/sql/connect/odbc/linux-mac/install-microsoft-odbc-driver-sql-server-macos"
-  else
-    error "  Download: https://learn.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server"
-  fi
-  exit 1
-fi
-success "ODBC Driver 18 for SQL Server found"
-
-# ══════════════════════════════════════════════════════════════════════════════
-step "4/8  backend/.env"
+step "3/7  backend/.env"
 # ══════════════════════════════════════════════════════════════════════════════
 
 ENV_FILE="$REPO_ROOT/backend/.env"
@@ -134,28 +102,28 @@ if [[ ! -f "$ENV_FILE" ]]; then
   success "Copied .env.template → backend/.env"
 fi
 
-# Ensure MSSQL_HOST=localhost (not db, which is only valid inside the devcontainer)
-if grep -q "^MSSQL_HOST=db$" "$ENV_FILE"; then
+# Ensure MYSQL_HOST=localhost (not db, which is only valid inside the devcontainer)
+if grep -q "^MYSQL_HOST=db$" "$ENV_FILE"; then
   if [[ "$OS" == "mac" ]]; then
-    sed -i '' 's/^MSSQL_HOST=db$/MSSQL_HOST=localhost/' "$ENV_FILE"
+    sed -i '' 's/^MYSQL_HOST=db$/MYSQL_HOST=localhost/' "$ENV_FILE"
   else
-    sed -i 's/^MSSQL_HOST=db$/MSSQL_HOST=localhost/' "$ENV_FILE"
+    sed -i 's/^MYSQL_HOST=db$/MYSQL_HOST=localhost/' "$ENV_FILE"
   fi
-  success "Set MSSQL_HOST=localhost in backend/.env"
-elif grep -q "^MSSQL_HOST=" "$ENV_FILE"; then
-  current_host=$(grep "^MSSQL_HOST=" "$ENV_FILE" | cut -d= -f2)
+  success "Set MYSQL_HOST=localhost in backend/.env"
+elif grep -q "^MYSQL_HOST=" "$ENV_FILE"; then
+  current_host=$(grep "^MYSQL_HOST=" "$ENV_FILE" | cut -d= -f2)
   if [[ "$current_host" == "localhost" ]]; then
-    success "MSSQL_HOST already set to localhost"
+    success "MYSQL_HOST already set to localhost"
   else
-    warn "MSSQL_HOST is set to '$current_host' — expected 'localhost' for local dev."
+    warn "MYSQL_HOST is set to '$current_host' — expected 'localhost' for local dev."
   fi
 else
-  warn "MSSQL_HOST not found in backend/.env — adding MSSQL_HOST=localhost"
-  echo "MSSQL_HOST=localhost" >> "$ENV_FILE"
+  warn "MYSQL_HOST not found in backend/.env — adding MYSQL_HOST=localhost"
+  echo "MYSQL_HOST=localhost" >> "$ENV_FILE"
 fi
 
-info "Verify that the MSSQL_* vars in backend/.env match backend/.env.template"
-info "(except MSSQL_HOST which should be 'localhost')"
+info "Verify that the MYSQL_* vars in backend/.env match backend/.env.template"
+info "(except MYSQL_HOST which should be 'localhost')"
 
 # Ensure SMTP_HOST=localhost (not mailpit, which is only valid inside the devcontainer)
 if grep -q "^SMTP_HOST=mailpit$" "$ENV_FILE"; then
@@ -178,7 +146,7 @@ else
 fi
 
 # ══════════════════════════════════════════════════════════════════════════════
-step "5/8  Start containers (db + saml-idp + mailpit) + reset dev DB"
+step "4/7  Start containers (db + saml-idp + mailpit) + reset dev DB"
 # ══════════════════════════════════════════════════════════════════════════════
 
 if ! command -v docker &>/dev/null; then
@@ -213,34 +181,32 @@ $DC up -d db saml-idp mailpit
 cd "$REPO_ROOT"
 success "Containers started"
 
-# Wait for SQL Server to accept connections (can take ~30 s)
-info "Waiting for SQL Server to be ready (up to 90 s) ..."
+# Wait for MySQL to accept connections (can take ~15 s)
+info "Waiting for MySQL to be ready (up to 90 s) ..."
 MAX_WAIT=90
 WAITED=0
-DB_CONTAINER=$(cd "$REPO_ROOT/.devcontainer" && $DC ps -q db 2>/dev/null | head -1)
 
-if [[ -z "$DB_CONTAINER" ]]; then
-  error "Could not find the db container. Check: cd .devcontainer && $DC ps"
-  exit 1
-fi
-
-while ! docker exec "$DB_CONTAINER" \
-    /opt/mssql-tools18/bin/sqlcmd \
-      -S localhost -U sa -P "YourStrong!Passw0rd" -Q "SELECT 1" -C \
-    &>/dev/null 2>&1; do
+while ! python -c "
+import pymysql, sys
+try:
+    pymysql.connect(host='127.0.0.1', port=3306, user='root', password='securepassword')
+    sys.exit(0)
+except Exception:
+    sys.exit(1)
+" 2>/dev/null; do
   sleep 2
   WAITED=$((WAITED + 2))
   echo -n "."
   if [[ $WAITED -ge $MAX_WAIT ]]; then
     echo ""
-    error "SQL Server did not become ready in ${MAX_WAIT}s."
-    error "  Check logs: docker logs $DB_CONTAINER"
-    error "  If you see a connection timeout, verify the MSSQL_* vars in backend/.env."
+    error "MySQL did not become ready in ${MAX_WAIT}s."
+    error "  Check logs: cd .devcontainer && $DC logs db"
+    error "  Verify the MYSQL_* vars in backend/.env."
     exit 1
   fi
 done
 echo ""
-success "SQL Server is ready!"
+success "MySQL is ready!"
 
 # Wait for SAML IdP to accept HTTP connections (can take ~15 s)
 info "Waiting for SAML IdP to be ready (up to 60 s) ..."
@@ -287,7 +253,7 @@ cd "$REPO_ROOT"
 success "Dev database reset"
 
 # ══════════════════════════════════════════════════════════════════════════════
-step "6/8  Frontend SAML SP certificates"
+step "5/7  Frontend SAML SP certificates"
 # ══════════════════════════════════════════════════════════════════════════════
 
 CERTS_DIR="$REPO_ROOT/frontend/certs"
@@ -312,7 +278,7 @@ else
 fi
 
 # ══════════════════════════════════════════════════════════════════════════════
-step "7/8  pre-commit hooks"
+step "6/7  pre-commit hooks"
 # ══════════════════════════════════════════════════════════════════════════════
 
 # pre-commit is installed as part of .[dev], but check just in case
@@ -327,7 +293,7 @@ pre-commit install-hooks
 success "pre-commit hooks installed"
 
 # ══════════════════════════════════════════════════════════════════════════════
-step "8/8  .vscode/settings.json + extensions"
+step "7/7  .vscode/settings.json + extensions"
 # ══════════════════════════════════════════════════════════════════════════════
 
 VSCODE_DIR="$REPO_ROOT/.vscode"

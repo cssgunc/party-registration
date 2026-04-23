@@ -2,10 +2,10 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Self
 
 from sqlalchemy import DECIMAL, Index, Integer, String
-from sqlalchemy.dialects.mssql import DATETIMEOFFSET
 from sqlalchemy.inspection import inspect
 from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column, relationship
 from src.core.database import EntityBase
+from src.core.types import UTCDateTime
 
 from .location_model import LocationData, LocationDto
 
@@ -30,7 +30,7 @@ class LocationEntity(MappedAsDataclass, EntityBase):
 
     # OCSL Data (fields with defaults)
     hold_expiration: Mapped[datetime | None] = mapped_column(
-        DATETIMEOFFSET, nullable=True, default=None
+        UTCDateTime, nullable=True, default=None
     )
 
     # Address Components

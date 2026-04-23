@@ -2,10 +2,10 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Self
 
 from sqlalchemy import Enum, ForeignKey, Integer, String, select
-from sqlalchemy.dialects.mssql import DATETIMEOFFSET
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column, relationship, selectinload
 from src.core.database import EntityBase
+from src.core.types import UTCDateTime
 from src.modules.student.student_model import ContactPreference
 
 from ..student.student_entity import StudentEntity
@@ -19,7 +19,7 @@ class PartyEntity(MappedAsDataclass, EntityBase):
     __tablename__ = "parties"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, init=False)
-    party_datetime: Mapped[datetime] = mapped_column(DATETIMEOFFSET, nullable=False)
+    party_datetime: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False)
     location_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("locations.id", ondelete="CASCADE"), nullable=False
     )

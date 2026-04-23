@@ -2,7 +2,7 @@ import enum
 from typing import TYPE_CHECKING
 
 from pydantic import AwareDatetime, BaseModel, EmailStr, Field
-from src.core.utils.phone_utils import PhoneNumber
+from src.core.types import PhoneNumber
 from src.core.utils.query_utils import PaginatedResponse
 
 if TYPE_CHECKING:
