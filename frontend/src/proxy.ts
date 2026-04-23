@@ -1,4 +1,5 @@
 import { AppRole } from "@/lib/api/account/account.types";
+import { serverEnv } from "@/lib/config/env.server";
 import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -46,7 +47,7 @@ function getDashboardPath(role: AppRole | undefined): string {
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+  const token = await getToken({ req, secret: serverEnv.NEXTAUTH_SECRET });
   const isAuthenticated = !!token;
   const userRole = token?.role as AppRole | undefined;
 

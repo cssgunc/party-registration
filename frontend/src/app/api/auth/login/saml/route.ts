@@ -4,29 +4,14 @@ import {
   exchangeToken,
   setAuthCookies,
 } from "@/lib/api/auth/auth.service";
-import { identityProvider, postAssert, serviceProvider } from "@/lib/saml";
+import { serverEnv } from "@/lib/config/env.server";
+import { createLoginRequestUrl, postAssert } from "@/lib/saml";
 import { AxiosError } from "axios";
 import { NextRequest, NextResponse } from "next/server";
 
 interface SamlRelayState {
   callbackUrl?: string;
   role?: string;
-}
-
-function createLoginRequestUrl(relayState?: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    serviceProvider.create_login_request_url(
-      identityProvider,
-      {
-        force_authn: true,
-        relay_state: relayState,
-      },
-      (error: Error | null, loginUrl: string) => {
-        if (error) reject(error);
-        else resolve(loginUrl);
-      }
-    );
-  });
 }
 
 const ACCOUNT_ROLES: AccountRole[] = ["student", "staff", "admin"];
@@ -90,7 +75,7 @@ export async function POST(req: NextRequest) {
   const formData = await req.formData();
   const body = Object.fromEntries(formData) as Record<string, unknown>;
 
-  const origin = process.env.NEXTAUTH_URL ?? new URL(req.url).origin;
+  const origin = serverEnv.NEXTAUTH_URL;
   const errorUrl = (msg: string) =>
     NextResponse.redirect(
       new URL(`/api/auth/error?error=${encodeURIComponent(msg)}`, origin),

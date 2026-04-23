@@ -1,6 +1,7 @@
 # Secrets
 .env*
-!.env.template
+!.env*template
+deploy/certs/
 
 # Node.js / Next.js
 node_modules/
