@@ -130,6 +130,8 @@ backend/
 frontend/
 ├── .env.template                 Required environment variables for the frontend with placeholder values
 ├── package.json                  Node dependencies, scripts, and project metadata
+├── shared/
+│   └── mock_data.json            Shared mock dataset used by `backend/script/reset_dev.py` to seed the dev database and by `src/lib/mockData.ts` to build typed frontend fixtures
 └── src/
     ├── proxy.ts                  Next.js middleware — enforces role-based route access before any page renders
     ├── app/
