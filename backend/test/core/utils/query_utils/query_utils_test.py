@@ -11,7 +11,6 @@ import pytest
 from httpx import AsyncClient
 from src.core.exceptions import BadRequestException
 from src.modules.incident.incident_model import IncidentDto, IncidentSeverity
-
 from test.modules.incident.incident_utils import IncidentTestUtils
 from test.utils.http.assertions import assert_res_failure, assert_res_paginated
 
