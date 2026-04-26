@@ -534,7 +534,13 @@ export function TableTemplate<T extends object>({
                                 typeof header.column.columnDef.header ===
                                 "string"
                                   ? header.column.columnDef.header
-                                  : header.column.id
+                                  : typeof header.column.columnDef.header ===
+                                      "function"
+                                    ? flexRender(
+                                        header.column.columnDef.header,
+                                        header.getContext()
+                                      )
+                                    : header.column.id
                               }
                               onFilterClick={() => {
                                 if (isLoading) return;
