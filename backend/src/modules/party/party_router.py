@@ -115,11 +115,11 @@ async def list_parties(
 @party_router.get("/nearby")
 async def get_parties_nearby(
     place_id: str = Query(..., description="Google Maps place ID"),
-    start_date: str = Query(
-        ..., pattern=r"^\d{4}-\d{2}-\d{2}$", description="Start date (YYYY-MM-DD format)"
+    start_datetime: datetime = Query(
+        ..., alias="start_date", description="Start of search window (ISO 8601 with timezone)"
     ),
-    end_date: str = Query(
-        ..., pattern=r"^\d{4}-\d{2}-\d{2}$", description="End date (YYYY-MM-DD format)"
+    end_datetime: datetime = Query(
+        ..., alias="end_date", description="End of search window (ISO 8601 with timezone)"
     ),
     party_service: PartyService = Depends(),
     location_service: LocationService = Depends(),
@@ -136,24 +136,23 @@ async def get_parties_nearby(
 
     Query Parameters:
     - place_id: Google Maps place ID from autocomplete selection
-    - start_date: Start date for the search range (YYYY-MM-DD format)
-    - end_date: End date for the search range (YYYY-MM-DD format)
+    - start_date: Start of the search window (ISO 8601 with timezone)
+    - end_date: End of the search window (ISO 8601 with timezone)
 
     Raises:
-    - 400: If place ID is invalid or dates are in wrong format
+    - 400: If place ID is invalid or datetimes are in wrong format
     - 404: If place ID is not found in Google Maps
     - 403: If user is not a police officer or admin
     """
-    # Parse date strings to datetime objects
-    try:
-        start_datetime = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=UTC)
-        end_datetime = datetime.strptime(end_date, "%Y-%m-%d").replace(tzinfo=UTC)
-        # Set end_datetime to end of day (23:59:59)
-        end_datetime = end_datetime.replace(hour=23, minute=59, second=59)
-    except ValueError as e:
-        raise UnprocessableEntityException(f"Invalid date format. Expected YYYY-MM-DD: {e}") from e
+    if start_datetime.tzinfo is None:
+        raise UnprocessableEntityException("start_date must include timezone information")
+    if end_datetime.tzinfo is None:
+        raise UnprocessableEntityException("end_date must include timezone information")
 
-    # Validate that start_date is not greater than end_date
+    # Normalize to UTC for consistent DB comparisons
+    start_datetime = start_datetime.astimezone(UTC)
+    end_datetime = end_datetime.astimezone(UTC)
+
     if start_datetime > end_datetime:
         raise BadRequestException("Start date must be less than or equal to end date")
 
@@ -182,10 +181,16 @@ async def get_parties_nearby(
         party=exact_party,
     )
 
+    # Use DB coordinates when available to avoid float precision drift vs stored DECIMAL values
+    search_lat = float(db_location.latitude) if db_location is not None else location_data.latitude
+    search_lon = (
+        float(db_location.longitude) if db_location is not None else location_data.longitude
+    )
+
     # Perform proximity search with date range (sorted by distance)
     nearby = await party_service.get_parties_by_radius_and_date_range(
-        latitude=location_data.latitude,
-        longitude=location_data.longitude,
+        latitude=search_lat,
+        longitude=search_lon,
         start_date=start_datetime,
         end_date=end_datetime,
     )

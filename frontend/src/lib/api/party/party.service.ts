@@ -3,7 +3,6 @@ import { ListQueryParams, toAxiosParams } from "@/lib/api/shared/query-params";
 import apiClient from "@/lib/network/apiClient";
 import { PaginatedResponse } from "@/lib/shared";
 import { AxiosInstance } from "axios";
-import { format } from "date-fns";
 import {
   AdminCreatePartyDto,
   PartyDto,
@@ -52,13 +51,15 @@ export class PartyService {
     startDate: Date,
     endDate: Date
   ): Promise<ProximitySearchResponse> {
+    const endOfDay = new Date(endDate);
+    endOfDay.setHours(23, 59, 59, 999);
     const response = await this.client.get<ProximitySearchResponseBackend>(
       "/parties/nearby",
       {
         params: {
           place_id: placeId,
-          start_date: format(startDate, "yyyy-MM-dd"),
-          end_date: format(endDate, "yyyy-MM-dd"),
+          start_date: startDate.toISOString(),
+          end_date: endOfDay.toISOString(),
         },
       }
     );
