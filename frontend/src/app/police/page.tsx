@@ -161,6 +161,18 @@ export default function PolicePage() {
     });
   }, [advancedFilters, baseParties]);
 
+  // Include exact match party in map pins even though it's excluded from the nearby list
+  const exactMatchParty = nearbyData?.exact_match?.party;
+  const mapParties = useMemo(() => {
+    if (!exactMatchParty) return filteredParties;
+    const alreadyIncluded = filteredParties.some(
+      (p) => p.id === exactMatchParty.id
+    );
+    return alreadyIncluded
+      ? filteredParties
+      : [exactMatchParty, ...filteredParties];
+  }, [filteredParties, exactMatchParty]);
+
   // Reset to first page when the party list changes (filters/date range updated)
   useEffect(() => {
     setCurrentPage(0);
@@ -399,7 +411,7 @@ export default function PolicePage() {
           </h2>
           <div className="min-h-0 lg:flex-1 overflow-hidden rounded-md max-lg:h-80">
             <EmbeddedMap
-              parties={filteredParties}
+              parties={mapParties}
               activeParty={activeParty}
               center={
                 placeDetails

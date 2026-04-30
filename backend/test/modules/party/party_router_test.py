@@ -40,7 +40,7 @@ test_party_authentication = generate_auth_required_tests(
     (
         {"admin", "officer", "police_admin"},
         "GET",
-        "/api/parties/nearby?place_id=ChIJTest&start_date=2025-01-01&end_date=2025-12-31",
+        "/api/parties/nearby?place_id=ChIJTest&start_date=2025-01-01T00:00:00Z&end_date=2025-12-31T23:59:59Z",
         None,
     ),
     # POST endpoint requires conditional body - tested separately in
@@ -916,8 +916,8 @@ class TestPartyNearbyRouter:
         now = datetime.now(UTC)
         params = {
             "place_id": location_data.google_place_id,
-            "start_date": now.strftime("%Y-%m-%d"),
-            "end_date": (now + timedelta(days=7)).strftime("%Y-%m-%d"),
+            "start_date": now.isoformat(),
+            "end_date": (now + timedelta(days=7)).isoformat(),
         }
         response = await self.admin_client.get("/api/parties/nearby", params=params)
         data = assert_res_success(response, ProximitySearchResponse)
@@ -965,8 +965,8 @@ class TestPartyNearbyRouter:
 
         params = {
             "place_id": search_location_data.google_place_id,
-            "start_date": now.strftime("%Y-%m-%d"),
-            "end_date": (now + timedelta(days=1)).strftime("%Y-%m-%d"),
+            "start_date": now.isoformat(),
+            "end_date": (now + timedelta(days=1)).isoformat(),
         }
         response = await self.admin_client.get("/api/parties/nearby", params=params)
         data = assert_res_success(response, ProximitySearchResponse)
@@ -1009,8 +1009,8 @@ class TestPartyNearbyRouter:
 
         params = {
             "place_id": search_location_data.google_place_id,
-            "start_date": base_time.strftime("%Y-%m-%d"),
-            "end_date": (base_time + timedelta(hours=12)).strftime("%Y-%m-%d"),
+            "start_date": base_time.isoformat(),
+            "end_date": (base_time + timedelta(hours=12)).isoformat(),
         }
 
         response = await self.admin_client.get("/api/parties/nearby", params=params)
@@ -1028,8 +1028,8 @@ class TestPartyNearbyRouter:
         now = datetime.now(UTC)
         params = {
             "place_id": location_data.google_place_id,
-            "start_date": now.strftime("%Y-%m-%d"),
-            "end_date": (now + timedelta(days=1)).strftime("%Y-%m-%d"),
+            "start_date": now.isoformat(),
+            "end_date": (now + timedelta(days=1)).isoformat(),
         }
         response = await self.admin_client.get("/api/parties/nearby", params=params)
         data = assert_res_success(response, ProximitySearchResponse)
@@ -1059,8 +1059,8 @@ class TestPartyNearbyRouter:
         now = datetime.now(UTC)
         params = {
             "place_id": db_location.google_place_id,
-            "start_date": now.strftime("%Y-%m-%d"),
-            "end_date": (now + timedelta(days=1)).strftime("%Y-%m-%d"),
+            "start_date": now.isoformat(),
+            "end_date": (now + timedelta(days=1)).isoformat(),
         }
         response = await self.admin_client.get("/api/parties/nearby", params=params)
         data = assert_res_success(response, ProximitySearchResponse)
@@ -1094,8 +1094,8 @@ class TestPartyNearbyRouter:
 
         params = {
             "place_id": db_location.google_place_id,
-            "start_date": now.strftime("%Y-%m-%d"),
-            "end_date": (now + timedelta(days=1)).strftime("%Y-%m-%d"),
+            "start_date": now.isoformat(),
+            "end_date": (now + timedelta(days=1)).isoformat(),
         }
         response = await self.admin_client.get("/api/parties/nearby", params=params)
         data = assert_res_success(response, ProximitySearchResponse)
@@ -1106,42 +1106,116 @@ class TestPartyNearbyRouter:
         assert data.exact_match.party.id == party.id
 
     @pytest.mark.asyncio
+    async def test_nearby_uses_db_coordinates_when_available(self):
+        """Regression for #368: When a DB location exists, its stored coordinates are used as the
+        search center so that floating-point drift between Google Maps and DECIMAL DB values can't
+        push a party at the exact address outside the search radius."""
+        search_lat = 40.7128
+        search_lon = -74.0060
+
+        # DB location stored at exact coordinates
+        db_location = await self.location_utils.create_one(
+            latitude=search_lat,
+            longitude=search_lon,
+        )
+
+        # Google Maps returns coordinates with a tiny float offset that would otherwise shift the
+        # search center and risk excluding nearby parties
+        gmaps_lat = search_lat + 1e-7
+        gmaps_lon = search_lon + 1e-7
+        self.gmaps_utils.mock_place_details(
+            google_place_id=db_location.google_place_id,
+            formatted_address=db_location.formatted_address,
+            latitude=gmaps_lat,
+            longitude=gmaps_lon,
+        )
+
+        # Party at a location very close to the DB location (within radius from DB coords)
+        nearby_location = await self.location_utils.create_one(
+            latitude=search_lat + get_lat_offset_within_radius(),
+            longitude=search_lon,
+        )
+
+        now = datetime.now(UTC)
+        party = await self.party_utils.create_one(
+            location_id=nearby_location.id,
+            party_datetime=now + timedelta(hours=2),
+        )
+
+        params = {
+            "place_id": db_location.google_place_id,
+            "start_date": now.isoformat(),
+            "end_date": (now + timedelta(days=1)).isoformat(),
+        }
+        response = await self.admin_client.get("/api/parties/nearby", params=params)
+        data = assert_res_success(response, ProximitySearchResponse)
+
+        nearby_ids = [p.id for p in data.nearby]
+        assert party.id in nearby_ids
+
+    @pytest.mark.asyncio
+    async def test_nearby_date_filter_uses_full_timestamps(self):
+        """Regression for #369: Parties are filtered by the exact timestamps sent by the client,
+        not by UTC-midnight-to-midnight derived from a date-only string. This ensures an officer
+        searching for 'today' in a non-UTC timezone sees the same parties in nearby search as in
+        the all-parties list."""
+        search_lat = 40.7128
+        search_lon = -74.0060
+
+        search_location_data = await self.location_utils.next_data(
+            latitude=search_lat,
+            longitude=search_lon,
+        )
+        self.gmaps_utils.mock_place_details(**search_location_data.model_dump())
+
+        location = await self.location_utils.create_one(
+            latitude=search_lat + get_lat_offset_within_radius(),
+            longitude=search_lon,
+        )
+
+        # Party at 21:00 UTC: within a UTC-4 "today" window (04:00-03:59 UTC) but outside
+        # a naive UTC midnight-to-midnight window for the same calendar date
+        party_datetime = datetime(2024, 4, 27, 21, 0, 0, tzinfo=UTC)
+        party = await self.party_utils.create_one(
+            location_id=location.id,
+            party_datetime=party_datetime,
+        )
+
+        # Simulate a UTC-4 client sending its local-midnight-to-end-of-day window for April 27
+        start = datetime(2024, 4, 27, 4, 0, 0, tzinfo=UTC)  # midnight EDT = 04:00 UTC
+        end = datetime(2024, 4, 28, 3, 59, 59, tzinfo=UTC)  # 23:59:59 EDT = 03:59:59 UTC next day
+
+        params = {
+            "place_id": search_location_data.google_place_id,
+            "start_date": start.isoformat(),
+            "end_date": end.isoformat(),
+        }
+        response = await self.admin_client.get("/api/parties/nearby", params=params)
+        data = assert_res_success(response, ProximitySearchResponse)
+
+        nearby_ids = [p.id for p in data.nearby]
+        assert party.id in nearby_ids
+
+    @pytest.mark.asyncio
     @pytest.mark.parametrize(
         "params",
         [
-            {"start_date": "2024-01-01", "end_date": "2024-01-02"},  # missing place_id
-            {"place_id": "ChIJtest123", "end_date": "2024-01-02"},  # missing start_date
-            {"place_id": "ChIJtest123", "start_date": "2024-01-01"},  # missing end_date
             {
-                "place_id": "ChIJtest123",
-                "start_date": "01-01-2024",
-                "end_date": "2024-01-02",
-            },  # MM-DD-YYYY
-            {
-                "place_id": "ChIJtest123",
-                "start_date": "2024-01-01",
-                "end_date": "01/02/2024",
-            },  # MM/DD/YYYY
-            {
-                "place_id": "ChIJtest123",
-                "start_date": "2024/01/01",
-                "end_date": "2024-01-02",
-            },  # slashes
-            {
-                "place_id": "ChIJtest123",
-                "start_date": "2024-1-1",
-                "end_date": "2024-01-02",
-            },  # no leading zeros
-            {
-                "place_id": "ChIJtest123",
-                "start_date": "2024-01-01",
-                "end_date": "24-01-02",
-            },  # 2-digit year
+                "start_date": "2024-01-01T00:00:00Z",
+                "end_date": "2024-01-02T23:59:59Z",
+            },  # missing place_id
+            {"place_id": "ChIJtest123", "end_date": "2024-01-02T23:59:59Z"},  # missing start_date
+            {"place_id": "ChIJtest123", "start_date": "2024-01-01T00:00:00Z"},  # missing end_date
             {
                 "place_id": "ChIJtest123",
                 "start_date": "not-a-date",
-                "end_date": "2024-01-02",
+                "end_date": "2024-01-02T23:59:59Z",
             },  # invalid string
+            {
+                "place_id": "ChIJtest123",
+                "start_date": "2024-01-01T00:00:00Z",
+                "end_date": "not-a-date",
+            },  # invalid end string
         ],
     )
     async def test_get_parties_nearby_validation_errors(self, params: dict[str, str]):

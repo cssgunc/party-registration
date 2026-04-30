@@ -3,7 +3,7 @@ import { ListQueryParams, toAxiosParams } from "@/lib/api/shared/query-params";
 import apiClient from "@/lib/network/apiClient";
 import { PaginatedResponse } from "@/lib/shared";
 import { AxiosInstance } from "axios";
-import { format } from "date-fns";
+import { endOfDay } from "date-fns";
 import {
   AdminCreatePartyDto,
   PartyDto,
@@ -57,8 +57,8 @@ export class PartyService {
       {
         params: {
           place_id: placeId,
-          start_date: format(startDate, "yyyy-MM-dd"),
-          end_date: format(endDate, "yyyy-MM-dd"),
+          start_date: startDate.toISOString(),
+          end_date: endOfDay(endDate).toISOString(),
         },
       }
     );
