@@ -1,31 +1,27 @@
 import type { PoliceRole } from "@/lib/api/police/police.types";
+import z from "zod";
 
-/**
- * Account role types matching backend AccountRole enum
- */
-export type AccountRole = "student" | "staff" | "admin";
+export const ACCOUNT_ROLES = ["student", "staff", "admin"] as const;
 
-/**
- * All application-level roles, including police identities which authenticate
- * separately from SAML-based accounts.
- */
+export const accountRoleSchema = z.enum(ACCOUNT_ROLES);
+
+export type AccountRole = (typeof ACCOUNT_ROLES)[number];
+
+export type InviteTokenRole = "staff" | "admin";
+
 export type AppRole = AccountRole | PoliceRole;
 
-/**
- * DTO for creating/updating an Account
- */
-type AccountData = {
+export type AccountStatus = "active" | "unverified" | "invited";
+
+type CreateInviteDto = {
   email: string;
-  first_name: string;
-  last_name: string;
-  pid: string;
-  onyen: string;
+  role: InviteTokenRole;
+};
+
+type AccountUpdateData = {
   role: AccountRole;
 };
 
-/**
- * DTO for Account responses
- */
 type AccountDto = {
   id: number;
   email: string;
@@ -37,19 +33,24 @@ type AccountDto = {
 };
 
 /**
- * Unified row type for the Accounts table, which mixes regular accounts
- * and police accounts. Police rows have "-" for IdP-owned fields.
+ * Unified row returned by GET /api/accounts/aggregate.
+ * Combines staff/admin accounts, police accounts, and pending invite tokens.
+ * source_id is the ID of the backing entity (account, police, or invite token).
  */
-type AccountTableRow = {
-  id: number;
+type AggregateAccountDto = {
+  source_id: number;
   email: string;
-  first_name: string;
-  last_name: string;
-  pid: string;
-  onyen: string;
-  role: AppRole;
-  is_verified: boolean | null;
-  _isPolice: boolean;
+  role: string;
+  status: AccountStatus;
+  first_name: string | null;
+  last_name: string | null;
+  onyen: string | null;
+  pid: string | null;
 };
 
-export type { AccountData, AccountDto, AccountTableRow };
+export type {
+  AccountDto,
+  AccountUpdateData,
+  AggregateAccountDto,
+  CreateInviteDto,
+};

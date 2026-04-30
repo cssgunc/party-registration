@@ -2,7 +2,15 @@ from typing import Literal, TypedDict, Unpack, override
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.modules.account.account_entity import AccountEntity, AccountRole
-from src.modules.account.account_model import AccountData, AccountDto
+from src.modules.account.account_model import (
+    AccountData,
+    AccountDto,
+    AccountStatus,
+    AggregateAccountDto,
+)
+from src.modules.account.invite_token_entity import InviteTokenEntity
+from src.modules.police.police_entity import PoliceEntity
+from src.modules.police.police_model import PoliceAccountDto
 from test.utils.resource_test_utils import ResourceTestUtils
 
 
@@ -41,6 +49,61 @@ class AccountTestUtils(
             "onyen": f"faccount{count}laccount{count}",
             "role": roles[count % len(roles)].value,
         }
+
+    def assert_aggregate_matches(
+        self,
+        resource1: AggregateAccountDto | None,
+        resource2: (
+            AccountEntity
+            | AccountDto
+            | PoliceEntity
+            | PoliceAccountDto
+            | InviteTokenEntity
+            | AggregateAccountDto
+            | None
+        ),
+    ) -> None:
+        """Assert that an aggregate row matches an account, police record, invite, or DTO."""
+        assert resource1 is not None, "First aggregate resource is None"
+        assert resource2 is not None, "Second aggregate resource is None"
+
+        if isinstance(resource2, (AccountEntity, AccountDto)):
+            expected = AggregateAccountDto(
+                source_id=resource2.id,
+                email=resource2.email,
+                role=resource2.role.value,
+                status=AccountStatus.ACTIVE,
+                first_name=resource2.first_name,
+                last_name=resource2.last_name,
+                onyen=resource2.onyen,
+                pid=resource2.pid,
+            )
+        elif isinstance(resource2, (PoliceEntity, PoliceAccountDto)):
+            expected = AggregateAccountDto(
+                source_id=resource2.id,
+                email=resource2.email,
+                role=resource2.role.value,
+                status=AccountStatus.ACTIVE if resource2.is_verified else AccountStatus.UNVERIFIED,
+                first_name=None,
+                last_name=None,
+                onyen=None,
+                pid=None,
+            )
+        elif isinstance(resource2, InviteTokenEntity):
+            expected = AggregateAccountDto(
+                source_id=resource2.id,
+                email=resource2.email,
+                role=resource2.role.value,
+                status=AccountStatus.INVITED,
+                first_name=None,
+                last_name=None,
+                onyen=None,
+                pid=None,
+            )
+        else:
+            expected = resource2
+
+        assert resource1.model_dump() == expected.model_dump()
 
     # ================================ Typing Overrides ================================
 

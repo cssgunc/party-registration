@@ -4,8 +4,8 @@ import axios from "axios";
 import { encode } from "next-auth/jwt";
 import { NextResponse } from "next/server";
 import type {
+  AccessTokenPayload,
   ExchangeTokenRequest,
-  ExchangeTokenResponse,
   PoliceLoginRequest,
   PoliceLoginResponse,
   PoliceSignupRequest,
@@ -15,6 +15,7 @@ import type {
   TokenPair,
   VerifyPoliceEmailRequest,
 } from "./auth.types";
+import { accessTokenPayloadSchema } from "./auth.types";
 
 const publicApiBase = clientEnv.NEXT_PUBLIC_API_BASE_URL;
 
@@ -22,10 +23,12 @@ const publicApiBase = clientEnv.NEXT_PUBLIC_API_BASE_URL;
  * Decodes the payload of a JWT without verifying its signature.
  * Only use on tokens already validated by the backend.
  */
-export function decodeJwtPayload(token: string): Record<string, unknown> {
+export function decodeAccessTokenPayload(token: string): AccessTokenPayload {
   const base64Url = token.split(".")[1];
   const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-  return JSON.parse(Buffer.from(base64, "base64").toString());
+  return accessTokenPayloadSchema.parse(
+    JSON.parse(Buffer.from(base64, "base64").toString())
+  );
 }
 
 function internalHeaders() {
@@ -123,8 +126,8 @@ export async function refreshSessionCookie(
 
 export async function exchangeToken(
   data: ExchangeTokenRequest
-): Promise<ExchangeTokenResponse> {
-  const resp = await axios.post<ExchangeTokenResponse>(
+): Promise<TokenPair> {
+  const resp = await axios.post<TokenPair>(
     `${serverEnv.API_BASE_URL}/auth/exchange`,
     data,
     { headers: internalHeaders() }

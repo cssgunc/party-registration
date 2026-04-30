@@ -53,6 +53,7 @@ class Config(BaseSettings):
     PARTY_SEARCH_RADIUS_MILES: float = 0.1
     CHPD_EMAIL_DOMAIN: str = "chapelhillnc.gov"
     EMAIL_VERIFICATION_TOKEN_EXPIRE_HOURS: int = 24
+    INVITE_TOKEN_EXPIRY_HOURS: int = 48
 
 
 env = Config()  # pyright: ignore[reportCallIssue]

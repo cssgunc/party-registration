@@ -64,7 +64,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { DeleteConfirmDialog } from "../dialog/DeleteConfirmDialog";
 import { useSidebar } from "../sidebar/SidebarContext";
 import { ColumnHeader } from "./ColumnHeader";
@@ -104,7 +104,15 @@ export type TableProps<T> = {
   onExportCsv?: (params: ListQueryParams) => void;
   isExporting?: boolean;
   canManageRows?: boolean;
+  canEditRow?: (row: T) => boolean;
   canDeleteRow?: (row: T) => boolean;
+  rowActions?: {
+    label: string;
+    onClick: (row: T) => void;
+    icon?: ReactNode;
+    isVisible?: (row: T) => boolean;
+    variant?: "default" | "destructive";
+  }[];
 };
 
 export function TableTemplate<T extends object>({
@@ -129,7 +137,9 @@ export function TableTemplate<T extends object>({
   onExportCsv,
   isExporting,
   canManageRows,
+  canEditRow,
   canDeleteRow,
+  rowActions,
 }: TableProps<T>) {
   const isServerMode = !!serverMeta;
   const { isOpen, openSidebar, closeSidebar } = useSidebar();
@@ -347,13 +357,25 @@ export function TableTemplate<T extends object>({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    {onEdit && (
+                    {onEdit && (!canEditRow || canEditRow(row.original)) && (
                       <DropdownMenuItem
                         onClick={() => handleEditClick(row.id, row.original)}
                       >
                         <Pencil className="mr-2 size-4" />
                         Edit
                       </DropdownMenuItem>
+                    )}
+                    {rowActions?.map((action) =>
+                      !action.isVisible || action.isVisible(row.original) ? (
+                        <DropdownMenuItem
+                          key={action.label}
+                          onClick={() => action.onClick(row.original)}
+                          variant={action.variant}
+                        >
+                          {action.icon}
+                          {action.label}
+                        </DropdownMenuItem>
+                      ) : null
                     )}
                     {onDelete &&
                       (!canDeleteRow || canDeleteRow(row.original)) && (

@@ -1,10 +1,10 @@
-from enum import Enum, StrEnum
+from enum import StrEnum
 
 from pydantic import BaseModel, EmailStr, Field
 from src.core.utils.query_utils import PaginatedResponse
 
 
-class AccountRole(Enum):
+class AccountRole(StrEnum):
     STUDENT = "student"
     STAFF = "staff"
     ADMIN = "admin"
@@ -16,6 +16,17 @@ class Role(StrEnum):
     ADMIN = "admin"
     OFFICER = "officer"
     POLICE_ADMIN = "police_admin"
+
+
+class InviteTokenRole(StrEnum):
+    STAFF = "staff"
+    ADMIN = "admin"
+
+
+class AccountStatus(StrEnum):
+    ACTIVE = "active"
+    UNVERIFIED = "unverified"
+    INVITED = "invited"
 
 
 class AccountData(BaseModel):
@@ -47,7 +58,33 @@ class AccountUpdateData(BaseModel):
     role: AccountRole
 
 
+class CreateInviteDto(BaseModel):
+    """DTO for creating a staff/admin invitation."""
+
+    email: EmailStr
+    role: InviteTokenRole
+
+
+class AggregateAccountDto(BaseModel):
+    """DTO for the unified accounts aggregate view."""
+
+    source_id: int
+    email: EmailStr
+    role: str
+    status: AccountStatus
+    first_name: str | None = None
+    last_name: str | None = None
+    onyen: str | None = None
+    pid: str | None = None
+
+
 class PaginatedAccountsResponse(PaginatedResponse[AccountDto]):
     """Paginated response for accounts."""
+
+    pass
+
+
+class PaginatedAggregateAccountsResponse(PaginatedResponse[AggregateAccountDto]):
+    """Paginated response for the aggregate accounts view."""
 
     pass

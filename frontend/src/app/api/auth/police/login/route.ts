@@ -1,8 +1,9 @@
 import {
-  decodeJwtPayload,
+  decodeAccessTokenPayload,
   policeLogin,
   setAuthCookies,
 } from "@/lib/api/auth/auth.service";
+import { policeAccessTokenPayloadSchema } from "@/lib/api/auth/auth.types";
 import { PoliceRole } from "@/lib/api/police/police.types";
 import { isAxiosError } from "axios";
 import { NextRequest, NextResponse } from "next/server";
@@ -23,14 +24,10 @@ export async function POST(req: NextRequest) {
   try {
     const data = await policeLogin({ email, password });
 
-    const payload = decodeJwtPayload(data.access_token);
+    const payload = policeAccessTokenPayloadSchema.parse(
+      decodeAccessTokenPayload(data.access_token)
+    );
     const payloadRole = payload.role;
-    if (payloadRole !== "officer" && payloadRole !== "police_admin") {
-      return NextResponse.json(
-        { error: "Invalid token role" },
-        { status: 401 }
-      );
-    }
     const policeId = String(payload.sub);
 
     const res = NextResponse.json({ ok: true });

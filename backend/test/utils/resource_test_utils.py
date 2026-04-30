@@ -11,7 +11,7 @@ from src.core.database import EntityBase
 class ResourceTestUtils[
     ResourceEntity: EntityBase,
     ResourceData: BaseModel,
-    OtherModels: BaseModel,
+    OtherModels: BaseModel | None = None,
 ](ABC):
     """Abstract base class for test utilities that manage resource creation and
     validation.

@@ -32,6 +32,7 @@ from src.modules.police.police_service import PoliceService
 from src.modules.student.student_service import StudentService
 
 from test.modules.account.account_utils import AccountTestUtils
+from test.modules.account.invite_token_utils import InviteTokenTestUtils
 from test.modules.auth.auth_utils import AuthTestUtils
 from test.modules.incident.incident_utils import IncidentTestUtils
 from test.modules.location.location_utils import GmapsMockUtils, LocationTestUtils
@@ -220,8 +221,8 @@ async def unauthenticated_client(create_test_client: CreateClientCallable):
 
 
 @pytest.fixture()
-def account_service(test_session: AsyncSession):
-    return AccountService(session=test_session)
+def account_service(test_session: AsyncSession, mock_email_service: EmailService):
+    return AccountService(session=test_session, email_service=mock_email_service)
 
 
 @pytest.fixture()
@@ -367,3 +368,8 @@ def party_utils(
     return PartyTestUtils(
         session=test_session, location_utils=location_utils, student_utils=student_utils
     )
+
+
+@pytest.fixture()
+def invite_token_utils(test_session: AsyncSession):
+    return InviteTokenTestUtils(session=test_session)
