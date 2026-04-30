@@ -29,15 +29,12 @@ def upgrade() -> None:
             sa.Enum("STAFF", "ADMIN", name="invitetokenrole", native_enum=False, length=20),
             nullable=False,
         ),
-        sa.Column("token", sa.String(length=255), nullable=False),
         sa.Column("expires_at", src.core.types.UTCDateTime(fsp=6), nullable=False),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_invite_tokens_email"), "invite_tokens", ["email"], unique=True)
-    op.create_index(op.f("ix_invite_tokens_token"), "invite_tokens", ["token"], unique=True)
 
 
 def downgrade() -> None:
-    op.drop_index(op.f("ix_invite_tokens_token"), table_name="invite_tokens")
     op.drop_index(op.f("ix_invite_tokens_email"), table_name="invite_tokens")
     op.drop_table("invite_tokens")
