@@ -1,5 +1,10 @@
 import { AccountService } from "@/lib/api/account/account.service";
-import { AccountData, AccountDto } from "@/lib/api/account/account.types";
+import {
+  AccountDto,
+  AccountUpdateData,
+  AggregateAccountDto,
+  CreateInviteDto,
+} from "@/lib/api/account/account.types";
 import type {
   PoliceAccountDto,
   PoliceAccountUpdate,
@@ -21,10 +26,11 @@ const accountService = new AccountService();
 
 export const ACCOUNTS_KEY = ["accounts"] as const;
 export const POLICE_ACCOUNTS_KEY = ["police-accounts"] as const;
+export const AGGREGATE_ACCOUNTS_KEY = ["accounts", "aggregate"] as const;
 
 type UpdateAccountVars = {
   id: number;
-  data: AccountData;
+  data: AccountUpdateData;
 };
 
 type UpdatePoliceAccountVars = {
@@ -69,18 +75,63 @@ export function usePoliceAccountsPaginated(
 }
 
 export function useCreateAccount(
-  options?: OptimisticMutationOptions<AccountDto, Error, AccountData>
+  options?: OptimisticMutationOptions<void, Error, CreateInviteDto>
 ) {
   const queryClient = useQueryClient();
 
   return useMutation({
     ...options,
-    mutationFn: (data: AccountData) => accountService.createAccount(data),
+    mutationFn: (data: CreateInviteDto) => accountService.createAccount(data),
 
     onSuccess: (...params) => {
       queryClient.invalidateQueries({ queryKey: ACCOUNTS_KEY });
+      queryClient.invalidateQueries({ queryKey: AGGREGATE_ACCOUNTS_KEY });
       options?.onSuccess?.(...params);
     },
+  });
+}
+
+export function useDeleteInvite(
+  options?: OptimisticMutationOptions<void, Error, number>
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...options,
+    mutationFn: (inviteId: number) => accountService.deleteInvite(inviteId),
+
+    onSuccess: (...params) => {
+      queryClient.invalidateQueries({ queryKey: AGGREGATE_ACCOUNTS_KEY });
+      options?.onSuccess?.(...params);
+    },
+  });
+}
+
+export function useResendInvite(
+  options?: OptimisticMutationOptions<void, Error, number>
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...options,
+    mutationFn: (inviteId: number) => accountService.resendInvite(inviteId),
+
+    onSuccess: (...params) => {
+      queryClient.invalidateQueries({ queryKey: AGGREGATE_ACCOUNTS_KEY });
+      options?.onSuccess?.(...params);
+    },
+  });
+}
+
+export function useAggregateAccounts(
+  serverParams?: ServerTableParams,
+  options?: UseQueryOptions<PaginatedResponse<AggregateAccountDto>>
+) {
+  return useQuery({
+    queryKey: [...AGGREGATE_ACCOUNTS_KEY, serverParams ?? "all"],
+    queryFn: () => accountService.getAccountsAggregate(serverParams),
+    placeholderData: keepPreviousData,
+    ...options,
   });
 }
 
@@ -96,6 +147,7 @@ export function useUpdateAccount(
 
     onSuccess: (...params) => {
       queryClient.invalidateQueries({ queryKey: ACCOUNTS_KEY });
+      queryClient.invalidateQueries({ queryKey: AGGREGATE_ACCOUNTS_KEY });
       options?.onSuccess?.(...params);
     },
   });
@@ -140,6 +192,7 @@ export function useDeleteAccount(
 
     onSuccess: (...params) => {
       queryClient.invalidateQueries({ queryKey: ACCOUNTS_KEY });
+      queryClient.invalidateQueries({ queryKey: AGGREGATE_ACCOUNTS_KEY });
       options?.onSuccess?.(...params);
     },
   });
@@ -161,6 +214,7 @@ export function useUpdatePoliceAccount(
 
     onSuccess: (...params) => {
       queryClient.invalidateQueries({ queryKey: POLICE_ACCOUNTS_KEY });
+      queryClient.invalidateQueries({ queryKey: AGGREGATE_ACCOUNTS_KEY });
       options?.onSuccess?.(...params);
     },
   });
@@ -169,6 +223,12 @@ export function useUpdatePoliceAccount(
 export function useDownloadAccountsCsv() {
   return useMutation<void, Error, ListQueryParams | undefined>({
     mutationFn: (params) => accountService.downloadAccountsCsv(params),
+  });
+}
+
+export function useDownloadAggregateAccountsCsv() {
+  return useMutation<void, Error, ServerTableParams | undefined>({
+    mutationFn: (params) => accountService.downloadAggregateAccountsCsv(params),
   });
 }
 
@@ -205,6 +265,7 @@ export function useDeletePoliceAccount(
 
     onSuccess: (...params) => {
       queryClient.invalidateQueries({ queryKey: POLICE_ACCOUNTS_KEY });
+      queryClient.invalidateQueries({ queryKey: AGGREGATE_ACCOUNTS_KEY });
       options?.onSuccess?.(...params);
     },
   });

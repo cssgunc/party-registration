@@ -1,14 +1,125 @@
+from unittest.mock import AsyncMock
+
 import pytest
 from src.modules.account.account_entity import AccountEntity
-from src.modules.account.account_model import AccountRole, AccountUpdateData
+from src.modules.account.account_model import (
+    AccountRole,
+    AccountUpdateData,
+    CreateInviteDto,
+    InviteTokenRole,
+)
 from src.modules.account.account_service import (
-    AccountByEmailNotFoundException,
-    AccountByPidNotFoundException,
     AccountConflictException,
     AccountNotFoundException,
     AccountService,
 )
 from test.modules.account.account_utils import AccountTestUtils
+from test.modules.account.invite_token_utils import InviteTokenTestUtils
+
+
+class TestCreateInvite:
+    account_service: AccountService
+    invite_token_utils: InviteTokenTestUtils
+    mock_email_service: AsyncMock
+
+    @pytest.fixture(autouse=True)
+    def _setup(
+        self,
+        account_service: AccountService,
+        invite_token_utils: InviteTokenTestUtils,
+        mock_email_service: AsyncMock,
+    ):
+        self.account_service = account_service
+        self.invite_token_utils = invite_token_utils
+        self.mock_email_service = mock_email_service
+
+    @pytest.mark.asyncio
+    async def test_create_invite_deletes_token_if_email_send_fails(self) -> None:
+        data = CreateInviteDto(email="failed-invite@unc.edu", role=InviteTokenRole.STAFF)
+        self.mock_email_service.send_email.side_effect = RuntimeError("smtp down")
+
+        with pytest.raises(RuntimeError, match="smtp down"):
+            await self.account_service.create_invite(data)
+
+        invites = await self.invite_token_utils.get_all()
+        assert invites == []
+
+    @pytest.mark.asyncio
+    async def test_create_invite_replaces_expired_token(self) -> None:
+        expired_invite = await self.invite_token_utils.create_expired(
+            email="expired-invite@unc.edu"
+        )
+
+        await self.account_service.create_invite(
+            CreateInviteDto(email=expired_invite.email, role=InviteTokenRole.ADMIN)
+        )
+
+        invites = await self.invite_token_utils.get_all()
+        assert len(invites) == 1
+
+        recreated_invite = invites[0]
+        self.invite_token_utils.assert_matches(
+            recreated_invite,
+            email=expired_invite.email,
+            role=InviteTokenRole.ADMIN,
+        )
+        assert recreated_invite.id != expired_invite.id
+
+
+class TestResendInvite:
+    account_service: AccountService
+    invite_token_utils: InviteTokenTestUtils
+    mock_email_service: AsyncMock
+
+    @pytest.fixture(autouse=True)
+    def _setup(
+        self,
+        account_service: AccountService,
+        invite_token_utils: InviteTokenTestUtils,
+        mock_email_service: AsyncMock,
+    ):
+        self.account_service = account_service
+        self.invite_token_utils = invite_token_utils
+        self.mock_email_service = mock_email_service
+
+    @pytest.mark.asyncio
+    async def test_resend_invite_extends_expiry(self) -> None:
+        invite = await self.invite_token_utils.create_one()
+        original_expires_at = invite.expires_at
+
+        await self.account_service.resend_invite(invite.id)
+
+        invites = await self.invite_token_utils.get_all()
+        assert len(invites) == 1
+        resent_invite = invites[0]
+        self.invite_token_utils.assert_matches(
+            resent_invite,
+            email=invite.email,
+            role=invite.role,
+        )
+        assert resent_invite.id == invite.id
+        assert resent_invite.expires_at > original_expires_at
+        self.mock_email_service.send_email.assert_awaited()
+
+    @pytest.mark.asyncio
+    async def test_resend_invite_restores_expiry_if_email_fails(self) -> None:
+        invite = await self.invite_token_utils.create_one()
+        original_expires_at = invite.expires_at
+        self.mock_email_service.send_email.side_effect = RuntimeError("smtp down")
+
+        with pytest.raises(RuntimeError, match="smtp down"):
+            await self.account_service.resend_invite(invite.id)
+
+        invites = await self.invite_token_utils.get_all()
+        assert len(invites) == 1
+        restored_invite = invites[0]
+        assert restored_invite.id == invite.id
+        self.invite_token_utils.assert_matches(
+            restored_invite,
+            email=invite.email,
+            role=invite.role,
+            expires_at=original_expires_at,
+        )
 
 
 class TestAccountService:
@@ -62,24 +173,24 @@ class TestAccountService:
         self,
         accounts_two_per_role: list[AccountEntity],
     ):
-        fetched = await self.account_service.get_account_by_id(accounts_two_per_role[0].id)
+        fetched = await self.account_service.get_account_by(id=accounts_two_per_role[0].id)
         self.account_utils.assert_matches(fetched, accounts_two_per_role[0])
 
     @pytest.mark.asyncio
     async def test_get_account_by_id_not_found(self):
         with pytest.raises(AccountNotFoundException):
-            await self.account_service.get_account_by_id(999)
+            await self.account_service.get_account_by(id=999)
 
     @pytest.mark.asyncio
     async def test_get_account_by_email(self, accounts_two_per_role: list[AccountEntity]):
         account = accounts_two_per_role[0]
-        fetched = await self.account_service.get_account_by_email(account.email)
+        fetched = await self.account_service.get_account_by(email=account.email)
         self.account_utils.assert_matches(fetched, account)
 
     @pytest.mark.asyncio
     async def test_get_account_by_email_not_found(self):
-        with pytest.raises(AccountByEmailNotFoundException):
-            await self.account_service.get_account_by_email("nonexistent@example.com")
+        with pytest.raises(AccountNotFoundException):
+            await self.account_service.get_account_by(email="nonexistent@example.com")
 
     @pytest.mark.asyncio
     async def test_update_account_role(self):
@@ -113,7 +224,7 @@ class TestAccountService:
         assert deleted.email == account.email
 
         with pytest.raises(AccountNotFoundException):
-            await self.account_service.get_account_by_id(account.id)
+            await self.account_service.get_account_by(id=account.id)
 
     @pytest.mark.asyncio
     async def test_delete_account_not_found(self):
@@ -213,15 +324,15 @@ class TestAccountService:
         account = await self.account_service.create_account(data)
 
         # Should find with lowercase
-        found_lower = await self.account_service.get_account_by_email("findme@example.com")
+        found_lower = await self.account_service.get_account_by(email="findme@example.com")
         assert found_lower.id == account.id
 
         # Should find with uppercase
-        found_upper = await self.account_service.get_account_by_email("FINDME@EXAMPLE.COM")
+        found_upper = await self.account_service.get_account_by(email="FINDME@EXAMPLE.COM")
         assert found_upper.id == account.id
 
         # Should find with mixed case
-        found_mixed = await self.account_service.get_account_by_email("FiNdMe@ExAmPlE.cOm")
+        found_mixed = await self.account_service.get_account_by(email="FiNdMe@ExAmPlE.cOm")
         assert found_mixed.id == account.id
 
     @pytest.mark.asyncio
@@ -230,12 +341,12 @@ class TestAccountService:
         data = await self.account_utils.next_data()
         account = await self.account_service.create_account(data)
 
-        found = await self.account_service.get_account_by_pid(account.pid)
+        found = await self.account_service.get_account_by(pid=account.pid)
         assert found.id == account.id
         assert found.pid == account.pid
 
     @pytest.mark.asyncio
     async def test_get_account_by_pid_not_found(self) -> None:
         """Test that getting account by non-existent PID raises error."""
-        with pytest.raises(AccountByPidNotFoundException):
-            await self.account_service.get_account_by_pid("999999999")
+        with pytest.raises(AccountNotFoundException):
+            await self.account_service.get_account_by(pid="999999999")

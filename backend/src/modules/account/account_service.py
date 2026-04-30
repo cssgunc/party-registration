@@ -1,37 +1,51 @@
-from datetime import UTC, datetime
-from typing import ClassVar
+from datetime import UTC, datetime, timedelta
+from typing import ClassVar, TypedDict, Unpack
 
 from fastapi import Depends, Request
-from sqlalchemy import select
+from sqlalchemy import String, case, cast, func, literal, null, select, union_all
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from src.core.config import env
 from src.core.database import get_session
 from src.core.exceptions import ConflictException, ForbiddenException, NotFoundException
+from src.core.utils.email_utils import EmailService
 from src.core.utils.excel_utils import ExcelExporter
-from src.core.utils.query_utils import get_paginated_results, parse_pagination_params
+from src.core.utils.query_utils import (
+    SortOrder,
+    SortParam,
+    get_paginated_results,
+    parse_pagination_params,
+)
 from src.modules.account.account_entity import AccountEntity, AccountRole
 from src.modules.account.account_model import (
     AccountData,
     AccountDto,
     AccountUpdateData,
+    AggregateAccountDto,
+    CreateInviteDto,
     PaginatedAccountsResponse,
+    PaginatedAggregateAccountsResponse,
 )
+from src.modules.account.invite_token_entity import InviteTokenEntity
+from src.modules.police.police_entity import PoliceEntity
 
 
-class AccountNotFoundException(NotFoundException):
-    def __init__(self, account_id: int):
-        super().__init__(f"Account with ID {account_id} not found")
+class AccountUniqueFields(TypedDict, total=False):
+    id: int | None
+    email: str | None
+    onyen: str | None
+    pid: str | None
 
 
 class AccountConflictException(ConflictException):
-    def __init__(self, email: str | None = None, onyen: str | None = None, pid: str | None = None):
-        parts = []
-        if email is not None:
-            parts.append(f"email {email}")
-        if onyen is not None:
-            parts.append(f"onyen {onyen}")
-        if pid is not None:
-            parts.append(f"PID {pid}")
+    def __init__(self, **fields: Unpack[AccountUniqueFields]):
+        display_names = {
+            "id": "id",
+            "email": "email",
+            "onyen": "onyen",
+            "pid": "PID",
+        }
+        parts = [f"{display_names[key]} {val}" for key, val in fields.items()]
 
         if parts:
             super().__init__(f"Account with {' or '.join(parts)} already exists")
@@ -39,24 +53,24 @@ class AccountConflictException(ConflictException):
             super().__init__("Account already exists")
 
 
-class AccountByEmailNotFoundException(NotFoundException):
-    def __init__(self, email: str):
-        super().__init__(f"Account with email {email} not found")
+class AccountNotFoundException(NotFoundException):
+    def __init__(self, **fields: Unpack[AccountUniqueFields]):
+        parts = [f"{key} {val}" for key, val in fields.items()]
 
-
-class AccountByPidNotFoundException(NotFoundException):
-    def __init__(self, pid: str):
-        super().__init__(f"Account with PID {pid} not found")
-
-
-class AccountByOnyenNotFoundException(NotFoundException):
-    def __init__(self, onyen: str):
-        super().__init__(f"Account with onyen {onyen} not found")
+        if parts:
+            super().__init__(f"Account with {' or '.join(parts)} not found")
+        else:
+            super().__init__("Account not found")
 
 
 class CannotDeleteOwnAccountException(ForbiddenException):
     def __init__(self):
         super().__init__(detail="Admins cannot delete their own account")
+
+
+class InviteConflictException(ConflictException):
+    def __init__(self, email: str):
+        super().__init__(f"An account or pending invitation already exists for {email}")
 
 
 class AccountService:
@@ -70,42 +84,46 @@ class AccountService:
         "role",
     ]
 
-    def __init__(self, session: AsyncSession = Depends(get_session)):
+    _AGGREGATE_ALLOWED_FIELDS: ClassVar[list[str]] = [
+        "email",
+        "first_name",
+        "last_name",
+        "onyen",
+        "pid",
+        "role",
+        "status",
+    ]
+
+    def __init__(
+        self,
+        session: AsyncSession = Depends(get_session),
+        email_service: EmailService = Depends(),
+    ):
         self.session = session
+        self.email_service = email_service
 
-    async def _get_account_entity_by_id(self, account_id: int) -> AccountEntity:
-        result = await self.session.execute(
-            select(AccountEntity).where(AccountEntity.id == account_id)
-        )
-        account_entity = result.scalar_one_or_none()
-        if account_entity is None:
-            raise AccountNotFoundException(account_id)
-        return account_entity
+    async def _get_account_entity_by(self, **fields: Unpack[AccountUniqueFields]) -> AccountEntity:
+        clause_builders = {
+            "id": lambda v: AccountEntity.id == v,
+            "email": lambda v: AccountEntity.email.ilike(v),
+            "pid": lambda v: AccountEntity.pid == v,
+            "onyen": lambda v: AccountEntity.onyen.ilike(v),
+        }
+        query = select(AccountEntity)
+        for key, val in fields.items():
+            query = query.where(clause_builders[key](val))
 
-    async def _get_account_entity_by_email(self, email: str) -> AccountEntity:
-        result = await self.session.execute(
-            select(AccountEntity).where(AccountEntity.email.ilike(email))
-        )
+        result = await self.session.execute(query)
         account = result.scalar_one_or_none()
         if account is None:
-            raise AccountByEmailNotFoundException(email)
+            raise AccountNotFoundException(**fields)
         return account
 
-    async def _get_account_entity_by_pid(self, pid: str) -> AccountEntity:
-        result = await self.session.execute(select(AccountEntity).where(AccountEntity.pid == pid))
-        account = result.scalar_one_or_none()
-        if account is None:
-            raise AccountByPidNotFoundException(pid)
-        return account
-
-    async def _get_account_entity_by_onyen(self, onyen: str) -> AccountEntity:
+    async def _get_invite_token_by_email(self, email: str) -> InviteTokenEntity | None:
         result = await self.session.execute(
-            select(AccountEntity).where(AccountEntity.onyen.ilike(onyen))
+            select(InviteTokenEntity).where(InviteTokenEntity.email.ilike(email))
         )
-        account = result.scalar_one_or_none()
-        if account is None:
-            raise AccountByOnyenNotFoundException(onyen)
-        return account
+        return result.scalar_one_or_none()
 
     async def get_accounts(self) -> list[AccountDto]:
         result = await self.session.execute(select(AccountEntity))
@@ -116,25 +134,11 @@ class AccountService:
         self,
         request: Request,
     ) -> PaginatedAccountsResponse:
-        """
-        Get accounts with server-side pagination, sorting, and filtering.
-
-        Query parameters are automatically parsed from the request:
-        - page_number: Page number (1-indexed, default: 1)
-        - page_size: Items per page (default: all)
-        - sort_by: Field to sort by
-        - sort_order: Sort order ('asc' or 'desc')
-
-        Returns:
-            PaginatedAccountsResponse with items and metadata
-        """
-        # Define allowed fields for sorting and filtering
         allowed_sort_fields = allowed_filter_fields = self._ALLOWED_FIELDS
+        base_query = select(AccountEntity).where(
+            AccountEntity.role.in_([AccountRole.STAFF, AccountRole.ADMIN])
+        )
 
-        # Build base query
-        base_query = select(AccountEntity)
-
-        # Parse query params and get paginated results
         query_params = parse_pagination_params(
             request,
             allowed_sort_fields=allowed_sort_fields,
@@ -149,7 +153,6 @@ class AccountService:
             AccountEntity.onyen,
         ]
 
-        # Use the generic pagination utility
         result = await get_paginated_results(
             session=self.session,
             base_query=base_query,
@@ -163,11 +166,9 @@ class AccountService:
         return PaginatedAccountsResponse(**result.model_dump())
 
     async def get_accounts_for_export(self, request: Request) -> list[AccountDto]:
-        """Get all accounts for export, ignoring pagination."""
         return (await self.get_accounts_paginated(request)).items
 
     def export_accounts_to_excel(self, accounts: list[AccountDto]) -> bytes:
-        """Export accounts to Excel bytes."""
         headers = ["Onyen", "Email", "First Name", "Last Name", "PID", "Role"]
         exporter = ExcelExporter(sheet_title=f"Accounts {datetime.now(UTC).strftime('%Y-%m-%d')}")
         exporter.set_headers(headers)
@@ -184,6 +185,26 @@ class AccountService:
             )
         return exporter.to_bytes()
 
+    def export_aggregate_accounts_to_excel(self, accounts: list[AggregateAccountDto]) -> bytes:
+        headers = ["Email", "First Name", "Last Name", "Onyen", "PID", "Role", "Status"]
+        exporter = ExcelExporter(
+            sheet_title=f"Aggregate Accounts {datetime.now(UTC).strftime('%Y-%m-%d')}"
+        )
+        exporter.set_headers(headers)
+        for account in accounts:
+            exporter.add_row(
+                [
+                    account.email,
+                    account.first_name,
+                    account.last_name,
+                    account.onyen,
+                    account.pid,
+                    account.role.replace("_", " ").title(),
+                    account.status.value.capitalize(),
+                ]
+            )
+        return exporter.to_bytes()
+
     async def get_accounts_by_roles(
         self, roles: list[AccountRole] | None = None
     ) -> list[AccountDto]:
@@ -195,86 +216,70 @@ class AccountService:
         accounts = result.scalars().all()
         return [account.to_dto() for account in accounts]
 
-    async def get_account_by_id(self, account_id: int) -> AccountDto:
-        account_entity = await self._get_account_entity_by_id(account_id)
-        return account_entity.to_dto()
-
-    async def get_account_by_email(self, email: str) -> AccountDto:
-        account_entity = await self._get_account_entity_by_email(email)
-        return account_entity.to_dto()
-
-    async def get_account_by_onyen(self, onyen: str) -> AccountDto:
-        account_entity = await self._get_account_entity_by_onyen(onyen)
-        return account_entity.to_dto()
-
-    async def get_account_by_pid(self, pid: str) -> AccountDto:
-        account_entity = await self._get_account_entity_by_pid(pid)
+    async def get_account_by(self, **fields: Unpack[AccountUniqueFields]) -> AccountDto:
+        account_entity = await self._get_account_entity_by(**fields)
         return account_entity.to_dto()
 
     async def create_account(self, data: AccountData) -> AccountDto:
-        # Check for email conflicts (case-insensitive)
-        try:
-            await self._get_account_entity_by_email(data.email)
-            # If we get here, account exists
-            raise AccountConflictException(email=data.email)
-        except AccountByEmailNotFoundException:
-            # Account doesn't exist, proceed
-            pass
-
-        # Check for PID conflicts
-        try:
-            await self._get_account_entity_by_pid(data.pid)
-            # If we get here, account exists
-            raise AccountConflictException(pid=data.pid)
-        except AccountByPidNotFoundException:
-            # Account doesn't exist, proceed
-            pass
-
-        # Check for onyen conflicts
-        try:
-            await self._get_account_entity_by_onyen(data.onyen)
-            # If we get here, onyen exists
-            raise AccountConflictException(onyen=data.onyen)
-        except AccountByOnyenNotFoundException:
-            # Onyen doesn't exist, proceed with creation
-            pass
-
-        new_account = AccountEntity(
-            email=data.email,
-            first_name=data.first_name,
-            last_name=data.last_name,
-            pid=data.pid,
-            onyen=data.onyen,
-            role=AccountRole(data.role.value),
-        )
+        new_account = AccountEntity.from_data(data)
         try:
             self.session.add(new_account)
             await self.session.commit()
         except IntegrityError as e:
-            # Handle race condition where another session inserted the same email, pid, or onyen
-            raise AccountConflictException(email=data.email, onyen=data.onyen, pid=data.pid) from e
+            msg = str(e.orig).lower()
+            present_fields = [
+                f for f in AccountUniqueFields.__annotations__ if f in msg and hasattr(data, f)
+            ]
+            raise AccountConflictException(**{f: getattr(data, f) for f in present_fields}) from e
         await self.session.refresh(new_account)
         return new_account.to_dto()
 
     async def update_account(self, account_id: int, data: AccountUpdateData) -> AccountDto:
-        account_entity = await self._get_account_entity_by_id(account_id)
-        account_entity.role = AccountRole(data.role.value)
+        account_entity = await self._get_account_entity_by(id=account_id)
+        account_entity.role = data.role
         self.session.add(account_entity)
         await self.session.commit()
         await self.session.refresh(account_entity)
         return account_entity.to_dto()
 
     async def delete_account(self, account_id: int) -> AccountDto:
-        account_entity = await self._get_account_entity_by_id(account_id)
+        account_entity = await self._get_account_entity_by(id=account_id)
         account = account_entity.to_dto()
         await self.session.delete(account_entity)
         await self.session.commit()
         return account
 
+    async def delete_invite(self, invite_id: int) -> None:
+        invite = await self.session.get(InviteTokenEntity, invite_id)
+        if invite is None:
+            raise NotFoundException(detail=f"Invite token with id {invite_id} not found")
+        await self.session.delete(invite)
+        await self.session.commit()
+
+    async def resend_invite(self, invite_id: int) -> None:
+        invite = await self.session.get(InviteTokenEntity, invite_id)
+        if invite is None:
+            raise NotFoundException(detail=f"Invite token with id {invite_id} not found")
+
+        previous_expires_at = invite.expires_at
+        invite.expires_at = datetime.now(UTC) + timedelta(hours=env.INVITE_TOKEN_EXPIRY_HOURS)
+
+        self.session.add(invite)
+        await self.session.commit()
+        await self.session.refresh(invite)
+
+        try:
+            await self._send_invite_email(invite.email)
+        except Exception:
+            invite.expires_at = previous_expires_at
+            self.session.add(invite)
+            await self.session.commit()
+            raise
+
     async def upsert_idp_account(self, data: AccountData) -> AccountDto:
         try:
-            account_entity = await self._get_account_entity_by_onyen(data.onyen)
-        except AccountByOnyenNotFoundException as e:
+            account_entity = await self._get_account_entity_by(onyen=data.onyen)
+        except AccountNotFoundException as e:
             if data.role != AccountRole.STUDENT:
                 raise ForbiddenException(detail="No matching account found") from e
             return await self.create_account(data)
@@ -290,3 +295,161 @@ class AccountService:
         await self.session.commit()
         await self.session.refresh(account_entity)
         return account_entity.to_dto()
+
+    async def create_invite(self, data: CreateInviteDto) -> None:
+        try:
+            await self._get_account_entity_by(email=data.email)
+            raise InviteConflictException(data.email)
+        except AccountNotFoundException:
+            pass
+
+        now = datetime.now(UTC)
+        existing_invite = await self._get_invite_token_by_email(data.email)
+        if existing_invite is not None:
+            if not existing_invite.is_expired(now):
+                raise InviteConflictException(data.email)
+            await self.session.delete(existing_invite)
+            await self.session.flush()
+
+        invite = InviteTokenEntity.from_data(data)
+        try:
+            self.session.add(invite)
+            await self.session.commit()
+        except IntegrityError as e:
+            await self.session.rollback()
+            raise InviteConflictException(data.email) from e
+
+        try:
+            await self._send_invite_email(data.email)
+        except Exception:
+            await self.session.delete(invite)
+            await self.session.commit()
+            raise
+
+    async def _send_invite_email(self, to: str) -> None:
+        login_url = f"{env.FRONTEND_BASE_URL}/staff/login"
+        html = f"""
+            <p>You have been invited to join PartySmart as a staff member.</p>
+            <p>Sign in with your UNC credentials at the link below:</p>
+            <p><a href="{login_url}">{login_url}</a></p>
+            <p>Your invitation will expire in {env.INVITE_TOKEN_EXPIRY_HOURS} hours.</p>
+        """
+        await self.email_service.send_email(to, "You're invited to PartySmart", html)
+
+    async def provision_staff_account(self, data: AccountData) -> AccountDto:
+        try:
+            account_entity = await self._get_account_entity_by(pid=data.pid)
+        except AccountNotFoundException:
+            account_entity = None
+
+        invite = await self._get_invite_token_by_email(data.email)
+
+        if account_entity is not None and account_entity.role in {
+            AccountRole.STAFF,
+            AccountRole.ADMIN,
+        }:
+            account_entity.first_name = data.first_name
+            account_entity.last_name = data.last_name
+            account_entity.email = data.email
+            account_entity.onyen = data.onyen
+            account_entity.pid = data.pid
+
+            if invite is not None:
+                await self.session.delete(invite)
+
+            self.session.add(account_entity)
+            await self.session.commit()
+            await self.session.refresh(account_entity)
+            return account_entity.to_dto()
+
+        if invite is None:
+            raise ForbiddenException(detail="No matching invite token found")
+
+        if invite.is_expired(datetime.now(UTC)):
+            raise ForbiddenException(detail="Invite token has expired")
+
+        new_account = AccountEntity.from_data(data)
+        new_account.role = AccountRole(invite.role.value)
+        try:
+            self.session.add(new_account)
+            await self.session.delete(invite)
+            await self.session.commit()
+        except IntegrityError as e:
+            await self.session.rollback()
+            raise AccountConflictException(email=data.email, onyen=data.onyen, pid=data.pid) from e
+        await self.session.refresh(new_account)
+        return new_account.to_dto()
+
+    async def get_aggregate_accounts_paginated(
+        self, request: Request
+    ) -> PaginatedAggregateAccountsResponse:
+        accounts_sq = select(
+            AccountEntity.id.label("source_id"),
+            AccountEntity.email.label("email"),
+            func.lower(cast(AccountEntity.role, String)).label("role"),
+            literal("active").label("status"),
+            AccountEntity.first_name.label("first_name"),
+            AccountEntity.last_name.label("last_name"),
+            AccountEntity.onyen.label("onyen"),
+            AccountEntity.pid.label("pid"),
+        ).where(AccountEntity.role.in_([AccountRole.STAFF, AccountRole.ADMIN]))
+
+        police_sq = select(
+            PoliceEntity.id.label("source_id"),
+            PoliceEntity.email.label("email"),
+            func.lower(cast(PoliceEntity.role, String)).label("role"),
+            case((PoliceEntity.is_verified, "active"), else_="unverified").label("status"),
+            null().label("first_name"),
+            null().label("last_name"),
+            null().label("onyen"),
+            null().label("pid"),
+        )
+
+        tokens_sq = select(
+            InviteTokenEntity.id.label("source_id"),
+            InviteTokenEntity.email.label("email"),
+            func.lower(cast(InviteTokenEntity.role, String)).label("role"),
+            literal("invited").label("status"),
+            null().label("first_name"),
+            null().label("last_name"),
+            null().label("onyen"),
+            null().label("pid"),
+        ).where(InviteTokenEntity.expires_at >= datetime.now(UTC))
+
+        union_sq = union_all(accounts_sq, police_sq, tokens_sq).subquery()
+        base_query = select(union_sq)
+
+        nested_cols = {
+            field: getattr(union_sq.c, field) for field in self._AGGREGATE_ALLOWED_FIELDS
+        }
+        search_columns = [
+            union_sq.c.email,
+            union_sq.c.first_name,
+            union_sq.c.last_name,
+            union_sq.c.onyen,
+            union_sq.c.pid,
+        ]
+
+        query_params = parse_pagination_params(
+            request,
+            allowed_sort_fields=self._AGGREGATE_ALLOWED_FIELDS,
+            allowed_filter_fields=self._AGGREGATE_ALLOWED_FIELDS,
+        )
+        if not query_params.sort:
+            query_params = query_params.model_copy(
+                update={"sort": [SortParam(field="email", order=SortOrder.ASC)]}
+            )
+
+        result = await get_paginated_results(
+            session=self.session,
+            base_query=base_query,
+            entity_class=None,
+            dto_converter=lambda row: AggregateAccountDto(**row),
+            query_params=query_params,
+            allowed_sort_fields=self._AGGREGATE_ALLOWED_FIELDS,
+            allowed_filter_fields=self._AGGREGATE_ALLOWED_FIELDS,
+            nested_field_columns=nested_cols,
+            search_columns=search_columns,
+            use_mappings=True,
+        )
+        return PaginatedAggregateAccountsResponse(**result.model_dump())

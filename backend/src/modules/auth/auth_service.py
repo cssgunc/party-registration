@@ -256,7 +256,7 @@ class AuthService:
             police = await self.police_service.get_police_by_id(token_id)
             access_token, access_expires = self.create_police_access_token(police)
         else:
-            account = await self.account_service.get_account_by_id(token_id)
+            account = await self.account_service.get_account_by(id=token_id)
             access_token, access_expires = self.create_account_access_token(account)
 
         return AccessTokenDto(access_token=access_token, access_token_expires=access_expires)

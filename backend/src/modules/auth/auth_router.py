@@ -61,9 +61,11 @@ async def exchange_account_data_for_tokens(
 
     Requires internal API secret in X-Internal-Secret header.
     """
-    account = await account_service.upsert_idp_account(data)
-    if account.role == AccountRole.STUDENT:
+    if data.role == AccountRole.STUDENT:
+        account = await account_service.upsert_idp_account(data)
         await student_service.ensure_student_entity_exists(account.id)
+    else:
+        account = await account_service.provision_staff_account(data)
     return await auth_service.exchange_account_for_tokens(account)
 
 
