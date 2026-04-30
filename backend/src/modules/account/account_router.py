@@ -1,9 +1,14 @@
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, Request, Response, status
+from fastapi import APIRouter, Depends, Response, status
 from src.core.authentication import authenticate_admin
-from src.core.utils.query_utils import PAGINATED_OPENAPI_PARAMS
+from src.core.utils.query_utils import (
+    PAGINATED_OPENAPI_PARAMS,
+    ListQueryParams,
+    parse_export_list_query_params,
+    parse_list_query_params,
+)
 from src.modules.account.account_model import (
     AccountDto,
     AccountUpdateData,
@@ -18,11 +23,11 @@ account_router = APIRouter(prefix="/api/accounts", tags=["accounts"])
 
 @account_router.get("", openapi_extra=PAGINATED_OPENAPI_PARAMS)
 async def list_accounts(
-    request: Request,
+    params: ListQueryParams = parse_list_query_params(AccountService.QUERY_FIELDS),
     account_service: AccountService = Depends(),
     _=Depends(authenticate_admin),
 ) -> PaginatedAccountsResponse:
-    return await account_service.get_accounts_paginated(request)
+    return await account_service.get_accounts_paginated(params)
 
 
 @account_router.post("", status_code=status.HTTP_204_NO_CONTENT)
@@ -36,21 +41,21 @@ async def create_account(
 
 @account_router.get("/aggregate", openapi_extra=PAGINATED_OPENAPI_PARAMS)
 async def get_aggregate_accounts(
-    request: Request,
+    params: ListQueryParams = parse_list_query_params(AccountService.QUERY_FIELDS),
     account_service: AccountService = Depends(),
     _=Depends(authenticate_admin),
 ) -> PaginatedAggregateAccountsResponse:
-    return await account_service.get_aggregate_accounts_paginated(request)
+    return await account_service.get_aggregate_accounts_paginated(params)
 
 
 @account_router.get("/csv", openapi_extra=PAGINATED_OPENAPI_PARAMS)
 async def get_accounts_csv(
-    request: Request,
+    params: ListQueryParams = parse_export_list_query_params(AccountService.QUERY_FIELDS),
     account_service: AccountService = Depends(),
     _: AccountDto = Depends(authenticate_admin),
 ) -> Response:
-    accounts = await account_service.get_accounts_for_export(request)
-    excel_content = account_service.export_accounts_to_excel(accounts)
+    accounts_response = await account_service.get_accounts_paginated(params)
+    excel_content = account_service.export_accounts_to_excel(accounts_response)
     filename = f"accounts_{datetime.now(ZoneInfo('America/New_York')).strftime('%Y_%m_%d')}.xlsx"
     return Response(
         content=excel_content,
@@ -61,12 +66,12 @@ async def get_accounts_csv(
 
 @account_router.get("/aggregate/csv", openapi_extra=PAGINATED_OPENAPI_PARAMS)
 async def get_aggregate_accounts_csv(
-    request: Request,
+    params: ListQueryParams = parse_export_list_query_params(AccountService.QUERY_FIELDS),
     account_service: AccountService = Depends(),
     _: AccountDto = Depends(authenticate_admin),
 ) -> Response:
-    accounts_response = await account_service.get_aggregate_accounts_paginated(request)
-    excel_content = account_service.export_aggregate_accounts_to_excel(accounts_response.items)
+    accounts_response = await account_service.get_aggregate_accounts_paginated(params)
+    excel_content = account_service.export_aggregate_accounts_to_excel(accounts_response)
     filename = (
         f"aggregate_accounts_{datetime.now(ZoneInfo('America/New_York')).strftime('%Y_%m_%d')}.xlsx"
     )

@@ -1,7 +1,7 @@
 from datetime import UTC, datetime, timedelta
 from typing import ClassVar, TypedDict, Unpack
 
-from fastapi import Depends, Request
+from fastapi import Depends
 from sqlalchemy import String, case, cast, func, literal, null, select, union_all
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,10 +11,12 @@ from src.core.exceptions import ConflictException, ForbiddenException, NotFoundE
 from src.core.utils.email_utils import EmailService
 from src.core.utils.excel_utils import ExcelExporter
 from src.core.utils.query_utils import (
+    ListQueryParams,
+    QueryFieldSet,
+    QueryService,
     SortOrder,
     SortParam,
-    get_paginated_results,
-    parse_pagination_params,
+    make_query_service,
 )
 from src.modules.account.account_entity import AccountEntity, AccountRole
 from src.modules.account.account_model import (
@@ -73,18 +75,25 @@ class InviteConflictException(ConflictException):
         super().__init__(f"An account or pending invitation already exists for {email}")
 
 
-class AccountService:
-    _ALLOWED_FIELDS: ClassVar[list[str]] = [
-        "id",
-        "email",
-        "first_name",
-        "last_name",
-        "onyen",
-        "pid",
-        "role",
-    ]
+_ACCOUNT_QUERY_FIELDS = QueryFieldSet(
+    fields={
+        "id": AccountEntity.id,
+        "email": AccountEntity.email,
+        "first_name": AccountEntity.first_name,
+        "last_name": AccountEntity.last_name,
+        "onyen": AccountEntity.onyen,
+        "pid": AccountEntity.pid,
+        "role": AccountEntity.role,
+    },
+    searchable=("email", "first_name", "last_name", "pid", "onyen"),
+    default_sort=SortParam(field="email", order=SortOrder.ASC),
+)
 
-    _AGGREGATE_ALLOWED_FIELDS: ClassVar[list[str]] = [
+
+class AccountService:
+    QUERY_FIELDS: ClassVar[QueryFieldSet] = _ACCOUNT_QUERY_FIELDS
+
+    _AGGREGATE_FIELD_NAMES: ClassVar[set[str]] = {
         "email",
         "first_name",
         "last_name",
@@ -92,15 +101,17 @@ class AccountService:
         "pid",
         "role",
         "status",
-    ]
+    }
 
     def __init__(
         self,
         session: AsyncSession = Depends(get_session),
         email_service: EmailService = Depends(),
+        query_service: QueryService = make_query_service(_ACCOUNT_QUERY_FIELDS),
     ):
         self.session = session
         self.email_service = email_service
+        self.query_service = query_service
 
     async def _get_account_entity_by(self, **fields: Unpack[AccountUniqueFields]) -> AccountEntity:
         clause_builders = {
@@ -130,49 +141,23 @@ class AccountService:
         accounts = result.scalars().all()
         return [account.to_dto() for account in accounts]
 
-    async def get_accounts_paginated(
-        self,
-        request: Request,
-    ) -> PaginatedAccountsResponse:
-        allowed_sort_fields = allowed_filter_fields = self._ALLOWED_FIELDS
+    async def get_accounts_paginated(self, params: ListQueryParams) -> PaginatedAccountsResponse:
         base_query = select(AccountEntity).where(
             AccountEntity.role.in_([AccountRole.STAFF, AccountRole.ADMIN])
         )
 
-        query_params = parse_pagination_params(
-            request,
-            allowed_sort_fields=allowed_sort_fields,
-            allowed_filter_fields=allowed_filter_fields,
-        )
-
-        search_columns = [
-            AccountEntity.email,
-            AccountEntity.first_name,
-            AccountEntity.last_name,
-            AccountEntity.pid,
-            AccountEntity.onyen,
-        ]
-
-        result = await get_paginated_results(
-            session=self.session,
+        result = await self.query_service.get_paginated(
+            params=params,
             base_query=base_query,
-            entity_class=AccountEntity,
             dto_converter=lambda entity: entity.to_dto(),
-            query_params=query_params,
-            allowed_sort_fields=allowed_sort_fields,
-            allowed_filter_fields=allowed_filter_fields,
-            search_columns=search_columns,
         )
         return PaginatedAccountsResponse(**result.model_dump())
 
-    async def get_accounts_for_export(self, request: Request) -> list[AccountDto]:
-        return (await self.get_accounts_paginated(request)).items
-
-    def export_accounts_to_excel(self, accounts: list[AccountDto]) -> bytes:
+    def export_accounts_to_excel(self, accounts_response: PaginatedAccountsResponse) -> bytes:
         headers = ["Onyen", "Email", "First Name", "Last Name", "PID", "Role"]
         exporter = ExcelExporter(sheet_title=f"Accounts {datetime.now(UTC).strftime('%Y-%m-%d')}")
         exporter.set_headers(headers)
-        for account in accounts:
+        for account in accounts_response.items:
             exporter.add_row(
                 [
                     account.onyen,
@@ -185,13 +170,15 @@ class AccountService:
             )
         return exporter.to_bytes()
 
-    def export_aggregate_accounts_to_excel(self, accounts: list[AggregateAccountDto]) -> bytes:
+    def export_aggregate_accounts_to_excel(
+        self, accounts_response: PaginatedAggregateAccountsResponse
+    ) -> bytes:
         headers = ["Email", "First Name", "Last Name", "Onyen", "PID", "Role", "Status"]
         exporter = ExcelExporter(
             sheet_title=f"Aggregate Accounts {datetime.now(UTC).strftime('%Y-%m-%d')}"
         )
         exporter.set_headers(headers)
-        for account in accounts:
+        for account in accounts_response.items:
             exporter.add_row(
                 [
                     account.email,
@@ -377,7 +364,7 @@ class AccountService:
         return new_account.to_dto()
 
     async def get_aggregate_accounts_paginated(
-        self, request: Request
+        self, params: ListQueryParams
     ) -> PaginatedAggregateAccountsResponse:
         accounts_sq = select(
             AccountEntity.id.label("source_id"),
@@ -415,37 +402,18 @@ class AccountService:
         union_sq = union_all(accounts_sq, police_sq, tokens_sq).subquery()
         base_query = select(union_sq)
 
-        nested_cols = {
-            field: getattr(union_sq.c, field) for field in self._AGGREGATE_ALLOWED_FIELDS
-        }
-        search_columns = [
-            union_sq.c.email,
-            union_sq.c.first_name,
-            union_sq.c.last_name,
-            union_sq.c.onyen,
-            union_sq.c.pid,
-        ]
-
-        query_params = parse_pagination_params(
-            request,
-            allowed_sort_fields=self._AGGREGATE_ALLOWED_FIELDS,
-            allowed_filter_fields=self._AGGREGATE_ALLOWED_FIELDS,
+        fields = {field: getattr(union_sq.c, field) for field in self._AGGREGATE_FIELD_NAMES}
+        aggregate_field_set = QueryFieldSet(
+            fields=fields,
+            searchable=("email", "first_name", "last_name", "onyen", "pid"),
+            default_sort=SortParam(field="email", order=SortOrder.ASC),
         )
-        if not query_params.sort:
-            query_params = query_params.model_copy(
-                update={"sort": [SortParam(field="email", order=SortOrder.ASC)]}
-            )
 
-        result = await get_paginated_results(
-            session=self.session,
+        query_service = QueryService(self.session, aggregate_field_set)
+        result = await query_service.get_paginated(
+            params=params,
             base_query=base_query,
-            entity_class=None,
             dto_converter=lambda row: AggregateAccountDto(**row),
-            query_params=query_params,
-            allowed_sort_fields=self._AGGREGATE_ALLOWED_FIELDS,
-            allowed_filter_fields=self._AGGREGATE_ALLOWED_FIELDS,
-            nested_field_columns=nested_cols,
-            search_columns=search_columns,
             use_mappings=True,
         )
         return PaginatedAggregateAccountsResponse(**result.model_dump())

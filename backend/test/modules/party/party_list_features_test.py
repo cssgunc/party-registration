@@ -269,7 +269,7 @@ class TestPartyListFiltering:
         party3 = await self.party_utils.create_one(location_id=party1.location_id)
 
         # Filter by location.id
-        response = await self.admin_client.get(f"/api/parties?location.id={party1.location_id}")
+        response = await self.admin_client.get(f"/api/parties?location.id_eq={party1.location_id}")
         paginated = assert_res_paginated(response, PartyDto, total_records=2)
 
         # Should return party1 and party3
@@ -286,7 +286,7 @@ class TestPartyListFiltering:
 
         # Filter by contact_one.id
         response = await self.admin_client.get(
-            f"/api/parties?contact_one.id={party1.contact_one_id}"
+            f"/api/parties?contact_one.id_eq={party1.contact_one_id}"
         )
         paginated = assert_res_paginated(response, PartyDto, total_records=2)
 
@@ -306,7 +306,7 @@ class TestPartyListFiltering:
 
         # Filter by both location and contact
         response = await self.admin_client.get(
-            f"/api/parties?location.id={party1.location_id}&contact_one.id={party1.contact_one_id}"
+            f"/api/parties?location.id_eq={party1.location_id}&contact_one.id_eq={party1.contact_one_id}"
         )
         paginated = assert_res_paginated(response, PartyDto, total_records=2)
 
@@ -321,7 +321,7 @@ class TestPartyListFiltering:
             await self.party_utils.create_one()
 
         # Filter by non-existent location
-        response = await self.admin_client.get("/api/parties?location.id=99999")
+        response = await self.admin_client.get("/api/parties?location.id_eq=99999")
         paginated = assert_res_paginated(response, PartyDto, total_records=0)
         assert len(paginated.items) == 0
 
@@ -357,7 +357,7 @@ class TestPartyListCombined:
 
         # Filter by location, sort by datetime desc, paginate
         response = await self.admin_client.get(
-            f"/api/parties?location.id={location_id}&sort_by=party_datetime"
+            f"/api/parties?location.id_eq={location_id}&sort_by=party_datetime"
             "&sort_order=desc&page_number=1&page_size=5"
         )
         paginated = assert_res_paginated(
@@ -389,7 +389,7 @@ class TestPartyListCombined:
 
         # Filter for location 1 with pagination
         response = await self.admin_client.get(
-            f"/api/parties?location.id={location1.location_id}&page_size=10"
+            f"/api/parties?location.id_eq={location1.location_id}&page_size=10"
         )
         paginated = assert_res_paginated(
             response, PartyDto, total_records=20, page_size=10, total_pages=2
@@ -489,7 +489,7 @@ class TestPartyListNestedFiltering:
         party1 = await self.party_utils.create_one(contact_two_email="unique@test.com")
         _party2 = await self.party_utils.create_one()
 
-        response = await self.admin_client.get("/api/parties?contact_two.email=unique@test.com")
+        response = await self.admin_client.get("/api/parties?contact_two.email_eq=unique@test.com")
         paginated = assert_res_paginated(response, PartyDto, total_records=1)
         self.party_utils.assert_matches(paginated.items[0], party1)
 

@@ -107,7 +107,7 @@ class TestQueryUtilsFilterOperators:
         i1 = await self.incident_utils.create_one(severity="remote_warning")
         await self.incident_utils.create_one(severity="in_person_warning")
 
-        response = await self.admin_client.get("/api/incidents?severity=remote_warning")
+        response = await self.admin_client.get("/api/incidents?severity_eq=remote_warning")
         paginated = assert_res_paginated(response, IncidentDto, total_records=1)
         self.incident_utils.assert_matches(paginated.items[0], i1.to_dto())
 
@@ -217,7 +217,7 @@ class TestQueryUtilsFilterOperators:
         i3 = await self.incident_utils.create_one(severity=IncidentSeverity.CITATION)
 
         response = await self.admin_client.get(
-            "/api/incidents?severity_not_in=remote_warning,in_person_warning"
+            "/api/incidents?severity_nin=remote_warning,in_person_warning"
         )
         paginated = assert_res_paginated(response, IncidentDto, total_records=1)
         self.incident_utils.assert_matches(paginated.items[0], i3.to_dto())
@@ -274,7 +274,8 @@ class TestQueryUtilsTypeValidation:
         """Using GT/GTE/LT/LTE on a string field returns 400."""
         response = await self.admin_client.get("/api/incidents?location.formatted_address_gt=Z")
         assert_res_failure(
-            response, BadRequestException("Operator 'gt' is not supported for string/enum fields")
+            response,
+            BadRequestException("Comparison operators are not supported for string/enum fields"),
         )
 
     @pytest.mark.asyncio
@@ -282,7 +283,8 @@ class TestQueryUtilsTypeValidation:
         """Using GTE on a string field returns 400."""
         response = await self.admin_client.get("/api/incidents?location.formatted_address_gte=Z")
         assert_res_failure(
-            response, BadRequestException("Operator 'gte' is not supported for string/enum fields")
+            response,
+            BadRequestException("Comparison operators are not supported for string/enum fields"),
         )
 
     @pytest.mark.asyncio
@@ -290,7 +292,8 @@ class TestQueryUtilsTypeValidation:
         """Using GT/GTE/LT/LTE on an enum field returns 400."""
         response = await self.admin_client.get("/api/incidents?severity_gt=remote_warning")
         assert_res_failure(
-            response, BadRequestException("Operator 'gt' is not supported for string/enum fields")
+            response,
+            BadRequestException("Comparison operators are not supported for string/enum fields"),
         )
 
     @pytest.mark.asyncio
@@ -361,7 +364,9 @@ class TestQueryUtilsSearch:
             description="illegal parking", severity="remote_warning"
         )
 
-        response = await self.admin_client.get("/api/incidents?search=loud&severity=remote_warning")
+        response = await self.admin_client.get(
+            "/api/incidents?search=loud&severity_eq=remote_warning"
+        )
         paginated = assert_res_paginated(response, IncidentDto, total_records=1)
         self.incident_utils.assert_matches(paginated.items[0], i1.to_dto())
 
@@ -395,7 +400,7 @@ class TestQueryUtilsNestedFields:
         i3 = await self.incident_utils.create_one(location_id=loc1.id)
 
         response = await self.admin_client.get(
-            f"/api/incidents?location.google_place_id={loc1.google_place_id}"
+            f"/api/incidents?location.google_place_id_eq={loc1.google_place_id}"
         )
         paginated = assert_res_paginated(response, IncidentDto, total_records=2)
         returned = {item.id: item for item in paginated.items}
@@ -430,7 +435,7 @@ class TestQueryUtilsNestedFields:
         await self.incident_utils.create_one(location_id=loc2.id)
 
         response = await self.admin_client.get(
-            f"/api/incidents?location.id={loc1.id}&sort_by=incident_datetime&sort_order=asc"
+            f"/api/incidents?location.id_eq={loc1.id}&sort_by=incident_datetime&sort_order=asc"
         )
         paginated = assert_res_paginated(response, IncidentDto, total_records=2)
         self.incident_utils.assert_matches(paginated.items[0], i1.to_dto())

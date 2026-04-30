@@ -1,13 +1,18 @@
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, Response
 from src.core.authentication import (
     authenticate_admin,
     authenticate_staff_or_admin,
     authenticate_student,
 )
-from src.core.utils.query_utils import PAGINATED_OPENAPI_PARAMS
+from src.core.utils.query_utils import (
+    PAGINATED_OPENAPI_PARAMS,
+    ListQueryParams,
+    parse_export_list_query_params,
+    parse_list_query_params,
+)
 from src.modules.account.account_model import AccountDto
 from src.modules.location.location_model import LocationDto
 from src.modules.party.party_model import PartyDto
@@ -65,7 +70,7 @@ async def get_my_parties(
 
 @student_router.get("", openapi_extra=PAGINATED_OPENAPI_PARAMS)
 async def list_students(
-    request: Request,
+    params: ListQueryParams = parse_list_query_params(StudentService.QUERY_FIELDS),
     student_service: StudentService = Depends(),
     _=Depends(authenticate_staff_or_admin),
 ) -> PaginatedStudentsResponse:
@@ -85,17 +90,17 @@ async def list_students(
     - page_number: Current page number
     - total_pages: Total number of pages
     """
-    return await student_service.get_students_paginated(request=request)
+    return await student_service.get_students_paginated(params)
 
 
 @student_router.get("/csv", openapi_extra=PAGINATED_OPENAPI_PARAMS)
 async def get_students_csv(
-    request: Request,
+    params: ListQueryParams = parse_export_list_query_params(StudentService.QUERY_FIELDS),
     student_service: StudentService = Depends(),
     _=Depends(authenticate_staff_or_admin),
 ) -> Response:
-    students = await student_service.get_students_for_export(request)
-    excel_content = student_service.export_students_to_excel(students)
+    students_response = await student_service.get_students_paginated(params)
+    excel_content = student_service.export_students_to_excel(students_response)
     filename = f"students_{datetime.now(ZoneInfo('America/New_York')).strftime('%Y_%m_%d')}.xlsx"
     return Response(
         content=excel_content,

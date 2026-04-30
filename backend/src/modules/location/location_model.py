@@ -63,7 +63,10 @@ class LocationDto(LocationData):
     incidents: list[IncidentDto] = []
 
 
-PaginatedLocationResponse = PaginatedResponse[LocationDto]
+class PaginatedLocationResponse(PaginatedResponse[LocationDto]):
+    """Paginated response for locations."""
+
+    pass
 
 
 class LocationCreate(BaseModel):

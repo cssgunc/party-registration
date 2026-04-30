@@ -66,7 +66,10 @@ class AdminCreatePartyDto(BaseModel):
 CreatePartyDto = Annotated[StudentCreatePartyDto | AdminCreatePartyDto, Field(discriminator="type")]
 
 
-PaginatedPartiesResponse = PaginatedResponse[PartyDto]
+class PaginatedPartiesResponse(PaginatedResponse[PartyDto]):
+    """Paginated response for parties."""
+
+    pass
 
 
 class ExactMatchDto(BaseModel):

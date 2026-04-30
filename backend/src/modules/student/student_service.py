@@ -2,7 +2,7 @@ import re
 from datetime import UTC, datetime
 from typing import ClassVar
 
-from fastapi import Depends, Request
+from fastapi import Depends
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,8 +12,12 @@ from src.core.exceptions import BadRequestException, ConflictException, NotFound
 from src.core.utils.date_utils import is_same_academic_year
 from src.core.utils.excel_utils import ExcelExporter
 from src.core.utils.query_utils import (
-    get_paginated_results,
-    parse_pagination_params,
+    ListQueryParams,
+    QueryFieldSet,
+    QueryService,
+    SortOrder,
+    SortParam,
+    make_query_service,
 )
 from src.modules.account.account_entity import AccountEntity, AccountRole
 from src.modules.location.location_model import LocationDto
@@ -74,33 +78,43 @@ class StudentInfoNotProvidedException(BadRequestException):
         super().__init__("Student must provide contact information before registering a party")
 
 
-class StudentService:
-    _NESTED_FIELD_COLUMNS: ClassVar[dict] = {
+_STUDENT_QUERY_FIELDS = QueryFieldSet(
+    fields={
+        "phone_number": StudentEntity.phone_number,
+        "contact_preference": StudentEntity.contact_preference,
+        "last_registered": StudentEntity.last_registered,
         "id": AccountEntity.id,
         "first_name": AccountEntity.first_name,
         "last_name": AccountEntity.last_name,
         "email": AccountEntity.email,
         "onyen": AccountEntity.onyen,
         "pid": AccountEntity.pid,
-    }
-    _BASE_ALLOWED_FIELDS: ClassVar[list[str]] = [
+    },
+    searchable=(
+        "first_name",
+        "last_name",
+        ("first_name", "last_name"),
+        "email",
+        "onyen",
+        "pid",
         "phone_number",
-        "contact_preference",
-        "last_registered",
-    ]
-    _ALLOWED_SORT_FIELDS: ClassVar[list[str]] = [
-        *_BASE_ALLOWED_FIELDS,
-        *_NESTED_FIELD_COLUMNS.keys(),
-    ]
-    _ALLOWED_FILTER_FIELDS: ClassVar[list[str]] = list(_ALLOWED_SORT_FIELDS)
+    ),
+    default_sort=SortParam(field="last_name", order=SortOrder.ASC),
+)
+
+
+class StudentService:
+    QUERY_FIELDS: ClassVar[QueryFieldSet] = _STUDENT_QUERY_FIELDS
 
     def __init__(
         self,
         session: AsyncSession = Depends(get_session),
         location_service: LocationService = Depends(),
+        query_service: QueryService = make_query_service(_STUDENT_QUERY_FIELDS),
     ):
         self.session = session
         self.location_service = location_service
+        self.query_service = query_service
 
     async def _get_student_entity_by_account_id(self, account_id: int) -> StudentEntity:
         result = await self.session.execute(
@@ -172,10 +186,7 @@ class StudentService:
         students = result.scalars().all()
         return [student.to_dto() for student in students]
 
-    async def get_students_paginated(
-        self,
-        request: Request,
-    ) -> PaginatedStudentsResponse:
+    async def get_students_paginated(self, params: ListQueryParams) -> PaginatedStudentsResponse:
         """
         Get students with server-side pagination and sorting.
 
@@ -195,42 +206,14 @@ class StudentService:
             .options(selectinload(StudentEntity.account), selectinload(StudentEntity.residence))
         )
 
-        # Parse query params and get paginated results
-        query_params = parse_pagination_params(
-            request,
-            allowed_sort_fields=self._ALLOWED_SORT_FIELDS,
-            allowed_filter_fields=self._ALLOWED_FILTER_FIELDS,
-        )
-
-        search_columns = [
-            AccountEntity.first_name,
-            AccountEntity.last_name,
-            # Concatenated full name so searches like "Jane Doe" match across the
-            # split first_name / last_name columns.
-            [AccountEntity.first_name, AccountEntity.last_name],
-            AccountEntity.email,
-            AccountEntity.onyen,
-            AccountEntity.pid,
-            StudentEntity.phone_number,
-        ]
-
-        # Use the generic pagination utility
-        return await get_paginated_results(
-            session=self.session,
+        result = await self.query_service.get_paginated(
+            params=params,
             base_query=base_query,
-            entity_class=StudentEntity,
             dto_converter=lambda entity: entity.to_dto(),
-            query_params=query_params,
-            allowed_sort_fields=self._ALLOWED_SORT_FIELDS,
-            allowed_filter_fields=self._ALLOWED_FILTER_FIELDS,
-            nested_field_columns=self._NESTED_FIELD_COLUMNS,
-            search_columns=search_columns,
         )
+        return PaginatedStudentsResponse(**result.model_dump())
 
-    async def get_students_for_export(self, request: Request) -> list[StudentDto]:
-        return (await self.get_students_paginated(request)).items
-
-    def export_students_to_excel(self, students: list[StudentDto]) -> bytes:
+    def export_students_to_excel(self, students_response: PaginatedStudentsResponse) -> bytes:
         headers = [
             "Onyen",
             "PID",
@@ -244,7 +227,7 @@ class StudentService:
         ]
         exporter = ExcelExporter(sheet_title=f"Students {datetime.now(UTC).strftime('%Y-%m-%d')}")
         exporter.set_headers(headers)
-        for student in students:
+        for student in students_response.items:
             # Mirrors the UI checkbox: "Yes" if last_registered is set
             # (cleared to None when unmarked via PATCH /students/{id}/is-registered)
             is_registered = "Yes" if student.last_registered is not None else "No"
@@ -305,7 +288,7 @@ class StudentService:
         )
         if result.scalar_one_or_none() is not None:
             return
-        student_entity = StudentEntity(account_id=account_id)
+        student_entity = StudentEntity.from_data(StudentData(), account_id)
         try:
             self.session.add(student_entity)
             await self.session.commit()

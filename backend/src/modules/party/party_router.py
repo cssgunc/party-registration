@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import Response
 from src.core.authentication import (
     authenticate_by_role,
@@ -16,7 +16,12 @@ from src.core.exceptions import (
     ForbiddenException,
     UnprocessableEntityException,
 )
-from src.core.utils.query_utils import PAGINATED_OPENAPI_PARAMS
+from src.core.utils.query_utils import (
+    PAGINATED_OPENAPI_PARAMS,
+    ListQueryParams,
+    parse_export_list_query_params,
+    parse_list_query_params,
+)
 from src.modules.account.account_model import AccountDto, AccountRole
 from src.modules.location.location_service import LocationNotFoundException, LocationService
 from src.modules.police.police_model import PoliceAccountDto
@@ -75,7 +80,7 @@ async def create_party(
 
 @party_router.get("", openapi_extra=PAGINATED_OPENAPI_PARAMS)
 async def list_parties(
-    request: Request,
+    params: ListQueryParams = parse_list_query_params(PartyService.QUERY_FIELDS),
     party_service: PartyService = Depends(),
     _=Depends(authenticate_by_role("admin", "staff", "officer", "police_admin")),
 ) -> PaginatedPartiesResponse:
@@ -109,7 +114,7 @@ async def list_parties(
     - Filter by location: GET /api/parties/?location_id=5
     - Combined: GET /api/parties/?location_id=5&sort_by=party_datetime&page_size=20
     """
-    return await party_service.get_parties_paginated(request=request)
+    return await party_service.get_parties_paginated(params)
 
 
 @party_router.get("/nearby")
@@ -205,7 +210,7 @@ async def get_parties_nearby(
 
 @party_router.get("/csv", openapi_extra=PAGINATED_OPENAPI_PARAMS)
 async def get_parties_csv(
-    request: Request,
+    params: ListQueryParams = parse_export_list_query_params(PartyService.QUERY_FIELDS),
     party_service: PartyService = Depends(),
     principal: AccountDto | PoliceAccountDto = Depends(authenticate_police_staff_or_admin),
 ) -> Response:
@@ -217,9 +222,12 @@ async def get_parties_csv(
 
     Supports the same filter/sort query params as GET /api/parties.
     """
-    parties = await party_service.get_parties_for_export(request)
+    parties_response = await party_service.get_parties_paginated(params)
     is_police = isinstance(principal, PoliceAccountDto)
-    excel_content = party_service.export_parties_to_excel(parties, is_police=is_police)
+    excel_content = party_service.export_parties_to_excel(
+        parties_response,
+        is_police=is_police,
+    )
     filename = f"parties_{datetime.now(ZoneInfo('America/New_York')).strftime('%Y_%m_%d')}.xlsx"
     return Response(
         content=excel_content,

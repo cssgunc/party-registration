@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 from typing import ClassVar
 
 import googlemaps
-from fastapi import Depends, Request
+from fastapi import Depends
 from googlemaps import places
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -17,7 +17,14 @@ from src.core.exceptions import (
     NotFoundException,
 )
 from src.core.utils.excel_utils import ExcelExporter
-from src.core.utils.query_utils import get_paginated_results, parse_pagination_params
+from src.core.utils.query_utils import (
+    ListQueryParams,
+    QueryFieldSet,
+    QueryService,
+    SortOrder,
+    SortParam,
+    make_query_service,
+)
 from src.modules.incident.incident_model import IncidentSeverity
 
 from .location_entity import LocationEntity
@@ -72,13 +79,26 @@ def get_gmaps_client() -> googlemaps.Client:
     return googlemaps.Client(key=env.GOOGLE_MAPS_API_KEY)
 
 
-class LocationService:
-    _ALLOWED_FIELDS: ClassVar[list[str]] = [
-        "id",
-        "google_place_id",
+_LOCATION_QUERY_FIELDS = QueryFieldSet(
+    fields={
+        "id": LocationEntity.id,
+        "google_place_id": LocationEntity.google_place_id,
+        "formatted_address": LocationEntity.formatted_address,
+        "latitude": LocationEntity.latitude,
+        "longitude": LocationEntity.longitude,
+        "street_number": LocationEntity.street_number,
+        "street_name": LocationEntity.street_name,
+        "unit": LocationEntity.unit,
+        "city": LocationEntity.city,
+        "county": LocationEntity.county,
+        "state": LocationEntity.state,
+        "country": LocationEntity.country,
+        "zip_code": LocationEntity.zip_code,
+        "hold_expiration": LocationEntity.hold_expiration,
+    },
+    searchable=(
         "formatted_address",
-        "latitude",
-        "longitude",
+        "google_place_id",
         "street_number",
         "street_name",
         "unit",
@@ -87,16 +107,23 @@ class LocationService:
         "state",
         "country",
         "zip_code",
-        "hold_expiration",
-    ]
+    ),
+    default_sort=SortParam(field="formatted_address", order=SortOrder.ASC),
+)
+
+
+class LocationService:
+    QUERY_FIELDS: ClassVar[QueryFieldSet] = _LOCATION_QUERY_FIELDS
 
     def __init__(
         self,
         gmaps_client: googlemaps.Client = Depends(get_gmaps_client),
         session: AsyncSession = Depends(get_session),
+        query_service: QueryService = make_query_service(_LOCATION_QUERY_FIELDS),
     ):
         self.session = session
         self.gmaps_client = gmaps_client
+        self.query_service = query_service
 
     async def _get_location_entity_by_id(self, location_id: int) -> LocationEntity:
         result = await self.session.execute(
@@ -123,10 +150,7 @@ class LocationService:
         locations = result.scalars().all()
         return [location.to_dto() for location in locations]
 
-    async def get_locations_paginated(
-        self,
-        request: Request,
-    ) -> "PaginatedLocationResponse":
+    async def get_locations_paginated(self, params: ListQueryParams) -> "PaginatedLocationResponse":
         """
         Get locations with server-side pagination and sorting.
 
@@ -139,55 +163,23 @@ class LocationService:
         Returns:
             PaginatedLocationResponse with items and metadata
         """
-        # Define allowed fields for sorting and filtering
-        allowed_sort_fields = allowed_filter_fields = self._ALLOWED_FIELDS
-
         # Build base query
         base_query = select(LocationEntity)
 
-        # Parse query params and get paginated results
-        query_params = parse_pagination_params(
-            request,
-            allowed_sort_fields=allowed_sort_fields,
-            allowed_filter_fields=allowed_filter_fields,
-        )
-
-        search_columns = [
-            LocationEntity.formatted_address,
-            LocationEntity.google_place_id,
-            LocationEntity.street_number,
-            LocationEntity.street_name,
-            LocationEntity.unit,
-            LocationEntity.city,
-            LocationEntity.county,
-            LocationEntity.state,
-            LocationEntity.country,
-            LocationEntity.zip_code,
-        ]
-
-        # Use the generic pagination utility
-        return await get_paginated_results(
-            session=self.session,
+        result = await self.query_service.get_paginated(
+            params=params,
             base_query=base_query,
-            entity_class=LocationEntity,
             dto_converter=lambda entity: entity.to_dto(),
-            query_params=query_params,
-            allowed_sort_fields=allowed_sort_fields,
-            allowed_filter_fields=allowed_filter_fields,
-            search_columns=search_columns,
         )
+        return PaginatedLocationResponse(**result.model_dump())
 
-    async def get_locations_for_export(self, request: Request) -> list[LocationDto]:
-        """Get all locations without pagination for export."""
-        return (await self.get_locations_paginated(request)).items
-
-    def export_locations_to_excel(self, locations: list[LocationDto]) -> bytes:
+    def export_locations_to_excel(self, locations_response: PaginatedLocationResponse) -> bytes:
         """Export locations to an Excel file."""
         exporter = ExcelExporter(sheet_title=f"Locations {datetime.now(UTC).strftime('%Y-%m-%d')}")
         exporter.set_headers(
             ["Address", "Remote Warning Count", "In-Person Warning Count", "Citation Count"]
         )
-        for location in locations:
+        for location in locations_response.items:
             complaint_count = sum(
                 1
                 for incident in location.incidents

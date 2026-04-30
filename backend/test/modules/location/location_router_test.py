@@ -219,7 +219,7 @@ class TestLocationListPaginationSortFilter:
         await self.location_utils.create_one(city="Durham")
         await self.location_utils.create_one(city="Chapel Hill")
 
-        response = await self.staff_client.get("/api/locations", params={"city": "Chapel Hill"})
+        response = await self.staff_client.get("/api/locations", params={"city_eq": "Chapel Hill"})
 
         paginated = assert_res_paginated(response, LocationDto, total_records=2)
         assert all(loc.city == "Chapel Hill" for loc in paginated.items)
@@ -231,7 +231,7 @@ class TestLocationListPaginationSortFilter:
         await self.location_utils.create_one(state="VA")
         await self.location_utils.create_one(state="NC")
 
-        response = await self.staff_client.get("/api/locations", params={"state": "NC"})
+        response = await self.staff_client.get("/api/locations", params={"state_eq": "NC"})
 
         paginated = assert_res_paginated(response, LocationDto, total_records=2)
         assert all(loc.state == "NC" for loc in paginated.items)

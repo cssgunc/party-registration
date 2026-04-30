@@ -1,7 +1,12 @@
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, Response
 from src.core.authentication import authenticate_admin, authenticate_police_admin_or_admin
 from src.core.exceptions import ForbiddenException
-from src.core.utils.query_utils import PAGINATED_OPENAPI_PARAMS
+from src.core.utils.query_utils import (
+    PAGINATED_OPENAPI_PARAMS,
+    ListQueryParams,
+    parse_export_list_query_params,
+    parse_list_query_params,
+)
 from src.modules.account.account_model import AccountDto
 from src.modules.police.police_model import (
     PaginatedPoliceResponse,
@@ -15,21 +20,21 @@ police_router = APIRouter(prefix="/api/police", tags=["police"])
 
 @police_router.get("", openapi_extra=PAGINATED_OPENAPI_PARAMS)
 async def list_police(
-    request: Request,
+    params: ListQueryParams = parse_list_query_params(PoliceService.QUERY_FIELDS),
     police_service: PoliceService = Depends(),
     _=Depends(authenticate_police_admin_or_admin),
 ) -> PaginatedPoliceResponse:
-    return await police_service.get_police_paginated(request)
+    return await police_service.get_police_paginated(params)
 
 
 @police_router.get("/csv", openapi_extra=PAGINATED_OPENAPI_PARAMS)
 async def get_police_csv(
-    request: Request,
+    params: ListQueryParams = parse_export_list_query_params(PoliceService.QUERY_FIELDS),
     police_service: PoliceService = Depends(),
     _=Depends(authenticate_police_admin_or_admin),
 ) -> Response:
-    police_accounts = await police_service.get_police_for_export(request)
-    excel_content = police_service.export_police_to_excel(police_accounts)
+    police_response = await police_service.get_police_paginated(params)
+    excel_content = police_service.export_police_to_excel(police_response)
     return Response(
         content=excel_content,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

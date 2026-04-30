@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio.engine import AsyncEngine
 from src.core.authentication import StringRole
 from src.core.database import EntityBase, database_url, get_session
 from src.core.utils.email_utils import EmailService
+from src.core.utils.query_utils import QueryService
 from src.main import app
 from src.modules.account.account_entity import AccountEntity
 from src.modules.account.account_model import AccountDto, AccountRole
@@ -222,7 +223,11 @@ async def unauthenticated_client(create_test_client: CreateClientCallable):
 
 @pytest.fixture()
 def account_service(test_session: AsyncSession, mock_email_service: EmailService):
-    return AccountService(session=test_session, email_service=mock_email_service)
+    return AccountService(
+        session=test_session,
+        email_service=mock_email_service,
+        query_service=QueryService(test_session, AccountService.QUERY_FIELDS),
+    )
 
 
 @pytest.fixture()
@@ -239,7 +244,11 @@ def police_service(
     fast_bcrypt: None,
     mock_email_service: EmailService,
 ):
-    return PoliceService(session=test_session, email_service=mock_email_service)
+    return PoliceService(
+        session=test_session,
+        email_service=mock_email_service,
+        query_service=QueryService(test_session, PoliceService.QUERY_FIELDS),
+    )
 
 
 @pytest.fixture()
@@ -253,7 +262,11 @@ def auth_service(
 
 @pytest.fixture()
 def student_service(test_session: AsyncSession, location_service: LocationService):
-    return StudentService(session=test_session, location_service=location_service)
+    return StudentService(
+        session=test_session,
+        location_service=location_service,
+        query_service=QueryService(test_session, StudentService.QUERY_FIELDS),
+    )
 
 
 @pytest.fixture()
@@ -284,12 +297,20 @@ def mock_autocomplete():
 
 @pytest.fixture()
 def location_service(test_session: AsyncSession, mock_gmaps: MagicMock):
-    return LocationService(session=test_session, gmaps_client=mock_gmaps)
+    return LocationService(
+        session=test_session,
+        gmaps_client=mock_gmaps,
+        query_service=QueryService(test_session, LocationService.QUERY_FIELDS),
+    )
 
 
 @pytest.fixture()
 def incident_service(test_session: AsyncSession, location_service: LocationService):
-    return IncidentService(session=test_session, location_service=location_service)
+    return IncidentService(
+        session=test_session,
+        location_service=location_service,
+        query_service=QueryService(test_session, IncidentService.QUERY_FIELDS),
+    )
 
 
 @pytest.fixture()
@@ -302,6 +323,7 @@ def party_service(
         session=test_session,
         location_service=location_service,
         student_service=student_service,
+        query_service=QueryService(test_session, PartyService.QUERY_FIELDS),
     )
 
 

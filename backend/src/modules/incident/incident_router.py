@@ -1,9 +1,14 @@
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, Request, Response, status
+from fastapi import APIRouter, Depends, Response, status
 from src.core.authentication import authenticate_police_or_admin, authenticate_police_staff_or_admin
-from src.core.utils.query_utils import PAGINATED_OPENAPI_PARAMS
+from src.core.utils.query_utils import (
+    PAGINATED_OPENAPI_PARAMS,
+    ListQueryParams,
+    parse_export_list_query_params,
+    parse_list_query_params,
+)
 from src.modules.account.account_model import AccountDto
 from src.modules.police.police_model import PoliceAccountDto
 
@@ -27,20 +32,20 @@ incident_router = APIRouter(prefix="/api", tags=["incidents"])
     openapi_extra=PAGINATED_OPENAPI_PARAMS,
 )
 async def get_incidents_paginated(
-    request: Request,
+    params: ListQueryParams = parse_list_query_params(IncidentService.QUERY_FIELDS),
     incident_service: IncidentService = Depends(),
     _: AccountDto | PoliceAccountDto = Depends(authenticate_police_staff_or_admin),
 ) -> PaginatedIncidentsResponse:
-    return await incident_service.get_incidents_paginated(request)
+    return await incident_service.get_incidents_paginated(params)
 
 
 @incident_router.get("/incidents/csv", openapi_extra=PAGINATED_OPENAPI_PARAMS)
 async def get_incidents_csv(
-    request: Request,
+    params: ListQueryParams = parse_export_list_query_params(IncidentService.QUERY_FIELDS),
     incident_service: IncidentService = Depends(),
     _: AccountDto | PoliceAccountDto = Depends(authenticate_police_staff_or_admin),
 ) -> Response:
-    incident_data = await incident_service.get_incidents_for_export(request)
+    incident_data = await incident_service.get_incidents_with_addresses(params)
     excel_content = incident_service.export_incidents_to_excel(incident_data)
     filename = f"incidents_{datetime.now(ZoneInfo('America/New_York')).strftime('%Y_%m_%d')}.xlsx"
     return Response(

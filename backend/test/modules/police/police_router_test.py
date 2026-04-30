@@ -98,7 +98,7 @@ class TestPoliceListRouter:
         await self.police_utils.create_one(role=PoliceRole.POLICE_ADMIN)
         await self.police_utils.create_many(i=2, role="officer")
 
-        response = await self.admin_client.get("/api/police", params={"role": "police_admin"})
+        response = await self.admin_client.get("/api/police", params={"role_eq": "police_admin"})
         paginated = assert_res_paginated(response, PoliceAccountDto, total_records=1)
         assert paginated.items[0].role.value == "police_admin"
 
