@@ -261,20 +261,16 @@ class AccountService:
         if invite is None:
             raise NotFoundException(detail=f"Invite token with id {invite_id} not found")
 
-        previous_expires_at = invite.expires_at
         invite.expires_at = datetime.now(UTC) + timedelta(hours=env.INVITE_TOKEN_EXPIRY_HOURS)
-
         self.session.add(invite)
-        await self.session.commit()
-        await self.session.refresh(invite)
 
         try:
             await self._send_invite_email(invite.email)
         except Exception:
-            invite.expires_at = previous_expires_at
-            self.session.add(invite)
-            await self.session.commit()
+            await self.session.rollback()
             raise
+
+        await self.session.commit()
 
     async def upsert_idp_account(self, data: AccountData) -> AccountDto:
         try:
