@@ -132,7 +132,7 @@ export default function PoliceAccountForm({
             orientation="vertical"
             data-disabled={disableVerificationToggle}
           >
-            <FieldLabel htmlFor="police-is-verified">Is Verified</FieldLabel>
+            <FieldLabel htmlFor="police-is-verified">Status</FieldLabel>
             <Select
               value={String(!!formData.is_verified)}
               onValueChange={(value) =>
@@ -151,8 +151,8 @@ export default function PoliceAccountForm({
                 <SelectValue placeholder="Select verification status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="true">Yes</SelectItem>
-                <SelectItem value="false">No</SelectItem>
+                <SelectItem value="true">Active</SelectItem>
+                <SelectItem value="false">Unverified</SelectItem>
               </SelectContent>
             </Select>
           </Field>

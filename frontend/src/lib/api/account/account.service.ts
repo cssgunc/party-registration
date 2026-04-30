@@ -11,7 +11,12 @@ import type {
   PoliceAccountDto,
   PoliceAccountUpdate,
 } from "../police/police.types";
-import { AccountData, AccountDto } from "./account.types";
+import {
+  AccountDto,
+  AccountUpdateData,
+  AggregateAccountDto,
+  CreateInviteDto,
+} from "./account.types";
 
 /**
  * Service class for account-related operations
@@ -52,19 +57,61 @@ export class AccountService {
   }
 
   /**
-   * Create account (POST /api/accounts)
+   * Send a staff/admin invite (POST /api/accounts) — returns 204 no content.
    */
-  async createAccount(data: AccountData): Promise<AccountDto> {
-    const response = await this.client.post<AccountDto>("/accounts", data);
+  async createAccount(data: CreateInviteDto): Promise<void> {
+    await this.client.post("/accounts", data);
+  }
+
+  /**
+   * Delete an invite token (DELETE /api/accounts/invites/{invite_id}).
+   */
+  async deleteInvite(inviteId: number): Promise<void> {
+    await this.client.delete(`/accounts/invites/${inviteId}`);
+  }
+
+  /**
+   * Rotate an invite token and resend the invitation email
+   * (POST /api/accounts/invites/{invite_id}/resend).
+   */
+  async resendInvite(inviteId: number): Promise<void> {
+    await this.client.post(`/accounts/invites/${inviteId}/resend`);
+  }
+
+  /**
+   * Aggregate accounts view (GET /api/accounts/aggregate).
+   * Returns staff/admin accounts, police accounts, and pending invite tokens.
+   */
+  async getAccountsAggregate(
+    params?: ServerTableParams
+  ): Promise<PaginatedResponse<AggregateAccountDto>> {
+    const response = await this.client.get<
+      PaginatedResponse<AggregateAccountDto>
+    >("/accounts/aggregate", {
+      params: params ? toAxiosParams(params) : undefined,
+    });
     return response.data;
   }
 
   /**
-   * Update account (PUT /api/accounts/{account_id})
+   * Download aggregate accounts as Excel (GET /api/accounts/aggregate/csv)
+   */
+  async downloadAggregateAccountsCsv(
+    params?: ServerTableParams
+  ): Promise<void> {
+    const response = await this.client.get("/accounts/aggregate/csv", {
+      params: params ? toAxiosParams(params) : undefined,
+      responseType: "blob",
+    });
+    downloadExcelFile(response);
+  }
+
+  /**
+   * Update account role (PUT /api/accounts/{account_id})
    */
   async updateAccount(
     accountId: number,
-    data: AccountData
+    data: AccountUpdateData
   ): Promise<AccountDto> {
     const response = await this.client.put<AccountDto>(
       `/accounts/${accountId}`,

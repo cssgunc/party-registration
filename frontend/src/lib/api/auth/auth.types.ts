@@ -1,4 +1,9 @@
-import type { AccountRole } from "@/lib/api/account/account.types";
+import {
+  type AccountRole,
+  accountRoleSchema,
+} from "@/lib/api/account/account.types";
+import { z } from "zod";
+import { policeRoleSchema } from "../police/police.types";
 
 type TokenPair = {
   access_token: string;
@@ -16,7 +21,36 @@ type ExchangeTokenRequest = {
   role: AccountRole;
 };
 
-type ExchangeTokenResponse = TokenPair;
+const accountAccessTokenPayloadSchema = z.object({
+  sub: z.union([z.string(), z.number()]).transform(Number),
+  email: z.string(),
+  first_name: z.string(),
+  last_name: z.string(),
+  pid: z.string(),
+  onyen: z.string(),
+  role: accountRoleSchema,
+  exp: z.union([z.string(), z.number()]).transform(Number),
+  iat: z.union([z.string(), z.number()]).transform(Number),
+});
+
+const policeAccessTokenPayloadSchema = z.object({
+  sub: z.union([z.string(), z.number()]).transform(Number),
+  email: z.string(),
+  role: policeRoleSchema,
+  exp: z.union([z.string(), z.number()]).transform(Number),
+  iat: z.union([z.string(), z.number()]).transform(Number),
+});
+
+const accessTokenPayloadSchema = z.union([
+  accountAccessTokenPayloadSchema,
+  policeAccessTokenPayloadSchema,
+]);
+
+type AccountAccessTokenPayload = z.infer<
+  typeof accountAccessTokenPayloadSchema
+>;
+type PoliceAccessTokenPayload = z.infer<typeof policeAccessTokenPayloadSchema>;
+type AccessTokenPayload = z.infer<typeof accessTokenPayloadSchema>;
 
 type RefreshTokenRequest = {
   refresh_token: string;
@@ -49,8 +83,10 @@ type VerifyPoliceEmailRequest = {
 };
 
 export type {
+  AccessTokenPayload,
+  AccountAccessTokenPayload,
   ExchangeTokenRequest,
-  ExchangeTokenResponse,
+  PoliceAccessTokenPayload,
   PoliceLoginRequest,
   PoliceLoginResponse,
   PoliceSignupRequest,
@@ -59,4 +95,10 @@ export type {
   RetryPoliceVerificationRequest,
   TokenPair,
   VerifyPoliceEmailRequest,
+};
+
+export {
+  accessTokenPayloadSchema,
+  accountAccessTokenPayloadSchema,
+  policeAccessTokenPayloadSchema,
 };

@@ -2,19 +2,22 @@
 
 import { useSnackbar } from "@/contexts/SnackbarContext";
 import {
-  useAccounts,
+  useAggregateAccounts,
   useCreateAccount,
   useDeleteAccount,
+  useDeleteInvite,
   useDeletePoliceAccount,
-  useDownloadAccountsCsv,
-  usePoliceAccounts,
+  useDownloadAggregateAccountsCsv,
+  useResendInvite,
   useUpdateAccount,
   useUpdatePoliceAccount,
 } from "@/lib/api/account/account.queries";
 import type {
-  AccountData,
   AccountRole,
-  AccountTableRow,
+  AccountUpdateData,
+  AggregateAccountDto,
+  CreateInviteDto,
+  InviteTokenRole,
 } from "@/lib/api/account/account.types";
 import type {
   PoliceAccountUpdate,
@@ -28,8 +31,9 @@ import {
 import { formatRoleLabel } from "@/lib/utils";
 import { ColumnDef } from "@tanstack/react-table";
 import { isAxiosError } from "axios";
+import { Send } from "lucide-react";
 import { useSession } from "next-auth/react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import * as z from "zod";
 import { useSidebar } from "../shared/sidebar/SidebarContext";
 import { TableTemplate } from "../shared/table/TableTemplate";
@@ -40,21 +44,8 @@ import PoliceAccountForm, {
 
 type AccountTableFormValues = z.infer<typeof accountTableFormSchema>;
 
-const hasAccountChanged = (
-  original: AccountTableRow | null,
-  updated: AccountData
-): boolean => {
-  if (!original) return true;
-
-  return (
-    original.email !== updated.email ||
-    original.first_name !== updated.first_name ||
-    original.last_name !== updated.last_name ||
-    original.pid !== updated.pid ||
-    original.onyen !== updated.onyen ||
-    original.role !== updated.role
-  );
-};
+const isPoliceRow = (row: AggregateAccountDto) =>
+  row.role === "officer" || row.role === "police_admin";
 
 const SERVER_COLUMN_MAP: ServerColumnMap = {
   email: { backendField: "email", filterOperator: "contains" },
@@ -62,6 +53,7 @@ const SERVER_COLUMN_MAP: ServerColumnMap = {
   last_name: { backendField: "last_name", filterOperator: "contains" },
   onyen: { backendField: "onyen", filterOperator: "contains" },
   role: { backendField: "role", filterOperator: "eq" },
+  status: { backendField: "status", filterOperator: "eq" },
 };
 
 const getErrorMessage = (error: Error): string => {
@@ -89,56 +81,30 @@ export const AccountTable = () => {
   const { openSidebar, closeSidebar } = useSidebar();
   const { openSnackbar } = useSnackbar();
   const { data: session } = useSession();
-  const [editingAccount, setEditingAccount] = useState<AccountTableRow | null>(
+  const [editingRow, setEditingRow] = useState<AggregateAccountDto | null>(
     null
   );
   const [serverParams, setServerParams] =
     useState<ServerTableParams>(DEFAULT_TABLE_PARAMS);
 
-  const accountsQuery = useAccounts(serverParams);
-  const policeAccountsQuery = usePoliceAccounts();
+  const aggregateQuery = useAggregateAccounts(serverParams);
+
   const { mutate: exportCsv, isPending: isExporting } =
-    useDownloadAccountsCsv();
-
-  const tableRows: AccountTableRow[] = useMemo(() => {
-    const regularAccounts: AccountTableRow[] = (accountsQuery.data?.items ?? [])
-      .filter((a) => a.role === "admin" || a.role === "staff")
-      .map((a) => ({ ...a, is_verified: null, _isPolice: false }));
-
-    const policeRows: AccountTableRow[] = (policeAccountsQuery.data ?? []).map(
-      (p) => ({
-        id: p.id,
-        email: p.email,
-        first_name: "-",
-        last_name: "-",
-        pid: "-",
-        onyen: "-",
-        role: p.role,
-        is_verified: p.is_verified,
-        _isPolice: true,
-      })
-    );
-
-    return [...regularAccounts, ...policeRows];
-  }, [accountsQuery.data, policeAccountsQuery.data]);
+    useDownloadAggregateAccountsCsv();
 
   const createAccountMutation = useCreateAccount({
-    onError: (error: Error, variables: AccountData) => {
+    onError: (error: Error, variables: CreateInviteDto) => {
       const message = getErrorMessage(error);
 
       openSidebar(
         "create-account",
-        "New Account",
-        "Add a new account to the system",
+        "New Invite",
+        "Send a staff or admin invitation",
         <AccountTableForm
           onSubmit={handleAccountCreateSubmit}
           submissionError={message}
           editData={{
             email: variables.email,
-            first_name: variables.first_name,
-            last_name: variables.last_name,
-            pid: variables.pid,
-            onyen: variables.onyen,
             role: variables.role,
           }}
         />
@@ -146,31 +112,17 @@ export const AccountTable = () => {
     },
     onSuccess: () => {
       closeSidebar();
-      setEditingAccount(null);
-      openSnackbar("Account created successfully", "success");
+      setEditingRow(null);
+      openSnackbar("Invite sent successfully", "success");
     },
   });
 
   const updateAccountMutation = useUpdateAccount({
-    onError: (error: Error, variables: { id: number; data: AccountData }) => {
+    onError: (
+      error: Error,
+      variables: { id: number; data: AccountUpdateData }
+    ) => {
       const message = getErrorMessage(error);
-      const editTarget =
-        editingAccount &&
-        !editingAccount._isPolice &&
-        editingAccount.id === variables.id
-          ? editingAccount
-          : null;
-
-      const editData = editTarget
-        ? {
-            email: editTarget.email,
-            first_name: editTarget.first_name,
-            last_name: editTarget.last_name,
-            pid: editTarget.pid ?? "",
-            onyen: editTarget.onyen ?? "",
-            role: editTarget.role as AccountRole,
-          }
-        : variables.data;
 
       openSidebar(
         `edit-account-${variables.id}`,
@@ -179,16 +131,17 @@ export const AccountTable = () => {
         <AccountTableForm
           onSubmit={(data) => handleAccountEditSubmit(variables.id, data)}
           submissionError={message}
-          editData={editData}
+          editData={{
+            email: editingRow?.email ?? "",
+            role: (editingRow?.role ?? variables.data.role) as AccountRole,
+          }}
         />
       );
     },
-    onSuccess: (data, variables) => {
-      if (hasAccountChanged(editingAccount, variables.data)) {
-        openSnackbar("Account edited successfully", "success");
-      }
+    onSuccess: () => {
+      openSnackbar("Account edited successfully", "success");
       closeSidebar();
-      setEditingAccount(null);
+      setEditingRow(null);
     },
   });
 
@@ -218,7 +171,7 @@ export const AccountTable = () => {
     },
     onSuccess: () => {
       closeSidebar();
-      setEditingAccount(null);
+      setEditingRow(null);
     },
   });
 
@@ -237,37 +190,53 @@ export const AccountTable = () => {
     },
   });
 
-  const handleEdit = (row: AccountTableRow) => {
-    setEditingAccount(row);
+  const deleteInviteMutation = useDeleteInvite({
+    onError: (error: Error) => {
+      const message = getErrorMessage(error);
+      console.error("Failed to delete invite:", message);
+      openSnackbar("Failed to delete invite", "error");
+    },
+  });
 
-    if (row._isPolice) {
+  const resendInviteMutation = useResendInvite({
+    onError: (error: Error) => {
+      const message = getErrorMessage(error);
+      console.error("Failed to resend invite:", message);
+      openSnackbar("Failed to resend invite", "error");
+    },
+    onSuccess: () => {
+      openSnackbar("Invite resent successfully", "success");
+    },
+  });
+
+  const handleEdit = (row: AggregateAccountDto) => {
+    if (row.status === "invited") return;
+    setEditingRow(row);
+
+    if (isPoliceRow(row)) {
       openSidebar(
-        `edit-police-${row.id}`,
+        `edit-police-${row.source_id}`,
         "Edit Police Account",
         "Update police account credentials",
         <PoliceAccountForm
-          onSubmit={(data) => handlePoliceEditSubmit(row.id, data)}
+          onSubmit={(data) => handlePoliceEditSubmit(row.source_id, data)}
           editData={{
             email: row.email,
             role: row.role as PoliceRole,
-            is_verified: row.is_verified ?? false,
+            is_verified: row.status === "active",
           }}
           disableVerificationToggle={false}
         />
       );
     } else {
       openSidebar(
-        `edit-account-${row.id}`,
+        `edit-account-${row.source_id}`,
         "Edit Account",
         "Update account information",
         <AccountTableForm
-          onSubmit={(data) => handleAccountEditSubmit(row.id, data)}
+          onSubmit={(data) => handleAccountEditSubmit(row.source_id, data)}
           editData={{
             email: row.email,
-            first_name: row.first_name,
-            last_name: row.last_name,
-            pid: row.pid ?? "",
-            onyen: row.onyen ?? "",
             role: row.role as AccountRole,
           }}
         />
@@ -275,20 +244,26 @@ export const AccountTable = () => {
     }
   };
 
-  const handleDelete = (row: AccountTableRow) => {
-    if (row._isPolice) {
-      deletePoliceAccountMutation.mutate(row.id);
+  const handleDelete = (row: AggregateAccountDto) => {
+    if (row.status === "invited") {
+      deleteInviteMutation.mutate(row.source_id);
+    } else if (isPoliceRow(row)) {
+      deletePoliceAccountMutation.mutate(row.source_id);
     } else {
-      deleteAccountMutation.mutate(row.id);
+      deleteAccountMutation.mutate(row.source_id);
     }
   };
 
+  const handleResendInvite = (row: AggregateAccountDto) => {
+    resendInviteMutation.mutate(row.source_id);
+  };
+
   const handleCreate = () => {
-    setEditingAccount(null);
+    setEditingRow(null);
     openSidebar(
       "create-account",
-      "New Account",
-      "Add a new account to the system",
+      "New Invite",
+      "Send a staff or admin invitation",
       <AccountTableForm onSubmit={handleAccountCreateSubmit} />
     );
   };
@@ -296,11 +271,7 @@ export const AccountTable = () => {
   const handleAccountCreateSubmit = async (data: AccountTableFormValues) => {
     createAccountMutation.mutate({
       email: data.email,
-      first_name: data.first_name,
-      last_name: data.last_name,
-      pid: data.pid,
-      onyen: data.onyen,
-      role: data.role as AccountRole,
+      role: data.role as InviteTokenRole,
     });
   };
 
@@ -310,14 +281,7 @@ export const AccountTable = () => {
   ) => {
     updateAccountMutation.mutate({
       id: accountId,
-      data: {
-        email: data.email,
-        first_name: data.first_name,
-        last_name: data.last_name,
-        pid: data.pid,
-        onyen: data.onyen,
-        role: data.role as AccountRole,
-      },
+      data: { role: data.role as AccountRole },
     });
   };
 
@@ -335,7 +299,7 @@ export const AccountTable = () => {
     });
   };
 
-  const columns: ColumnDef<AccountTableRow>[] = [
+  const columns: ColumnDef<AggregateAccountDto>[] = [
     {
       accessorKey: "email",
       header: "Email",
@@ -345,76 +309,83 @@ export const AccountTable = () => {
       accessorKey: "first_name",
       header: "First Name",
       enableColumnFilter: true,
+      cell: ({ row }) => row.original.first_name ?? "—",
     },
     {
       accessorKey: "last_name",
       header: "Last Name",
       enableColumnFilter: true,
+      cell: ({ row }) => row.original.last_name ?? "—",
     },
     {
       accessorKey: "onyen",
       header: "Onyen",
       enableColumnFilter: true,
+      cell: ({ row }) => row.original.onyen ?? "—",
     },
     {
       accessorKey: "pid",
       header: "PID",
       enableColumnFilter: true,
+      cell: ({ row }) => row.original.pid ?? "—",
     },
     {
       accessorKey: "role",
       header: "Role",
       enableColumnFilter: true,
-      cell: ({ row }) => {
-        const role = row.getValue("role") as AccountTableRow["role"];
-        return formatRoleLabel(role);
-      },
+      cell: ({ row }) => formatRoleLabel(row.getValue("role")),
     },
     {
-      accessorKey: "is_verified",
-      header: "Verified",
+      accessorKey: "status",
+      header: "Status",
+      enableColumnFilter: true,
       cell: ({ row }) => {
-        return row.original._isPolice ? (
-          <p>{row.original.is_verified ? "Yes" : "No"}</p>
-        ) : (
-          "—"
-        );
+        const status = row.getValue("status") as AggregateAccountDto["status"];
+        return status.charAt(0).toUpperCase() + status.slice(1);
       },
     },
   ];
 
-  const isLoading = accountsQuery.isLoading || policeAccountsQuery.isLoading;
-  const queryError =
-    (accountsQuery.error as Error | null) ??
-    (policeAccountsQuery.error as Error | null);
-
   return (
     <div className="h-full min-h-0 flex flex-col">
       <TableTemplate
-        data={tableRows}
+        data={aggregateQuery.data?.items ?? []}
         columns={columns}
         resourceName="Account"
         onEdit={handleEdit}
         onDelete={handleDelete}
         onCreateNewRow={handleCreate}
-        isLoading={isLoading}
-        isFetching={accountsQuery.isFetching}
-        error={queryError}
-        getDeleteDescription={(row: AccountTableRow) =>
-          `Are you sure you want to delete ${row._isPolice ? "police " : ""}account ${row.email}? This action cannot be undone.`
+        isLoading={aggregateQuery.isLoading}
+        isFetching={aggregateQuery.isFetching}
+        error={aggregateQuery.error as Error | null}
+        getDeleteDescription={(row: AggregateAccountDto) =>
+          `Are you sure you want to delete ${isPoliceRow(row) ? "police " : ""}account ${row.email}? This action cannot be undone.`
         }
         isDeleting={
           deleteAccountMutation.isPending ||
-          deletePoliceAccountMutation.isPending
+          deletePoliceAccountMutation.isPending ||
+          deleteInviteMutation.isPending ||
+          resendInviteMutation.isPending
         }
+        canEditRow={(row) => row.status !== "invited"}
         canDeleteRow={(row) =>
-          row._isPolice || (session?.id != null && row.id !== session.id)
+          row.status === "invited" ||
+          isPoliceRow(row) ||
+          (session?.id != null && row.source_id !== session.id)
         }
+        rowActions={[
+          {
+            label: "Resend invite",
+            onClick: handleResendInvite,
+            icon: <Send className="mr-2 size-4" />,
+            isVisible: (row) => row.status === "invited",
+          },
+        ]}
         serverMeta={
-          accountsQuery.data
+          aggregateQuery.data
             ? {
-                totalRecords: accountsQuery.data.total_records,
-                totalPages: accountsQuery.data.total_pages,
+                totalRecords: aggregateQuery.data.total_records,
+                totalPages: aggregateQuery.data.total_pages,
               }
             : undefined
         }

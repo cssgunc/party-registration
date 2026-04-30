@@ -20,14 +20,7 @@ import { useState } from "react";
 import * as z from "zod";
 
 export const accountTableFormSchema = z.object({
-  pid: z
-    .string()
-    .regex(/^\d{9}$/, { message: "Please input a valid PID" })
-    .min(1, "PID is required"),
   email: z.email({ pattern: z.regexes.html5Email }).min(1, "Email is required"),
-  first_name: z.string().min(1, "First name is required"),
-  last_name: z.string().min(1, "Last name is required"),
-  onyen: z.string().min(1, "Onyen is required"),
   role: z.string().min(1, "Role is required"),
 });
 
@@ -46,10 +39,6 @@ export default function AccountTableForm({
 }: AccountTableFormProps) {
   const [formData, setFormData] = useState<Partial<AccountTableFormValues>>({
     email: editData?.email ?? "",
-    first_name: editData?.first_name ?? "",
-    last_name: editData?.last_name ?? "",
-    pid: editData?.pid ?? "",
-    onyen: editData?.onyen ?? "",
     role: editData?.role ?? "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -94,7 +83,7 @@ export default function AccountTableForm({
     }
   };
 
-  const isPIDEditMode = !!editData;
+  const isEditMode = !!editData;
   return (
     <form onSubmit={handleSubmit}>
       <FieldGroup>
@@ -104,85 +93,19 @@ export default function AccountTableForm({
             <Input
               id="email"
               type="email"
-              placeholder="student@unc.edu"
+              placeholder="staff@unc.edu"
               value={formData.email}
               onChange={(e) => updateField("email", e.target.value)}
               aria-invalid={!!errors.email}
-              disabled={isPIDEditMode}
+              disabled={isEditMode}
               title={
-                isPIDEditMode ? "This field is managed by UNC SSO" : undefined
+                isEditMode
+                  ? "Email cannot be changed after invite is sent"
+                  : undefined
               }
               autoComplete="off"
             />
             {errors.email && <FieldError>{errors.email}</FieldError>}
-          </Field>
-
-          <Field data-invalid={!!errors.pid}>
-            <FieldLabel htmlFor="pid">PID</FieldLabel>
-            <Input
-              id="first-name"
-              placeholder="123456789"
-              value={formData.pid}
-              onChange={(e) => updateField("pid", e.target.value)}
-              aria-invalid={!!errors.pid}
-              disabled={isPIDEditMode}
-              title={
-                isPIDEditMode ? "This field is managed by UNC SSO" : undefined
-              }
-              autoComplete="off"
-            />
-            {errors.pid && <FieldError>{errors.pid}</FieldError>}
-          </Field>
-
-          <Field data-invalid={!!errors.first_name}>
-            <FieldLabel htmlFor="first-name">First name</FieldLabel>
-            <Input
-              id="first-name"
-              placeholder="John"
-              value={formData.first_name}
-              onChange={(e) => updateField("first_name", e.target.value)}
-              aria-invalid={!!errors.first_name}
-              disabled={isPIDEditMode}
-              title={
-                isPIDEditMode ? "This field is managed by UNC SSO" : undefined
-              }
-              autoComplete="off"
-            />
-            {errors.first_name && <FieldError>{errors.first_name}</FieldError>}
-          </Field>
-
-          <Field data-invalid={!!errors.last_name}>
-            <FieldLabel htmlFor="last-name">Last name</FieldLabel>
-            <Input
-              id="last-name"
-              placeholder="Doe"
-              value={formData.last_name}
-              onChange={(e) => updateField("last_name", e.target.value)}
-              aria-invalid={!!errors.last_name}
-              disabled={isPIDEditMode}
-              title={
-                isPIDEditMode ? "This field is managed by UNC SSO" : undefined
-              }
-              autoComplete="off"
-            />
-            {errors.last_name && <FieldError>{errors.last_name}</FieldError>}
-          </Field>
-
-          <Field data-invalid={!!errors.onyen}>
-            <FieldLabel htmlFor="onyen">Onyen</FieldLabel>
-            <Input
-              id="onyen"
-              placeholder="johndoe"
-              value={formData.onyen}
-              onChange={(e) => updateField("onyen", e.target.value)}
-              aria-invalid={!!errors.onyen}
-              disabled={isPIDEditMode}
-              title={
-                isPIDEditMode ? "This field is managed by UNC SSO" : undefined
-              }
-              autoComplete="off"
-            />
-            {errors.onyen && <FieldError>{errors.onyen}</FieldError>}
           </Field>
 
           <Field data-invalid={!!errors.role}>

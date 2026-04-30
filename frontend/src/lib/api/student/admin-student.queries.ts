@@ -1,4 +1,3 @@
-import { AccountService } from "@/lib/api/account/account.service";
 import {
   ListQueryParams,
   ServerTableParams,
@@ -20,15 +19,10 @@ import {
 } from "./student.types";
 
 const studentService = new AdminStudentService();
-const accountService = new AccountService();
 
 type UpdateStudentVars = {
   id: number;
   data: StudentUpdateDto;
-};
-
-type CreateStudentVars = {
-  data: StudentUpdateDto & Pick<StudentDto, "email" | "onyen" | "pid">;
 };
 
 type UpdateIsRegisteredVars = {
@@ -57,28 +51,6 @@ export function useUpdateStudent(
     ...options,
     mutationFn: ({ id, data }: UpdateStudentVars) =>
       studentService.updateStudent(id, data),
-
-    onSuccess: (...params) => {
-      queryClient.invalidateQueries({ queryKey: STUDENTS_KEY });
-      options?.onSuccess?.(...params);
-    },
-  });
-}
-
-export function useCreateStudent(
-  options?: OptimisticMutationOptions<StudentDto, Error, CreateStudentVars>
-) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    ...options,
-    mutationFn: async ({ data }: CreateStudentVars) => {
-      const account = await accountService.createAccount({
-        role: "student",
-        ...data,
-      });
-      return studentService.createStudent({ account_id: account.id, data });
-    },
 
     onSuccess: (...params) => {
       queryClient.invalidateQueries({ queryKey: STUDENTS_KEY });

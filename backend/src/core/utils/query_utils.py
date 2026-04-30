@@ -208,7 +208,7 @@ def apply_pagination(query: Select, params: PaginationParams | None = None) -> S
 
 def apply_sorting[ModelType: DeclarativeMeta](
     query: Select,
-    model: type[ModelType],
+    model: type[ModelType] | None,
     sort_params: list[SortParam] | None = None,
     allowed_fields: list[str] | None = None,
     nested_field_columns: dict[str, Any] | None = None,
@@ -238,7 +238,7 @@ def apply_sorting[ModelType: DeclarativeMeta](
                 raise BadRequestException(f"Sorting on field '{sort_param.field}' is not allowed")
             field = nested_field_columns[sort_param.field]
         else:
-            if not hasattr(model, sort_param.field):
+            if model is None or not hasattr(model, sort_param.field):
                 raise BadRequestException(f"Field '{sort_param.field}' does not exist on model")
             if allowed_fields and sort_param.field not in allowed_fields:
                 raise BadRequestException(f"Sorting on field '{sort_param.field}' is not allowed")
@@ -296,7 +296,7 @@ def _escape_like_wildcards(value: str, escape_char: str = "\\") -> str:
 
 def apply_filters[ModelType: DeclarativeMeta](
     query: Select,
-    model: type[ModelType],
+    model: type[ModelType] | None,
     filter_params: list[FilterParam] | None = None,
     allowed_fields: list[str] | None = None,
     nested_field_columns: dict[str, Any] | None = None,
@@ -328,7 +328,7 @@ def apply_filters[ModelType: DeclarativeMeta](
                 )
             field = nested_field_columns[filter_param.field]
         else:
-            if not hasattr(model, filter_param.field):
+            if model is None or not hasattr(model, filter_param.field):
                 raise BadRequestException(f"Field '{filter_param.field}' does not exist on model")
             if allowed_fields and filter_param.field not in allowed_fields:
                 raise BadRequestException(
@@ -405,7 +405,7 @@ def apply_search(query: Select, search: str, search_columns: list[Any]) -> Selec
 
 def apply_query_params[ModelType: DeclarativeMeta](
     query: Select,
-    model: type[ModelType],
+    model: type[ModelType] | None,
     params: ListQueryParam | None = None,
     allowed_sort_fields: list[str] | None = None,
     allowed_filter_fields: list[str] | None = None,
@@ -439,7 +439,11 @@ def apply_query_params[ModelType: DeclarativeMeta](
     # Apply sorting (before pagination to ensure consistent ordering)
     if params.sort:
         query = apply_sorting(query, model, params.sort, allowed_sort_fields, nested_field_columns)
-    elif params.pagination and (params.pagination.skip > 0 or params.pagination.limit is not None):
+    elif (
+        params.pagination
+        and (params.pagination.skip > 0 or params.pagination.limit is not None)
+        and model is not None
+    ):
         # MySQL requires ORDER BY when using OFFSET or LIMIT
         # Default to sorting by primary key if no explicit sort is provided and pagination is active
         # Get the primary key column(s) from the model's mapper
@@ -599,13 +603,14 @@ def parse_pagination_params(
 async def get_paginated_results[ModelType](
     session: AsyncSession,
     base_query: Select,
-    entity_class: type,
+    entity_class: type | None,
     dto_converter: Callable[[Any], ModelType],
     query_params: ListQueryParam,
     allowed_sort_fields: list[str],
     allowed_filter_fields: list[str],
     nested_field_columns: dict[str, Any] | None = None,
     search_columns: list[Any] | None = None,
+    use_mappings: bool = False,
 ) -> PaginatedResponse[ModelType]:
     """
     Generic function to apply filters, search, sorting, pagination and return paginated results.
@@ -623,6 +628,7 @@ async def get_paginated_results[ModelType](
             Each entry may be a single column or a list/tuple of columns to be
             concatenated with a space (e.g. ``[first_name, last_name]`` enables
             matching against the full name).
+        use_mappings: When True, fetch rows as mapping objects instead of scalars.
 
     Returns:
         PaginatedResponse with items and metadata
@@ -653,7 +659,7 @@ async def get_paginated_results[ModelType](
 
     # Execute query
     result = await session.execute(paginated_query)
-    entities = result.scalars().all()
+    entities = result.mappings().all() if use_mappings else result.scalars().all()
 
     # Convert to DTOs
     dtos = [dto_converter(entity) for entity in entities]

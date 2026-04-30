@@ -8,7 +8,7 @@ from src.core.exceptions import (
     CredentialsException,
     ForbiddenException,
 )
-from src.modules.account.account_model import AccountData, AccountDto, AccountRole
+from src.modules.account.account_model import AccountData, AccountDto, AccountRole, InviteTokenRole
 from src.modules.auth.auth_model import AccessTokenDto, PoliceCredentialsDto, TokensDto
 from src.modules.auth.auth_service import (
     AuthService,
@@ -20,6 +20,7 @@ from src.modules.police.police_service import PoliceConflictException
 from src.modules.student.student_model import StudentDto
 
 from test.modules.account.account_utils import AccountTestUtils
+from test.modules.account.invite_token_utils import InviteTokenTestUtils
 from test.modules.auth.auth_utils import AuthTestUtils
 from test.modules.police.police_utils import PoliceTestUtils
 from test.modules.student.student_utils import StudentTestUtils
@@ -118,58 +119,76 @@ class TestAuthRouter:
         self.auth_utils.assert_account_token_payload(payload, expected)
 
     @pytest.mark.asyncio
-    async def test_exchange_staff_success(self, account_utils: AccountTestUtils) -> None:
-        """Staff exchange succeeds when account exists and role matches."""
-        existing = await account_utils.create_one(role="staff")
-
-        data = AccountData(
-            email=existing.email,
-            first_name=existing.first_name,
-            last_name=existing.last_name,
-            pid=existing.pid,
-            onyen=existing.onyen,
-            role=AccountRole.STAFF,
+    async def test_exchange_staff_success_via_invite(
+        self, account_utils: AccountTestUtils, invite_token_utils: InviteTokenTestUtils
+    ) -> None:
+        """Staff exchange provisions an account when a valid invite token exists."""
+        idp_data = await account_utils.next_data(role="staff")
+        invite = await invite_token_utils.create_one(
+            email=idp_data.email, role=InviteTokenRole.STAFF
         )
 
         response = await self.unauthenticated_client.post(
             "/api/auth/exchange",
-            json=data.model_dump(mode="json"),
+            json=idp_data.model_dump(mode="json"),
             headers={"X-Internal-Secret": env.INTERNAL_API_SECRET},
         )
 
         result = assert_res_success(response, TokensDto)
         payload = self.auth_utils.decode_token(result.access_token)
-        self.auth_utils.assert_account_token_payload(payload, existing.to_dto())
+        assert payload["email"] == idp_data.email
+        assert payload["role"] == AccountRole.STAFF.value
+
+        remaining_tokens = await invite_token_utils.get_all()
+        InviteTokenTestUtils.assert_token_deleted(invite, remaining_tokens)
 
     @pytest.mark.asyncio
-    async def test_exchange_admin_success(self, account_utils: AccountTestUtils) -> None:
-        """Admin exchange succeeds when account exists and role matches."""
-        existing = await account_utils.create_one(role="admin")
-
-        data = AccountData(
-            email=existing.email,
-            first_name=existing.first_name,
-            last_name=existing.last_name,
-            pid=existing.pid,
-            onyen=existing.onyen,
-            role=AccountRole.ADMIN,
+    async def test_exchange_admin_success_via_invite(
+        self, account_utils: AccountTestUtils, invite_token_utils: InviteTokenTestUtils
+    ) -> None:
+        """Admin exchange provisions an account when a valid invite token exists."""
+        idp_data = await account_utils.next_data(role="admin")
+        invite = await invite_token_utils.create_one(
+            email=idp_data.email, role=InviteTokenRole.ADMIN
         )
 
         response = await self.unauthenticated_client.post(
             "/api/auth/exchange",
-            json=data.model_dump(mode="json"),
+            json=idp_data.model_dump(mode="json"),
             headers={"X-Internal-Secret": env.INTERNAL_API_SECRET},
         )
 
         result = assert_res_success(response, TokensDto)
         payload = self.auth_utils.decode_token(result.access_token)
-        self.auth_utils.assert_account_token_payload(payload, existing.to_dto())
+        assert payload["email"] == idp_data.email
+        assert payload["role"] == AccountRole.ADMIN.value
+
+        remaining_tokens = await invite_token_utils.get_all()
+        InviteTokenTestUtils.assert_token_deleted(invite, remaining_tokens)
 
     @pytest.mark.asyncio
-    async def test_exchange_staff_not_found_returns_403(
+    async def test_exchange_invite_role_overrides_payload_role(
+        self, account_utils: AccountTestUtils, invite_token_utils: InviteTokenTestUtils
+    ) -> None:
+        """Role in the provisioned account comes from the invite token, not the SSO payload."""
+        idp_data = await account_utils.next_data(role="admin")
+        await invite_token_utils.create_one(email=idp_data.email, role=InviteTokenRole.STAFF)
+
+        response = await self.unauthenticated_client.post(
+            "/api/auth/exchange",
+            json=idp_data.model_dump(mode="json"),
+            headers={"X-Internal-Secret": env.INTERNAL_API_SECRET},
+        )
+
+        result = assert_res_success(response, TokensDto)
+        payload = self.auth_utils.decode_token(result.access_token)
+        assert payload["role"] == AccountRole.STAFF.value
+
+    @pytest.mark.asyncio
+    async def test_exchange_staff_no_invite_returns_403(
         self, account_utils: AccountTestUtils
     ) -> None:
-        """Staff exchange returns 403 when no account exists for onyen."""
+        """Staff exchange returns 403 when no invite token exists for the email."""
         data = await account_utils.next_data(role="staff")
 
         response = await self.unauthenticated_client.post(
@@ -178,13 +197,13 @@ class TestAuthRouter:
             headers={"X-Internal-Secret": env.INTERNAL_API_SECRET},
         )
 
-        assert_res_failure(response, ForbiddenException("No matching account found"))
+        assert_res_failure(response, ForbiddenException("No matching invite token found"))
 
     @pytest.mark.asyncio
-    async def test_exchange_admin_not_found_returns_403(
+    async def test_exchange_admin_no_invite_returns_403(
         self, account_utils: AccountTestUtils
     ) -> None:
-        """Admin exchange returns 403 when no account exists for onyen."""
+        """Admin exchange returns 403 when no invite token exists for the email."""
         data = await account_utils.next_data(role="admin")
 
         response = await self.unauthenticated_client.post(
@@ -193,31 +212,79 @@ class TestAuthRouter:
             headers={"X-Internal-Secret": env.INTERNAL_API_SECRET},
         )
 
-        assert_res_failure(response, ForbiddenException("No matching account found"))
+        assert_res_failure(response, ForbiddenException("No matching invite token found"))
 
     @pytest.mark.asyncio
-    async def test_exchange_role_mismatch_returns_403(
-        self, account_utils: AccountTestUtils
+    async def test_exchange_expired_invite_returns_403(
+        self, account_utils: AccountTestUtils, invite_token_utils: InviteTokenTestUtils
     ) -> None:
-        """Exchange returns 403 when role in payload doesn't match DB role."""
-        existing = await account_utils.create_one(role="staff")
+        """Exchange returns 403 when the invite token is expired."""
+        idp_data = await account_utils.next_data(role="staff")
+        await invite_token_utils.create_expired(email=idp_data.email, role=InviteTokenRole.STAFF)
 
-        data = AccountData(
-            email=existing.email,
-            first_name=existing.first_name,
-            last_name=existing.last_name,
+        response = await self.unauthenticated_client.post(
+            "/api/auth/exchange",
+            json=idp_data.model_dump(mode="json"),
+            headers={"X-Internal-Secret": env.INTERNAL_API_SECRET},
+        )
+
+        assert_res_failure(response, ForbiddenException("Invite token has expired"))
+
+    @pytest.mark.asyncio
+    async def test_exchange_matches_existing_staff_account_by_pid_and_deletes_invite(
+        self, account_utils: AccountTestUtils, invite_token_utils: InviteTokenTestUtils
+    ) -> None:
+        existing = await account_utils.create_one(role="staff")
+        idp_data = await account_utils.next_data(
+            role="staff",
             pid=existing.pid,
-            onyen=existing.onyen,
-            role=AccountRole.ADMIN,  # DB has staff, payload claims admin
+            onyen="updatedonyen",
+            email="updated-staff@unc.edu",
+        )
+        invite = await invite_token_utils.create_one(
+            email=idp_data.email, role=InviteTokenRole.STAFF
         )
 
         response = await self.unauthenticated_client.post(
             "/api/auth/exchange",
-            json=data.model_dump(mode="json"),
+            json=idp_data.model_dump(mode="json"),
             headers={"X-Internal-Secret": env.INTERNAL_API_SECRET},
         )
 
-        assert_res_failure(response, ForbiddenException("Role mismatch"))
+        result = assert_res_success(response, TokensDto)
+        payload = self.auth_utils.decode_token(result.access_token)
+        assert payload["sub"] == str(existing.id)
+        assert payload["email"] == idp_data.email
+        assert payload["pid"] == existing.pid
+        assert payload["onyen"] == idp_data.onyen
+
+        remaining_tokens = await invite_token_utils.get_all()
+        InviteTokenTestUtils.assert_token_deleted(invite, remaining_tokens)
+
+    @pytest.mark.asyncio
+    async def test_exchange_existing_staff_account_pid_match_does_not_require_invite(
+        self, account_utils: AccountTestUtils
+    ) -> None:
+        existing = await account_utils.create_one(role="staff")
+        idp_data = await account_utils.next_data(
+            role="staff",
+            pid=existing.pid,
+            onyen="newonyen",
+            email="matched-by-pid@unc.edu",
+        )
+
+        response = await self.unauthenticated_client.post(
+            "/api/auth/exchange",
+            json=idp_data.model_dump(mode="json"),
+            headers={"X-Internal-Secret": env.INTERNAL_API_SECRET},
+        )
+
+        result = assert_res_success(response, TokensDto)
+        payload = self.auth_utils.decode_token(result.access_token)
+        assert payload["sub"] == str(existing.id)
+        assert payload["email"] == idp_data.email
+        assert payload["pid"] == existing.pid
+        assert payload["onyen"] == idp_data.onyen
 
     @pytest.mark.asyncio
     async def test_exchange_missing_internal_secret(self, account_utils: AccountTestUtils) -> None:
