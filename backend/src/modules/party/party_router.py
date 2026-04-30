@@ -156,14 +156,22 @@ async def get_parties_nearby(
     if start_datetime > end_datetime:
         raise BadRequestException("Start date must be less than or equal to end date")
 
-    # Resolve coordinates and address from Google Maps
-    location_data = await location_service.get_place_details(place_id)
-
     # Try to find the location in the DB (may not exist for unregistered addresses)
     try:
         db_location = await location_service.get_location_by_place_id(place_id)
     except LocationNotFoundException:
         db_location = None
+
+    # Only call Google Maps API when the location isn't in the DB
+    if db_location is not None:
+        formatted_address = db_location.formatted_address
+        search_lat = float(db_location.latitude)
+        search_lon = float(db_location.longitude)
+    else:
+        location_data = await location_service.get_place_details(place_id)
+        formatted_address = location_data.formatted_address
+        search_lat = location_data.latitude
+        search_lon = location_data.longitude
 
     # Find a party at this exact location within the date range (if DB location exists)
     exact_party = None
@@ -176,15 +184,9 @@ async def get_parties_nearby(
 
     exact_match = ExactMatchDto(
         google_place_id=place_id,
-        formatted_address=location_data.formatted_address,
+        formatted_address=formatted_address,
         location=db_location,
         party=exact_party,
-    )
-
-    # Use DB coordinates when available to avoid float precision drift vs stored DECIMAL values
-    search_lat = float(db_location.latitude) if db_location is not None else location_data.latitude
-    search_lon = (
-        float(db_location.longitude) if db_location is not None else location_data.longitude
     )
 
     # Perform proximity search with date range (sorted by distance)
