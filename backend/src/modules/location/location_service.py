@@ -5,7 +5,7 @@ from typing import ClassVar
 import googlemaps
 from fastapi import Depends
 from googlemaps import places
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.config import env
@@ -23,8 +23,8 @@ from src.core.utils.query_utils import (
     QueryService,
     SortOrder,
     SortParam,
-    make_query_service,
 )
+from src.modules.incident.incident_entity import IncidentEntity
 from src.modules.incident.incident_model import IncidentSeverity
 
 from .location_entity import LocationEntity
@@ -79,6 +79,13 @@ def get_gmaps_client() -> googlemaps.Client:
     return googlemaps.Client(key=env.GOOGLE_MAPS_API_KEY)
 
 
+def _incident_count_subquery(severity: IncidentSeverity | None = None):
+    q = select(func.count()).where(IncidentEntity.location_id == LocationEntity.id)
+    if severity is not None:
+        q = q.where(IncidentEntity.severity == severity)
+    return q.scalar_subquery()
+
+
 _LOCATION_QUERY_FIELDS = QueryFieldSet(
     fields={
         "id": LocationEntity.id,
@@ -95,6 +102,10 @@ _LOCATION_QUERY_FIELDS = QueryFieldSet(
         "country": LocationEntity.country,
         "zip_code": LocationEntity.zip_code,
         "hold_expiration": LocationEntity.hold_expiration,
+        "incident_count": _incident_count_subquery(),
+        "remote_warning_count": _incident_count_subquery(IncidentSeverity.REMOTE_WARNING),
+        "in_person_warning_count": _incident_count_subquery(IncidentSeverity.IN_PERSON_WARNING),
+        "citation_count": _incident_count_subquery(IncidentSeverity.CITATION),
     },
     searchable=(
         "formatted_address",
@@ -119,7 +130,7 @@ class LocationService:
         self,
         gmaps_client: googlemaps.Client = Depends(get_gmaps_client),
         session: AsyncSession = Depends(get_session),
-        query_service: QueryService = make_query_service(_LOCATION_QUERY_FIELDS),
+        query_service: QueryService = Depends(),
     ):
         self.session = session
         self.gmaps_client = gmaps_client
@@ -170,6 +181,7 @@ class LocationService:
             params=params,
             base_query=base_query,
             dto_converter=lambda entity: entity.to_dto(),
+            field_set=_LOCATION_QUERY_FIELDS,
         )
         return PaginatedLocationResponse(**result.model_dump())
 

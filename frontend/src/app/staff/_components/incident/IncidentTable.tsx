@@ -385,6 +385,8 @@ export const IncidentTable = () => {
             ? {
                 totalRecords: incidentsQuery.data.total_records,
                 totalPages: incidentsQuery.data.total_pages,
+                sortBy: incidentsQuery.data.sort_by,
+                sortOrder: incidentsQuery.data.sort_order,
               }
             : undefined
         }

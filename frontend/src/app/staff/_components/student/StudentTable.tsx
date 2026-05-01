@@ -81,6 +81,8 @@ const SERVER_COLUMN_MAP: ServerColumnMap = {
     backendField: "contact_preference",
     filterOperator: "eq",
   },
+  residence: { backendField: "residence", filterOperator: "contains" },
+  last_registered: { backendField: "last_registered", filterOperator: "gte" },
 };
 
 export const StudentTable = () => {
@@ -281,6 +283,8 @@ export const StudentTable = () => {
             ? {
                 totalRecords: studentsQuery.data.total_records,
                 totalPages: studentsQuery.data.total_pages,
+                sortBy: studentsQuery.data.sort_by,
+                sortOrder: studentsQuery.data.sort_order,
               }
             : undefined
         }

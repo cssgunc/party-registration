@@ -8,8 +8,8 @@ from src.core.authentication import (
     authenticate_student,
 )
 from src.core.utils.query_utils import (
-    PAGINATED_OPENAPI_PARAMS,
     ListQueryParams,
+    get_paginated_openapi_params,
     parse_export_list_query_params,
     parse_list_query_params,
 )
@@ -32,6 +32,7 @@ from .student_model import (
 from .student_service import StudentService
 
 student_router = APIRouter(prefix="/api/students", tags=["students"])
+_OPENAPI_PARAMS = get_paginated_openapi_params(StudentService.QUERY_FIELDS)
 
 
 @student_router.get("/me")
@@ -68,9 +69,9 @@ async def get_my_parties(
     return await party_service.get_parties_by_contact(user.id)
 
 
-@student_router.get("", openapi_extra=PAGINATED_OPENAPI_PARAMS)
+@student_router.get("", openapi_extra=_OPENAPI_PARAMS)
 async def list_students(
-    params: ListQueryParams = parse_list_query_params(StudentService.QUERY_FIELDS),
+    params: ListQueryParams = parse_list_query_params(),
     student_service: StudentService = Depends(),
     _=Depends(authenticate_staff_or_admin),
 ) -> PaginatedStudentsResponse:
@@ -93,9 +94,9 @@ async def list_students(
     return await student_service.get_students_paginated(params)
 
 
-@student_router.get("/csv", openapi_extra=PAGINATED_OPENAPI_PARAMS)
+@student_router.get("/csv", openapi_extra=_OPENAPI_PARAMS)
 async def get_students_csv(
-    params: ListQueryParams = parse_export_list_query_params(StudentService.QUERY_FIELDS),
+    params: ListQueryParams = parse_export_list_query_params(),
     student_service: StudentService = Depends(),
     _=Depends(authenticate_staff_or_admin),
 ) -> Response:

@@ -98,7 +98,12 @@ export type TableProps<T> = {
   sortBy?: (a: T, b: T) => number;
   pageSize?: number;
   pageSizeOptions?: number[];
-  serverMeta?: { totalRecords: number; totalPages: number };
+  serverMeta?: {
+    totalRecords: number;
+    totalPages: number;
+    sortBy: string;
+    sortOrder: "asc" | "desc";
+  };
   onStateChange?: (params: ServerTableParams) => void;
   columnMap?: ServerColumnMap;
   onExportCsv?: (params: ListQueryParams) => void;
@@ -235,6 +240,26 @@ export function TableTemplate<T extends object>({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [columnFilters]);
+
+  // Server mode: sync sorting state from server response (server is source of truth)
+  useEffect(() => {
+    if (!isServerMode || !columnMap || !serverMeta) return;
+    const columnId = Object.entries(columnMap).find(
+      ([, config]) =>
+        config.filterOperator !== "splitName" &&
+        config.backendField === serverMeta.sortBy
+    )?.[0];
+    if (!columnId) return;
+    const desc = serverMeta.sortOrder === "desc";
+    if (
+      sorting.length !== 1 ||
+      sorting[0].id !== columnId ||
+      sorting[0].desc !== desc
+    ) {
+      setSorting([{ id: columnId, desc }]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serverMeta?.sortBy, serverMeta?.sortOrder]);
 
   // Server mode: debounced callback on search (globalFilter) change
   useEffect(() => {

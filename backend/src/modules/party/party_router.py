@@ -17,8 +17,8 @@ from src.core.exceptions import (
     UnprocessableEntityException,
 )
 from src.core.utils.query_utils import (
-    PAGINATED_OPENAPI_PARAMS,
     ListQueryParams,
+    get_paginated_openapi_params,
     parse_export_list_query_params,
     parse_list_query_params,
 )
@@ -38,6 +38,7 @@ from .party_model import (
 from .party_service import PartyService
 
 party_router = APIRouter(prefix="/api/parties", tags=["parties"])
+_OPENAPI_PARAMS = get_paginated_openapi_params(PartyService.QUERY_FIELDS)
 
 
 @party_router.post("", status_code=201)
@@ -78,9 +79,9 @@ async def create_party(
             raise ForbiddenException(detail="Invalid request type")
 
 
-@party_router.get("", openapi_extra=PAGINATED_OPENAPI_PARAMS)
+@party_router.get("", openapi_extra=_OPENAPI_PARAMS)
 async def list_parties(
-    params: ListQueryParams = parse_list_query_params(PartyService.QUERY_FIELDS),
+    params: ListQueryParams = parse_list_query_params(),
     party_service: PartyService = Depends(),
     _=Depends(authenticate_by_role("admin", "staff", "officer", "police_admin")),
 ) -> PaginatedPartiesResponse:
@@ -208,9 +209,9 @@ async def get_parties_nearby(
     return ProximitySearchResponse(exact_match=exact_match, nearby=nearby)
 
 
-@party_router.get("/csv", openapi_extra=PAGINATED_OPENAPI_PARAMS)
+@party_router.get("/csv", openapi_extra=_OPENAPI_PARAMS)
 async def get_parties_csv(
-    params: ListQueryParams = parse_export_list_query_params(PartyService.QUERY_FIELDS),
+    params: ListQueryParams = parse_export_list_query_params(),
     party_service: PartyService = Depends(),
     principal: AccountDto | PoliceAccountDto = Depends(authenticate_police_staff_or_admin),
 ) -> Response:

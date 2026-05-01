@@ -23,7 +23,6 @@ from src.core.database import get_session
 from src.core.exceptions import BadRequestException
 
 __all__ = [
-    "PAGINATED_OPENAPI_PARAMS",
     "FilterOperator",
     "FilterParam",
     "ListQueryParams",
@@ -33,61 +32,10 @@ __all__ = [
     "QueryService",
     "SortOrder",
     "SortParam",
-    "make_query_service",
+    "get_paginated_openapi_params",
     "parse_export_list_query_params",
     "parse_list_query_params",
 ]
-
-# OpenAPI extra params for paginated endpoints
-PAGINATED_OPENAPI_PARAMS: dict[str, Any] = {
-    "parameters": [
-        {
-            "name": "page_number",
-            "in": "query",
-            "required": False,
-            "schema": {"type": "integer", "default": 1, "minimum": 1},
-            "description": "Page number (1-indexed)",
-        },
-        {
-            "name": "page_size",
-            "in": "query",
-            "required": False,
-            "schema": {"type": "integer", "minimum": 1, "maximum": 100},
-            "description": "Items per page (default: all)",
-        },
-        {
-            "name": "sort_by",
-            "in": "query",
-            "required": False,
-            "schema": {"type": "string"},
-            "description": "Field to sort by",
-        },
-        {
-            "name": "sort_order",
-            "in": "query",
-            "required": False,
-            "schema": {"type": "string", "enum": ["asc", "desc"], "default": "asc"},
-            "description": "Sort order",
-        },
-        {
-            "name": "filters",
-            "in": "query",
-            "required": False,
-            "style": "form",
-            "explode": True,
-            "schema": {"type": "object", "additionalProperties": True},
-            "description": "Filters: field=value, field_contains=value, "
-            "field_gt=value, field_gte=value, field_lt=value, field_lte=value",
-        },
-        {
-            "name": "search",
-            "in": "query",
-            "required": False,
-            "schema": {"type": "string"},
-            "description": "Full-table search across searchable string fields (case-insensitive)",
-        },
-    ]
-}
 
 
 class PaginatedResponse[T](BaseModel):
@@ -96,6 +44,8 @@ class PaginatedResponse[T](BaseModel):
     page_size: int
     page_number: int
     total_pages: int
+    sort_by: str
+    sort_order: str
 
     @classmethod
     def from_pagination(
@@ -104,6 +54,7 @@ class PaginatedResponse[T](BaseModel):
         items: list,
         total_records: int,
         pagination: "PaginationParams",
+        sort: "SortParam",
     ) -> "PaginatedResponse":
         if pagination.page_size is None:
             return cls(
@@ -112,6 +63,8 @@ class PaginatedResponse[T](BaseModel):
                 page_size=total_records,
                 page_number=1,
                 total_pages=1 if total_records > 0 else 0,
+                sort_by=sort.field,
+                sort_order=sort.order.value,
             )
 
         total_pages = (
@@ -125,6 +78,8 @@ class PaginatedResponse[T](BaseModel):
             page_size=pagination.page_size,
             page_number=pagination.page_number,
             total_pages=total_pages,
+            sort_by=sort.field,
+            sort_order=sort.order.value,
         )
 
 
@@ -143,6 +98,11 @@ class QueryFieldSet(BaseModel):
     @model_validator(mode="after")
     def validate_field_references(self) -> Self:
         field_keys = set(self.fields)
+
+        if self.sortable is None:
+            object.__setattr__(self, "sortable", tuple(self.fields))
+        if self.filterable is None:
+            object.__setattr__(self, "filterable", tuple(self.fields))
 
         self._validate_fields(self.sortable, "Sortable fields must exist in fields", field_keys)
         self._validate_fields(self.filterable, "Filterable fields must exist in fields", field_keys)
@@ -308,6 +268,94 @@ class FilterOperator(StrEnum):
     NOT_NULL = _op("notnull", apply=lambda f, _: f.is_not(None))
 
 
+def _format_searchable_entry(entry: str | tuple[str, ...]) -> str:
+    if isinstance(entry, str):
+        return entry
+    return " + ".join(entry)
+
+
+def get_paginated_openapi_params(field_set: QueryFieldSet) -> dict[str, Any]:
+    operators = ", ".join(op.value for op in FilterOperator)
+    searchable = tuple(_format_searchable_entry(entry) for entry in field_set.searchable)
+    filterable, sortable = field_set.filterable_set, field_set.sortable_set
+
+    filter_description = (
+        "Filter format: `field_{operator}=value`\n\n"
+        f"- Operators: {operators}\n"
+        f"- Filterable fields: {', '.join(sorted(filterable)) if filterable else 'None'}"
+    )
+
+    sort_description = (
+        "Field to sort by\n\n"
+        f" Sortable fields: {', '.join(sorted(sortable)) if sortable else 'None'}"
+    )
+
+    search_description = (
+        "Full-table search across searchable fields (case-insensitive)\n\n"
+        f"- Searchable fields: {', '.join(searchable) if searchable else 'None'}"
+    )
+
+    return {
+        "parameters": [
+            {
+                "name": "page_number",
+                "in": "query",
+                "required": False,
+                "schema": {"type": "integer", "default": 1, "minimum": 1},
+                "description": "Page number (1-indexed)",
+            },
+            {
+                "name": "page_size",
+                "in": "query",
+                "required": False,
+                "schema": {"type": "integer", "minimum": 1, "maximum": 100},
+                "description": "Items per page (default: all)",
+            },
+            {
+                "name": "sort_by",
+                "in": "query",
+                "required": False,
+                "schema": {"type": "string"},
+                "description": sort_description,
+            },
+            {
+                "name": "sort_order",
+                "in": "query",
+                "required": False,
+                "schema": {
+                    "type": "string",
+                    "enum": [o.value for o in SortOrder],
+                    "default": "asc",
+                },
+                "description": "Sort order",
+            },
+            {
+                "name": "filters",
+                "in": "query",
+                "required": False,
+                "style": "form",
+                "explode": True,
+                "schema": {
+                    "type": "object",
+                    "additionalProperties": True,
+                    "example": {
+                        "status_eq": "active",
+                        "created_at_gte": "2024-01-01",
+                    },
+                },
+                "description": filter_description,
+            },
+            {
+                "name": "search",
+                "in": "query",
+                "required": False,
+                "schema": {"type": "string"},
+                "description": search_description,
+            },
+        ]
+    }
+
+
 class FilterParam(BaseModel):
     """Single filter parameter."""
 
@@ -352,36 +400,28 @@ class ListQueryParams(BaseModel):
     """Combined parameters for pagination, sorting, filtering, and search."""
 
     pagination: PaginationParams = Field(default_factory=PaginationParams)
-    sort: SortParam | None = Field(default=None)
+    sort: SortParam | None = None
     filters: list[FilterParam] = Field(default_factory=list)
     search: str | None = Field(default=None)
 
     @classmethod
-    def from_dict(
-        cls, query_params: dict[str, str], *, default_sort: SortParam | None = None
-    ) -> Self:
+    def from_dict(cls, query_params: dict[str, str]) -> Self:
         filter_params = [
             p
             for key, raw in query_params.items()
             if (p := FilterParam.from_param(key, raw)) is not None
         ]
-        sort = SortParam.from_dict(query_params) or default_sort
         return cls(
             pagination=PaginationParams.from_dict(query_params),
-            sort=sort,
+            sort=SortParam.from_dict(query_params),
             filters=filter_params,
             search=query_params.get("search"),
         )
 
 
 class QueryService:
-    def __init__(
-        self,
-        session: AsyncSession,
-        field_set: QueryFieldSet,
-    ):
+    def __init__(self, session: AsyncSession = Depends(get_session)):
         self.session = session
-        self.field_set = field_set
 
     async def get_paginated[ModelType](
         self,
@@ -389,11 +429,13 @@ class QueryService:
         base_query: Select,
         dto_converter: Callable[[Any], ModelType],
         *,
+        field_set: QueryFieldSet,
         use_mappings: bool = False,
     ) -> PaginatedResponse[ModelType]:
-        query = self._apply_filters(base_query, params.filters)
-        query = self._apply_sorting(query, params.sort)
-        query = self._apply_search(query, params.search)
+        effective_sort = params.sort or field_set.default_sort
+        query = self._apply_filters(base_query, params.filters, field_set)
+        query = self._apply_sorting(query, effective_sort, field_set)
+        query = self._apply_search(query, params.search, field_set)
 
         total_records = await self._get_total_count(query)
         query = self._apply_pagination(query, params.pagination)
@@ -407,26 +449,26 @@ class QueryService:
             items=dtos,
             total_records=total_records,
             pagination=params.pagination,
+            sort=effective_sort,
         )
 
-    def _apply_filters(self, query: Select, filters: list[FilterParam]) -> Select:
+    def _apply_filters(
+        self, query: Select, filters: list[FilterParam], field_set: QueryFieldSet
+    ) -> Select:
         for filter_param in filters:
-            if filter_param.field not in self.field_set.filterable_set:
+            if filter_param.field not in field_set.filterable_set:
                 raise BadRequestException(
                     f"Filtering on field '{filter_param.field}' is not allowed"
                 )
-            field = self.field_set.fields[filter_param.field]
+            field = field_set.fields[filter_param.field]
             query = query.where(filter_param.apply(field))
 
         return query
 
-    def _apply_sorting(self, query: Select, sort: SortParam | None) -> Select:
-        if not sort:
-            return query
-
-        if sort.field not in self.field_set.sortable_set:
+    def _apply_sorting(self, query: Select, sort: SortParam, field_set: QueryFieldSet) -> Select:
+        if sort.field not in field_set.sortable_set:
             raise BadRequestException(f"Sorting on field '{sort.field}' is not allowed")
-        field = self.field_set.fields[sort.field]
+        field = field_set.fields[sort.field]
         order_fn = desc if sort.order == SortOrder.DESC else asc
         return query.order_by(order_fn(field))
 
@@ -437,12 +479,12 @@ class QueryService:
             query = query.limit(pagination.page_size)
         return query
 
-    def _apply_search(self, query: Select, search: str | None) -> Select:
-        if not search or not self.field_set.searchable:
+    def _apply_search(self, query: Select, search: str | None, field_set: QueryFieldSet) -> Select:
+        if not search or not field_set.searchable:
             return query
         pattern = f"%{search}%"
         conditions = []
-        for entry in self.field_set.searchable:
+        for entry in field_set.searchable:
             if isinstance(entry, tuple):
                 if not entry:
                     continue
@@ -450,10 +492,10 @@ class QueryService:
                 for index, name in enumerate(entry):
                     if index > 0:
                         concat_args.append(" ")
-                    concat_args.append(self.field_set.fields[name])
+                    concat_args.append(field_set.fields[name])
                 conditions.append(func.concat(*concat_args).ilike(pattern))
             else:
-                conditions.append(self.field_set.fields[entry].ilike(pattern))
+                conditions.append(field_set.fields[entry].ilike(pattern))
         if not conditions:
             return query
         return query.where(or_(*conditions))
@@ -464,32 +506,20 @@ class QueryService:
         return result.scalar() or 0
 
 
-def parse_list_query_params(field_set: QueryFieldSet):
+def parse_list_query_params():
     def dependency(request: Request) -> ListQueryParams:
         try:
-            return ListQueryParams.from_dict(
-                dict(request.query_params),
-                default_sort=field_set.default_sort,
-            )
+            return ListQueryParams.from_dict(dict(request.query_params))
         except ValidationError as exc:
             raise RequestValidationError(exc.errors()) from exc
 
     return Depends(dependency)
 
 
-def parse_export_list_query_params(field_set: QueryFieldSet):
+def parse_export_list_query_params():
     def dependency(
-        params: ListQueryParams = parse_list_query_params(field_set),
+        params: ListQueryParams = parse_list_query_params(),
     ) -> ListQueryParams:
         return params.model_copy(update={"pagination": PaginationParams()})
-
-    return Depends(dependency)
-
-
-def make_query_service(field_set: QueryFieldSet):
-    def dependency(
-        session: AsyncSession = Depends(get_session),
-    ) -> QueryService:
-        return QueryService(session, field_set)
 
     return Depends(dependency)

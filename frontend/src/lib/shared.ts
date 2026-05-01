@@ -6,6 +6,8 @@ type PaginatedResponse<T> = {
   page_number: number;
   page_size: number;
   total_pages: number;
+  sort_by: string;
+  sort_order: "asc" | "desc";
 };
 
 type StringRole =

@@ -226,7 +226,7 @@ def account_service(test_session: AsyncSession, mock_email_service: EmailService
     return AccountService(
         session=test_session,
         email_service=mock_email_service,
-        query_service=QueryService(test_session, AccountService.QUERY_FIELDS),
+        query_service=QueryService(test_session),
     )
 
 
@@ -247,7 +247,7 @@ def police_service(
     return PoliceService(
         session=test_session,
         email_service=mock_email_service,
-        query_service=QueryService(test_session, PoliceService.QUERY_FIELDS),
+        query_service=QueryService(test_session),
     )
 
 
@@ -265,7 +265,7 @@ def student_service(test_session: AsyncSession, location_service: LocationServic
     return StudentService(
         session=test_session,
         location_service=location_service,
-        query_service=QueryService(test_session, StudentService.QUERY_FIELDS),
+        query_service=QueryService(test_session),
     )
 
 
@@ -300,7 +300,7 @@ def location_service(test_session: AsyncSession, mock_gmaps: MagicMock):
     return LocationService(
         session=test_session,
         gmaps_client=mock_gmaps,
-        query_service=QueryService(test_session, LocationService.QUERY_FIELDS),
+        query_service=QueryService(test_session),
     )
 
 
@@ -309,7 +309,7 @@ def incident_service(test_session: AsyncSession, location_service: LocationServi
     return IncidentService(
         session=test_session,
         location_service=location_service,
-        query_service=QueryService(test_session, IncidentService.QUERY_FIELDS),
+        query_service=QueryService(test_session),
     )
 
 
@@ -323,7 +323,7 @@ def party_service(
         session=test_session,
         location_service=location_service,
         student_service=student_service,
-        query_service=QueryService(test_session, PartyService.QUERY_FIELDS),
+        query_service=QueryService(test_session),
     )
 
 

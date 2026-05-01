@@ -24,7 +24,6 @@ from src.core.utils.query_utils import (
     QueryService,
     SortOrder,
     SortParam,
-    make_query_service,
 )
 from src.modules.police.police_entity import PoliceEntity
 from src.modules.police.police_model import (
@@ -60,7 +59,7 @@ class PoliceService:
         self,
         session: AsyncSession = Depends(get_session),
         email_service: EmailService = Depends(),
-        query_service: QueryService = make_query_service(_POLICE_QUERY_FIELDS),
+        query_service: QueryService = Depends(),
     ):
         self.session = session
         self.email_service = email_service
@@ -91,6 +90,7 @@ class PoliceService:
             params=params,
             base_query=base_query,
             dto_converter=lambda entity: entity.to_dto(),
+            field_set=_POLICE_QUERY_FIELDS,
         )
         return PaginatedPoliceResponse(**result.model_dump())
 

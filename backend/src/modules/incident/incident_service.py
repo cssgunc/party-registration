@@ -14,7 +14,6 @@ from src.core.utils.query_utils import (
     QueryService,
     SortOrder,
     SortParam,
-    make_query_service,
 )
 from src.modules.location.location_entity import LocationEntity
 from src.modules.location.location_service import LocationService
@@ -62,7 +61,7 @@ class IncidentService:
         self,
         session: AsyncSession = Depends(get_session),
         location_service: LocationService = Depends(),
-        query_service: QueryService = make_query_service(_INCIDENT_QUERY_FIELDS),
+        query_service: QueryService = Depends(),
     ):
         self.session = session
         self.location_service = location_service
@@ -86,6 +85,7 @@ class IncidentService:
             params=params,
             base_query=base_query,
             dto_converter=lambda entity: entity.to_dto(),
+            field_set=_INCIDENT_QUERY_FIELDS,
         )
         return PaginatedIncidentsResponse(**result.model_dump())
 
@@ -98,11 +98,11 @@ class IncidentService:
             .options(selectinload(IncidentEntity.location))
         )
 
-        query_service = QueryService(self.session, self.QUERY_FIELDS)
-        result = await query_service.get_paginated(
+        result = await self.query_service.get_paginated(
             params=params,
             base_query=base_query,
             dto_converter=lambda entity: (entity.to_dto(), entity.location.formatted_address),
+            field_set=self.QUERY_FIELDS,
         )
         return result.items
 

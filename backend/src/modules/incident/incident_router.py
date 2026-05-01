@@ -4,8 +4,8 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, Response, status
 from src.core.authentication import authenticate_police_or_admin, authenticate_police_staff_or_admin
 from src.core.utils.query_utils import (
-    PAGINATED_OPENAPI_PARAMS,
     ListQueryParams,
+    get_paginated_openapi_params,
     parse_export_list_query_params,
     parse_list_query_params,
 )
@@ -21,6 +21,7 @@ from .incident_model import (
 from .incident_service import IncidentService
 
 incident_router = APIRouter(prefix="/api", tags=["incidents"])
+_OPENAPI_PARAMS = get_paginated_openapi_params(IncidentService.QUERY_FIELDS)
 
 
 @incident_router.get(
@@ -29,19 +30,19 @@ incident_router = APIRouter(prefix="/api", tags=["incidents"])
     status_code=status.HTTP_200_OK,
     summary="Get all incidents (paginated)",
     description="Returns paginated incidents. Police, staff, or admin only.",
-    openapi_extra=PAGINATED_OPENAPI_PARAMS,
+    openapi_extra=_OPENAPI_PARAMS,
 )
 async def get_incidents_paginated(
-    params: ListQueryParams = parse_list_query_params(IncidentService.QUERY_FIELDS),
+    params: ListQueryParams = parse_list_query_params(),
     incident_service: IncidentService = Depends(),
     _: AccountDto | PoliceAccountDto = Depends(authenticate_police_staff_or_admin),
 ) -> PaginatedIncidentsResponse:
     return await incident_service.get_incidents_paginated(params)
 
 
-@incident_router.get("/incidents/csv", openapi_extra=PAGINATED_OPENAPI_PARAMS)
+@incident_router.get("/incidents/csv", openapi_extra=_OPENAPI_PARAMS)
 async def get_incidents_csv(
-    params: ListQueryParams = parse_export_list_query_params(IncidentService.QUERY_FIELDS),
+    params: ListQueryParams = parse_export_list_query_params(),
     incident_service: IncidentService = Depends(),
     _: AccountDto | PoliceAccountDto = Depends(authenticate_police_staff_or_admin),
 ) -> Response:

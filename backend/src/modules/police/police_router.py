@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, Response
 from src.core.authentication import authenticate_admin, authenticate_police_admin_or_admin
 from src.core.exceptions import ForbiddenException
 from src.core.utils.query_utils import (
-    PAGINATED_OPENAPI_PARAMS,
     ListQueryParams,
+    get_paginated_openapi_params,
     parse_export_list_query_params,
     parse_list_query_params,
 )
@@ -16,20 +16,21 @@ from src.modules.police.police_model import (
 from src.modules.police.police_service import PoliceService
 
 police_router = APIRouter(prefix="/api/police", tags=["police"])
+_OPENAPI_PARAMS = get_paginated_openapi_params(PoliceService.QUERY_FIELDS)
 
 
-@police_router.get("", openapi_extra=PAGINATED_OPENAPI_PARAMS)
+@police_router.get("", openapi_extra=_OPENAPI_PARAMS)
 async def list_police(
-    params: ListQueryParams = parse_list_query_params(PoliceService.QUERY_FIELDS),
+    params: ListQueryParams = parse_list_query_params(),
     police_service: PoliceService = Depends(),
     _=Depends(authenticate_police_admin_or_admin),
 ) -> PaginatedPoliceResponse:
     return await police_service.get_police_paginated(params)
 
 
-@police_router.get("/csv", openapi_extra=PAGINATED_OPENAPI_PARAMS)
+@police_router.get("/csv", openapi_extra=_OPENAPI_PARAMS)
 async def get_police_csv(
-    params: ListQueryParams = parse_export_list_query_params(PoliceService.QUERY_FIELDS),
+    params: ListQueryParams = parse_export_list_query_params(),
     police_service: PoliceService = Depends(),
     _=Depends(authenticate_police_admin_or_admin),
 ) -> Response:

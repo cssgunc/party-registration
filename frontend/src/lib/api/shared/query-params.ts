@@ -9,13 +9,23 @@ import { DateRange } from "react-day-picker";
 export type ServerColumnConfig =
   | {
       backendField: string;
-      filterOperator: "contains" | "eq" | "gte" | "lte" | "gt" | "lt";
+      filterOperator:
+        | "contains"
+        | "eq"
+        | "gte"
+        | "lte"
+        | "gt"
+        | "lt"
+        | "nin"
+        | "null"
+        | "notnull";
     }
   | { backendField: string; filterOperator: "dateRange" }
   | {
       filterOperator: "splitName";
       firstNameField: string;
       lastNameField: string;
+      sortField?: string;
     };
 
 function isDateRange(value: unknown): value is DateRange {
@@ -56,9 +66,15 @@ export function buildServerTableParams(
   if (sorting.length > 0) {
     const sort = sorting[0];
     const config = columnMap[sort.id];
-    if (config && config.filterOperator !== "splitName") {
-      params.sort_by = config.backendField;
-      params.sort_order = sort.desc ? "desc" : "asc";
+    if (config) {
+      const sortField =
+        config.filterOperator === "splitName"
+          ? config.sortField
+          : config.backendField;
+      if (sortField) {
+        params.sort_by = sortField;
+        params.sort_order = sort.desc ? "desc" : "asc";
+      }
     }
   }
 
@@ -94,6 +110,11 @@ export function buildServerTableParams(
       }
     } else if (config.filterOperator === "eq") {
       params.filters[config.backendField] = String(filter.value);
+    } else if (
+      config.filterOperator === "null" ||
+      config.filterOperator === "notnull"
+    ) {
+      params.filters[`${config.backendField}_${config.filterOperator}`] = "1";
     } else {
       params.filters[`${config.backendField}_${config.filterOperator}`] =
         String(filter.value);

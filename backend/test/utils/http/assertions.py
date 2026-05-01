@@ -228,7 +228,15 @@ def assert_res_paginated[T: BaseModel](
     assert isinstance(data, dict), f"Expected dict response but got {type(data).__name__}"
 
     # Check for required pagination fields
-    required_fields = ["items", "total_records", "page_size", "page_number", "total_pages"]
+    required_fields = [
+        "items",
+        "total_records",
+        "page_size",
+        "page_number",
+        "total_pages",
+        "sort_by",
+        "sort_order",
+    ]
     for field in required_fields:
         assert field in data, f"Expected '{field}' in paginated response"
 
@@ -279,4 +287,6 @@ def assert_res_paginated[T: BaseModel](
         page_size=data["page_size"],
         page_number=data["page_number"],
         total_pages=data["total_pages"],
+        sort_by=data["sort_by"],
+        sort_order=data["sort_order"],
     )

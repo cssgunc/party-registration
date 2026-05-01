@@ -8,8 +8,8 @@ from src.core.authentication import (
     authenticate_staff_or_admin,
 )
 from src.core.utils.query_utils import (
-    PAGINATED_OPENAPI_PARAMS,
     ListQueryParams,
+    get_paginated_openapi_params,
     parse_export_list_query_params,
     parse_list_query_params,
 )
@@ -27,6 +27,7 @@ from src.modules.police.police_model import PoliceAccountDto
 from .location_model import AutocompleteInput, AutocompleteResult
 
 location_router = APIRouter(prefix="/api/locations", tags=["locations"])
+_OPENAPI_PARAMS = get_paginated_openapi_params(LocationService.QUERY_FIELDS)
 
 
 @location_router.post(
@@ -98,10 +99,10 @@ async def get_place_details(
 @location_router.get(
     "",
     response_model=PaginatedLocationResponse,
-    openapi_extra=PAGINATED_OPENAPI_PARAMS,
+    openapi_extra=_OPENAPI_PARAMS,
 )
 async def get_locations(
-    params: ListQueryParams = parse_list_query_params(LocationService.QUERY_FIELDS),
+    params: ListQueryParams = parse_list_query_params(),
     location_service: LocationService = Depends(),
     _=Depends(authenticate_staff_or_admin),
 ) -> PaginatedLocationResponse:
@@ -111,9 +112,9 @@ async def get_locations(
     return await location_service.get_locations_paginated(params)
 
 
-@location_router.get("/csv", openapi_extra=PAGINATED_OPENAPI_PARAMS)
+@location_router.get("/csv", openapi_extra=_OPENAPI_PARAMS)
 async def get_locations_csv(
-    params: ListQueryParams = parse_export_list_query_params(LocationService.QUERY_FIELDS),
+    params: ListQueryParams = parse_export_list_query_params(),
     location_service: LocationService = Depends(),
     _=Depends(authenticate_staff_or_admin),
 ) -> Response:

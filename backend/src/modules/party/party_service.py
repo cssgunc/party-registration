@@ -23,7 +23,6 @@ from src.core.utils.query_utils import (
     QueryService,
     SortOrder,
     SortParam,
-    make_query_service,
 )
 from src.modules.account.account_entity import AccountEntity
 from src.modules.location.location_model import LocationDto
@@ -146,7 +145,7 @@ class PartyService:
         session: AsyncSession = Depends(get_session),
         location_service: LocationService = Depends(),
         student_service: StudentService = Depends(),
-        query_service: QueryService = make_query_service(_PARTY_QUERY_FIELDS),
+        query_service: QueryService = Depends(),
     ):
         self.session = session
         self.location_service = location_service
@@ -300,6 +299,7 @@ class PartyService:
             params=params,
             base_query=base_query,
             dto_converter=lambda entity: entity.to_dto(),
+            field_set=_PARTY_QUERY_FIELDS,
         )
         return PaginatedPartiesResponse(**result.model_dump())
 

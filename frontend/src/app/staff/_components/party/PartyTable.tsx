@@ -58,11 +58,13 @@ const SERVER_COLUMN_MAP: ServerColumnMap = {
     filterOperator: "splitName",
     firstNameField: "contact_one.first_name",
     lastNameField: "contact_one.last_name",
+    sortField: "contact_one.first_name",
   },
   contact_two: {
     filterOperator: "splitName",
     firstNameField: "contact_two.first_name",
     lastNameField: "contact_two.last_name",
+    sortField: "contact_two.first_name",
   },
 };
 
@@ -373,6 +375,8 @@ export const PartyTable = () => {
             ? {
                 totalRecords: partiesQuery.data.total_records,
                 totalPages: partiesQuery.data.total_pages,
+                sortBy: partiesQuery.data.sort_by,
+                sortOrder: partiesQuery.data.sort_order,
               }
             : undefined
         }

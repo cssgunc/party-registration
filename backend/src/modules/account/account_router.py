@@ -4,8 +4,8 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, Response, status
 from src.core.authentication import authenticate_admin
 from src.core.utils.query_utils import (
-    PAGINATED_OPENAPI_PARAMS,
     ListQueryParams,
+    get_paginated_openapi_params,
     parse_export_list_query_params,
     parse_list_query_params,
 )
@@ -19,11 +19,13 @@ from src.modules.account.account_model import (
 from src.modules.account.account_service import AccountService, CannotDeleteOwnAccountException
 
 account_router = APIRouter(prefix="/api/accounts", tags=["accounts"])
+_OPENAPI_PARAMS = get_paginated_openapi_params(AccountService.QUERY_FIELDS)
+_AGGREGATE_OPENAPI_PARAMS = get_paginated_openapi_params(AccountService.AGGREGATE_QUERY_FIELDS)
 
 
-@account_router.get("", openapi_extra=PAGINATED_OPENAPI_PARAMS)
+@account_router.get("", openapi_extra=_OPENAPI_PARAMS)
 async def list_accounts(
-    params: ListQueryParams = parse_list_query_params(AccountService.QUERY_FIELDS),
+    params: ListQueryParams = parse_list_query_params(),
     account_service: AccountService = Depends(),
     _=Depends(authenticate_admin),
 ) -> PaginatedAccountsResponse:
@@ -39,18 +41,18 @@ async def create_account(
     await account_service.create_invite(data)
 
 
-@account_router.get("/aggregate", openapi_extra=PAGINATED_OPENAPI_PARAMS)
+@account_router.get("/aggregate", openapi_extra=_AGGREGATE_OPENAPI_PARAMS)
 async def get_aggregate_accounts(
-    params: ListQueryParams = parse_list_query_params(AccountService.QUERY_FIELDS),
+    params: ListQueryParams = parse_list_query_params(),
     account_service: AccountService = Depends(),
     _=Depends(authenticate_admin),
 ) -> PaginatedAggregateAccountsResponse:
     return await account_service.get_aggregate_accounts_paginated(params)
 
 
-@account_router.get("/csv", openapi_extra=PAGINATED_OPENAPI_PARAMS)
+@account_router.get("/csv", openapi_extra=_OPENAPI_PARAMS)
 async def get_accounts_csv(
-    params: ListQueryParams = parse_export_list_query_params(AccountService.QUERY_FIELDS),
+    params: ListQueryParams = parse_export_list_query_params(),
     account_service: AccountService = Depends(),
     _: AccountDto = Depends(authenticate_admin),
 ) -> Response:
@@ -64,9 +66,9 @@ async def get_accounts_csv(
     )
 
 
-@account_router.get("/aggregate/csv", openapi_extra=PAGINATED_OPENAPI_PARAMS)
+@account_router.get("/aggregate/csv", openapi_extra=_AGGREGATE_OPENAPI_PARAMS)
 async def get_aggregate_accounts_csv(
-    params: ListQueryParams = parse_export_list_query_params(AccountService.QUERY_FIELDS),
+    params: ListQueryParams = parse_export_list_query_params(),
     account_service: AccountService = Depends(),
     _: AccountDto = Depends(authenticate_admin),
 ) -> Response:

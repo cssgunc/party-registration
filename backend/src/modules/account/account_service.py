@@ -16,7 +16,6 @@ from src.core.utils.query_utils import (
     QueryService,
     SortOrder,
     SortParam,
-    make_query_service,
 )
 from src.modules.account.account_entity import AccountEntity, AccountRole
 from src.modules.account.account_model import (
@@ -90,8 +89,30 @@ _ACCOUNT_QUERY_FIELDS = QueryFieldSet(
 )
 
 
+def _build_aggregate_query_fields(fields: dict) -> QueryFieldSet:
+    return QueryFieldSet(
+        fields=fields,
+        searchable=("email", "first_name", "last_name", "onyen", "pid"),
+        default_sort=SortParam(field="email", order=SortOrder.ASC),
+    )
+
+
+_AGGREGATE_QUERY_FIELDS = _build_aggregate_query_fields(
+    {
+        "email": AccountEntity.email,
+        "first_name": AccountEntity.first_name,
+        "last_name": AccountEntity.last_name,
+        "onyen": AccountEntity.onyen,
+        "pid": AccountEntity.pid,
+        "role": AccountEntity.role,
+        "status": literal("active").label("status"),
+    }
+)
+
+
 class AccountService:
     QUERY_FIELDS: ClassVar[QueryFieldSet] = _ACCOUNT_QUERY_FIELDS
+    AGGREGATE_QUERY_FIELDS: ClassVar[QueryFieldSet] = _AGGREGATE_QUERY_FIELDS
 
     _AGGREGATE_FIELD_NAMES: ClassVar[set[str]] = {
         "email",
@@ -107,7 +128,7 @@ class AccountService:
         self,
         session: AsyncSession = Depends(get_session),
         email_service: EmailService = Depends(),
-        query_service: QueryService = make_query_service(_ACCOUNT_QUERY_FIELDS),
+        query_service: QueryService = Depends(),
     ):
         self.session = session
         self.email_service = email_service
@@ -150,6 +171,7 @@ class AccountService:
             params=params,
             base_query=base_query,
             dto_converter=lambda entity: entity.to_dto(),
+            field_set=_ACCOUNT_QUERY_FIELDS,
         )
         return PaginatedAccountsResponse(**result.model_dump())
 
@@ -403,17 +425,13 @@ class AccountService:
         base_query = select(union_sq)
 
         fields = {field: getattr(union_sq.c, field) for field in self._AGGREGATE_FIELD_NAMES}
-        aggregate_field_set = QueryFieldSet(
-            fields=fields,
-            searchable=("email", "first_name", "last_name", "onyen", "pid"),
-            default_sort=SortParam(field="email", order=SortOrder.ASC),
-        )
+        aggregate_field_set = _build_aggregate_query_fields(fields)
 
-        query_service = QueryService(self.session, aggregate_field_set)
-        result = await query_service.get_paginated(
+        result = await self.query_service.get_paginated(
             params=params,
             base_query=base_query,
             dto_converter=lambda row: AggregateAccountDto(**row),
+            field_set=aggregate_field_set,
             use_mappings=True,
         )
         return PaginatedAggregateAccountsResponse(**result.model_dump())

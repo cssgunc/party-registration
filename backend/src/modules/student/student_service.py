@@ -17,9 +17,9 @@ from src.core.utils.query_utils import (
     QueryService,
     SortOrder,
     SortParam,
-    make_query_service,
 )
 from src.modules.account.account_entity import AccountEntity, AccountRole
+from src.modules.location.location_entity import LocationEntity
 from src.modules.location.location_model import LocationDto
 from src.modules.location.location_service import LocationService
 
@@ -89,6 +89,7 @@ _STUDENT_QUERY_FIELDS = QueryFieldSet(
         "email": AccountEntity.email,
         "onyen": AccountEntity.onyen,
         "pid": AccountEntity.pid,
+        "residence": LocationEntity.formatted_address,
     },
     searchable=(
         "first_name",
@@ -110,7 +111,7 @@ class StudentService:
         self,
         session: AsyncSession = Depends(get_session),
         location_service: LocationService = Depends(),
-        query_service: QueryService = make_query_service(_STUDENT_QUERY_FIELDS),
+        query_service: QueryService = Depends(),
     ):
         self.session = session
         self.location_service = location_service
@@ -203,6 +204,7 @@ class StudentService:
         base_query = (
             select(StudentEntity)
             .join(AccountEntity, StudentEntity.account_id == AccountEntity.id)
+            .outerjoin(LocationEntity, StudentEntity.residence_id == LocationEntity.id)
             .options(selectinload(StudentEntity.account), selectinload(StudentEntity.residence))
         )
 
@@ -210,6 +212,7 @@ class StudentService:
             params=params,
             base_query=base_query,
             dto_converter=lambda entity: entity.to_dto(),
+            field_set=_STUDENT_QUERY_FIELDS,
         )
         return PaginatedStudentsResponse(**result.model_dump())
 
