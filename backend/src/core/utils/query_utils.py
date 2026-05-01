@@ -8,19 +8,34 @@ to SQLAlchemy queries in a type-safe and flexible manner.
 from collections.abc import Callable
 from contextlib import suppress
 from datetime import datetime
-from enum import Enum
-from typing import Any
+from enum import Enum, StrEnum
+from typing import Any, Self
 
-from fastapi import Request
+from fastapi import Depends, Request
 from fastapi.exceptions import RequestValidationError
-from pydantic import BaseModel, Field, ValidationError, field_validator
-from pydantic_core import ValidationError as PydanticValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy import Select, asc, desc, func, inspect, or_, select
+from sqlalchemy import Select, asc, desc, func, or_, select
 from sqlalchemy import String as SAString
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import DeclarativeMeta
+from sqlalchemy.sql.elements import SQLColumnExpression
+from src.core.database import get_session
 from src.core.exceptions import BadRequestException
+
+__all__ = [
+    "FilterOperator",
+    "FilterParam",
+    "ListQueryParams",
+    "PaginatedResponse",
+    "PaginationParams",
+    "QueryFieldSet",
+    "QueryService",
+    "SortOrder",
+    "SortParam",
+    "get_paginated_openapi_params",
+    "parse_export_list_query_params",
+    "parse_list_query_params",
+]
 
 
 class PaginatedResponse[T](BaseModel):
@@ -29,97 +44,106 @@ class PaginatedResponse[T](BaseModel):
     page_size: int
     page_number: int
     total_pages: int
+    sort_by: str
+    sort_order: str
+
+    @classmethod
+    def from_pagination(
+        cls,
+        *,
+        items: list,
+        total_records: int,
+        pagination: "PaginationParams",
+        sort: "SortParam",
+    ) -> "PaginatedResponse":
+        if pagination.page_size is None:
+            return cls(
+                items=items,
+                total_records=total_records,
+                page_size=total_records,
+                page_number=1,
+                total_pages=1 if total_records > 0 else 0,
+                sort_by=sort.field,
+                sort_order=sort.order.value,
+            )
+
+        total_pages = (
+            (total_records + pagination.page_size - 1) // pagination.page_size
+            if total_records > 0
+            else 0
+        )
+        return cls(
+            items=items,
+            total_records=total_records,
+            page_size=pagination.page_size,
+            page_number=pagination.page_number,
+            total_pages=total_pages,
+            sort_by=sort.field,
+            sort_order=sort.order.value,
+        )
 
 
-__all__ = [
-    "PAGINATED_OPENAPI_PARAMS",
-    "FilterOperator",
-    "FilterParam",
-    "ListQueryParam",
-    "PaginatedResponse",
-    "PaginationParams",
-    "SortOrder",
-    "SortParam",
-    "apply_query_params",
-    "apply_search",
-    "get_paginated_results",
-    "get_total_count",
-    "parse_pagination_params",
-]
-
-# OpenAPI extra params for paginated endpoints
-PAGINATED_OPENAPI_PARAMS: dict[str, Any] = {
-    "parameters": [
-        {
-            "name": "page_number",
-            "in": "query",
-            "required": False,
-            "schema": {"type": "integer", "default": 1, "minimum": 1},
-            "description": "Page number (1-indexed)",
-        },
-        {
-            "name": "page_size",
-            "in": "query",
-            "required": False,
-            "schema": {"type": "integer", "minimum": 1, "maximum": 100},
-            "description": "Items per page (default: all)",
-        },
-        {
-            "name": "sort_by",
-            "in": "query",
-            "required": False,
-            "schema": {"type": "string"},
-            "description": "Field to sort by",
-        },
-        {
-            "name": "sort_order",
-            "in": "query",
-            "required": False,
-            "schema": {"type": "string", "enum": ["asc", "desc"], "default": "asc"},
-            "description": "Sort order",
-        },
-        {
-            "name": "filters",
-            "in": "query",
-            "required": False,
-            "style": "form",
-            "explode": True,
-            "schema": {"type": "object", "additionalProperties": True},
-            "description": "Filters: field=value, field_contains=value, "
-            "field_gt=value, field_gte=value, field_lt=value, field_lte=value",
-        },
-        {
-            "name": "search",
-            "in": "query",
-            "required": False,
-            "schema": {"type": "string"},
-            "description": "Full-table search across searchable string fields (case-insensitive)",
-        },
-    ]
-}
+type QueryField = SQLColumnExpression[Any]
 
 
-class SortOrder(str, Enum):
-    """Sort order enumeration."""
+class QueryFieldSet(BaseModel):
+    model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
 
-    ASC = "asc"
-    DESC = "desc"
+    fields: dict[str, QueryField]
+    sortable: tuple[str, ...] | None = None
+    filterable: tuple[str, ...] | None = None
+    searchable: tuple[str | tuple[str, ...], ...] = ()
+    default_sort: "SortParam"
 
+    @model_validator(mode="after")
+    def validate_field_references(self) -> Self:
+        field_keys = set(self.fields)
 
-class FilterOperator(str, Enum):
-    """Filter operators for different comparison types."""
+        if self.sortable is None:
+            object.__setattr__(self, "sortable", tuple(self.fields))
+        if self.filterable is None:
+            object.__setattr__(self, "filterable", tuple(self.fields))
 
-    EQUALS = "eq"
-    NOT_EQUALS = "ne"
-    GREATER_THAN = "gt"
-    GREATER_THAN_OR_EQUAL = "gte"
-    LESS_THAN = "lt"
-    LESS_THAN_OR_EQUAL = "lte"
-    CONTAINS = "contains"  # For string fields (case-insensitive LIKE)
-    IN = "in"  # For checking if value is in a list
-    NOT_IN = "not_in"
-    IS_NULL = "is_null"
-    IS_NOT_NULL = "is_not_null"
+        self._validate_fields(self.sortable, "Sortable fields must exist in fields", field_keys)
+        self._validate_fields(self.filterable, "Filterable fields must exist in fields", field_keys)
+
+        self._validate_fields(
+            tuple(
+                name
+                for entry in self.searchable
+                for name in ([entry] if isinstance(entry, str) else entry)
+            ),
+            "Searchable fields must exist in fields",
+            field_keys,
+        )
+
+        if self.default_sort is not None:
+            default_field = (self.default_sort.field,)
+            self._validate_fields(
+                default_field, "Default sort field must exist in fields", field_keys
+            )
+            self._validate_fields(
+                default_field, "Default sort field must be sortable", self.sortable_set
+            )
+
+        return self
+
+    def _validate_fields(
+        self, keys: tuple[str, ...] | None, message: str, against: set[str]
+    ) -> None:
+        if not keys:
+            return
+        missing = set(keys) - against
+        if missing:
+            raise ValueError(f"{message}: {', '.join(sorted(missing))}")
+
+    @property
+    def sortable_set(self) -> set[str]:
+        return set(self.sortable) if self.sortable is not None else set(self.fields)
+
+    @property
+    def filterable_set(self) -> set[str]:
+        return set(self.filterable) if self.filterable is not None else set(self.fields)
 
 
 class PaginationParams(BaseModel):
@@ -130,6 +154,12 @@ class PaginationParams(BaseModel):
         default=None, ge=1, le=100, description="Items per page (None = all items)"
     )
 
+    @classmethod
+    def from_dict(cls, params: dict[str, str]) -> Self:
+        page_number = int(params.get("page_number", 1))
+        page_size = int(params["page_size"]) if "page_size" in params else None
+        return cls(page_number=page_number, page_size=page_size)
+
     @property
     def skip(self) -> int:
         """Calculate offset from page_number and page_size."""
@@ -137,10 +167,10 @@ class PaginationParams(BaseModel):
             return 0
         return (self.page_number - 1) * self.page_size
 
-    @property
-    def limit(self) -> int | None:
-        """Alias for page_size."""
-        return self.page_size
+
+class SortOrder(str, Enum):
+    ASC = "asc"
+    DESC = "desc"
 
 
 class SortParam(BaseModel):
@@ -148,6 +178,182 @@ class SortParam(BaseModel):
 
     field: str = Field(..., description="Field name to sort by")
     order: SortOrder = Field(default=SortOrder.ASC, description="Sort order")
+
+    @classmethod
+    def from_dict(cls, params: dict[str, str]) -> Self | None:
+        sort_by = params.get("sort_by")
+        if sort_by is None:
+            return None
+        sort_order = SortOrder(params.get("sort_order", "asc"))
+        return cls(field=sort_by, order=sort_order)
+
+
+def _parse_filter_value(value: str) -> int | datetime | str:
+    with suppress(ValueError):
+        return int(value)
+    with suppress(ValueError):
+        return datetime.fromisoformat(value)
+    with suppress(ValueError):
+        return datetime.strptime(value, "%Y-%m-%d")
+    return value
+
+
+def _escape_like_wildcards(value: str, escape_char: str = "\\") -> str:
+    escaped = value.replace(escape_char, escape_char * 2)
+    escaped = escaped.replace("%", f"{escape_char}%")
+    escaped = escaped.replace("_", f"{escape_char}_")
+    return escaped
+
+
+FilterApplyFn = Callable[[QueryField, Any], Any]
+FilterValidateFn = Callable[[QueryField], None]
+
+
+def _validate_comparison(field: QueryField) -> None:
+    field_type = getattr(field, "type", None)
+    if isinstance(field_type, (SAString, SAEnum)):
+        raise BadRequestException("Comparison operators are not supported for string/enum fields")
+
+
+def _validate_contains(field: QueryField) -> None:
+    field_type = getattr(field, "type", None)
+    if field_type is not None and not isinstance(field_type, SAString):
+        raise BadRequestException("Operator 'contains' is only supported for string fields")
+
+
+def _op(
+    value: str,
+    *,
+    apply: FilterApplyFn,
+    validate: FilterValidateFn | None = None,
+) -> tuple[str, FilterApplyFn, FilterValidateFn]:
+    return value, apply, validate or (lambda _: None)
+
+
+class FilterOperator(StrEnum):
+    _apply_fn: FilterApplyFn
+    _validate_fn: FilterValidateFn
+
+    def __new__(
+        cls, value: str, apply_fn: FilterApplyFn, validate_fn: FilterValidateFn | None = None
+    ):
+        obj = str.__new__(cls, value)
+        obj._value_ = value
+        obj._apply_fn = apply_fn
+        obj._validate_fn = validate_fn or (lambda _: None)
+        return obj
+
+    def apply(self, field: QueryField, value: Any) -> Any:
+        self._validate_fn(field)
+        return self._apply_fn(field, value)
+
+    @property
+    def is_list(self) -> bool:
+        return self in (FilterOperator.IN, FilterOperator.NOT_IN)
+
+    EQUALS = _op("eq", apply=lambda f, v: f == v)
+    NOT_EQUALS = _op("ne", apply=lambda f, v: f != v)
+    GREATER_THAN = _op("gt", apply=lambda f, v: f > v, validate=_validate_comparison)
+    GREATER_THAN_OR_EQUAL = _op("gte", apply=lambda f, v: f >= v, validate=_validate_comparison)
+    LESS_THAN = _op("lt", apply=lambda f, v: f < v, validate=_validate_comparison)
+    LESS_THAN_OR_EQUAL = _op("lte", apply=lambda f, v: f <= v, validate=_validate_comparison)
+    CONTAINS = _op(
+        "contains",
+        apply=lambda f, v: f.ilike(f"%{_escape_like_wildcards(str(v))}%", escape="\\"),
+        validate=_validate_contains,
+    )
+    IN = _op("in", apply=lambda f, v: f.in_(v))
+    NOT_IN = _op("nin", apply=lambda f, v: ~f.in_(v))
+    IS_NULL = _op("null", apply=lambda f, _: f.is_(None))
+    NOT_NULL = _op("notnull", apply=lambda f, _: f.is_not(None))
+
+
+def _format_searchable_entry(entry: str | tuple[str, ...]) -> str:
+    if isinstance(entry, str):
+        return entry
+    return " + ".join(entry)
+
+
+def get_paginated_openapi_params(field_set: QueryFieldSet) -> dict[str, Any]:
+    operators = ", ".join(op.value for op in FilterOperator)
+    searchable = tuple(_format_searchable_entry(entry) for entry in field_set.searchable)
+    filterable, sortable = field_set.filterable_set, field_set.sortable_set
+
+    filter_description = (
+        "Filter format: `field_{operator}=value`\n\n"
+        f"- Operators: {operators}\n"
+        f"- Filterable fields: {', '.join(sorted(filterable)) if filterable else 'None'}"
+    )
+
+    sort_description = (
+        "Field to sort by\n\n"
+        f" Sortable fields: {', '.join(sorted(sortable)) if sortable else 'None'}"
+    )
+
+    search_description = (
+        "Full-table search across searchable fields (case-insensitive)\n\n"
+        f"- Searchable fields: {', '.join(searchable) if searchable else 'None'}"
+    )
+
+    return {
+        "parameters": [
+            {
+                "name": "page_number",
+                "in": "query",
+                "required": False,
+                "schema": {"type": "integer", "default": 1, "minimum": 1},
+                "description": "Page number (1-indexed)",
+            },
+            {
+                "name": "page_size",
+                "in": "query",
+                "required": False,
+                "schema": {"type": "integer", "minimum": 1, "maximum": 100},
+                "description": "Items per page (default: all)",
+            },
+            {
+                "name": "sort_by",
+                "in": "query",
+                "required": False,
+                "schema": {"type": "string"},
+                "description": sort_description,
+            },
+            {
+                "name": "sort_order",
+                "in": "query",
+                "required": False,
+                "schema": {
+                    "type": "string",
+                    "enum": [o.value for o in SortOrder],
+                    "default": "asc",
+                },
+                "description": "Sort order",
+            },
+            {
+                "name": "filters",
+                "in": "query",
+                "required": False,
+                "style": "form",
+                "explode": True,
+                "schema": {
+                    "type": "object",
+                    "additionalProperties": True,
+                    "example": {
+                        "status_eq": "active",
+                        "created_at_gte": "2024-01-01",
+                    },
+                },
+                "description": filter_description,
+            },
+            {
+                "name": "search",
+                "in": "query",
+                "required": False,
+                "schema": {"type": "string"},
+                "description": search_description,
+            },
+        ]
+    }
 
 
 class FilterParam(BaseModel):
@@ -160,527 +366,160 @@ class FilterParam(BaseModel):
     @field_validator("value")
     @classmethod
     def validate_value_for_operator(cls, v: Any, info: Any) -> Any:
-        """Validate that value is appropriate for the operator."""
         operator = info.data.get("operator")
 
-        if operator in [FilterOperator.IS_NULL, FilterOperator.IS_NOT_NULL]:
-            # These operators don't need a value
+        if operator in (FilterOperator.IS_NULL, FilterOperator.NOT_NULL):
             return None
 
-        if operator in [FilterOperator.IN, FilterOperator.NOT_IN] and not isinstance(v, list):
-            # These operators need a list
+        if operator in (FilterOperator.IN, FilterOperator.NOT_IN) and not isinstance(v, list):
             raise ValueError(f"Operator {operator} requires a list value")
 
         return v
 
+    @classmethod
+    def from_param(cls, key: str, raw: str) -> Self | None:
+        if "_" not in key:
+            return None
+        field, operator_str = key.rsplit("_", 1)
+        try:
+            operator = FilterOperator(operator_str)
+        except ValueError:
+            return None
+        value = (
+            [_parse_filter_value(v) for v in raw.split(",")]
+            if operator.is_list
+            else _parse_filter_value(raw)
+        )
+        return cls(field=field, operator=operator, value=value)
 
-class ListQueryParam(BaseModel):
+    def apply(self, field: QueryField) -> Any:
+        return self.operator.apply(field, self.value)
+
+
+class ListQueryParams(BaseModel):
     """Combined parameters for pagination, sorting, filtering, and search."""
 
-    pagination: PaginationParams | None = Field(default=None)
-    sort: list[SortParam] | None = Field(default=None)
-    filters: list[FilterParam] | None = Field(default=None)
+    pagination: PaginationParams = Field(default_factory=PaginationParams)
+    sort: SortParam | None = None
+    filters: list[FilterParam] = Field(default_factory=list)
     search: str | None = Field(default=None)
 
-
-def apply_pagination(query: Select, params: PaginationParams | None = None) -> Select:
-    """
-    Apply pagination to a SQLAlchemy query.
-
-    Args:
-        query: The base SQLAlchemy query
-        params: Pagination parameters (page_number, page_size)
-
-    Returns:
-        Modified query with LIMIT and OFFSET applied
-    """
-    if params is None:
-        return query
-
-    # Only apply offset if it's greater than 0 (MySQL requires ORDER BY with OFFSET)
-    if params.skip > 0:
-        query = query.offset(params.skip)
-    if params.limit is not None:
-        query = query.limit(params.limit)
-
-    return query
-
-
-def apply_sorting[ModelType: DeclarativeMeta](
-    query: Select,
-    model: type[ModelType] | None,
-    sort_params: list[SortParam] | None = None,
-    allowed_fields: list[str] | None = None,
-    nested_field_columns: dict[str, Any] | None = None,
-) -> Select:
-    """
-    Apply sorting to a SQLAlchemy query.
-
-    Args:
-        query: The base SQLAlchemy query
-        model: The SQLAlchemy model class
-        sort_params: List of sorting parameters
-        allowed_fields: Optional list of fields that can be sorted on
-        nested_field_columns: Optional mapping of field names to joined column refs
-
-    Returns:
-        Modified query with ORDER BY applied
-
-    Raises:
-        BadRequestException: If attempting to sort on a disallowed or non-existent field
-    """
-    if not sort_params:
-        return query
-
-    for sort_param in sort_params:
-        if nested_field_columns and sort_param.field in nested_field_columns:
-            if allowed_fields and sort_param.field not in allowed_fields:
-                raise BadRequestException(f"Sorting on field '{sort_param.field}' is not allowed")
-            field = nested_field_columns[sort_param.field]
-        else:
-            if model is None or not hasattr(model, sort_param.field):
-                raise BadRequestException(f"Field '{sort_param.field}' does not exist on model")
-            if allowed_fields and sort_param.field not in allowed_fields:
-                raise BadRequestException(f"Sorting on field '{sort_param.field}' is not allowed")
-            field = getattr(model, sort_param.field)
-
-        # Apply sort order
-        if sort_param.order == SortOrder.DESC:
-            query = query.order_by(desc(field))
-        else:
-            query = query.order_by(asc(field))
-
-    return query
-
-
-def _convert_enum_value(field_column: Any, value: Any) -> Any:
-    """Convert string value to enum if the field is an Enum column."""
-    # Check if field has a type attribute with an enum_class (SQLAlchemy Enum)
-    if hasattr(field_column, "type") and hasattr(field_column.type, "enum_class"):
-        enum_class = field_column.type.enum_class
-        if enum_class is not None and isinstance(value, str):
-            # Try to get the enum member by value
-            for member in enum_class:
-                if member.value == value:
-                    return member
-    return value
-
-
-def _validate_operator_for_field_type(field: Any, operator: FilterOperator) -> None:
-    """Raise BadRequestException if operator is incompatible with the field's column type."""
-    if not hasattr(field, "type"):
-        return
-    is_string = isinstance(field.type, SAString)
-    is_enum = isinstance(field.type, SAEnum)
-    comparison_ops = {
-        FilterOperator.GREATER_THAN,
-        FilterOperator.GREATER_THAN_OR_EQUAL,
-        FilterOperator.LESS_THAN,
-        FilterOperator.LESS_THAN_OR_EQUAL,
-    }
-    if (is_string or is_enum) and operator in comparison_ops:
-        raise BadRequestException(
-            f"Operator '{operator.value}' is not supported for string/enum fields"
+    @classmethod
+    def from_dict(cls, query_params: dict[str, str]) -> Self:
+        filter_params = [
+            p
+            for key, raw in query_params.items()
+            if (p := FilterParam.from_param(key, raw)) is not None
+        ]
+        return cls(
+            pagination=PaginationParams.from_dict(query_params),
+            sort=SortParam.from_dict(query_params),
+            filters=filter_params,
+            search=query_params.get("search"),
         )
-    if not is_string and operator == FilterOperator.CONTAINS:
-        raise BadRequestException("Operator 'contains' is only supported for string fields")
 
 
-def _escape_like_wildcards(value: str, escape_char: str = "\\") -> str:
-    """Escape SQL LIKE wildcard characters so user input is treated literally."""
-    escaped = value.replace(escape_char, escape_char * 2)
-    escaped = escaped.replace("%", f"{escape_char}%")
-    escaped = escaped.replace("_", f"{escape_char}_")
-    return escaped
+class QueryService:
+    def __init__(self, session: AsyncSession = Depends(get_session)):
+        self.session = session
 
+    async def get_paginated[ModelType](
+        self,
+        params: ListQueryParams,
+        base_query: Select,
+        dto_converter: Callable[[Any], ModelType],
+        *,
+        field_set: QueryFieldSet,
+        use_mappings: bool = False,
+    ) -> PaginatedResponse[ModelType]:
+        effective_sort = params.sort or field_set.default_sort
+        query = self._apply_filters(base_query, params.filters, field_set)
+        query = self._apply_sorting(query, effective_sort, field_set)
+        query = self._apply_search(query, params.search, field_set)
 
-def apply_filters[ModelType: DeclarativeMeta](
-    query: Select,
-    model: type[ModelType] | None,
-    filter_params: list[FilterParam] | None = None,
-    allowed_fields: list[str] | None = None,
-    nested_field_columns: dict[str, Any] | None = None,
-) -> Select:
-    """
-    Apply filters to a SQLAlchemy query.
+        total_records = await self._get_total_count(query)
+        query = self._apply_pagination(query, params.pagination)
 
-    Args:
-        query: The base SQLAlchemy query
-        model: The SQLAlchemy model class
-        filter_params: List of filter parameters
-        allowed_fields: Optional list of fields that can be filtered on
-        nested_field_columns: Optional mapping of field names to joined column refs
+        result = await self.session.execute(query)
 
-    Returns:
-        Modified query with WHERE clauses applied
+        entities = result.mappings().all() if use_mappings else result.scalars().all()
+        dtos = [dto_converter(entity) for entity in entities]
 
-    Raises:
-        BadRequestException: If attempting to filter on a disallowed or non-existent field
-    """
-    if not filter_params:
-        return query
+        return PaginatedResponse.from_pagination(
+            items=dtos,
+            total_records=total_records,
+            pagination=params.pagination,
+            sort=effective_sort,
+        )
 
-    for filter_param in filter_params:
-        if nested_field_columns and filter_param.field in nested_field_columns:
-            if allowed_fields and filter_param.field not in allowed_fields:
+    def _apply_filters(
+        self, query: Select, filters: list[FilterParam], field_set: QueryFieldSet
+    ) -> Select:
+        for filter_param in filters:
+            if filter_param.field not in field_set.filterable_set:
                 raise BadRequestException(
                     f"Filtering on field '{filter_param.field}' is not allowed"
                 )
-            field = nested_field_columns[filter_param.field]
-        else:
-            if model is None or not hasattr(model, filter_param.field):
-                raise BadRequestException(f"Field '{filter_param.field}' does not exist on model")
-            if allowed_fields and filter_param.field not in allowed_fields:
-                raise BadRequestException(
-                    f"Filtering on field '{filter_param.field}' is not allowed"
-                )
-            field = getattr(model, filter_param.field)
+            field = field_set.fields[filter_param.field]
+            query = query.where(filter_param.apply(field))
 
-        # Validate operator compatibility with field type
-        _validate_operator_for_field_type(field, filter_param.operator)
-
-        # Convert value to enum if needed
-        value = _convert_enum_value(field, filter_param.value)
-
-        # Apply the appropriate filter based on operator
-        if filter_param.operator == FilterOperator.EQUALS:
-            query = query.where(field == value)
-        elif filter_param.operator == FilterOperator.NOT_EQUALS:
-            query = query.where(field != value)
-        elif filter_param.operator == FilterOperator.GREATER_THAN:
-            query = query.where(field > value)
-        elif filter_param.operator == FilterOperator.GREATER_THAN_OR_EQUAL:
-            query = query.where(field >= value)
-        elif filter_param.operator == FilterOperator.LESS_THAN:
-            query = query.where(field < value)
-        elif filter_param.operator == FilterOperator.LESS_THAN_OR_EQUAL:
-            query = query.where(field <= value)
-        elif filter_param.operator == FilterOperator.CONTAINS:
-            # Case-insensitive LIKE for string fields
-            escaped_value = _escape_like_wildcards(str(value))
-            query = query.where(field.ilike(f"%{escaped_value}%", escape="\\"))
-        elif filter_param.operator == FilterOperator.IN:
-            query = query.where(field.in_(value))
-        elif filter_param.operator == FilterOperator.NOT_IN:
-            query = query.where(~field.in_(value))
-        elif filter_param.operator == FilterOperator.IS_NULL:
-            query = query.where(field.is_(None))
-        elif filter_param.operator == FilterOperator.IS_NOT_NULL:
-            query = query.where(field.is_not(None))
-
-    return query
-
-
-def apply_search(query: Select, search: str, search_columns: list[Any]) -> Select:
-    """Apply case-insensitive search across multiple string columns using OR ilike.
-
-    Each entry in ``search_columns`` may be either:
-    - a single SQLAlchemy column, matched directly with ``ILIKE %search%``; or
-    - a list/tuple of columns, concatenated with a single space and matched as a
-      single value (useful for "full name" style searches across split fields).
-    """
-    if not search_columns:
-        return query
-    pattern = f"%{search}%"
-    conditions = []
-    for col in search_columns:
-        if isinstance(col, list | tuple):
-            if not col:
-                continue
-            # Concatenate columns with a space between them for full-name style matching.
-            # Use func.concat (instead of the `+` operator) so NULL values are handled
-            # safely by the database (MySQL's CONCAT treats NULLs as empty strings).
-            concat_args: list[Any] = []
-            for index, sub_col in enumerate(col):
-                if index > 0:
-                    concat_args.append(" ")
-                concat_args.append(sub_col)
-            conditions.append(func.concat(*concat_args).ilike(pattern))
-        else:
-            conditions.append(col.ilike(pattern))
-    if not conditions:
-        return query
-    return query.where(or_(*conditions))
-
-
-def apply_query_params[ModelType: DeclarativeMeta](
-    query: Select,
-    model: type[ModelType] | None,
-    params: ListQueryParam | None = None,
-    allowed_sort_fields: list[str] | None = None,
-    allowed_filter_fields: list[str] | None = None,
-    nested_field_columns: dict[str, Any] | None = None,
-) -> Select:
-    """
-    Apply all query parameters (filtering, sorting, pagination) to a query.
-
-    This is the main utility function that combines all operations.
-
-    Args:
-        query: The base SQLAlchemy query
-        model: The SQLAlchemy model class
-        params: Combined query parameters
-        allowed_sort_fields: Optional list of fields that can be sorted on
-        allowed_filter_fields: Optional list of fields that can be filtered on
-        nested_field_columns: Optional mapping of field names to joined column refs
-
-    Returns:
-        Modified query with filters, sorting, and pagination applied
-    """
-    if params is None:
         return query
 
-    # Apply filters first (narrows down the dataset)
-    if params.filters:
-        query = apply_filters(
-            query, model, params.filters, allowed_filter_fields, nested_field_columns
-        )
+    def _apply_sorting(self, query: Select, sort: SortParam, field_set: QueryFieldSet) -> Select:
+        if sort.field not in field_set.sortable_set:
+            raise BadRequestException(f"Sorting on field '{sort.field}' is not allowed")
+        field = field_set.fields[sort.field]
+        order_fn = desc if sort.order == SortOrder.DESC else asc
+        return query.order_by(order_fn(field))
 
-    # Apply sorting (before pagination to ensure consistent ordering)
-    if params.sort:
-        query = apply_sorting(query, model, params.sort, allowed_sort_fields, nested_field_columns)
-    elif (
-        params.pagination
-        and (params.pagination.skip > 0 or params.pagination.limit is not None)
-        and model is not None
-    ):
-        # MySQL requires ORDER BY when using OFFSET or LIMIT
-        # Default to sorting by primary key if no explicit sort is provided and pagination is active
-        # Get the primary key column(s) from the model's mapper
-        mapper = inspect(model)
-        if mapper is None:
-            raise BadRequestException(
-                f"Cannot inspect model {model.__name__}: not a valid SQLAlchemy model"
-            )
+    def _apply_pagination(self, query: Select, pagination: PaginationParams) -> Select:
+        if pagination.skip > 0:
+            query = query.offset(pagination.skip)
+        if pagination.page_size is not None:
+            query = query.limit(pagination.page_size)
+        return query
 
-        primary_key_columns = list(mapper.primary_key)
-        if primary_key_columns:
-            # Order by the first primary key column
-            query = query.order_by(asc(primary_key_columns[0]))
+    def _apply_search(self, query: Select, search: str | None, field_set: QueryFieldSet) -> Select:
+        if not search or not field_set.searchable:
+            return query
+        pattern = f"%{search}%"
+        conditions = []
+        for entry in field_set.searchable:
+            if isinstance(entry, tuple):
+                if not entry:
+                    continue
+                concat_args: list[Any] = []
+                for index, name in enumerate(entry):
+                    if index > 0:
+                        concat_args.append(" ")
+                    concat_args.append(field_set.fields[name])
+                conditions.append(func.concat(*concat_args).ilike(pattern))
+            else:
+                conditions.append(field_set.fields[entry].ilike(pattern))
+        if not conditions:
+            return query
+        return query.where(or_(*conditions))
 
-    # Apply pagination last
-    pagination_params = params.pagination
-    if pagination_params:
-        query = apply_pagination(query, pagination_params)
-
-    return query
-
-
-async def get_total_count(
-    session: AsyncSession,
-    base_query: Select,
-) -> int:
-    """
-    Get the total count of results for a query (before pagination).
-
-    Args:
-        session: SQLAlchemy async session
-        base_query: The base query (with filters but before pagination)
-
-    Returns:
-        Total number of results
-    """
-    # Use select(func.count()).select_from(base_query.subquery()) for proper counting
-    count_query = select(func.count()).select_from(base_query.subquery())
-    result = await session.execute(count_query)
-    return result.scalar() or 0
+    async def _get_total_count(self, base_query: Select) -> int:
+        count_query = select(func.count()).select_from(base_query.subquery())
+        result = await self.session.execute(count_query)
+        return result.scalar() or 0
 
 
-def _parse_filter_value(value: str) -> int | datetime | str:
-    """
-    Parse a filter value string into the appropriate type.
+def parse_list_query_params():
+    def dependency(request: Request) -> ListQueryParams:
+        try:
+            return ListQueryParams.from_dict(dict(request.query_params))
+        except ValidationError as exc:
+            raise RequestValidationError(exc.errors()) from exc
 
-    Attempts to parse as:
-    1. Integer (e.g., "123")
-    2. DateTime with timezone (e.g., "2024-01-01T12:00:00+00:00")
-    3. DateTime without timezone (e.g., "2024-01-01T12:00:00")
-    4. Date only (e.g., "2024-01-01")
-    5. Falls back to string if none match
-    """
-    # Try integer
-    with suppress(ValueError):
-        return int(value)
-
-    # Try datetime with timezone (ISO format)
-    with suppress(ValueError):
-        return datetime.fromisoformat(value)
-
-    # Try date only (add time component)
-    with suppress(ValueError):
-        return datetime.strptime(value, "%Y-%m-%d")
-
-    # Return as string
-    return value
+    return Depends(dependency)
 
 
-def parse_pagination_params(
-    request: Request,
-    allowed_sort_fields: list[str],
-    allowed_filter_fields: list[str],
-) -> ListQueryParam:
-    """
-    Parse pagination, sorting, and filtering params from FastAPI request.
+def parse_export_list_query_params():
+    def dependency(
+        params: ListQueryParams = parse_list_query_params(),
+    ) -> ListQueryParams:
+        return params.model_copy(update={"pagination": PaginationParams()})
 
-    Args:
-        request: FastAPI request object
-        allowed_sort_fields: Whitelist of allowed sort fields
-        allowed_filter_fields: Whitelist of allowed filter fields
-
-    Returns:
-        ListQueryParam object ready to use with apply_query_params
-    """
-    query_params_dict = dict(request.query_params)
-
-    # Parse pagination
-    page_number = int(query_params_dict.get("page_number", 1))
-    page_size_str = query_params_dict.get("page_size")
-    page_size = int(page_size_str) if page_size_str is not None else None
-    try:
-        pagination_params = PaginationParams(page_number=page_number, page_size=page_size)
-    except (ValueError, ValidationError) as e:
-        raise (
-            RequestValidationError(errors=e.errors())
-            if isinstance(e, PydanticValidationError)
-            else RequestValidationError(errors=[{"type": "value_error", "msg": str(e)}])
-        ) from None
-
-    # Parse sorting
-    sort_params: list[SortParam] | None = None
-    if "sort_by" in query_params_dict:
-        sort_by = query_params_dict["sort_by"]
-        sort_order = query_params_dict.get("sort_order", "asc")
-        if sort_by in allowed_sort_fields:
-            sort_params = [SortParam(field=sort_by, order=SortOrder(sort_order))]
-
-    # Parse filters
-    filter_params: list[FilterParam] = []
-
-    # Operator suffix mappings
-    list_operator_suffixes = {
-        "_in": FilterOperator.IN,
-        "_not_in": FilterOperator.NOT_IN,
-    }
-    operator_suffixes = {
-        "_gt": FilterOperator.GREATER_THAN,
-        "_gte": FilterOperator.GREATER_THAN_OR_EQUAL,
-        "_lt": FilterOperator.LESS_THAN,
-        "_lte": FilterOperator.LESS_THAN_OR_EQUAL,
-        "_contains": FilterOperator.CONTAINS,
-    }
-
-    for field in allowed_filter_fields:
-        # Check for exact match filter (e.g., location_id=5)
-        if field in query_params_dict:
-            value = _parse_filter_value(query_params_dict[field])
-            filter_params.append(
-                FilterParam(field=field, operator=FilterOperator.EQUALS, value=value)
-            )
-
-        # Check for list operator suffix filters (e.g., role_in=admin,staff)
-        for suffix, operator in list_operator_suffixes.items():
-            param_name = f"{field}{suffix}"
-            if param_name in query_params_dict:
-                value = [_parse_filter_value(v) for v in query_params_dict[param_name].split(",")]
-                filter_params.append(FilterParam(field=field, operator=operator, value=value))
-
-        # Check for operator suffix filters (e.g., party_datetime_gte=2024-01-01)
-        for suffix, operator in operator_suffixes.items():
-            param_name = f"{field}{suffix}"
-            if param_name in query_params_dict:
-                value = _parse_filter_value(query_params_dict[param_name])
-                filter_params.append(FilterParam(field=field, operator=operator, value=value))
-
-    search = query_params_dict.get("search") or None
-
-    return ListQueryParam(
-        pagination=pagination_params,
-        sort=sort_params,
-        filters=filter_params if filter_params else None,
-        search=search,
-    )
-
-
-async def get_paginated_results[ModelType](
-    session: AsyncSession,
-    base_query: Select,
-    entity_class: type | None,
-    dto_converter: Callable[[Any], ModelType],
-    query_params: ListQueryParam,
-    allowed_sort_fields: list[str],
-    allowed_filter_fields: list[str],
-    nested_field_columns: dict[str, Any] | None = None,
-    search_columns: list[Any] | None = None,
-    use_mappings: bool = False,
-) -> PaginatedResponse[ModelType]:
-    """
-    Generic function to apply filters, search, sorting, pagination and return paginated results.
-
-    Args:
-        session: SQLAlchemy async session
-        base_query: Base SELECT query with joins/options already applied
-        entity_class: The entity class (e.g., PartyEntity)
-        dto_converter: Function to convert entity to DTO (e.g., lambda e: e.to_dto())
-        query_params: Query parameters (filters, sort, pagination, search)
-        allowed_sort_fields: Whitelist of fields allowed for sorting
-        allowed_filter_fields: Whitelist of fields allowed for filtering
-        nested_field_columns: Optional mapping of field names to joined column refs
-        search_columns: Optional list of columns/groups to search across.
-            Each entry may be a single column or a list/tuple of columns to be
-            concatenated with a space (e.g. ``[first_name, last_name]`` enables
-            matching against the full name).
-        use_mappings: When True, fetch rows as mapping objects instead of scalars.
-
-    Returns:
-        PaginatedResponse with items and metadata
-    """
-    # Apply filters and sorting (but not pagination yet - need count first)
-    filtered_query = apply_query_params(
-        base_query,
-        entity_class,
-        ListQueryParam(filters=query_params.filters, sort=query_params.sort),
-        allowed_sort_fields=allowed_sort_fields,
-        allowed_filter_fields=allowed_filter_fields,
-        nested_field_columns=nested_field_columns,
-    )
-
-    # Apply full-table search if provided
-    if query_params.search and search_columns:
-        filtered_query = apply_search(filtered_query, query_params.search, search_columns)
-
-    # Get total count after filters but before pagination
-    total_records = await get_total_count(session, filtered_query)
-
-    # Now apply pagination
-    paginated_query = apply_query_params(
-        filtered_query,
-        entity_class,
-        ListQueryParam(pagination=query_params.pagination),
-    )
-
-    # Execute query
-    result = await session.execute(paginated_query)
-    entities = result.mappings().all() if use_mappings else result.scalars().all()
-
-    # Convert to DTOs
-    dtos = [dto_converter(entity) for entity in entities]
-
-    # Calculate metadata
-    page_number = query_params.pagination.page_number if query_params.pagination else 1
-    page_size = query_params.pagination.page_size if query_params.pagination else total_records
-
-    if page_size is None:
-        actual_page_size = total_records
-        total_pages = 1 if total_records > 0 else 0
-        actual_page_number = 1
-    else:
-        actual_page_size = page_size
-        actual_page_number = page_number
-        total_pages = (total_records + page_size - 1) // page_size if total_records > 0 else 0
-
-    return PaginatedResponse(
-        items=dtos,
-        total_records=total_records,
-        page_size=actual_page_size,
-        page_number=actual_page_number,
-        total_pages=total_pages,
-    )
+    return Depends(dependency)

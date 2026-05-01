@@ -120,7 +120,11 @@ class StudentSuggestionDto(BaseModel):
     matched_field_value: str
 
 
-PaginatedStudentsResponse = PaginatedResponse[StudentDto]
+class PaginatedStudentsResponse(PaginatedResponse[StudentDto]):
+    """Paginated response for students."""
+
+    pass
+
 
 # Resolve forward references after all models are defined
 if not TYPE_CHECKING:

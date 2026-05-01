@@ -11,6 +11,25 @@ from src.core.exceptions import CredentialsException, ForbiddenException
 from test.utils.http.assertions import assert_res_failure, assert_res_paginated
 
 all_roles: set[StringRole] = {"admin", "staff", "student", "officer", "police_admin"}
+FILTER_OPERATOR_SUFFIXES = (
+    "_eq",
+    "_ne",
+    "_gt",
+    "_gte",
+    "_lt",
+    "_lte",
+    "_contains",
+    "_in",
+    "_nin",
+    "_null",
+    "_notnull",
+)
+
+
+def _filter_query_key(filter_key: str) -> str:
+    if filter_key.endswith(FILTER_OPERATOR_SUFFIXES):
+        return filter_key
+    return f"{filter_key}_eq"
 
 
 def generate_auth_required_tests(*params: tuple[set[StringRole], str, str, dict | None]):
@@ -164,7 +183,9 @@ def generate_filter_sort_tests(
     async def test_allowed_filter_fields(
         admin_client: AsyncClient, filter_key: str, filter_value: Any
     ):
-        response = await admin_client.get(f"{endpoint}?{filter_key}={filter_value}")
+        response = await admin_client.get(
+            f"{endpoint}?{_filter_query_key(filter_key)}={filter_value}"
+        )
         assert_res_paginated(response, dto_class)
 
     return test_allowed_sort_fields, test_allowed_filter_fields

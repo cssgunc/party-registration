@@ -1,7 +1,8 @@
 import math
 from datetime import UTC, datetime, timedelta
+from typing import ClassVar
 
-from fastapi import Depends, Request
+from fastapi import Depends
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,8 +18,11 @@ from src.core.exceptions import (
 from src.core.utils.date_utils import is_same_academic_year
 from src.core.utils.excel_utils import ExcelExporter
 from src.core.utils.query_utils import (
-    get_paginated_results,
-    parse_pagination_params,
+    ListQueryParams,
+    QueryFieldSet,
+    QueryService,
+    SortOrder,
+    SortParam,
 )
 from src.modules.account.account_entity import AccountEntity
 from src.modules.location.location_model import LocationDto
@@ -37,6 +41,49 @@ from .party_model import (
     PartyDto,
     PartyStatus,
     StudentCreatePartyDto,
+)
+
+_PARTY_QUERY_FIELDS = QueryFieldSet(
+    fields={
+        "id": PartyEntity.id,
+        "party_datetime": PartyEntity.party_datetime,
+        "status": PartyEntity.status,
+        "contact_one.id": PartyEntity.contact_one_id,
+        "contact_one.first_name": AccountEntity.first_name,
+        "contact_one.last_name": AccountEntity.last_name,
+        "contact_one.email": AccountEntity.email,
+        "contact_one.phone_number": StudentEntity.phone_number,
+        "contact_one.onyen": AccountEntity.onyen,
+        "contact_one.pid": AccountEntity.pid,
+        "contact_one.contact_preference": StudentEntity.contact_preference,
+        "contact_one.last_registered": StudentEntity.last_registered,
+        "contact_two.email": PartyEntity.contact_two_email,
+        "contact_two.first_name": PartyEntity.contact_two_first_name,
+        "contact_two.last_name": PartyEntity.contact_two_last_name,
+        "contact_two.phone_number": PartyEntity.contact_two_phone_number,
+        "contact_two.contact_preference": PartyEntity.contact_two_contact_preference,
+        "location.id": PartyEntity.location_id,
+        "location.google_place_id": LocationEntity.google_place_id,
+        "location.formatted_address": LocationEntity.formatted_address,
+        "location.hold_expiration": LocationEntity.hold_expiration,
+    },
+    searchable=(
+        "location.formatted_address",
+        "location.google_place_id",
+        "contact_one.first_name",
+        "contact_one.last_name",
+        ("contact_one.first_name", "contact_one.last_name"),
+        "contact_one.email",
+        "contact_one.onyen",
+        "contact_one.pid",
+        "contact_one.phone_number",
+        "contact_two.email",
+        "contact_two.first_name",
+        "contact_two.last_name",
+        ("contact_two.first_name", "contact_two.last_name"),
+        "contact_two.phone_number",
+    ),
+    default_sort=SortParam(field="party_datetime", order=SortOrder.ASC),
 )
 
 
@@ -91,15 +138,19 @@ class PartyInPastException(BadRequestException):
 
 
 class PartyService:
+    QUERY_FIELDS: ClassVar[QueryFieldSet] = _PARTY_QUERY_FIELDS
+
     def __init__(
         self,
         session: AsyncSession = Depends(get_session),
         location_service: LocationService = Depends(),
         student_service: StudentService = Depends(),
+        query_service: QueryService = Depends(),
     ):
         self.session = session
         self.location_service = location_service
         self.student_service = student_service
+        self.query_service = query_service
 
     async def _get_party_entity_by_id(self, party_id: int) -> PartyEntity:
         result = await self.session.execute(
@@ -216,10 +267,7 @@ class PartyService:
         parties = result.scalars().all()
         return [party.to_dto() for party in parties]
 
-    async def get_parties_paginated(
-        self,
-        request: Request,
-    ) -> PaginatedPartiesResponse:
+    async def get_parties_paginated(self, params: ListQueryParams) -> PaginatedPartiesResponse:
         """
         Get parties with server-side pagination, sorting, and filtering.
 
@@ -234,38 +282,6 @@ class PartyService:
         Returns:
             PaginatedPartiesResponse with items and metadata
         """
-        nested_field_columns = {
-            "contact_one.id": PartyEntity.contact_one_id,
-            "contact_one.first_name": AccountEntity.first_name,
-            "contact_one.last_name": AccountEntity.last_name,
-            "contact_one.email": AccountEntity.email,
-            "contact_one.phone_number": StudentEntity.phone_number,
-            "contact_one.onyen": AccountEntity.onyen,
-            "contact_one.pid": AccountEntity.pid,
-            "contact_one.contact_preference": StudentEntity.contact_preference,
-            "contact_one.last_registered": StudentEntity.last_registered,
-            "contact_two.email": PartyEntity.contact_two_email,
-            "contact_two.first_name": PartyEntity.contact_two_first_name,
-            "contact_two.last_name": PartyEntity.contact_two_last_name,
-            "contact_two.phone_number": PartyEntity.contact_two_phone_number,
-            "contact_two.contact_preference": PartyEntity.contact_two_contact_preference,
-            "location.id": PartyEntity.location_id,
-            "location.google_place_id": LocationEntity.google_place_id,
-            "location.formatted_address": LocationEntity.formatted_address,
-            "location.hold_expiration": LocationEntity.hold_expiration,
-        }
-
-        _base_allowed_fields = ["id", "party_datetime", "status"]
-        allowed_sort_fields = [*_base_allowed_fields, *nested_field_columns.keys()]
-        allowed_filter_fields = list(allowed_sort_fields)
-
-        # Parse query params from request
-        query_params = parse_pagination_params(
-            request,
-            allowed_sort_fields=allowed_sort_fields,
-            allowed_filter_fields=allowed_filter_fields,
-        )
-
         # Build base query with JOINs for filter/sort and eager loading for hydration
         base_query = (
             select(PartyEntity)
@@ -279,37 +295,13 @@ class PartyService:
             )
         )
 
-        search_columns = [
-            LocationEntity.formatted_address,
-            LocationEntity.google_place_id,
-            AccountEntity.first_name,
-            AccountEntity.last_name,
-            # Concatenated full names so searches like "Jane Doe" match across
-            # the split first_name / last_name columns for either contact.
-            [AccountEntity.first_name, AccountEntity.last_name],
-            AccountEntity.email,
-            AccountEntity.onyen,
-            AccountEntity.pid,
-            StudentEntity.phone_number,
-            PartyEntity.contact_two_email,
-            PartyEntity.contact_two_first_name,
-            PartyEntity.contact_two_last_name,
-            [PartyEntity.contact_two_first_name, PartyEntity.contact_two_last_name],
-            PartyEntity.contact_two_phone_number,
-        ]
-
-        # Use the generic pagination utility
-        return await get_paginated_results(
-            session=self.session,
+        result = await self.query_service.get_paginated(
+            params=params,
             base_query=base_query,
-            entity_class=PartyEntity,
             dto_converter=lambda entity: entity.to_dto(),
-            query_params=query_params,
-            allowed_sort_fields=allowed_sort_fields,
-            allowed_filter_fields=allowed_filter_fields,
-            nested_field_columns=nested_field_columns,
-            search_columns=search_columns,
+            field_set=_PARTY_QUERY_FIELDS,
         )
+        return PaginatedPartiesResponse(**result.model_dump())
 
     async def get_party_by_id(self, party_id: int) -> PartyDto:
         party_entity = await self._get_party_entity_by_id(party_id)
@@ -759,18 +751,17 @@ class PartyService:
         r = 3959
         return c * r
 
-    async def get_parties_for_export(self, request: Request) -> list[PartyDto]:
-        """
-        Get all parties (no pagination) for export, respecting sort/filter query params.
-        """
-        return (await self.get_parties_paginated(request)).items
-
-    def export_parties_to_excel(self, parties: list[PartyDto], *, is_police: bool) -> bytes:
+    def export_parties_to_excel(
+        self,
+        parties_response: PaginatedPartiesResponse,
+        *,
+        is_police: bool,
+    ) -> bytes:
         """
         Export a list of parties to Excel format with formatting.
 
         Args:
-            parties: List of PartyDto models to export
+            parties_response: Paginated party response to export
             is_police: If True, use the police format (11 columns, full names only).
                        If False, use the staff/admin format (14 columns, includes residence).
 
@@ -795,7 +786,7 @@ class PartyService:
             ]
             exporter.set_headers(headers)
 
-            for party in parties:
+            for party in parties_response.items:
                 c1 = party.contact_one
                 c2 = party.contact_two
                 exporter.add_row(
@@ -832,7 +823,7 @@ class PartyService:
             ]
             exporter.set_headers(headers)
 
-            for party in parties:
+            for party in parties_response.items:
                 c1 = party.contact_one
                 c2 = party.contact_two
                 residence_address = c1.residence.location.formatted_address if c1.residence else ""

@@ -10,6 +10,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from httpx import AsyncClient
 from src.core.exceptions import BadRequestException
+from src.core.utils.query_utils import FilterParam, ListQueryParams
 from src.modules.incident.incident_model import IncidentDto, IncidentSeverity
 from test.modules.incident.incident_utils import IncidentTestUtils
 from test.utils.http.assertions import assert_res_failure, assert_res_paginated
@@ -107,60 +108,60 @@ class TestQueryUtilsFilterOperators:
         i1 = await self.incident_utils.create_one(severity="remote_warning")
         await self.incident_utils.create_one(severity="in_person_warning")
 
-        response = await self.admin_client.get("/api/incidents?severity=remote_warning")
+        response = await self.admin_client.get("/api/incidents?severity_eq=remote_warning")
         paginated = assert_res_paginated(response, IncidentDto, total_records=1)
         self.incident_utils.assert_matches(paginated.items[0], i1.to_dto())
 
     @pytest.mark.asyncio
-    async def test_filter_gt(self):
-        """GT operator on datetime returns only records after the threshold."""
-        base = datetime(2026, 6, 1, tzinfo=UTC)
-        await self.incident_utils.create_one(incident_datetime=base)
-        i2 = await self.incident_utils.create_one(incident_datetime=base + timedelta(days=2))
+    async def test_filter_not_equals(self):
+        """NOT_EQUALS operator excludes exact enum matches."""
+        await self.incident_utils.create_one(severity="remote_warning")
+        i2 = await self.incident_utils.create_one(severity="in_person_warning")
+        i3 = await self.incident_utils.create_one(severity=IncidentSeverity.CITATION)
 
-        threshold = (base + timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%S")
-        response = await self.admin_client.get(f"/api/incidents?incident_datetime_gt={threshold}")
-        paginated = assert_res_paginated(response, IncidentDto, total_records=1)
-        self.incident_utils.assert_matches(paginated.items[0], i2.to_dto())
-
-    @pytest.mark.asyncio
-    async def test_filter_gte(self):
-        """GTE operator on datetime returns records at or after the threshold."""
-        base = datetime(2026, 6, 1, tzinfo=UTC)
-        i1 = await self.incident_utils.create_one(incident_datetime=base)
-        i2 = await self.incident_utils.create_one(incident_datetime=base + timedelta(days=1))
-        await self.incident_utils.create_one(incident_datetime=base - timedelta(days=1))
-
-        threshold = base.strftime("%Y-%m-%dT%H:%M:%S")
-        response = await self.admin_client.get(f"/api/incidents?incident_datetime_gte={threshold}")
+        response = await self.admin_client.get("/api/incidents?severity_ne=remote_warning")
         paginated = assert_res_paginated(response, IncidentDto, total_records=2)
+        returned_ids = {item.id for item in paginated.items}
+        assert returned_ids == {i2.id, i3.id}
+
+    @pytest.mark.parametrize(
+        ("operator", "created_offsets", "threshold_offset", "expected_offsets"),
+        [
+            ("gt", [0, 2], 1, [2]),
+            ("gte", [-1, 0, 1], 0, [0, 1]),
+            ("lt", [0, 2], 1, [0]),
+            ("lte", [0, 1], 0, [0]),
+        ],
+    )
+    @pytest.mark.asyncio
+    async def test_datetime_comparison_filters(
+        self,
+        operator: str,
+        created_offsets: list[int],
+        threshold_offset: int,
+        expected_offsets: list[int],
+    ):
+        """Datetime comparison operators return the expected records."""
+        base = datetime(2026, 6, 1, tzinfo=UTC)
+        created = {
+            offset: await self.incident_utils.create_one(
+                incident_datetime=base + timedelta(days=offset)
+            )
+            for offset in created_offsets
+        }
+
+        threshold = (base + timedelta(days=threshold_offset)).strftime("%Y-%m-%dT%H:%M:%S")
+        response = await self.admin_client.get(
+            f"/api/incidents?incident_datetime_{operator}={threshold}"
+        )
+        paginated = assert_res_paginated(response, IncidentDto, total_records=len(expected_offsets))
         returned = {item.id: item for item in paginated.items}
-        self.incident_utils.assert_matches(returned[i1.id], i1.to_dto())
-        self.incident_utils.assert_matches(returned[i2.id], i2.to_dto())
 
-    @pytest.mark.asyncio
-    async def test_filter_lt(self):
-        """LT operator on datetime returns only records before the threshold."""
-        base = datetime(2026, 6, 1, tzinfo=UTC)
-        i1 = await self.incident_utils.create_one(incident_datetime=base)
-        await self.incident_utils.create_one(incident_datetime=base + timedelta(days=2))
-
-        threshold = (base + timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%S")
-        response = await self.admin_client.get(f"/api/incidents?incident_datetime_lt={threshold}")
-        paginated = assert_res_paginated(response, IncidentDto, total_records=1)
-        self.incident_utils.assert_matches(paginated.items[0], i1.to_dto())
-
-    @pytest.mark.asyncio
-    async def test_filter_lte(self):
-        """LTE operator on datetime returns records at or before the threshold."""
-        base = datetime(2026, 6, 1, tzinfo=UTC)
-        i1 = await self.incident_utils.create_one(incident_datetime=base)
-        await self.incident_utils.create_one(incident_datetime=base + timedelta(days=1))
-
-        threshold = base.strftime("%Y-%m-%dT%H:%M:%S")
-        response = await self.admin_client.get(f"/api/incidents?incident_datetime_lte={threshold}")
-        paginated = assert_res_paginated(response, IncidentDto, total_records=1)
-        self.incident_utils.assert_matches(paginated.items[0], i1.to_dto())
+        assert set(returned) == {created[offset].id for offset in expected_offsets}
+        for offset in expected_offsets:
+            self.incident_utils.assert_matches(
+                returned[created[offset].id], created[offset].to_dto()
+            )
 
     @pytest.mark.asyncio
     async def test_filter_contains(self):
@@ -172,29 +173,29 @@ class TestQueryUtilsFilterOperators:
         paginated = assert_res_paginated(response, IncidentDto, total_records=1)
         self.incident_utils.assert_matches(paginated.items[0], i1.to_dto())
 
+    @pytest.mark.parametrize(
+        ("search_value", "matching_description", "non_matching_description"),
+        [
+            ("100%", "music at 100% volume", "music at 1000 volume"),
+            ("room_2", "room_2 loud noise", "roomA2 loud noise"),
+        ],
+    )
     @pytest.mark.asyncio
-    async def test_filter_contains_escapes_percent_wildcard(self):
-        """CONTAINS treats percent signs in user input as literal characters."""
-        i1 = await self.incident_utils.create_one(description="music at 100% volume")
-        await self.incident_utils.create_one(description="music at 1000 volume")
+    async def test_filter_contains_escapes_sql_wildcards(
+        self,
+        search_value: str,
+        matching_description: str,
+        non_matching_description: str,
+    ):
+        """CONTAINS treats SQL wildcard characters in user input as literals."""
+        matching_incident = await self.incident_utils.create_one(description=matching_description)
+        await self.incident_utils.create_one(description=non_matching_description)
 
         response = await self.admin_client.get(
-            "/api/incidents", params={"description_contains": "100%"}
+            "/api/incidents", params={"description_contains": search_value}
         )
         paginated = assert_res_paginated(response, IncidentDto, total_records=1)
-        self.incident_utils.assert_matches(paginated.items[0], i1.to_dto())
-
-    @pytest.mark.asyncio
-    async def test_filter_contains_escapes_underscore_wildcard(self):
-        """CONTAINS treats underscores in user input as literal characters."""
-        i1 = await self.incident_utils.create_one(description="room_2 loud noise")
-        await self.incident_utils.create_one(description="roomA2 loud noise")
-
-        response = await self.admin_client.get(
-            "/api/incidents", params={"description_contains": "room_2"}
-        )
-        paginated = assert_res_paginated(response, IncidentDto, total_records=1)
-        self.incident_utils.assert_matches(paginated.items[0], i1.to_dto())
+        self.incident_utils.assert_matches(paginated.items[0], matching_incident.to_dto())
 
     async def test_filter_in(self):
         """IN operator returns records whose field value is in the provided list."""
@@ -217,10 +218,32 @@ class TestQueryUtilsFilterOperators:
         i3 = await self.incident_utils.create_one(severity=IncidentSeverity.CITATION)
 
         response = await self.admin_client.get(
-            "/api/incidents?severity_not_in=remote_warning,in_person_warning"
+            "/api/incidents?severity_nin=remote_warning,in_person_warning"
         )
         paginated = assert_res_paginated(response, IncidentDto, total_records=1)
         self.incident_utils.assert_matches(paginated.items[0], i3.to_dto())
+
+    @pytest.mark.parametrize(
+        ("operator", "matching_reference_id", "non_matching_reference_id"),
+        [
+            ("null", None, "REF-123"),
+            ("notnull", "REF-123", None),
+        ],
+    )
+    @pytest.mark.asyncio
+    async def test_filter_null_operators(
+        self,
+        operator: str,
+        matching_reference_id: str | None,
+        non_matching_reference_id: str | None,
+    ):
+        """NULL operators include only the expected nullable records."""
+        matching_incident = await self.incident_utils.create_one(reference_id=matching_reference_id)
+        await self.incident_utils.create_one(reference_id=non_matching_reference_id)
+
+        response = await self.admin_client.get(f"/api/incidents?reference_id_{operator}=ignored")
+        paginated = assert_res_paginated(response, IncidentDto, total_records=1)
+        self.incident_utils.assert_matches(paginated.items[0], matching_incident.to_dto())
 
     @pytest.mark.asyncio
     async def test_filter_nested_contains(self):
@@ -269,37 +292,51 @@ class TestQueryUtilsTypeValidation:
     def _setup(self, admin_client: AsyncClient):
         self.admin_client = admin_client
 
+    @pytest.mark.parametrize(
+        ("query", "message"),
+        [
+            (
+                "/api/incidents?location.formatted_address_gt=Z",
+                "Comparison operators are not supported for string/enum fields",
+            ),
+            (
+                "/api/incidents?location.formatted_address_gte=Z",
+                "Comparison operators are not supported for string/enum fields",
+            ),
+            (
+                "/api/incidents?severity_gt=remote_warning",
+                "Comparison operators are not supported for string/enum fields",
+            ),
+            (
+                "/api/incidents?incident_datetime_contains=2026",
+                "Operator 'contains' is only supported for string fields",
+            ),
+        ],
+    )
     @pytest.mark.asyncio
-    async def test_string_field_comparison_operator_returns_400(self):
-        """Using GT/GTE/LT/LTE on a string field returns 400."""
-        response = await self.admin_client.get("/api/incidents?location.formatted_address_gt=Z")
-        assert_res_failure(
-            response, BadRequestException("Operator 'gt' is not supported for string/enum fields")
-        )
+    async def test_invalid_operator_type_combinations_return_400(self, query: str, message: str):
+        """Incompatible operator and field type combinations return HTTP 400."""
+        response = await self.admin_client.get(query)
+        assert_res_failure(response, BadRequestException(message))
 
+    @pytest.mark.parametrize(
+        ("query", "message"),
+        [
+            (
+                "/api/incidents?sort_by=not_a_real_field",
+                "Sorting on field 'not_a_real_field' is not allowed",
+            ),
+            (
+                "/api/incidents?not_a_real_field_eq=123",
+                "Filtering on field 'not_a_real_field' is not allowed",
+            ),
+        ],
+    )
     @pytest.mark.asyncio
-    async def test_string_field_gte_returns_400(self):
-        """Using GTE on a string field returns 400."""
-        response = await self.admin_client.get("/api/incidents?location.formatted_address_gte=Z")
-        assert_res_failure(
-            response, BadRequestException("Operator 'gte' is not supported for string/enum fields")
-        )
-
-    @pytest.mark.asyncio
-    async def test_enum_field_comparison_operator_returns_400(self):
-        """Using GT/GTE/LT/LTE on an enum field returns 400."""
-        response = await self.admin_client.get("/api/incidents?severity_gt=remote_warning")
-        assert_res_failure(
-            response, BadRequestException("Operator 'gt' is not supported for string/enum fields")
-        )
-
-    @pytest.mark.asyncio
-    async def test_non_string_field_contains_returns_400(self):
-        """Using CONTAINS on a non-string field (id) returns 400."""
-        response = await self.admin_client.get("/api/incidents?incident_datetime_contains=2026")
-        assert_res_failure(
-            response, BadRequestException("Operator 'contains' is only supported for string fields")
-        )
+    async def test_invalid_sort_and_filter_fields_return_400(self, query: str, message: str):
+        """Unknown sort and filter fields are rejected."""
+        response = await self.admin_client.get(query)
+        assert_res_failure(response, BadRequestException(message))
 
 
 class TestQueryUtilsSearch:
@@ -361,7 +398,9 @@ class TestQueryUtilsSearch:
             description="illegal parking", severity="remote_warning"
         )
 
-        response = await self.admin_client.get("/api/incidents?search=loud&severity=remote_warning")
+        response = await self.admin_client.get(
+            "/api/incidents?search=loud&severity_eq=remote_warning"
+        )
         paginated = assert_res_paginated(response, IncidentDto, total_records=1)
         self.incident_utils.assert_matches(paginated.items[0], i1.to_dto())
 
@@ -372,6 +411,17 @@ class TestQueryUtilsSearch:
 
         response = await self.admin_client.get("/api/incidents?search=zzznomatch")
         assert_res_paginated(response, IncidentDto, total_records=0)
+
+
+class TestQueryUtilsParsing:
+    """Test direct parsing behavior for lower-level query param helpers."""
+
+    def test_unknown_filter_operator_is_ignored(self):
+        """Unknown filter operators are skipped during parsing."""
+        assert FilterParam.from_param("severity_invalid", "remote_warning") is None
+
+        params = ListQueryParams.from_dict({"severity_invalid": "remote_warning"})
+        assert params.filters == []
 
 
 class TestQueryUtilsNestedFields:
@@ -395,7 +445,7 @@ class TestQueryUtilsNestedFields:
         i3 = await self.incident_utils.create_one(location_id=loc1.id)
 
         response = await self.admin_client.get(
-            f"/api/incidents?location.google_place_id={loc1.google_place_id}"
+            f"/api/incidents?location.google_place_id_eq={loc1.google_place_id}"
         )
         paginated = assert_res_paginated(response, IncidentDto, total_records=2)
         returned = {item.id: item for item in paginated.items}
@@ -430,8 +480,37 @@ class TestQueryUtilsNestedFields:
         await self.incident_utils.create_one(location_id=loc2.id)
 
         response = await self.admin_client.get(
-            f"/api/incidents?location.id={loc1.id}&sort_by=incident_datetime&sort_order=asc"
+            f"/api/incidents?location.id_eq={loc1.id}&sort_by=incident_datetime&sort_order=asc"
         )
         paginated = assert_res_paginated(response, IncidentDto, total_records=2)
         self.incident_utils.assert_matches(paginated.items[0], i1.to_dto())
         self.incident_utils.assert_matches(paginated.items[1], i2.to_dto())
+
+
+class TestQueryUtilsDefaultSorting:
+    """Test default sorting when no explicit sort params are provided."""
+
+    admin_client: AsyncClient
+    incident_utils: IncidentTestUtils
+
+    @pytest.fixture(autouse=True)
+    def _setup(self, incident_utils: IncidentTestUtils, admin_client: AsyncClient):
+        self.incident_utils = incident_utils
+        self.admin_client = admin_client
+
+    @pytest.mark.asyncio
+    async def test_default_sort_falls_back_to_incident_datetime_desc(self):
+        """Missing sort params uses the incident default sort."""
+        base = datetime(2026, 4, 1, tzinfo=UTC)
+        i1 = await self.incident_utils.create_one(incident_datetime=base)
+        i2 = await self.incident_utils.create_one(incident_datetime=base + timedelta(days=1))
+        i3 = await self.incident_utils.create_one(incident_datetime=base + timedelta(days=2))
+
+        response = await self.admin_client.get("/api/incidents")
+        paginated = assert_res_paginated(response, IncidentDto, total_records=3)
+
+        assert paginated.sort_by == "incident_datetime"
+        assert paginated.sort_order == "desc"
+        self.incident_utils.assert_matches(paginated.items[0], i3.to_dto())
+        self.incident_utils.assert_matches(paginated.items[1], i2.to_dto())
+        self.incident_utils.assert_matches(paginated.items[2], i1.to_dto())

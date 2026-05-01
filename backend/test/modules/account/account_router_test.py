@@ -89,7 +89,7 @@ class TestAccountRouter:
     async def test_get_accounts_student_filter_returns_empty(
         self, accounts_two_per_role: list[AccountEntity]
     ):
-        response = await self.admin_client.get("/api/accounts", params={"role": "student"})
+        response = await self.admin_client.get("/api/accounts", params={"role_eq": "student"})
         assert_res_paginated(response, AccountDto, total_records=0)
 
     @pytest.mark.asyncio
@@ -352,7 +352,7 @@ class TestAggregateAccountsRouter:
         officer = await self.police_utils.create_one()
 
         response = await self.admin_client.get(
-            "/api/accounts/aggregate", params={"status": "unverified"}
+            "/api/accounts/aggregate", params={"status_eq": "unverified"}
         )
         paginated = assert_res_paginated(response, AggregateAccountDto, total_records=1)
         self.account_utils.assert_aggregate_matches(paginated.items[0], officer)
@@ -363,7 +363,9 @@ class TestAggregateAccountsRouter:
         admin = await self.account_utils.create_one(role="admin")
         await self.police_utils.create_verified_one()
 
-        response = await self.admin_client.get("/api/accounts/aggregate", params={"role": "admin"})
+        response = await self.admin_client.get(
+            "/api/accounts/aggregate", params={"role_eq": "admin"}
+        )
         paginated = assert_res_paginated(response, AggregateAccountDto, total_records=1)
         self.account_utils.assert_aggregate_matches(paginated.items[0], admin)
 

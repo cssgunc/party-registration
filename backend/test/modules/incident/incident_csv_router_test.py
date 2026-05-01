@@ -74,7 +74,7 @@ class TestIncidentCSVRouter:
             location_id=location.id, severity=IncidentSeverity.REMOTE_WARNING
         )
 
-        response = await self.staff_client.get("/api/incidents/csv?severity=in_person_warning")
+        response = await self.staff_client.get("/api/incidents/csv?severity_eq=in_person_warning")
         rows = assert_excel_response(response, INCIDENT_HEADERS, expected_row_count=2)
         assert rows[1][0] == "In Person Warning"
 

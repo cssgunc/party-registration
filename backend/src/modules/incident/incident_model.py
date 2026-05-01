@@ -43,4 +43,7 @@ class IncidentDto(IncidentData):
     id: int
 
 
-PaginatedIncidentsResponse = PaginatedResponse[IncidentDto]
+class PaginatedIncidentsResponse(PaginatedResponse[IncidentDto]):
+    """Paginated response for incidents."""
+
+    pass

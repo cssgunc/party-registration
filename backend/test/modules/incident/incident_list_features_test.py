@@ -174,7 +174,7 @@ class TestIncidentListFiltering:
         _incident2 = await self.incident_utils.create_one(severity="in_person_warning")
         incident3 = await self.incident_utils.create_one(severity="remote_warning")
 
-        response = await self.admin_client.get("/api/incidents?severity=remote_warning")
+        response = await self.admin_client.get("/api/incidents?severity_eq=remote_warning")
         paginated = assert_res_paginated(response, IncidentDto, total_records=2)
         returned = {item.id: item for item in paginated.items}
         self.incident_utils.assert_matches(returned[incident1.id], incident1.to_dto())
@@ -187,7 +187,7 @@ class TestIncidentListFiltering:
         _incident2 = await self.incident_utils.create_one(reference_id="CAD-200")
         incident3 = await self.incident_utils.create_one(reference_id="CAD-100")
 
-        response = await self.admin_client.get("/api/incidents?reference_id=CAD-100")
+        response = await self.admin_client.get("/api/incidents?reference_id_eq=CAD-100")
         paginated = assert_res_paginated(response, IncidentDto, total_records=2)
         returned = {item.id: item for item in paginated.items}
         self.incident_utils.assert_matches(returned[incident1.id], incident1.to_dto())
@@ -201,7 +201,7 @@ class TestIncidentListFiltering:
         incident3 = await self.incident_utils.create_one(location_id=incident1.location_id)
 
         response = await self.admin_client.get(
-            f"/api/incidents?location.id={incident1.location_id}"
+            f"/api/incidents?location.id_eq={incident1.location_id}"
         )
         paginated = assert_res_paginated(response, IncidentDto, total_records=2)
         returned = {item.id: item for item in paginated.items}
@@ -230,7 +230,7 @@ class TestIncidentListNestedFiltering:
         incident3 = await self.incident_utils.create_one(location_id=loc1.id)
 
         response = await self.admin_client.get(
-            f"/api/incidents?location.google_place_id={loc1.google_place_id}"
+            f"/api/incidents?location.google_place_id_eq={loc1.google_place_id}"
         )
         paginated = assert_res_paginated(response, IncidentDto, total_records=2)
         returned = {item.id: item for item in paginated.items}

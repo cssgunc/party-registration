@@ -237,7 +237,7 @@ class TestStudentListSortFilter:
         await self.student_utils.create_one(contact_preference=ContactPreference.TEXT)
 
         response = await self.admin_client.get(
-            "/api/students", params={"contact_preference": "text"}
+            "/api/students", params={"contact_preference_eq": "text"}
         )
 
         paginated = assert_res_paginated(response, StudentDto, total_records=2)

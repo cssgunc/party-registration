@@ -1,13 +1,18 @@
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from src.core.authentication import (
     authenticate_admin,
     authenticate_by_role,
     authenticate_staff_or_admin,
 )
-from src.core.utils.query_utils import PAGINATED_OPENAPI_PARAMS
+from src.core.utils.query_utils import (
+    ListQueryParams,
+    get_paginated_openapi_params,
+    parse_export_list_query_params,
+    parse_list_query_params,
+)
 from src.modules.account.account_model import AccountDto
 from src.modules.location.location_model import (
     AddressData,
@@ -22,6 +27,7 @@ from src.modules.police.police_model import PoliceAccountDto
 from .location_model import AutocompleteInput, AutocompleteResult
 
 location_router = APIRouter(prefix="/api/locations", tags=["locations"])
+_OPENAPI_PARAMS = get_paginated_openapi_params(LocationService.QUERY_FIELDS)
 
 
 @location_router.post(
@@ -93,27 +99,27 @@ async def get_place_details(
 @location_router.get(
     "",
     response_model=PaginatedLocationResponse,
-    openapi_extra=PAGINATED_OPENAPI_PARAMS,
+    openapi_extra=_OPENAPI_PARAMS,
 )
 async def get_locations(
-    request: Request,
+    params: ListQueryParams = parse_list_query_params(),
     location_service: LocationService = Depends(),
     _=Depends(authenticate_staff_or_admin),
 ) -> PaginatedLocationResponse:
     """
     Returns all locations with pagination, sorting, and filtering.
     """
-    return await location_service.get_locations_paginated(request=request)
+    return await location_service.get_locations_paginated(params)
 
 
-@location_router.get("/csv", openapi_extra=PAGINATED_OPENAPI_PARAMS)
+@location_router.get("/csv", openapi_extra=_OPENAPI_PARAMS)
 async def get_locations_csv(
-    request: Request,
+    params: ListQueryParams = parse_export_list_query_params(),
     location_service: LocationService = Depends(),
     _=Depends(authenticate_staff_or_admin),
 ) -> Response:
-    locations = await location_service.get_locations_for_export(request)
-    excel_content = location_service.export_locations_to_excel(locations)
+    locations_response = await location_service.get_locations_paginated(params)
+    excel_content = location_service.export_locations_to_excel(locations_response)
     filename = f"locations_{datetime.now(ZoneInfo('America/New_York')).strftime('%Y_%m_%d')}.xlsx"
     return Response(
         content=excel_content,

@@ -2,7 +2,7 @@ import secrets
 from datetime import UTC, datetime, timedelta
 from typing import ClassVar
 
-from fastapi import Depends, Request
+from fastapi import Depends
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,12 +18,27 @@ from src.core.exceptions import (
 from src.core.utils.bcrypt_utils import hash_password, verify_password
 from src.core.utils.email_utils import EmailService
 from src.core.utils.excel_utils import ExcelExporter
-from src.core.utils.query_utils import get_paginated_results, parse_pagination_params
+from src.core.utils.query_utils import (
+    ListQueryParams,
+    QueryFieldSet,
+    QueryService,
+    SortOrder,
+    SortParam,
+)
 from src.modules.police.police_entity import PoliceEntity
 from src.modules.police.police_model import (
     PaginatedPoliceResponse,
     PoliceAccountDto,
     PoliceRole,
+)
+
+_POLICE_QUERY_FIELDS = QueryFieldSet(
+    fields={
+        "id": PoliceEntity.id,
+        "email": PoliceEntity.email,
+        "role": PoliceEntity.role,
+    },
+    default_sort=SortParam(field="email", order=SortOrder.ASC),
 )
 
 
@@ -38,15 +53,17 @@ class PoliceConflictException(ConflictException):
 
 
 class PoliceService:
-    _ALLOWED_FIELDS: ClassVar[tuple[str, ...]] = ("id", "email", "role")
+    QUERY_FIELDS: ClassVar[QueryFieldSet] = _POLICE_QUERY_FIELDS
 
     def __init__(
         self,
         session: AsyncSession = Depends(get_session),
         email_service: EmailService = Depends(),
+        query_service: QueryService = Depends(),
     ):
         self.session = session
         self.email_service = email_service
+        self.query_service = query_service
 
     async def _get_police_entity_by_id(self, police_id: int) -> PoliceEntity:
         result = await self.session.execute(
@@ -67,33 +84,21 @@ class PoliceService:
         police = await self._get_police_entity_by_id(police_id)
         return police.to_dto()
 
-    async def get_police_paginated(self, request: Request) -> PaginatedPoliceResponse:
-        allowed_fields = list(self._ALLOWED_FIELDS)
+    async def get_police_paginated(self, params: ListQueryParams) -> PaginatedPoliceResponse:
         base_query = select(PoliceEntity)
-        query_params = parse_pagination_params(
-            request,
-            allowed_sort_fields=allowed_fields,
-            allowed_filter_fields=allowed_fields,
-        )
-        result = await get_paginated_results(
-            session=self.session,
+        result = await self.query_service.get_paginated(
+            params=params,
             base_query=base_query,
-            entity_class=PoliceEntity,
             dto_converter=lambda entity: entity.to_dto(),
-            query_params=query_params,
-            allowed_sort_fields=allowed_fields,
-            allowed_filter_fields=allowed_fields,
+            field_set=_POLICE_QUERY_FIELDS,
         )
         return PaginatedPoliceResponse(**result.model_dump())
 
-    async def get_police_for_export(self, request: Request) -> list[PoliceAccountDto]:
-        return (await self.get_police_paginated(request)).items
-
-    def export_police_to_excel(self, police_accounts: list[PoliceAccountDto]) -> bytes:
+    def export_police_to_excel(self, police_response: PaginatedPoliceResponse) -> bytes:
         headers = ["Email", "Role"]
         exporter = ExcelExporter(sheet_title="Police Accounts")
         exporter.set_headers(headers)
-        for police in police_accounts:
+        for police in police_response.items:
             exporter.add_row(
                 [
                     police.email,

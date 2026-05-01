@@ -171,6 +171,8 @@ export default function PoliceAdminTable() {
           ? {
               totalRecords: policeAccountsQuery.data.total_records,
               totalPages: policeAccountsQuery.data.total_pages,
+              sortBy: policeAccountsQuery.data.sort_by,
+              sortOrder: policeAccountsQuery.data.sort_order,
             }
           : undefined
       }

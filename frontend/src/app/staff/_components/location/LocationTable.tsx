@@ -44,6 +44,10 @@ const SERVER_COLUMN_MAP: ServerColumnMap = {
     backendField: "hold_expiration",
     filterOperator: "dateRange",
   },
+  incidents_info_chip: {
+    backendField: "incident_count",
+    filterOperator: "gte",
+  },
 };
 
 export const LocationTable = () => {
@@ -278,6 +282,8 @@ export const LocationTable = () => {
             ? {
                 totalRecords: locationsQuery.data.total_records,
                 totalPages: locationsQuery.data.total_pages,
+                sortBy: locationsQuery.data.sort_by,
+                sortOrder: locationsQuery.data.sort_order,
               }
             : undefined
         }

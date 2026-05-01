@@ -52,6 +52,7 @@ const SERVER_COLUMN_MAP: ServerColumnMap = {
   first_name: { backendField: "first_name", filterOperator: "contains" },
   last_name: { backendField: "last_name", filterOperator: "contains" },
   onyen: { backendField: "onyen", filterOperator: "contains" },
+  pid: { backendField: "pid", filterOperator: "contains" },
   role: { backendField: "role", filterOperator: "eq" },
   status: { backendField: "status", filterOperator: "eq" },
 };
@@ -386,6 +387,8 @@ export const AccountTable = () => {
             ? {
                 totalRecords: aggregateQuery.data.total_records,
                 totalPages: aggregateQuery.data.total_pages,
+                sortBy: aggregateQuery.data.sort_by,
+                sortOrder: aggregateQuery.data.sort_order,
               }
             : undefined
         }
