@@ -16,9 +16,8 @@
     },
     {
       "label": "Reset DB",
-      "type": "process",
-      "command": "${command:python.interpreterPath}",
-      "args": ["-m", "script.reset_dev"],
+      "type": "shell",
+      "command": "${command:python.interpreterPath} -m script.reset_dev && alembic stamp head",
       "options": {
         "cwd": "${workspaceFolder}/backend"
       },
