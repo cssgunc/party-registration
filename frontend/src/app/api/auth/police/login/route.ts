@@ -3,7 +3,6 @@ import {
   policeLogin,
   setAuthCookies,
 } from "@/lib/api/auth/auth.service";
-import { policeAccessTokenPayloadSchema } from "@/lib/api/auth/auth.types";
 import { PoliceRole } from "@/lib/api/police/police.types";
 import { isAxiosError } from "axios";
 import { NextRequest, NextResponse } from "next/server";
@@ -24,9 +23,7 @@ export async function POST(req: NextRequest) {
   try {
     const data = await policeLogin({ email, password });
 
-    const payload = policeAccessTokenPayloadSchema.parse(
-      decodeAccessTokenPayload(data.access_token)
-    );
+    const payload = decodeAccessTokenPayload(data.access_token);
     const payloadRole = payload.role;
     const policeId = String(payload.sub);
 
@@ -35,8 +32,6 @@ export async function POST(req: NextRequest) {
     await setAuthCookies(res, data, {
       sub: policeId,
       id: policeId,
-      email: payload.email,
-      name: payload.email,
       role: payloadRole as PoliceRole,
     });
 

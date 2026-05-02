@@ -6,7 +6,7 @@ from sqlalchemy import select
 from src.core.config import env
 from src.core.exceptions import BadRequestException, CredentialsException
 from src.modules.account.account_model import AccountDto
-from src.modules.auth.auth_model import AccountAccessTokenPayload, PoliceAccessTokenPayload
+from src.modules.auth.auth_model import AccessTokenPayload
 from src.modules.auth.auth_service import AuthService, InvalidRefreshTokenException
 from src.modules.auth.refresh_token_entity import RefreshTokenEntity
 
@@ -65,7 +65,7 @@ class TestAuthService:
         token = self.auth_utils.create_mock_access_token(account=account)
         payload = self.auth_service.decode_access_token(token)
 
-        assert isinstance(payload, AccountAccessTokenPayload)
+        assert isinstance(payload, AccessTokenPayload)
         self.auth_utils.assert_account_token_payload(payload, account)
 
     @pytest.mark.asyncio
@@ -77,7 +77,7 @@ class TestAuthService:
         token = self.auth_utils.create_mock_access_token(police=police)
         payload = self.auth_service.decode_access_token(token)
 
-        assert isinstance(payload, PoliceAccessTokenPayload)
+        assert isinstance(payload, AccessTokenPayload)
         self.auth_utils.assert_police_token_payload(payload, police)
 
     @pytest.mark.asyncio
@@ -95,7 +95,7 @@ class TestAuthService:
         token = self.auth_utils.create_mock_access_token(account=fake_account)
         payload = self.auth_service.decode_access_token(token)
 
-        assert isinstance(payload, AccountAccessTokenPayload)
+        assert isinstance(payload, AccessTokenPayload)
         assert payload.sub == "99999"
 
     @pytest.mark.asyncio
@@ -336,8 +336,7 @@ class TestAuthService:
         new_access = await self.auth_service.refresh_access_token(refresh_token)
 
         payload = self.auth_utils.decode_token(new_access.access_token)
-        assert payload["sub"] == str(police.id)
-        assert payload["email"] == police.email
+        self.auth_utils.assert_police_token_payload(payload, police)
 
     @pytest.mark.asyncio
     async def test_refresh_access_token_invalid(self) -> None:

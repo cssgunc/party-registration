@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.config import env
 from src.modules.account.account_model import AccountDto, AccountRole
-from src.modules.auth.auth_model import AccountAccessTokenPayload, PoliceAccessTokenPayload
+from src.modules.auth.auth_model import AccessTokenPayload
 from src.modules.auth.refresh_token_entity import RefreshTokenEntity
 from src.modules.police.police_model import PoliceAccountDto
 
@@ -33,10 +33,7 @@ class AuthTestUtils:
             expires_at = datetime.now(UTC) + timedelta(days=7)
 
         entity = RefreshTokenEntity(
-            token_hash=token_hash,
-            account_id=account_id,
-            police_id=police_id,
-            expires_at=expires_at,
+            token_hash=token_hash, account_id=account_id, police_id=police_id, expires_at=expires_at
         )
 
         self.session.add(entity)
@@ -98,22 +95,16 @@ class AuthTestUtils:
             expires_at = datetime.now(UTC) + timedelta(minutes=env.ACCESS_TOKEN_EXPIRE_MINUTES)
 
         if account:
-            payload = AccountAccessTokenPayload(
+            payload = AccessTokenPayload(
                 sub=str(account.id),
-                email=account.email,
-                first_name=account.first_name,
-                last_name=account.last_name,
-                pid=account.pid,
-                onyen=account.onyen,
-                role=account.role,
+                role=account.role.value,
                 exp=expires_at,
                 iat=datetime.now(UTC),
             ).model_dump()
         else:
             assert police is not None
-            payload = PoliceAccessTokenPayload(
+            payload = AccessTokenPayload(
                 sub=str(police.id),
-                email=police.email,
                 role=police.role.value,
                 exp=expires_at,
                 iat=datetime.now(UTC),
@@ -135,28 +126,24 @@ class AuthTestUtils:
 
     @staticmethod
     def assert_account_token_payload(
-        payload: dict | AccountAccessTokenPayload, account: AccountDto
+        payload: dict | AccessTokenPayload, account: AccountDto
     ) -> None:
         """Assert that a decoded access token payload matches the given account."""
-        if isinstance(payload, AccountAccessTokenPayload):
+        if isinstance(payload, AccessTokenPayload):
             payload = payload.model_dump(mode="json")
         assert payload["sub"] == str(account.id)
-        assert payload["email"] == account.email
-        assert payload["first_name"] == account.first_name
-        assert payload["last_name"] == account.last_name
-        assert payload["pid"] == account.pid
-        assert payload["onyen"] == account.onyen
         assert payload["role"] == account.role.value
+        for field in ("email", "first_name", "last_name", "pid", "onyen"):
+            assert field not in payload, f"Account token should not contain '{field}'"
 
     @staticmethod
     def assert_police_token_payload(
-        payload: dict | PoliceAccessTokenPayload, police: PoliceAccountDto
+        payload: dict | AccessTokenPayload, police: PoliceAccountDto
     ) -> None:
         """Assert that a decoded access token payload matches the given police account."""
-        if isinstance(payload, PoliceAccessTokenPayload):
+        if isinstance(payload, AccessTokenPayload):
             payload = payload.model_dump(mode="json")
         assert payload["sub"] == str(police.id)
-        assert payload["email"] == police.email
         assert payload["role"] == police.role.value
         for field in ("first_name", "last_name", "pid", "onyen"):
             assert field not in payload, f"Police token should not contain '{field}'"

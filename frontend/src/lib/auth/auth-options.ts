@@ -19,16 +19,7 @@ export const authOptions: NextAuthOptions = {
       session: Session;
       token: JWT;
     }): Promise<Session> {
-      if (session.user) {
-        session.user.name = token.name ?? null;
-        session.user.email = token.email ?? null;
-      }
-
       session.id = Number(token.id);
-      session.firstName = token.firstName;
-      session.lastName = token.lastName;
-      session.onyen = token.onyen;
-      session.pid = token.pid;
       session.role = token.role;
 
       if (token.accessToken) {

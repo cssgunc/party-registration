@@ -3,9 +3,7 @@ from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from src.core.authentication import (
-    authenticate_admin,
     authenticate_by_role,
-    authenticate_staff_or_admin,
 )
 from src.core.utils.query_utils import (
     ListQueryParams,
@@ -13,7 +11,7 @@ from src.core.utils.query_utils import (
     parse_export_list_query_params,
     parse_list_query_params,
 )
-from src.modules.account.account_model import AccountDto
+from src.modules.auth.auth_model import AuthPrincipal
 from src.modules.location.location_model import (
     AddressData,
     LocationCreate,
@@ -22,7 +20,6 @@ from src.modules.location.location_model import (
     PaginatedLocationResponse,
 )
 from src.modules.location.location_service import LocationService
-from src.modules.police.police_model import PoliceAccountDto
 
 from .location_model import AutocompleteInput, AutocompleteResult
 
@@ -40,7 +37,7 @@ _OPENAPI_PARAMS = get_paginated_openapi_params(LocationService.QUERY_FIELDS)
 async def autocomplete_address(
     input_data: AutocompleteInput,
     location_service: LocationService = Depends(),
-    user: AccountDto | PoliceAccountDto = Depends(
+    user: AuthPrincipal = Depends(
         authenticate_by_role("officer", "police_admin", "student", "admin", "staff")
     ),
 ) -> list[AutocompleteResult]:
@@ -74,7 +71,7 @@ async def autocomplete_address(
 async def get_place_details(
     place_id: str,
     location_service: LocationService = Depends(),
-    user: AccountDto | PoliceAccountDto = Depends(
+    user: AuthPrincipal = Depends(
         authenticate_by_role("officer", "police_admin", "student", "admin", "staff")
     ),
 ) -> AddressData:
@@ -104,7 +101,7 @@ async def get_place_details(
 async def get_locations(
     params: ListQueryParams = parse_list_query_params(),
     location_service: LocationService = Depends(),
-    _=Depends(authenticate_staff_or_admin),
+    _=Depends(authenticate_by_role("staff", "admin")),
 ) -> PaginatedLocationResponse:
     """
     Returns all locations with pagination, sorting, and filtering.
@@ -116,7 +113,7 @@ async def get_locations(
 async def get_locations_csv(
     params: ListQueryParams = parse_export_list_query_params(),
     location_service: LocationService = Depends(),
-    _=Depends(authenticate_staff_or_admin),
+    _=Depends(authenticate_by_role("staff", "admin")),
 ) -> Response:
     locations_response = await location_service.get_locations_paginated(params)
     excel_content = location_service.export_locations_to_excel(locations_response)
@@ -132,7 +129,7 @@ async def get_locations_csv(
 async def get_location(
     location_id: int,
     location_service: LocationService = Depends(),
-    _=Depends(authenticate_staff_or_admin),
+    _=Depends(authenticate_by_role("staff", "admin")),
 ):
     return await location_service.get_location_by_id(location_id)
 
@@ -141,7 +138,7 @@ async def get_location(
 async def create_location(
     data: LocationCreate,
     location_service: LocationService = Depends(),
-    _=Depends(authenticate_admin),
+    _=Depends(authenticate_by_role("admin")),
 ):
     address_data = await location_service.get_place_details(data.google_place_id)
     return await location_service.create_location(
@@ -157,7 +154,7 @@ async def update_location(
     location_id: int,
     data: LocationCreate,
     location_service: LocationService = Depends(),
-    _=Depends(authenticate_admin),
+    _=Depends(authenticate_by_role("admin")),
 ):
     location = await location_service.get_location_by_id(location_id)
 
@@ -181,6 +178,6 @@ async def update_location(
 async def delete_location(
     location_id: int,
     location_service: LocationService = Depends(),
-    _=Depends(authenticate_admin),
+    _=Depends(authenticate_by_role("admin")),
 ):
     return await location_service.delete_location(location_id)

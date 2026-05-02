@@ -32,7 +32,9 @@ from test.utils.http.assertions import (
     assert_res_validation_error,
 )
 from test.utils.http.test_templates import (
+    assert_excel_response,
     generate_auth_required_tests,
+    generate_csv_empty_test,
     generate_filter_sort_tests,
     generate_search_tests,
 )
@@ -78,6 +80,28 @@ test_student_authentication = generate_auth_required_tests(
     ({"student"}, "PUT", "/api/students/me", StudentTestUtils.get_sample_data()),
     ({"student"}, "PUT", "/api/students/me/residence", {"residence_place_id": "ChIJTest"}),
     ({"student"}, "GET", "/api/students/me/parties", None),
+)
+
+STUDENT_HEADERS = (
+    "Onyen",
+    "PID",
+    "First Name",
+    "Last Name",
+    "Email",
+    "Phone Number",
+    "Contact Preference",
+    "Is Registered",
+    "Residence Address",
+)
+
+test_student_csv_authentication = generate_auth_required_tests(
+    ({"admin", "staff"}, "GET", "/api/students/csv", None),
+)
+
+test_student_csv_empty = generate_csv_empty_test(
+    "staff",
+    "/api/students/csv",
+    STUDENT_HEADERS,
 )
 
 
@@ -445,6 +469,52 @@ class TestStudentCRUDRouter:
         """Test deleting a non-existent student."""
         response = await self.admin_client.delete("/api/students/99999")
         assert_res_failure(response, StudentNotFoundException(99999))
+
+
+class TestStudentCSVRouter:
+    """Tests for GET /api/students/csv endpoint."""
+
+    staff_client: AsyncClient
+    student_utils: StudentTestUtils
+
+    @pytest.fixture(autouse=True)
+    def _setup(self, student_utils: StudentTestUtils, staff_client: AsyncClient):
+        self.student_utils = student_utils
+        self.staff_client = staff_client
+
+    @pytest.mark.asyncio
+    async def test_get_students_csv_with_data(self, location_utils: LocationTestUtils):
+        """Test Excel export with students returns correct data rows."""
+        student_no_residence = await self.student_utils.create_one(last_registered=None)
+
+        location = await location_utils.create_one()
+        student_with_residence = await self.student_utils.create_one(
+            last_registered=datetime.now(UTC),
+        )
+        await self.student_utils.set_student_residence(student_with_residence, location.id)
+
+        response = await self.staff_client.get("/api/students/csv")
+        rows = assert_excel_response(response, STUDENT_HEADERS, expected_row_count=3)
+
+        data_rows = {row[1]: row for row in rows[1:]}
+
+        pid_no_res = student_no_residence.account.pid
+        assert pid_no_res in data_rows
+        row_no_res = data_rows[pid_no_res]
+        assert row_no_res[7] == "No"
+        assert row_no_res[8] == "-"
+        phone_no_res = str(row_no_res[5])
+        assert "(" in phone_no_res and ")" in phone_no_res and "-" in phone_no_res
+        assert str(row_no_res[6])[0].isupper()
+
+        pid_with_res = student_with_residence.account.pid
+        assert pid_with_res in data_rows
+        row_with_res = data_rows[pid_with_res]
+        assert row_with_res[7] == "Yes"
+        assert row_with_res[8] == location.formatted_address
+        phone_with_res = str(row_with_res[5])
+        assert "(" in phone_with_res and ")" in phone_with_res and "-" in phone_with_res
+        assert str(row_with_res[6])[0].isupper()
 
 
 class TestStudentAutocompleteRouter:

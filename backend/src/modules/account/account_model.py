@@ -1,4 +1,5 @@
 from enum import StrEnum
+from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field
 from src.core.utils.query_utils import PaginatedResponse
@@ -21,6 +22,9 @@ class Role(StrEnum):
 class InviteTokenRole(StrEnum):
     STAFF = "staff"
     ADMIN = "admin"
+
+
+StringRole = Literal["student", "admin", "staff", "officer", "police_admin"]
 
 
 class AccountStatus(StrEnum):

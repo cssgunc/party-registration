@@ -8,10 +8,6 @@ declare module "next-auth" {
     accessTokenExpires?: number;
     id?: number;
     role?: AppRole;
-    firstName?: string;
-    lastName?: string;
-    onyen?: string;
-    pid?: string;
   }
 
   interface User {
@@ -20,10 +16,6 @@ declare module "next-auth" {
     accessTokenExpires?: number; // ms epoch, sourced from backend token expiry
     refreshTokenExpires?: number; // ms epoch, sourced from backend token expiry
     role?: AppRole;
-    firstName?: string;
-    lastName?: string;
-    onyen?: string;
-    pid?: string;
   }
 }
 
@@ -37,9 +29,5 @@ declare module "next-auth/jwt" {
     refreshTokenExpires?: number; // ms epoch — stored for early session invalidation, not the token itself
     id?: string;
     role?: AppRole;
-    firstName?: string;
-    lastName?: string;
-    onyen?: string;
-    pid?: string;
   }
 }

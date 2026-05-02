@@ -16,8 +16,6 @@ from src.modules.account.account_service import AccountService
 from src.modules.auth.auth_model import (
     AccessTokenDto,
     AccessTokenPayload,
-    AccountAccessTokenPayload,
-    PoliceAccessTokenPayload,
     RefreshTokenPayload,
     TokensDto,
 )
@@ -62,14 +60,9 @@ class AuthService:
         expires_delta = timedelta(minutes=env.ACCESS_TOKEN_EXPIRE_MINUTES)
         expires_at = datetime.now(UTC) + expires_delta
 
-        payload = AccountAccessTokenPayload(
+        payload = AccessTokenPayload(
             sub=str(account.id),
-            email=account.email,
-            first_name=account.first_name,
-            last_name=account.last_name,
-            pid=account.pid,
-            onyen=account.onyen,
-            role=account.role,
+            role=account.role.value,
             exp=expires_at,
             iat=datetime.now(UTC),
         )
@@ -82,9 +75,8 @@ class AuthService:
         expires_delta = timedelta(minutes=env.ACCESS_TOKEN_EXPIRE_MINUTES)
         expires_at = datetime.now(UTC) + expires_delta
 
-        payload = PoliceAccessTokenPayload(
+        payload = AccessTokenPayload(
             sub=str(police.id),
-            email=police.email,
             role=police.role.value,
             exp=expires_at,
             iat=datetime.now(UTC),
@@ -93,9 +85,7 @@ class AuthService:
         token = jwt.encode(payload.model_dump(), env.JWT_SECRET_KEY, algorithm=env.JWT_ALGORITHM)
         return token, expires_at
 
-    def decode_access_token(
-        self, token: str
-    ) -> AccountAccessTokenPayload | PoliceAccessTokenPayload:
+    def decode_access_token(self, token: str) -> AccessTokenPayload:
         """Decode and validate a JWT access token."""
         try:
             payload = jwt.decode(

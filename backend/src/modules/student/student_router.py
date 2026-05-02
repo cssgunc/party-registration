@@ -1,19 +1,15 @@
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+from core.authentication import authenticate_by_role
 from fastapi import APIRouter, Depends, Response
-from src.core.authentication import (
-    authenticate_admin,
-    authenticate_staff_or_admin,
-    authenticate_student,
-)
 from src.core.utils.query_utils import (
     ListQueryParams,
     get_paginated_openapi_params,
     parse_export_list_query_params,
     parse_list_query_params,
 )
-from src.modules.account.account_model import AccountDto
+from src.modules.auth.auth_model import AuthPrincipal
 from src.modules.location.location_model import LocationDto
 from src.modules.party.party_model import PartyDto
 from src.modules.party.party_service import PartyService
@@ -38,7 +34,7 @@ _OPENAPI_PARAMS = get_paginated_openapi_params(StudentService.QUERY_FIELDS)
 @student_router.get("/me")
 async def get_me(
     student_service: StudentService = Depends(),
-    user: "AccountDto" = Depends(authenticate_student),
+    user: AuthPrincipal = Depends(authenticate_by_role("student")),
 ) -> StudentDto:
     return await student_service.get_student_me_dto(user.id)
 
@@ -47,7 +43,7 @@ async def get_me(
 async def update_me(
     data: SelfUpdateStudentDto,
     student_service: StudentService = Depends(),
-    user: "AccountDto" = Depends(authenticate_student),
+    user: AuthPrincipal = Depends(authenticate_by_role("student")),
 ) -> StudentDto:
     return await student_service.update_student_self(user.id, data)
 
@@ -56,7 +52,7 @@ async def update_me(
 async def update_my_residence(
     data: ResidenceUpdateDto,
     student_service: StudentService = Depends(),
-    user: "AccountDto" = Depends(authenticate_student),
+    user: AuthPrincipal = Depends(authenticate_by_role("student")),
 ) -> LocationDto:
     return await student_service.update_residence(user.id, data.residence_place_id)
 
@@ -64,7 +60,7 @@ async def update_my_residence(
 @student_router.get("/me/parties")
 async def get_my_parties(
     party_service: PartyService = Depends(),
-    user: "AccountDto" = Depends(authenticate_student),
+    user: AuthPrincipal = Depends(authenticate_by_role("student")),
 ) -> list[PartyDto]:
     return await party_service.get_parties_by_contact(user.id)
 
@@ -73,7 +69,7 @@ async def get_my_parties(
 async def list_students(
     params: ListQueryParams = parse_list_query_params(),
     student_service: StudentService = Depends(),
-    _=Depends(authenticate_staff_or_admin),
+    _=Depends(authenticate_by_role("staff", "admin")),
 ) -> PaginatedStudentsResponse:
     """
     Returns all students with pagination and sorting.
@@ -98,7 +94,7 @@ async def list_students(
 async def get_students_csv(
     params: ListQueryParams = parse_export_list_query_params(),
     student_service: StudentService = Depends(),
-    _=Depends(authenticate_staff_or_admin),
+    _=Depends(authenticate_by_role("staff", "admin")),
 ) -> Response:
     students_response = await student_service.get_students_paginated(params)
     excel_content = student_service.export_students_to_excel(students_response)
@@ -114,7 +110,7 @@ async def get_students_csv(
 async def autocomplete_students(
     input_data: AutocompleteInput,
     student_service: StudentService = Depends(),
-    _=Depends(authenticate_staff_or_admin),
+    _=Depends(authenticate_by_role("staff", "admin")),
 ) -> list[StudentSuggestionDto]:
     return await student_service.autocomplete_students(input_data.query)
 
@@ -123,7 +119,7 @@ async def autocomplete_students(
 async def get_student(
     student_id: int,
     student_service: StudentService = Depends(),
-    _=Depends(authenticate_staff_or_admin),
+    _=Depends(authenticate_by_role("staff", "admin")),
 ) -> StudentDto:
     return await student_service.get_student_by_id(student_id)
 
@@ -132,7 +128,7 @@ async def get_student(
 async def create_student(
     payload: StudentCreateDto,
     student_service: StudentService = Depends(),
-    _=Depends(authenticate_admin),
+    _=Depends(authenticate_by_role("admin")),
 ) -> StudentDto:
     return await student_service.create_student(payload.data, payload.account_id)
 
@@ -142,7 +138,7 @@ async def update_student(
     student_id: int,
     data: StudentUpdateDto,
     student_service: StudentService = Depends(),
-    _=Depends(authenticate_admin),
+    _=Depends(authenticate_by_role("admin")),
 ) -> StudentDto:
     return await student_service.update_student(student_id, data)
 
@@ -151,7 +147,7 @@ async def update_student(
 async def delete_student(
     student_id: int,
     student_service: StudentService = Depends(),
-    _=Depends(authenticate_admin),
+    _=Depends(authenticate_by_role("admin")),
 ) -> StudentDto:
     return await student_service.delete_student(student_id)
 
@@ -161,7 +157,7 @@ async def update_is_registered(
     student_id: int,
     data: IsRegisteredUpdate,
     student_service: StudentService = Depends(),
-    _=Depends(authenticate_staff_or_admin),
+    _=Depends(authenticate_by_role("staff", "admin")),
 ) -> StudentDto:
     """
     Update the registration status (attendance) for a student.
