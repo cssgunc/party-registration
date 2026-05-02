@@ -17,6 +17,7 @@ from src.modules.account.account_model import (
     PaginatedAggregateAccountsResponse,
 )
 from src.modules.account.account_service import AccountService, CannotDeleteOwnAccountException
+from src.modules.auth.auth_model import AuthPrincipal
 
 account_router = APIRouter(prefix="/api/accounts", tags=["accounts"])
 _OPENAPI_PARAMS = get_paginated_openapi_params(AccountService.QUERY_FIELDS)
@@ -54,7 +55,7 @@ async def get_aggregate_accounts(
 async def get_accounts_csv(
     params: ListQueryParams = parse_export_list_query_params(),
     account_service: AccountService = Depends(),
-    _: AccountDto = Depends(authenticate_admin),
+    _: AuthPrincipal = Depends(authenticate_admin),
 ) -> Response:
     accounts_response = await account_service.get_accounts_paginated(params)
     excel_content = account_service.export_accounts_to_excel(accounts_response)
@@ -70,7 +71,7 @@ async def get_accounts_csv(
 async def get_aggregate_accounts_csv(
     params: ListQueryParams = parse_export_list_query_params(),
     account_service: AccountService = Depends(),
-    _: AccountDto = Depends(authenticate_admin),
+    _: AuthPrincipal = Depends(authenticate_admin),
 ) -> Response:
     accounts_response = await account_service.get_aggregate_accounts_paginated(params)
     excel_content = account_service.export_aggregate_accounts_to_excel(accounts_response)
@@ -116,7 +117,7 @@ async def update_account(
 async def delete_account(
     account_id: int,
     account_service: AccountService = Depends(),
-    current_admin: AccountDto = Depends(authenticate_admin),
+    current_admin: AuthPrincipal = Depends(authenticate_admin),
 ) -> AccountDto:
     if account_id == current_admin.id:
         raise CannotDeleteOwnAccountException()

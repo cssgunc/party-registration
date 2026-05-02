@@ -7,7 +7,7 @@ from src.core.utils.query_utils import (
     parse_export_list_query_params,
     parse_list_query_params,
 )
-from src.modules.account.account_model import AccountDto
+from src.modules.auth.auth_model import AuthPrincipal
 from src.modules.police.police_model import (
     PaginatedPoliceResponse,
     PoliceAccountDto,
@@ -66,8 +66,8 @@ async def update_police(
 async def delete_police(
     police_id: int,
     police_service: PoliceService = Depends(),
-    principal: AccountDto | PoliceAccountDto = Depends(authenticate_police_admin_or_admin),
+    principal: AuthPrincipal = Depends(authenticate_police_admin_or_admin),
 ) -> PoliceAccountDto:
-    if isinstance(principal, PoliceAccountDto) and principal.id == police_id:
+    if principal.principal_type == "police" and principal.id == police_id:
         raise ForbiddenException("Police admins cannot delete their own account")
     return await police_service.delete_police(police_id)

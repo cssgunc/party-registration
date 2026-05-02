@@ -13,7 +13,7 @@ from src.core.utils.query_utils import (
     parse_export_list_query_params,
     parse_list_query_params,
 )
-from src.modules.account.account_model import AccountDto
+from src.modules.auth.auth_model import AuthPrincipal
 from src.modules.location.location_model import LocationDto
 from src.modules.party.party_model import PartyDto
 from src.modules.party.party_service import PartyService
@@ -38,7 +38,7 @@ _OPENAPI_PARAMS = get_paginated_openapi_params(StudentService.QUERY_FIELDS)
 @student_router.get("/me")
 async def get_me(
     student_service: StudentService = Depends(),
-    user: "AccountDto" = Depends(authenticate_student),
+    user: AuthPrincipal = Depends(authenticate_student),
 ) -> StudentDto:
     return await student_service.get_student_me_dto(user.id)
 
@@ -47,7 +47,7 @@ async def get_me(
 async def update_me(
     data: SelfUpdateStudentDto,
     student_service: StudentService = Depends(),
-    user: "AccountDto" = Depends(authenticate_student),
+    user: AuthPrincipal = Depends(authenticate_student),
 ) -> StudentDto:
     return await student_service.update_student_self(user.id, data)
 
@@ -56,7 +56,7 @@ async def update_me(
 async def update_my_residence(
     data: ResidenceUpdateDto,
     student_service: StudentService = Depends(),
-    user: "AccountDto" = Depends(authenticate_student),
+    user: AuthPrincipal = Depends(authenticate_student),
 ) -> LocationDto:
     return await student_service.update_residence(user.id, data.residence_place_id)
 
@@ -64,7 +64,7 @@ async def update_my_residence(
 @student_router.get("/me/parties")
 async def get_my_parties(
     party_service: PartyService = Depends(),
-    user: "AccountDto" = Depends(authenticate_student),
+    user: AuthPrincipal = Depends(authenticate_student),
 ) -> list[PartyDto]:
     return await party_service.get_parties_by_contact(user.id)
 

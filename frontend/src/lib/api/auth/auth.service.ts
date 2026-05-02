@@ -1,10 +1,12 @@
 import { clientEnv } from "@/lib/config/env.client";
 import { serverEnv } from "@/lib/config/env.server";
+import apiClient from "@/lib/network/apiClient";
 import axios from "axios";
 import { encode } from "next-auth/jwt";
 import { NextResponse } from "next/server";
 import type {
   AccessTokenPayload,
+  CurrentPrincipal,
   ExchangeTokenRequest,
   PoliceLoginRequest,
   PoliceLoginResponse,
@@ -194,4 +196,9 @@ export async function revokeRefreshToken(
     { refresh_token: refreshTokenValue },
     { headers: { Authorization: `Bearer ${accessToken}` } }
   );
+}
+
+export async function getCurrentPrincipal(): Promise<CurrentPrincipal> {
+  const response = await apiClient.get<CurrentPrincipal>("/auth/me");
+  return response.data;
 }

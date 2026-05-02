@@ -9,8 +9,7 @@ from src.core.utils.query_utils import (
     parse_export_list_query_params,
     parse_list_query_params,
 )
-from src.modules.account.account_model import AccountDto
-from src.modules.police.police_model import PoliceAccountDto
+from src.modules.auth.auth_model import AuthPrincipal
 
 from .incident_model import (
     IncidentCreateDto,
@@ -35,7 +34,7 @@ _OPENAPI_PARAMS = get_paginated_openapi_params(IncidentService.QUERY_FIELDS)
 async def get_incidents_paginated(
     params: ListQueryParams = parse_list_query_params(),
     incident_service: IncidentService = Depends(),
-    _: AccountDto | PoliceAccountDto = Depends(authenticate_police_staff_or_admin),
+    _: AuthPrincipal = Depends(authenticate_police_staff_or_admin),
 ) -> PaginatedIncidentsResponse:
     return await incident_service.get_incidents_paginated(params)
 
@@ -44,7 +43,7 @@ async def get_incidents_paginated(
 async def get_incidents_csv(
     params: ListQueryParams = parse_export_list_query_params(),
     incident_service: IncidentService = Depends(),
-    _: AccountDto | PoliceAccountDto = Depends(authenticate_police_staff_or_admin),
+    _: AuthPrincipal = Depends(authenticate_police_staff_or_admin),
 ) -> Response:
     incident_data = await incident_service.get_incidents_with_addresses(params)
     excel_content = incident_service.export_incidents_to_excel(incident_data)
@@ -66,7 +65,7 @@ async def get_incidents_csv(
 async def get_incidents_by_location(
     location_id: int,
     incident_service: IncidentService = Depends(),
-    _: AccountDto | PoliceAccountDto = Depends(authenticate_police_staff_or_admin),
+    _: AuthPrincipal = Depends(authenticate_police_staff_or_admin),
 ) -> list[IncidentDto]:
     """Get all incidents for a location."""
     return await incident_service.get_incidents_by_location(location_id)
@@ -82,7 +81,7 @@ async def get_incidents_by_location(
 async def create_incident(
     incident_data: IncidentCreateDto,
     incident_service: IncidentService = Depends(),
-    _: AccountDto | PoliceAccountDto = Depends(authenticate_police_or_admin),
+    _: AuthPrincipal = Depends(authenticate_police_or_admin),
 ) -> IncidentDto:
     """Create an incident."""
     return await incident_service.create_incident(incident_data)
@@ -99,7 +98,7 @@ async def update_incident(
     incident_id: int,
     incident_data: IncidentUpdateDto,
     incident_service: IncidentService = Depends(),
-    _: AccountDto | PoliceAccountDto = Depends(authenticate_police_or_admin),
+    _: AuthPrincipal = Depends(authenticate_police_or_admin),
 ) -> IncidentDto:
     """Update an incident."""
     return await incident_service.update_incident(incident_id, incident_data)
@@ -115,7 +114,7 @@ async def update_incident(
 async def delete_incident(
     incident_id: int,
     incident_service: IncidentService = Depends(),
-    _: AccountDto | PoliceAccountDto = Depends(authenticate_police_or_admin),
+    _: AuthPrincipal = Depends(authenticate_police_or_admin),
 ) -> IncidentDto:
     """Delete an incident."""
     return await incident_service.delete_incident(incident_id)

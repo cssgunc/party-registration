@@ -1,12 +1,16 @@
 from fastapi import APIRouter, Depends, Header, Response, status
-from src.core.authentication import authenticate_by_role
+from src.core.authentication import authenticate_by_role, authenticate_user
 from src.core.config import env
 from src.modules.account.account_entity import AccountRole
 from src.modules.account.account_model import AccountData
 from src.modules.account.account_service import AccountService
 from src.modules.auth.auth_model import (
     AccessTokenDto,
+    AccountMeDto,
+    AuthPrincipal,
+    CurrentPrincipalDto,
     PoliceCredentialsDto,
+    PoliceMeDto,
     RefreshTokenDto,
     RetryVerificationDto,
     TokensDto,
@@ -137,6 +141,21 @@ async def refresh_access_token(
     Requires internal API secret in X-Internal-Secret header.
     """
     return await auth_service.refresh_access_token(data.refresh_token)
+
+
+@router.get("/me")
+async def get_current_principal(
+    principal: AuthPrincipal = Depends(authenticate_user),
+    account_service: AccountService = Depends(),
+    police_service: PoliceService = Depends(),
+) -> CurrentPrincipalDto:
+    """Return the current authenticated account or police profile."""
+    if principal.principal_type == "police":
+        police = await police_service.get_police_by_id(principal.id)
+        return PoliceMeDto(**police.model_dump())
+
+    account = await account_service.get_account_by(id=principal.id)
+    return AccountMeDto(**account.model_dump())
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)

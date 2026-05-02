@@ -22,9 +22,9 @@ from src.core.utils.query_utils import (
     parse_export_list_query_params,
     parse_list_query_params,
 )
-from src.modules.account.account_model import AccountDto, AccountRole
+from src.modules.account.account_model import AccountRole
+from src.modules.auth.auth_model import AuthPrincipal
 from src.modules.location.location_service import LocationNotFoundException, LocationService
-from src.modules.police.police_model import PoliceAccountDto
 
 from .party_model import (
     AdminCreatePartyDto,
@@ -45,7 +45,7 @@ _OPENAPI_PARAMS = get_paginated_openapi_params(PartyService.QUERY_FIELDS)
 async def create_party(
     party_data: CreatePartyDto,
     party_service: PartyService = Depends(),
-    user: AccountDto = Depends(authenticate_user),
+    user: AuthPrincipal = Depends(authenticate_user),
 ) -> PartyDto:
     """
     Create a new party registration.
@@ -213,7 +213,7 @@ async def get_parties_nearby(
 async def get_parties_csv(
     params: ListQueryParams = parse_export_list_query_params(),
     party_service: PartyService = Depends(),
-    principal: AccountDto | PoliceAccountDto = Depends(authenticate_police_staff_or_admin),
+    principal: AuthPrincipal = Depends(authenticate_police_staff_or_admin),
 ) -> Response:
     """
     Returns all parties as an Excel file, with columns tailored to the requester's role.
@@ -224,7 +224,7 @@ async def get_parties_csv(
     Supports the same filter/sort query params as GET /api/parties.
     """
     parties_response = await party_service.get_parties_paginated(params)
-    is_police = isinstance(principal, PoliceAccountDto)
+    is_police = principal.principal_type == "police"
     excel_content = party_service.export_parties_to_excel(
         parties_response,
         is_police=is_police,
@@ -242,7 +242,7 @@ async def update_party(
     party_id: int,
     party_data: CreatePartyDto,
     party_service: PartyService = Depends(),
-    user: AccountDto = Depends(authenticate_user),
+    user: AuthPrincipal = Depends(authenticate_user),
 ) -> PartyDto:
     """
     Update an existing party registration.
@@ -301,7 +301,7 @@ async def get_party(
 async def delete_party(
     party_id: int,
     party_service: PartyService = Depends(),
-    user: AccountDto = Depends(authenticate_student_or_admin),
+    user: AuthPrincipal = Depends(authenticate_student_or_admin),
 ) -> PartyDto:
     """
     Deletes a party registration by ID.

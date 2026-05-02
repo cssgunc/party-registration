@@ -1,55 +1,65 @@
 import {
+  getCurrentPrincipal,
   policeLoginViaRoute,
   retryPoliceVerification,
   signupPolice,
   verifyPoliceEmail,
 } from "@/lib/api/auth/auth.service";
-import type {
+import {
+  CurrentPrincipal,
   PoliceLoginRequest,
   PoliceSignupRequest,
   RetryPoliceVerificationRequest,
   VerifyPoliceEmailRequest,
 } from "@/lib/api/auth/auth.types";
-import { OptimisticMutationOptions } from "@/lib/shared";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 
-export function usePoliceLogin(
-  options?: OptimisticMutationOptions<void, Error, PoliceLoginRequest>
-) {
-  return useMutation({
+export const CURRENT_PRINCIPAL_KEY = ["auth", "me"] as const;
+
+export function useCurrentPrincipal(options?: { enabled?: boolean }) {
+  return useQuery<CurrentPrincipal, Error>({
+    queryKey: CURRENT_PRINCIPAL_KEY,
+    queryFn: getCurrentPrincipal,
     ...options,
-    mutationFn: (data: PoliceLoginRequest) => policeLoginViaRoute(data),
   });
 }
 
-export function usePoliceSignup(
-  options?: OptimisticMutationOptions<void, Error, PoliceSignupRequest>
-) {
-  return useMutation({
+export function usePoliceLogin(options?: {
+  onSuccess?: () => void;
+  onError?: (error: Error) => void;
+}) {
+  return useMutation<void, Error, PoliceLoginRequest>({
+    mutationFn: policeLoginViaRoute,
     ...options,
-    mutationFn: (data: PoliceSignupRequest) => signupPolice(data),
   });
 }
 
-export function useRetryPoliceVerification(
-  options?: OptimisticMutationOptions<
-    void,
-    Error,
-    RetryPoliceVerificationRequest
-  >
-) {
-  return useMutation({
+export function usePoliceSignup(options?: {
+  onSuccess?: () => void;
+  onError?: (error: Error) => void;
+}) {
+  return useMutation<void, Error, PoliceSignupRequest>({
+    mutationFn: signupPolice,
     ...options,
-    mutationFn: (data: RetryPoliceVerificationRequest) =>
-      retryPoliceVerification(data),
   });
 }
 
-export function useVerifyPoliceEmail(
-  options?: OptimisticMutationOptions<void, Error, VerifyPoliceEmailRequest>
-) {
-  return useMutation({
+export function useRetryPoliceVerification(options?: {
+  onSuccess?: () => void;
+  onError?: (error: Error) => void;
+}) {
+  return useMutation<void, Error, RetryPoliceVerificationRequest>({
+    mutationFn: retryPoliceVerification,
     ...options,
-    mutationFn: (data: VerifyPoliceEmailRequest) => verifyPoliceEmail(data),
+  });
+}
+
+export function useVerifyPoliceEmail(options?: {
+  onSuccess?: () => void;
+  onError?: (error: Error) => void;
+}) {
+  return useMutation<void, Error, VerifyPoliceEmailRequest>({
+    mutationFn: verifyPoliceEmail,
+    ...options,
   });
 }

@@ -13,7 +13,7 @@ from src.core.utils.query_utils import (
     parse_export_list_query_params,
     parse_list_query_params,
 )
-from src.modules.account.account_model import AccountDto
+from src.modules.auth.auth_model import AuthPrincipal
 from src.modules.location.location_model import (
     AddressData,
     LocationCreate,
@@ -22,7 +22,6 @@ from src.modules.location.location_model import (
     PaginatedLocationResponse,
 )
 from src.modules.location.location_service import LocationService
-from src.modules.police.police_model import PoliceAccountDto
 
 from .location_model import AutocompleteInput, AutocompleteResult
 
@@ -40,7 +39,7 @@ _OPENAPI_PARAMS = get_paginated_openapi_params(LocationService.QUERY_FIELDS)
 async def autocomplete_address(
     input_data: AutocompleteInput,
     location_service: LocationService = Depends(),
-    user: AccountDto | PoliceAccountDto = Depends(
+    user: AuthPrincipal = Depends(
         authenticate_by_role("officer", "police_admin", "student", "admin", "staff")
     ),
 ) -> list[AutocompleteResult]:
@@ -74,7 +73,7 @@ async def autocomplete_address(
 async def get_place_details(
     place_id: str,
     location_service: LocationService = Depends(),
-    user: AccountDto | PoliceAccountDto = Depends(
+    user: AuthPrincipal = Depends(
         authenticate_by_role("officer", "police_admin", "student", "admin", "staff")
     ),
 ) -> AddressData:

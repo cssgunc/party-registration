@@ -1,46 +1,33 @@
 from typing import Literal
 
-from pydantic import AwareDatetime, BaseModel, EmailStr, field_serializer
-from src.modules.account.account_model import AccountRole
+from pydantic import AwareDatetime, BaseModel, EmailStr
+from src.modules.account.account_model import AccountDto, Role, StringRole
+from src.modules.police.police_model import PoliceAccountDto
 
 
-class AccountAccessTokenPayload(BaseModel):
-    """JWT payload for account access tokens.
+class AccessTokenPayload(BaseModel):
+    """JWT payload for access tokens.
 
     `sub` is `str(account.id)`. JWT spec (RFC 7519 §4.1.2) requires `sub` to be a
-    string; convert to int at the boundary when looking up the account row.
+    string; convert to int at the boundary when using the authenticated principal.
     """
 
     sub: str
-    email: str
-    first_name: str
-    last_name: str
-    pid: str
-    onyen: str
-    role: AccountRole
+    role: StringRole
     exp: AwareDatetime
     iat: AwareDatetime
 
-    @field_serializer("role")
-    def serialize_role(self, role: AccountRole) -> str:
-        return role.value
+    @property
+    def principal_type(self) -> Literal["account", "police"]:
+        return "police" if self.role in {"officer", "police_admin"} else "account"
 
 
-class PoliceAccessTokenPayload(BaseModel):
-    """JWT payload for police access tokens.
+class AuthPrincipal(BaseModel):
+    """Minimal authenticated principal derived from an access token."""
 
-    `sub` is `str(police.id)`. JWT spec (RFC 7519 §4.1.2) requires `sub` to be a
-    string; convert to int at the boundary when looking up the police row.
-    """
-
-    sub: str
-    email: str
-    role: Literal["officer", "police_admin"]
-    exp: AwareDatetime
-    iat: AwareDatetime
-
-
-AccessTokenPayload = AccountAccessTokenPayload | PoliceAccessTokenPayload
+    id: int
+    role: Role
+    principal_type: Literal["account", "police"]
 
 
 class RefreshTokenPayload(BaseModel):
@@ -91,3 +78,14 @@ class RetryVerificationDto(BaseModel):
     """DTO for retrying email verification."""
 
     email: EmailStr
+
+
+class AccountMeDto(AccountDto):
+    principal_type: Literal["account"] = "account"
+
+
+class PoliceMeDto(PoliceAccountDto):
+    principal_type: Literal["police"] = "police"
+
+
+CurrentPrincipalDto = AccountMeDto | PoliceMeDto

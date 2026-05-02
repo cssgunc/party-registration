@@ -8,6 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { useCurrentPrincipal } from "@/lib/api/auth/auth.queries";
 import { signOut } from "@/lib/auth/signout";
 import { cn } from "@/lib/utils";
 import { LogOut, Shield, User } from "lucide-react";
@@ -19,12 +20,21 @@ import PartySmartLogo from "./PartySmartLogo";
 export default function Header({ className }: { className?: string }) {
   const pathname = usePathname();
   const { data: session, status } = useSession();
+  const { data: currentPrincipal } = useCurrentPrincipal({
+    enabled: status === "authenticated",
+  });
   const role = session?.role;
+  const displayEmail = currentPrincipal?.email ?? session?.user?.email ?? null;
   const displayName =
-    [session?.firstName, session?.lastName].filter(Boolean).join(" ").trim() ||
-    session?.user?.name ||
-    session?.user?.email ||
-    "User";
+    currentPrincipal?.principal_type === "account"
+      ? [currentPrincipal.first_name, currentPrincipal.last_name]
+          .filter(Boolean)
+          .join(" ")
+          .trim() || currentPrincipal.email
+      : currentPrincipal?.email ||
+        session?.user?.name ||
+        displayEmail ||
+        "User";
 
   if (pathname.startsWith("/login")) {
     return null;
@@ -33,7 +43,7 @@ export default function Header({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "bg-primary h-[var(--app-header-height)] px-6 w-full flex justify-between items-center",
+        "bg-primary h-(--app-header-height) px-6 w-full flex justify-between items-center",
         className
       )}
     >
@@ -49,10 +59,18 @@ export default function Header({ className }: { className?: string }) {
               aria-label={`Open user menu for ${displayName}`}
             >
               <UserAvatar
-                firstName={session?.firstName}
-                lastName={session?.lastName}
-                name={session?.user?.name}
-                email={session?.user?.email}
+                firstName={
+                  currentPrincipal?.principal_type === "account"
+                    ? currentPrincipal.first_name
+                    : undefined
+                }
+                lastName={
+                  currentPrincipal?.principal_type === "account"
+                    ? currentPrincipal.last_name
+                    : undefined
+                }
+                name={displayName}
+                email={displayEmail}
               />
             </Button>
           </DropdownMenuTrigger>

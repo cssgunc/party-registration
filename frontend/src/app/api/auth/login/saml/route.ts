@@ -7,7 +7,6 @@ import {
   exchangeToken,
   setAuthCookies,
 } from "@/lib/api/auth/auth.service";
-import { accountAccessTokenPayloadSchema } from "@/lib/api/auth/auth.types";
 import { serverEnv } from "@/lib/config/env.server";
 import { createLoginRequestUrl, postAssert } from "@/lib/saml";
 import { AxiosError } from "axios";
@@ -137,21 +136,13 @@ export async function POST(req: NextRequest) {
     return errorUrl(status === 403 ? "AccessDenied" : "ExchangeFailed");
   }
 
-  const payload = accountAccessTokenPayloadSchema.parse(
-    decodeAccessTokenPayload(tokens.access_token)
-  );
+  const payload = decodeAccessTokenPayload(tokens.access_token);
   const accountId = Number(payload.sub);
   const res = NextResponse.redirect(new URL(callbackUrl, origin));
 
   await setAuthCookies(res, tokens, {
     sub: accountId,
     id: accountId,
-    email: payload.email,
-    name: `${payload.first_name} ${payload.last_name}`.trim(),
-    firstName: payload.first_name,
-    lastName: payload.last_name,
-    onyen: payload.onyen,
-    pid: payload.pid,
     role: payload.role,
   });
 
