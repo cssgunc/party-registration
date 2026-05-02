@@ -25,19 +25,6 @@
         "reveal": "silent",
         "close": false
       }
-    },
-    {
-      "label": "Generate DB Schema",
-      "type": "process",
-      "command": "${command:python.interpreterPath}",
-      "args": ["-m", "script.generate_schema"],
-      "options": {
-        "cwd": "${workspaceFolder}/backend"
-      },
-      "presentation": {
-        "reveal": "silent",
-        "close": false
-      }
     }
   ]
 }
