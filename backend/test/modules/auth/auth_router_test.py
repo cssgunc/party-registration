@@ -136,7 +136,7 @@ class TestAuthRouter:
 
         result = assert_res_success(response, TokensDto)
         payload = self.auth_utils.decode_token(result.access_token)
-        assert payload["email"] == idp_data.email
+        assert "email" not in payload
         assert payload["role"] == AccountRole.STAFF.value
 
         remaining_tokens = await invite_token_utils.get_all()
@@ -160,7 +160,7 @@ class TestAuthRouter:
 
         result = assert_res_success(response, TokensDto)
         payload = self.auth_utils.decode_token(result.access_token)
-        assert payload["email"] == idp_data.email
+        assert "email" not in payload
         assert payload["role"] == AccountRole.ADMIN.value
 
         remaining_tokens = await invite_token_utils.get_all()
@@ -254,9 +254,9 @@ class TestAuthRouter:
         result = assert_res_success(response, TokensDto)
         payload = self.auth_utils.decode_token(result.access_token)
         assert payload["sub"] == str(existing.id)
-        assert payload["email"] == idp_data.email
-        assert payload["pid"] == existing.pid
-        assert payload["onyen"] == idp_data.onyen
+        assert payload["role"] == AccountRole.STAFF.value
+        for field in ("email", "pid", "onyen", "first_name", "last_name"):
+            assert field not in payload
 
         remaining_tokens = await invite_token_utils.get_all()
         InviteTokenTestUtils.assert_token_deleted(invite, remaining_tokens)
@@ -282,9 +282,9 @@ class TestAuthRouter:
         result = assert_res_success(response, TokensDto)
         payload = self.auth_utils.decode_token(result.access_token)
         assert payload["sub"] == str(existing.id)
-        assert payload["email"] == idp_data.email
-        assert payload["pid"] == existing.pid
-        assert payload["onyen"] == idp_data.onyen
+        assert payload["role"] == AccountRole.STAFF.value
+        for field in ("email", "pid", "onyen", "first_name", "last_name"):
+            assert field not in payload
 
     @pytest.mark.asyncio
     async def test_exchange_missing_internal_secret(self, account_utils: AccountTestUtils) -> None:

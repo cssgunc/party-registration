@@ -336,8 +336,7 @@ class TestAuthService:
         new_access = await self.auth_service.refresh_access_token(refresh_token)
 
         payload = self.auth_utils.decode_token(new_access.access_token)
-        assert payload["sub"] == str(police.id)
-        assert payload["email"] == police.email
+        self.auth_utils.assert_police_token_payload(payload, police)
 
     @pytest.mark.asyncio
     async def test_refresh_access_token_invalid(self) -> None:
