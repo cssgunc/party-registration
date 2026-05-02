@@ -29,7 +29,7 @@ def authenticate_by_role(*roles: StringRole):
         token = authorization.credentials
         payload = auth_service.decode_access_token(token)
 
-        if payload.role not in roles:
+        if roles and payload.role not in roles:
             raise ForbiddenException(detail="Insufficient privileges")
 
         return AuthPrincipal(
@@ -41,13 +41,4 @@ def authenticate_by_role(*roles: StringRole):
     return _authenticate
 
 
-authenticate_user = authenticate_by_role("student", "staff", "admin", "officer", "police_admin")
-authenticate_admin = authenticate_by_role("admin")
-authenticate_staff_or_admin = authenticate_by_role("staff", "admin")
-authenticate_student_or_admin = authenticate_by_role("student", "admin")
-authenticate_student = authenticate_by_role("student")
-authenticate_police_or_admin = authenticate_by_role("officer", "police_admin", "admin")
-authenticate_police_staff_or_admin = authenticate_by_role(
-    "officer", "police_admin", "staff", "admin"
-)
-authenticate_police_admin_or_admin = authenticate_by_role("police_admin", "admin")
+authenticate_user = authenticate_by_role()  # No role restriction, just authenticate and return

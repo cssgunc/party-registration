@@ -5,10 +5,6 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.responses import Response
 from src.core.authentication import (
     authenticate_by_role,
-    authenticate_police_or_admin,
-    authenticate_police_staff_or_admin,
-    authenticate_staff_or_admin,
-    authenticate_student_or_admin,
     authenticate_user,
 )
 from src.core.exceptions import (
@@ -129,7 +125,7 @@ async def get_parties_nearby(
     ),
     party_service: PartyService = Depends(),
     location_service: LocationService = Depends(),
-    _=Depends(authenticate_police_or_admin),
+    _=Depends(authenticate_by_role("officer", "police_admin", "admin")),
 ) -> ProximitySearchResponse:
     """
     Returns a ProximitySearchResponse with an exact_match and a list of nearby parties.
@@ -213,7 +209,9 @@ async def get_parties_nearby(
 async def get_parties_csv(
     params: ListQueryParams = parse_export_list_query_params(),
     party_service: PartyService = Depends(),
-    principal: AuthPrincipal = Depends(authenticate_police_staff_or_admin),
+    principal: AuthPrincipal = Depends(
+        authenticate_by_role("officer", "police_admin", "staff", "admin")
+    ),
 ) -> Response:
     """
     Returns all parties as an Excel file, with columns tailored to the requester's role.
@@ -280,7 +278,7 @@ async def update_party(
 async def get_party(
     party_id: int,
     party_service: PartyService = Depends(),
-    _=Depends(authenticate_staff_or_admin),
+    _=Depends(authenticate_by_role("staff", "admin")),
 ) -> PartyDto:
     """
     Returns a party registration by ID.
@@ -301,7 +299,7 @@ async def get_party(
 async def delete_party(
     party_id: int,
     party_service: PartyService = Depends(),
-    user: AuthPrincipal = Depends(authenticate_student_or_admin),
+    user: AuthPrincipal = Depends(authenticate_by_role("student", "admin")),
 ) -> PartyDto:
     """
     Deletes a party registration by ID.

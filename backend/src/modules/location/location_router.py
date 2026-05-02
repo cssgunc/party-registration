@@ -3,9 +3,7 @@ from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from src.core.authentication import (
-    authenticate_admin,
     authenticate_by_role,
-    authenticate_staff_or_admin,
 )
 from src.core.utils.query_utils import (
     ListQueryParams,
@@ -103,7 +101,7 @@ async def get_place_details(
 async def get_locations(
     params: ListQueryParams = parse_list_query_params(),
     location_service: LocationService = Depends(),
-    _=Depends(authenticate_staff_or_admin),
+    _=Depends(authenticate_by_role("staff", "admin")),
 ) -> PaginatedLocationResponse:
     """
     Returns all locations with pagination, sorting, and filtering.
@@ -115,7 +113,7 @@ async def get_locations(
 async def get_locations_csv(
     params: ListQueryParams = parse_export_list_query_params(),
     location_service: LocationService = Depends(),
-    _=Depends(authenticate_staff_or_admin),
+    _=Depends(authenticate_by_role("staff", "admin")),
 ) -> Response:
     locations_response = await location_service.get_locations_paginated(params)
     excel_content = location_service.export_locations_to_excel(locations_response)
@@ -131,7 +129,7 @@ async def get_locations_csv(
 async def get_location(
     location_id: int,
     location_service: LocationService = Depends(),
-    _=Depends(authenticate_staff_or_admin),
+    _=Depends(authenticate_by_role("staff", "admin")),
 ):
     return await location_service.get_location_by_id(location_id)
 
@@ -140,7 +138,7 @@ async def get_location(
 async def create_location(
     data: LocationCreate,
     location_service: LocationService = Depends(),
-    _=Depends(authenticate_admin),
+    _=Depends(authenticate_by_role("admin")),
 ):
     address_data = await location_service.get_place_details(data.google_place_id)
     return await location_service.create_location(
@@ -156,7 +154,7 @@ async def update_location(
     location_id: int,
     data: LocationCreate,
     location_service: LocationService = Depends(),
-    _=Depends(authenticate_admin),
+    _=Depends(authenticate_by_role("admin")),
 ):
     location = await location_service.get_location_by_id(location_id)
 
@@ -180,6 +178,6 @@ async def update_location(
 async def delete_location(
     location_id: int,
     location_service: LocationService = Depends(),
-    _=Depends(authenticate_admin),
+    _=Depends(authenticate_by_role("admin")),
 ):
     return await location_service.delete_location(location_id)

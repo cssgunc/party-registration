@@ -2,7 +2,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Response, status
-from src.core.authentication import authenticate_admin
+from src.core.authentication import authenticate_by_role
 from src.core.utils.query_utils import (
     ListQueryParams,
     get_paginated_openapi_params,
@@ -28,7 +28,7 @@ _AGGREGATE_OPENAPI_PARAMS = get_paginated_openapi_params(AccountService.AGGREGAT
 async def list_accounts(
     params: ListQueryParams = parse_list_query_params(),
     account_service: AccountService = Depends(),
-    _=Depends(authenticate_admin),
+    _=Depends(authenticate_by_role("admin")),
 ) -> PaginatedAccountsResponse:
     return await account_service.get_accounts_paginated(params)
 
@@ -37,7 +37,7 @@ async def list_accounts(
 async def create_account(
     data: CreateInviteDto,
     account_service: AccountService = Depends(),
-    _=Depends(authenticate_admin),
+    _=Depends(authenticate_by_role("admin")),
 ) -> None:
     await account_service.create_invite(data)
 
@@ -46,7 +46,7 @@ async def create_account(
 async def get_aggregate_accounts(
     params: ListQueryParams = parse_list_query_params(),
     account_service: AccountService = Depends(),
-    _=Depends(authenticate_admin),
+    _=Depends(authenticate_by_role("admin")),
 ) -> PaginatedAggregateAccountsResponse:
     return await account_service.get_aggregate_accounts_paginated(params)
 
@@ -55,7 +55,7 @@ async def get_aggregate_accounts(
 async def get_accounts_csv(
     params: ListQueryParams = parse_export_list_query_params(),
     account_service: AccountService = Depends(),
-    _: AuthPrincipal = Depends(authenticate_admin),
+    _: AuthPrincipal = Depends(authenticate_by_role("admin")),
 ) -> Response:
     accounts_response = await account_service.get_accounts_paginated(params)
     excel_content = account_service.export_accounts_to_excel(accounts_response)
@@ -71,7 +71,7 @@ async def get_accounts_csv(
 async def get_aggregate_accounts_csv(
     params: ListQueryParams = parse_export_list_query_params(),
     account_service: AccountService = Depends(),
-    _: AuthPrincipal = Depends(authenticate_admin),
+    _: AuthPrincipal = Depends(authenticate_by_role("admin")),
 ) -> Response:
     accounts_response = await account_service.get_aggregate_accounts_paginated(params)
     excel_content = account_service.export_aggregate_accounts_to_excel(accounts_response)
@@ -89,7 +89,7 @@ async def get_aggregate_accounts_csv(
 async def delete_invite(
     invite_id: int,
     account_service: AccountService = Depends(),
-    _=Depends(authenticate_admin),
+    _=Depends(authenticate_by_role("admin")),
 ) -> None:
     await account_service.delete_invite(invite_id)
 
@@ -98,7 +98,7 @@ async def delete_invite(
 async def resend_invite(
     invite_id: int,
     account_service: AccountService = Depends(),
-    _=Depends(authenticate_admin),
+    _=Depends(authenticate_by_role("admin")),
 ) -> None:
     await account_service.resend_invite(invite_id)
 
@@ -108,7 +108,7 @@ async def update_account(
     account_id: int,
     data: AccountUpdateData,
     account_service: AccountService = Depends(),
-    _=Depends(authenticate_admin),
+    _=Depends(authenticate_by_role("admin")),
 ) -> AccountDto:
     return await account_service.update_account(account_id, data)
 
@@ -117,7 +117,7 @@ async def update_account(
 async def delete_account(
     account_id: int,
     account_service: AccountService = Depends(),
-    current_admin: AuthPrincipal = Depends(authenticate_admin),
+    current_admin: AuthPrincipal = Depends(authenticate_by_role("admin")),
 ) -> AccountDto:
     if account_id == current_admin.id:
         raise CannotDeleteOwnAccountException()
