@@ -19,6 +19,7 @@ dependencies = [
   "tzdata~=2025.2",
   "aiosmtplib~=3.0.0",
   "alembic~=1.16.0",
+  "slowapi~=0.1.0",
 ]
 
 [tool.pytest.ini_options]
