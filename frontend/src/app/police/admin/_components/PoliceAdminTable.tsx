@@ -18,18 +18,12 @@ import type {
 } from "@/lib/api/police/police.types";
 import {
   DEFAULT_TABLE_PARAMS,
-  type ServerColumnMap,
   type ServerTableParams,
 } from "@/lib/api/shared/query-params";
 import { formatRoleLabel } from "@/lib/utils";
 import { ColumnDef } from "@tanstack/react-table";
 import { useSession } from "next-auth/react";
 import { useMemo, useState } from "react";
-
-const SERVER_COLUMN_MAP: ServerColumnMap = {
-  email: { backendField: "email", filterOperator: "contains" },
-  role: { backendField: "role", filterOperator: "eq" },
-};
 
 export default function PoliceAdminTable() {
   const { data: session } = useSession();
@@ -133,17 +127,27 @@ export default function PoliceAdminTable() {
         accessorKey: "email",
         header: "Email",
         enableColumnFilter: true,
+        meta: { filter: { type: "text", backendField: "email" } },
       },
       {
         accessorKey: "role",
         header: "Role",
         enableColumnFilter: true,
+        meta: { filter: { type: "text", backendField: "role" } },
         cell: ({ row }) =>
           formatRoleLabel(row.getValue("role") as PoliceAccountDto["role"]),
       },
       {
         accessorKey: "is_verified",
         header: "Verified",
+        enableColumnFilter: true,
+        meta: {
+          filter: {
+            type: "select",
+            backendField: "is_verified",
+            selectOptions: ["true", "false"],
+          },
+        },
         cell: ({ row }) => (row.original.is_verified ? "Yes" : "No"),
       },
     ],
@@ -177,7 +181,6 @@ export default function PoliceAdminTable() {
           : undefined
       }
       onStateChange={setServerParams}
-      columnMap={SERVER_COLUMN_MAP}
       canManageRows={session?.role === "police_admin"}
       canDeleteRow={(row) => row.id !== currentPoliceId}
       onExportCsv={(params) => downloadPoliceAccountsCsv.mutate(params)}

@@ -35,6 +35,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  ColumnFilterMeta,
+  FilterValue,
   ListQueryParams,
   ServerColumnMap,
   ServerTableParams,
@@ -70,13 +72,10 @@ import { useSidebar } from "../sidebar/SidebarContext";
 import { ColumnHeader } from "./ColumnHeader";
 import { FilterInput } from "./FilterInput";
 
-export type FilterType = "text" | "date" | "dateRange" | "time" | "select";
-
 declare module "@tanstack/react-table" {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface ColumnMeta<TData, TValue> {
-    filterType?: FilterType;
-    selectOptions?: string[];
+    filter?: ColumnFilterMeta;
     /** "client" = always filter this column on the loaded page, even in server mode */
     filterMode?: "client" | "server";
   }
@@ -105,7 +104,6 @@ export type TableProps<T> = {
     sortOrder: "asc" | "desc";
   };
   onStateChange?: (params: ServerTableParams) => void;
-  columnMap?: ServerColumnMap;
   onExportCsv?: (params: ListQueryParams) => void;
   isExporting?: boolean;
   canManageRows?: boolean;
@@ -119,6 +117,8 @@ export type TableProps<T> = {
     variant?: "default" | "destructive";
   }[];
 };
+
+const serverFilterPassthrough = () => true;
 
 export function TableTemplate<T extends object>({
   data,
@@ -138,7 +138,6 @@ export function TableTemplate<T extends object>({
   pageSizeOptions = [10, 25, 50, 100],
   serverMeta,
   onStateChange,
-  columnMap,
   onExportCsv,
   isExporting,
   canManageRows,
@@ -147,6 +146,19 @@ export function TableTemplate<T extends object>({
   rowActions,
 }: TableProps<T>) {
   const isServerMode = !!serverMeta;
+
+  const columnMap = useMemo((): ServerColumnMap => {
+    const map: ServerColumnMap = {};
+    for (const col of columns) {
+      const id = col.id ?? (col as { accessorKey?: string }).accessorKey;
+      const filterMeta = col.meta?.filter;
+      if (id && filterMeta) {
+        map[String(id)] = filterMeta;
+      }
+    }
+    return map;
+  }, [columns]);
+
   const { isOpen, openSidebar, closeSidebar } = useSidebar();
   const { data: session } = useSession();
   const role = session?.role;
@@ -245,9 +257,7 @@ export function TableTemplate<T extends object>({
   useEffect(() => {
     if (!isServerMode || !columnMap || !serverMeta) return;
     const columnId = Object.entries(columnMap).find(
-      ([, config]) =>
-        config.filterOperator !== "splitName" &&
-        config.backendField === serverMeta.sortBy
+      ([, config]) => config.backendField === serverMeta.sortBy
     )?.[0];
     if (!columnId) return;
     const desc = serverMeta.sortOrder === "desc";
@@ -335,10 +345,34 @@ export function TableTemplate<T extends object>({
         col as { accessorFn?: (row: T, idx: number) => unknown }
       ).accessorFn;
       if (!accessorFn) continue;
-      const filterVal = String(filter.value).toLowerCase();
-      filtered = filtered.filter((row) =>
-        String(accessorFn(row, 0)).toLowerCase().includes(filterVal)
-      );
+      const rawFilter = filter.value as FilterValue | undefined;
+      if (!rawFilter?.operator) continue;
+      const { operator, value: filterVal } = rawFilter;
+      if (operator === "null") {
+        filtered = filtered.filter((row) => accessorFn(row, 0) == null);
+      } else if (operator === "notnull") {
+        filtered = filtered.filter((row) => accessorFn(row, 0) != null);
+      } else if (operator === "between") {
+        const range = filterVal as { from?: string; to?: string } | undefined;
+        filtered = filtered.filter((row) => {
+          const val = String(accessorFn(row, 0));
+          return (
+            (!range?.from || val >= range.from) &&
+            (!range?.to || val <= range.to)
+          );
+        });
+      } else if (filterVal != null && filterVal !== "") {
+        const fv = String(filterVal).toLowerCase();
+        filtered = filtered.filter((row) => {
+          const val = String(accessorFn(row, 0));
+          if (operator === "contains") return val.toLowerCase().includes(fv);
+          if (operator === "eq") return val.toLowerCase() === fv;
+          if (operator === "ne") return val.toLowerCase() !== fv;
+          if (operator === "gte") return val >= String(filterVal);
+          if (operator === "lte") return val <= String(filterVal);
+          return true;
+        });
+      }
     }
 
     return filtered;
@@ -367,7 +401,11 @@ export function TableTemplate<T extends object>({
   const columnsWithActions: ColumnDef<T, unknown>[] =
     hasManagePermission && (onEdit || onDelete)
       ? [
-          ...columns,
+          ...columns.map((column) =>
+            isServerMode && column.meta?.filter
+              ? { ...column, filterFn: serverFilterPassthrough }
+              : column
+          ),
           {
             id: "actions",
             enableSorting: false,
@@ -418,7 +456,11 @@ export function TableTemplate<T extends object>({
             ),
           },
         ]
-      : columns;
+      : columns.map((column) =>
+          isServerMode && column.meta?.filter
+            ? { ...column, filterFn: serverFilterPassthrough }
+            : column
+        );
 
   const customFilterFn = <T extends object>(
     row: Row<T>,
@@ -585,11 +627,12 @@ export function TableTemplate<T extends object>({
                               }
                               onFilterClick={() => {
                                 if (isLoading) return;
+                                const columnDef = header.column.columnDef;
                                 const columnName =
-                                  typeof header.column.columnDef.header ===
-                                  "string"
-                                    ? header.column.columnDef.header
-                                    : header.column.id;
+                                  columnDef.meta?.filter?.filterLabel ??
+                                  (typeof columnDef.header === "string"
+                                    ? columnDef.header
+                                    : header.column.id);
 
                                 openSidebar(
                                   `filter-${header.column.id}`,
@@ -598,14 +641,6 @@ export function TableTemplate<T extends object>({
                                   <FilterInput
                                     column={header.column}
                                     onClose={() => closeSidebar()}
-                                    filterType={
-                                      header.column.columnDef.meta
-                                        ?.filterType || "text"
-                                    }
-                                    selectOptions={
-                                      header.column.columnDef.meta
-                                        ?.selectOptions || []
-                                    }
                                   />
                                 );
                               }}

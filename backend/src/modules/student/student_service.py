@@ -3,13 +3,13 @@ from datetime import UTC, datetime
 from typing import ClassVar
 
 from fastapi import Depends
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from src.core.database import get_session
 from src.core.exceptions import BadRequestException, ConflictException, NotFoundException
-from src.core.utils.date_utils import is_same_academic_year
+from src.core.utils.date_utils import current_academic_year_start, is_same_academic_year
 from src.core.utils.excel_utils import ExcelExporter
 from src.core.utils.query_utils import (
     ListQueryParams,
@@ -78,11 +78,23 @@ class StudentInfoNotProvidedException(BadRequestException):
         super().__init__("Student must provide contact information before registering a party")
 
 
+_IS_REGISTERED_EXPR = case(
+    (
+        and_(
+            StudentEntity.last_registered.isnot(None),
+            StudentEntity.last_registered >= current_academic_year_start(),
+        ),
+        True,
+    ),
+    else_=False,
+)
+
 _STUDENT_QUERY_FIELDS = QueryFieldSet(
     fields={
         "phone_number": StudentEntity.phone_number,
         "contact_preference": StudentEntity.contact_preference,
         "last_registered": StudentEntity.last_registered,
+        "is_registered": _IS_REGISTERED_EXPR,
         "id": AccountEntity.id,
         "first_name": AccountEntity.first_name,
         "last_name": AccountEntity.last_name,
@@ -211,7 +223,6 @@ class StudentService:
         result = await self.query_service.get_paginated(
             params=params,
             base_query=base_query,
-            dto_converter=lambda entity: entity.to_dto(),
             field_set=_STUDENT_QUERY_FIELDS,
         )
         return PaginatedStudentsResponse(**result.model_dump())

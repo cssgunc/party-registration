@@ -21,7 +21,7 @@ import {
 import { LocationDto } from "@/lib/api/location/location.types";
 import {
   DEFAULT_TABLE_PARAMS,
-  ServerColumnMap,
+  FilterValue,
   ServerTableParams,
 } from "@/lib/api/shared/query-params";
 import { formatTime } from "@/lib/utils";
@@ -69,29 +69,6 @@ function truncateDescription(
   if (description.length <= limit) return description;
   return description.substring(0, limit) + "...";
 }
-
-const SERVER_COLUMN_MAP: ServerColumnMap = {
-  location: {
-    backendField: "location.formatted_address",
-    filterOperator: "contains",
-  },
-  incident_date: {
-    backendField: "incident_datetime",
-    filterOperator: "dateRange",
-  },
-  severity: {
-    backendField: "severity",
-    filterOperator: "eq",
-  },
-  reference_id: {
-    backendField: "reference_id",
-    filterOperator: "contains",
-  },
-  description: {
-    backendField: "description",
-    filterOperator: "contains",
-  },
-};
 
 export const IncidentTable = () => {
   const { openSidebar, closeSidebar } = useSidebar();
@@ -253,7 +230,7 @@ export const IncidentTable = () => {
       header: "Address",
       enableColumnFilter: true,
       meta: {
-        filterType: "text",
+        filter: { type: "text", backendField: "location.formatted_address" },
       },
       cell: ({ row }) => {
         const location = locationById.get(row.original.location_id);
@@ -276,9 +253,7 @@ export const IncidentTable = () => {
       accessorFn: (row) => format(row.incident_datetime, "MM-dd-yyyy"),
       header: "Date",
       enableColumnFilter: true,
-      meta: {
-        filterType: "dateRange",
-      },
+      meta: { filter: { type: "datetime", backendField: "incident_datetime" } },
       cell: ({ row }) => {
         const date = row.original.incident_datetime;
         return date.toLocaleDateString();
@@ -289,25 +264,22 @@ export const IncidentTable = () => {
       accessorFn: (row) => format(row.incident_datetime, "HH:mm"),
       header: "Time",
       enableColumnFilter: true,
-      meta: {
-        filterType: "time",
-        filterMode: "client",
-      },
+      meta: { filter: { type: "time" }, filterMode: "client" },
       cell: ({ row }) => {
         const date = new Date(row.original.incident_datetime);
         return formatTime(date);
       },
       filterFn: (row, _columnId, filterValue) => {
         if (!filterValue) return true;
-
+        const { operator, value } = filterValue as FilterValue;
+        if (!value) return true;
         const date = new Date(row.original.incident_datetime);
-        const [filterHours, filterMinutes] = String(filterValue)
-          .split(":")
-          .map(Number);
-
-        return (
-          date.getHours() === filterHours && date.getMinutes() === filterMinutes
-        );
+        const rowTime = `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+        const fv = String(value);
+        if (operator === "eq") return rowTime === fv;
+        if (operator === "gte") return rowTime >= fv;
+        if (operator === "lte") return rowTime <= fv;
+        return true;
       },
     },
     {
@@ -315,8 +287,11 @@ export const IncidentTable = () => {
       header: "Severity",
       enableColumnFilter: true,
       meta: {
-        filterType: "select",
-        selectOptions: ["remote_warning", "in_person_warning", "citation"],
+        filter: {
+          type: "select",
+          backendField: "severity",
+          selectOptions: ["remote_warning", "in_person_warning", "citation"],
+        },
       },
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
@@ -335,12 +310,14 @@ export const IncidentTable = () => {
       accessorKey: "reference_id",
       header: "Reference ID",
       enableColumnFilter: true,
+      meta: { filter: { type: "text", backendField: "reference_id" } },
       cell: ({ row }) => row.original.reference_id || "-",
     },
     {
       accessorKey: "description",
       header: "Description",
       enableColumnFilter: true,
+      meta: { filter: { type: "text", backendField: "description" } },
       cell: ({ row }) => {
         const description = row.original.description;
         if (!description) {
@@ -391,7 +368,6 @@ export const IncidentTable = () => {
             : undefined
         }
         onStateChange={setServerParams}
-        columnMap={SERVER_COLUMN_MAP}
         onExportCsv={exportCsv}
         isExporting={isExporting}
       />

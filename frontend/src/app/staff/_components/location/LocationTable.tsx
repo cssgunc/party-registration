@@ -11,7 +11,6 @@ import {
 import { LocationCreate, LocationDto } from "@/lib/api/location/location.types";
 import {
   DEFAULT_TABLE_PARAMS,
-  ServerColumnMap,
   ServerTableParams,
 } from "@/lib/api/shared/query-params";
 import { ColumnDef } from "@tanstack/react-table";
@@ -33,21 +32,6 @@ const hasLocationChanged = (
     original.google_place_id !== updated.google_place_id ||
     original.hold_expiration !== updated.hold_expiration
   );
-};
-
-const SERVER_COLUMN_MAP: ServerColumnMap = {
-  formatted_address: {
-    backendField: "formatted_address",
-    filterOperator: "contains",
-  },
-  hold_expiration: {
-    backendField: "hold_expiration",
-    filterOperator: "dateRange",
-  },
-  incidents_info_chip: {
-    backendField: "incident_count",
-    filterOperator: "gte",
-  },
 };
 
 export const LocationTable = () => {
@@ -218,10 +202,21 @@ export const LocationTable = () => {
     {
       accessorKey: "formatted_address",
       header: "Address",
+      enableColumnFilter: true,
+      meta: { filter: { type: "text", backendField: "formatted_address" } },
     },
     {
       id: "incidents_info_chip",
+      accessorFn: (row) => row.incidents.length,
       header: "Incidents",
+      enableColumnFilter: true,
+      meta: {
+        filter: {
+          type: "number",
+          backendField: "incident_count",
+          filterLabel: "Incident Count",
+        },
+      },
       cell: ({ row }) => {
         return (
           <div className="flex w-auto">
@@ -244,13 +239,12 @@ export const LocationTable = () => {
           </div>
         );
       },
-      enableColumnFilter: false,
     },
     {
       accessorKey: "hold_expiration",
       header: "Active Hold",
       enableColumnFilter: true,
-      meta: { filterType: "dateRange" },
+      meta: { filter: { type: "date", backendField: "hold_expiration" } },
       cell: ({ row }) => {
         const holdDate = row.getValue("hold_expiration") as Date | null;
         if (holdDate) {
@@ -288,7 +282,6 @@ export const LocationTable = () => {
             : undefined
         }
         onStateChange={setServerParams}
-        columnMap={SERVER_COLUMN_MAP}
         onExportCsv={exportCsv}
         isExporting={isExporting}
       />

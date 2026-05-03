@@ -188,7 +188,9 @@ class SortParam(BaseModel):
         return cls(field=sort_by, order=sort_order)
 
 
-def _parse_filter_value(value: str) -> int | datetime | str:
+def _parse_filter_value(value: str) -> bool | int | datetime | str:
+    if value.lower() in ("true", "false"):
+        return value.lower() == "true"
     with suppress(ValueError):
         return int(value)
     with suppress(ValueError):
@@ -427,7 +429,7 @@ class QueryService:
         self,
         params: ListQueryParams,
         base_query: Select,
-        dto_converter: Callable[[Any], ModelType],
+        dto_converter: Callable[[Any], ModelType] = lambda entity: entity.to_dto(),
         *,
         field_set: QueryFieldSet,
         use_mappings: bool = False,

@@ -180,7 +180,6 @@ class LocationService:
         result = await self.query_service.get_paginated(
             params=params,
             base_query=base_query,
-            dto_converter=lambda entity: entity.to_dto(),
             field_set=_LOCATION_QUERY_FIELDS,
         )
         return PaginatedLocationResponse(**result.model_dump())
