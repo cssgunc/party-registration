@@ -37,6 +37,7 @@ _POLICE_QUERY_FIELDS = QueryFieldSet(
         "id": PoliceEntity.id,
         "email": PoliceEntity.email,
         "role": PoliceEntity.role,
+        "is_verified": PoliceEntity.is_verified,
     },
     default_sort=SortParam(field="email", order=SortOrder.ASC),
 )
@@ -89,7 +90,6 @@ class PoliceService:
         result = await self.query_service.get_paginated(
             params=params,
             base_query=base_query,
-            dto_converter=lambda entity: entity.to_dto(),
             field_set=_POLICE_QUERY_FIELDS,
         )
         return PaginatedPoliceResponse(**result.model_dump())

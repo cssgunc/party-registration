@@ -3,40 +3,73 @@ import {
   PaginationState,
   SortingState,
 } from "@tanstack/react-table";
-import { endOfDay } from "date-fns";
-import { DateRange } from "react-day-picker";
+import { endOfDay, startOfDay } from "date-fns";
 
-export type ServerColumnConfig =
-  | {
-      backendField: string;
-      filterOperator:
-        | "contains"
-        | "eq"
-        | "gte"
-        | "lte"
-        | "gt"
-        | "lt"
-        | "nin"
-        | "null"
-        | "notnull";
-    }
-  | { backendField: string; filterOperator: "dateRange" }
-  | {
-      filterOperator: "splitName";
-      firstNameField: string;
-      lastNameField: string;
-      sortField?: string;
-    };
+export type FilterColumnType =
+  | "text"
+  | "select"
+  | "number"
+  | "date"
+  | "datetime"
+  | "time";
 
-function isDateRange(value: unknown): value is DateRange {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    ("from" in value || "to" in value)
-  );
+export type FilterOperator =
+  | "contains"
+  | "eq"
+  | "ne"
+  | "gte"
+  | "lte"
+  | "between"
+  | "null"
+  | "notnull"
+  | "in"
+  | "nin";
+
+export type FilterValue = { operator: FilterOperator; value: unknown };
+
+export type ColumnFilterMeta = {
+  type: FilterColumnType;
+  backendField?: string;
+  filterField?: string;
+  nullable?: boolean;
+  selectOptions?: string[];
+  filterLabel?: string;
+  operatorLabels?: Partial<Record<FilterOperator, string>>;
+};
+
+export type ServerColumnMap = Record<string, ColumnFilterMeta>;
+
+export const OPERATORS_BY_TYPE: Record<FilterColumnType, FilterOperator[]> = {
+  text: ["contains", "eq", "ne"],
+  select: ["eq", "ne", "in", "nin"],
+  number: ["eq", "ne", "gte", "lte"],
+  date: ["eq", "gte", "lte", "between"],
+  datetime: ["gte", "lte", "between"],
+  time: ["eq", "gte", "lte", "between"],
+};
+
+export const OPERATOR_LABELS: Record<FilterOperator, string> = {
+  contains: "Contains",
+  eq: "Equals",
+  ne: "Not equals",
+  gte: "Greater than",
+  lte: "Less than",
+  between: "Between",
+  null: "Is empty",
+  notnull: "Is not empty",
+  in: "Is one of",
+  nin: "Is not one of",
+};
+
+export const OPERATOR_LABELS_DATE: Partial<Record<FilterOperator, string>> = {
+  gte: "After",
+  lte: "Before",
+};
+
+export function getColumnOperators(config: ColumnFilterMeta): FilterOperator[] {
+  const base = OPERATORS_BY_TYPE[config.type];
+  return config.nullable ? [...base, "null", "notnull"] : base;
 }
-
-export type ServerColumnMap = Record<string, ServerColumnConfig>;
 
 export type ListQueryParams = {
   page_number: number;
@@ -56,25 +89,21 @@ export function buildServerTableParams(
   columnMap: ServerColumnMap,
   search?: string
 ): ServerTableParams {
+  const normalizedSearch = search?.trim();
+
   const params: ServerTableParams = {
     page_number: pagination.pageIndex + 1,
     page_size: pagination.pageSize,
     filters: {},
-    ...(search ? { search } : {}),
+    ...(normalizedSearch ? { search: normalizedSearch } : {}),
   };
 
   if (sorting.length > 0) {
     const sort = sorting[0];
     const config = columnMap[sort.id];
-    if (config) {
-      const sortField =
-        config.filterOperator === "splitName"
-          ? config.sortField
-          : config.backendField;
-      if (sortField) {
-        params.sort_by = sortField;
-        params.sort_order = sort.desc ? "desc" : "asc";
-      }
+    if (config?.backendField) {
+      params.sort_by = config.backendField;
+      params.sort_order = sort.desc ? "desc" : "asc";
     }
   }
 
@@ -82,42 +111,57 @@ export function buildServerTableParams(
     const config = columnMap[filter.id];
     if (!config || filter.value == null || filter.value === "") continue;
 
-    if (config.filterOperator === "splitName") {
-      const value = String(filter.value).trim();
-      if (!value) continue;
-      const spaceIndex = value.indexOf(" ");
-      if (spaceIndex === -1) {
-        params.filters[`${config.firstNameField}_contains`] = value;
-      } else {
-        params.filters[`${config.firstNameField}_contains`] = value.slice(
-          0,
-          spaceIndex
-        );
-        params.filters[`${config.lastNameField}_contains`] = value.slice(
-          spaceIndex + 1
-        );
+    const field = config.filterField ?? config.backendField;
+    if (!field) continue;
+    const { operator, value } = filter.value as FilterValue;
+    if (!operator) continue;
+
+    const isDateLike = config.type === "date" || config.type === "datetime";
+    if (
+      operator !== "null" &&
+      operator !== "notnull" &&
+      (value == null || value === "")
+    )
+      continue;
+
+    switch (operator) {
+      case "null":
+      case "notnull":
+        params.filters[`${field}_${operator}`] = "1";
+        break;
+      case "between": {
+        const range = value as { from?: unknown; to?: unknown };
+        if (range?.from != null) {
+          params.filters[`${field}_gte`] = isDateLike
+            ? new Date(range.from as string | Date).toISOString()
+            : String(range.from);
+        }
+        if (range?.to != null) {
+          params.filters[`${field}_lte`] = isDateLike
+            ? endOfDay(new Date(range.to as string | Date)).toISOString()
+            : String(range.to);
+        }
+        break;
       }
-    } else if (config.filterOperator === "dateRange") {
-      if (!isDateRange(filter.value)) continue;
-      const range = filter.value;
-      if (range.from) {
-        params.filters[`${config.backendField}_gte`] = range.from.toISOString();
+      case "in":
+      case "nin": {
+        const values = Array.isArray(value) ? value : [value];
+        params.filters[`${field}_${operator}`] = values.join(",");
+        break;
       }
-      if (range.to) {
-        params.filters[`${config.backendField}_lte`] = endOfDay(
-          range.to
-        ).toISOString();
-      }
-    } else if (config.filterOperator === "eq") {
-      params.filters[config.backendField] = String(filter.value);
-    } else if (
-      config.filterOperator === "null" ||
-      config.filterOperator === "notnull"
-    ) {
-      params.filters[`${config.backendField}_${config.filterOperator}`] = "1";
-    } else {
-      params.filters[`${config.backendField}_${config.filterOperator}`] =
-        String(filter.value);
+      case "eq":
+        if (isDateLike) {
+          const date = new Date(value as string | Date);
+          params.filters[`${field}_gte`] = startOfDay(date).toISOString();
+          params.filters[`${field}_lte`] = endOfDay(date).toISOString();
+        } else {
+          params.filters[`${field}_${operator}`] = String(value);
+        }
+        break;
+      default:
+        params.filters[`${field}_${operator}`] = isDateLike
+          ? new Date(value as string | Date).toISOString()
+          : String(value);
     }
   }
 

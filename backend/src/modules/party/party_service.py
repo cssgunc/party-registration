@@ -3,7 +3,7 @@ from datetime import UTC, datetime, timedelta
 from typing import ClassVar
 
 from fastapi import Depends
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -51,6 +51,9 @@ _PARTY_QUERY_FIELDS = QueryFieldSet(
         "contact_one.id": PartyEntity.contact_one_id,
         "contact_one.first_name": AccountEntity.first_name,
         "contact_one.last_name": AccountEntity.last_name,
+        "contact_one.full_name": func.concat(
+            AccountEntity.first_name, " ", AccountEntity.last_name
+        ),
         "contact_one.email": AccountEntity.email,
         "contact_one.phone_number": StudentEntity.phone_number,
         "contact_one.onyen": AccountEntity.onyen,
@@ -60,6 +63,9 @@ _PARTY_QUERY_FIELDS = QueryFieldSet(
         "contact_two.email": PartyEntity.contact_two_email,
         "contact_two.first_name": PartyEntity.contact_two_first_name,
         "contact_two.last_name": PartyEntity.contact_two_last_name,
+        "contact_two.full_name": func.concat(
+            PartyEntity.contact_two_first_name, " ", PartyEntity.contact_two_last_name
+        ),
         "contact_two.phone_number": PartyEntity.contact_two_phone_number,
         "contact_two.contact_preference": PartyEntity.contact_two_contact_preference,
         "location.id": PartyEntity.location_id,
@@ -70,17 +76,13 @@ _PARTY_QUERY_FIELDS = QueryFieldSet(
     searchable=(
         "location.formatted_address",
         "location.google_place_id",
-        "contact_one.first_name",
-        "contact_one.last_name",
-        ("contact_one.first_name", "contact_one.last_name"),
+        "contact_one.full_name",
         "contact_one.email",
         "contact_one.onyen",
         "contact_one.pid",
         "contact_one.phone_number",
+        "contact_two.full_name",
         "contact_two.email",
-        "contact_two.first_name",
-        "contact_two.last_name",
-        ("contact_two.first_name", "contact_two.last_name"),
         "contact_two.phone_number",
     ),
     default_sort=SortParam(field="party_datetime", order=SortOrder.ASC),
@@ -298,7 +300,6 @@ class PartyService:
         result = await self.query_service.get_paginated(
             params=params,
             base_query=base_query,
-            dto_converter=lambda entity: entity.to_dto(),
             field_set=_PARTY_QUERY_FIELDS,
         )
         return PaginatedPartiesResponse(**result.model_dump())

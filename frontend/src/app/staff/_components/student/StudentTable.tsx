@@ -5,7 +5,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useSnackbar } from "@/contexts/SnackbarContext";
 import {
   DEFAULT_TABLE_PARAMS,
-  ServerColumnMap,
   ServerTableParams,
 } from "@/lib/api/shared/query-params";
 import {
@@ -68,21 +67,6 @@ const getErrorMessage = (error: Error): string => {
     if (error.message) return error.message;
   }
   return "Operation failed";
-};
-
-const SERVER_COLUMN_MAP: ServerColumnMap = {
-  onyen: { backendField: "onyen", filterOperator: "contains" },
-  pid: { backendField: "pid", filterOperator: "contains" },
-  first_name: { backendField: "first_name", filterOperator: "contains" },
-  last_name: { backendField: "last_name", filterOperator: "contains" },
-  email: { backendField: "email", filterOperator: "contains" },
-  phone_number: { backendField: "phone_number", filterOperator: "contains" },
-  contact_preference: {
-    backendField: "contact_preference",
-    filterOperator: "eq",
-  },
-  residence: { backendField: "residence", filterOperator: "contains" },
-  last_registered: { backendField: "last_registered", filterOperator: "gte" },
 };
 
 export const StudentTable = () => {
@@ -166,26 +150,31 @@ export const StudentTable = () => {
       accessorKey: "onyen",
       header: "Onyen",
       enableColumnFilter: true,
+      meta: { filter: { type: "text", backendField: "onyen" } },
     },
     {
       accessorKey: "pid",
       header: "PID",
       enableColumnFilter: true,
+      meta: { filter: { type: "text", backendField: "pid" } },
     },
     {
       accessorKey: "first_name",
       header: "First Name",
       enableColumnFilter: true,
+      meta: { filter: { type: "text", backendField: "first_name" } },
     },
     {
       accessorKey: "last_name",
       header: "Last Name",
       enableColumnFilter: true,
+      meta: { filter: { type: "text", backendField: "last_name" } },
     },
     {
       accessorKey: "email",
       header: "Email",
       enableColumnFilter: true,
+      meta: { filter: { type: "text", backendField: "email" } },
     },
     {
       accessorKey: "phone_number",
@@ -197,14 +186,18 @@ export const StudentTable = () => {
           ? `(${number.slice(0, 3)}) ${number.slice(3, 6)}-${number.slice(6, 10)}`
           : "—";
       },
+      meta: { filter: { type: "text", backendField: "phone_number" } },
     },
     {
       accessorKey: "contact_preference",
       header: "Call/Text",
       enableColumnFilter: true,
       meta: {
-        filterType: "select",
-        selectOptions: ["call", "text"],
+        filter: {
+          type: "select",
+          backendField: "contact_preference",
+          selectOptions: ["Call", "Text"],
+        },
       },
       cell: ({ row }) => {
         const preference =
@@ -215,8 +208,12 @@ export const StudentTable = () => {
     },
     {
       id: "residence",
+      accessorFn: (row) => row.residence?.location?.formatted_address ?? "",
       header: "Residence",
-      enableColumnFilter: false,
+      enableColumnFilter: true,
+      meta: {
+        filter: { type: "text", backendField: "residence", nullable: true },
+      },
       cell: ({ row }) => {
         const student = row.original;
         const hasValidResidence =
@@ -243,7 +240,15 @@ export const StudentTable = () => {
     {
       accessorKey: "last_registered",
       header: "Is Registered",
-      enableColumnFilter: false,
+      enableColumnFilter: true,
+      meta: {
+        filter: {
+          type: "select",
+          backendField: "last_registered",
+          filterField: "is_registered",
+          selectOptions: ["True", "False"],
+        },
+      },
       cell: ({ row }) => {
         const student = row.original;
         const isRegistered = isFromThisSchoolYear(student.last_registered);
@@ -289,7 +294,6 @@ export const StudentTable = () => {
             : undefined
         }
         onStateChange={setServerParams}
-        columnMap={SERVER_COLUMN_MAP}
         onExportCsv={exportCsv}
         isExporting={isExporting}
       />

@@ -19,13 +19,13 @@ import type {
   CreateInviteDto,
   InviteTokenRole,
 } from "@/lib/api/account/account.types";
+import { ACCOUNT_ROLES } from "@/lib/api/account/account.types";
 import type {
   PoliceAccountUpdate,
   PoliceRole,
 } from "@/lib/api/police/police.types";
 import {
   DEFAULT_TABLE_PARAMS,
-  ServerColumnMap,
   ServerTableParams,
 } from "@/lib/api/shared/query-params";
 import { formatRoleLabel } from "@/lib/utils";
@@ -47,15 +47,17 @@ type AccountTableFormValues = z.infer<typeof accountTableFormSchema>;
 const isPoliceRow = (row: AggregateAccountDto) =>
   row.role === "officer" || row.role === "police_admin";
 
-const SERVER_COLUMN_MAP: ServerColumnMap = {
-  email: { backendField: "email", filterOperator: "contains" },
-  first_name: { backendField: "first_name", filterOperator: "contains" },
-  last_name: { backendField: "last_name", filterOperator: "contains" },
-  onyen: { backendField: "onyen", filterOperator: "contains" },
-  pid: { backendField: "pid", filterOperator: "contains" },
-  role: { backendField: "role", filterOperator: "eq" },
-  status: { backendField: "status", filterOperator: "eq" },
-};
+const ACCOUNT_ROLE_FILTER_OPTIONS = [
+  ...ACCOUNT_ROLES,
+  "officer",
+  "police_admin",
+] as const;
+
+const ACCOUNT_STATUS_FILTER_OPTIONS = [
+  "active",
+  "unverified",
+  "invited",
+] as const;
 
 const getErrorMessage = (error: Error): string => {
   if (isAxiosError(error)) {
@@ -305,41 +307,64 @@ export const AccountTable = () => {
       accessorKey: "email",
       header: "Email",
       enableColumnFilter: true,
+      meta: { filter: { type: "text", backendField: "email" } },
     },
     {
       accessorKey: "first_name",
       header: "First Name",
       enableColumnFilter: true,
+      meta: {
+        filter: { type: "text", backendField: "first_name", nullable: true },
+      },
       cell: ({ row }) => row.original.first_name ?? "—",
     },
     {
       accessorKey: "last_name",
       header: "Last Name",
       enableColumnFilter: true,
+      meta: {
+        filter: { type: "text", backendField: "last_name", nullable: true },
+      },
       cell: ({ row }) => row.original.last_name ?? "—",
     },
     {
       accessorKey: "onyen",
       header: "Onyen",
       enableColumnFilter: true,
+      meta: { filter: { type: "text", backendField: "onyen", nullable: true } },
       cell: ({ row }) => row.original.onyen ?? "—",
     },
     {
       accessorKey: "pid",
       header: "PID",
       enableColumnFilter: true,
+      meta: { filter: { type: "text", backendField: "pid", nullable: true } },
       cell: ({ row }) => row.original.pid ?? "—",
     },
     {
       accessorKey: "role",
       header: "Role",
       enableColumnFilter: true,
+      meta: {
+        filter: {
+          type: "select",
+          backendField: "role",
+          selectOptions: [...ACCOUNT_ROLE_FILTER_OPTIONS],
+        },
+      },
       cell: ({ row }) => formatRoleLabel(row.getValue("role")),
     },
     {
       accessorKey: "status",
       header: "Status",
       enableColumnFilter: true,
+      meta: {
+        filter: {
+          type: "select",
+          backendField: "status",
+          selectOptions: [...ACCOUNT_STATUS_FILTER_OPTIONS],
+        },
+      },
       cell: ({ row }) => {
         const status = row.getValue("status") as AggregateAccountDto["status"];
         return status.charAt(0).toUpperCase() + status.slice(1);
@@ -393,7 +418,6 @@ export const AccountTable = () => {
             : undefined
         }
         onStateChange={setServerParams}
-        columnMap={SERVER_COLUMN_MAP}
         onExportCsv={exportCsv}
         isExporting={isExporting}
       />

@@ -11,7 +11,6 @@ import { useDownloadPartiesCsv } from "@/lib/api/party/party.queries";
 import { AdminCreatePartyDto, PartyDto } from "@/lib/api/party/party.types";
 import {
   DEFAULT_TABLE_PARAMS,
-  ServerColumnMap,
   ServerTableParams,
 } from "@/lib/api/shared/query-params";
 import { formatTime } from "@/lib/utils";
@@ -43,29 +42,6 @@ const hasPartyChanged = (
     original.contact_two.contact_preference !==
       updated.contact_two.contact_preference
   );
-};
-
-const SERVER_COLUMN_MAP: ServerColumnMap = {
-  location: {
-    backendField: "location.formatted_address",
-    filterOperator: "contains",
-  },
-  party_datetime: {
-    backendField: "party_datetime",
-    filterOperator: "dateRange",
-  },
-  contact_one: {
-    filterOperator: "splitName",
-    firstNameField: "contact_one.first_name",
-    lastNameField: "contact_one.last_name",
-    sortField: "contact_one.first_name",
-  },
-  contact_two: {
-    filterOperator: "splitName",
-    firstNameField: "contact_two.first_name",
-    lastNameField: "contact_two.last_name",
-    sortField: "contact_two.first_name",
-  },
 };
 
 const getErrorMessage = (error: Error): string => {
@@ -269,7 +245,9 @@ export const PartyTable = () => {
       accessorFn: (row) => row.location.formatted_address,
       header: "Address",
       enableColumnFilter: true,
-      meta: { filterType: "text" },
+      meta: {
+        filter: { type: "text", backendField: "location.formatted_address" },
+      },
       cell: ({ row }) => {
         const location = row.original.location;
         if (!location) return "—";
@@ -289,7 +267,7 @@ export const PartyTable = () => {
       accessorFn: (row) => format(row.party_datetime, "MM-dd-yyyy"),
       header: "Date",
       enableColumnFilter: true,
-      meta: { filterType: "dateRange" },
+      meta: { filter: { type: "datetime", backendField: "party_datetime" } },
       cell: ({ row }) => {
         const date = new Date(row.original.party_datetime);
         return date.toLocaleDateString();
@@ -300,7 +278,7 @@ export const PartyTable = () => {
       accessorFn: (row) => format(row.party_datetime, "HH:mm"),
       header: "Time",
       enableColumnFilter: true,
-      meta: { filterType: "time", filterMode: "client" },
+      meta: { filter: { type: "time" }, filterMode: "client" },
       cell: ({ row }) => {
         const date = new Date(row.original.party_datetime);
         return formatTime(date);
@@ -312,7 +290,12 @@ export const PartyTable = () => {
         `${row.contact_one.first_name} ${row.contact_one.last_name}`,
       header: "Contact One",
       enableColumnFilter: true,
-      meta: { filterType: "text" },
+      meta: {
+        filter: {
+          type: "text",
+          backendField: "contact_one.full_name",
+        },
+      },
       cell: ({ row }) => {
         const contact = row.original.contact_one;
         return contact ? (
@@ -334,7 +317,12 @@ export const PartyTable = () => {
         `${row.contact_two.first_name} ${row.contact_two.last_name}`,
       header: "Contact Two",
       enableColumnFilter: true,
-      meta: { filterType: "text" },
+      meta: {
+        filter: {
+          type: "text",
+          backendField: "contact_two.full_name",
+        },
+      },
       cell: ({ row }) => {
         const contact = row.original.contact_two;
         const partyId = row.original.id;
@@ -381,7 +369,6 @@ export const PartyTable = () => {
             : undefined
         }
         onStateChange={setServerParams}
-        columnMap={SERVER_COLUMN_MAP}
         onExportCsv={exportCsv}
         isExporting={isExporting}
       />

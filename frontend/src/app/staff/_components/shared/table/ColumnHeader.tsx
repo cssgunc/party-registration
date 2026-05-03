@@ -36,15 +36,17 @@ export function ColumnHeader<T>({
           <Button
             variant="ghost"
             size="sm"
-            className={cn(
-              "-ml-3 h-8 data-[state=open]:bg-accent",
-              isFiltered ? "bg-card" : ""
-            )}
+            className="-ml-3 h-8 data-[state=open]:bg-accent"
           >
             <span>{title}</span>
-            {isSorted === "asc" && <ArrowUp className="ml-2 h-4 w-4" />}
-            {isSorted === "desc" && <ArrowDown className="ml-2 h-4 w-4" />}
-            {!isSorted && <ChevronDown className="ml-2 h-4 w-4" />}
+            {isFiltered && (
+              <span className="ml-1 size-2 rounded-full bg-primary shrink-0" />
+            )}
+            <div className={cn("size-4", !isFiltered && "ml-2")}>
+              {isSorted === "asc" && <ArrowUp />}
+              {isSorted === "desc" && <ArrowDown />}
+              {!isSorted && <ChevronDown />}
+            </div>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
@@ -54,7 +56,7 @@ export function ColumnHeader<T>({
               setOpen(false);
             }}
           >
-            <ArrowUp className="mr-2 h-4 w-4" />
+            <ArrowUp className="mr-2 size-4" />
             Sort Ascending
             {isSorted === "asc" && (
               <span className="ml-auto text-primary">✓</span>
@@ -66,7 +68,7 @@ export function ColumnHeader<T>({
               setOpen(false);
             }}
           >
-            <ArrowDown className="mr-2 h-4 w-4" />
+            <ArrowDown className="mr-2 size-4" />
             Sort Descending
             {isSorted === "desc" && (
               <span className="ml-auto text-primary">✓</span>
@@ -75,7 +77,16 @@ export function ColumnHeader<T>({
           {canFilter && (
             <>
               <DropdownMenuSeparator />
-              {isFiltered ? (
+              <DropdownMenuItem
+                onClick={() => {
+                  setOpen(false);
+                  onFilterClick?.();
+                }}
+              >
+                <Filter className="mr-2 size-4" />
+                {isFiltered ? "Edit Filter" : "Add Filter"}
+              </DropdownMenuItem>
+              {isFiltered && (
                 <DropdownMenuItem
                   onClick={() => {
                     column.setFilterValue(undefined);
@@ -83,18 +94,8 @@ export function ColumnHeader<T>({
                   }}
                   className="text-destructive"
                 >
-                  <X className="mr-2 h-4 w-4" />
+                  <X className="mr-2 size-4" />
                   Clear Filter
-                </DropdownMenuItem>
-              ) : (
-                <DropdownMenuItem
-                  onClick={() => {
-                    setOpen(false);
-                    onFilterClick?.();
-                  }}
-                >
-                  <Filter className="mr-2 h-4 w-4" />
-                  Add Filter
                 </DropdownMenuItem>
               )}
             </>

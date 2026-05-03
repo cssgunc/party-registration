@@ -3,7 +3,7 @@
 import DatePicker from "@/components/DatePicker";
 import DateRangeFilter from "@/components/DateRangeFilter";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -14,256 +14,305 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  FilterOperator,
+  FilterValue,
+  OPERATOR_LABELS,
+  OPERATOR_LABELS_DATE,
+  getColumnOperators,
+} from "@/lib/api/shared/query-params";
 import { Column } from "@tanstack/react-table";
-import { X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { DateRange } from "react-day-picker";
 
 interface FilterInputProps<T> {
   column: Column<T, unknown> | null;
   onClose: () => void;
-  filterType?: "text" | "date" | "dateRange" | "time" | "select";
-  selectOptions?: string[];
 }
 
-export function FilterInput<T>({
-  column,
-  onClose,
-  filterType = "text",
-  selectOptions = [],
-}: FilterInputProps<T>) {
-  const [dateRange, setDateRange] = useState<DateRange | undefined>();
-  const [timeValue, setTimeValue] = useState("");
-  const [textValue, setTextValue] = useState(
-    (column?.getFilterValue() as string) ?? ""
-  );
-  const filterValue = column?.getFilterValue();
+function formatSelectOptionLabel(option: string): string {
+  return option
+    .split(/[_-]/g)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+export function FilterInput<T>({ column, onClose }: FilterInputProps<T>) {
+  const filterMeta = column?.columnDef.meta?.filter;
+  const existingValue = column?.getFilterValue();
+
+  const availableOperators = filterMeta ? getColumnOperators(filterMeta) : [];
+
+  const defaultOperator = availableOperators[0] ?? "contains";
+
+  const [operator, setOperator] = useState<FilterOperator>(() => {
+    const existing = existingValue as FilterValue | undefined;
+    return existing?.operator ?? defaultOperator;
+  });
+
+  const [inputValue, setInputValue] = useState<unknown>(() => {
+    const existing = existingValue as FilterValue | undefined;
+    return existing?.value ?? undefined;
+  });
 
   useEffect(() => {
     if (!column) return;
-    if (filterType !== "date" && filterType !== "dateRange") return;
+    const existing = existingValue as FilterValue | undefined;
+    const ops = filterMeta ? getColumnOperators(filterMeta) : [];
+    setOperator(existing?.operator ?? ops[0] ?? "contains");
+    setInputValue(existing?.value ?? undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [column?.id]);
 
-    const toDate = (value: unknown): Date | undefined => {
-      if (!value) return undefined;
-      if (value instanceof Date) {
-        return Number.isNaN(value.getTime()) ? undefined : value;
-      }
-      if (typeof value === "string" || typeof value === "number") {
-        const parsed = new Date(value);
-        return Number.isNaN(parsed.getTime()) ? undefined : parsed;
-      }
-      return undefined;
-    };
-
-    const range = filterValue as
-      | { from?: unknown; to?: unknown }
-      | undefined
-      | null;
-
-    if (!range) {
-      setDateRange(undefined);
-      return;
-    }
-
-    setDateRange({
-      from: toDate(range.from),
-      to: toDate(range.to),
-    });
-  }, [column, filterType, filterValue]);
-
-  if (!column) {
+  if (!column || !filterMeta) {
     return (
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            Filter Options
-            <Button variant="ghost" size="sm" onClick={onClose}>
-              <X className="h-4 w-4" />
-            </Button>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Click &quot;Add Filter&quot; on a column to set up filtering
-          </p>
-        </CardContent>
-      </Card>
+      <div className="space-y-4 p-4">
+        <p className="text-sm text-muted-foreground">
+          This column does not support filtering.
+        </p>
+      </div>
     );
   }
 
-  const handleDateRangeApply = () => {
-    if (dateRange?.from || dateRange?.to) {
-      column.setFilterValue(dateRange);
-    }
-    onClose();
-  };
+  const colType = filterMeta.type;
 
-  const handleTimeApply = () => {
-    if (timeValue) {
-      column.setFilterValue(timeValue);
+  const handleApply = () => {
+    if (operator === "null" || operator === "notnull") {
+      column.setFilterValue({ operator, value: null } satisfies FilterValue);
+    } else {
+      const val = inputValue;
+      if (val == null || val === "") {
+        column.setFilterValue(undefined);
+      } else {
+        column.setFilterValue({ operator, value: val } satisfies FilterValue);
+      }
     }
-    onClose();
-  };
-
-  const handleTextApply = () => {
-    column.setFilterValue(textValue || undefined);
     onClose();
   };
 
   const handleClear = () => {
     column.setFilterValue(undefined);
-    setDateRange(undefined);
-    setTimeValue("");
-    setTextValue("");
+    setInputValue(undefined);
+    setOperator(availableOperators[0] ?? "contains");
     onClose();
   };
 
-  // Render based on filter type
-  const renderFilterInput = () => {
-    switch (filterType) {
-      case "dateRange":
-        return (
-          <div className="space-y-4 p-4">
-            <div className="space-y-2">
-              <Label>Date Range</Label>
-              <DateRangeFilter
-                startDate={dateRange?.from}
-                endDate={dateRange?.to}
-                onStartDateChange={(date) =>
-                  setDateRange((prev) => ({ from: date, to: prev?.to }))
-                }
-                onEndDateChange={(date) =>
-                  setDateRange((prev) => ({ from: prev?.from, to: date }))
-                }
-                clearable
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={handleClear}>
-                Clear
-              </Button>
-              <Button size="sm" onClick={handleDateRangeApply}>
-                Apply
-              </Button>
-            </div>
-          </div>
-        );
+  const renderValueInput = () => {
+    if (operator === "null" || operator === "notnull") return null;
 
-      case "date":
-        return (
-          <div className="space-y-4 p-4">
-            <div className="space-y-2">
-              <Label>Date</Label>
-              <DatePicker
-                value={dateRange?.from ?? null}
-                onChange={(date) =>
-                  setDateRange(date ? { from: date, to: date } : undefined)
-                }
-                placeholder="Pick a date"
-                dateFormat="LLL dd, y"
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={handleClear}>
-                Clear
-              </Button>
-              <Button size="sm" onClick={handleDateRangeApply}>
-                Apply
-              </Button>
-            </div>
-          </div>
-        );
-
-      case "time":
-        return (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="time-input">Time</Label>
-              <Input
-                id="time-input"
-                type="time"
-                value={timeValue}
-                onChange={(e) => setTimeValue(e.target.value)}
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={handleClear}>
-                Clear
-              </Button>
-              <Button size="sm" onClick={handleTimeApply}>
-                Apply
-              </Button>
-            </div>
-          </div>
-        );
-
-      case "select":
-        return (
-          <div className="space-y-4 p-4">
-            <div className="space-y-2">
-              <Label>Select Value</Label>
-              <Select
-                value={(filterValue as string) || ""}
-                onValueChange={(value) => column.setFilterValue(value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose an option" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {selectOptions.map((option) => (
-                      <SelectItem key={option} value={option}>
-                        {option}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={handleClear}>
-                Clear
-              </Button>
-              <Button size="sm" onClick={onClose}>
-                Apply
-              </Button>
-            </div>
-          </div>
-        );
-
+    switch (colType) {
       case "text":
-      default:
         return (
-          <div className="space-y-4 p-4">
-            <div className="space-y-2">
-              <Label htmlFor="filter-input">Contains</Label>
+          <Input
+            type="text"
+            placeholder="Type a value..."
+            value={(inputValue as string) ?? ""}
+            onChange={(e) => setInputValue(e.target.value)}
+          />
+        );
+      case "number":
+        return (
+          <Input
+            type="number"
+            placeholder="Enter a number..."
+            value={(inputValue as string) ?? ""}
+            onChange={(e) => setInputValue(e.target.value)}
+          />
+        );
+      case "select": {
+        const options = filterMeta.selectOptions ?? [];
+        if (operator === "in" || operator === "nin") {
+          return (
+            <div className="space-y-1">
+              {options.map((opt) => {
+                const selected = Array.isArray(inputValue)
+                  ? (inputValue as string[]).includes(opt)
+                  : false;
+                return (
+                  <label key={opt} className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      checked={selected}
+                      onCheckedChange={(checked) => {
+                        const prev = Array.isArray(inputValue)
+                          ? (inputValue as string[])
+                          : [];
+                        setInputValue(
+                          checked
+                            ? [...prev, opt]
+                            : prev.filter((v) => v !== opt)
+                        );
+                      }}
+                    />
+                    {formatSelectOptionLabel(opt)}
+                  </label>
+                );
+              })}
+            </div>
+          );
+        }
+        return (
+          <Select
+            value={(inputValue as string) ?? ""}
+            onValueChange={(val) => setInputValue(val)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose an option" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                {options.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {formatSelectOptionLabel(option)}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        );
+      }
+      case "date":
+      case "datetime": {
+        if (operator === "between") {
+          const range = inputValue as DateRange | undefined;
+          return (
+            <DateRangeFilter
+              startDate={range?.from}
+              endDate={range?.to}
+              onStartDateChange={(date) =>
+                setInputValue((prev: unknown) => ({
+                  from: date,
+                  to: (prev as DateRange | undefined)?.to,
+                }))
+              }
+              onEndDateChange={(date) =>
+                setInputValue((prev: unknown) => ({
+                  from: (prev as DateRange | undefined)?.from,
+                  to: date,
+                }))
+              }
+              clearable
+            />
+          );
+        }
+        const toDate = (v: unknown): Date | null => {
+          if (!v) return null;
+          if (v instanceof Date) return v;
+          const d = new Date(v as string);
+          return isNaN(d.getTime()) ? null : d;
+        };
+        return (
+          <DatePicker
+            value={toDate(inputValue)}
+            onChange={(date) => setInputValue(date ?? undefined)}
+            placeholder="Pick a date"
+            dateFormat="LLL dd, y"
+          />
+        );
+      }
+      case "time": {
+        if (operator === "between") {
+          const range = inputValue as
+            | { from?: string; to?: string }
+            | undefined;
+          return (
+            <div className="flex gap-2 items-center">
               <Input
-                id="filter-input"
-                type="text"
-                placeholder="Type a value..."
-                value={textValue}
-                onChange={(e) => setTextValue(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleTextApply();
-                }}
+                type="time"
+                value={range?.from ?? ""}
+                onChange={(e) =>
+                  setInputValue((prev: unknown) => ({
+                    from: e.target.value,
+                    to: (prev as { from?: string; to?: string } | undefined)
+                      ?.to,
+                  }))
+                }
+              />
+              <span className="text-sm text-muted-foreground">to</span>
+              <Input
+                type="time"
+                value={range?.to ?? ""}
+                onChange={(e) =>
+                  setInputValue((prev: unknown) => ({
+                    from: (prev as { from?: string; to?: string } | undefined)
+                      ?.from,
+                    to: e.target.value,
+                  }))
+                }
               />
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={handleClear}>
-                Clear
-              </Button>
-              <Button size="sm" onClick={handleTextApply}>
-                Apply
-              </Button>
-            </div>
-          </div>
+          );
+        }
+        return (
+          <Input
+            type="time"
+            value={(inputValue as string) ?? ""}
+            onChange={(e) => setInputValue(e.target.value)}
+          />
         );
+      }
+      default:
+        return null;
     }
   };
 
+  const showOperatorSelect = availableOperators.length > 1;
+
   return (
-    <div>
-      <div>{renderFilterInput()}</div>
-    </div>
+    <form
+      className="space-y-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        handleApply();
+      }}
+    >
+      {showOperatorSelect && (
+        <div className="space-y-2">
+          <Label>Operator</Label>
+          <Select
+            value={operator}
+            onValueChange={(val) => {
+              setOperator(val as FilterOperator);
+              setInputValue(undefined);
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {availableOperators.map((op) => {
+                const isDateLike =
+                  colType === "date" ||
+                  colType === "datetime" ||
+                  colType === "time";
+                const label =
+                  filterMeta.operatorLabels?.[op] ??
+                  (isDateLike ? OPERATOR_LABELS_DATE[op] : undefined) ??
+                  OPERATOR_LABELS[op];
+                return (
+                  <SelectItem key={op} value={op}>
+                    {label}
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      {operator !== "null" && operator !== "notnull" && (
+        <div className="space-y-2">
+          <Label>{filterMeta.filterLabel || "Value"}</Label>
+          {renderValueInput()}
+        </div>
+      )}
+
+      <div className="flex gap-2 mt-6">
+        <Button type="button" variant="outline" onClick={handleClear}>
+          Clear
+        </Button>
+        <Button type="submit">Apply</Button>
+      </div>
+    </form>
   );
 }
