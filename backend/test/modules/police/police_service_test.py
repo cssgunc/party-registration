@@ -247,16 +247,55 @@ class TestPoliceSignup:
         mock_email_service.send_email.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_signup_duplicate_email_raises_conflict(
+    async def test_signup_duplicate_verified_email_raises_conflict(
         self, mock_email_service: AsyncMock
     ) -> None:
-        """Test signing up with an existing email raises PoliceConflictException."""
-        existing = await self.police_utils.create_one()
+        """Test signing up with an already-verified email raises PoliceConflictException."""
+        existing = await self.police_utils.create_verified_one()
 
         with pytest.raises(PoliceConflictException):
             await self.police_service.signup_police(existing.email, "somepassword")
 
         mock_email_service.send_email.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_signup_duplicate_unverified_email_resends_verification(
+        self, mock_email_service: AsyncMock
+    ) -> None:
+        """Re-signing up with an unverified email should resend verification, not raise."""
+        existing = await self.police_utils.create_one()
+
+        await self.police_service.signup_police(existing.email, self.police_utils.TEST_PASSWORD)
+
+        mock_email_service.send_email.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_signup_duplicate_unverified_email_refreshes_token(
+        self, mock_email_service: AsyncMock
+    ) -> None:
+        """Re-signing up with an unverified email should issue a fresh verification token."""
+        existing = await self.police_utils.create_with_token(token="old_token")
+
+        await self.police_service.signup_police(existing.email, self.police_utils.TEST_PASSWORD)
+
+        all_police = await self.police_utils.get_all()
+        updated = next(p for p in all_police if p.id == existing.id)
+        self.police_utils.assert_unverified(updated)
+        assert updated.verification_token != "old_token"
+
+    @pytest.mark.asyncio
+    async def test_signup_duplicate_unverified_email_updates_password(
+        self, mock_email_service: AsyncMock
+    ) -> None:
+        """Re-signing up with an unverified email should update the stored password."""
+        existing = await self.police_utils.create_one()
+        original_hash = existing.hashed_password
+
+        await self.police_service.signup_police(existing.email, "brand_new_password")
+
+        all_police = await self.police_utils.get_all()
+        updated = next(p for p in all_police if p.id == existing.id)
+        assert updated.hashed_password != original_hash
 
     @pytest.mark.asyncio
     async def test_signup_restricts_to_chpd_domain(self, mock_email_service: AsyncMock) -> None:

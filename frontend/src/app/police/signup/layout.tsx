@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Login",
-  description: "Login",
+  title: "Police Sign Up",
+  description: "Police Sign Up",
 };
 
-export default function StudentLayout({
+export default function PoliceSignupLayout({
   children,
 }: {
   children: React.ReactNode;

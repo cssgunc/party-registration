@@ -2,7 +2,7 @@
 import PartyRegistrationForm, {
   PartyFormInitialValues,
   PartyFormValues,
-} from "@/app/student/_components/PartyRegistrationForm";
+} from "@/app/(student)/_components/PartyRegistrationForm";
 import { Card } from "@/components/ui/card";
 import { useSnackbar } from "@/contexts/SnackbarContext";
 import { useRegisterParty } from "@/lib/api/party/party.queries";
@@ -100,7 +100,7 @@ export default function RegistrationForm() {
         residencePlaceId: hasValidResidence ? undefined : placeId,
       });
       openSnackbar("Party created successfully!", "success");
-      router.push("/student");
+      router.push("/");
     } catch (err) {
       console.log(err);
       openSnackbar("Failed to create party", "error");
@@ -112,19 +112,19 @@ export default function RegistrationForm() {
       <main className="mx-4 mt-4">
         <nav className="flex items-center content pb-2 lg:hidden">
           <ArrowLeft className="h-4" />
-          <Link href="/student">Back</Link>
+          <Link href="/">Back</Link>
         </nav>
         <Card className="mb-12">
           <div>
             <nav className="hidden content lg:flex lg:items-center lg:px-8 lg:py-6">
               <ArrowLeft className="h-4" />
-              <Link href="/student">Back</Link>
+              <Link href="/">Back</Link>
             </nav>
             <div className="px-8 py-6 lg:px-18 lg:py-0 lg:pb-12">
               <h1 className="page-title md:mb-4">Register Party</h1>
 
               <Link
-                href="/student/about-party-smart"
+                href="/about-party-smart"
                 className="flex items-center py-2 md:hidden"
               >
                 <Info className="h-4 mr-1 content" />

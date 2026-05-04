@@ -7,6 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Skeleton } from "@/components/ui/skeleton";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { useCurrentPrincipal } from "@/lib/api/auth/auth.queries";
 import { signOut } from "@/lib/auth/signout";
@@ -14,31 +15,19 @@ import { cn } from "@/lib/utils";
 import { LogOut, Shield, User } from "lucide-react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import PartySmartLogo from "./PartySmartLogo";
 
 export default function Header({ className }: { className?: string }) {
-  const pathname = usePathname();
   const { data: session, status } = useSession();
-  const { data: currentPrincipal } = useCurrentPrincipal({
-    enabled: status === "authenticated",
-  });
+  const { data: currentPrincipal, isPending: isPrincipalPending } =
+    useCurrentPrincipal({
+      enabled: status === "authenticated",
+    });
   const role = session?.role;
-  const displayEmail = currentPrincipal?.email ?? session?.user?.email ?? null;
-  const displayName =
-    currentPrincipal?.principal_type === "account"
-      ? [currentPrincipal.first_name, currentPrincipal.last_name]
-          .filter(Boolean)
-          .join(" ")
-          .trim() || currentPrincipal.email
-      : currentPrincipal?.email ||
-        session?.user?.name ||
-        displayEmail ||
-        "User";
-
-  if (pathname.startsWith("/login")) {
-    return null;
-  }
+  const isAccount = currentPrincipal?.principal_type === "account";
+  const firstName = isAccount ? currentPrincipal.first_name : undefined;
+  const lastName = isAccount ? currentPrincipal.last_name : undefined;
+  const email = currentPrincipal?.email ?? session?.user?.email ?? null;
 
   return (
     <div
@@ -49,34 +38,28 @@ export default function Header({ className }: { className?: string }) {
     >
       <PartySmartLogo />
 
-      {status === "authenticated" ? (
+      {status === "loading" ||
+      (status === "authenticated" && isPrincipalPending) ? (
+        <Skeleton className="size-10 shrink-0 rounded-full" />
+      ) : status === "authenticated" ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
               className="cursor-pointer rounded-full"
-              aria-label={`Open user menu for ${displayName}`}
+              aria-label="Open user menu"
             >
               <UserAvatar
-                firstName={
-                  currentPrincipal?.principal_type === "account"
-                    ? currentPrincipal.first_name
-                    : undefined
-                }
-                lastName={
-                  currentPrincipal?.principal_type === "account"
-                    ? currentPrincipal.last_name
-                    : undefined
-                }
-                name={displayName}
-                email={displayEmail}
+                firstName={firstName}
+                lastName={lastName}
+                email={email}
               />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-60" align="end">
             {role === "student" && (
-              <Link href="/student/profile">
+              <Link href="/profile">
                 <DropdownMenuItem>
                   <User className="size-4" />
                   <span>Edit Profile Information</span>
@@ -92,18 +75,21 @@ export default function Header({ className }: { className?: string }) {
               </Link>
             )}
             <DropdownMenuItem
-              onClick={() => signOut({ callbackUrl: "/login" })}
+              onClick={() =>
+                signOut({
+                  callbackUrl:
+                    role === "officer" || role === "police_admin"
+                      ? "/police/login"
+                      : "/",
+                })
+              }
             >
               <LogOut className="size-4" />
               <span>Logout</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      ) : (
-        <Button asChild size="lg">
-          <Link href="/login">Log In</Link>
-        </Button>
-      )}
+      ) : null}
     </div>
   );
 }

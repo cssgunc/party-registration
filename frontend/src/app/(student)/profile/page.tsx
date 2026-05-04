@@ -1,6 +1,6 @@
 "use client";
 
-import StudentInfo from "@/app/student/_components/StudentInfo";
+import StudentInfo from "@/app/(student)/_components/StudentInfo";
 import { Card, CardContent } from "@/components/ui/card";
 
 export default function StudentProfilePage() {

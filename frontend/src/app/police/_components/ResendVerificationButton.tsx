@@ -11,16 +11,17 @@ const resendCooldownSeconds =
 
 type ResendVerificationButtonProps = {
   email: string;
-  initialCooldownSeconds?: number;
+  startInCooldown?: boolean;
 };
 
 export default function ResendVerificationButton({
   email,
-  initialCooldownSeconds = 0,
+  startInCooldown = false,
 }: ResendVerificationButtonProps) {
   const [cooldownSeconds, setCooldownSeconds] = useState(
-    initialCooldownSeconds
+    startInCooldown ? resendCooldownSeconds : 0
   );
+  const isOnCooldown = cooldownSeconds > 0;
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const retryPoliceVerificationMutation = useRetryPoliceVerification({
@@ -63,16 +64,14 @@ export default function ResendVerificationButton({
     <div className="space-y-2 text-center">
       <Button
         type="button"
-        variant="outline"
+        variant={isOnCooldown ? "outline" : "default"}
         className="w-full"
         onClick={handleResend}
-        disabled={
-          retryPoliceVerificationMutation.isPending || cooldownSeconds > 0
-        }
+        disabled={retryPoliceVerificationMutation.isPending || isOnCooldown}
       >
         {retryPoliceVerificationMutation.isPending
           ? "Sending..."
-          : cooldownSeconds > 0
+          : isOnCooldown
             ? `Resend Email in ${cooldownSeconds}s`
             : "Resend Email"}
       </Button>

@@ -224,7 +224,7 @@ export default function StudentInfo() {
         <div className="relative flex justify-center mb-6">
           <div className="absolute left-0 flex items-center gap-2">
             <ArrowLeft className="h-4" />
-            <Link href="/student">Back to home</Link>
+            <Link href="/">Back to home</Link>
           </div>
           <h1 className="page-title">Profile</h1>
           <button
@@ -337,7 +337,7 @@ export default function StudentInfo() {
     >
       <div className="mb-6 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
         <Link
-          href="/student"
+          href="/"
           className="inline-flex items-center gap-2 content justify-self-start"
         >
           <ArrowLeft className="h-4" />

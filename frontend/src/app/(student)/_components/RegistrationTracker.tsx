@@ -1,7 +1,7 @@
 "use client";
 
-import { DeletePartyDialog } from "@/app/student/_components/DeletePartyDialog";
-import { EditPartyDialog } from "@/app/student/_components/EditPartyDialog";
+import { DeletePartyDialog } from "@/app/(student)/_components/DeletePartyDialog";
+import { EditPartyDialog } from "@/app/(student)/_components/EditPartyDialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -265,7 +265,7 @@ export default function RegistrationTracker(): React.JSX.Element {
           </TabsList>
           <div>
             {courseCompleted ? (
-              <Link href="/student/new-party">
+              <Link href="/new-party">
                 <Button className="px-4 py-2">
                   <Plus className="size-4 inline-block" />
                   New Party

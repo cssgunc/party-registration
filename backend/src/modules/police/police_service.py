@@ -111,13 +111,13 @@ class PoliceService:
         if not email.endswith(f"@{env.CHPD_EMAIL_DOMAIN}"):
             raise BadRequestException(f"CHPD email must use the @{env.CHPD_EMAIL_DOMAIN} domain")
 
+        hashed_password = hash_password(password)
         police = PoliceEntity(
             email=email,
-            hashed_password=hash_password(password),
+            hashed_password=hashed_password,
             role=PoliceRole.OFFICER,
             is_verified=False,
         )
-
         token = self._populate_verification_token(police)
 
         try:
@@ -125,7 +125,13 @@ class PoliceService:
             await self.session.commit()
         except IntegrityError as e:
             await self.session.rollback()
-            raise PoliceConflictException(email) from e
+            existing = await self._get_police_entity_by_email(email)
+            if existing is None or existing.is_verified:
+                raise PoliceConflictException(email) from e
+            existing.hashed_password = hashed_password
+            token = self._populate_verification_token(existing)
+            self.session.add(existing)
+            await self.session.commit()
 
         await self.send_verification_email(email, token)
 
