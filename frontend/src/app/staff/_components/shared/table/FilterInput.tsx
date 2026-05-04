@@ -176,23 +176,7 @@ export function FilterInput<T>({ column, onClose }: FilterInputProps<T>) {
         if (operator === "between") {
           const range = inputValue as DateRange | undefined;
           return (
-            <DateRangeFilter
-              startDate={range?.from}
-              endDate={range?.to}
-              onStartDateChange={(date) =>
-                setInputValue((prev: unknown) => ({
-                  from: date,
-                  to: (prev as DateRange | undefined)?.to,
-                }))
-              }
-              onEndDateChange={(date) =>
-                setInputValue((prev: unknown) => ({
-                  from: (prev as DateRange | undefined)?.from,
-                  to: date,
-                }))
-              }
-              clearable
-            />
+            <DateRangeFilter value={range} onChange={(r) => setInputValue(r)} />
           );
         }
         const toDate = (v: unknown): Date | null => {
