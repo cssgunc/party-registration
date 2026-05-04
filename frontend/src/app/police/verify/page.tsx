@@ -1,5 +1,6 @@
 "use client";
 
+import partySamrtVertical from "@/components/icons/party_smart_logo_vertical.svg";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -10,6 +11,7 @@ import {
 } from "@/components/ui/card";
 import { useVerifyPoliceEmail } from "@/lib/api/auth/auth.queries";
 import { isAxiosError } from "axios";
+import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
@@ -60,49 +62,53 @@ function PoliceVerifyContent() {
 
   return (
     <main className="flex h-full items-center justify-center px-4 py-6">
-      <section
-        className="w-full max-w-md"
-        aria-labelledby="police-verify-title"
-      >
-        <Card className="max-w-none">
-          <CardHeader className="px-6 pt-6 text-center">
-            <CardTitle id="police-verify-title" className="text-2xl">
-              Verify Police Account
-            </CardTitle>
-            <CardDescription>
-              We&apos;re confirming your email address.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="px-6 pb-6">
+      <Card className="w-full max-w-md">
+        <CardHeader className="px-10 pt-8 text-center">
+          <div className="flex justify-center mb-3">
+            <Image
+              src={partySamrtVertical}
+              alt="Party Smart by OCSL"
+              loading="eager"
+              className="h-60 w-auto"
+            />
+          </div>
+          <CardTitle id="police-verify-title" className="text-2xl mb-2">
+            Verify Police Account
+          </CardTitle>
+          <CardDescription>
+            We&apos;re confirming your email address.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="px-10 pt-8 pb-8 flex flex-col gap-8">
+          <div className="text-center">
             {isLoading && (
-              <p className="text-center text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 Verifying your account...
               </p>
             )}
-
             {isSuccess && (
-              <div className="space-y-4 text-center">
-                <p className="text-sm text-foreground">
-                  Your email has been verified. You can now sign in to the
-                  police portal.
-                </p>
-                <Button asChild className="w-full">
-                  <Link href="/login/police">Go to Police Login</Link>
-                </Button>
-              </div>
+              <p className="text-sm text-foreground">
+                Your email has been verified. You can now sign in to the police
+                portal.
+              </p>
             )}
-
             {hasError && (
-              <div className="space-y-4 text-center">
-                <p className="text-sm text-destructive">{errorMessage}</p>
-                <Button asChild variant="outline" className="w-full">
-                  <Link href="/login/police">Back to Police Login</Link>
-                </Button>
-              </div>
+              <p className="text-sm text-destructive">{errorMessage}</p>
             )}
-          </CardContent>
-        </Card>
-      </section>
+          </div>
+          {(isSuccess || hasError) && (
+            <Button
+              asChild
+              className="w-full"
+              variant={hasError ? "outline" : "default"}
+            >
+              <Link href="/police/login">
+                {isSuccess ? "Go to Police Login" : "Back to Police Login"}
+              </Link>
+            </Button>
+          )}
+        </CardContent>
+      </Card>
     </main>
   );
 }

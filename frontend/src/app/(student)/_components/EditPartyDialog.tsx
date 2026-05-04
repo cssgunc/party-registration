@@ -3,7 +3,7 @@
 import PartyRegistrationForm, {
   PartyFormInitialValues,
   PartyFormValues,
-} from "@/app/student/_components/PartyRegistrationForm";
+} from "@/app/(student)/_components/PartyRegistrationForm";
 import {
   Dialog,
   DialogContent,

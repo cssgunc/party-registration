@@ -698,8 +698,8 @@ class TestPoliceSignupRouter:
 
     @pytest.mark.asyncio
     async def test_signup_duplicate_email_returns_409(self) -> None:
-        """Test signup with a duplicate email returns 409."""
-        existing = await self.police_utils.create_one()
+        """Test signup with an already-verified email returns 409."""
+        existing = await self.police_utils.create_verified_one()
         # Capture before the HTTP request, which triggers a session rollback that expires entities
         email = existing.email
         payload = {

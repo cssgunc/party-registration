@@ -8,7 +8,7 @@ export default function AboutPartyRegistration() {
       <main className="mx-4 mt-4 max-w-4xl">
         <nav className="flex items-center content">
           <ArrowLeft className="h-4" />
-          <Link href="/student">Back</Link>
+          <Link href="/">Back</Link>
         </nav>
         <div className="mx-8">
           <PartyRegistrationInfo />

@@ -1,7 +1,7 @@
 "use client";
 
-import RegistrationTracker from "@/app/student/_components/RegistrationTracker";
-import StatusComponent from "@/app/student/_components/StatusComponent";
+import RegistrationTracker from "@/app/(student)/_components/RegistrationTracker";
+import StatusComponent from "@/app/(student)/_components/StatusComponent";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrentStudent } from "@/lib/api/student/student.queries";
 import { isFromThisSchoolYear } from "@/lib/utils";
@@ -46,7 +46,7 @@ export default function StudentDashboard() {
           <div className="mt-8">
             <h2 className="page-title mb-2">Registration Status </h2>
             <Link
-              href="/student/about-party-registration"
+              href="/about-party-registration"
               className="content flex items-center mb-2 2xl:hidden"
             >
               <Info className="h-4 w-4 inline-block mr-1" />
