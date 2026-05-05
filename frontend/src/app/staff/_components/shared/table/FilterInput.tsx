@@ -189,8 +189,7 @@ export function FilterInput<T>({ column, onClose }: FilterInputProps<T>) {
           <DatePicker
             value={toDate(inputValue)}
             onChange={(date) => setInputValue(date ?? undefined)}
-            placeholder="Pick a date"
-            dateFormat="LLL dd, y"
+            dateFormat="MM/dd/yyyy"
           />
         );
       }

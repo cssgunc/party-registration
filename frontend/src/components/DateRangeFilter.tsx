@@ -29,24 +29,26 @@ export default function DateRangeFilter({
         <Button
           id={id}
           variant="outline"
-          className="w-full justify-start px-2.5 font-normal"
+          className="w-full justify-between px-3 font-normal input-shadow text-base md:text-sm"
         >
-          <CalendarIcon />
           {value?.from ? (
             value.to ? (
-              <>
+              <span>
                 {format(value.from, "MM/dd/yyyy")} –{" "}
                 {format(value.to, "MM/dd/yyyy")}
-              </>
+              </span>
             ) : (
-              format(value.from, "MM/dd/yyyy")
+              <span>{format(value.from, "MM/dd/yyyy")}</span>
             )
           ) : (
-            <span className="text-muted-foreground">Pick a date range</span>
+            <span className="text-muted-foreground">
+              Pick a date range
+            </span>
           )}
+          <CalendarIcon className="text-muted-foreground" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
+      <PopoverContent className="w-auto p-0" align="end">
         <Calendar
           mode="range"
           defaultMonth={value?.from}
