@@ -275,6 +275,7 @@ export default function PartyRegistrationForm({
                       addBusinessDays(startOfDay(new Date()), 1)
                     )
                   }
+                  forwardDate={true}
                   aria-invalid={!!errors.partyDate}
                 />
                 <FieldDescription>
@@ -567,7 +568,7 @@ export default function PartyRegistrationForm({
               submitting. After submitting, all contacts will receive email
               confirmation for your event
             </p>
-            <Button type="submit" disabled={isSubmitting} className="!w-fit">
+            <Button type="submit" disabled={isSubmitting} className="w-fit!">
               {isSubmitting ? "Submitting..." : "Submit Event"}
             </Button>
           </Field>

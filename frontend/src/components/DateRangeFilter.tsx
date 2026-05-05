@@ -1,43 +1,59 @@
 "use client";
 
-import DatePicker from "@/components/DatePicker";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { format } from "date-fns";
+import { CalendarIcon } from "lucide-react";
+import { type DateRange } from "react-day-picker";
 
 interface DateRangeFilterProps {
-  startDate: Date | undefined;
-  endDate: Date | undefined;
-  onStartDateChange: (date: Date | undefined) => void;
-  onEndDateChange: (date: Date | undefined) => void;
-  clearable?: boolean;
+  id?: string;
+  value: DateRange | undefined;
+  onChange: (range: DateRange | undefined) => void;
 }
 
 export default function DateRangeFilter({
-  startDate,
-  endDate,
-  onStartDateChange,
-  onEndDateChange,
-  clearable = false,
+  id,
+  value,
+  onChange,
 }: DateRangeFilterProps) {
   return (
-    <div className="grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 md:gap-4">
-      <div className="min-w-0">
-        <DatePicker
-          value={startDate ?? null}
-          onChange={(date) => onStartDateChange(date ?? undefined)}
-          placeholder="Start Date"
-          dateFormat="MM/dd/yyyy"
-          clearable={clearable}
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          id={id}
+          variant="outline"
+          className="w-full justify-between px-3 font-normal input-shadow text-base md:text-sm"
+        >
+          {value?.from ? (
+            value.to ? (
+              <span>
+                {format(value.from, "MM/dd/yyyy")} –{" "}
+                {format(value.to, "MM/dd/yyyy")}
+              </span>
+            ) : (
+              <span>{format(value.from, "MM/dd/yyyy")}</span>
+            )
+          ) : (
+            <span className="text-muted-foreground">Pick a date range</span>
+          )}
+          <CalendarIcon className="text-muted-foreground" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="end">
+        <Calendar
+          mode="range"
+          defaultMonth={value?.from}
+          selected={value}
+          onSelect={onChange}
+          numberOfMonths={2}
         />
-      </div>
-      <div className="text-sm text-muted-foreground whitespace-nowrap">and</div>
-      <div className="min-w-0">
-        <DatePicker
-          value={endDate ?? null}
-          onChange={(date) => onEndDateChange(date ?? undefined)}
-          placeholder="End Date"
-          dateFormat="MM/dd/yyyy"
-          clearable={clearable}
-        />
-      </div>
-    </div>
+      </PopoverContent>
+    </Popover>
   );
 }

@@ -1,0 +1,11 @@
+Worked directly with UNC Off-Campus Student Life and Town of Chapel Hill from Sep 2025 – Apr 2026 to overhaul the party registration system, going live on UNC infrastructure in Fall 2026. Automated a workflow dominated by manual data validation and communication, reducing human error and tightening feedback loops. Personally authored ~45 of the ~160 merged pull requests.
+
+- Designed the database schema, focusing on normalization and data integrity
+- Authored the REST API specification, defining request/response models and endpoints from business requirements
+- Led a team of 9 developers across a 7-month delivery (~160 merged PRs) in a modified Agile workflow, enforcing layered architecture, separation of concerns, and mandatory code review
+- Built development infrastructure, including dev containers, mock dependency containers, pre-commit hooks, GitHub Actions CI, and a backend testing harness with reusable fixtures against a containerized MySQL instance
+- Personally shipped core features including rate limiting, geospatial proximity search, an admin email invite flow, multi-column table filtering, Excel export, and three database migrations (SQLite → Postgres → SQL Server → MySQL)
+- Partnered with UNC Student Affairs IT to integrate with UNC Single Sign On (SAML 2.0) and SMTP Relay
+- Coordinated handoff to UNC Student Affairs IT, including Docker Compose deployment setup, environment-based configuration, Alembic database migrations, full application documentation
+- Hosted weekly client meetings, translating pain points into business requirements documented in a living technical design doc
+- Collaborated with UI/UX designers on user workflows, reviewing designs against technical constraints

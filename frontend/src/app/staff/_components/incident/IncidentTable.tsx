@@ -310,14 +310,26 @@ export const IncidentTable = () => {
       accessorKey: "reference_id",
       header: "Reference ID",
       enableColumnFilter: true,
-      meta: { filter: { type: "text", backendField: "reference_id" } },
+      meta: {
+        filter: {
+          type: "text",
+          backendField: "reference_id",
+          nullable: true,
+        },
+      },
       cell: ({ row }) => row.original.reference_id || "-",
     },
     {
       accessorKey: "description",
       header: "Description",
       enableColumnFilter: true,
-      meta: { filter: { type: "text", backendField: "description" } },
+      meta: {
+        filter: {
+          type: "text",
+          backendField: "description",
+          nullable: true,
+        },
+      },
       cell: ({ row }) => {
         const description = row.original.description;
         if (!description) {
