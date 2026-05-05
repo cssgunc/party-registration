@@ -10,7 +10,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { Column } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, ChevronDown, Filter, X } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Check,
+  ChevronDown,
+  Filter,
+  X,
+} from "lucide-react";
 import { useState } from "react";
 
 interface ColumnHeaderProps<T> {
@@ -58,9 +65,7 @@ export function ColumnHeader<T>({
           >
             <ArrowUp className="mr-2 size-4" />
             Sort Ascending
-            {isSorted === "asc" && (
-              <span className="ml-auto text-primary">✓</span>
-            )}
+            {isSorted === "asc" && <Check className="ml-auto size-4" />}
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => {
@@ -70,9 +75,7 @@ export function ColumnHeader<T>({
           >
             <ArrowDown className="mr-2 size-4" />
             Sort Descending
-            {isSorted === "desc" && (
-              <span className="ml-auto text-primary">✓</span>
-            )}
+            {isSorted === "desc" && <Check className="ml-auto size-4" />}
           </DropdownMenuItem>
           {canFilter && (
             <>

@@ -343,7 +343,7 @@ export default function StudentSearch({
           </div>
         </PopoverTrigger>
         <PopoverContent
-          className="w-[var(--radix-popover-trigger-width)] p-0"
+          className="w-(--radix-popover-trigger-width) p-0"
           align="start"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
@@ -384,7 +384,7 @@ export default function StudentSearch({
                       )}
                       onMouseEnter={() => setHighlightedIndex(index)}
                     >
-                      <UserIcon className="mr-2 h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      <UserIcon className="mr-2 h-4 w-4 text-muted-foreground shrink-0" />
                       <span className="text-sm flex-1">
                         {suggestion.first_name} {suggestion.last_name}
                         {" — "}
@@ -400,7 +400,7 @@ export default function StudentSearch({
                       </span>
                       <CheckIcon
                         className={cn(
-                          "ml-2 h-4 w-4 flex-shrink-0",
+                          "ml-2 h-4 w-4 shrink-0",
                           selectedStudent?.student_id === suggestion.student_id
                             ? "opacity-100"
                             : "opacity-0"

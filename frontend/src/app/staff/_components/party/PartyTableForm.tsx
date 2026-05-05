@@ -213,6 +213,7 @@ export default function PartyTableForm({
                 dateFormat="MM/dd/yy"
                 value={formData.partyDate ?? null}
                 onChange={(date) => updateField("partyDate", date as Date)}
+                forwardDate={true}
                 disabled={
                   isAdmin
                     ? undefined

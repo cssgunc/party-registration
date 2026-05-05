@@ -244,7 +244,17 @@ export const LocationTable = () => {
       accessorKey: "hold_expiration",
       header: "Active Hold",
       enableColumnFilter: true,
-      meta: { filter: { type: "date", backendField: "hold_expiration" } },
+      meta: {
+        filter: {
+          type: "date",
+          backendField: "hold_expiration",
+          nullable: true,
+          operatorLabels: {
+            null: "Inactive",
+            notnull: "Active",
+          },
+        },
+      },
       cell: ({ row }) => {
         const holdDate = row.getValue("hold_expiration") as Date | null;
         if (holdDate) {

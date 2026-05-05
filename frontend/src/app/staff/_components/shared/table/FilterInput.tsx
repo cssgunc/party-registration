@@ -5,7 +5,6 @@ import DateRangeFilter from "@/components/DateRangeFilter";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -15,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  FilterColumnType,
   FilterOperator,
   FilterValue,
   OPERATOR_LABELS,
@@ -28,6 +28,27 @@ import { DateRange } from "react-day-picker";
 interface FilterInputProps<T> {
   column: Column<T, unknown> | null;
   onClose: () => void;
+}
+
+const FULL_WIDTH_COMBOS: Array<[FilterColumnType, FilterOperator]> = [
+  ["time", "between"],
+  ["select", "in"],
+  ["select", "nin"],
+];
+
+function getValueClassName(
+  colType: FilterColumnType,
+  operator: FilterOperator
+) {
+  if (["null", "notnull"].includes(operator)) {
+    return "hidden";
+  } else if (
+    FULL_WIDTH_COMBOS.some(([t, op]) => t === colType && op === operator)
+  ) {
+    return "basis-full";
+  } else {
+    return "flex-1 min-w-0";
+  }
 }
 
 function formatSelectOptionLabel(option: string): string {
@@ -249,9 +270,8 @@ export function FilterInput<T>({ column, onClose }: FilterInputProps<T>) {
         handleApply();
       }}
     >
-      {showOperatorSelect && (
-        <div className="space-y-2">
-          <Label>Operator</Label>
+      <div className="flex flex-wrap gap-x-2 gap-y-3 items-start">
+        {showOperatorSelect && (
           <Select
             value={operator}
             onValueChange={(val) => {
@@ -259,7 +279,7 @@ export function FilterInput<T>({ column, onClose }: FilterInputProps<T>) {
               setInputValue(undefined);
             }}
           >
-            <SelectTrigger>
+            <SelectTrigger className="w-auto shrink-0">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -280,15 +300,12 @@ export function FilterInput<T>({ column, onClose }: FilterInputProps<T>) {
               })}
             </SelectContent>
           </Select>
-        </div>
-      )}
+        )}
 
-      {operator !== "null" && operator !== "notnull" && (
-        <div className="space-y-2">
-          <Label>{filterMeta.filterLabel || "Value"}</Label>
+        <div className={getValueClassName(colType, operator)}>
           {renderValueInput()}
         </div>
-      )}
+      </div>
 
       <div className="flex gap-2 mt-6">
         <Button type="button" variant="outline" onClick={handleClear}>
