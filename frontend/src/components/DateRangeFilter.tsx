@@ -9,7 +9,6 @@ import {
 } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
-import * as React from "react";
 import { type DateRange } from "react-day-picker";
 
 interface DateRangeFilterProps {
@@ -41,9 +40,7 @@ export default function DateRangeFilter({
               <span>{format(value.from, "MM/dd/yyyy")}</span>
             )
           ) : (
-            <span className="text-muted-foreground">
-              Pick a date range
-            </span>
+            <span className="text-muted-foreground">Pick a date range</span>
           )}
           <CalendarIcon className="text-muted-foreground" />
         </Button>
