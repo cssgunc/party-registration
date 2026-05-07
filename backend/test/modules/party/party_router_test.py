@@ -36,7 +36,7 @@ test_party_authentication = generate_auth_required_tests(
     ({"admin", "staff", "officer", "police_admin"}, "GET", "/api/parties", None),
     ({"admin", "staff", "officer", "police_admin"}, "GET", "/api/parties/csv", None),
     ({"admin", "staff"}, "GET", "/api/parties/1", None),
-    ({"student", "admin"}, "DELETE", "/api/parties/1", None),
+    ({"student", "staff", "admin"}, "DELETE", "/api/parties/1", None),
     (
         {"admin", "officer", "police_admin"},
         "GET",

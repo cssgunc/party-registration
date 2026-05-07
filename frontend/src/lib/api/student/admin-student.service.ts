@@ -6,7 +6,6 @@ import { AxiosInstance } from "axios";
 import {
   IsRegisteredUpdate,
   StudentAutocompleteInput,
-  StudentCreateDto,
   StudentDto,
   StudentDtoBackend,
   StudentSuggestionDto,
@@ -60,17 +59,6 @@ export class AdminStudentService {
   async getStudent(id: number): Promise<StudentDto> {
     const response = await this.client.get<StudentDtoBackend>(
       `/students/${id}`
-    );
-    return convertStudent(response.data);
-  }
-
-  /**
-   * Creates a new student (POST /api/students)
-   */
-  async createStudent(payload: StudentCreateDto): Promise<StudentDto> {
-    const response = await this.client.post<StudentDtoBackend>(
-      "/students",
-      payload
     );
     return convertStudent(response.data);
   }

@@ -60,9 +60,9 @@ async def create_party(
     # Validate that the DTO type matches the user's role
     match party_data:
         case StudentCreatePartyDto():
-            if user.role != AccountRole.STUDENT:
+            if user.role not in (AccountRole.STUDENT, AccountRole.STAFF, AccountRole.ADMIN):
                 raise ForbiddenException(
-                    detail="Only students can use the student party creation endpoint"
+                    detail="Only students, staff, and admins can host their own party"
                 )
             return await party_service.create_party_from_student_dto(party_data, user.id)
         case AdminCreatePartyDto():
@@ -259,9 +259,9 @@ async def update_party(
     # Validate that the DTO type matches the user's role
     match party_data:
         case StudentCreatePartyDto():
-            if user.role != AccountRole.STUDENT:
+            if user.role not in (AccountRole.STUDENT, AccountRole.STAFF, AccountRole.ADMIN):
                 raise ForbiddenException(
-                    detail="Only students can use the student party update endpoint"
+                    detail="Only students, staff, and admins can update their own party"
                 )
             return await party_service.update_party_from_student_dto(party_id, party_data, user.id)
         case AdminCreatePartyDto():
@@ -299,21 +299,13 @@ async def get_party(
 async def delete_party(
     party_id: int,
     party_service: PartyService = Depends(),
-    user: AuthPrincipal = Depends(authenticate_by_role("student", "admin")),
+    user: AuthPrincipal = Depends(authenticate_by_role("student", "staff", "admin")),
 ) -> PartyDto:
     """
     Deletes a party registration by ID.
 
-    Parameters:
-    - party_id: The ID of the party to delete
-
-    Returns:
-    - The deleted party registration
-
-    Raises:
-    - 404: If party with the specified ID does not exist
+    Admins hard-delete any party. Students and staff cancel parties they own.
     """
-    if user.role == AccountRole.STUDENT:
-        return await party_service.cancel_party_as_student(party_id, user.id)
-    else:
+    if user.role == AccountRole.ADMIN:
         return await party_service.delete_party(party_id)
+    return await party_service.cancel_party_as_student(party_id, user.id)
