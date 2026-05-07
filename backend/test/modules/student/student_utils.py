@@ -1,5 +1,5 @@
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any, TypedDict, Unpack, override
+from typing import TYPE_CHECKING, Any, Literal, TypedDict, Unpack, override
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.modules.student.student_entity import StudentEntity
@@ -30,6 +30,7 @@ class StudentOverrides(TypedDict, total=False):
     pid: str
     onyen: str
     residence_place_id: str | None
+    role: Literal["admin", "staff", "student"]
 
 
 class StudentTestUtils(
@@ -64,6 +65,7 @@ class StudentTestUtils(
             "first_name": f"FStudent{count}",
             "last_name": f"LStudent{count}",
             "residence_place_id": None,
+            "role": AccountRole.STUDENT.value,
         }
 
     @override
@@ -87,10 +89,11 @@ class StudentTestUtils(
     @override
     async def next_entity(self, **overrides: Unpack[StudentOverrides]) -> StudentEntity:
         local_overrides: StudentOverrides = dict(overrides)  # type: ignore
+        if "role" not in local_overrides:
+            local_overrides["role"] = "student"
+
         if "account_id" not in local_overrides:
-            account = await self.account_utils.create_one(
-                role=AccountRole.STUDENT.value, **local_overrides
-            )
+            account = await self.account_utils.create_one(**local_overrides)
             local_overrides["account_id"] = account.id
         account_id = local_overrides["account_id"]
 

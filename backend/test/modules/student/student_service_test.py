@@ -203,6 +203,55 @@ class TestStudentService:
 
         self.student_utils.assert_matches(updated, data)
 
+    @pytest.mark.parametrize("role", [AccountRole.STAFF, AccountRole.ADMIN])
+    @pytest.mark.asyncio
+    async def test_update_student_self_upserts_for_non_student_account(self, role: AccountRole):
+        """Staff/admin accounts (e.g. promoted students who still host parties) can
+        upsert a Student record via PUT /students/me — no role rejection."""
+        account = await self.account_utils.create_one(role=role.value)
+        data = SelfUpdateStudentDto(
+            phone_number="9195550042",
+            contact_preference=ContactPreference.TEXT,
+        )
+
+        updated = await self.student_service.update_student_self(account.id, data)
+
+        assert updated.id == account.id
+        self.student_utils.assert_matches(updated, data)
+
+    @pytest.mark.parametrize("role", [AccountRole.STAFF, AccountRole.ADMIN])
+    @pytest.mark.asyncio
+    async def test_update_student_self_updates_existing_when_role_is_non_student(
+        self, role: AccountRole, test_session: AsyncSession
+    ):
+        """Existing Student record on a non-student account can be updated via
+        PUT /students/me — covers the post-promotion case."""
+        student_entity = await self.student_utils.create_one(role=role.value)
+
+        data = SelfUpdateStudentDto(
+            phone_number="9195551234",
+            contact_preference=ContactPreference.CALL,
+        )
+        updated = await self.student_service.update_student_self(student_entity.account_id, data)
+
+        self.student_utils.assert_matches(updated, data)
+
+    @pytest.mark.parametrize("role", [AccountRole.STAFF, AccountRole.ADMIN])
+    @pytest.mark.asyncio
+    async def test_update_student_admin_path_works_for_non_student_account(
+        self, role: AccountRole, test_session: AsyncSession
+    ):
+        """Admin PUT /students/{id} updates a Student record regardless of the
+        underlying account role."""
+        student_entity = await self.student_utils.create_one(role=role.value)
+
+        update_data = await self.student_utils.next_update_dto(
+            contact_preference=ContactPreference.CALL
+        )
+        updated = await self.student_service.update_student(student_entity.account_id, update_data)
+
+        self.student_utils.assert_matches(updated, update_data)
+
     @pytest.mark.asyncio
     async def test_assert_student_entity_exists_raises_when_no_entity(self):
         """assert_student_entity_exists raises StudentInfoNotProvidedException when no entity."""

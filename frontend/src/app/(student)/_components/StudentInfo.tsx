@@ -222,10 +222,10 @@ export default function StudentInfo() {
     return (
       <div className="bg-card rounded-lg p-6 sm:px-10 sm:py-8 w-full flex flex-col">
         <div className="relative flex justify-center mb-6">
-          <div className="absolute left-0 flex items-center gap-2">
+          <Link href="/" className="absolute left-0 flex items-center gap-2">
             <ArrowLeft className="h-4" />
-            <Link href="/">Back to home</Link>
-          </div>
+            <span>Back to home</span>
+          </Link>
           <h1 className="page-title">Profile</h1>
           <button
             onClick={() => setIsEditing(true)}
