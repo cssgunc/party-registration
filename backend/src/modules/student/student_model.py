@@ -46,14 +46,6 @@ class ResidenceUpdateDto(BaseModel):
     residence_place_id: str
 
 
-class DbStudent(StudentData):
-    account_id: int
-
-    @property
-    def id(self) -> int:
-        return self.account_id
-
-
 class ResidenceDto(BaseModel):
     """DTO for student residence information."""
 
@@ -85,17 +77,6 @@ class StudentDto(BaseModel):
     contact_preference: ContactPreference | None = None
     last_registered: AwareDatetime | None = None
     residence: ResidenceDto | None = None
-
-
-class StudentCreateDto(BaseModel):
-    """Request body for creating a student (admin).
-
-    Requires an existing account_id to associate with the student.
-    Names come from the existing account, not this DTO.
-    """
-
-    account_id: int
-    data: StudentUpdateDto
 
 
 class IsRegisteredUpdate(BaseModel):

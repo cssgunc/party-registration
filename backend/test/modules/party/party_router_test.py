@@ -36,7 +36,7 @@ test_party_authentication = generate_auth_required_tests(
     ({"admin", "staff", "officer", "police_admin"}, "GET", "/api/parties", None),
     ({"admin", "staff", "officer", "police_admin"}, "GET", "/api/parties/csv", None),
     ({"admin", "staff"}, "GET", "/api/parties/1", None),
-    ({"student", "admin"}, "DELETE", "/api/parties/1", None),
+    ({"student", "staff", "admin"}, "DELETE", "/api/parties/1", None),
     (
         {"admin", "officer", "police_admin"},
         "GET",
@@ -1671,3 +1671,93 @@ class TestStudentMyPartiesRouter:
 
         assert len(parties) == 1
         assert parties[0].id == party1.id
+
+
+class TestPartyAsStaffRouter:
+    """A staff member who used to be a student can still host their own parties.
+    Exercises POST/PUT/DELETE on /api/parties from a staff-authenticated client."""
+
+    staff_client: AsyncClient
+    party_utils: PartyTestUtils
+    location_utils: LocationTestUtils
+    student_utils: StudentTestUtils
+
+    @pytest_asyncio.fixture
+    async def current_staff_host(self, staff_account: AccountEntity) -> StudentEntity:
+        """Attach a Student record (with phone + recent Party Smart) to the staff
+        client's account, simulating a promoted student who still hosts parties."""
+        return await self.student_utils.create_one(
+            account_id=staff_account.id,
+            last_registered=datetime.now(UTC) - timedelta(days=1),
+        )
+
+    @pytest.fixture(autouse=True)
+    def _setup(
+        self,
+        party_utils: PartyTestUtils,
+        location_utils: LocationTestUtils,
+        student_utils: StudentTestUtils,
+        staff_client: AsyncClient,
+    ):
+        self.party_utils = party_utils
+        self.location_utils = location_utils
+        self.student_utils = student_utils
+        self.staff_client = staff_client
+
+    @pytest.mark.asyncio
+    async def test_create_party_as_staff_success(self, current_staff_host: StudentEntity):
+        """Staff member with a Student record can register a party via the
+        student-style endpoint."""
+        location = await self.location_utils.create_one()
+        await self.student_utils.set_student_residence(current_staff_host, location.id)
+
+        payload = await self.party_utils.next_student_create_dto()
+
+        response = await self.staff_client.post(
+            "/api/parties", json=payload.model_dump(mode="json")
+        )
+        data = assert_res_success(response, PartyDto, status=201)
+
+        assert data.contact_one.id == current_staff_host.account_id
+        assert data.location.id == location.id
+
+    @pytest.mark.asyncio
+    async def test_update_party_as_staff_success(self, current_staff_host: StudentEntity):
+        """Staff member can update their own hosted party."""
+        location = await self.location_utils.create_one()
+        await self.student_utils.set_student_residence(current_staff_host, location.id)
+
+        create_payload = await self.party_utils.next_student_create_dto()
+        create_response = await self.staff_client.post(
+            "/api/parties", json=create_payload.model_dump(mode="json")
+        )
+        created = assert_res_success(create_response, PartyDto, status=201)
+
+        update_payload = await self.party_utils.next_student_create_dto()
+        response = await self.staff_client.put(
+            f"/api/parties/{created.id}", json=update_payload.model_dump(mode="json")
+        )
+        data = assert_res_success(response, PartyDto)
+
+        assert data.id == created.id
+        assert data.contact_two.email == update_payload.contact_two.email
+
+    @pytest.mark.asyncio
+    async def test_delete_party_as_staff_cancels(self, current_staff_host: StudentEntity):
+        """Staff DELETE on their own party cancels (matches student behavior),
+        does not hard-delete (which is admin-only)."""
+        party = await self.party_utils.create_one(contact_one_id=current_staff_host.account_id)
+
+        response = await self.staff_client.delete(f"/api/parties/{party.id}")
+        data = assert_res_success(response, PartyDto)
+
+        assert data.id == party.id
+        assert data.status == PartyStatus.CANCELLED
+
+    @pytest.mark.asyncio
+    async def test_delete_other_users_party_as_staff_fails(self, current_staff_host: StudentEntity):
+        """Staff cannot cancel a party they don't own (same rule as students)."""
+        party = await self.party_utils.create_one()
+
+        response = await self.staff_client.delete(f"/api/parties/{party.id}")
+        assert_res_failure(response, PartyNotOwnedByStudentException(party.id))

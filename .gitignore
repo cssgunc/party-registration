@@ -55,4 +55,4 @@ htmlcov/
 backend/script/schema.sql
 
 # UV lock
-backend/uv.lock
+uv.lock

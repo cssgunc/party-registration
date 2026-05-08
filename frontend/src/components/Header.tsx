@@ -10,11 +10,13 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { useCurrentPrincipal } from "@/lib/api/auth/auth.queries";
+import { isStudentAreaPath } from "@/lib/auth/route-access";
 import { signOut } from "@/lib/auth/signout";
 import { cn } from "@/lib/utils";
 import { LogOut, Shield, User } from "lucide-react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import PartySmartLogo from "./PartySmartLogo";
 
 export default function Header({ className }: { className?: string }) {
@@ -24,6 +26,10 @@ export default function Header({ className }: { className?: string }) {
       enabled: status === "authenticated",
     });
   const role = session?.role;
+  const pathname = usePathname();
+  const showEditProfile =
+    (role === "student" || role === "staff" || role === "admin") &&
+    isStudentAreaPath(pathname ?? "");
   const isAccount = currentPrincipal?.principal_type === "account";
   const firstName = isAccount ? currentPrincipal.first_name : undefined;
   const lastName = isAccount ? currentPrincipal.last_name : undefined;
@@ -58,7 +64,7 @@ export default function Header({ className }: { className?: string }) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-60" align="end">
-            {role === "student" && (
+            {showEditProfile && (
               <Link href="/profile">
                 <DropdownMenuItem>
                   <User className="size-4" />
