@@ -809,6 +809,35 @@ class TestStudentMeRouter:
         self.party_utils.assert_matches(parties[0], party1)
 
 
+class TestStudentMeRouterAsStaff:
+    """A staff member (e.g. promoted student) can use PUT /students/me to provide
+    the contact info needed before hosting a party."""
+
+    staff_client: AsyncClient
+    student_utils: StudentTestUtils
+
+    @pytest.fixture(autouse=True)
+    def _setup(self, student_utils: StudentTestUtils, staff_client: AsyncClient):
+        self.student_utils = student_utils
+        self.staff_client = staff_client
+
+    @pytest.mark.asyncio
+    async def test_update_me_creates_entity_for_staff(self, staff_account: AccountEntity):
+        """PUT /students/me upserts a Student record on a staff account."""
+        payload = SelfUpdateStudentDto(
+            contact_preference=ContactPreference.TEXT,
+            phone_number="9195550101",
+        )
+
+        response = await self.staff_client.put(
+            "/api/students/me", json=payload.model_dump(mode="json")
+        )
+        data = assert_res_success(response, StudentDto)
+
+        assert data.id == staff_account.id
+        self.student_utils.assert_matches(data, payload)
+
+
 class TestStudentResidenceRouter:
     """Tests for /api/students/me/residence endpoint."""
 

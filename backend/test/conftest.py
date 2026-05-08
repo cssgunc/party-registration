@@ -22,7 +22,7 @@ from src.core.utils.email_utils import EmailService
 from src.core.utils.query_utils import QueryService
 from src.main import app
 from src.modules.account.account_entity import AccountEntity
-from src.modules.account.account_model import AccountDto, AccountRole
+from src.modules.account.account_model import AccountRole
 from src.modules.account.account_service import AccountService
 from src.modules.auth.auth_service import AuthService
 from src.modules.incident.incident_service import IncidentService
@@ -120,9 +120,9 @@ async def create_test_client(
         app.dependency_overrides[get_session] = override_get_session
         app.dependency_overrides[EmailService] = lambda: mock_email_service
 
-        # Generate JWT token based on role
-        # Use fake DTOs — middleware reads from JWT only, no DB lookup needed.
-        # Tests needing a real DB account use the student_client / student_account fixtures.
+        # Generate JWT token based on role.
+        # Tokens are minted from the canonical client DTO; the matching DB row
+        # only exists if the test calls account_utils.initialize_client_account.
         if role in ("officer", "police_admin"):
             police = PoliceAccountDto(
                 id=99999,
@@ -132,16 +132,8 @@ async def create_test_client(
             )
             token, _ = auth_service.create_police_access_token(police)
         elif role in ("admin", "staff", "student"):
-            fake_account = AccountDto(
-                id=99999,
-                email=f"{role}@unc.edu",
-                first_name=role.capitalize(),
-                last_name="Client",
-                pid="999999999",
-                onyen=f"{role}client",
-                role=AccountRole(role),
-            )
-            token, _ = auth_service.create_account_access_token(fake_account)
+            entity = AccountTestUtils.build_client_account_entity(AccountRole(role))
+            token, _ = auth_service.create_account_access_token(entity.to_dto())
         else:
             token = None
 
@@ -170,34 +162,26 @@ async def staff_client(create_test_client: CreateClientCallable):
 
 @pytest_asyncio.fixture
 async def student_account(account_utils: AccountTestUtils) -> AccountEntity:
-    """Dedicated account for student_client authentication (always gets a real DB id)."""
-    return await account_utils.create_one(role="student")
+    """DB-backed account whose id/pid/onyen match the JWT minted by student_client."""
+    return await account_utils.initialize_client_account(AccountRole.STUDENT)
+
+
+@pytest_asyncio.fixture
+async def staff_account(account_utils: AccountTestUtils) -> AccountEntity:
+    """DB-backed account whose id/pid/onyen match the JWT minted by staff_client.
+    Opt in by depending on this fixture from any test that needs the staff client
+    to resolve to a real accounts row (e.g. staff hosting a party)."""
+    return await account_utils.initialize_client_account(AccountRole.STAFF)
 
 
 @pytest_asyncio.fixture
 async def student_client(
-    test_session: AsyncSession,
     student_account: AccountEntity,
-    auth_service: AuthService,
+    create_test_client: CreateClientCallable,
 ):
-    """Client authenticated as the test student account."""
-
-    async def override_get_session():
-        yield test_session
-
-    app.dependency_overrides[get_session] = override_get_session
-
-    account_dto = student_account.to_dto()
-    token, _ = auth_service.create_account_access_token(account_dto)
-
-    async with AsyncClient(
-        transport=ASGITransport(app=app),
-        base_url="http://test",
-        headers={"Authorization": f"Bearer {token}"},
-    ) as ac:
-        yield ac
-
-    app.dependency_overrides.clear()
+    """Client authenticated as the test student account (with a real DB row)."""
+    async for client in create_test_client("student"):
+        yield client
 
 
 @pytest_asyncio.fixture
