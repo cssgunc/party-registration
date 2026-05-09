@@ -13,8 +13,8 @@ import {
   DEFAULT_TABLE_PARAMS,
   ServerTableParams,
 } from "@/lib/api/shared/query-params";
+import { getErrorMessage } from "@/lib/errors";
 import { ColumnDef } from "@tanstack/react-table";
-import { isAxiosError } from "axios";
 import { useState } from "react";
 import { InfoChip } from "../shared/sidebar/InfoChip";
 import { useSidebar } from "../shared/sidebar/SidebarContext";
@@ -49,26 +49,20 @@ export const LocationTable = () => {
   const { mutate: exportCsv, isPending: isExporting } =
     useDownloadLocationsCsv();
 
+  const locationErrorOptions = {
+    status: { 409: "This location already exists." },
+    fallback: "Operation failed.",
+  } as const;
+
   const createMutation = useCreateLocation({
     onError: (error: Error) => {
-      console.error("Failed to create location:", error);
-      const errorMessage = isAxiosError(error)
-        ? error.response?.data?.detail ||
-          error.response?.data?.message ||
-          error.message
-        : error.message;
-      const userMessage =
-        isAxiosError(error) && error.status === 409
-          ? "This location already exists."
-          : errorMessage;
-
       openSidebar(
         "create-location",
         "New Location",
         "Add a new location to the system",
         <LocationTableForm
           onSubmit={handleCreateSubmit}
-          submissionError={userMessage}
+          submissionError={getErrorMessage(error, locationErrorOptions)}
         />
       );
     },
@@ -84,17 +78,6 @@ export const LocationTable = () => {
       error: Error,
       variables: { id: number; payload: LocationCreate }
     ) => {
-      console.error("Failed to update location:", error);
-      const errorMessage = isAxiosError(error)
-        ? error.response?.data?.detail ||
-          error.response?.data?.message ||
-          error.message
-        : error.message;
-      const userMessage =
-        isAxiosError(error) && error.status === 409
-          ? "This location already exists."
-          : errorMessage;
-
       const editTarget =
         editingLocation && editingLocation.id === variables.id
           ? editingLocation
@@ -115,7 +98,7 @@ export const LocationTable = () => {
             placeId: editTarget.google_place_id || "",
             holdExpiration: editTarget.hold_expiration || null,
           }}
-          submissionError={userMessage}
+          submissionError={getErrorMessage(error, locationErrorOptions)}
         />
       );
     },
@@ -129,8 +112,8 @@ export const LocationTable = () => {
   });
 
   const deleteMutation = useDeleteLocation({
-    onError: (error: Error) => {
-      console.error("Failed to delete location:", error);
+    onError: () => {
+      openSnackbar("Failed to delete location.", "error");
     },
     onSuccess: () => {
       openSnackbar("Location deleted successfully", "success");

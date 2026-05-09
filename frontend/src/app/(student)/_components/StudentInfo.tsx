@@ -25,6 +25,7 @@ import {
   useUpdateStudent,
 } from "@/lib/api/student/student.queries";
 import { StudentDto } from "@/lib/api/student/student.types";
+import { getErrorMessage } from "@/lib/errors";
 import {
   cn,
   formatPhoneNumber,
@@ -143,30 +144,7 @@ export default function StudentInfo() {
 
       setIsEditing(false);
     } catch (error) {
-      // Handle API errors
-      console.error("Failed to update student info:", error);
-
-      // Check if it's an authentication error
-      if (error && typeof error === "object" && "response" in error) {
-        const axiosError = error as { response?: { status: number } };
-        if (axiosError.response?.status === 401) {
-          setErrors({
-            submit:
-              "Authentication required. Please log in to update your profile.",
-          });
-        } else {
-          setErrors({
-            submit: "Failed to update student information. Please try again.",
-          });
-        }
-      } else {
-        setErrors({
-          submit:
-            error instanceof Error
-              ? error.message
-              : "Failed to update student information",
-        });
-      }
+      setErrors({ submit: getErrorMessage(error) });
     } finally {
       setIsSubmitting(false);
     }
