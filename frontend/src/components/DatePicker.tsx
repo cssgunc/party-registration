@@ -40,8 +40,9 @@ export default function DatePicker({
   className,
   popoverContentClassName,
   "aria-invalid": ariaInvalid,
-  forwardDate = false,
+  forwardDate,
 }: DatePickerProps) {
+  void forwardDate;
   const [open, setOpen] = React.useState(false);
   const [inputValue, setInputValue] = React.useState(
     value ? format(value, dateFormat) : ""
