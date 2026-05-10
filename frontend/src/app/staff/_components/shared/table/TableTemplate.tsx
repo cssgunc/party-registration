@@ -106,6 +106,7 @@ export type TableProps<T> = {
   onStateChange?: (params: ServerTableParams) => void;
   onExportCsv?: (params: ListQueryParams) => void;
   isExporting?: boolean;
+  headerSlot?: ReactNode;
   canManageRows?: boolean;
   canEditRow?: (row: T) => boolean;
   canDeleteRow?: (row: T) => boolean;
@@ -140,6 +141,7 @@ export function TableTemplate<T extends object>({
   onStateChange,
   onExportCsv,
   isExporting,
+  headerSlot,
   canManageRows,
   canEditRow,
   canDeleteRow,
@@ -548,6 +550,11 @@ export function TableTemplate<T extends object>({
                 className="p-2 pl-3 h-9 rounded-md"
               />
             </div>
+            {headerSlot && (
+              <div className="hidden md:flex items-center min-w-0">
+                {headerSlot}
+              </div>
+            )}
             <div className="shrink-0 ml-auto flex items-center gap-2">
               {onExportCsv && (
                 <Button

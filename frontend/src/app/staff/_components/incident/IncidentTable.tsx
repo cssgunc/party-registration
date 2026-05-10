@@ -33,6 +33,7 @@ import LocationInfoChipDetails from "../party/details/LocationInfoChipDetails";
 import { InfoChip } from "../shared/sidebar/InfoChip";
 import { TableTemplate } from "../shared/table/TableTemplate";
 import IncidentDescriptionChipDetails from "./IncidentDescriptionChipDetails";
+import { IncidentSeverityCountsHeader } from "./IncidentSeverityCountsHeader";
 import IncidentTableForm from "./IncidentTableForm";
 
 const hasIncidentChanged = (
@@ -382,6 +383,12 @@ export const IncidentTable = () => {
         onStateChange={setServerParams}
         onExportCsv={exportCsv}
         isExporting={isExporting}
+        headerSlot={
+          <IncidentSeverityCountsHeader
+            counts={incidentsQuery.data?.severity_counts}
+            isLoading={incidentsQuery.isLoading || incidentsQuery.isFetching}
+          />
+        }
       />
     </div>
   );
