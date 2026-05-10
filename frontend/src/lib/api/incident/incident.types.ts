@@ -1,3 +1,5 @@
+import { PaginatedResponse } from "@/lib/shared";
+
 const INCIDENT_SEVERITIES = [
   "remote_warning",
   "in_person_warning",
@@ -27,6 +29,16 @@ type IncidentDtoBackend = Omit<IncidentDto, "incident_datetime"> & {
   incident_datetime: string;
 };
 
+type IncidentSeverityCounts = Record<IncidentSeverity, number>;
+
+type PaginatedIncidentsResponse = PaginatedResponse<IncidentDto> & {
+  severity_counts: IncidentSeverityCounts;
+};
+
+type PaginatedIncidentsResponseBackend = PaginatedResponse<IncidentDtoBackend> & {
+  severity_counts: IncidentSeverityCounts;
+};
+
 function convertIncident(backend: IncidentDtoBackend): IncidentDto {
   return {
     ...backend,
@@ -39,6 +51,9 @@ export type {
   IncidentDto,
   IncidentDtoBackend,
   IncidentSeverity,
+  IncidentSeverityCounts,
+  PaginatedIncidentsResponse,
+  PaginatedIncidentsResponseBackend,
 };
 
 export { convertIncident, INCIDENT_SEVERITIES };

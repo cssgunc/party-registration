@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Self
 
 from pydantic import AwareDatetime, BaseModel, Field
 from src.core.utils.query_utils import PaginatedResponse
@@ -43,7 +44,23 @@ class IncidentDto(IncidentData):
     id: int
 
 
-class PaginatedIncidentsResponse(PaginatedResponse[IncidentDto]):
-    """Paginated response for incidents."""
+class IncidentSeverityCounts(BaseModel):
+    """Counts of incidents grouped by severity (over the filtered result set)."""
 
-    pass
+    remote_warning: int = 0
+    in_person_warning: int = 0
+    citation: int = 0
+
+    @classmethod
+    def from_counts(cls, counts: dict[IncidentSeverity, int]) -> Self:
+        return cls(
+            remote_warning=counts.get(IncidentSeverity.REMOTE_WARNING, 0),
+            in_person_warning=counts.get(IncidentSeverity.IN_PERSON_WARNING, 0),
+            citation=counts.get(IncidentSeverity.CITATION, 0),
+        )
+
+
+class PaginatedIncidentsResponse(PaginatedResponse[IncidentDto]):
+    """Paginated response for incidents, with counts grouped by severity."""
+
+    severity_counts: IncidentSeverityCounts

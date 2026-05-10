@@ -9,7 +9,7 @@ from collections.abc import Callable
 from contextlib import suppress
 from datetime import datetime
 from enum import Enum, StrEnum
-from typing import Any, Self
+from typing import Any, Literal, Self
 
 from fastapi import Depends, Request
 from fastapi.exceptions import RequestValidationError
@@ -21,21 +21,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import SQLColumnExpression
 from src.core.database import get_session
 from src.core.exceptions import BadRequestException
-
-__all__ = [
-    "FilterOperator",
-    "FilterParam",
-    "ListQueryParams",
-    "PaginatedResponse",
-    "PaginationParams",
-    "QueryFieldSet",
-    "QueryService",
-    "SortOrder",
-    "SortParam",
-    "get_paginated_openapi_params",
-    "parse_export_list_query_params",
-    "parse_list_query_params",
-]
 
 
 class PaginatedResponse[T](BaseModel):
@@ -453,6 +438,26 @@ class QueryService:
             pagination=params.pagination,
             sort=effective_sort,
         )
+
+    def apply_params(
+        self,
+        base_query: Select,
+        params: ListQueryParams,
+        field_set: QueryFieldSet,
+        *,
+        only: set[Literal["filter", "sort", "search", "pagination"]] | None = None,
+    ) -> Select:
+        query = base_query
+        if not only or "filter" in only:
+            query = self._apply_filters(query, params.filters, field_set)
+        if not only or "sort" in only:
+            effective_sort = params.sort or field_set.default_sort
+            query = self._apply_sorting(query, effective_sort, field_set)
+        if not only or "search" in only:
+            query = self._apply_search(query, params.search, field_set)
+        if not only or "pagination" in only:
+            query = self._apply_pagination(query, params.pagination)
+        return query
 
     def _apply_filters(
         self, query: Select, filters: list[FilterParam], field_set: QueryFieldSet

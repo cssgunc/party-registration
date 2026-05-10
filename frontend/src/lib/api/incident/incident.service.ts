@@ -1,12 +1,13 @@
 import { downloadExcelFile } from "@/lib/api/shared/download-file";
 import { ListQueryParams, toAxiosParams } from "@/lib/api/shared/query-params";
 import apiClient from "@/lib/network/apiClient";
-import { PaginatedResponse } from "@/lib/shared";
 import { AxiosInstance } from "axios";
 import {
   IncidentCreateDto,
   IncidentDto,
   IncidentDtoBackend,
+  PaginatedIncidentsResponse,
+  PaginatedIncidentsResponseBackend,
   convertIncident,
 } from "./incident.types";
 
@@ -27,12 +28,13 @@ export class IncidentService {
    */
   async listIncidents(
     params?: ListQueryParams
-  ): Promise<PaginatedResponse<IncidentDto>> {
-    const response = await this.client.get<
-      PaginatedResponse<IncidentDtoBackend>
-    >("/incidents", {
-      params: params ? toAxiosParams(params) : undefined,
-    });
+  ): Promise<PaginatedIncidentsResponse> {
+    const response = await this.client.get<PaginatedIncidentsResponseBackend>(
+      "/incidents",
+      {
+        params: params ? toAxiosParams(params) : undefined,
+      }
+    );
     return {
       ...response.data,
       items: response.data.items.map(convertIncident),

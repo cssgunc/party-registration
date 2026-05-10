@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from httpx import AsyncClient
 from src.modules.incident.incident_model import IncidentDto, IncidentSeverity
-from test.modules.incident.incident_utils import IncidentTestUtils
+from test.modules.incident.incident_utils import IncidentTestUtils, assert_severity_counts
 from test.utils.http.assertions import assert_res_paginated
 from test.utils.http.test_templates import generate_filter_sort_tests, generate_search_tests
 
@@ -281,3 +281,84 @@ class TestIncidentListSearch:
         response = await self.admin_client.get("/api/incidents?search=5555")
         paginated = assert_res_paginated(response, IncidentDto, total_records=1)
         self.incident_utils.assert_matches(paginated.items[0], incident1.to_dto())
+
+
+class TestIncidentListSeverityCounts:
+    """Tests for severity_counts field on GET /api/incidents endpoint."""
+
+    admin_client: AsyncClient
+    incident_utils: IncidentTestUtils
+
+    @pytest.fixture(autouse=True)
+    def _setup(self, incident_utils: IncidentTestUtils, admin_client: AsyncClient):
+        self.incident_utils = incident_utils
+        self.admin_client = admin_client
+
+    @pytest.mark.asyncio
+    async def test_severity_counts_empty(self):
+        """Severity counts should be all zero when there are no incidents."""
+        response = await self.admin_client.get("/api/incidents")
+        assert_res_paginated(response, IncidentDto, total_records=0)
+        assert_severity_counts(response.json())
+
+    @pytest.mark.asyncio
+    async def test_severity_counts_unfiltered(self):
+        """Severity counts should reflect every incident when no filter is applied."""
+        await self.incident_utils.create_many(i=2, severity="remote_warning")
+        await self.incident_utils.create_many(i=3, severity="in_person_warning")
+        await self.incident_utils.create_many(i=1, severity="citation")
+
+        response = await self.admin_client.get("/api/incidents")
+        assert_res_paginated(response, IncidentDto, total_records=6)
+        assert_severity_counts(
+            response.json(), remote_warning=2, in_person_warning=3, citation=1
+        )
+
+    @pytest.mark.asyncio
+    async def test_severity_counts_ignore_pagination(self):
+        """Severity counts should reflect the full filtered set, not just the current page."""
+        await self.incident_utils.create_many(i=4, severity="remote_warning")
+        await self.incident_utils.create_many(i=2, severity="citation")
+
+        response = await self.admin_client.get("/api/incidents?page_number=1&page_size=2")
+        paginated = assert_res_paginated(
+            response, IncidentDto, total_records=6, page_size=2, total_pages=3
+        )
+        assert len(paginated.items) == 2
+        assert_severity_counts(response.json(), remote_warning=4, citation=2)
+
+    @pytest.mark.asyncio
+    async def test_severity_counts_respect_filters(self):
+        """Severity counts should reflect filters applied to the list query."""
+        await self.incident_utils.create_many(i=2, severity="remote_warning", reference_id="A")
+        await self.incident_utils.create_many(i=1, severity="in_person_warning", reference_id="A")
+        await self.incident_utils.create_many(i=3, severity="citation", reference_id="B")
+
+        response = await self.admin_client.get("/api/incidents?reference_id_eq=A")
+        assert_res_paginated(response, IncidentDto, total_records=3)
+        assert_severity_counts(
+            response.json(), remote_warning=2, in_person_warning=1, citation=0
+        )
+
+    @pytest.mark.asyncio
+    async def test_severity_counts_respect_search(self):
+        """Severity counts should reflect search applied to the list query."""
+        await self.incident_utils.create_one(severity="remote_warning", reference_id="MATCH-1")
+        await self.incident_utils.create_one(severity="citation", reference_id="MATCH-2")
+        await self.incident_utils.create_one(severity="in_person_warning", reference_id="OTHER")
+
+        response = await self.admin_client.get("/api/incidents?search=MATCH")
+        assert_res_paginated(response, IncidentDto, total_records=2)
+        assert_severity_counts(response.json(), remote_warning=1, citation=1)
+
+    @pytest.mark.asyncio
+    async def test_severity_counts_consistent_with_self_filter(self):
+        """Filtering by severity should leave only that bucket non-zero."""
+        await self.incident_utils.create_many(i=2, severity="remote_warning")
+        await self.incident_utils.create_many(i=3, severity="in_person_warning")
+
+        response = await self.admin_client.get(
+            "/api/incidents?severity_eq=in_person_warning"
+        )
+        assert_res_paginated(response, IncidentDto, total_records=3)
+        assert_severity_counts(response.json(), in_person_warning=3)
