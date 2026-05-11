@@ -310,9 +310,7 @@ class TestIncidentListSeverityCounts:
 
         response = await self.admin_client.get("/api/incidents")
         assert_res_paginated(response, IncidentDto, total_records=6)
-        assert_severity_counts(
-            response.json(), remote_warning=2, in_person_warning=3, citation=1
-        )
+        assert_severity_counts(response.json(), remote_warning=2, in_person_warning=3, citation=1)
 
     @pytest.mark.asyncio
     async def test_severity_counts_ignore_pagination(self):
@@ -336,9 +334,7 @@ class TestIncidentListSeverityCounts:
 
         response = await self.admin_client.get("/api/incidents?reference_id_eq=A")
         assert_res_paginated(response, IncidentDto, total_records=3)
-        assert_severity_counts(
-            response.json(), remote_warning=2, in_person_warning=1, citation=0
-        )
+        assert_severity_counts(response.json(), remote_warning=2, in_person_warning=1, citation=0)
 
     @pytest.mark.asyncio
     async def test_severity_counts_respect_search(self):
@@ -357,8 +353,6 @@ class TestIncidentListSeverityCounts:
         await self.incident_utils.create_many(i=2, severity="remote_warning")
         await self.incident_utils.create_many(i=3, severity="in_person_warning")
 
-        response = await self.admin_client.get(
-            "/api/incidents?severity_eq=in_person_warning"
-        )
+        response = await self.admin_client.get("/api/incidents?severity_eq=in_person_warning")
         assert_res_paginated(response, IncidentDto, total_records=3)
         assert_severity_counts(response.json(), in_person_warning=3)

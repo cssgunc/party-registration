@@ -133,9 +133,7 @@ export function useDeleteIncident<TContext = unknown>(
 ) {
   const queryClient = useQueryClient();
   const previousQueriesRef = useRef<
-    ReturnType<
-      typeof queryClient.getQueriesData<PaginatedIncidentsResponse>
-    >
+    ReturnType<typeof queryClient.getQueriesData<PaginatedIncidentsResponse>>
   >([]);
 
   return useMutation<void, Error, number, TContext>({
@@ -145,9 +143,10 @@ export function useDeleteIncident<TContext = unknown>(
     onMutate: async (id, context) => {
       await queryClient.cancelQueries({ queryKey: INCIDENTS_KEY });
 
-      previousQueriesRef.current = queryClient.getQueriesData<
-        PaginatedIncidentsResponse
-      >({ queryKey: INCIDENTS_KEY });
+      previousQueriesRef.current =
+        queryClient.getQueriesData<PaginatedIncidentsResponse>({
+          queryKey: INCIDENTS_KEY,
+        });
 
       queryClient.setQueriesData<PaginatedIncidentsResponse>(
         { queryKey: INCIDENTS_KEY },
