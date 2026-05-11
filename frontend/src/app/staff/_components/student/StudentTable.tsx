@@ -15,9 +15,9 @@ import {
   useUpdateStudent,
 } from "@/lib/api/student/admin-student.queries";
 import { StudentDto, StudentUpdateDto } from "@/lib/api/student/student.types";
+import { getErrorMessage } from "@/lib/errors";
 import { isFromThisSchoolYear } from "@/lib/utils";
 import { ColumnDef } from "@tanstack/react-table";
-import { isAxiosError } from "axios";
 import { useState } from "react";
 import LocationInfoChipDetails from "../party/details/LocationInfoChipDetails";
 import { InfoChip } from "../shared/sidebar/InfoChip";
@@ -45,29 +45,6 @@ const toEditData = (student: StudentDto) => ({
   contact_preference: student.contact_preference ?? undefined,
   residence_place_id: student.residence?.location.google_place_id ?? null,
 });
-
-const getErrorMessage = (error: Error): string => {
-  if (isAxiosError(error)) {
-    const detail = error.response?.data as {
-      message?: string;
-      detail?: string;
-    };
-    switch (error.response?.status) {
-      case 409:
-        return "This phone number is taken by another student.";
-      case 404:
-        return "Student not found.";
-      case 403:
-        return "You do not have permission to perform this action.";
-      case 500:
-        return "Server error. Please try again later.";
-    }
-    if (detail?.detail) return String(detail.detail);
-    if (detail?.message) return String(detail.message);
-    if (error.message) return error.message;
-  }
-  return "Operation failed";
-};
 
 export const StudentTable = () => {
   const { openSnackbar } = useSnackbar();
@@ -98,7 +75,15 @@ export const StudentTable = () => {
         "Update student information",
         <StudentTableForm
           onSubmit={(data) => handleEditSubmit(editingStudent, data)}
-          submissionError={getErrorMessage(error)}
+          submissionError={getErrorMessage(error, {
+            status: {
+              403: "You do not have permission to perform this action.",
+              404: "Student not found.",
+              409: "This phone number is taken by another student.",
+              500: "Server error. Please try again later.",
+            },
+            fallback: "Operation failed.",
+          })}
           editData={toEditData(editingStudent)}
         />
       );

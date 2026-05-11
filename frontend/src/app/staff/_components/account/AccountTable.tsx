@@ -28,9 +28,9 @@ import {
   DEFAULT_TABLE_PARAMS,
   ServerTableParams,
 } from "@/lib/api/shared/query-params";
+import { getErrorMessage } from "@/lib/errors";
 import { formatRoleLabel } from "@/lib/utils";
 import { ColumnDef } from "@tanstack/react-table";
-import { isAxiosError } from "axios";
 import { Send } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useState } from "react";
@@ -59,26 +59,14 @@ const ACCOUNT_STATUS_FILTER_OPTIONS = [
   "invited",
 ] as const;
 
-const getErrorMessage = (error: Error): string => {
-  if (isAxiosError(error)) {
-    const detail = error.response?.data as {
-      message?: string;
-      detail?: string;
-    };
-    switch (error.response?.status) {
-      case 404:
-        return "Account not found.";
-      case 403:
-        return "You do not have permission to perform this action.";
-      case 500:
-        return "Server error. Please try again later.";
-    }
-    if (detail?.detail) return String(detail.detail);
-    if (detail?.message) return String(detail.message);
-    if (error.message) return error.message;
-  }
-  return "Operation failed";
-};
+const ACCOUNT_ERROR_OPTIONS = {
+  status: {
+    403: "You do not have permission to perform this action.",
+    404: "Account not found.",
+    500: "Server error. Please try again later.",
+  },
+  fallback: "Operation failed.",
+} as const;
 
 export const AccountTable = () => {
   const { openSidebar, closeSidebar } = useSidebar();
@@ -97,7 +85,7 @@ export const AccountTable = () => {
 
   const createAccountMutation = useCreateAccount({
     onError: (error: Error, variables: CreateInviteDto) => {
-      const message = getErrorMessage(error);
+      const message = getErrorMessage(error, ACCOUNT_ERROR_OPTIONS);
 
       openSidebar(
         "create-account",
@@ -125,7 +113,7 @@ export const AccountTable = () => {
       error: Error,
       variables: { id: number; data: AccountUpdateData }
     ) => {
-      const message = getErrorMessage(error);
+      const message = getErrorMessage(error, ACCOUNT_ERROR_OPTIONS);
 
       openSidebar(
         `edit-account-${variables.id}`,
@@ -154,7 +142,14 @@ export const AccountTable = () => {
       variables: { id: number; data: PoliceAccountUpdate }
     ) => {
       console.error("Failed to update police account:", error);
-      const errorMessage = `Failed to update police account: ${error.message}`;
+      const errorMessage = getErrorMessage(error, {
+        status: {
+          403: "You do not have permission to perform this action.",
+          404: "Account not found.",
+          500: "Server error. Please try again later.",
+        },
+        fallback: "Failed to update police account.",
+      });
 
       openSidebar(
         `edit-police-${variables.id}`,
@@ -180,7 +175,7 @@ export const AccountTable = () => {
 
   const deleteAccountMutation = useDeleteAccount({
     onError: (error: Error) => {
-      const message = getErrorMessage(error);
+      const message = getErrorMessage(error, ACCOUNT_ERROR_OPTIONS);
       console.error("Failed to delete account:", message);
       openSnackbar("Failed to delete account", "error");
     },
@@ -195,7 +190,7 @@ export const AccountTable = () => {
 
   const deleteInviteMutation = useDeleteInvite({
     onError: (error: Error) => {
-      const message = getErrorMessage(error);
+      const message = getErrorMessage(error, ACCOUNT_ERROR_OPTIONS);
       console.error("Failed to delete invite:", message);
       openSnackbar("Failed to delete invite", "error");
     },
@@ -203,7 +198,7 @@ export const AccountTable = () => {
 
   const resendInviteMutation = useResendInvite({
     onError: (error: Error) => {
-      const message = getErrorMessage(error);
+      const message = getErrorMessage(error, ACCOUNT_ERROR_OPTIONS);
       console.error("Failed to resend invite:", message);
       openSnackbar("Failed to resend invite", "error");
     },

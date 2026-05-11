@@ -24,9 +24,9 @@ import {
   FilterValue,
   ServerTableParams,
 } from "@/lib/api/shared/query-params";
+import { getErrorMessage } from "@/lib/errors";
 import { formatTime } from "@/lib/utils";
 import { ColumnDef } from "@tanstack/react-table";
-import { isAxiosError } from "axios";
 import { format } from "date-fns";
 import { useMemo, useState } from "react";
 import LocationInfoChipDetails from "../party/details/LocationInfoChipDetails";
@@ -133,12 +133,7 @@ export const IncidentTable = () => {
 
   const createMutation = useCreateIncident({
     onError: (error: Error) => {
-      const errorMessage = isAxiosError(error)
-        ? error.response?.data?.detail ||
-          error.response?.data?.message ||
-          error.message
-        : error.message || "Failed to create incident";
-      reopenCreateSidebar(errorMessage);
+      reopenCreateSidebar(getErrorMessage(error));
     },
     onSuccess: () => {
       openSnackbar("Incident created successfully", "success");
@@ -152,19 +147,13 @@ export const IncidentTable = () => {
       error: Error,
       variables: { id: number; payload: Partial<IncidentCreateDto> }
     ) => {
-      const errorMessage = isAxiosError(error)
-        ? error.response?.data?.detail ||
-          error.response?.data?.message ||
-          error.message
-        : error.message || "Failed to update incident";
-
       const targetIncident =
         editingIncident && editingIncident.id === variables.id
           ? editingIncident
           : incidents.find((incident) => incident.id === variables.id) || null;
 
       if (targetIncident) {
-        reopenEditSidebar(targetIncident, errorMessage);
+        reopenEditSidebar(targetIncident, getErrorMessage(error));
       }
     },
     onSuccess: (_data, variables) => {

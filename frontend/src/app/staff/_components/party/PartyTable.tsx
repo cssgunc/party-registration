@@ -13,9 +13,9 @@ import {
   DEFAULT_TABLE_PARAMS,
   ServerTableParams,
 } from "@/lib/api/shared/query-params";
+import { getErrorMessage } from "@/lib/errors";
 import { formatTime } from "@/lib/utils";
 import { ColumnDef } from "@tanstack/react-table";
-import { isAxiosError } from "axios";
 import { format } from "date-fns";
 import { useState } from "react";
 import { InfoChip } from "../shared/sidebar/InfoChip";
@@ -44,27 +44,6 @@ const hasPartyChanged = (
   );
 };
 
-const getErrorMessage = (error: Error): string => {
-  if (isAxiosError(error)) {
-    const detail = error.response?.data as {
-      message?: string;
-      detail?: string;
-    };
-    switch (error.response?.status) {
-      case 404:
-        return "Party not found.";
-      case 403:
-        return "You do not have permission to perform this action.";
-      case 500:
-        return "Server error. Please try again later.";
-    }
-    if (detail?.detail) return String(detail.detail);
-    if (detail?.message) return String(detail.message);
-    if (error.message) return error.message;
-  }
-  return "Operation failed";
-};
-
 export const PartyTable = () => {
   const { openSnackbar } = useSnackbar();
   const { openSidebar, closeSidebar } = useSidebar();
@@ -79,7 +58,14 @@ export const PartyTable = () => {
 
   const createMutation = useCreateAdminParty({
     onError: (error: Error) => {
-      const message = getErrorMessage(error);
+      const message = getErrorMessage(error, {
+        status: {
+          403: "You do not have permission to perform this action.",
+          404: "Party not found.",
+          500: "Server error. Please try again later.",
+        },
+        fallback: "Operation failed.",
+      });
 
       openSidebar(
         "create-party",
@@ -103,7 +89,14 @@ export const PartyTable = () => {
       error: Error,
       variables: { id: number; payload: AdminCreatePartyDto }
     ) => {
-      const message = getErrorMessage(error);
+      const message = getErrorMessage(error, {
+        status: {
+          403: "You do not have permission to perform this action.",
+          404: "Party not found.",
+          500: "Server error. Please try again later.",
+        },
+        fallback: "Operation failed.",
+      });
 
       const editTarget =
         editingParty && editingParty.id === variables.id ? editingParty : null;
@@ -134,7 +127,14 @@ export const PartyTable = () => {
 
   const deleteMutation = useDeleteAdminParty({
     onError: (error: Error) => {
-      const message = getErrorMessage(error);
+      const message = getErrorMessage(error, {
+        status: {
+          403: "You do not have permission to perform this action.",
+          404: "Party not found.",
+          500: "Server error. Please try again later.",
+        },
+        fallback: "Operation failed.",
+      });
       console.error("Failed to delete party:", message);
     },
     onSuccess: () => {

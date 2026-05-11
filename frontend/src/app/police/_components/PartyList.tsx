@@ -8,6 +8,7 @@ import type {
 } from "@/lib/api/incident/incident.types";
 import { ExactMatchDto, PartyDto } from "@/lib/api/party/party.types";
 import { usePoliceCreateIncident } from "@/lib/api/party/police-party.queries";
+import { getErrorMessage } from "@/lib/errors";
 import { useEffect, useState } from "react";
 import PartyCard, { PartyCardData } from "./PartyCard";
 
@@ -38,7 +39,7 @@ const PartyList = ({
       openSnackbar("Incident created successfully", "success");
     },
     onError: (error) => {
-      openSnackbar(error.message || "Failed to create incident", "error");
+      openSnackbar(getErrorMessage(error), "error");
     },
   });
 
