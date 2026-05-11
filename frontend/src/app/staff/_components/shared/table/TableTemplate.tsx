@@ -551,7 +551,7 @@ export function TableTemplate<T extends object>({
               />
             </div>
             {headerSlot && (
-              <div className="hidden md:flex items-center min-w-0">
+              <div className="hidden lg:flex flex-1 items-center justify-center min-w-0 ml-1">
                 {headerSlot}
               </div>
             )}
@@ -593,6 +593,7 @@ export function TableTemplate<T extends object>({
           </div>
         </div>
       )}
+      {headerSlot && <div className="lg:hidden">{headerSlot}</div>}
 
       <div className="flex min-h-0 h-full flex-col justify-between overflow-hidden">
         <Card className="flex-1 min-h-0 py-2 px-4 overflow-hidden rounded-sm w-full max-w-none mx-0">

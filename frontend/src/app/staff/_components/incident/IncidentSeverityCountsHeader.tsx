@@ -14,14 +14,14 @@ export function IncidentSeverityCountsHeader({
   isLoading?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-6 flex-wrap">
+    <div className="@container w-full flex items-center gap-6">
       {INCIDENT_SEVERITIES.map((severity) => (
         <div
           key={severity}
           className="flex items-center gap-2 text-sm whitespace-nowrap"
         >
           <IncidentFlag type={severity} />
-          <span className="text-text">
+          <span className="hidden @md:inline">
             {INCIDENT_SEVERITY_LABELS[severity]}s
           </span>
           {isLoading || !counts ? (
