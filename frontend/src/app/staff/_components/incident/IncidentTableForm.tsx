@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  INCIDENT_SEVERITY_LABELS,
   IncidentCreateDto,
   IncidentDto,
   IncidentSeverity,
@@ -58,12 +59,6 @@ interface IncidentTableFormProps {
   allLocations: LocationDto[];
   editData?: IncidentDto;
   submissionError?: string | null;
-}
-
-function severityLabel(severity: IncidentSeverity): string {
-  if (severity === "remote_warning") return "Remote Warning";
-  if (severity === "in_person_warning") return "In-Person Warning";
-  return "Citation";
 }
 
 export default function IncidentTableForm({
@@ -243,7 +238,7 @@ export default function IncidentTableForm({
               <SelectContent>
                 {incidentSeverityValues.map((severity) => (
                   <SelectItem key={severity} value={severity}>
-                    {severityLabel(severity)}
+                    {INCIDENT_SEVERITY_LABELS[severity]}
                   </SelectItem>
                 ))}
               </SelectContent>

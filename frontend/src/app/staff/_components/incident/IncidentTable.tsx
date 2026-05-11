@@ -10,9 +10,9 @@ import {
   useIncidents,
 } from "@/lib/api/incident/incident.queries";
 import {
+  INCIDENT_SEVERITY_LABELS,
   IncidentCreateDto,
   IncidentDto,
-  IncidentSeverity,
 } from "@/lib/api/incident/incident.types";
 import {
   useLocations,
@@ -55,12 +55,6 @@ const hasIncidentChanged = (
     original.reference_id !== updated.reference_id
   );
 };
-
-function severityLabel(severity: IncidentSeverity): string {
-  if (severity === "remote_warning") return "Remote Warning";
-  if (severity === "in_person_warning") return "In-Person Warning";
-  return "Citation";
-}
 
 function truncateDescription(
   description: string | undefined,
@@ -297,13 +291,7 @@ export const IncidentTable = () => {
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
           <IncidentFlag type={row.original.severity} />
-          {/* <Image
-            src={getSeverityFlag(row.original.severity)}
-            alt={row.original.severity}
-            width={16}
-            height={16}
-          /> */}
-          {severityLabel(row.original.severity)}
+          {INCIDENT_SEVERITY_LABELS[row.original.severity]}
         </div>
       ),
     },

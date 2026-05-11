@@ -97,9 +97,10 @@ class IncidentService:
     async def _get_severity_counts(
         self, base_query: Select, params: ListQueryParams
     ) -> IncidentSeverityCounts:
-        filtered = self.query_service.apply_params(
-            base_query, params, _INCIDENT_QUERY_FIELDS, only={"filter", "search"}
+        filtered = self.query_service.apply_filters(
+            base_query, params.filters, _INCIDENT_QUERY_FIELDS
         )
+        filtered = self.query_service.apply_search(filtered, params.search, _INCIDENT_QUERY_FIELDS)
         subq = filtered.subquery()
         count_query = (
             select(subq.c.severity, func.count()).select_from(subq).group_by(subq.c.severity)

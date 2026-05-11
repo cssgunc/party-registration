@@ -8,6 +8,12 @@ const INCIDENT_SEVERITIES = [
 
 type IncidentSeverity = (typeof INCIDENT_SEVERITIES)[number];
 
+const INCIDENT_SEVERITY_LABELS: Record<IncidentSeverity, string> = {
+  remote_warning: "Remote Warning",
+  in_person_warning: "In-Person Warning",
+  citation: "Citation",
+};
+
 type IncidentCreateDto = {
   location_place_id: string;
   incident_datetime: Date;
@@ -35,9 +41,10 @@ type PaginatedIncidentsResponse = PaginatedResponse<IncidentDto> & {
   severity_counts: IncidentSeverityCounts;
 };
 
-type PaginatedIncidentsResponseBackend = PaginatedResponse<IncidentDtoBackend> & {
-  severity_counts: IncidentSeverityCounts;
-};
+type PaginatedIncidentsResponseBackend =
+  PaginatedResponse<IncidentDtoBackend> & {
+    severity_counts: IncidentSeverityCounts;
+  };
 
 function convertIncident(backend: IncidentDtoBackend): IncidentDto {
   return {
@@ -56,4 +63,4 @@ export type {
   PaginatedIncidentsResponseBackend,
 };
 
-export { convertIncident, INCIDENT_SEVERITIES };
+export { convertIncident, INCIDENT_SEVERITIES, INCIDENT_SEVERITY_LABELS };
