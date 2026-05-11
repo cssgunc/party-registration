@@ -3,7 +3,6 @@
 import { Button } from "@/components/ui/button";
 import { useRetryPoliceVerification } from "@/lib/api/auth/auth.queries";
 import { clientEnv } from "@/lib/config/env.client";
-import { isAxiosError } from "axios";
 import { useEffect, useState } from "react";
 
 const resendCooldownSeconds =
@@ -29,16 +28,8 @@ export default function ResendVerificationButton({
       setMessage("Verification email resent.");
       setCooldownSeconds(resendCooldownSeconds);
     },
-    onError: (requestError: Error) => {
-      if (isAxiosError(requestError)) {
-        if (typeof requestError.response?.data?.detail === "string") {
-          setError(requestError.response.data.detail);
-        } else {
-          setError("Unable to resend verification email right now.");
-        }
-      } else {
-        setError("Unable to resend verification email right now.");
-      }
+    onError: () => {
+      setError("Unable to resend verification email right now.");
     },
   });
 

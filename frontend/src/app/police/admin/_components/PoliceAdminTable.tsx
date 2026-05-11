@@ -20,6 +20,7 @@ import {
   DEFAULT_TABLE_PARAMS,
   type ServerTableParams,
 } from "@/lib/api/shared/query-params";
+import { getErrorMessage } from "@/lib/errors";
 import { formatRoleLabel } from "@/lib/utils";
 import { ColumnDef } from "@tanstack/react-table";
 import { useSession } from "next-auth/react";
@@ -34,11 +35,8 @@ export default function PoliceAdminTable() {
 
   const policeAccountsQuery = usePoliceAccountsPaginated(serverParams);
   const downloadPoliceAccountsCsv = useDownloadPoliceAccountsCsv({
-    onError: (error: Error) => {
-      openSnackbar(
-        error.message || "Failed to export police accounts",
-        "error"
-      );
+    onError: () => {
+      openSnackbar("Failed to export police accounts.", "error");
     },
   });
 
@@ -54,7 +52,7 @@ export default function PoliceAdminTable() {
         <PoliceAccountForm
           title="Edit Police Account"
           onSubmit={(data) => handlePoliceEditSubmit(variables.id, data)}
-          submissionError={error.message}
+          submissionError={getErrorMessage(error)}
           editData={{
             email: variables.data.email,
             role: variables.data.role,
@@ -74,8 +72,8 @@ export default function PoliceAdminTable() {
     onSuccess: () => {
       openSnackbar("Police account deleted successfully", "success");
     },
-    onError: (error: Error) => {
-      openSnackbar(error.message || "Failed to delete police account", "error");
+    onError: () => {
+      openSnackbar("Failed to delete police account.", "error");
     },
   });
 

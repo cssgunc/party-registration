@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { usePoliceSignup } from "@/lib/api/auth/auth.queries";
 import { clientEnv } from "@/lib/config/env.client";
+import { getErrorMessage } from "@/lib/errors";
 import { isAxiosError } from "axios";
 import { Eye, EyeOff } from "lucide-react";
 import Image from "next/image";
@@ -57,19 +58,12 @@ export default function PoliceSignupPage() {
       setIsComplete(true);
     },
     onError: (requestError: Error) => {
-      if (isAxiosError(requestError)) {
-        if (requestError.response?.status === 409) {
-          setSubmissionError("An account with that email already exists.");
-          return;
-        }
-
-        if (typeof requestError.response?.data?.detail === "string") {
-          setSubmissionError(requestError.response.data.detail);
-          return;
-        }
+      if (isAxiosError(requestError) && requestError.response?.status === 409) {
+        setSubmissionError("An account with that email already exists.");
+        return;
       }
 
-      setSubmissionError("Something went wrong. Please try again.");
+      setSubmissionError(getErrorMessage(requestError));
     },
   });
 

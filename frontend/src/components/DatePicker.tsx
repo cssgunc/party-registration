@@ -9,10 +9,9 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import * as chrono from "chrono-node";
-import { format } from "date-fns";
+import { format, isValid, parse } from "date-fns";
 import { CalendarIcon, XIcon } from "lucide-react";
-import { ChangeEvent, KeyboardEvent, useEffect, useState } from "react";
+import * as React from "react";
 
 interface DatePickerProps {
   value: Date | null | undefined;
@@ -28,52 +27,44 @@ interface DatePickerProps {
   forwardDate?: boolean;
 }
 
-function parseNatural(input: string, forwardDate: boolean): Date | null {
-  const trimmed = input.trim();
-  if (!trimmed) return null;
-  return chrono.parseDate(trimmed, new Date(), { forwardDate }) ?? null;
-}
+const PARSE_FORMATS = ["MM/dd/yyyy", "M/d/yyyy", "MM-dd-yyyy", "yyyy-MM-dd"];
 
 export default function DatePicker({
   value,
   onChange,
   disabled,
-  placeholder = "mm/dd/yyyy",
+  placeholder = "MM/DD/YYYY",
   id,
   dateFormat = "MM/dd/yyyy",
   clearable = false,
   className,
   popoverContentClassName,
   "aria-invalid": ariaInvalid,
-  forwardDate = false,
+  forwardDate,
 }: DatePickerProps) {
-  const [open, setOpen] = useState(false);
-  const [inputValue, setInputValue] = useState(
+  void forwardDate;
+  const [open, setOpen] = React.useState(false);
+  const [inputValue, setInputValue] = React.useState(
     value ? format(value, dateFormat) : ""
   );
 
-  useEffect(() => {
-    setInputValue((current) => {
-      if (!value) return "";
-      // If the current input already parses to this date, the user is mid-type;
-      // don't clobber what they typed with the canonical format.
-      const parsed = parseNatural(current, forwardDate);
-      if (parsed && parsed.getTime() === value.getTime()) return current;
-      return format(value, dateFormat);
-    });
-  }, [value, dateFormat, forwardDate]);
+  React.useEffect(() => {
+    setInputValue(value ? format(value, dateFormat) : "");
+  }, [value, dateFormat]);
 
-  function handleInputChange(e: ChangeEvent<HTMLInputElement>) {
+  function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     const raw = e.target.value;
     setInputValue(raw);
-
-    if (!raw.trim()) {
+    if (!raw) {
       onChange(null);
       return;
     }
-    const parsed = parseNatural(raw, forwardDate);
-    if (parsed && (!disabled || !disabled(parsed))) {
-      onChange(parsed);
+    for (const fmt of PARSE_FORMATS) {
+      const parsed = parse(raw, fmt, new Date());
+      if (isValid(parsed) && (!disabled || !disabled(parsed))) {
+        onChange(parsed);
+        return;
+      }
     }
   }
 
@@ -82,7 +73,7 @@ export default function DatePicker({
     if (inputValue !== expected) setInputValue(expected);
   }
 
-  function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "ArrowDown" || e.key === "Enter") {
       e.preventDefault();
       setOpen(true);
@@ -97,8 +88,6 @@ export default function DatePicker({
         onChange={handleInputChange}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
-        onClick={() => setOpen(true)}
-        autoComplete="off"
         placeholder={placeholder}
         aria-invalid={ariaInvalid}
         className={cn(value && clearable ? "pr-16" : "pr-9")}
@@ -131,7 +120,6 @@ export default function DatePicker({
           <PopoverContent
             className={cn("w-auto p-0", popoverContentClassName)}
             align="end"
-            onOpenAutoFocus={(e) => e.preventDefault()}
           >
             <Calendar
               mode="single"

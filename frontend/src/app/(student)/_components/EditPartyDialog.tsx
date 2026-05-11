@@ -10,9 +10,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useSnackbar } from "@/contexts/SnackbarContext";
 import { useUpdateParty } from "@/lib/api/party/party.queries";
 import { PartyDto, StudentCreatePartyDto } from "@/lib/api/party/party.types";
 import { useCurrentStudent } from "@/lib/api/student/student.queries";
+import { getErrorMessage } from "@/lib/errors";
 import { format } from "date-fns";
 
 interface EditPartyDialogProps {
@@ -26,6 +28,7 @@ export function EditPartyDialog({
   open,
   onOpenChange,
 }: EditPartyDialogProps) {
+  const { openSnackbar } = useSnackbar();
   const updatePartyMutation = useUpdateParty();
   const studentQuery = useCurrentStudent();
 
@@ -72,8 +75,8 @@ export function EditPartyDialog({
         data: partyData,
       });
       onOpenChange(false);
-    } catch {
-      alert("Failed to update party");
+    } catch (error) {
+      openSnackbar(getErrorMessage(error), "error");
     }
   };
 

@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { usePoliceLogin } from "@/lib/api/auth/auth.queries";
+import { getErrorMessage } from "@/lib/errors";
 import { isAxiosError } from "axios";
 import { Eye, EyeOff } from "lucide-react";
 import Image from "next/image";
@@ -49,25 +50,23 @@ function PoliceLoginForm() {
       window.location.href = callbackUrl;
     },
     onError: (requestError: Error) => {
-      if (isAxiosError(requestError)) {
-        if (
-          requestError.response?.status === 403 &&
-          requestError.response.data?.detail === "EMAIL_NOT_VERIFIED"
-        ) {
-          setSubmissionError(
-            "Your account hasn't been verified yet. Please check your email for a verification link."
-          );
-          setShowResendVerification(true);
-          return;
-        }
-
-        if (typeof requestError.response?.data?.error === "string") {
-          setSubmissionError(requestError.response.data.error);
-          return;
-        }
+      if (
+        isAxiosError(requestError) &&
+        requestError.response?.status === 403 &&
+        requestError.response.data?.detail === "EMAIL_NOT_VERIFIED"
+      ) {
+        setSubmissionError(
+          "Your account hasn't been verified yet. Please check your email for a verification link."
+        );
+        setShowResendVerification(true);
+        return;
       }
 
-      setSubmissionError("Something went wrong. Please try again.");
+      setSubmissionError(
+        getErrorMessage(requestError, {
+          status: { 401: "Invalid email or password." },
+        })
+      );
     },
   });
 
