@@ -7,8 +7,14 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import { useRef } from "react";
 import { PartyService } from "./party.service";
-import { AdminCreatePartyDto, PARTIES_KEY, PartyDto } from "./party.types";
+import {
+  AdminCreatePartyDto,
+  PARTIES_KEY,
+  PartyDto,
+  PartyStatus,
+} from "./party.types";
 
 const partyService = new PartyService();
 
@@ -63,14 +69,98 @@ export function useUpdateAdminParty(
   });
 }
 
-export function useDeleteAdminParty(
-  options?: OptimisticMutationOptions<PartyDto, Error, number>
+export function useCancelAdminParty<TContext = unknown>(
+  options?: OptimisticMutationOptions<PartyDto, Error, number, TContext>
 ) {
   const queryClient = useQueryClient();
+  const previousQueriesRef = useRef<
+    ReturnType<typeof queryClient.getQueriesData<PaginatedResponse<PartyDto>>>
+  >([]);
 
-  return useMutation({
+  return useMutation<PartyDto, Error, number, TContext>({
     ...options,
-    mutationFn: (id: number) => partyService.deleteParty(id),
+    mutationFn: (id: number) => partyService.cancelParty(id),
+
+    onMutate: async (id, context) => {
+      await queryClient.cancelQueries({ queryKey: PARTIES_KEY });
+
+      previousQueriesRef.current = queryClient.getQueriesData<
+        PaginatedResponse<PartyDto>
+      >({ queryKey: PARTIES_KEY });
+
+      queryClient.setQueriesData<PaginatedResponse<PartyDto>>(
+        { queryKey: PARTIES_KEY },
+        (old) =>
+          old
+            ? {
+                ...old,
+                items: old.items.map((p) =>
+                  p.id === id ? { ...p, status: PartyStatus.CANCELLED } : p
+                ),
+              }
+            : old
+      );
+
+      options?.onOptimisticUpdate?.(id);
+      return (await options?.onMutate?.(id, context)) as TContext;
+    },
+
+    onError: (error, id, onMutateResult, context) => {
+      previousQueriesRef.current.forEach(([queryKey, data]) => {
+        queryClient.setQueryData(queryKey, data);
+      });
+      options?.onError?.(error, id, onMutateResult, context);
+    },
+
+    onSuccess: (...params) => {
+      queryClient.invalidateQueries({ queryKey: PARTIES_KEY });
+      options?.onSuccess?.(...params);
+    },
+  });
+}
+
+export function useRestoreAdminParty<TContext = unknown>(
+  options?: OptimisticMutationOptions<PartyDto, Error, number, TContext>
+) {
+  const queryClient = useQueryClient();
+  const previousQueriesRef = useRef<
+    ReturnType<typeof queryClient.getQueriesData<PaginatedResponse<PartyDto>>>
+  >([]);
+
+  return useMutation<PartyDto, Error, number, TContext>({
+    ...options,
+    mutationFn: (id: number) => partyService.restoreParty(id),
+
+    onMutate: async (id, context) => {
+      await queryClient.cancelQueries({ queryKey: PARTIES_KEY });
+
+      previousQueriesRef.current = queryClient.getQueriesData<
+        PaginatedResponse<PartyDto>
+      >({ queryKey: PARTIES_KEY });
+
+      queryClient.setQueriesData<PaginatedResponse<PartyDto>>(
+        { queryKey: PARTIES_KEY },
+        (old) =>
+          old
+            ? {
+                ...old,
+                items: old.items.map((p) =>
+                  p.id === id ? { ...p, status: PartyStatus.CONFIRMED } : p
+                ),
+              }
+            : old
+      );
+
+      options?.onOptimisticUpdate?.(id);
+      return (await options?.onMutate?.(id, context)) as TContext;
+    },
+
+    onError: (error, id, onMutateResult, context) => {
+      previousQueriesRef.current.forEach(([queryKey, data]) => {
+        queryClient.setQueryData(queryKey, data);
+      });
+      options?.onError?.(error, id, onMutateResult, context);
+    },
 
     onSuccess: (...params) => {
       queryClient.invalidateQueries({ queryKey: PARTIES_KEY });

@@ -36,7 +36,8 @@ test_party_authentication = generate_auth_required_tests(
     ({"admin", "staff", "officer", "police_admin"}, "GET", "/api/parties", None),
     ({"admin", "staff", "officer", "police_admin"}, "GET", "/api/parties/csv", None),
     ({"admin", "staff"}, "GET", "/api/parties/1", None),
-    ({"student", "staff", "admin"}, "DELETE", "/api/parties/1", None),
+    ({"student", "staff", "admin"}, "POST", "/api/parties/1/cancel", None),
+    ({"admin"}, "POST", "/api/parties/1/restore", None),
     (
         {"admin", "officer", "police_admin"},
         "GET",
@@ -240,7 +241,7 @@ class TestPartyGetRouter:
 
 
 class TestPartyDeleteRouter:
-    """Tests for DELETE /api/parties/{id} endpoint."""
+    """Tests for DELETE /api/parties/{id} endpoint (admin)."""
 
     admin_client: AsyncClient
     party_utils: PartyTestUtils
@@ -251,23 +252,74 @@ class TestPartyDeleteRouter:
         self.admin_client = admin_client
 
     @pytest.mark.asyncio
-    async def test_delete_party_success(self):
-        """Test successfully deleting a party."""
+    async def test_admin_delete_party_cancels(self):
+        """Admin DELETE cancels the party (no hard-delete) and does not check ownership."""
         party = await self.party_utils.create_one()
 
-        response = await self.admin_client.delete(f"/api/parties/{party.id}")
+        response = await self.admin_client.post(f"/api/parties/{party.id}/cancel")
+        data = assert_res_success(response, PartyDto)
+
+        party.status = PartyStatus.CANCELLED
+        self.party_utils.assert_matches(party, data)
+
+        # Party still exists in the DB, just cancelled
+        all_parties = await self.party_utils.get_all()
+        assert party.id in [p.id for p in all_parties]
+
+    @pytest.mark.asyncio
+    async def test_admin_delete_cancelled_party_idempotent(self):
+        """Cancelling an already-cancelled party is a no-op (no error)."""
+        party = await self.party_utils.create_one()
+
+        await self.admin_client.post(f"/api/parties/{party.id}/cancel")
+
+        response = await self.admin_client.post(f"/api/parties/{party.id}/cancel")
+        data = assert_res_success(response, PartyDto)
+        party.status = PartyStatus.CANCELLED
+        self.party_utils.assert_matches(party, data)
+
+    @pytest.mark.asyncio
+    async def test_delete_party_not_found(self):
+        """Test cancelling a non-existent party."""
+        response = await self.admin_client.post("/api/parties/999/cancel")
+        assert_res_failure(response, PartyNotFoundException(999))
+
+
+class TestPartyRestoreRouter:
+    """Tests for POST /api/parties/{id}/restore endpoint (admin only)."""
+
+    admin_client: AsyncClient
+    party_utils: PartyTestUtils
+
+    @pytest.fixture(autouse=True)
+    def _setup(self, party_utils: PartyTestUtils, admin_client: AsyncClient):
+        self.party_utils = party_utils
+        self.admin_client = admin_client
+
+    @pytest.mark.asyncio
+    async def test_admin_restore_cancelled_party(self):
+        """Admin can restore a cancelled party back to CONFIRMED."""
+        party = await self.party_utils.create_one()
+        await self.admin_client.post(f"/api/parties/{party.id}/cancel")
+
+        response = await self.admin_client.post(f"/api/parties/{party.id}/restore")
         data = assert_res_success(response, PartyDto)
 
         self.party_utils.assert_matches(party, data)
 
-        # Verify deletion
-        all_parties = await self.party_utils.get_all()
-        assert party.id not in [p.id for p in all_parties]
+    @pytest.mark.asyncio
+    async def test_admin_restore_confirmed_party_idempotent(self):
+        """Restoring an already-confirmed party is a no-op."""
+        party = await self.party_utils.create_one()
+
+        response = await self.admin_client.post(f"/api/parties/{party.id}/restore")
+        data = assert_res_success(response, PartyDto)
+
+        self.party_utils.assert_matches(party, data)
 
     @pytest.mark.asyncio
-    async def test_delete_party_not_found(self):
-        """Test deleting a non-existent party."""
-        response = await self.admin_client.delete("/api/parties/999")
+    async def test_restore_party_not_found(self):
+        response = await self.admin_client.post("/api/parties/999/restore")
         assert_res_failure(response, PartyNotFoundException(999))
 
 
@@ -1519,28 +1571,30 @@ class TestStudentPartyDeleteRouter:
         """Test that student deleting a party cancels it (status=cancelled)."""
         party = await self.party_utils.create_one(contact_one_id=current_student.account_id)
 
-        response = await self.student_client.delete(f"/api/parties/{party.id}")
+        response = await self.student_client.post(f"/api/parties/{party.id}/cancel")
         data = assert_res_success(response, PartyDto)
 
-        assert data.status == PartyStatus.CANCELLED
-        assert data.id == party.id
+        party.status = PartyStatus.CANCELLED
+        self.party_utils.assert_matches(party, data)
 
     @pytest.mark.asyncio
-    async def test_student_delete_cancelled_party_fails(self, current_student: StudentEntity):
-        """Test that student cannot cancel an already-cancelled party."""
+    async def test_student_delete_cancelled_party_idempotent(self, current_student: StudentEntity):
+        """Cancelling an already-cancelled party is a no-op for the owner."""
         party = await self.party_utils.create_one(contact_one_id=current_student.account_id)
 
-        await self.student_client.delete(f"/api/parties/{party.id}")
+        await self.student_client.post(f"/api/parties/{party.id}/cancel")
 
-        response = await self.student_client.delete(f"/api/parties/{party.id}")
-        assert_res_failure(response, PartyCancelledException(party.id))
+        response = await self.student_client.post(f"/api/parties/{party.id}/cancel")
+        data = assert_res_success(response, PartyDto)
+        party.status = PartyStatus.CANCELLED
+        self.party_utils.assert_matches(party, data)
 
     @pytest.mark.asyncio
     async def test_student_delete_others_party_fails(self):
         """Test that student cannot cancel a party that belongs to another student."""
         party = await self.party_utils.create_one()
 
-        response = await self.student_client.delete(f"/api/parties/{party.id}")
+        response = await self.student_client.post(f"/api/parties/{party.id}/cancel")
         assert_res_failure(response, PartyNotOwnedByStudentException(party.id))
 
     @pytest.mark.asyncio
@@ -1552,7 +1606,7 @@ class TestStudentPartyDeleteRouter:
             party_datetime=past_datetime,
         )
 
-        response = await self.student_client.delete(f"/api/parties/{party.id}")
+        response = await self.student_client.post(f"/api/parties/{party.id}/cancel")
         assert_res_failure(response, PartyInPastException())
 
 
@@ -1588,7 +1642,7 @@ class TestStudentPartyUpdateValidationRouter:
     async def test_student_update_cancelled_party_fails(self, current_student: StudentEntity):
         """Test that student cannot update a cancelled party."""
         party = await self.party_utils.create_one(contact_one_id=current_student.account_id)
-        await self.student_client.delete(f"/api/parties/{party.id}")
+        await self.student_client.post(f"/api/parties/{party.id}/cancel")
 
         location = await self.location_utils.create_one()
         update_payload = await self.party_utils.next_student_create_dto(
@@ -1664,7 +1718,7 @@ class TestStudentMyPartiesRouter:
         party1 = await self.party_utils.create_one(contact_one_id=current_student.account_id)
         party2 = await self.party_utils.create_one(contact_one_id=current_student.account_id)
 
-        await self.student_client.delete(f"/api/parties/{party2.id}")
+        await self.student_client.post(f"/api/parties/{party2.id}/cancel")
 
         response = await self.student_client.get("/api/students/me/parties")
         parties = assert_res_success(response, list[PartyDto])
@@ -1748,16 +1802,16 @@ class TestPartyAsStaffRouter:
         does not hard-delete (which is admin-only)."""
         party = await self.party_utils.create_one(contact_one_id=current_staff_host.account_id)
 
-        response = await self.staff_client.delete(f"/api/parties/{party.id}")
+        response = await self.staff_client.post(f"/api/parties/{party.id}/cancel")
         data = assert_res_success(response, PartyDto)
 
-        assert data.id == party.id
-        assert data.status == PartyStatus.CANCELLED
+        party.status = PartyStatus.CANCELLED
+        self.party_utils.assert_matches(party, data)
 
     @pytest.mark.asyncio
     async def test_delete_other_users_party_as_staff_fails(self, current_staff_host: StudentEntity):
         """Staff cannot cancel a party they don't own (same rule as students)."""
         party = await self.party_utils.create_one()
 
-        response = await self.staff_client.delete(f"/api/parties/{party.id}")
+        response = await self.staff_client.post(f"/api/parties/{party.id}/cancel")
         assert_res_failure(response, PartyNotOwnedByStudentException(party.id))

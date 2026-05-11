@@ -59,7 +59,11 @@ export function ColumnHeader<T>({
         <DropdownMenuContent align="start">
           <DropdownMenuItem
             onClick={() => {
-              column.toggleSorting(false);
+              if (isSorted === "asc") {
+                column.clearSorting();
+              } else {
+                column.toggleSorting(false);
+              }
               setOpen(false);
             }}
           >
@@ -69,7 +73,11 @@ export function ColumnHeader<T>({
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => {
-              column.toggleSorting(true);
+              if (isSorted === "desc") {
+                column.clearSorting();
+              } else {
+                column.toggleSorting(true);
+              }
               setOpen(false);
             }}
           >

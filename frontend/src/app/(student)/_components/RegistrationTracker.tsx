@@ -24,7 +24,7 @@ import {
   isFromThisSchoolYear,
 } from "@/lib/utils";
 import { format } from "date-fns";
-import { MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
+import { Ban, MoreVertical, Pencil, Plus } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -151,8 +151,8 @@ export default function RegistrationTracker(): React.JSX.Element {
                   variant="destructive"
                   onClick={() => setDeleteParty(party)}
                 >
-                  <Trash2 className="h-4 w-4" />
-                  Delete
+                  <Ban className="h-4 w-4" />
+                  Cancel
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -294,7 +294,7 @@ export default function RegistrationTracker(): React.JSX.Element {
                   <SkeletonText className="max-w-full" />
                 </div>
               ) : activeParties.length === 0 ? (
-                <p className="flex h-full items-center justify-center px-4 text-center content-sub !text-base">
+                <p className="flex h-full items-center justify-center px-4 text-center content-sub text-base!">
                   {showPartySmartPrompt
                     ? "Schedule and attend the Party Smart course below to register your first party!"
                     : "No active registrations"}

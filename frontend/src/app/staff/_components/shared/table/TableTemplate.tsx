@@ -271,7 +271,7 @@ export function TableTemplate<T extends object>({
       setSorting([{ id: columnId, desc }]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [serverMeta?.sortBy, serverMeta?.sortOrder]);
+  }, [serverMeta?.sortBy, serverMeta?.sortOrder, sorting.length]);
 
   // Server mode: debounced callback on search (globalFilter) change
   useEffect(() => {
@@ -685,11 +685,10 @@ export function TableTemplate<T extends object>({
                       {visibleRows.map((row) => (
                         <TableRow
                           key={row.id}
-                          className={
-                            row.getIsSelected()
-                              ? "bg-accent hover:bg-secondary"
-                              : ""
-                          }
+                          className={cn(
+                            row.getIsSelected() &&
+                              "bg-accent hover:bg-secondary"
+                          )}
                         >
                           {row.getVisibleCells().map((cell) => (
                             <TableCell

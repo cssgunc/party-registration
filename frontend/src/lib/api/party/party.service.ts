@@ -108,11 +108,21 @@ export class PartyService {
   }
 
   /**
-   * Delete party (DELETE /api/parties/{party_id})
+   * Cancel party (POST /api/parties/{party_id}/cancel)
    */
-  async deleteParty(partyId: number): Promise<PartyDto> {
-    const response = await this.client.delete<PartyDtoBackend>(
-      `/parties/${partyId}`
+  async cancelParty(partyId: number): Promise<PartyDto> {
+    const response = await this.client.post<PartyDtoBackend>(
+      `/parties/${partyId}/cancel`
+    );
+    return convertParty(response.data);
+  }
+
+  /**
+   * Restore a cancelled party (POST /api/parties/{party_id}/restore)
+   */
+  async restoreParty(partyId: number): Promise<PartyDto> {
+    const response = await this.client.post<PartyDtoBackend>(
+      `/parties/${partyId}/restore`
     );
     return convertParty(response.data);
   }

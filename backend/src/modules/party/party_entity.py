@@ -37,7 +37,6 @@ class PartyEntity(MappedAsDataclass, EntityBase):
     status: Mapped[PartyStatus] = mapped_column(
         Enum(PartyStatus, native_enum=False, length=20),
         nullable=False,
-        default=PartyStatus.CONFIRMED,
     )
 
     # Relationships
@@ -59,6 +58,7 @@ class PartyEntity(MappedAsDataclass, EntityBase):
             contact_two_last_name=data.contact_two.last_name,
             contact_two_phone_number=data.contact_two.phone_number,
             contact_two_contact_preference=data.contact_two.contact_preference,
+            status=data.status,
         )
 
     def to_dto(self) -> PartyDto:

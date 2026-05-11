@@ -95,7 +95,7 @@ const PartyList = ({
   return (
     <>
       <div className="flex flex-col min-h-0 flex-1">
-        <div className="flex-1 min-h-0 w-full overflow-y-auto [scroll-behavior:smooth]">
+        <div className="flex-1 min-h-0 w-full overflow-y-auto scroll-smooth">
           {exactMatchData && (
             <section>
               <h2 className="px-4 pt-4 subhead-content">Exact Match:</h2>

@@ -295,17 +295,26 @@ async def get_party(
     return await party_service.get_party_by_id(party_id)
 
 
-@party_router.delete("/{party_id}")
-async def delete_party(
+@party_router.post("/{party_id}/cancel")
+async def cancel_party(
     party_id: int,
     party_service: PartyService = Depends(),
     user: AuthPrincipal = Depends(authenticate_by_role("student", "staff", "admin")),
 ) -> PartyDto:
     """
-    Deletes a party registration by ID.
+    Cancels a party registration by ID.
 
-    Admins hard-delete any party. Students and staff cancel parties they own.
+    Admins can cancel any party. Students and staff can only cancel parties they own.
+    Idempotent: cancelling an already-cancelled party is a no-op.
     """
-    if user.role == AccountRole.ADMIN:
-        return await party_service.delete_party(party_id)
-    return await party_service.cancel_party_as_student(party_id, user.id)
+    student_id = user.id if user.role in (AccountRole.STUDENT, AccountRole.STAFF) else None
+    return await party_service.cancel_party(party_id, student_id)
+
+
+@party_router.post("/{party_id}/restore")
+async def restore_party(
+    party_id: int,
+    party_service: PartyService = Depends(),
+    _=Depends(authenticate_by_role("admin")),
+) -> PartyDto:
+    return await party_service.restore_party(party_id)

@@ -18,6 +18,7 @@ class PartyData(BaseModel):
     location_id: int = Field(..., description="ID of the location where the party is held")
     contact_one_id: int = Field(..., description="ID of the first contact student")
     contact_two: "ContactDto" = Field(..., description="Contact information for the second contact")
+    status: PartyStatus = PartyStatus.CONFIRMED
 
 
 class ContactDto(BaseModel):

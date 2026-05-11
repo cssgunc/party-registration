@@ -574,16 +574,35 @@ class PartyService:
 
         return await party_entity.load_dto(self.session)
 
-    async def cancel_party_as_student(self, party_id: int, student_account_id: int) -> PartyDto:
-        """Cancel a party as a student. Only the party owner can cancel their party."""
+    async def cancel_party(self, party_id: int, student_id: int | None) -> PartyDto:
+        """Cancel a party. If student_id is given, only the owner can cancel.
+        Idempotent: cancelling an already-cancelled party is a no-op."""
         party_entity = await self._get_party_entity_by_id(party_id)
 
-        # Validate ownership, status, and timing
-        self._validate_party_belongs_to_student(party_entity, student_account_id)
-        self._validate_party_not_cancelled(party_entity)
-        self._validate_party_in_future(party_entity)
+        if student_id:
+            self._validate_party_belongs_to_student(party_entity, student_id)
+
+        if party_entity.status == PartyStatus.CANCELLED:
+            return party_entity.to_dto()
+
+        if student_id:
+            self._validate_party_in_future(party_entity)
 
         party_entity.status = PartyStatus.CANCELLED
+        self.session.add(party_entity)
+        await self.session.commit()
+
+        return party_entity.to_dto()
+
+    async def restore_party(self, party_id: int) -> PartyDto:
+        """Restore a cancelled party to CONFIRMED. Admin-only at the router level.
+        Idempotent: restoring an already-confirmed party is a no-op."""
+        party_entity = await self._get_party_entity_by_id(party_id)
+
+        if party_entity.status == PartyStatus.CONFIRMED:
+            return party_entity.to_dto()
+
+        party_entity.status = PartyStatus.CONFIRMED
         self.session.add(party_entity)
         await self.session.commit()
 
