@@ -202,7 +202,7 @@ async def reset_dev():
                 contact_two_contact_preference=ContactPreference(
                     party_data["contact_two"]["contact_preference"]
                 ),
-                status=party_data.get("status", "confirmed"),
+                status=party_data.get("status", "confirmed").upper(),
             )
             session.add(party)
 
