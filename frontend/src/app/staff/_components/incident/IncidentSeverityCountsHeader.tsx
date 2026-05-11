@@ -21,7 +21,7 @@ export function IncidentSeverityCountsHeader({
           className="flex items-center gap-2 text-sm whitespace-nowrap"
         >
           <IncidentFlag type={severity} />
-          <span className="text-muted-foreground">
+          <span className="text-text">
             {INCIDENT_SEVERITY_LABELS[severity]}s
           </span>
           {isLoading || !counts ? (
