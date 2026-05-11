@@ -10,9 +10,9 @@ import {
   useIncidents,
 } from "@/lib/api/incident/incident.queries";
 import {
+  INCIDENT_SEVERITY_LABELS,
   IncidentCreateDto,
   IncidentDto,
-  IncidentSeverity,
 } from "@/lib/api/incident/incident.types";
 import {
   useLocations,
@@ -33,6 +33,7 @@ import LocationInfoChipDetails from "../party/details/LocationInfoChipDetails";
 import { InfoChip } from "../shared/sidebar/InfoChip";
 import { TableTemplate } from "../shared/table/TableTemplate";
 import IncidentDescriptionChipDetails from "./IncidentDescriptionChipDetails";
+import { IncidentSeverityCountsHeader } from "./IncidentSeverityCountsHeader";
 import IncidentTableForm from "./IncidentTableForm";
 
 const hasIncidentChanged = (
@@ -54,12 +55,6 @@ const hasIncidentChanged = (
     original.reference_id !== updated.reference_id
   );
 };
-
-function severityLabel(severity: IncidentSeverity): string {
-  if (severity === "remote_warning") return "Remote Warning";
-  if (severity === "in_person_warning") return "In-Person Warning";
-  return "Citation";
-}
 
 function truncateDescription(
   description: string | undefined,
@@ -285,13 +280,7 @@ export const IncidentTable = () => {
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
           <IncidentFlag type={row.original.severity} />
-          {/* <Image
-            src={getSeverityFlag(row.original.severity)}
-            alt={row.original.severity}
-            width={16}
-            height={16}
-          /> */}
-          {severityLabel(row.original.severity)}
+          {INCIDENT_SEVERITY_LABELS[row.original.severity]}
         </div>
       ),
     },
@@ -371,6 +360,12 @@ export const IncidentTable = () => {
         onStateChange={setServerParams}
         onExportCsv={exportCsv}
         isExporting={isExporting}
+        headerSlot={
+          <IncidentSeverityCountsHeader
+            counts={incidentsQuery.data?.severity_counts}
+            isLoading={incidentsQuery.isLoading || incidentsQuery.isFetching}
+          />
+        }
       />
     </div>
   );

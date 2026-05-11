@@ -20,6 +20,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import {
   INCIDENT_SEVERITIES,
+  INCIDENT_SEVERITY_LABELS,
   IncidentCreateDto,
   IncidentDto,
   IncidentSeverity,
@@ -39,12 +40,6 @@ const incidentSchema = z.object({
 });
 
 type IncidentFormValues = z.infer<typeof incidentSchema>;
-
-const SEVERITY_LABELS: Record<IncidentSeverity, string> = {
-  remote_warning: "Remote Warning",
-  in_person_warning: "In-Person Warning",
-  citation: "Citation",
-};
 
 export interface IncidentDialogProps {
   open: boolean;
@@ -167,7 +162,7 @@ export default function IncidentDialog({
                 <SelectContent>
                   {INCIDENT_SEVERITIES.map((s) => (
                     <SelectItem key={s} value={s}>
-                      {SEVERITY_LABELS[s]}
+                      {INCIDENT_SEVERITY_LABELS[s]}
                     </SelectItem>
                   ))}
                 </SelectContent>

@@ -2,7 +2,7 @@ import {
   ListQueryParams,
   ServerTableParams,
 } from "@/lib/api/shared/query-params";
-import { OptimisticMutationOptions, PaginatedResponse } from "@/lib/shared";
+import { OptimisticMutationOptions } from "@/lib/shared";
 import {
   UseQueryOptions,
   keepPreviousData,
@@ -12,7 +12,11 @@ import {
 } from "@tanstack/react-query";
 import { useRef } from "react";
 import { IncidentService } from "./incident.service";
-import { IncidentCreateDto, IncidentDto } from "./incident.types";
+import {
+  IncidentCreateDto,
+  IncidentDto,
+  PaginatedIncidentsResponse,
+} from "./incident.types";
 
 const incidentService = new IncidentService();
 
@@ -25,7 +29,7 @@ export type UpdateIncidentVars = {
 
 export function useIncidents(
   params?: ServerTableParams,
-  options?: UseQueryOptions<PaginatedResponse<IncidentDto>>
+  options?: UseQueryOptions<PaginatedIncidentsResponse>
 ) {
   return useQuery({
     queryKey: [...INCIDENTS_KEY, params ?? "all"],
@@ -129,9 +133,7 @@ export function useDeleteIncident<TContext = unknown>(
 ) {
   const queryClient = useQueryClient();
   const previousQueriesRef = useRef<
-    ReturnType<
-      typeof queryClient.getQueriesData<PaginatedResponse<IncidentDto>>
-    >
+    ReturnType<typeof queryClient.getQueriesData<PaginatedIncidentsResponse>>
   >([]);
 
   return useMutation<void, Error, number, TContext>({
@@ -141,11 +143,12 @@ export function useDeleteIncident<TContext = unknown>(
     onMutate: async (id, context) => {
       await queryClient.cancelQueries({ queryKey: INCIDENTS_KEY });
 
-      previousQueriesRef.current = queryClient.getQueriesData<
-        PaginatedResponse<IncidentDto>
-      >({ queryKey: INCIDENTS_KEY });
+      previousQueriesRef.current =
+        queryClient.getQueriesData<PaginatedIncidentsResponse>({
+          queryKey: INCIDENTS_KEY,
+        });
 
-      queryClient.setQueriesData<PaginatedResponse<IncidentDto>>(
+      queryClient.setQueriesData<PaginatedIncidentsResponse>(
         { queryKey: INCIDENTS_KEY },
         (old) =>
           old ? { ...old, items: old.items.filter((i) => i.id !== id) } : old

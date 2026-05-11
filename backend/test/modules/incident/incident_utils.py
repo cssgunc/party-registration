@@ -125,3 +125,21 @@ class IncidentTestUtils(
     @override
     async def create_one(self, **overrides: Unpack[IncidentOverrides]) -> IncidentEntity:
         return await super().create_one(**overrides)
+
+
+def assert_severity_counts(
+    response_json: dict,
+    *,
+    remote_warning: int = 0,
+    in_person_warning: int = 0,
+    citation: int = 0,
+) -> None:
+    """Assert that the paginated incidents response includes the expected severity counts."""
+    counts = response_json.get("severity_counts")
+    assert counts is not None, f"Expected severity_counts in response, got: {response_json}"
+    expected = {
+        "remote_warning": remote_warning,
+        "in_person_warning": in_person_warning,
+        "citation": citation,
+    }
+    assert counts == expected, f"Expected severity_counts {expected}, got {counts}"

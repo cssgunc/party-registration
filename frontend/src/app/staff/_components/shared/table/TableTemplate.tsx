@@ -106,6 +106,7 @@ export type TableProps<T> = {
   onStateChange?: (params: ServerTableParams) => void;
   onExportCsv?: (params: ListQueryParams) => void;
   isExporting?: boolean;
+  headerSlot?: ReactNode;
   canManageRows?: boolean;
   canEditRow?: (row: T) => boolean;
   canDeleteRow?: (row: T) => boolean;
@@ -140,6 +141,7 @@ export function TableTemplate<T extends object>({
   onStateChange,
   onExportCsv,
   isExporting,
+  headerSlot,
   canManageRows,
   canEditRow,
   canDeleteRow,
@@ -548,6 +550,11 @@ export function TableTemplate<T extends object>({
                 className="p-2 pl-3 h-9 rounded-md"
               />
             </div>
+            {headerSlot && (
+              <div className="hidden lg:flex flex-1 items-center justify-center min-w-0 ml-1">
+                {headerSlot}
+              </div>
+            )}
             <div className="shrink-0 ml-auto flex items-center gap-2">
               {onExportCsv && (
                 <Button
@@ -586,6 +593,7 @@ export function TableTemplate<T extends object>({
           </div>
         </div>
       )}
+      {headerSlot && <div className="lg:hidden">{headerSlot}</div>}
 
       <div className="flex min-h-0 h-full flex-col justify-between overflow-hidden">
         <Card className="flex-1 min-h-0 py-2 px-4 overflow-hidden rounded-sm w-full max-w-none mx-0">

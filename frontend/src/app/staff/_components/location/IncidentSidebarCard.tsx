@@ -16,7 +16,10 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import { IncidentDto } from "@/lib/api/incident/incident.types";
+import {
+  INCIDENT_SEVERITY_LABELS,
+  IncidentDto,
+} from "@/lib/api/incident/incident.types";
 import { formatTime } from "@/lib/utils";
 import { ChevronDown, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { useSession } from "next-auth/react";
@@ -59,13 +62,7 @@ export default function IncidentSidebarCard({
                       <IncidentFlag type={incidents.severity} />
                     </HoverCardTrigger>
                     <HoverCardContent>
-                      <p>
-                        {incidents.severity === "remote_warning" &&
-                          "Remote Warning"}
-                        {incidents.severity === "in_person_warning" &&
-                          "In-Person Warning"}
-                        {incidents.severity === "citation" && "Citation"}
-                      </p>
+                      <p>{INCIDENT_SEVERITY_LABELS[incidents.severity]}</p>
                     </HoverCardContent>
                   </HoverCard>
                 </div>

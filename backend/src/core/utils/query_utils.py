@@ -22,21 +22,6 @@ from sqlalchemy.sql.elements import SQLColumnExpression
 from src.core.database import get_session
 from src.core.exceptions import BadRequestException
 
-__all__ = [
-    "FilterOperator",
-    "FilterParam",
-    "ListQueryParams",
-    "PaginatedResponse",
-    "PaginationParams",
-    "QueryFieldSet",
-    "QueryService",
-    "SortOrder",
-    "SortParam",
-    "get_paginated_openapi_params",
-    "parse_export_list_query_params",
-    "parse_list_query_params",
-]
-
 
 class PaginatedResponse[T](BaseModel):
     items: list[T]
@@ -435,12 +420,12 @@ class QueryService:
         use_mappings: bool = False,
     ) -> PaginatedResponse[ModelType]:
         effective_sort = params.sort or field_set.default_sort
-        query = self._apply_filters(base_query, params.filters, field_set)
-        query = self._apply_sorting(query, effective_sort, field_set)
-        query = self._apply_search(query, params.search, field_set)
+        query = self.apply_filters(base_query, params.filters, field_set)
+        query = self.apply_sorting(query, effective_sort, field_set)
+        query = self.apply_search(query, params.search, field_set)
 
         total_records = await self._get_total_count(query)
-        query = self._apply_pagination(query, params.pagination)
+        query = self.apply_pagination(query, params.pagination)
 
         result = await self.session.execute(query)
 
@@ -454,7 +439,7 @@ class QueryService:
             sort=effective_sort,
         )
 
-    def _apply_filters(
+    def apply_filters(
         self, query: Select, filters: list[FilterParam], field_set: QueryFieldSet
     ) -> Select:
         for filter_param in filters:
@@ -467,21 +452,21 @@ class QueryService:
 
         return query
 
-    def _apply_sorting(self, query: Select, sort: SortParam, field_set: QueryFieldSet) -> Select:
+    def apply_sorting(self, query: Select, sort: SortParam, field_set: QueryFieldSet) -> Select:
         if sort.field not in field_set.sortable_set:
             raise BadRequestException(f"Sorting on field '{sort.field}' is not allowed")
         field = field_set.fields[sort.field]
         order_fn = desc if sort.order == SortOrder.DESC else asc
         return query.order_by(order_fn(field))
 
-    def _apply_pagination(self, query: Select, pagination: PaginationParams) -> Select:
+    def apply_pagination(self, query: Select, pagination: PaginationParams) -> Select:
         if pagination.skip > 0:
             query = query.offset(pagination.skip)
         if pagination.page_size is not None:
             query = query.limit(pagination.page_size)
         return query
 
-    def _apply_search(self, query: Select, search: str | None, field_set: QueryFieldSet) -> Select:
+    def apply_search(self, query: Select, search: str | None, field_set: QueryFieldSet) -> Select:
         if not search or not field_set.searchable:
             return query
         pattern = f"%{search}%"
