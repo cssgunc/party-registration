@@ -21,6 +21,13 @@ type ContactDto = {
   contact_preference: ContactPreference;
 };
 
+const PartyStatus = {
+  CONFIRMED: "confirmed",
+  CANCELLED: "cancelled",
+} as const;
+
+type PartyStatus = (typeof PartyStatus)[keyof typeof PartyStatus];
+
 /**
  * Party DTO
  */
@@ -30,6 +37,7 @@ type PartyDto = {
   location: LocationDto;
   contact_one: StudentDto;
   contact_two: ContactDto;
+  status: PartyStatus;
 };
 
 /**
@@ -54,6 +62,7 @@ export function convertParty(backend: PartyDtoBackend): PartyDto {
     location: convertLocation(backend.location),
     contact_one: convertStudent(backend.contact_one),
     contact_two: backend.contact_two,
+    status: backend.status,
   };
 }
 
@@ -148,4 +157,4 @@ export type {
   ProximitySearchResponseBackend,
   StudentCreatePartyDto,
 };
-export { convertProximitySearchResponse };
+export { convertProximitySearchResponse, PartyStatus };

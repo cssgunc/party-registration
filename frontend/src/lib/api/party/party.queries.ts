@@ -88,7 +88,7 @@ export function useDeleteParty() {
   const queryClient = useQueryClient();
 
   return useMutation<PartyDto, Error, number>({
-    mutationFn: (partyId) => partyService.deleteParty(partyId),
+    mutationFn: (partyId) => partyService.cancelParty(partyId),
     onSuccess: () => {
       // Invalidate parties list to refetch after deletion
       queryClient.invalidateQueries({ queryKey: MY_PARTIES_KEY });

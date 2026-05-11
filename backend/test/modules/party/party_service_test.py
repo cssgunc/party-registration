@@ -2,7 +2,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from src.modules.location.location_service import LocationNotFoundException
-from src.modules.party.party_model import ContactDto, StudentCreatePartyDto
+from src.modules.party.party_model import ContactDto, PartyStatus, StudentCreatePartyDto
 from src.modules.party.party_service import (
     ContactTwoMatchesContactOneException,
     PartyNotFoundException,
@@ -167,6 +167,61 @@ class TestPartyServiceCRUD:
         """Test deleting a non-existent party."""
         with pytest.raises(PartyNotFoundException):
             await self.party_service.delete_party(999)
+
+    @pytest.mark.asyncio
+    async def test_cancel_party_as_admin(self):
+        """Admin cancellation flips status to CANCELLED without ownership check."""
+        party_entity = await self.party_utils.create_one()
+
+        cancelled = await self.party_service.cancel_party(party_entity.id, student_id=None)
+
+        party_entity.status = PartyStatus.CANCELLED
+        self.party_utils.assert_matches(party_entity, cancelled)
+
+        # Party still exists in the DB
+        fetched = await self.party_service.get_party_by_id(party_entity.id)
+        self.party_utils.assert_matches(party_entity, fetched)
+
+    @pytest.mark.asyncio
+    async def test_cancel_party_as_admin_not_found(self):
+        with pytest.raises(PartyNotFoundException):
+            await self.party_service.cancel_party(999, student_id=None)
+
+    @pytest.mark.asyncio
+    async def test_cancel_party_idempotent(self):
+        """Cancelling an already-cancelled party is a no-op (no error)."""
+        party_entity = await self.party_utils.create_one()
+        await self.party_service.cancel_party(party_entity.id, student_id=None)
+
+        result = await self.party_service.cancel_party(party_entity.id, student_id=None)
+        party_entity.status = PartyStatus.CANCELLED
+        self.party_utils.assert_matches(party_entity, result)
+
+    @pytest.mark.asyncio
+    async def test_restore_party(self):
+        """Restoring a cancelled party flips status back to CONFIRMED."""
+        party_entity = await self.party_utils.create_one()
+        await self.party_service.cancel_party(party_entity.id, student_id=None)
+
+        restored = await self.party_service.restore_party(party_entity.id)
+
+        self.party_utils.assert_matches(party_entity, restored)
+
+        fetched = await self.party_service.get_party_by_id(party_entity.id)
+        self.party_utils.assert_matches(party_entity, fetched)
+
+    @pytest.mark.asyncio
+    async def test_restore_party_idempotent(self):
+        """Restoring an already-confirmed party is a no-op."""
+        party_entity = await self.party_utils.create_one()
+
+        result = await self.party_service.restore_party(party_entity.id)
+        self.party_utils.assert_matches(party_entity, result)
+
+    @pytest.mark.asyncio
+    async def test_restore_party_not_found(self):
+        with pytest.raises(PartyNotFoundException):
+            await self.party_service.restore_party(999)
 
     @pytest.mark.asyncio
     async def test_party_exists(self):
