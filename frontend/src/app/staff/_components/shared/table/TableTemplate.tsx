@@ -66,7 +66,14 @@ import {
   Trash2,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
-import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import {
+  ReactNode,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { DeleteConfirmDialog } from "../dialog/DeleteConfirmDialog";
 import { useSidebar } from "../sidebar/SidebarContext";
 import { ColumnHeader } from "./ColumnHeader";
@@ -182,6 +189,13 @@ export function TableTemplate<T extends object>({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<T | null>(null);
   const [globalFilter, setGlobalFilter] = useState<string>("");
+  const [fillerMetrics, setFillerMetrics] = useState({
+    fullRows: 0,
+    partialRowHeight: 0,
+  });
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const tableHeaderRef = useRef<HTMLTableSectionElement | null>(null);
+  const sampleRowRef = useRef<HTMLTableRowElement | null>(null);
 
   // Refs to avoid stale closures in debounced effects
   const paginationRef = useRef(pagination);
@@ -510,11 +524,54 @@ export function TableTemplate<T extends object>({
   });
 
   const visibleRows = table.getRowModel().rows;
-  const renderedDataRowCount = visibleRows.length > 0 ? visibleRows.length : 1;
-  const fillerRowCount = Math.max(
-    pagination.pageSize - renderedDataRowCount,
-    0
-  );
+  useLayoutEffect(() => {
+    const scrollContainer = scrollContainerRef.current;
+    const tableHeader = tableHeaderRef.current;
+
+    if (!scrollContainer || !tableHeader) return;
+
+    const updateVisibleRowCapacity = () => {
+      const availableBodyHeight =
+        scrollContainer.clientHeight -
+        tableHeader.getBoundingClientRect().height;
+      const measuredRowHeight =
+        sampleRowRef.current?.getBoundingClientRect().height ?? 49;
+
+      if (availableBodyHeight <= 0 || measuredRowHeight <= 0) {
+        setFillerMetrics({ fullRows: 0, partialRowHeight: 0 });
+        return;
+      }
+
+      const remainingHeight = Math.max(
+        availableBodyHeight - visibleRows.length * measuredRowHeight,
+        0
+      );
+      const fullRows = Math.floor(remainingHeight / measuredRowHeight);
+      const partialRowHeight = remainingHeight - fullRows * measuredRowHeight;
+
+      setFillerMetrics({
+        fullRows,
+        partialRowHeight: partialRowHeight > 1 ? partialRowHeight : 0,
+      });
+    };
+
+    updateVisibleRowCapacity();
+
+    const resizeObserver = new ResizeObserver(updateVisibleRowCapacity);
+    resizeObserver.observe(scrollContainer);
+    resizeObserver.observe(tableHeader);
+    if (sampleRowRef.current) {
+      resizeObserver.observe(sampleRowRef.current);
+    }
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [visibleRows.length, columnsWithActions.length]);
+
+  const fillerRowCount = visibleRows.length > 0 ? fillerMetrics.fullRows : 0;
+  const partialFillerRowHeight =
+    visibleRows.length > 0 ? fillerMetrics.partialRowHeight : 0;
   const activePage = table.getState().pagination.pageIndex;
   const activePageSize = table.getState().pagination.pageSize;
   const filteredRowCount = isServerMode
@@ -605,13 +662,14 @@ export function TableTemplate<T extends object>({
 
           {!error && (
             <div
+              ref={scrollContainerRef}
               className={cn(
                 "h-full overflow-y-auto",
                 (isFetching || isLoading) && "opacity-60 pointer-events-none"
               )}
             >
               <Table className="bg-card rounded-sm">
-                <TableHeader>
+                <TableHeader ref={tableHeaderRef}>
                   {table.getHeaderGroups().map((headerGroup) => (
                     <TableRow key={headerGroup.id}>
                       {headerGroup.headers.map((header) => (
@@ -690,6 +748,9 @@ export function TableTemplate<T extends object>({
                       {visibleRows.map((row) => (
                         <TableRow
                           key={row.id}
+                          ref={
+                            row.id === visibleRows[0]?.id ? sampleRowRef : null
+                          }
                           className={cn(
                             row.getIsSelected() &&
                               "bg-accent hover:bg-secondary"
@@ -725,6 +786,18 @@ export function TableTemplate<T extends object>({
                             />
                           </TableRow>
                         )
+                      )}
+                      {partialFillerRowHeight > 0 && (
+                        <TableRow
+                          key="filler-row-partial"
+                          className="pointer-events-none"
+                          style={{ height: partialFillerRowHeight }}
+                        >
+                          <TableCell
+                            colSpan={columnsWithActions.length}
+                            className="p-0"
+                          />
+                        </TableRow>
                       )}
                     </>
                   ) : (
