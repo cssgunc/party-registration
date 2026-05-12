@@ -128,6 +128,14 @@ export type TableProps<T> = {
 
 const serverFilterPassthrough = () => true;
 
+function areSortingStatesEqual(a: SortingState, b: SortingState) {
+  if (a.length !== b.length) return false;
+
+  return a.every(
+    (sort, index) => sort.id === b[index]?.id && sort.desc === b[index]?.desc
+  );
+}
+
 export function TableTemplate<T extends object>({
   data,
   columns,
@@ -276,16 +284,15 @@ export function TableTemplate<T extends object>({
       ([, config]) => config.backendField === serverMeta.sortBy
     )?.[0];
     if (!columnId) return;
-    const desc = serverMeta.sortOrder === "desc";
-    if (
-      sorting.length !== 1 ||
-      sorting[0].id !== columnId ||
-      sorting[0].desc !== desc
-    ) {
-      setSorting([{ id: columnId, desc }]);
-    }
+    const nextSorting = [
+      { id: columnId, desc: serverMeta.sortOrder === "desc" },
+    ];
+
+    setSorting((prev) =>
+      areSortingStatesEqual(prev, nextSorting) ? prev : nextSorting
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [serverMeta?.sortBy, serverMeta?.sortOrder, sorting.length]);
+  }, [serverMeta?.sortBy, serverMeta?.sortOrder]);
 
   // Server mode: debounced callback on search (globalFilter) change
   useEffect(() => {
@@ -760,7 +767,6 @@ export function TableTemplate<T extends object>({
                             <TableCell
                               key={cell.id}
                               className={cn(
-                                cell.column.getIsFiltered() && "bg-card",
                                 cell.column.id === "actions"
                                   ? "pr-4"
                                   : "first:pl-6 last:pr-6"
