@@ -596,7 +596,7 @@ export function TableTemplate<T extends object>({
       {headerSlot && <div className="lg:hidden">{headerSlot}</div>}
 
       <div className="flex min-h-0 h-full flex-col justify-between overflow-hidden">
-        <Card className="flex-1 min-h-0 py-2 px-4 overflow-hidden rounded-sm w-full max-w-none mx-0">
+        <Card className="flex-1 min-h-0 overflow-hidden rounded-sm w-full max-w-none mx-0">
           {error && (
             <span className="text-center py-8 text-destructive">
               <p>Error: {error.message}</p>
@@ -619,12 +619,12 @@ export function TableTemplate<T extends object>({
                           key={header.id}
                           className={
                             header.column.id === "actions"
-                              ? "w-0 text-right"
-                              : ""
+                              ? "h-12 w-0 pr-4 pt-2 align-top text-right"
+                              : "h-12 pt-2 align-top first:pl-6 last:pr-6"
                           }
                         >
-                          {header.isPlaceholder ? null : header.column.id ===
-                            "actions" ? null : (
+                          {header.isPlaceholder ||
+                          header.column.id === "actions" ? null : (
                             <ColumnHeader
                               column={header.column}
                               title={
@@ -667,6 +667,11 @@ export function TableTemplate<T extends object>({
                           {table.getVisibleLeafColumns().map((column) => (
                             <TableCell
                               key={`loading-cell-${rowIndex}-${column.id}`}
+                              className={
+                                column.id === "actions"
+                                  ? "pr-4"
+                                  : "first:pl-6 last:pr-6"
+                              }
                             >
                               <Skeleton
                                 className={
@@ -693,9 +698,12 @@ export function TableTemplate<T extends object>({
                           {row.getVisibleCells().map((cell) => (
                             <TableCell
                               key={cell.id}
-                              className={
-                                cell.column.getIsFiltered() ? "bg-card" : ""
-                              }
+                              className={cn(
+                                cell.column.getIsFiltered() && "bg-card",
+                                cell.column.id === "actions"
+                                  ? "pr-4"
+                                  : "first:pl-6 last:pr-6"
+                              )}
                             >
                               {flexRender(
                                 cell.column.columnDef.cell,
@@ -713,7 +721,7 @@ export function TableTemplate<T extends object>({
                           >
                             <TableCell
                               colSpan={columnsWithActions.length}
-                              className="h-12.25"
+                              className="h-12.25 px-4"
                             />
                           </TableRow>
                         )
@@ -723,7 +731,7 @@ export function TableTemplate<T extends object>({
                     <TableRow>
                       <TableCell
                         colSpan={columnsWithActions.length}
-                        className="h-12 text-center"
+                        className="h-12 px-4 text-center"
                       >
                         No results.
                       </TableCell>

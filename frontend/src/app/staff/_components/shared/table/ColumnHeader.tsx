@@ -37,13 +37,13 @@ export function ColumnHeader<T>({
   const canFilter = column.getCanFilter();
 
   return (
-    <div className="flex items-center space-x-2">
+    <div className="flex h-full items-start">
       <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
             size="sm"
-            className="-ml-3 h-8 data-[state=open]:bg-accent"
+            className="-mx-4 -mt-2 h-12 justify-start rounded-none px-4 pt-2 data-[state=open]:bg-accent"
           >
             <span>{title}</span>
             {isFiltered && (
