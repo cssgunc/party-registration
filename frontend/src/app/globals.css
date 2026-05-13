@@ -53,7 +53,7 @@
 :root {
   --app-header-height: 4rem;
   --radius: 0.625rem;
-  --background: oklch(0.7349 0.0915 237.35 / 0.1);
+  --background: oklch(0.9723 0.01 238.51);
   --background-gradient: linear-gradient(
     in oklch 161deg,
     #dceef9 0%,
@@ -149,11 +149,12 @@
     @apply border-border outline-ring/50;
   }
 
-  /* Prevent rubber-band overscroll on the page itself.
+  /* Prevent rubber-band overscroll only while a dialog overlay is open.
      Without this, trackpad pull-to-bounce exposes the transparent body bg. */
-  /* html {
+  html:has(body [data-slot="dialog-overlay"][data-state="open"]),
+  body:has([data-slot="dialog-overlay"][data-state="open"]) {
     overscroll-behavior: none;
-  } */
+  }
 
   body {
     @apply bg-background text-foreground;

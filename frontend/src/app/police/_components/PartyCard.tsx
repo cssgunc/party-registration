@@ -13,7 +13,10 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import type { IncidentSeverity } from "@/lib/api/incident/incident.types";
+import {
+  INCIDENT_SEVERITY_LABELS,
+  type IncidentSeverity,
+} from "@/lib/api/incident/incident.types";
 import {
   LocationDto,
   getCitationCount,
@@ -32,18 +35,18 @@ const INCIDENT_MENU_ITEMS: {
 }[] = [
   {
     severity: "remote_warning",
-    label: "Add remote warning",
-    hoverLabel: "Remote Warnings",
+    label: `Add ${INCIDENT_SEVERITY_LABELS.remote_warning.toLowerCase()}`,
+    hoverLabel: `${INCIDENT_SEVERITY_LABELS.remote_warning}s`,
   },
   {
     severity: "in_person_warning",
-    label: "Add in-person warning",
-    hoverLabel: "In-Person Warnings",
+    label: `Add ${INCIDENT_SEVERITY_LABELS.in_person_warning.toLowerCase()}`,
+    hoverLabel: `${INCIDENT_SEVERITY_LABELS.in_person_warning}s`,
   },
   {
     severity: "citation",
-    label: "Add citation",
-    hoverLabel: "Citations",
+    label: `Add ${INCIDENT_SEVERITY_LABELS.citation.toLowerCase()}`,
+    hoverLabel: `${INCIDENT_SEVERITY_LABELS.citation}s`,
   },
 ];
 

@@ -5,6 +5,7 @@ import PartyRegistrationForm, {
 } from "@/app/(student)/_components/PartyRegistrationForm";
 import { Card } from "@/components/ui/card";
 import { useSnackbar } from "@/contexts/SnackbarContext";
+import { hasActiveHold } from "@/lib/api/location/location.service";
 import { useRegisterParty } from "@/lib/api/party/party.queries";
 import {
   StudentCreatePartyDto,
@@ -19,7 +20,7 @@ import { isFromThisSchoolYear } from "@/lib/utils";
 import { ArrowLeft, Info } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export default function RegistrationForm() {
   const registerPartyMutation = useRegisterParty();
@@ -29,6 +30,20 @@ export default function RegistrationForm() {
   const router = useRouter();
   const { openSnackbar } = useSnackbar();
   const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const courseCompleted = studentQuery.data
+    ? isFromThisSchoolYear(studentQuery.data.last_registered)
+    : false;
+  const residenceHasActiveHold = hasActiveHold(
+    studentQuery.data?.residence?.location.hold_expiration ?? null
+  );
+  const canRegisterParty = courseCompleted && !residenceHasActiveHold;
+  const isRedirectingBlockedStudent =
+    !studentQuery.isPending && !!studentQuery.data && !canRegisterParty;
+
+  useEffect(() => {
+    if (!isRedirectingBlockedStudent) return;
+    router.replace("/");
+  }, [isRedirectingBlockedStudent, router]);
 
   /**
    * Get initial values from the student's most recent party (if they have one).
@@ -115,6 +130,10 @@ export default function RegistrationForm() {
       }
     }
   };
+
+  if (isRedirectingBlockedStudent) {
+    return null;
+  }
 
   return (
     <div className="h-full overflow-y-auto">
