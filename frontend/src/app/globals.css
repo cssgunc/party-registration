@@ -149,6 +149,12 @@
     @apply border-border outline-ring/50;
   }
 
+  /* Prevent rubber-band overscroll on the page itself.
+     Without this, trackpad pull-to-bounce exposes the transparent body bg. */
+  /* html {
+    overscroll-behavior: none;
+  } */
+
   body {
     @apply bg-background text-foreground;
   }

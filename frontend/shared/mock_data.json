@@ -3489,7 +3489,7 @@
       "state": "NC",
       "country": "US",
       "zip_code": "27516",
-      "hold_expiration": null,
+      "hold_expiration": "NOW+90d",
       "id": 1
     },
     {

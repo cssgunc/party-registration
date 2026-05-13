@@ -1,4 +1,3 @@
-import re
 from datetime import UTC, datetime
 from typing import ClassVar
 
@@ -11,6 +10,7 @@ from src.core.database import get_session
 from src.core.exceptions import BadRequestException, ConflictException, NotFoundException
 from src.core.utils.date_utils import current_academic_year_start, is_same_academic_year
 from src.core.utils.excel_utils import ExcelExporter
+from src.core.utils.phone_utils import digits_only
 from src.core.utils.query_utils import (
     ListQueryParams,
     QueryFieldSet,
@@ -410,8 +410,7 @@ class StudentService:
     async def autocomplete_students(self, query: str) -> list[StudentSuggestionDto]:
         """Return up to 10 students matching query against PID, email, onyen, or phone number."""
         pattern = f"%{query}%"
-        digits_only_query = re.sub(r"\D", "", query)
-        phone_pattern = f"%{digits_only_query}%"
+        phone_pattern = f"%{digits_only(query)}%"
         result = await self.session.execute(
             select(StudentEntity)
             .join(AccountEntity, StudentEntity.account_id == AccountEntity.id)

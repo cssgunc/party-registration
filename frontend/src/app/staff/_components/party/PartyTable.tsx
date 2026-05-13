@@ -18,6 +18,7 @@ import {
   AdminCreatePartyDto,
   PartyDto,
   PartyStatus,
+  getPartyValidationError,
 } from "@/lib/api/party/party.types";
 import {
   DEFAULT_TABLE_PARAMS,
@@ -70,14 +71,17 @@ export const PartyTable = () => {
 
   const createMutation = useCreateAdminParty({
     onError: (error: Error) => {
-      const message = getErrorMessage(error, {
-        status: {
-          403: "You do not have permission to perform this action.",
-          404: "Party not found.",
-          500: "Server error. Please try again later.",
-        },
-        fallback: "Operation failed.",
-      });
+      const validationError = getPartyValidationError(error);
+      const message =
+        validationError?.message ??
+        getErrorMessage(error, {
+          status: {
+            403: "You do not have permission to perform this action.",
+            404: "Party not found.",
+            500: "Server error. Please try again later.",
+          },
+          fallback: "Operation failed.",
+        });
 
       openSidebar(
         "create-party",
@@ -101,14 +105,17 @@ export const PartyTable = () => {
       error: Error,
       variables: { id: number; payload: AdminCreatePartyDto }
     ) => {
-      const message = getErrorMessage(error, {
-        status: {
-          403: "You do not have permission to perform this action.",
-          404: "Party not found.",
-          500: "Server error. Please try again later.",
-        },
-        fallback: "Operation failed.",
-      });
+      const validationError = getPartyValidationError(error);
+      const message =
+        validationError?.message ??
+        getErrorMessage(error, {
+          status: {
+            403: "You do not have permission to perform this action.",
+            404: "Party not found.",
+            500: "Server error. Please try again later.",
+          },
+          fallback: "Operation failed.",
+        });
 
       const editTarget =
         editingParty && editingParty.id === variables.id ? editingParty : null;
@@ -139,12 +146,15 @@ export const PartyTable = () => {
 
   const cancelMutation = useCancelAdminParty({
     onError: (error: Error) => {
-      const message = getErrorMessage(error, {
-        status: {
-          404: "Party not found.",
-        },
-        fallback: "Operation failed.",
-      });
+      const validationError = getPartyValidationError(error);
+      const message =
+        validationError?.message ??
+        getErrorMessage(error, {
+          status: {
+            404: "Party not found.",
+          },
+          fallback: "Operation failed.",
+        });
       openSnackbar(message, "error");
     },
     onSuccess: () => {
@@ -154,12 +164,15 @@ export const PartyTable = () => {
 
   const restoreMutation = useRestoreAdminParty({
     onError: (error: Error) => {
-      const message = getErrorMessage(error, {
-        status: {
-          404: "Party not found.",
-        },
-        fallback: "Operation failed.",
-      });
+      const validationError = getPartyValidationError(error);
+      const message =
+        validationError?.message ??
+        getErrorMessage(error, {
+          status: {
+            404: "Party not found.",
+          },
+          fallback: "Operation failed.",
+        });
       openSnackbar(message, "error");
     },
     onSuccess: () => {

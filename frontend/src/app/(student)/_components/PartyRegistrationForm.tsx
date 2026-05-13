@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/select";
 import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
+import { PARTY_RULE_MESSAGES } from "@/lib/api/party/party.types";
 import { StudentDto } from "@/lib/api/student/student.types";
 import {
   formatPhoneNumberInput,
@@ -36,7 +37,7 @@ import {
   phoneNumberSchema,
 } from "@/lib/utils";
 import { addBusinessDays, isAfter, startOfDay } from "date-fns";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as z from "zod";
 
 const partyFormSchema = z.object({
@@ -48,7 +49,7 @@ const partyFormSchema = z.object({
     .refine(
       (date) =>
         isAfter(startOfDay(date), addBusinessDays(startOfDay(new Date()), 1)),
-      "Party must be at least 2 business days in the future"
+      PARTY_RULE_MESSAGES.PARTY_DATE_TOO_SOON
     ),
   partyTime: z.string().min(1, "Party time is required"),
   secondContactFirstName: z.string().min(1, "First name is required"),
@@ -92,6 +93,8 @@ interface PartyRegistrationFormProps {
   student?: StudentDto | null;
   /** Whether this form is used for creating or editing a party */
   mode?: "create" | "edit";
+  /** Server-side validation message to surface as a banner above the submit button. */
+  submissionError?: string | null;
 }
 
 // Default party time (e.g., 8:00 PM)
@@ -104,6 +107,7 @@ export default function PartyRegistrationForm({
   locationService = new LocationService(),
   initialValues,
   student,
+  submissionError,
 }: PartyRegistrationFormProps) {
   const [formData, setFormData] = useState<Partial<PartyFormValues>>({
     address: initialValues?.address ?? "",
@@ -117,7 +121,18 @@ export default function PartyRegistrationForm({
     contactTwoEmail: initialValues?.contactTwoEmail ?? "",
   });
 
-  const [placeId, setPlaceId] = useState<string>(initialValues?.placeId ?? "");
+  const [placeId, setPlaceId] = useState<string>(
+    initialValues?.placeId ?? student?.residence?.location.google_place_id ?? ""
+  );
+
+  // If the student fixture loads after the first render, sync placeId from
+  // their residence so the form's internal state stays honest with what'll
+  // be sent on submit.
+  useEffect(() => {
+    if (initialValues?.placeId || placeId) return;
+    const residencePlaceId = student?.residence?.location.google_place_id;
+    if (residencePlaceId) setPlaceId(residencePlaceId);
+  }, [student, initialValues?.placeId, placeId]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAddressConfirmation, setShowAddressConfirmation] = useState(false);
@@ -146,14 +161,20 @@ export default function PartyRegistrationForm({
     // If student hasn't provided contact info yet, validate inline fields
     if (!student?.phone_number) {
       const studentInfoErrors: Record<string, string> = {};
-      if (!result.data.studentPhoneNumber) {
-        studentInfoErrors.studentPhoneNumber = "Phone number is required";
-      }
-      if (!result.data.studentContactPreference) {
-        studentInfoErrors.studentContactPreference =
-          "Contact preference is required";
-      }
-      if (Object.keys(studentInfoErrors).length > 0) {
+      if (
+        !result.data.studentPhoneNumber ||
+        !result.data.studentContactPreference
+      ) {
+        // STUDENT_INFO_NOT_PROVIDED — banner-style: show same message twice
+        // so it appears beneath whichever field the user is missing.
+        if (!result.data.studentPhoneNumber) {
+          studentInfoErrors.studentPhoneNumber =
+            PARTY_RULE_MESSAGES.STUDENT_INFO_NOT_PROVIDED;
+        }
+        if (!result.data.studentContactPreference) {
+          studentInfoErrors.studentContactPreference =
+            PARTY_RULE_MESSAGES.STUDENT_INFO_NOT_PROVIDED;
+        }
         setErrors((prev) => ({ ...prev, ...studentInfoErrors }));
         return;
       }
@@ -167,7 +188,7 @@ export default function PartyRegistrationForm({
         student.email.trim().toLowerCase()
     ) {
       contactTwoErrors.contactTwoEmail =
-        "Contact two email must be different from your email";
+        PARTY_RULE_MESSAGES.CONTACT_TWO_EMAIL_MATCHES_CONTACT_ONE;
     }
     const studentPhone =
       student?.phone_number ?? result.data.studentPhoneNumber;
@@ -176,7 +197,7 @@ export default function PartyRegistrationForm({
       const c2Digits = result.data.phoneNumber;
       if (c1Digits === c2Digits) {
         contactTwoErrors.phoneNumber =
-          "Contact two phone number must be different from your phone number";
+          PARTY_RULE_MESSAGES.CONTACT_TWO_PHONE_MATCHES_CONTACT_ONE;
       }
     }
     if (Object.keys(contactTwoErrors).length > 0) {
@@ -236,7 +257,6 @@ export default function PartyRegistrationForm({
     change_date = "August 1, " + currentDate.getFullYear();
   }
 
-  /** ⭐ AddressSearch now sets BOTH address + placeId */
   const handleAddressSelect = (address: AutocompleteResult | null) => {
     updateField("address", address?.formatted_address || "");
     setPlaceId(address?.google_place_id || "");
@@ -263,7 +283,7 @@ export default function PartyRegistrationForm({
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:gap-8">
               <Field data-invalid={!!errors.partyDate}>
                 <FieldLabel htmlFor="party-date" className="content-bold">
-                  Event Date
+                  Party Date
                 </FieldLabel>
                 <DatePicker
                   id="party-date"
@@ -277,6 +297,7 @@ export default function PartyRegistrationForm({
                   }
                   forwardDate={true}
                   aria-invalid={!!errors.partyDate}
+                  inputClassName="content"
                 />
                 <FieldDescription>
                   Must be at least 2 business days from today
@@ -288,7 +309,7 @@ export default function PartyRegistrationForm({
 
               <Field data-invalid={!!errors.partyTime}>
                 <FieldLabel htmlFor="party-time" className="content-bold">
-                  Event Time
+                  Party Time
                 </FieldLabel>
                 <Input
                   id="party-time"
@@ -296,7 +317,7 @@ export default function PartyRegistrationForm({
                   value={formData.partyTime}
                   onChange={(e) => updateField("partyTime", e.target.value)}
                   aria-invalid={!!errors.partyTime}
-                  className="w-full content bg-white input-shadow"
+                  className="content"
                 />
                 {errors.partyTime && (
                   <FieldError>{errors.partyTime}</FieldError>
@@ -344,7 +365,7 @@ export default function PartyRegistrationForm({
               <h2 className="subhead-content">Your Contact Information</h2>
               <p className="content-sub italic">
                 {student?.phone_number != null
-                  ? "You can edit preferences in your Account Settings."
+                  ? "You can edit preferences in your Profile Information."
                   : "Please provide your contact information to complete registration."}
               </p>
             </div>
@@ -565,9 +586,16 @@ export default function PartyRegistrationForm({
           <Field className="flex flex-col items-center">
             <p className="content text-center my-2 lg:my-4">
               Please ensure all information provided is correct before
-              submitting. After submitting, all contacts will receive email
-              confirmation for your event
+              submitting
             </p>
+            {submissionError && (
+              <div
+                className="w-full rounded-md bg-destructive/10 p-3 text-sm text-destructive mb-2"
+                role="alert"
+              >
+                {submissionError}
+              </div>
+            )}
             <Button type="submit" disabled={isSubmitting} className="w-fit!">
               {isSubmitting ? "Submitting..." : "Submit Event"}
             </Button>

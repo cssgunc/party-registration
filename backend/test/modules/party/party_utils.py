@@ -1,6 +1,7 @@
 from datetime import UTC, datetime, timedelta
 from typing import Any, TypedDict, Unpack, override
 
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.modules.party.party_entity import PartyEntity
 from src.modules.party.party_model import (
@@ -11,6 +12,7 @@ from src.modules.party.party_model import (
     PartyStatus,
     StudentCreatePartyDto,
 )
+from src.modules.party.party_service import PartyRule, PartyValidationException
 from src.modules.student.student_model import ContactPreference
 from test.modules.location.location_utils import LocationTestUtils
 from test.modules.student.student_utils import StudentTestUtils
@@ -21,6 +23,14 @@ def get_valid_party_datetime() -> datetime:
     """Get a datetime that is at least 3 business days from now."""
     days_ahead = 5  # Start with 5 calendar days to ensure 3 business days
     return datetime.now(UTC) + timedelta(days=days_ahead)
+
+
+def assert_party_validation_error(
+    exc_info: pytest.ExceptionInfo[PartyValidationException], rule: PartyRule
+) -> None:
+    assert exc_info.value.rule == rule, (
+        f"Expected PartyValidationException rule {rule}, got {exc_info.value.rule}"
+    )
 
 
 class PartyOverrides(TypedDict, total=False):

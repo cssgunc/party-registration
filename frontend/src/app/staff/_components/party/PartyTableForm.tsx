@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/select";
 import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
-import { PartyDto } from "@/lib/api/party/party.types";
+import { PARTY_RULE_MESSAGES, PartyDto } from "@/lib/api/party/party.types";
 import { AdminStudentService } from "@/lib/api/student/admin-student.service";
 import { StudentSuggestionDto } from "@/lib/api/student/student.types";
 import { formatPhoneNumberInput, phoneNumberSchema } from "@/lib/utils";
@@ -46,7 +46,7 @@ export const createPartyTableFormSchema = (isAdmin: boolean) => {
               startOfDay(date),
               addBusinessDays(startOfDay(new Date()), 1)
             ),
-          "Party must be at least 2 business days in the future"
+          PARTY_RULE_MESSAGES.PARTY_DATE_TOO_SOON
         );
 
   return z.object({
