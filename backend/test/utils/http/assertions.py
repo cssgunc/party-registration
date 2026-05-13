@@ -119,12 +119,8 @@ def assert_res_failure(res: Response, expected_error: HTTPException) -> dict[str
     assert "detail" in data, "Expected 'detail' in response data but got None"
 
     detail = data["detail"]
-    assert isinstance(detail, str), (
-        f"Expected 'detail' to be a string but got {type(detail).__name__}"
-    )
-
     assert detail == expected_error.detail, (
-        f"Expected error detail '{expected_error.detail}', got '{detail}'"
+        f"Expected error detail {expected_error.detail!r}, got {detail!r}"
     )
 
     return data

@@ -4,6 +4,8 @@ Custom exceptions for the application.
 These all extend FastAPI's HTTPException to provide specific HTTP status codes
 """
 
+from typing import Any
+
 from fastapi import HTTPException
 
 
@@ -23,7 +25,7 @@ class ForbiddenException(HTTPException):
 
 
 class BadRequestException(HTTPException):
-    def __init__(self, detail: str):
+    def __init__(self, detail: str | dict[str, Any]):
         super().__init__(status_code=400, detail=detail)
 
 

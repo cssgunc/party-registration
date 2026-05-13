@@ -22,6 +22,7 @@ interface DatePickerProps {
   dateFormat?: string;
   clearable?: boolean;
   className?: string;
+  inputClassName?: string;
   popoverContentClassName?: string;
   "aria-invalid"?: boolean;
   forwardDate?: boolean;
@@ -38,6 +39,7 @@ export default function DatePicker({
   dateFormat = "MM/dd/yyyy",
   clearable = false,
   className,
+  inputClassName,
   popoverContentClassName,
   "aria-invalid": ariaInvalid,
   forwardDate,
@@ -90,7 +92,7 @@ export default function DatePicker({
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         aria-invalid={ariaInvalid}
-        className={cn(value && clearable ? "pr-16" : "pr-9")}
+        className={cn(value && clearable ? "pr-16" : "pr-9", inputClassName)}
       />
       <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
         {value && clearable && (

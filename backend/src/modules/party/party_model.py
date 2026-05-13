@@ -42,6 +42,19 @@ class PartyDto(BaseModel):
     status: PartyStatus
 
 
+class PartyDraft(BaseModel):
+    """Proposed final state of a party being created or updated.
+    Mirrors PartyDto minus id; `existing` is set on update flows only.
+    `location` is None for student paths when the student has no residence
+    — the NO_RESIDENCE rule fires before any consumer reads location."""
+
+    party_datetime: AwareDatetime
+    location: LocationDto | None = None
+    contact_one: StudentDto
+    contact_two: ContactDto
+    existing: PartyDto | None = None
+
+
 class StudentCreatePartyDto(BaseModel):
     """DTO for students creating a party registration.
     Party location is derived from the student's residence.

@@ -20,12 +20,10 @@ from src.core.utils.query_utils import (
 )
 from src.modules.account.account_model import AccountRole
 from src.modules.auth.auth_model import AuthPrincipal
-from src.modules.location.location_service import LocationNotFoundException, LocationService
 
 from .party_model import (
     AdminCreatePartyDto,
     CreatePartyDto,
-    ExactMatchDto,
     PaginatedPartiesResponse,
     PartyDto,
     ProximitySearchResponse,
@@ -81,36 +79,6 @@ async def list_parties(
     party_service: PartyService = Depends(),
     _=Depends(authenticate_by_role("admin", "staff", "officer", "police_admin")),
 ) -> PaginatedPartiesResponse:
-    """
-    Returns all party registrations with pagination, sorting, and filtering.
-
-    Query Parameters:
-    - page_number: Page number (1-indexed, default: 1)
-    - page_size: Items per page (default: all)
-    - sort_by: Field to sort by (allowed: party_datetime, location_id, contact_one_id, id)
-    - sort_order: Sort order (asc or desc, default: asc)
-    - location_id: Filter by location ID
-    - contact_one_id: Filter by contact one (student) ID
-
-    Features:
-    - **Opt-in**: All features have sensible defaults - no parameters returns all parties
-    - **Server-side**: All sorting, filtering, and pagination happens in the database
-    - **Performant**: Scales well with large datasets
-
-    Returns:
-    - items: List of party registrations for the current page
-    - total_records: Total number of records matching filters
-    - page_size: Items per page
-    - page_number: Current page number
-    - total_pages: Total number of pages
-
-    Examples:
-    - Get all parties: GET /api/parties/
-    - Get first page of 10: GET /api/parties/?page_size=10
-    - Sort by date descending: GET /api/parties/?sort_by=party_datetime&sort_order=desc
-    - Filter by location: GET /api/parties/?location_id=5
-    - Combined: GET /api/parties/?location_id=5&sort_by=party_datetime&page_size=20
-    """
     return await party_service.get_parties_paginated(params)
 
 
@@ -124,7 +92,6 @@ async def get_parties_nearby(
         ..., alias="end_date", description="End of search window (ISO 8601 with timezone)"
     ),
     party_service: PartyService = Depends(),
-    location_service: LocationService = Depends(),
     _=Depends(authenticate_by_role("officer", "police_admin", "admin")),
 ) -> ProximitySearchResponse:
     """
@@ -151,58 +118,13 @@ async def get_parties_nearby(
     if end_datetime.tzinfo is None:
         raise UnprocessableEntityException("end_date must include timezone information")
 
-    # Normalize to UTC for consistent DB comparisons
     start_datetime = start_datetime.astimezone(UTC)
     end_datetime = end_datetime.astimezone(UTC)
 
     if start_datetime > end_datetime:
         raise BadRequestException("Start date must be less than or equal to end date")
 
-    # Try to find the location in the DB (may not exist for unregistered addresses)
-    try:
-        db_location = await location_service.get_location_by_place_id(place_id)
-    except LocationNotFoundException:
-        db_location = None
-
-    # Only call Google Maps API when the location isn't in the DB
-    if db_location is not None:
-        formatted_address = db_location.formatted_address
-        search_lat = float(db_location.latitude)
-        search_lon = float(db_location.longitude)
-    else:
-        location_data = await location_service.get_place_details(place_id)
-        formatted_address = location_data.formatted_address
-        search_lat = location_data.latitude
-        search_lon = location_data.longitude
-
-    # Find a party at this exact location within the date range (if DB location exists)
-    exact_party = None
-    if db_location is not None:
-        exact_party = await party_service.get_party_at_location_in_date_range(
-            location_id=db_location.id,
-            start_date=start_datetime,
-            end_date=end_datetime,
-        )
-
-    exact_match = ExactMatchDto(
-        google_place_id=place_id,
-        formatted_address=formatted_address,
-        location=db_location,
-        party=exact_party,
-    )
-
-    # Perform proximity search with date range (sorted by distance)
-    nearby = await party_service.get_parties_by_radius_and_date_range(
-        latitude=search_lat,
-        longitude=search_lon,
-        start_date=start_datetime,
-        end_date=end_datetime,
-    )
-
-    if exact_party is not None:
-        nearby = [p for p in nearby if p.id != exact_party.id]
-
-    return ProximitySearchResponse(exact_match=exact_match, nearby=nearby)
+    return await party_service.get_proximity_search(place_id, start_datetime, end_datetime)
 
 
 @party_router.get("/csv", openapi_extra=_OPENAPI_PARAMS)
@@ -222,11 +144,12 @@ async def get_parties_csv(
     Supports the same filter/sort query params as GET /api/parties.
     """
     parties_response = await party_service.get_parties_paginated(params)
-    is_police = principal.principal_type == "police"
-    excel_content = party_service.export_parties_to_excel(
-        parties_response,
-        is_police=is_police,
+    exporter = (
+        party_service.export_parties_to_excel_police
+        if principal.principal_type == "police"
+        else party_service.export_parties_to_excel_staff
     )
+    excel_content = exporter(parties_response)
     filename = f"parties_{datetime.now(ZoneInfo('America/New_York')).strftime('%Y_%m_%d')}.xlsx"
     return Response(
         content=excel_content,
@@ -280,18 +203,6 @@ async def get_party(
     party_service: PartyService = Depends(),
     _=Depends(authenticate_by_role("staff", "admin")),
 ) -> PartyDto:
-    """
-    Returns a party registration by ID.
-
-    Parameters:
-    - party_id: The ID of the party to retrieve
-
-    Returns:
-    - Party registration with the specified ID
-
-    Raises:
-    - 404: If party with the specified ID does not exist
-    """
     return await party_service.get_party_by_id(party_id)
 
 

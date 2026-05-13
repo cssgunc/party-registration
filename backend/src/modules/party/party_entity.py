@@ -9,7 +9,7 @@ from src.core.types import UTCDateTime
 from src.modules.student.student_model import ContactPreference
 
 from ..student.student_entity import StudentEntity
-from .party_model import ContactDto, PartyData, PartyDto, PartyStatus
+from .party_model import ContactDto, PartyData, PartyDraft, PartyDto, PartyStatus
 
 if TYPE_CHECKING:
     from ..location.location_entity import LocationEntity
@@ -61,6 +61,25 @@ class PartyEntity(MappedAsDataclass, EntityBase):
             status=data.status,
         )
 
+    @classmethod
+    def from_draft(cls, draft: PartyDraft) -> Self:
+        assert draft.location is not None, "location must be set before persisting draft"
+        return cls.from_data(
+            PartyData(
+                party_datetime=draft.party_datetime,
+                location_id=draft.location.id,
+                contact_one_id=draft.contact_one.id,
+                contact_two=draft.contact_two,
+            )
+        )
+
+    def apply_draft(self, draft: PartyDraft) -> None:
+        assert draft.location is not None, "location must be set before applying draft"
+        self.party_datetime = draft.party_datetime
+        self.location_id = draft.location.id
+        self.contact_one_id = draft.contact_one.id
+        self.set_contact_two(draft.contact_two)
+
     def to_dto(self) -> PartyDto:
         """Convert entity to model. Requires relationships to be eagerly loaded."""
         # Ensure party_datetime is timezone-aware
@@ -102,6 +121,12 @@ class PartyEntity(MappedAsDataclass, EntityBase):
         )
         party_entity = result.scalar_one()
         return party_entity.to_dto()
+
+    def has_occurred(self) -> bool:
+        party_dt = self.party_datetime
+        if party_dt.tzinfo is None:
+            party_dt = party_dt.replace(tzinfo=UTC)
+        return party_dt <= datetime.now(UTC)
 
     def set_contact_two(self, contact: ContactDto) -> None:
         self.contact_two_email = contact.email

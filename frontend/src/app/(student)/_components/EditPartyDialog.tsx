@@ -12,10 +12,15 @@ import {
 } from "@/components/ui/dialog";
 import { useSnackbar } from "@/contexts/SnackbarContext";
 import { useUpdateParty } from "@/lib/api/party/party.queries";
-import { PartyDto, StudentCreatePartyDto } from "@/lib/api/party/party.types";
+import {
+  PartyDto,
+  StudentCreatePartyDto,
+  getPartyValidationError,
+} from "@/lib/api/party/party.types";
 import { useCurrentStudent } from "@/lib/api/student/student.queries";
 import { getErrorMessage } from "@/lib/errors";
 import { format } from "date-fns";
+import { useState } from "react";
 
 interface EditPartyDialogProps {
   party: PartyDto;
@@ -31,6 +36,7 @@ export function EditPartyDialog({
   const { openSnackbar } = useSnackbar();
   const updatePartyMutation = useUpdateParty();
   const studentQuery = useCurrentStudent();
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
 
   const partyDate = new Date(party.party_datetime);
   const initialValues: PartyFormInitialValues = {
@@ -68,6 +74,7 @@ export function EditPartyDialog({
   };
 
   const handleSubmit = async (values: PartyFormValues, placeId: string) => {
+    setSubmissionError(null);
     try {
       const partyData = formToData(values, placeId);
       await updatePartyMutation.mutateAsync({
@@ -76,7 +83,12 @@ export function EditPartyDialog({
       });
       onOpenChange(false);
     } catch (error) {
-      openSnackbar(getErrorMessage(error), "error");
+      const validationError = getPartyValidationError(error);
+      if (validationError) {
+        setSubmissionError(validationError.message);
+      } else {
+        openSnackbar(getErrorMessage(error), "error");
+      }
     }
   };
 
@@ -91,6 +103,7 @@ export function EditPartyDialog({
           initialValues={initialValues}
           student={studentQuery.data}
           mode="edit"
+          submissionError={submissionError}
         />
       </DialogContent>
     </Dialog>

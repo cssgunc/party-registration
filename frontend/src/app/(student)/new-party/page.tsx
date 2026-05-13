@@ -6,7 +6,10 @@ import PartyRegistrationForm, {
 import { Card } from "@/components/ui/card";
 import { useSnackbar } from "@/contexts/SnackbarContext";
 import { useRegisterParty } from "@/lib/api/party/party.queries";
-import { StudentCreatePartyDto } from "@/lib/api/party/party.types";
+import {
+  StudentCreatePartyDto,
+  getPartyValidationError,
+} from "@/lib/api/party/party.types";
 import {
   useCurrentStudent,
   useMyParties,
@@ -16,7 +19,7 @@ import { isFromThisSchoolYear } from "@/lib/utils";
 import { ArrowLeft, Info } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 export default function RegistrationForm() {
   const registerPartyMutation = useRegisterParty();
@@ -25,6 +28,7 @@ export default function RegistrationForm() {
   const studentQuery = useCurrentStudent();
   const router = useRouter();
   const { openSnackbar } = useSnackbar();
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
 
   /**
    * Get initial values from the student's most recent party (if they have one).
@@ -81,6 +85,7 @@ export default function RegistrationForm() {
   };
 
   const handleSubmit = async (values: PartyFormValues, placeId: string) => {
+    setSubmissionError(null);
     try {
       // If student provided contact info inline (first-time onboarding), save it first
       if (values.studentPhoneNumber && values.studentContactPreference) {
@@ -102,8 +107,12 @@ export default function RegistrationForm() {
       openSnackbar("Party created successfully!", "success");
       router.push("/");
     } catch (err) {
-      console.log(err);
-      openSnackbar("Failed to create party", "error");
+      const validationError = getPartyValidationError(err);
+      if (validationError) {
+        setSubmissionError(validationError.message);
+      } else {
+        openSnackbar("Failed to create party", "error");
+      }
     }
   };
 
@@ -135,6 +144,7 @@ export default function RegistrationForm() {
                 onSubmit={handleSubmit}
                 initialValues={initialValues}
                 student={studentQuery.data}
+                submissionError={submissionError}
               />
             </div>
           </div>
