@@ -10,7 +10,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { useCurrentPrincipal } from "@/lib/api/auth/auth.queries";
-import { isStudentAreaPath } from "@/lib/auth/route-access";
+import { getDashboardPath, isStudentAreaPath } from "@/lib/auth/route-access";
 import { signOut } from "@/lib/auth/signout";
 import { cn } from "@/lib/utils";
 import { LogOut, Shield, User } from "lucide-react";
@@ -42,7 +42,9 @@ export default function Header({ className }: { className?: string }) {
         className
       )}
     >
-      <PartySmartLogo />
+      <Link href={getDashboardPath(role)}>
+        <PartySmartLogo />
+      </Link>
 
       {status === "loading" ||
       (status === "authenticated" && isPrincipalPending) ? (
