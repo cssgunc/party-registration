@@ -16,6 +16,7 @@ export default function StudentDashboard() {
   const validResidence = isFromThisSchoolYear(
     studentQuery?.data?.residence?.residence_chosen_date
   );
+  const location = studentQuery?.data?.residence?.location;
 
   return (
     <div className="flex flex-col items-center pt-6">
@@ -31,9 +32,8 @@ export default function StudentDashboard() {
                   ) : (
                     validResidence && (
                       <p>
-                        {studentQuery?.data?.residence?.location.street_number}{" "}
-                        {studentQuery?.data?.residence?.location.street_name}{" "}
-                        {studentQuery?.data?.residence?.location.unit}
+                        {location?.street_number} {location?.street_name}{" "}
+                        {location?.unit}
                       </p>
                     )
                   )}
@@ -54,6 +54,9 @@ export default function StudentDashboard() {
             </Link>
             <StatusComponent
               last_registered={studentQuery.data?.last_registered}
+              hold_expiration={
+                studentQuery.data?.residence?.location.hold_expiration
+              }
               {...studentQuery}
             />
           </div>

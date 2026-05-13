@@ -1,17 +1,21 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { hasActiveHold } from "@/lib/api/location/location.service";
 import { isFromThisSchoolYear } from "@/lib/utils";
+import { format } from "date-fns";
 import { AlertTriangleIcon, CheckCircle, ExternalLink } from "lucide-react";
 import Link from "next/link";
 
 type CompletionCardProps = {
   last_registered: Date | null | undefined;
+  hold_expiration?: Date | null;
   isPending?: boolean;
   error?: Error | null;
 };
 
 export default function StatusComponent({
   last_registered = null,
+  hold_expiration = null,
   isPending = false,
   error = null,
 }: CompletionCardProps) {
@@ -40,14 +44,24 @@ export default function StatusComponent({
   }
 
   const isCompleted = isFromThisSchoolYear(last_registered);
+  const hasResidenceHold = hasActiveHold(hold_expiration);
 
   return (
     <Card className="p-4 rounded-md shadow-sm w-full bg-card">
       <CardContent className="p-0 flex flex-col gap-1 text-sm">
+        {hasResidenceHold && (
+          <div className="flex items-center gap-2 text-base text-destructive">
+            <AlertTriangleIcon className="size-4 shrink-0 mb-0.5" />
+            <p>
+              Residence on hold until{" "}
+              <b>{format(hold_expiration!, "MM/dd/yy")}</b>
+            </p>
+          </div>
+        )}
         {isCompleted ? (
           <>
             <div className="flex items-center gap-2 text-gray-800">
-              <CheckCircle className="w-4 h-4" />
+              <CheckCircle className="size-4 mb-0.5" />
               <p className="content">
                 Completed on{" "}
                 <span className="content-bold">
@@ -59,8 +73,8 @@ export default function StatusComponent({
           </>
         ) : (
           <div className="content">
-            <div className="flex items-center gap-2 mb-1">
-              <AlertTriangleIcon className="w-4 h-4" />
+            <div className="flex items-center gap-2 mb-1 text-destructive">
+              <AlertTriangleIcon className="size-4 mb-0.5" />
               <p>Course not completed</p>
             </div>
             <div className="flex items-center">
@@ -69,8 +83,8 @@ export default function StatusComponent({
               </a>
               <Link href="/">
                 {" "}
-                {/*change*/}
-                <ExternalLink className="w-4 h-4 ml-2" />
+                {/*TODO add link to course information */}
+                <ExternalLink className="size-4 ml-2" />
               </Link>
             </div>
           </div>

@@ -27,6 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { PARTY_RULE_MESSAGES } from "@/lib/api/party/party.types";
@@ -274,6 +275,7 @@ export default function PartyRegistrationForm({
   const validResidence = isFromThisSchoolYear(
     student?.residence?.residence_chosen_date
   );
+  const isStudentLoading = student === undefined;
 
   return (
     <form onSubmit={handleSubmit}>
@@ -325,7 +327,12 @@ export default function PartyRegistrationForm({
               </Field>
             </div>
 
-            {!validResidence && (
+            {isStudentLoading ? (
+              <Field>
+                <FieldLabel className="content-bold">Party Address</FieldLabel>
+                <Skeleton className="h-10 w-full" />
+              </Field>
+            ) : !validResidence ? (
               <Field data-invalid={!!errors.address}>
                 <FieldLabel htmlFor="party-address" className="content-bold">
                   Party Address
@@ -345,8 +352,7 @@ export default function PartyRegistrationForm({
                 </FieldDescription>
                 {errors.address && <FieldError>{errors.address}</FieldError>}
               </Field>
-            )}
-            {validResidence && (
+            ) : (
               <Field className="col-span-2 gap-1">
                 <FieldLabel className="content-bold">Party Address</FieldLabel>
                 <p className="content">
@@ -372,18 +378,28 @@ export default function PartyRegistrationForm({
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
               <Field className="gap-1">
                 <FieldLabel className="content-bold">First Name</FieldLabel>
-                <p className="content">{student?.first_name}</p>
+                {isStudentLoading ? (
+                  <Skeleton className="h-6 w-full" />
+                ) : (
+                  <p className="content">{student?.first_name}</p>
+                )}
               </Field>
               <Field className="gap-1">
                 <FieldLabel className="content-bold">Last Name</FieldLabel>
-                <p className="content">{student?.last_name}</p>
+                {isStudentLoading ? (
+                  <Skeleton className="h-6 w-full" />
+                ) : (
+                  <p className="content">{student?.last_name}</p>
+                )}
               </Field>
               <Field
                 className="gap-1"
                 data-invalid={!!errors.studentPhoneNumber}
               >
                 <FieldLabel className="content-bold">Phone Number</FieldLabel>
-                {student?.phone_number != null ? (
+                {isStudentLoading ? (
+                  <Skeleton className="h-6 w-full" />
+                ) : student?.phone_number != null ? (
                   <p className="content">
                     {formatPhoneNumberInput(student.phone_number)}
                   </p>
@@ -418,7 +434,9 @@ export default function PartyRegistrationForm({
                 <FieldLabel className="content-bold">
                   Contact Preference
                 </FieldLabel>
-                {student?.phone_number != null ? (
+                {isStudentLoading ? (
+                  <Skeleton className="h-6 w-full" />
+                ) : student?.phone_number != null ? (
                   <p className="content capitalize">
                     {student.contact_preference}
                   </p>
@@ -453,7 +471,11 @@ export default function PartyRegistrationForm({
               </Field>
               <Field className="gap-1">
                 <FieldLabel className="content-bold">Email</FieldLabel>
-                <p className="content">{student?.email}</p>
+                {isStudentLoading ? (
+                  <Skeleton className="h-6 w-full" />
+                ) : (
+                  <p className="content">{student?.email}</p>
+                )}
               </Field>
             </div>
           </div>

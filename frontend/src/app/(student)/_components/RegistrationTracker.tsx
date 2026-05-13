@@ -12,7 +12,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Skeleton, SkeletonText } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { IncidentDto } from "@/lib/api/incident/incident.types";
+import {
+  INCIDENT_SEVERITY_LABELS,
+  IncidentDto,
+} from "@/lib/api/incident/incident.types";
+import { hasActiveHold } from "@/lib/api/location/location.service";
 import { PartyDto } from "@/lib/api/party/party.types";
 import {
   useCurrentStudent,
@@ -23,7 +27,7 @@ import {
   formatTime,
   isFromThisSchoolYear,
 } from "@/lib/utils";
-import { format } from "date-fns";
+import { format } from "date-fns/format";
 import { Ban, MoreVertical, Pencil, Plus } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -44,6 +48,13 @@ export default function RegistrationTracker(): React.JSX.Element {
   const courseCompleted = student
     ? isFromThisSchoolYear(student.last_registered)
     : false;
+  const residenceHoldExpiration = student?.residence?.location.hold_expiration;
+  const residenceHasActiveHold = hasActiveHold(residenceHoldExpiration ?? null);
+  const disabledNewPartyTitle = residenceHasActiveHold
+    ? "A party cannot be registered on a residence with an active hold"
+    : !courseCompleted
+      ? "Complete the Party Smart Course to register a party"
+      : undefined;
 
   const { activeParties, pastParties } = useMemo(() => {
     const parties = partiesQuery.data ?? [];
@@ -138,20 +149,20 @@ export default function RegistrationTracker(): React.JSX.Element {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button className="shrink-0 bg-transparent hover:bg-transparent p-0 h-auto">
-                  <MoreVertical className="h-4 w-4 content cursor-pointer" />
+                  <MoreVertical className="size-4 content cursor-pointer" />
                   <p className="sr-only">Party actions</p>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => setEditParty(party)}>
-                  <Pencil className="h-4 w-4" />
+                  <Pencil className="size-4" />
                   Edit
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   variant="destructive"
                   onClick={() => setDeleteParty(party)}
                 >
-                  <Ban className="h-4 w-4" />
+                  <Ban className="size-4" />
                   Cancel
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -180,7 +191,7 @@ export default function RegistrationTracker(): React.JSX.Element {
           </div>
 
           {/* Contact Two */}
-          <div className="ml-3 mt-6 sm:ml-0 sm:mt-0 content">
+          <div className="ml-3 mt-3 sm:ml-0 sm:mt-0 content">
             <p>
               {party.contact_two.first_name} {party.contact_two.last_name}
             </p>
@@ -208,17 +219,19 @@ export default function RegistrationTracker(): React.JSX.Element {
     incidents: IncidentDto[];
   }) => (
     <div className="px-4 py-4 border-b border-gray-200 rounded-none">
-      <div className="space-y-2">
+      <div>
         <h2 className="content-bold">{date}</h2>
-        {incidents.map((incident) => (
-          <div key={incident.id} className="mt-3">
-            <p className="content">
-              {formatTime(incident.incident_datetime)} -{" "}
-              <span className="capitalize">{incident.severity}</span>
-            </p>
-            <p className="content ml-3 mt-1">{incident.description}</p>
-          </div>
-        ))}
+        <div className="mt-2 space-y-3">
+          {incidents.map((incident) => (
+            <div key={incident.id}>
+              <p className="content">
+                {formatTime(incident.incident_datetime)} -{" "}
+                <span>{INCIDENT_SEVERITY_LABELS[incident.severity]}</span>
+              </p>
+              <p className="content ml-3 mt-1">{incident.description}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -242,7 +255,7 @@ export default function RegistrationTracker(): React.JSX.Element {
           setActiveTab(value as "active" | "past" | "incidents")
         }
       >
-        <div className="flex justify-between items-center mt-2">
+        <div className="mt-2 flex items-end justify-between">
           <TabsList className="w-fit flex gap-4">
             <TabsTrigger
               value="active"
@@ -264,7 +277,7 @@ export default function RegistrationTracker(): React.JSX.Element {
             </TabsTrigger>
           </TabsList>
           <div>
-            {courseCompleted ? (
+            {courseCompleted && !residenceHasActiveHold ? (
               <Link href="/new-party">
                 <Button className="px-4 py-2">
                   <Plus className="size-4 inline-block" />
@@ -272,7 +285,10 @@ export default function RegistrationTracker(): React.JSX.Element {
                 </Button>
               </Link>
             ) : (
-              <span title="Complete the Party Smart Course to register a party">
+              <span
+                className="inline-flex cursor-not-allowed"
+                title={disabledNewPartyTitle}
+              >
                 <Button className="px-4 py-2" disabled>
                   <Plus className="size-4 inline-block" />
                   New Party
