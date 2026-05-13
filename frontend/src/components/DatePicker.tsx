@@ -9,7 +9,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { format, isValid, parse } from "date-fns";
+import * as chrono from "chrono-node";
+import { format } from "date-fns";
 import { CalendarIcon, XIcon } from "lucide-react";
 import * as React from "react";
 
@@ -28,13 +29,17 @@ interface DatePickerProps {
   forwardDate?: boolean;
 }
 
-const PARSE_FORMATS = ["MM/dd/yyyy", "M/d/yyyy", "MM-dd-yyyy", "yyyy-MM-dd"];
+function parseNatural(input: string, forwardDate: boolean): Date | null {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+  return chrono.parseDate(trimmed, new Date(), { forwardDate }) ?? null;
+}
 
 export default function DatePicker({
   value,
   onChange,
   disabled,
-  placeholder = "MM/DD/YYYY",
+  placeholder = "mm/dd/yyyy",
   id,
   dateFormat = "MM/dd/yyyy",
   clearable = false,
@@ -42,31 +47,34 @@ export default function DatePicker({
   inputClassName,
   popoverContentClassName,
   "aria-invalid": ariaInvalid,
-  forwardDate,
+  forwardDate = false,
 }: DatePickerProps) {
-  void forwardDate;
   const [open, setOpen] = React.useState(false);
+  const [lastClosedAt, setLastClosedAt] = React.useState(0);
   const [inputValue, setInputValue] = React.useState(
     value ? format(value, dateFormat) : ""
   );
 
   React.useEffect(() => {
-    setInputValue(value ? format(value, dateFormat) : "");
-  }, [value, dateFormat]);
+    setInputValue((current) => {
+      if (!value) return "";
+      const parsed = parseNatural(current, forwardDate);
+      if (parsed && parsed.getTime() === value.getTime()) return current;
+      return format(value, dateFormat);
+    });
+  }, [value, dateFormat, forwardDate]);
 
   function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     const raw = e.target.value;
     setInputValue(raw);
-    if (!raw) {
+
+    if (!raw.trim()) {
       onChange(null);
       return;
     }
-    for (const fmt of PARSE_FORMATS) {
-      const parsed = parse(raw, fmt, new Date());
-      if (isValid(parsed) && (!disabled || !disabled(parsed))) {
-        onChange(parsed);
-        return;
-      }
+    const parsed = parseNatural(raw, forwardDate);
+    if (parsed && (!disabled || !disabled(parsed))) {
+      onChange(parsed);
     }
   }
 
@@ -90,6 +98,10 @@ export default function DatePicker({
         onChange={handleInputChange}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
+        onClick={() => {
+          if (Date.now() - lastClosedAt > 150) setOpen(true);
+        }}
+        autoComplete="off"
         placeholder={placeholder}
         aria-invalid={ariaInvalid}
         className={cn(value && clearable ? "pr-16" : "pr-9", inputClassName)}
@@ -107,7 +119,13 @@ export default function DatePicker({
             <XIcon className="size-4" />
           </Button>
         )}
-        <Popover open={open} onOpenChange={setOpen}>
+        <Popover
+          open={open}
+          onOpenChange={(next) => {
+            setOpen(next);
+            if (!next) setLastClosedAt(Date.now());
+          }}
+        >
           <PopoverTrigger asChild>
             <Button
               type="button"
@@ -122,6 +140,7 @@ export default function DatePicker({
           <PopoverContent
             className={cn("w-auto p-0", popoverContentClassName)}
             align="end"
+            onOpenAutoFocus={(e) => e.preventDefault()}
           >
             <Calendar
               mode="single"
