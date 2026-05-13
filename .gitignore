@@ -43,6 +43,10 @@ backend/build/
 # Misc
 *.bak
 *.tmp
+
+# Playwright screenshots
+page-*.png
+page-*.jpeg
 backend/script/test.py
 
 # Ignore coverage reports
