@@ -221,13 +221,15 @@ class StudentService:
             residence_address = (
                 student.residence.location.formatted_address
                 if student.residence is not None
-                else "-"
+                else None
             )
             phone = (
-                ExcelExporter.format_phone(student.phone_number) if student.phone_number else "-"
+                ExcelExporter.format_phone(student.phone_number) if student.phone_number else None
             )
             contact_preference = (
-                student.contact_preference.value.capitalize() if student.contact_preference else "-"
+                student.contact_preference.value.capitalize()
+                if student.contact_preference
+                else None
             )
             exporter.add_row(
                 [
