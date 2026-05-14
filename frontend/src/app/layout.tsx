@@ -1,3 +1,4 @@
+import Footer from "@/components/Footer";
 import Header from "@/components/Header";
 import type { Metadata } from "next";
 import localFont from "next/font/local";
@@ -46,6 +47,7 @@ export default function RootLayout({
         <Providers>
           <Header />
           <div className="flex-1 overflow-hidden min-h-0">{children}</div>
+          <Footer />
         </Providers>
       </body>
     </html>

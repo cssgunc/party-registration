@@ -14,7 +14,7 @@ import PartyCard, { PartyCardData } from "./PartyCard";
 
 interface PartyListProps {
   parties?: PartyDto[];
-  onSelect?: (party: PartyDto) => void;
+  onSelect?: (party: PartyDto | null) => void;
   activeParty?: PartyDto;
   exactMatch?: ExactMatchDto;
 }
@@ -94,51 +94,50 @@ const PartyList = ({
 
   return (
     <>
-      <div className="flex flex-col min-h-0 flex-1">
-        <div className="flex-1 min-h-0 w-full overflow-y-auto scroll-smooth">
-          {exactMatchData && (
-            <section>
-              <h2 className="px-4 pt-4 subhead-content">Exact Match:</h2>
-              <ul className="list-none">
-                <li className="border-b border-border">
-                  <PartyCard
-                    data={exactMatchData}
-                    // className="pt-0"
-                    onOpenIncidentDialog={(severity) =>
-                      openIncidentDialog(exactMatchData, severity)
-                    }
-                  />
-                </li>
-              </ul>
-            </section>
-          )}
-          {parties.length > 0 && (
-            <section>
-              {exactMatchData && (
-                <h2 className="px-4 pt-4 pb-2 subhead-content">
-                  Nearby Parties:
-                </h2>
-              )}
-              <ul className="list-none">
-                {parties.map((party) => {
-                  const cardData: PartyCardData = { hasParty: true, party };
-                  return (
-                    <li key={party.id}>
-                      <PartyCard
-                        data={cardData}
-                        onClick={() => onSelect?.(party)}
-                        isActive={activeParty?.id === party.id}
-                        onOpenIncidentDialog={(severity) =>
-                          openIncidentDialog(cardData, severity)
-                        }
-                      />
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          )}
-        </div>
+      <div className="flex flex-col flex-1 min-h-0 w-full overflow-y-auto scroll-smooth">
+        {exactMatchData && (
+          <section>
+            <h2 className="px-4 pt-4 subhead-content">Exact Match:</h2>
+            <ul className="list-none">
+              <li className="border-b border-border">
+                <PartyCard
+                  data={exactMatchData}
+                  onOpenIncidentDialog={(severity) =>
+                    openIncidentDialog(exactMatchData, severity)
+                  }
+                />
+              </li>
+            </ul>
+          </section>
+        )}
+        {parties.length > 0 && (
+          <section>
+            {exactMatchData && (
+              <h2 className="px-4 pt-4 pb-2 subhead-content">
+                Nearby Parties:
+              </h2>
+            )}
+            <ul className="list-none">
+              {parties.map((party) => {
+                const cardData: PartyCardData = { hasParty: true, party };
+                return (
+                  <li key={party.id}>
+                    <PartyCard
+                      data={cardData}
+                      onClick={() =>
+                        onSelect?.(activeParty?.id === party.id ? null : party)
+                      }
+                      isActive={activeParty?.id === party.id}
+                      onOpenIncidentDialog={(severity) =>
+                        openIncidentDialog(cardData, severity)
+                      }
+                    />
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        )}
       </div>
 
       <IncidentDialog

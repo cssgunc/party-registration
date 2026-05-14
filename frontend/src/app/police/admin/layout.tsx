@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   description: "Admin Dashboard",
 };
 
-export default function StudentLayout({
+export default function PoliceAdminLayout({
   children,
 }: {
   children: React.ReactNode;

@@ -260,7 +260,7 @@ export default function PartyTableForm({
               }
               onSelect={handleStudentSelect}
               adminStudentService={adminStudentService}
-              placeholder="Search by PID, email, onyen, or phone..."
+              placeholder="Search by name, PID, email, onyen, etc..."
               className="w-full"
               error={errors.contactOneStudentId}
             />

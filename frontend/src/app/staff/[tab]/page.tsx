@@ -50,37 +50,35 @@ export default function StaffTabPage() {
   }
 
   return (
-    <div className="h-[calc(100dvh-var(--app-header-height))] overflow-hidden flex flex-col">
-      <div className="container mx-auto p-6 flex-1 min-h-0 flex flex-col overflow-hidden">
-        <Tabs
-          value={tab as TabSlug}
-          onValueChange={(value) => router.push(`/staff/${value}`)}
-          className="flex h-full min-h-0 flex-col"
-        >
-          <TabsList>
-            {STAFF_TABS.map((slug) => {
-              if (TAB_CONFIG[slug].adminOnly && role !== "admin") return null;
-              return (
-                <TabsTrigger key={slug} value={slug}>
-                  {TAB_CONFIG[slug].label}
-                </TabsTrigger>
-              );
-            })}
-          </TabsList>
+    <div className="container mx-auto px-6 pt-6 pb-1 h-full overflow-hidden flex flex-col min-h-0">
+      <Tabs
+        value={tab as TabSlug}
+        onValueChange={(value) => router.push(`/staff/${value}`)}
+        className="flex h-full min-h-0 flex-col"
+      >
+        <TabsList>
           {STAFF_TABS.map((slug) => {
             if (TAB_CONFIG[slug].adminOnly && role !== "admin") return null;
             return (
-              <TabsContent
-                key={slug}
-                value={slug}
-                className="flex-1 min-h-0 overflow-hidden"
-              >
-                {TAB_CONTENT[slug]}
-              </TabsContent>
+              <TabsTrigger key={slug} value={slug}>
+                {TAB_CONFIG[slug].label}
+              </TabsTrigger>
             );
           })}
-        </Tabs>
-      </div>
+        </TabsList>
+        {STAFF_TABS.map((slug) => {
+          if (TAB_CONFIG[slug].adminOnly && role !== "admin") return null;
+          return (
+            <TabsContent
+              key={slug}
+              value={slug}
+              className="flex-1 min-h-0 overflow-hidden"
+            >
+              {TAB_CONTENT[slug]}
+            </TabsContent>
+          );
+        })}
+      </Tabs>
     </div>
   );
 }

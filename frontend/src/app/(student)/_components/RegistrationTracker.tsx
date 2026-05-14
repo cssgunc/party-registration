@@ -28,7 +28,7 @@ import {
   isFromThisSchoolYear,
 } from "@/lib/utils";
 import { format } from "date-fns/format";
-import { Ban, MoreVertical, Pencil, Plus } from "lucide-react";
+import { Ban, Mail, MoreVertical, Pencil, Phone, Plus } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -178,15 +178,18 @@ export default function RegistrationTracker(): React.JSX.Element {
             <p>
               {party.contact_one.first_name} {party.contact_one.last_name}
             </p>
-            <div className="ml-3">
-              <p>
+            <div className="flex flex-col gap-0.5 mt-0.5">
+              <p className="flex items-center gap-1.5">
+                <Phone className="size-3 shrink-0" />
                 {formatPhoneNumber(party.contact_one.phone_number)}
                 <span className="capitalize">
-                  {" "}
                   - {party.contact_one.contact_preference}
                 </span>
               </p>
-              <p>{party.contact_one.email}</p>
+              <p className="flex items-center gap-1.5">
+                <Mail className="size-3 shrink-0" />
+                {party.contact_one.email}
+              </p>
             </div>
           </div>
 
@@ -195,15 +198,18 @@ export default function RegistrationTracker(): React.JSX.Element {
             <p>
               {party.contact_two.first_name} {party.contact_two.last_name}
             </p>
-            <div className="ml-3">
-              <p>
+            <div className="flex flex-col gap-0.5 mt-0.5">
+              <p className="flex items-center gap-1.5">
+                <Phone className="size-3 shrink-0" />
                 {formatPhoneNumber(party.contact_two.phone_number)}
                 <span className="capitalize">
-                  {" "}
                   - {party.contact_two.contact_preference}
                 </span>
               </p>
-              <p>{party.contact_two.email}</p>
+              <p className="flex items-center gap-1.5">
+                <Mail className="size-3 shrink-0" />
+                {party.contact_two.email}
+              </p>
             </div>
           </div>
         </div>
@@ -238,8 +244,8 @@ export default function RegistrationTracker(): React.JSX.Element {
 
   if (isPartiesError) {
     return (
-      <Card className="w-full bg-card p-4 h-[calc(100vh-28rem)]">
-        <div className="text-center text-red-600 py-8">
+      <Card className="w-full bg-card p-4 h-full">
+        <div className="text-center text-destructive py-8">
           <p className="font-semibold mb-2">Error loading registrations</p>
           <p className="text-sm">{isPartiesError.message}</p>
         </div>
@@ -248,14 +254,15 @@ export default function RegistrationTracker(): React.JSX.Element {
   }
 
   return (
-    <div>
+    <div className="flex flex-col flex-1 min-h-0 mb-6">
       <Tabs
         value={activeTab}
         onValueChange={(value) =>
           setActiveTab(value as "active" | "past" | "incidents")
         }
+        className="flex flex-col flex-1 min-h-0"
       >
-        <div className="mt-2 flex items-end justify-between">
+        <div className="mt-2 flex items-end justify-between shrink-0">
           <TabsList className="w-fit flex gap-4">
             <TabsTrigger
               value="active"
@@ -298,9 +305,9 @@ export default function RegistrationTracker(): React.JSX.Element {
           </div>
         </div>
 
-        <Card className="w-full">
-          <TabsContent value="active">
-            <div className="h-[calc(100vh-28rem)] w-full overflow-y-auto rounded-md bg-card">
+        <Card className="w-full flex-1 min-h-0 overflow-hidden mt-2 flex flex-col">
+          <TabsContent value="active" className="h-full">
+            <div className="h-full w-full overflow-y-auto rounded-md bg-card">
               {isPartiesPending ? (
                 <div className="px-4 py-4 gap-4 sm:gap-7 flex flex-col">
                   <SkeletonText className="pb-5 max-w-full" />
@@ -323,8 +330,8 @@ export default function RegistrationTracker(): React.JSX.Element {
             </div>
           </TabsContent>
 
-          <TabsContent value="past">
-            <div className="h-[calc(100vh-28rem)] w-full overflow-y-auto rounded-md bg-card">
+          <TabsContent value="past" className="h-full">
+            <div className="h-full w-full overflow-y-auto rounded-md bg-card">
               {isPartiesPending ? (
                 <div className="px-4 py-4 gap-4 sm:gap-7 flex flex-col">
                   <SkeletonText className="pb-5 max-w-full" />
@@ -345,8 +352,8 @@ export default function RegistrationTracker(): React.JSX.Element {
             </div>
           </TabsContent>
 
-          <TabsContent value="incidents">
-            <div className="h-[calc(100vh-28rem)] w-full overflow-y-auto rounded-md bg-card">
+          <TabsContent value="incidents" className="h-full">
+            <div className="h-full w-full overflow-y-auto rounded-md bg-card">
               {isPartiesPending ? (
                 <div className="px-4 py-4 gap-4 sm:gap-7 flex flex-col">
                   <SkeletonText className="pb-5 max-w-full" />

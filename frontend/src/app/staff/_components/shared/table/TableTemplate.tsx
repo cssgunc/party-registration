@@ -852,7 +852,7 @@ export function TableTemplate<T extends object>({
             </div>
 
             {/* Center: Pagination Navigation */}
-            <div className="flex min-w-0 overflow-x-auto justify-center">
+            <div className="flex min-w-0 overflow-x-auto justify-center text-sm">
               <Pagination className="w-max">
                 <PaginationContent>
                   <PaginationItem>
