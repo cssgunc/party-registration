@@ -407,7 +407,7 @@ class TestStudentCSVRouter:
         assert pid_no_res in data_rows
         row_no_res = data_rows[pid_no_res]
         assert row_no_res[7] == "No"
-        assert row_no_res[8] == "-"
+        assert row_no_res[8] is None
         phone_no_res = str(row_no_res[5])
         assert "(" in phone_no_res and ")" in phone_no_res and "-" in phone_no_res
         assert str(row_no_res[6])[0].isupper()

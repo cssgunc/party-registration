@@ -486,10 +486,10 @@ class TestPartyListNestedFiltering:
     @pytest.mark.asyncio
     async def test_filter_by_contact_two_email(self):
         """Test filtering parties by exact contact_two.email."""
-        party1 = await self.party_utils.create_one(contact_two_email="unique@test.com")
+        party1 = await self.party_utils.create_one(contact_two_email="unique@unc.edu")
         _party2 = await self.party_utils.create_one()
 
-        response = await self.admin_client.get("/api/parties?contact_two.email_eq=unique@test.com")
+        response = await self.admin_client.get("/api/parties?contact_two.email_eq=unique@unc.edu")
         paginated = assert_res_paginated(response, PartyDto, total_records=1)
         self.party_utils.assert_matches(paginated.items[0], party1)
 
@@ -532,8 +532,8 @@ class TestPartyListSearch:
     @pytest.mark.parametrize("search_term", ["searchme", "SEARCHME"])
     @pytest.mark.asyncio
     async def test_search_matches_contact_two_email(self, search_term: str):
-        party1 = await self.party_utils.create_one(contact_two_email="searchme@example.com")
-        _party2 = await self.party_utils.create_one(contact_two_email="other@example.com")
+        party1 = await self.party_utils.create_one(contact_two_email="searchme@unc.edu")
+        _party2 = await self.party_utils.create_one(contact_two_email="other@unc.edu")
 
         response = await self.admin_client.get(f"/api/parties?search={search_term}")
         paginated = assert_res_paginated(response, PartyDto, total_records=1)

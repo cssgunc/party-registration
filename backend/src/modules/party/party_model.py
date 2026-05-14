@@ -1,7 +1,7 @@
 import enum
 from typing import Annotated, Literal
 
-from pydantic import AwareDatetime, BaseModel, EmailStr, Field
+from pydantic import AwareDatetime, BaseModel, EmailStr, Field, field_validator
 from src.core.types import PhoneNumber
 from src.core.utils.query_utils import PaginatedResponse
 from src.modules.location.location_model import LocationDto
@@ -24,13 +24,20 @@ class PartyData(BaseModel):
 class ContactDto(BaseModel):
     """DTO for contact information (contact_two in party registration)."""
 
-    email: EmailStr = Field(..., description="Email address of the contact")
+    email: EmailStr = Field(..., description="UNC email address of the contact")
     first_name: str = Field(..., min_length=1, description="First name of the contact")
     last_name: str = Field(..., min_length=1, description="Last name of the contact")
     phone_number: PhoneNumber
     contact_preference: ContactPreference = Field(
         ..., description="Preferred contact method: 'call' or 'text'"
     )
+
+    @field_validator("email")
+    @classmethod
+    def must_be_unc_email(cls, v: EmailStr) -> EmailStr:
+        if not str(v).lower().endswith("@unc.edu"):
+            raise ValueError("Contact two email must be a UNC email address (@unc.edu)")
+        return v
 
 
 class PartyDto(BaseModel):

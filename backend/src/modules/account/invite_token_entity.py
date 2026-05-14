@@ -1,6 +1,6 @@
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import Enum, Integer, String
+from sqlalchemy import Enum, Integer, String, func
 from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column
 from src.core.config import env
 from src.core.database import EntityBase
@@ -17,6 +17,7 @@ class InviteTokenEntity(MappedAsDataclass, EntityBase):
         Enum(InviteTokenRole, native_enum=False, length=20), nullable=False
     )
     expires_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, server_default=func.now(), init=False)
 
     @classmethod
     def from_data(cls, data: CreateInviteDto):
