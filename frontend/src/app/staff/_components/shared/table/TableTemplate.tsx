@@ -12,10 +12,7 @@ import { Input } from "@/components/ui/input";
 import {
   Pagination,
   PaginationContent,
-  PaginationEllipsis,
-  PaginationFirst,
   PaginationItem,
-  PaginationLast,
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
@@ -859,21 +856,6 @@ export function TableTemplate<T extends object>({
               <Pagination className="w-max">
                 <PaginationContent>
                   <PaginationItem>
-                    <PaginationFirst
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        if (isLoading) return;
-                        table.setPageIndex(0);
-                      }}
-                      className={
-                        isLoading || !table.getCanPreviousPage()
-                          ? "pointer-events-none opacity-50"
-                          : "cursor-pointer"
-                      }
-                    />
-                  </PaginationItem>
-                  <PaginationItem>
                     <PaginationPrevious
                       href="#"
                       onClick={(e) => {
@@ -898,7 +880,17 @@ export function TableTemplate<T extends object>({
                     <>
                       {pageStart > 0 && (
                         <PaginationItem>
-                          <PaginationEllipsis />
+                          <PaginationLink
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              table.setPageIndex(0);
+                            }}
+                            className="cursor-pointer"
+                            aria-label="Go to first page"
+                          >
+                            <MoreHorizontal />
+                          </PaginationLink>
                         </PaginationItem>
                       )}
                       {pageIndexes.map((pageIndex) => (
@@ -918,7 +910,17 @@ export function TableTemplate<T extends object>({
                       ))}
                       {pageEnd < pageCount && (
                         <PaginationItem>
-                          <PaginationEllipsis />
+                          <PaginationLink
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              table.setPageIndex(pageCount - 1);
+                            }}
+                            className="cursor-pointer"
+                            aria-label="Go to last page"
+                          >
+                            <MoreHorizontal />
+                          </PaginationLink>
                         </PaginationItem>
                       )}
                     </>
@@ -930,21 +932,6 @@ export function TableTemplate<T extends object>({
                         e.preventDefault();
                         if (isLoading) return;
                         table.nextPage();
-                      }}
-                      className={
-                        isLoading || !table.getCanNextPage()
-                          ? "pointer-events-none opacity-50"
-                          : "cursor-pointer"
-                      }
-                    />
-                  </PaginationItem>
-                  <PaginationItem>
-                    <PaginationLast
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        if (isLoading) return;
-                        table.setPageIndex(pageCount - 1);
                       }}
                       className={
                         isLoading || !table.getCanNextPage()
