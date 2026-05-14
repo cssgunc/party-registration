@@ -61,7 +61,10 @@ export const createPartyTableFormSchema = (isAdmin: boolean) => {
       .positive("Please select a student"),
     contactTwoEmail: z
       .email({ pattern: z.regexes.html5Email })
-      .min(1, "Contact email is required"),
+      .min(1, "Contact email is required")
+      .refine((v) => v.toLowerCase().endsWith("@unc.edu"), {
+        message: "Contact two email must be a UNC email address (@unc.edu)",
+      }),
     contactTwoFirstName: z.string().min(1, "First name is required"),
     contactTwoLastName: z.string().min(1, "Last name is required"),
     contactTwoPhoneNumber: phoneNumberSchema,

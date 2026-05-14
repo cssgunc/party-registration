@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Self
 
-from sqlalchemy import Enum, ForeignKey, Integer, String, select
+from sqlalchemy import Enum, ForeignKey, Integer, String, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column, relationship, selectinload
 from src.core.database import EntityBase
@@ -38,6 +38,7 @@ class PartyEntity(MappedAsDataclass, EntityBase):
         Enum(PartyStatus, native_enum=False, length=20),
         nullable=False,
     )
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, server_default=func.now(), init=False)
 
     # Relationships
     location: Mapped["LocationEntity"] = relationship(

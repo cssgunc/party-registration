@@ -221,13 +221,15 @@ class StudentService:
             residence_address = (
                 student.residence.location.formatted_address
                 if student.residence is not None
-                else "-"
+                else None
             )
             phone = (
-                ExcelExporter.format_phone(student.phone_number) if student.phone_number else "-"
+                ExcelExporter.format_phone(student.phone_number) if student.phone_number else None
             )
             contact_preference = (
-                student.contact_preference.value.capitalize() if student.contact_preference else "-"
+                student.contact_preference.value.capitalize()
+                if student.contact_preference
+                else None
             )
             exporter.add_row(
                 [
@@ -408,9 +410,10 @@ class StudentService:
     _AUTOCOMPLETE_LIMIT = 10
 
     async def autocomplete_students(self, query: str) -> list[StudentSuggestionDto]:
-        """Return up to 10 students matching query against PID, email, onyen, or phone number."""
+        """Return up to 10 students matching query against PID, email, onyen, phone, or name."""
         pattern = f"%{query}%"
         phone_pattern = f"%{digits_only(query)}%"
+        full_name_expr = func.concat(AccountEntity.first_name, " ", AccountEntity.last_name)
         result = await self.session.execute(
             select(StudentEntity)
             .join(AccountEntity, StudentEntity.account_id == AccountEntity.id)
@@ -420,6 +423,9 @@ class StudentService:
                     AccountEntity.email.ilike(pattern),
                     AccountEntity.onyen.ilike(pattern),
                     StudentEntity.phone_number.ilike(phone_pattern),
+                    AccountEntity.first_name.ilike(pattern),
+                    AccountEntity.last_name.ilike(pattern),
+                    full_name_expr.ilike(pattern),
                 )
             )
             .options(selectinload(StudentEntity.account))
@@ -427,22 +433,33 @@ class StudentService:
         )
         students = result.scalars().all()
 
+        q_lower = query.lower()
         suggestions = []
         for student in students:
             account = student.account
-            # Determine the first matching field (priority: pid, email, onyen, phone_number)
-            if account.pid.lower().find(query.lower()) != -1:
+            full_name = f"{account.first_name} {account.last_name}"
+            # Determine matched field (priority: pid, email, onyen, phone_number, name)
+            if q_lower in account.pid.lower():
                 matched_field_name = "pid"
                 matched_field_value = account.pid
-            elif query.lower() in account.email.lower():
+            elif q_lower in account.email.lower():
                 matched_field_name = "email"
                 matched_field_value = account.email
-            elif query.lower() in account.onyen.lower():
+            elif q_lower in account.onyen.lower():
                 matched_field_name = "onyen"
                 matched_field_value = account.onyen
-            else:
+            elif digits_only(query) and digits_only(query) in (student.phone_number or ""):
                 matched_field_name = "phone_number"
                 matched_field_value = student.phone_number or ""
+            elif " " in query and q_lower in full_name.lower():
+                matched_field_name = "full_name"
+                matched_field_value = full_name
+            elif q_lower in account.first_name.lower():
+                matched_field_name = "first_name"
+                matched_field_value = account.first_name
+            else:
+                matched_field_name = "last_name"
+                matched_field_value = account.last_name
 
             suggestions.append(
                 StudentSuggestionDto(
