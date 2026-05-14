@@ -40,7 +40,7 @@ export default function PartySmartInfo({
             value="before"
             className={`px-6 py-4 !flex-none ${panelHeightClass} overflow-y-auto`}
           >
-            <ul className="list-disc list-outside ml-5 space-y-1">
+            <ul className="list-disc list-outside ml-5 space-y-2 leading-relaxed">
               <li>
                 Contact your neighbors in advance to let them know you will be
                 having guests over and ask if there is anything you can do as a
@@ -85,7 +85,7 @@ export default function PartySmartInfo({
             value="during"
             className={`px-6 py-4 !flex-none ${panelHeightClass} overflow-y-auto`}
           >
-            <ul className="list-disc list-outside ml-5 space-y-1">
+            <ul className="list-disc list-outside ml-5 space-y-2 leading-relaxed">
               <li>
                 Have at least two people there who are not drinking and
                 designate a sober, responsible person to address concerns that
@@ -160,7 +160,7 @@ export default function PartySmartInfo({
             value="after"
             className={`px-6 py-4 !flex-none ${panelHeightClass} overflow-y-auto`}
           >
-            <ul className="list-disc list-outside ml-5 space-y-1">
+            <ul className="list-disc list-outside ml-5 space-y-2 leading-relaxed">
               <li>
                 Do not let guests leave with an open container of alcohol in
                 their hand.
