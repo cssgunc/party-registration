@@ -12,7 +12,6 @@ import { Input } from "@/components/ui/input";
 import {
   Pagination,
   PaginationContent,
-  PaginationEllipsis,
   PaginationItem,
   PaginationLink,
   PaginationNext,
@@ -881,7 +880,17 @@ export function TableTemplate<T extends object>({
                     <>
                       {pageStart > 0 && (
                         <PaginationItem>
-                          <PaginationEllipsis />
+                          <PaginationLink
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              table.setPageIndex(0);
+                            }}
+                            className="cursor-pointer"
+                            aria-label="Go to first page"
+                          >
+                            <MoreHorizontal />
+                          </PaginationLink>
                         </PaginationItem>
                       )}
                       {pageIndexes.map((pageIndex) => (
@@ -901,7 +910,17 @@ export function TableTemplate<T extends object>({
                       ))}
                       {pageEnd < pageCount && (
                         <PaginationItem>
-                          <PaginationEllipsis />
+                          <PaginationLink
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              table.setPageIndex(pageCount - 1);
+                            }}
+                            className="cursor-pointer"
+                            aria-label="Go to last page"
+                          >
+                            <MoreHorizontal />
+                          </PaginationLink>
                         </PaginationItem>
                       )}
                     </>

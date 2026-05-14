@@ -1,6 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
+  ChevronFirstIcon,
+  ChevronLastIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   MoreHorizontalIcon,
@@ -64,6 +66,38 @@ function PaginationLink({
   );
 }
 
+function PaginationFirst({
+  className,
+  ...props
+}: React.ComponentProps<typeof PaginationLink>) {
+  return (
+    <PaginationLink
+      aria-label="Go to first page"
+      size="icon"
+      className={cn(className)}
+      {...props}
+    >
+      <ChevronFirstIcon className="cn-rtl-flip" />
+    </PaginationLink>
+  );
+}
+
+function PaginationLast({
+  className,
+  ...props
+}: React.ComponentProps<typeof PaginationLink>) {
+  return (
+    <PaginationLink
+      aria-label="Go to last page"
+      size="icon"
+      className={cn(className)}
+      {...props}
+    >
+      <ChevronLastIcon className="cn-rtl-flip" />
+    </PaginationLink>
+  );
+}
+
 function PaginationPrevious({
   className,
   text = "Previous",
@@ -124,7 +158,9 @@ export {
   Pagination,
   PaginationContent,
   PaginationEllipsis,
+  PaginationFirst,
   PaginationItem,
+  PaginationLast,
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
