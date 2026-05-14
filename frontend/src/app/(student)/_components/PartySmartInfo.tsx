@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ExternalLink } from "lucide-react";
+import { Info } from "lucide-react";
 import { ReactNode, useState } from "react";
 
 type AccordionDialogItemProps = {
@@ -39,7 +39,7 @@ function AccordionDialogItem({
         >
           <span className="flex w-full items-center justify-between gap-4">
             <span>{title}</span>
-            <ExternalLink className="size-4 shrink-0 text-muted-foreground" />
+            <Info className="size-4 shrink-0 text-muted-foreground" />
           </span>
         </AccordionTrigger>
       </AccordionItem>
