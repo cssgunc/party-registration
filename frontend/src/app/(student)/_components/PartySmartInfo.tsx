@@ -1,20 +1,45 @@
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-export default function PartySmartInfo() {
+type PartySmartInfoProps = {
+  panelHeightClass?: string;
+};
+
+export default function PartySmartInfo({
+  panelHeightClass = "h-96",
+}: PartySmartInfoProps) {
   return (
     <div className="mt-4 2xl:mt-0">
       <h1 className="page-title">About Party Smart</h1>
-      <Accordion type="single" collapsible className="mt-5">
-        <AccordionItem value="1">
-          <AccordionTrigger>
-            How to reduce risk before the Party:
-          </AccordionTrigger>
-          <AccordionContent>
+      <div className="mt-5 card-shadow bg-card border rounded-md overflow-hidden">
+        <Tabs defaultValue="before" className="gap-0">
+          <TabsList className="grid w-full grid-cols-3 bg-transparent border-b rounded-none h-auto p-0">
+            <TabsTrigger
+              value="before"
+              className="py-3 px-1 sm:px-4 rounded-none whitespace-normal text-center text-xs sm:text-base leading-tight min-w-0"
+            >
+              <span className="sm:hidden">Before</span>
+              <span className="hidden sm:inline">Before the Party</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="during"
+              className="py-3 px-1 sm:px-4 rounded-none whitespace-normal text-center text-xs sm:text-base leading-tight min-w-0"
+            >
+              <span className="sm:hidden">During</span>
+              <span className="hidden sm:inline">During the Party</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="after"
+              className="py-3 px-1 sm:px-4 rounded-none whitespace-normal text-center text-xs sm:text-base leading-tight min-w-0"
+            >
+              <span className="sm:hidden">After</span>
+              <span className="hidden sm:inline">After the Party</span>
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent
+            value="before"
+            className={`px-6 py-4 !flex-none ${panelHeightClass} overflow-y-auto`}
+          >
             <ul className="list-disc list-outside ml-5 space-y-1">
               <li>
                 Contact your neighbors in advance to let them know you will be
@@ -54,13 +79,12 @@ export default function PartySmartInfo() {
                 fireworks and other flammable materials.
               </li>
             </ul>
-          </AccordionContent>
-        </AccordionItem>
-        <AccordionItem value="2">
-          <AccordionTrigger>
-            How to reduce risk during the Party:
-          </AccordionTrigger>
-          <AccordionContent>
+          </TabsContent>
+
+          <TabsContent
+            value="during"
+            className={`px-6 py-4 !flex-none ${panelHeightClass} overflow-y-auto`}
+          >
             <ul className="list-disc list-outside ml-5 space-y-1">
               <li>
                 Have at least two people there who are not drinking and
@@ -130,13 +154,12 @@ export default function PartySmartInfo() {
                 was unaffected by your party.
               </li>
             </ul>
-          </AccordionContent>
-        </AccordionItem>
-        <AccordionItem value="3">
-          <AccordionTrigger>
-            How to reduce risk after the Party:
-          </AccordionTrigger>
-          <AccordionContent>
+          </TabsContent>
+
+          <TabsContent
+            value="after"
+            className={`px-6 py-4 !flex-none ${panelHeightClass} overflow-y-auto`}
+          >
             <ul className="list-disc list-outside ml-5 space-y-1">
               <li>
                 Do not let guests leave with an open container of alcohol in
@@ -148,9 +171,9 @@ export default function PartySmartInfo() {
               </li>
               <li>Clean up your house and the surrounding area outside.</li>
             </ul>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 }

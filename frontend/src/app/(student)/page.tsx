@@ -20,7 +20,7 @@ export default function StudentDashboard() {
   return (
     <div className="flex flex-col items-center pt-6">
       <div className="px-4 sm:px-8 flex flex-col 2xl:flex-row gap-4 max-w-4xl w-full 2xl:max-w-11/12 2xl:gap-24 h-fit">
-        <div className="2xl:w-1/2 flex flex-col justify-between">
+        <div className="2xl:w-1/2 flex flex-col">
           <div>
             <div className="flex items-center justify-between">
               <h1 className="page-title w-1/2">Parties</h1>
@@ -61,7 +61,7 @@ export default function StudentDashboard() {
 
         <div className="hidden 2xl:flex 2xl:flex-col 2xl:w-1/2 2xl:justify-between">
           <PartyRegistrationInfo />
-          <div className="flex flex-col items-center text-center content">
+          <div className="flex flex-col items-center text-center content 2xl:py-10">
             <AlertTriangleIcon />
             <p className="max-w-md">
               Keep in mind that the party registration program only pertains to
@@ -70,7 +70,7 @@ export default function StudentDashboard() {
               warning.
             </p>
           </div>
-          <PartySmartInfo />
+          <PartySmartInfo panelHeightClass="h-56" />
         </div>
       </div>
     </div>
