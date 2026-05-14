@@ -84,7 +84,7 @@ export default function StudentSearch({
   value = "",
   initialSelection,
   onSelect,
-  placeholder = "Search by PID, email, onyen, or phone...",
+  placeholder = "Search by name, PID, email, onyen, or phone...",
   className,
   disabled = false,
   adminStudentService = new AdminStudentService(),
@@ -386,17 +386,34 @@ export default function StudentSearch({
                     >
                       <UserIcon className="mr-2 h-4 w-4 text-muted-foreground shrink-0" />
                       <span className="text-sm flex-1">
-                        {suggestion.first_name} {suggestion.last_name}
-                        {" — "}
-                        {suggestion.matched_field_name === "phone_number"
-                          ? highlightPhoneMatch(
-                              suggestion.matched_field_value,
-                              searchTerm.trim()
-                            )
-                          : highlightMatch(
-                              suggestion.matched_field_value,
+                        {suggestion.matched_field_name === "full_name" ? (
+                          highlightMatch(
+                            `${suggestion.first_name} ${suggestion.last_name}`,
+                            searchTerm.trim()
+                          )
+                        ) : suggestion.matched_field_name === "first_name" ||
+                          suggestion.matched_field_name === "last_name" ? (
+                          <>
+                            {highlightMatch(
+                              `${suggestion.first_name} ${suggestion.last_name}`,
                               searchTerm.trim()
                             )}
+                          </>
+                        ) : (
+                          <>
+                            {suggestion.first_name} {suggestion.last_name}
+                            {" — "}
+                            {suggestion.matched_field_name === "phone_number"
+                              ? highlightPhoneMatch(
+                                  suggestion.matched_field_value,
+                                  searchTerm.trim()
+                                )
+                              : highlightMatch(
+                                  suggestion.matched_field_value,
+                                  searchTerm.trim()
+                                )}
+                          </>
+                        )}
                       </span>
                       <CheckIcon
                         className={cn(

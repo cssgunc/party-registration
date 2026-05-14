@@ -55,7 +55,7 @@ def _colliding_contact_two(contact_one: StudentDto, field: str) -> ContactDto:
     """Build a ContactDto that collides with contact_one on the named field ("email" or "phone")."""
     assert contact_one.phone_number is not None
     return ContactDto(
-        email=contact_one.email if field == "email" else "different@email.com",
+        email=contact_one.email if field == "email" else "different@unc.edu",
         first_name="Other",
         last_name="Person",
         phone_number=contact_one.phone_number if field == "phone" else "9195559999",
