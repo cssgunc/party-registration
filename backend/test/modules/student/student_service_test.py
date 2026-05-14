@@ -567,3 +567,71 @@ class TestStudentAutocompleteService:
         await self.student_utils.create_many(i=15)
         result = await self.student_service.autocomplete_students("@unc.edu")
         assert len(result) == 10
+
+    @pytest.mark.asyncio
+    async def test_autocomplete_matches_by_first_name(self):
+        """Test autocomplete matches on first name."""
+        student = await self.student_utils.create_one(first_name="Bartholomew")
+        student_dto = await student.load_dto(self.student_utils.session)
+        result = await self.student_service.autocomplete_students("Bartholomew")
+        assert len(result) == 1
+        self.student_utils.assert_suggestion_match(
+            result[0],
+            student_dto=student_dto,
+            matched_field_name="first_name",
+            matched_field_value="Bartholomew",
+        )
+
+    @pytest.mark.asyncio
+    async def test_autocomplete_matches_by_last_name(self):
+        """Test autocomplete matches on last name."""
+        student = await self.student_utils.create_one(last_name="Zylvester")
+        student_dto = await student.load_dto(self.student_utils.session)
+        result = await self.student_service.autocomplete_students("Zylvester")
+        assert len(result) == 1
+        self.student_utils.assert_suggestion_match(
+            result[0],
+            student_dto=student_dto,
+            matched_field_name="last_name",
+            matched_field_value="Zylvester",
+        )
+
+    @pytest.mark.asyncio
+    async def test_autocomplete_matches_by_full_name(self):
+        """Test autocomplete matches on full name (first + last)."""
+        student = await self.student_utils.create_one(
+            first_name="Cornelius", last_name="Vanderbilt"
+        )
+        student_dto = await student.load_dto(self.student_utils.session)
+        result = await self.student_service.autocomplete_students("Cornelius Vanderbilt")
+        assert len(result) == 1
+        self.student_utils.assert_suggestion_match(
+            result[0],
+            student_dto=student_dto,
+            matched_field_name="full_name",
+            matched_field_value="Cornelius Vanderbilt",
+        )
+
+    @pytest.mark.asyncio
+    async def test_autocomplete_name_search_is_case_insensitive(self):
+        """Test that name search is case-insensitive."""
+        student = await self.student_utils.create_one(first_name="Penelope")
+        result = await self.student_service.autocomplete_students("penelope")
+        assert any(s.student_id == student.account_id for s in result)
+
+    @pytest.mark.asyncio
+    async def test_autocomplete_email_takes_priority_over_name(self):
+        """Test that email match takes priority over name match when both apply."""
+        student = await self.student_utils.create_one(
+            first_name="Uniqnametest", last_name="Test", email="uniqnametest@unc.edu"
+        )
+        student_dto = await student.load_dto(self.student_utils.session)
+        result = await self.student_service.autocomplete_students("uniqnametest")
+        matching = [s for s in result if s.student_id == student_dto.id]
+        assert len(matching) == 1
+        self.student_utils.assert_suggestion_match(
+            matching[0],
+            student_dto=student_dto,
+            matched_field_name="email",
+            matched_field_value="uniqnametest@unc.edu",
+        )
