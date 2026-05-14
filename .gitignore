@@ -3,6 +3,10 @@
 !.env*template
 deploy/certs/
 
+# Playwright MCP
+.playwright-mcp/
+/*.png
+
 # Node.js / Next.js
 node_modules/
 .npm/
