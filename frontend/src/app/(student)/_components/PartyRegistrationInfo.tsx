@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ExternalLink } from "lucide-react";
 import { ReactNode, useState } from "react";
 
 type AccordionDialogItemProps = {
@@ -32,8 +33,14 @@ function AccordionDialogItem({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <AccordionItem value={value}>
-        <AccordionTrigger onClick={() => setOpen(true)}>
-          {title}
+        <AccordionTrigger
+          className="[&>svg]:hidden"
+          onClick={() => setOpen(true)}
+        >
+          <span className="flex w-full items-center justify-between gap-4">
+            <span>{title}</span>
+            <ExternalLink className="size-4 shrink-0 text-muted-foreground" />
+          </span>
         </AccordionTrigger>
       </AccordionItem>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-4xl">
