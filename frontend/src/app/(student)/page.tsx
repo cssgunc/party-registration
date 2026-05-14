@@ -59,18 +59,21 @@ export default function StudentDashboard() {
           </div>
         </div>
 
-        <div className="hidden 2xl:flex 2xl:flex-col 2xl:w-1/2 2xl:justify-between">
+        <div className="hidden 2xl:flex 2xl:flex-col 2xl:w-1/2">
           <PartyRegistrationInfo />
-          <div className="flex flex-col items-center gap-2 text-center content 2xl:py-6">
-            <AlertTriangleIcon />
-            <p className="max-w-xl leading-snug">
+          <div className="mt-2 mb-3 flex justify-center content 2xl:py-1">
+            <p className="max-w-[48rem] text-center leading-snug">
+              <AlertTriangleIcon
+                className="mr-2 mb-0.5 inline h-5 w-5 align-text-bottom"
+                aria-hidden="true"
+              />
               Keep in mind that the party registration program only pertains to
               nuisance noise complaints. Calls to 911 for other violations will
               likely result in local law enforcement showing up without a
               warning.
             </p>
           </div>
-          <PartySmartInfo panelHeightClass="h-64" />
+          <PartySmartInfo panelHeightClass="h-72" />
         </div>
       </div>
     </div>
