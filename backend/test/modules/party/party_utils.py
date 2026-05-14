@@ -76,7 +76,7 @@ class PartyTestUtils(
             "location_id": 1,
             "contact_one_id": 1,
             "party_datetime": get_valid_party_datetime() + timedelta(days=count),
-            "contact_two_email": f"contact{count}@email.com",
+            "contact_two_email": f"contact{count}@unc.edu",
             "contact_two_first_name": f"ContactTwo{count}",
             "contact_two_last_name": f"LastName{count}",
             "contact_two_phone_number": f"919555{1000 + count:04d}",
