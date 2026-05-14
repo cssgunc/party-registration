@@ -2,7 +2,7 @@
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Self
 
-from sqlalchemy import Enum, ForeignKey, Integer, String
+from sqlalchemy import Enum, ForeignKey, Integer, String, func
 from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column, relationship
 from src.core.database import EntityBase
 from src.core.types import UTCDateTime
@@ -25,6 +25,7 @@ class IncidentEntity(MappedAsDataclass, EntityBase):
     )
     description: Mapped[str] = mapped_column(String(2000), nullable=False, default="")
     reference_id: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, server_default=func.now(), init=False)
 
     # Relationships
     location: Mapped["LocationEntity"] = relationship(

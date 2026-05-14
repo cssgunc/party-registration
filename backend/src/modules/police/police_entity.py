@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import ClassVar
 
-from sqlalchemy import Boolean, CheckConstraint, Enum, Integer, String
+from sqlalchemy import Boolean, CheckConstraint, Enum, Integer, String, func
 from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column
 from sqlalchemy.sql.expression import false
 from src.core.database import EntityBase
@@ -34,6 +34,7 @@ class PoliceEntity(MappedAsDataclass, EntityBase):
     verification_token_expires_at: Mapped[datetime | None] = mapped_column(
         UTCDateTime, nullable=True, default=None
     )
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, server_default=func.now(), init=False)
 
     def to_dto(self) -> PoliceAccountDto:
         """Convert the entity to a PoliceAccountDto."""

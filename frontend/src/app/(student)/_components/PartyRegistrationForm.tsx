@@ -61,7 +61,10 @@ const partyFormSchema = z.object({
   }),
   contactTwoEmail: z
     .email({ pattern: z.regexes.html5Email })
-    .min(1, "Contact email is required"),
+    .min(1, "Contact email is required")
+    .refine((v) => v.toLowerCase().endsWith("@unc.edu"), {
+      message: "Contact two email must be a UNC email address (@unc.edu)",
+    }),
   studentPhoneNumber: phoneNumberSchema.optional(),
   studentContactPreference: z.enum(["call", "text"]).optional(),
 });
