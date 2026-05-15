@@ -182,11 +182,15 @@ class IncidentService:
         """Update an existing incident's datetime, description, and severity."""
         incident_entity = await self._get_incident_entity_by_id(incident_id)
         location = await self.location_service.get_or_create_location(data.location_place_id)
-        incident_entity.location_id = location.id
-        incident_entity.incident_datetime = data.incident_datetime
-        incident_entity.description = data.description
-        incident_entity.severity = data.severity
-        incident_entity.reference_id = data.reference_id
+        incident_entity.set_from_data(
+            IncidentData(
+                location_id=location.id,
+                incident_datetime=data.incident_datetime,
+                description=data.description,
+                severity=data.severity,
+                reference_id=data.reference_id,
+            )
+        )
         self.session.add(incident_entity)
         await self.session.commit()
         await self.session.refresh(incident_entity)

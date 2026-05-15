@@ -134,7 +134,7 @@ class AccountService:
         self.email_service = email_service
         self.query_service = query_service
 
-    async def _get_account_entity_by(self, **fields: Unpack[AccountUniqueFields]) -> AccountEntity:
+    async def get_account_entity_by(self, **fields: Unpack[AccountUniqueFields]) -> AccountEntity:
         clause_builders = {
             "id": lambda v: AccountEntity.id == v,
             "email": lambda v: AccountEntity.email.ilike(v),
@@ -225,7 +225,7 @@ class AccountService:
         return [account.to_dto() for account in accounts]
 
     async def get_account_by(self, **fields: Unpack[AccountUniqueFields]) -> AccountDto:
-        account_entity = await self._get_account_entity_by(**fields)
+        account_entity = await self.get_account_entity_by(**fields)
         return account_entity.to_dto()
 
     async def create_account(self, data: AccountData) -> AccountDto:
@@ -243,7 +243,7 @@ class AccountService:
         return new_account.to_dto()
 
     async def update_account(self, account_id: int, data: AccountUpdateData) -> AccountDto:
-        account_entity = await self._get_account_entity_by(id=account_id)
+        account_entity = await self.get_account_entity_by(id=account_id)
         account_entity.role = data.role
         self.session.add(account_entity)
         await self.session.commit()
@@ -251,7 +251,7 @@ class AccountService:
         return account_entity.to_dto()
 
     async def delete_account(self, account_id: int) -> AccountDto:
-        account_entity = await self._get_account_entity_by(id=account_id)
+        account_entity = await self.get_account_entity_by(id=account_id)
         account = account_entity.to_dto()
         await self.session.delete(account_entity)
         await self.session.commit()
@@ -282,7 +282,7 @@ class AccountService:
 
     async def upsert_idp_account(self, data: AccountData) -> AccountDto:
         try:
-            account_entity = await self._get_account_entity_by(onyen=data.onyen)
+            account_entity = await self.get_account_entity_by(onyen=data.onyen)
         except AccountNotFoundException as e:
             if data.role != AccountRole.STUDENT:
                 raise ForbiddenException(detail="No matching account found") from e
@@ -302,7 +302,7 @@ class AccountService:
 
     async def create_invite(self, data: CreateInviteDto) -> None:
         try:
-            await self._get_account_entity_by(email=data.email)
+            await self.get_account_entity_by(email=data.email)
             raise InviteConflictException(data.email)
         except AccountNotFoundException:
             pass
@@ -342,7 +342,7 @@ class AccountService:
 
     async def provision_staff_account(self, data: AccountData) -> AccountDto:
         try:
-            account_entity = await self._get_account_entity_by(pid=data.pid)
+            account_entity = await self.get_account_entity_by(pid=data.pid)
         except AccountNotFoundException:
             account_entity = None
 

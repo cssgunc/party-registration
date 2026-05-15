@@ -130,10 +130,10 @@ async def create_test_client(
                 role=PoliceRole(role),
                 is_verified=True,
             )
-            token, _ = auth_service.create_police_access_token(police)
+            token, _ = auth_service.create_access_token(police)
         elif role in ("admin", "staff", "student"):
             entity = AccountTestUtils.build_client_account_entity(AccountRole(role))
-            token, _ = auth_service.create_account_access_token(entity.to_dto())
+            token, _ = auth_service.create_access_token(entity.to_dto())
         else:
             token = None
 
@@ -245,9 +245,14 @@ def auth_service(
 
 
 @pytest.fixture()
-def student_service(test_session: AsyncSession, location_service: LocationService):
+def student_service(
+    test_session: AsyncSession,
+    account_service: AccountService,
+    location_service: LocationService,
+):
     return StudentService(
         session=test_session,
+        account_service=account_service,
         location_service=location_service,
         query_service=QueryService(test_session),
     )

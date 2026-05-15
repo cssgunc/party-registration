@@ -6,6 +6,7 @@ from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column
 from src.core.database import EntityBase
 from src.core.types import UTCDateTime
 from src.modules.account.account_model import AccountData, AccountDto, AccountRole
+from src.modules.student.student_model import StudentDto
 
 
 class AccountEntity(MappedAsDataclass, EntityBase):
@@ -34,7 +35,7 @@ class AccountEntity(MappedAsDataclass, EntityBase):
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, server_default=func.now(), init=False)
 
     @classmethod
-    def from_data(cls, data: "AccountData") -> Self:
+    def from_data(cls, data: AccountData) -> Self:
         return cls(
             email=data.email,
             first_name=data.first_name,
@@ -44,7 +45,7 @@ class AccountEntity(MappedAsDataclass, EntityBase):
             role=AccountRole(data.role),
         )
 
-    def to_dto(self) -> "AccountDto":
+    def to_dto(self) -> AccountDto:
         return AccountDto(
             id=self.id,
             email=self.email,
@@ -53,4 +54,18 @@ class AccountEntity(MappedAsDataclass, EntityBase):
             pid=self.pid,
             onyen=self.onyen,
             role=self.role,
+        )
+
+    def to_student_dto(self) -> StudentDto:
+        return StudentDto(
+            id=self.id,
+            pid=self.pid,
+            email=self.email,
+            first_name=self.first_name,
+            last_name=self.last_name,
+            onyen=self.onyen,
+            phone_number=None,
+            contact_preference=None,
+            last_registered=None,
+            residence=None,
         )

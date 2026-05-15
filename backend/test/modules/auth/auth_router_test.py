@@ -495,7 +495,7 @@ class TestAuthRouter:
         account_entity = await account_utils.create_one()
         account = account_entity.to_dto()
 
-        tokens = await auth_service.exchange_account_for_tokens(account)
+        tokens = await auth_service.exchange_for_tokens(account)
 
         headers = {"Authorization": f"Bearer {tokens.access_token}"}
 
@@ -569,7 +569,7 @@ class TestAuthMiddleware:
         account_entity = await account_utils.create_one()
         account = account_entity.to_dto()
 
-        tokens = await self.auth_service.exchange_account_for_tokens(account)
+        tokens = await self.auth_service.exchange_for_tokens(account)
 
         response = await self.unauthenticated_client.post(
             "/api/auth/logout",
@@ -585,7 +585,7 @@ class TestAuthMiddleware:
         police_entity = await police_utils.create_one()
         police_dto = police_entity.to_dto()
 
-        tokens = await self.auth_service.exchange_police_for_tokens(police_dto)
+        tokens = await self.auth_service.exchange_for_tokens(police_dto)
 
         response = await self.unauthenticated_client.post(
             "/api/auth/logout",
@@ -635,7 +635,7 @@ class TestAuthMiddleware:
     async def test_wrong_role_returns_403(self, account_utils: AccountTestUtils) -> None:
         """Student token on admin/staff-only route returns 403."""
         account_entity = await account_utils.create_one(role="student")
-        token, _ = self.auth_service.create_account_access_token(account_entity.to_dto())
+        token, _ = self.auth_service.create_access_token(account_entity.to_dto())
 
         response = await self.unauthenticated_client.get(
             "/api/parties/1",
@@ -651,7 +651,7 @@ class TestAuthMiddleware:
         """Middleware correctly uses sub as the account id when looking up the student."""
         account_entity = await account_utils.create_one(role="student")
         await self.student_utils.create_one(account_id=account_entity.id)
-        token, _ = self.auth_service.create_account_access_token(account_entity.to_dto())
+        token, _ = self.auth_service.create_access_token(account_entity.to_dto())
 
         response = await self.unauthenticated_client.get(
             "/api/students/me",

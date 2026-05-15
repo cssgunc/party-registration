@@ -1,4 +1,5 @@
 import asyncio
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from typing import ClassVar
 
@@ -40,6 +41,22 @@ from .location_model import (
 class GoogleMapsAPIException(InternalServerException):
     def __init__(self, detail: str):
         super().__init__(f"Google Maps API error: {detail}")
+
+
+@contextmanager
+def _googlemaps_error_handler(fallback_msg: str):
+    try:
+        yield
+    except (PlaceNotFoundException, InvalidPlaceIdException, GoogleMapsAPIException):
+        raise
+    except googlemaps.exceptions.Timeout as e:
+        raise GoogleMapsAPIException(f"Request timed out: {e!s}") from e
+    except googlemaps.exceptions.HTTPError as e:
+        raise GoogleMapsAPIException(f"HTTP error: {e!s}") from e
+    except googlemaps.exceptions.TransportError as e:
+        raise GoogleMapsAPIException(f"Transport error: {e!s}") from e
+    except Exception as e:
+        raise GoogleMapsAPIException(f"{fallback_msg}: {e!s}") from e
 
 
 class PlaceNotFoundException(NotFoundException):
@@ -145,22 +162,14 @@ class LocationService:
             raise LocationNotFoundException(location_id)
         return location_entity
 
-    async def _get_location_entity_by_place_id(self, google_place_id: str) -> LocationEntity | None:
+    async def _get_location_entity_by_place_id(self, google_place_id: str) -> LocationEntity:
         result = await self.session.execute(
             select(LocationEntity).where(LocationEntity.google_place_id == google_place_id)
         )
-        return result.scalar_one_or_none()
-
-    @staticmethod
-    def assert_valid_location_hold(location: LocationDto) -> None:
-        """Validate that location does not have an active hold."""
-        if location.hold_expiration is not None and location.hold_expiration > datetime.now(UTC):
-            raise LocationHoldActiveException(location.id, location.hold_expiration)
-
-    async def get_locations(self) -> list[LocationDto]:
-        result = await self.session.execute(select(LocationEntity))
-        locations = result.scalars().all()
-        return [location.to_dto() for location in locations]
+        location_entity = result.scalar_one_or_none()
+        if location_entity is None:
+            raise LocationNotFoundException(google_place_id=google_place_id)
+        return location_entity
 
     async def get_locations_paginated(self, params: ListQueryParams) -> "PaginatedLocationResponse":
         """
@@ -191,24 +200,24 @@ class LocationService:
         exporter.set_headers(
             ["Address", "Remote Warning Count", "In-Person Warning Count", "Citation Count"]
         )
+
         for location in locations_response.items:
-            complaint_count = sum(
-                1
-                for incident in location.incidents
-                if incident.severity == IncidentSeverity.REMOTE_WARNING
-            )
-            warning_count = sum(
-                1
-                for incident in location.incidents
-                if incident.severity == IncidentSeverity.IN_PERSON_WARNING
-            )
-            citation_count = sum(
-                1
-                for incident in location.incidents
-                if incident.severity == IncidentSeverity.CITATION
-            )
+            remote_warning_count, in_person_warning_count, citation_count = 0, 0, 0
+            for incident in location.incidents:
+                match incident.severity:
+                    case IncidentSeverity.REMOTE_WARNING:
+                        remote_warning_count += 1
+                    case IncidentSeverity.IN_PERSON_WARNING:
+                        in_person_warning_count += 1
+                    case IncidentSeverity.CITATION:
+                        citation_count += 1
             exporter.add_row(
-                [location.formatted_address, complaint_count, warning_count, citation_count]
+                [
+                    location.formatted_address,
+                    remote_warning_count,
+                    in_person_warning_count,
+                    citation_count,
+                ]
             )
         return exporter.to_bytes()
 
@@ -218,53 +227,36 @@ class LocationService:
 
     async def get_location_by_place_id(self, google_place_id: str) -> LocationDto:
         location_entity = await self._get_location_entity_by_place_id(google_place_id)
-        if location_entity is None:
-            raise LocationNotFoundException(google_place_id=google_place_id)
         return location_entity.to_dto()
 
-    async def assert_location_exists(self, location_id: int) -> None:
-        await self._get_location_entity_by_id(location_id)
-
     async def create_location(self, data: LocationData) -> LocationDto:
-        if await self._get_location_entity_by_place_id(data.google_place_id):
-            raise LocationConflictException(data.google_place_id)
-
         new_location = LocationEntity.from_data(data)
         try:
             self.session.add(new_location)
             await self.session.commit()
         except IntegrityError as e:
-            # handle race condition where another session inserted the same google_place_id
+            await self.session.rollback()
             raise LocationConflictException(data.google_place_id) from e
         await self.session.refresh(new_location)
         return new_location.to_dto()
 
-    async def create_location_from_address(self, address_data: AddressData) -> LocationDto:
-        location_data = LocationData.from_address(address_data)
-        return await self.create_location(location_data)
-
     async def create_location_from_place_id(self, place_id: str) -> LocationDto:
         address_data = await self.get_place_details(place_id)
-        return await self.create_location_from_address(address_data)
+        location_data = LocationData.from_address(address_data)
+        return await self.create_location(location_data)
 
     async def get_or_create_location(self, place_id: str) -> LocationDto:
         """Get existing location by place_id, or create it if it doesn't exist."""
         # Try to get existing location
         try:
             location = await self.get_location_by_place_id(place_id)
-            return location
         except LocationNotFoundException:
             location = await self.create_location_from_place_id(place_id)
-            return location
+
+        return location
 
     async def update_location(self, location_id: int, data: LocationData) -> LocationDto:
         location_entity = await self._get_location_entity_by_id(location_id)
-
-        if (
-            data.google_place_id != location_entity.google_place_id
-            and await self._get_location_entity_by_place_id(data.google_place_id)
-        ):
-            raise LocationConflictException(data.google_place_id)
 
         for key, value in data.model_dump().items():
             if key == "id":
@@ -276,6 +268,7 @@ class LocationService:
             self.session.add(location_entity)
             await self.session.commit()
         except IntegrityError as e:
+            await self.session.rollback()
             raise LocationConflictException(data.google_place_id) from e
         await self.session.refresh(location_entity)
         return location_entity.to_dto()
@@ -289,16 +282,19 @@ class LocationService:
 
     async def autocomplete_address(self, input_text: str) -> list[AutocompleteResult]:
         # Autocomplete an address using Google Maps Places API. Biased towards Chapel Hill, NC area
-        try:
-            autocomplete_result = await asyncio.to_thread(
-                places.places_autocomplete,
-                self.gmaps_client,
-                input_text=input_text,
-                types="address",
-                language="en",
-                location=(35.9132, -79.0558),  # Chapel Hill, NC coordinates
-                radius=50000,  # 50km radius around Chapel Hill
-            )
+        with _googlemaps_error_handler("Failed to autocomplete address"):
+            try:
+                autocomplete_result = await asyncio.to_thread(
+                    places.places_autocomplete,
+                    self.gmaps_client,
+                    input_text=input_text,
+                    types="address",
+                    language="en",
+                    location=(35.9132, -79.0558),  # Chapel Hill, NC coordinates
+                    radius=50000,  # 50km radius around Chapel Hill
+                )
+            except googlemaps.exceptions.ApiError as e:
+                raise GoogleMapsAPIException(f"API error ({e.status}): {e!s}") from e
 
             suggestions = []
             for prediction in autocomplete_result:
@@ -310,19 +306,6 @@ class LocationService:
 
             return suggestions
 
-        except GoogleMapsAPIException:
-            raise
-        except googlemaps.exceptions.ApiError as e:
-            raise GoogleMapsAPIException(f"API error ({e.status}): {e!s}") from e
-        except googlemaps.exceptions.Timeout as e:
-            raise GoogleMapsAPIException(f"Request timed out: {e!s}") from e
-        except googlemaps.exceptions.HTTPError as e:
-            raise GoogleMapsAPIException(f"HTTP error: {e!s}") from e
-        except googlemaps.exceptions.TransportError as e:
-            raise GoogleMapsAPIException(f"Transport error: {e!s}") from e
-        except Exception as e:
-            raise GoogleMapsAPIException(f"Failed to autocomplete address: {e!s}") from e
-
     async def get_place_details(self, place_id: str) -> AddressData:
         """
         Get detailed location data for a Google Maps place ID
@@ -330,13 +313,21 @@ class LocationService:
         Raises InvalidPlaceIdException if the place ID format is invalid
         Raises GoogleMapsAPIException for other API errors
         """
-        try:
-            place_result = await asyncio.to_thread(
-                places.place,
-                self.gmaps_client,
-                place_id=place_id,
-                fields=["formatted_address", "geometry", "address_component"],
-            )
+        with _googlemaps_error_handler("Failed to get place details"):
+            try:
+                place_result = await asyncio.to_thread(
+                    places.place,
+                    self.gmaps_client,
+                    place_id=place_id,
+                    fields=["formatted_address", "geometry", "address_component"],
+                )
+            except googlemaps.exceptions.ApiError as e:
+                if e.status == "NOT_FOUND":
+                    raise PlaceNotFoundException(place_id) from e
+                elif e.status == "INVALID_REQUEST":
+                    raise InvalidPlaceIdException(place_id) from e
+                else:
+                    raise GoogleMapsAPIException(f"API error ({e.status}): {e!s}") from e
 
             if "result" not in place_result:
                 raise PlaceNotFoundException(place_id)
@@ -391,26 +382,3 @@ class LocationService:
                 country=country,
                 zip_code=zip_code,
             )
-
-        except (
-            PlaceNotFoundException,
-            InvalidPlaceIdException,
-            GoogleMapsAPIException,
-        ):
-            raise
-        except googlemaps.exceptions.ApiError as e:
-            # Map Google Maps API error statuses to appropriate exceptions
-            if e.status == "NOT_FOUND":
-                raise PlaceNotFoundException(place_id) from e
-            elif e.status == "INVALID_REQUEST":
-                raise InvalidPlaceIdException(place_id) from e
-            else:
-                raise GoogleMapsAPIException(f"API error ({e.status}): {e!s}") from e
-        except googlemaps.exceptions.Timeout as e:
-            raise GoogleMapsAPIException(f"Request timed out: {e!s}") from e
-        except googlemaps.exceptions.HTTPError as e:
-            raise GoogleMapsAPIException(f"HTTP error: {e!s}") from e
-        except googlemaps.exceptions.TransportError as e:
-            raise GoogleMapsAPIException(f"Transport error: {e!s}") from e
-        except Exception as e:
-            raise GoogleMapsAPIException(f"Failed to get place details: {e!s}") from e

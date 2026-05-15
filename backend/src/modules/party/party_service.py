@@ -120,9 +120,7 @@ class PartyRule(enum.Enum):
     LOCATION_HOLD_ACTIVE = (
         "LOCATION_HOLD_ACTIVE",
         "Location has an active hold and cannot host a party right now",
-        lambda d: d.location is not None
-        and d.location.hold_expiration is not None
-        and d.location.hold_expiration > datetime.now(UTC),
+        lambda d: d.location is not None and d.location.has_active_hold(),
     )
     CONTACT_TWO_EMAIL_MATCHES_CONTACT_ONE = (
         "CONTACT_TWO_EMAIL_MATCHES_CONTACT_ONE",

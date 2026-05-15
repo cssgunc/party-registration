@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from typing import Self
 
 from pydantic import AwareDatetime, BaseModel
@@ -56,6 +57,11 @@ class LocationData(AddressData):
             zip_code=address.zip_code,
             hold_expiration=hold_expiration,
         )
+
+    def has_active_hold(self) -> bool:
+        """Check if the location currently has an active hold."""
+        now = datetime.now(UTC)
+        return self.hold_expiration is not None and self.hold_expiration > now
 
 
 class LocationDto(LocationData):
