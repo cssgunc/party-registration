@@ -1,8 +1,8 @@
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from core.authentication import authenticate_by_role
 from fastapi import APIRouter, Depends, Response
+from src.core.authentication import authenticate_by_role
 from src.core.utils.query_utils import (
     ListQueryParams,
     get_paginated_openapi_params,

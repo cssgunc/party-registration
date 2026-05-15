@@ -1,5 +1,5 @@
-from core.authentication import authenticate_by_role
 from fastapi import APIRouter, Depends, Response
+from src.core.authentication import authenticate_by_role
 from src.core.exceptions import ForbiddenException
 from src.core.utils.query_utils import (
     ListQueryParams,
