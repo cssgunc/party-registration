@@ -10,9 +10,9 @@ import {
   useIncidents,
 } from "@/lib/api/incident/incident.queries";
 import {
+  INCIDENT_SEVERITY_LABELS,
   IncidentCreateDto,
   IncidentDto,
-  IncidentSeverity,
 } from "@/lib/api/incident/incident.types";
 import {
   useLocations,
@@ -24,15 +24,16 @@ import {
   FilterValue,
   ServerTableParams,
 } from "@/lib/api/shared/query-params";
+import { getErrorMessage } from "@/lib/errors";
 import { formatTime } from "@/lib/utils";
 import { ColumnDef } from "@tanstack/react-table";
-import { isAxiosError } from "axios";
 import { format } from "date-fns";
 import { useMemo, useState } from "react";
 import LocationInfoChipDetails from "../party/details/LocationInfoChipDetails";
 import { InfoChip } from "../shared/sidebar/InfoChip";
 import { TableTemplate } from "../shared/table/TableTemplate";
 import IncidentDescriptionChipDetails from "./IncidentDescriptionChipDetails";
+import { IncidentSeverityCountsHeader } from "./IncidentSeverityCountsHeader";
 import IncidentTableForm from "./IncidentTableForm";
 
 const hasIncidentChanged = (
@@ -54,12 +55,6 @@ const hasIncidentChanged = (
     original.reference_id !== updated.reference_id
   );
 };
-
-function severityLabel(severity: IncidentSeverity): string {
-  if (severity === "remote_warning") return "Remote Warning";
-  if (severity === "in_person_warning") return "In-Person Warning";
-  return "Citation";
-}
 
 function truncateDescription(
   description: string | undefined,
@@ -138,12 +133,7 @@ export const IncidentTable = () => {
 
   const createMutation = useCreateIncident({
     onError: (error: Error) => {
-      const errorMessage = isAxiosError(error)
-        ? error.response?.data?.detail ||
-          error.response?.data?.message ||
-          error.message
-        : error.message || "Failed to create incident";
-      reopenCreateSidebar(errorMessage);
+      reopenCreateSidebar(getErrorMessage(error));
     },
     onSuccess: () => {
       openSnackbar("Incident created successfully", "success");
@@ -157,19 +147,13 @@ export const IncidentTable = () => {
       error: Error,
       variables: { id: number; payload: Partial<IncidentCreateDto> }
     ) => {
-      const errorMessage = isAxiosError(error)
-        ? error.response?.data?.detail ||
-          error.response?.data?.message ||
-          error.message
-        : error.message || "Failed to update incident";
-
       const targetIncident =
         editingIncident && editingIncident.id === variables.id
           ? editingIncident
           : incidents.find((incident) => incident.id === variables.id) || null;
 
       if (targetIncident) {
-        reopenEditSidebar(targetIncident, errorMessage);
+        reopenEditSidebar(targetIncident, getErrorMessage(error));
       }
     },
     onSuccess: (_data, variables) => {
@@ -296,13 +280,7 @@ export const IncidentTable = () => {
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
           <IncidentFlag type={row.original.severity} />
-          {/* <Image
-            src={getSeverityFlag(row.original.severity)}
-            alt={row.original.severity}
-            width={16}
-            height={16}
-          /> */}
-          {severityLabel(row.original.severity)}
+          {INCIDENT_SEVERITY_LABELS[row.original.severity]}
         </div>
       ),
     },
@@ -310,14 +288,26 @@ export const IncidentTable = () => {
       accessorKey: "reference_id",
       header: "Reference ID",
       enableColumnFilter: true,
-      meta: { filter: { type: "text", backendField: "reference_id" } },
+      meta: {
+        filter: {
+          type: "text",
+          backendField: "reference_id",
+          nullable: true,
+        },
+      },
       cell: ({ row }) => row.original.reference_id || "-",
     },
     {
       accessorKey: "description",
       header: "Description",
       enableColumnFilter: true,
-      meta: { filter: { type: "text", backendField: "description" } },
+      meta: {
+        filter: {
+          type: "text",
+          backendField: "description",
+          nullable: true,
+        },
+      },
       cell: ({ row }) => {
         const description = row.original.description;
         if (!description) {
@@ -370,6 +360,12 @@ export const IncidentTable = () => {
         onStateChange={setServerParams}
         onExportCsv={exportCsv}
         isExporting={isExporting}
+        headerSlot={
+          <IncidentSeverityCountsHeader
+            counts={incidentsQuery.data?.severity_counts}
+            isLoading={incidentsQuery.isLoading || incidentsQuery.isFetching}
+          />
+        }
       />
     </div>
   );

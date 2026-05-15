@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/select";
 import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
-import { PartyDto } from "@/lib/api/party/party.types";
+import { PARTY_RULE_MESSAGES, PartyDto } from "@/lib/api/party/party.types";
 import { AdminStudentService } from "@/lib/api/student/admin-student.service";
 import { StudentSuggestionDto } from "@/lib/api/student/student.types";
 import { formatPhoneNumberInput, phoneNumberSchema } from "@/lib/utils";
@@ -46,7 +46,7 @@ export const createPartyTableFormSchema = (isAdmin: boolean) => {
               startOfDay(date),
               addBusinessDays(startOfDay(new Date()), 1)
             ),
-          "Party must be at least 2 business days in the future"
+          PARTY_RULE_MESSAGES.PARTY_DATE_TOO_SOON
         );
 
   return z.object({
@@ -61,7 +61,10 @@ export const createPartyTableFormSchema = (isAdmin: boolean) => {
       .positive("Please select a student"),
     contactTwoEmail: z
       .email({ pattern: z.regexes.html5Email })
-      .min(1, "Contact email is required"),
+      .min(1, "Contact email is required")
+      .refine((v) => v.toLowerCase().endsWith("@unc.edu"), {
+        message: "Contact two email must be a UNC email address (@unc.edu)",
+      }),
     contactTwoFirstName: z.string().min(1, "First name is required"),
     contactTwoLastName: z.string().min(1, "Last name is required"),
     contactTwoPhoneNumber: phoneNumberSchema,
@@ -213,6 +216,7 @@ export default function PartyTableForm({
                 dateFormat="MM/dd/yy"
                 value={formData.partyDate ?? null}
                 onChange={(date) => updateField("partyDate", date as Date)}
+                forwardDate={true}
                 disabled={
                   isAdmin
                     ? undefined
@@ -256,7 +260,7 @@ export default function PartyTableForm({
               }
               onSelect={handleStudentSelect}
               adminStudentService={adminStudentService}
-              placeholder="Search by PID, email, onyen, or phone..."
+              placeholder="Search by name, PID, email, onyen, etc..."
               className="w-full"
               error={errors.contactOneStudentId}
             />

@@ -3,8 +3,8 @@
 import EmbeddedMap from "@/app/police/_components/EmbeddedMap";
 import PartyCsvExportButton from "@/app/police/_components/PartyCsvExportButton";
 import PartyList from "@/app/police/_components/PartyList";
-import SplitDateRangeFilter from "@/app/police/_components/SplitDateRangeFilter";
 import AddressSearch from "@/components/AddressSearch";
+import DateRangeFilter from "@/components/DateRangeFilter";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import {
@@ -213,10 +213,10 @@ export default function PolicePage() {
   );
 
   return (
-    <main className="h-full lg:h-[calc(100vh-var(--app-header-height))] overflow-y-auto lg:overflow-hidden px-4 py-4 md:px-6 md:py-6">
+    <main className="h-full overflow-y-auto lg:overflow-hidden px-4 py-4 md:px-6">
       <div className="grid lg:h-full gap-6 lg:grid-cols-[minmax(22rem,34rem)_minmax(0,1fr)]">
         {/* Left panel */}
-        <aside className="flex flex-col min-h-0 lg:h-full lg:overflow-hidden">
+        <aside className="flex flex-col min-h-0 lg:h-full">
           {/* Header */}
           <header className="flex items-center justify-between gap-3 px-1 pb-4">
             <h1 className="page-title text-secondary">Party Search</h1>
@@ -234,18 +234,19 @@ export default function PolicePage() {
                 className="[&_input]:bg-card [&_input]:border-border"
                 value={searchAddress?.formatted_address || ""}
                 onSelect={setSearchAddress}
-                placeholder="Enter Address..."
+                placeholder="Search by address..."
                 locationService={locationService}
               />
             </div>
             <div className="flex flex-col gap-2 order-1 sm:order-2">
               <Label htmlFor="date-range">Date Search</Label>
-              <SplitDateRangeFilter
+              <DateRangeFilter
                 id="date-range"
-                startDate={startDate}
-                endDate={endDate}
-                onStartDateChange={setStartDate}
-                onEndDateChange={setEndDate}
+                value={{ from: startDate, to: endDate }}
+                onChange={(range) => {
+                  setStartDate(range?.from);
+                  setEndDate(range?.to);
+                }}
               />
             </div>
           </div>
@@ -258,7 +259,7 @@ export default function PolicePage() {
           </div>
 
           {/* Party list */}
-          <Card className="flex flex-col p-1 w-full lg:h-0 lg:min-h-0 lg:flex-1 lg:overflow-hidden">
+          <Card className="flex flex-col w-full lg:h-0 lg:min-h-0 lg:flex-1 lg:overflow-hidden">
             {isPartiesLoading && (
               <div className="px-4 py-2 gap-4 flex flex-col h-fit">
                 <SkeletonText className="pb-5 max-w-full" />
@@ -289,8 +290,8 @@ export default function PolicePage() {
             )}
           </Card>
           {showPaginationRow && (
-            <div className="flex items-center justify-between gap-2 md:gap-4 p-2">
-              <div className="min-w-0 flex justify-start overflow-x-auto">
+            <div className="flex items-center justify-between gap-2 md:gap-4 pt-3 px-2">
+              <div className="min-w-0 flex justify-start overflow-x-auto text-sm">
                 <Pagination className="mx-0 w-max justify-start">
                   <PaginationContent>
                     <PaginationItem>
@@ -366,8 +367,8 @@ export default function PolicePage() {
                   </PaginationContent>
                 </Pagination>
               </div>
-              <div className="shrink-0 flex items-center justify-end gap-2">
-                <span className="hidden lg:inline content text-muted-foreground whitespace-nowrap">
+              <div className="shrink-0 flex items-center justify-end gap-2 text-sm">
+                <span className="hidden lg:inline text-muted-foreground whitespace-nowrap">
                   Rows per page:
                 </span>
                 {isPartiesLoading ? (

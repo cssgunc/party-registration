@@ -1,7 +1,7 @@
 import enum
 from typing import Annotated, Literal
 
-from pydantic import AwareDatetime, BaseModel, EmailStr, Field
+from pydantic import AwareDatetime, BaseModel, EmailStr, Field, field_validator
 from src.core.types import PhoneNumber
 from src.core.utils.query_utils import PaginatedResponse
 from src.modules.location.location_model import LocationDto
@@ -18,18 +18,26 @@ class PartyData(BaseModel):
     location_id: int = Field(..., description="ID of the location where the party is held")
     contact_one_id: int = Field(..., description="ID of the first contact student")
     contact_two: "ContactDto" = Field(..., description="Contact information for the second contact")
+    status: PartyStatus = PartyStatus.CONFIRMED
 
 
 class ContactDto(BaseModel):
     """DTO for contact information (contact_two in party registration)."""
 
-    email: EmailStr = Field(..., description="Email address of the contact")
+    email: EmailStr = Field(..., description="UNC email address of the contact")
     first_name: str = Field(..., min_length=1, description="First name of the contact")
     last_name: str = Field(..., min_length=1, description="Last name of the contact")
     phone_number: PhoneNumber
     contact_preference: ContactPreference = Field(
         ..., description="Preferred contact method: 'call' or 'text'"
     )
+
+    @field_validator("email")
+    @classmethod
+    def must_be_unc_email(cls, v: EmailStr) -> EmailStr:
+        if not str(v).lower().endswith("@unc.edu"):
+            raise ValueError("Contact two email must be a UNC email address (@unc.edu)")
+        return v
 
 
 class PartyDto(BaseModel):
@@ -39,6 +47,19 @@ class PartyDto(BaseModel):
     contact_one: StudentDto = Field(..., description="First contact student")
     contact_two: ContactDto = Field(..., description="Contact information for the second contact")
     status: PartyStatus
+
+
+class PartyDraft(BaseModel):
+    """Proposed final state of a party being created or updated.
+    Mirrors PartyDto minus id; `existing` is set on update flows only.
+    `location` is None for student paths when the student has no residence
+    — the NO_RESIDENCE rule fires before any consumer reads location."""
+
+    party_datetime: AwareDatetime
+    location: LocationDto | None = None
+    contact_one: StudentDto
+    contact_two: ContactDto
+    existing: PartyDto | None = None
 
 
 class StudentCreatePartyDto(BaseModel):

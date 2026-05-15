@@ -7,6 +7,7 @@ import {
   exchangeToken,
   setAuthCookies,
 } from "@/lib/api/auth/auth.service";
+import { getDashboardPath } from "@/lib/auth/route-access";
 import { serverEnv } from "@/lib/config/env.server";
 import { createLoginRequestUrl, postAssert } from "@/lib/saml";
 import { AxiosError } from "axios";
@@ -138,7 +139,12 @@ export async function POST(req: NextRequest) {
 
   const payload = decodeAccessTokenPayload(tokens.access_token);
   const accountId = Number(payload.sub);
-  const res = NextResponse.redirect(new URL(callbackUrl, origin));
+  // The proxy sets callbackUrl=/ for unauthenticated visits to the root, but /
+  // is the student dashboard. Send non-students to their own dashboard instead;
+  // they can still navigate to / manually after login.
+  const finalCallbackUrl =
+    callbackUrl === "/" ? getDashboardPath(payload.role) : callbackUrl;
+  const res = NextResponse.redirect(new URL(finalCallbackUrl, origin));
 
   await setAuthCookies(res, tokens, {
     sub: accountId,

@@ -12,7 +12,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Skeleton, SkeletonText } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { IncidentDto } from "@/lib/api/incident/incident.types";
+import {
+  INCIDENT_SEVERITY_LABELS,
+  IncidentDto,
+} from "@/lib/api/incident/incident.types";
+import { hasActiveHold } from "@/lib/api/location/location.service";
 import { PartyDto } from "@/lib/api/party/party.types";
 import {
   useCurrentStudent,
@@ -23,8 +27,8 @@ import {
   formatTime,
   isFromThisSchoolYear,
 } from "@/lib/utils";
-import { format } from "date-fns";
-import { MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
+import { format } from "date-fns/format";
+import { Ban, Mail, MoreVertical, Pencil, Phone, Plus } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -44,6 +48,13 @@ export default function RegistrationTracker(): React.JSX.Element {
   const courseCompleted = student
     ? isFromThisSchoolYear(student.last_registered)
     : false;
+  const residenceHoldExpiration = student?.residence?.location.hold_expiration;
+  const residenceHasActiveHold = hasActiveHold(residenceHoldExpiration ?? null);
+  const disabledNewPartyTitle = residenceHasActiveHold
+    ? "A party cannot be registered on a residence with an active hold"
+    : !courseCompleted
+      ? "Complete the Party Smart Course to register a party"
+      : undefined;
 
   const { activeParties, pastParties } = useMemo(() => {
     const parties = partiesQuery.data ?? [];
@@ -138,21 +149,21 @@ export default function RegistrationTracker(): React.JSX.Element {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button className="shrink-0 bg-transparent hover:bg-transparent p-0 h-auto">
-                  <MoreVertical className="h-4 w-4 content cursor-pointer" />
+                  <MoreVertical className="size-4 content cursor-pointer" />
                   <p className="sr-only">Party actions</p>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => setEditParty(party)}>
-                  <Pencil className="h-4 w-4" />
+                  <Pencil className="size-4" />
                   Edit
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   variant="destructive"
                   onClick={() => setDeleteParty(party)}
                 >
-                  <Trash2 className="h-4 w-4" />
-                  Delete
+                  <Ban className="size-4" />
+                  Cancel
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -167,32 +178,38 @@ export default function RegistrationTracker(): React.JSX.Element {
             <p>
               {party.contact_one.first_name} {party.contact_one.last_name}
             </p>
-            <div className="ml-3">
-              <p>
+            <div className="flex flex-col gap-0.5 mt-0.5">
+              <p className="flex items-center gap-1.5">
+                <Phone className="size-3 shrink-0" />
                 {formatPhoneNumber(party.contact_one.phone_number)}
                 <span className="capitalize">
-                  {" "}
                   - {party.contact_one.contact_preference}
                 </span>
               </p>
-              <p>{party.contact_one.email}</p>
+              <p className="flex items-center gap-1.5">
+                <Mail className="size-3 shrink-0" />
+                {party.contact_one.email}
+              </p>
             </div>
           </div>
 
           {/* Contact Two */}
-          <div className="ml-3 mt-6 sm:ml-0 sm:mt-0 content">
+          <div className="ml-3 mt-3 sm:ml-0 sm:mt-0 content">
             <p>
               {party.contact_two.first_name} {party.contact_two.last_name}
             </p>
-            <div className="ml-3">
-              <p>
+            <div className="flex flex-col gap-0.5 mt-0.5">
+              <p className="flex items-center gap-1.5">
+                <Phone className="size-3 shrink-0" />
                 {formatPhoneNumber(party.contact_two.phone_number)}
                 <span className="capitalize">
-                  {" "}
                   - {party.contact_two.contact_preference}
                 </span>
               </p>
-              <p>{party.contact_two.email}</p>
+              <p className="flex items-center gap-1.5">
+                <Mail className="size-3 shrink-0" />
+                {party.contact_two.email}
+              </p>
             </div>
           </div>
         </div>
@@ -208,25 +225,27 @@ export default function RegistrationTracker(): React.JSX.Element {
     incidents: IncidentDto[];
   }) => (
     <div className="px-4 py-4 border-b border-gray-200 rounded-none">
-      <div className="space-y-2">
+      <div>
         <h2 className="content-bold">{date}</h2>
-        {incidents.map((incident) => (
-          <div key={incident.id} className="mt-3">
-            <p className="content">
-              {formatTime(incident.incident_datetime)} -{" "}
-              <span className="capitalize">{incident.severity}</span>
-            </p>
-            <p className="content ml-3 mt-1">{incident.description}</p>
-          </div>
-        ))}
+        <div className="mt-2 space-y-3">
+          {incidents.map((incident) => (
+            <div key={incident.id}>
+              <p className="content">
+                {formatTime(incident.incident_datetime)} -{" "}
+                <span>{INCIDENT_SEVERITY_LABELS[incident.severity]}</span>
+              </p>
+              <p className="content ml-3 mt-1">{incident.description}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
 
   if (isPartiesError) {
     return (
-      <Card className="w-full bg-card p-4 h-[calc(100vh-28rem)]">
-        <div className="text-center text-red-600 py-8">
+      <Card className="w-full bg-card p-4 h-full">
+        <div className="text-center text-destructive py-8">
           <p className="font-semibold mb-2">Error loading registrations</p>
           <p className="text-sm">{isPartiesError.message}</p>
         </div>
@@ -235,14 +254,15 @@ export default function RegistrationTracker(): React.JSX.Element {
   }
 
   return (
-    <div>
+    <div className="flex flex-col flex-1 min-h-0 mb-6">
       <Tabs
         value={activeTab}
         onValueChange={(value) =>
           setActiveTab(value as "active" | "past" | "incidents")
         }
+        className="flex flex-col flex-1 min-h-0"
       >
-        <div className="flex justify-between items-center mt-2">
+        <div className="mt-2 flex items-end justify-between shrink-0">
           <TabsList className="w-fit flex gap-4">
             <TabsTrigger
               value="active"
@@ -264,7 +284,7 @@ export default function RegistrationTracker(): React.JSX.Element {
             </TabsTrigger>
           </TabsList>
           <div>
-            {courseCompleted ? (
+            {courseCompleted && !residenceHasActiveHold ? (
               <Link href="/new-party">
                 <Button className="px-4 py-2">
                   <Plus className="size-4 inline-block" />
@@ -272,7 +292,10 @@ export default function RegistrationTracker(): React.JSX.Element {
                 </Button>
               </Link>
             ) : (
-              <span title="Complete the Party Smart Course to register a party">
+              <span
+                className="inline-flex cursor-not-allowed"
+                title={disabledNewPartyTitle}
+              >
                 <Button className="px-4 py-2" disabled>
                   <Plus className="size-4 inline-block" />
                   New Party
@@ -282,9 +305,9 @@ export default function RegistrationTracker(): React.JSX.Element {
           </div>
         </div>
 
-        <Card className="w-full">
-          <TabsContent value="active">
-            <div className="h-[calc(100vh-28rem)] w-full overflow-y-auto rounded-md bg-card">
+        <Card className="w-full flex-1 min-h-0 overflow-hidden mt-2 flex flex-col">
+          <TabsContent value="active" className="h-full">
+            <div className="h-full w-full overflow-y-auto rounded-md bg-card">
               {isPartiesPending ? (
                 <div className="px-4 py-4 gap-4 sm:gap-7 flex flex-col">
                   <SkeletonText className="pb-5 max-w-full" />
@@ -294,7 +317,7 @@ export default function RegistrationTracker(): React.JSX.Element {
                   <SkeletonText className="max-w-full" />
                 </div>
               ) : activeParties.length === 0 ? (
-                <p className="flex h-full items-center justify-center px-4 text-center content-sub !text-base">
+                <p className="flex h-full items-center justify-center px-4 text-center content-sub text-base!">
                   {showPartySmartPrompt
                     ? "Schedule and attend the Party Smart course below to register your first party!"
                     : "No active registrations"}
@@ -307,8 +330,8 @@ export default function RegistrationTracker(): React.JSX.Element {
             </div>
           </TabsContent>
 
-          <TabsContent value="past">
-            <div className="h-[calc(100vh-28rem)] w-full overflow-y-auto rounded-md bg-card">
+          <TabsContent value="past" className="h-full">
+            <div className="h-full w-full overflow-y-auto rounded-md bg-card">
               {isPartiesPending ? (
                 <div className="px-4 py-4 gap-4 sm:gap-7 flex flex-col">
                   <SkeletonText className="pb-5 max-w-full" />
@@ -329,8 +352,8 @@ export default function RegistrationTracker(): React.JSX.Element {
             </div>
           </TabsContent>
 
-          <TabsContent value="incidents">
-            <div className="h-[calc(100vh-28rem)] w-full overflow-y-auto rounded-md bg-card">
+          <TabsContent value="incidents" className="h-full">
+            <div className="h-full w-full overflow-y-auto rounded-md bg-card">
               {isPartiesPending ? (
                 <div className="px-4 py-4 gap-4 sm:gap-7 flex flex-col">
                   <SkeletonText className="pb-5 max-w-full" />

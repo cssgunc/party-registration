@@ -1,4 +1,3 @@
-import re
 from datetime import UTC, datetime
 from typing import ClassVar
 
@@ -11,6 +10,7 @@ from src.core.database import get_session
 from src.core.exceptions import BadRequestException, ConflictException, NotFoundException
 from src.core.utils.date_utils import current_academic_year_start, is_same_academic_year
 from src.core.utils.excel_utils import ExcelExporter
+from src.core.utils.phone_utils import digits_only
 from src.core.utils.query_utils import (
     ListQueryParams,
     QueryFieldSet,
@@ -18,7 +18,7 @@ from src.core.utils.query_utils import (
     SortOrder,
     SortParam,
 )
-from src.modules.account.account_entity import AccountEntity, AccountRole
+from src.modules.account.account_entity import AccountEntity
 from src.modules.location.location_entity import LocationEntity
 from src.modules.location.location_model import LocationDto
 from src.modules.location.location_service import LocationService
@@ -52,18 +52,6 @@ class StudentConflictException(ConflictException):
 class AccountNotFoundException(NotFoundException):
     def __init__(self, account_id: int):
         super().__init__(f"Account with ID {account_id} not found")
-
-
-class InvalidAccountRoleException(BadRequestException):
-    def __init__(self, account_id: int, role: AccountRole):
-        super().__init__(
-            f"Account with ID {account_id} has role '{role.value}', expected 'student'"
-        )
-
-
-class StudentAlreadyExistsException(ConflictException):
-    def __init__(self, account_id: int):
-        super().__init__(f"Student with account ID {account_id} already exists")
 
 
 class ResidenceAlreadyChosenException(BadRequestException):
@@ -171,21 +159,6 @@ class StudentService:
             raise AccountNotFoundException(account_id)
         return account
 
-    async def _validate_account_for_student(self, account_id: int) -> AccountEntity:
-        account = await self._get_account_entity_by_id(account_id)
-
-        if account.role != AccountRole.STUDENT:
-            raise InvalidAccountRoleException(account_id, account.role)
-
-        result = await self.session.execute(
-            select(StudentEntity).where(StudentEntity.account_id == account_id)
-        )
-        existing_student = result.scalar_one_or_none()
-        if existing_student is not None:
-            raise StudentAlreadyExistsException(account_id)
-
-        return account
-
     async def get_students(self, skip: int = 0, limit: int | None = None) -> list[StudentDto]:
         query = (
             select(StudentEntity)
@@ -248,13 +221,15 @@ class StudentService:
             residence_address = (
                 student.residence.location.formatted_address
                 if student.residence is not None
-                else "-"
+                else None
             )
             phone = (
-                ExcelExporter.format_phone(student.phone_number) if student.phone_number else "-"
+                ExcelExporter.format_phone(student.phone_number) if student.phone_number else None
             )
             contact_preference = (
-                student.contact_preference.value.capitalize() if student.contact_preference else "-"
+                student.contact_preference.value.capitalize()
+                if student.contact_preference
+                else None
             )
             exporter.add_row(
                 [
@@ -325,43 +300,8 @@ class StudentService:
         account = await self._get_account_entity_by_id(account_id)
         return self._build_dto_from_account(account)
 
-    async def create_student(self, data: StudentUpdateDto, account_id: int) -> StudentDto:
-        await self._validate_account_for_student(account_id)
-
-        if await self._get_student_entity_by_phone(data.phone_number):
-            raise StudentConflictException(data.phone_number)
-
-        # Get or create residence location if residence_place_id is provided
-        residence_id = None
-        if data.residence_place_id:
-            location = await self.location_service.get_or_create_location(data.residence_place_id)
-            residence_id = location.id
-
-        student_data = StudentData(
-            contact_preference=data.contact_preference,
-            last_registered=data.last_registered,
-            phone_number=data.phone_number,
-        )
-        new_student = StudentEntity.from_data(student_data, account_id, residence_id)
-        try:
-            self.session.add(new_student)
-            await self.session.commit()
-        except IntegrityError as e:
-            await self.session.rollback()
-            raise StudentConflictException(data.phone_number) from e
-
-        await self.session.refresh(new_student, ["account", "residence"])
-        return new_student.to_dto()
-
     async def update_student(self, account_id: int, data: StudentUpdateDto) -> StudentDto:
         student_entity = await self._get_student_entity_by_account_id(account_id)
-
-        account = student_entity.account
-        if account is None:
-            raise AccountNotFoundException(account_id)
-
-        if account.role != AccountRole.STUDENT:
-            raise InvalidAccountRoleException(account_id, account.role)
 
         if (
             data.phone_number != student_entity.phone_number
@@ -402,9 +342,7 @@ class StudentService:
 
         if student_entity is None:
             # Upsert: create Student entity for the first time
-            account = await self._get_account_entity_by_id(account_id)
-            if account.role != AccountRole.STUDENT:
-                raise InvalidAccountRoleException(account_id, account.role)
+            await self._get_account_entity_by_id(account_id)
             if await self._get_student_entity_by_phone(data.phone_number):
                 raise StudentConflictException(data.phone_number)
             student_data = StudentData(
@@ -421,9 +359,6 @@ class StudentService:
             await self.session.refresh(student_entity, ["account", "residence"])
             return student_entity.to_dto()
 
-        account = student_entity.account
-        if account.role != AccountRole.STUDENT:
-            raise InvalidAccountRoleException(account_id, account.role)
         if (
             data.phone_number != student_entity.phone_number
             and await self._get_student_entity_by_phone(data.phone_number)
@@ -475,10 +410,10 @@ class StudentService:
     _AUTOCOMPLETE_LIMIT = 10
 
     async def autocomplete_students(self, query: str) -> list[StudentSuggestionDto]:
-        """Return up to 10 students matching query against PID, email, onyen, or phone number."""
+        """Return up to 10 students matching query against PID, email, onyen, phone, or name."""
         pattern = f"%{query}%"
-        digits_only_query = re.sub(r"\D", "", query)
-        phone_pattern = f"%{digits_only_query}%"
+        phone_pattern = f"%{digits_only(query)}%"
+        full_name_expr = func.concat(AccountEntity.first_name, " ", AccountEntity.last_name)
         result = await self.session.execute(
             select(StudentEntity)
             .join(AccountEntity, StudentEntity.account_id == AccountEntity.id)
@@ -488,6 +423,9 @@ class StudentService:
                     AccountEntity.email.ilike(pattern),
                     AccountEntity.onyen.ilike(pattern),
                     StudentEntity.phone_number.ilike(phone_pattern),
+                    AccountEntity.first_name.ilike(pattern),
+                    AccountEntity.last_name.ilike(pattern),
+                    full_name_expr.ilike(pattern),
                 )
             )
             .options(selectinload(StudentEntity.account))
@@ -495,22 +433,33 @@ class StudentService:
         )
         students = result.scalars().all()
 
+        q_lower = query.lower()
         suggestions = []
         for student in students:
             account = student.account
-            # Determine the first matching field (priority: pid, email, onyen, phone_number)
-            if account.pid.lower().find(query.lower()) != -1:
+            full_name = f"{account.first_name} {account.last_name}"
+            # Determine matched field (priority: pid, email, onyen, phone_number, name)
+            if q_lower in account.pid.lower():
                 matched_field_name = "pid"
                 matched_field_value = account.pid
-            elif query.lower() in account.email.lower():
+            elif q_lower in account.email.lower():
                 matched_field_name = "email"
                 matched_field_value = account.email
-            elif query.lower() in account.onyen.lower():
+            elif q_lower in account.onyen.lower():
                 matched_field_name = "onyen"
                 matched_field_value = account.onyen
-            else:
+            elif digits_only(query) and digits_only(query) in (student.phone_number or ""):
                 matched_field_name = "phone_number"
                 matched_field_value = student.phone_number or ""
+            elif " " in query and q_lower in full_name.lower():
+                matched_field_name = "full_name"
+                matched_field_value = full_name
+            elif q_lower in account.first_name.lower():
+                matched_field_name = "first_name"
+                matched_field_value = account.first_name
+            else:
+                matched_field_name = "last_name"
+                matched_field_value = account.last_name
 
             suggestions.append(
                 StudentSuggestionDto(

@@ -141,6 +141,7 @@ export default function LocationTableForm({
                   addBusinessDays(startOfDay(new Date()), 1)
                 )
               }
+              forwardDate={true}
               clearable
             />
             <FieldDescription>

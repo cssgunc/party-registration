@@ -12,7 +12,6 @@ import { Input } from "@/components/ui/input";
 import {
   Pagination,
   PaginationContent,
-  PaginationEllipsis,
   PaginationItem,
   PaginationLink,
   PaginationNext,
@@ -66,7 +65,14 @@ import {
   Trash2,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
-import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import {
+  ReactNode,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { DeleteConfirmDialog } from "../dialog/DeleteConfirmDialog";
 import { useSidebar } from "../sidebar/SidebarContext";
 import { ColumnHeader } from "./ColumnHeader";
@@ -106,6 +112,7 @@ export type TableProps<T> = {
   onStateChange?: (params: ServerTableParams) => void;
   onExportCsv?: (params: ListQueryParams) => void;
   isExporting?: boolean;
+  headerSlot?: ReactNode;
   canManageRows?: boolean;
   canEditRow?: (row: T) => boolean;
   canDeleteRow?: (row: T) => boolean;
@@ -119,6 +126,14 @@ export type TableProps<T> = {
 };
 
 const serverFilterPassthrough = () => true;
+
+function areSortingStatesEqual(a: SortingState, b: SortingState) {
+  if (a.length !== b.length) return false;
+
+  return a.every(
+    (sort, index) => sort.id === b[index]?.id && sort.desc === b[index]?.desc
+  );
+}
 
 export function TableTemplate<T extends object>({
   data,
@@ -140,6 +155,7 @@ export function TableTemplate<T extends object>({
   onStateChange,
   onExportCsv,
   isExporting,
+  headerSlot,
   canManageRows,
   canEditRow,
   canDeleteRow,
@@ -180,6 +196,13 @@ export function TableTemplate<T extends object>({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<T | null>(null);
   const [globalFilter, setGlobalFilter] = useState<string>("");
+  const [fillerMetrics, setFillerMetrics] = useState({
+    fullRows: 0,
+    partialRowHeight: 0,
+  });
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const tableHeaderRef = useRef<HTMLTableSectionElement | null>(null);
+  const sampleRowRef = useRef<HTMLTableRowElement | null>(null);
 
   // Refs to avoid stale closures in debounced effects
   const paginationRef = useRef(pagination);
@@ -260,14 +283,13 @@ export function TableTemplate<T extends object>({
       ([, config]) => config.backendField === serverMeta.sortBy
     )?.[0];
     if (!columnId) return;
-    const desc = serverMeta.sortOrder === "desc";
-    if (
-      sorting.length !== 1 ||
-      sorting[0].id !== columnId ||
-      sorting[0].desc !== desc
-    ) {
-      setSorting([{ id: columnId, desc }]);
-    }
+    const nextSorting = [
+      { id: columnId, desc: serverMeta.sortOrder === "desc" },
+    ];
+
+    setSorting((prev) =>
+      areSortingStatesEqual(prev, nextSorting) ? prev : nextSorting
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serverMeta?.sortBy, serverMeta?.sortOrder]);
 
@@ -508,11 +530,54 @@ export function TableTemplate<T extends object>({
   });
 
   const visibleRows = table.getRowModel().rows;
-  const renderedDataRowCount = visibleRows.length > 0 ? visibleRows.length : 1;
-  const fillerRowCount = Math.max(
-    pagination.pageSize - renderedDataRowCount,
-    0
-  );
+  useLayoutEffect(() => {
+    const scrollContainer = scrollContainerRef.current;
+    const tableHeader = tableHeaderRef.current;
+
+    if (!scrollContainer || !tableHeader) return;
+
+    const updateVisibleRowCapacity = () => {
+      const availableBodyHeight =
+        scrollContainer.clientHeight -
+        tableHeader.getBoundingClientRect().height;
+      const measuredRowHeight =
+        sampleRowRef.current?.getBoundingClientRect().height ?? 49;
+
+      if (availableBodyHeight <= 0 || measuredRowHeight <= 0) {
+        setFillerMetrics({ fullRows: 0, partialRowHeight: 0 });
+        return;
+      }
+
+      const remainingHeight = Math.max(
+        availableBodyHeight - visibleRows.length * measuredRowHeight,
+        0
+      );
+      const fullRows = Math.floor(remainingHeight / measuredRowHeight);
+      const partialRowHeight = remainingHeight - fullRows * measuredRowHeight;
+
+      setFillerMetrics({
+        fullRows,
+        partialRowHeight: partialRowHeight > 1 ? partialRowHeight : 0,
+      });
+    };
+
+    updateVisibleRowCapacity();
+
+    const resizeObserver = new ResizeObserver(updateVisibleRowCapacity);
+    resizeObserver.observe(scrollContainer);
+    resizeObserver.observe(tableHeader);
+    if (sampleRowRef.current) {
+      resizeObserver.observe(sampleRowRef.current);
+    }
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [visibleRows.length, columnsWithActions.length]);
+
+  const fillerRowCount = visibleRows.length > 0 ? fillerMetrics.fullRows : 0;
+  const partialFillerRowHeight =
+    visibleRows.length > 0 ? fillerMetrics.partialRowHeight : 0;
   const activePage = table.getState().pagination.pageIndex;
   const activePageSize = table.getState().pagination.pageSize;
   const filteredRowCount = isServerMode
@@ -548,6 +613,11 @@ export function TableTemplate<T extends object>({
                 className="p-2 pl-3 h-9 rounded-md"
               />
             </div>
+            {headerSlot && (
+              <div className="hidden lg:flex flex-1 items-center justify-center min-w-0 ml-1">
+                {headerSlot}
+              </div>
+            )}
             <div className="shrink-0 ml-auto flex items-center gap-2">
               {onExportCsv && (
                 <Button
@@ -586,9 +656,10 @@ export function TableTemplate<T extends object>({
           </div>
         </div>
       )}
+      {headerSlot && <div className="lg:hidden">{headerSlot}</div>}
 
       <div className="flex min-h-0 h-full flex-col justify-between overflow-hidden">
-        <Card className="flex-1 min-h-0 py-2 px-4 overflow-hidden rounded-sm w-full max-w-none mx-0">
+        <Card className="flex-1 min-h-0 overflow-hidden rounded-sm w-full max-w-none mx-0">
           {error && (
             <span className="text-center py-8 text-destructive">
               <p>Error: {error.message}</p>
@@ -597,13 +668,14 @@ export function TableTemplate<T extends object>({
 
           {!error && (
             <div
+              ref={scrollContainerRef}
               className={cn(
                 "h-full overflow-y-auto",
                 (isFetching || isLoading) && "opacity-60 pointer-events-none"
               )}
             >
               <Table className="bg-card rounded-sm">
-                <TableHeader>
+                <TableHeader ref={tableHeaderRef}>
                   {table.getHeaderGroups().map((headerGroup) => (
                     <TableRow key={headerGroup.id}>
                       {headerGroup.headers.map((header) => (
@@ -611,12 +683,12 @@ export function TableTemplate<T extends object>({
                           key={header.id}
                           className={
                             header.column.id === "actions"
-                              ? "w-0 text-right"
-                              : ""
+                              ? "h-12 w-0 pr-4 pt-2 align-top text-right"
+                              : "h-12 pt-2 align-top first:pl-6 last:pr-6"
                           }
                         >
-                          {header.isPlaceholder ? null : header.column.id ===
-                            "actions" ? null : (
+                          {header.isPlaceholder ||
+                          header.column.id === "actions" ? null : (
                             <ColumnHeader
                               column={header.column}
                               title={
@@ -659,6 +731,11 @@ export function TableTemplate<T extends object>({
                           {table.getVisibleLeafColumns().map((column) => (
                             <TableCell
                               key={`loading-cell-${rowIndex}-${column.id}`}
+                              className={
+                                column.id === "actions"
+                                  ? "pr-4"
+                                  : "first:pl-6 last:pr-6"
+                              }
                             >
                               <Skeleton
                                 className={
@@ -677,18 +754,22 @@ export function TableTemplate<T extends object>({
                       {visibleRows.map((row) => (
                         <TableRow
                           key={row.id}
-                          className={
-                            row.getIsSelected()
-                              ? "bg-accent hover:bg-secondary"
-                              : ""
+                          ref={
+                            row.id === visibleRows[0]?.id ? sampleRowRef : null
                           }
+                          className={cn(
+                            row.getIsSelected() &&
+                              "bg-accent hover:bg-secondary"
+                          )}
                         >
                           {row.getVisibleCells().map((cell) => (
                             <TableCell
                               key={cell.id}
-                              className={
-                                cell.column.getIsFiltered() ? "bg-card" : ""
-                              }
+                              className={cn(
+                                cell.column.id === "actions"
+                                  ? "pr-4"
+                                  : "first:pl-6 last:pr-6"
+                              )}
                             >
                               {flexRender(
                                 cell.column.columnDef.cell,
@@ -706,17 +787,29 @@ export function TableTemplate<T extends object>({
                           >
                             <TableCell
                               colSpan={columnsWithActions.length}
-                              className="h-12.25"
+                              className="h-12.25 px-4"
                             />
                           </TableRow>
                         )
+                      )}
+                      {partialFillerRowHeight > 0 && (
+                        <TableRow
+                          key="filler-row-partial"
+                          className="pointer-events-none"
+                          style={{ height: partialFillerRowHeight }}
+                        >
+                          <TableCell
+                            colSpan={columnsWithActions.length}
+                            className="p-0"
+                          />
+                        </TableRow>
                       )}
                     </>
                   ) : (
                     <TableRow>
                       <TableCell
                         colSpan={columnsWithActions.length}
-                        className="h-12 text-center"
+                        className="h-12 px-4 text-center"
                       >
                         No results.
                       </TableCell>
@@ -759,7 +852,7 @@ export function TableTemplate<T extends object>({
             </div>
 
             {/* Center: Pagination Navigation */}
-            <div className="flex min-w-0 overflow-x-auto justify-center">
+            <div className="flex min-w-0 overflow-x-auto justify-center text-sm">
               <Pagination className="w-max">
                 <PaginationContent>
                   <PaginationItem>
@@ -787,7 +880,17 @@ export function TableTemplate<T extends object>({
                     <>
                       {pageStart > 0 && (
                         <PaginationItem>
-                          <PaginationEllipsis />
+                          <PaginationLink
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              table.setPageIndex(0);
+                            }}
+                            className="cursor-pointer"
+                            aria-label="Go to first page"
+                          >
+                            <MoreHorizontal />
+                          </PaginationLink>
                         </PaginationItem>
                       )}
                       {pageIndexes.map((pageIndex) => (
@@ -807,7 +910,17 @@ export function TableTemplate<T extends object>({
                       ))}
                       {pageEnd < pageCount && (
                         <PaginationItem>
-                          <PaginationEllipsis />
+                          <PaginationLink
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              table.setPageIndex(pageCount - 1);
+                            }}
+                            className="cursor-pointer"
+                            aria-label="Go to last page"
+                          >
+                            <MoreHorizontal />
+                          </PaginationLink>
                         </PaginationItem>
                       )}
                     </>

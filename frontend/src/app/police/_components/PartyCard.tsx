@@ -13,7 +13,10 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import type { IncidentSeverity } from "@/lib/api/incident/incident.types";
+import {
+  INCIDENT_SEVERITY_LABELS,
+  type IncidentSeverity,
+} from "@/lib/api/incident/incident.types";
 import {
   LocationDto,
   getCitationCount,
@@ -32,18 +35,18 @@ const INCIDENT_MENU_ITEMS: {
 }[] = [
   {
     severity: "remote_warning",
-    label: "Add remote warning",
-    hoverLabel: "Remote Warnings",
+    label: `Add ${INCIDENT_SEVERITY_LABELS.remote_warning.toLowerCase()}`,
+    hoverLabel: `${INCIDENT_SEVERITY_LABELS.remote_warning}s`,
   },
   {
     severity: "in_person_warning",
-    label: "Add in-person warning",
-    hoverLabel: "In-Person Warnings",
+    label: `Add ${INCIDENT_SEVERITY_LABELS.in_person_warning.toLowerCase()}`,
+    hoverLabel: `${INCIDENT_SEVERITY_LABELS.in_person_warning}s`,
   },
   {
     severity: "citation",
-    label: "Add citation",
-    hoverLabel: "Citations",
+    label: `Add ${INCIDENT_SEVERITY_LABELS.citation.toLowerCase()}`,
+    hoverLabel: `${INCIDENT_SEVERITY_LABELS.citation}s`,
   },
 ];
 
@@ -161,12 +164,12 @@ export default function PartyCard({
         {data.hasParty && (
           <div className="grid grid-rows-2 gap-y-2 mb-2 mr-4">
             <div className="flex flex-row justify-between gap-x-0.5">
-              <p className="content text-secondary self-end mb-[-6px]">
+              <p className="content text-secondary self-end -mb-1.5">
                 {data.party.contact_one.first_name}{" "}
                 {data.party.contact_one.last_name}
               </p>
-              <span className="flex-1 h-[2px] bg-[radial-gradient(circle,currentColor_1px,transparent_1px)] bg-[length:6px_2px] bg-repeat-x self-end text-[var(--secondary)]" />
-              <div className="flex flex-row gap-x-1 mb-[-6px]">
+              <span className="flex-1 h-0.5 bg-[radial-gradient(circle,currentColor_1px,transparent_1px)] bg-size-[6px_2px] bg-repeat-x self-end text-secondary" />
+              <div className="flex flex-row gap-x-1 -mb-1.5">
                 <PhoneLink
                   phoneNumber={data.party.contact_one.phone_number ?? "—"}
                   contactPreference={data.party.contact_one.contact_preference}
@@ -181,12 +184,12 @@ export default function PartyCard({
               </div>
             </div>
             <div className="flex flex-row justify-between gap-x-0.5">
-              <p className="content text-secondary self-end mb-[-6px]">
+              <p className="content text-secondary self-end -mb-1.5">
                 {data.party.contact_two.first_name}{" "}
                 {data.party.contact_two.last_name}
               </p>
-              <span className="flex-1 h-[2px] bg-[radial-gradient(circle,currentColor_1px,transparent_1px)] bg-[length:6px_2px] bg-repeat-x self-end text-[var(--secondary)]" />
-              <div className="flex flex-row gap-x-1 mb-[-6px]">
+              <span className="flex-1 h-0.5 bg-[radial-gradient(circle,currentColor_1px,transparent_1px)] bg-size-[6px_2px] bg-repeat-x self-end text-secondary" />
+              <div className="flex flex-row gap-x-1 -mb-1.5">
                 <PhoneLink
                   phoneNumber={data.party.contact_two.phone_number}
                   contactPreference={data.party.contact_two.contact_preference}

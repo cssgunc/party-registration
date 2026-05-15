@@ -1,8 +1,10 @@
+from datetime import datetime
 from typing import Self
 
-from sqlalchemy import CheckConstraint, Enum, Integer, String
+from sqlalchemy import CheckConstraint, Enum, Integer, String, func
 from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column
 from src.core.database import EntityBase
+from src.core.types import UTCDateTime
 from src.modules.account.account_model import AccountData, AccountDto, AccountRole
 
 
@@ -29,6 +31,7 @@ class AccountEntity(MappedAsDataclass, EntityBase):
     role: Mapped[AccountRole] = mapped_column(
         Enum(AccountRole, native_enum=False, length=20), nullable=False
     )
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, server_default=func.now(), init=False)
 
     @classmethod
     def from_data(cls, data: "AccountData") -> Self:

@@ -1,6 +1,7 @@
 from datetime import UTC, datetime, timedelta
 from typing import Any, TypedDict, Unpack, override
 
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.modules.party.party_entity import PartyEntity
 from src.modules.party.party_model import (
@@ -11,6 +12,7 @@ from src.modules.party.party_model import (
     PartyStatus,
     StudentCreatePartyDto,
 )
+from src.modules.party.party_service import PartyRule, PartyValidationException
 from src.modules.student.student_model import ContactPreference
 from test.modules.location.location_utils import LocationTestUtils
 from test.modules.student.student_utils import StudentTestUtils
@@ -21,6 +23,14 @@ def get_valid_party_datetime() -> datetime:
     """Get a datetime that is at least 3 business days from now."""
     days_ahead = 5  # Start with 5 calendar days to ensure 3 business days
     return datetime.now(UTC) + timedelta(days=days_ahead)
+
+
+def assert_party_validation_error(
+    exc_info: pytest.ExceptionInfo[PartyValidationException], rule: PartyRule
+) -> None:
+    assert exc_info.value.rule == rule, (
+        f"Expected PartyValidationException rule {rule}, got {exc_info.value.rule}"
+    )
 
 
 class PartyOverrides(TypedDict, total=False):
@@ -66,7 +76,7 @@ class PartyTestUtils(
             "location_id": 1,
             "contact_one_id": 1,
             "party_datetime": get_valid_party_datetime() + timedelta(days=count),
-            "contact_two_email": f"contact{count}@email.com",
+            "contact_two_email": f"contact{count}@unc.edu",
             "contact_two_first_name": f"ContactTwo{count}",
             "contact_two_last_name": f"LastName{count}",
             "contact_two_phone_number": f"919555{1000 + count:04d}",

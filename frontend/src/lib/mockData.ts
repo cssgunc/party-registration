@@ -149,4 +149,5 @@ export const PARTIES: PartyDto[] = mockData.parties.map((party) => ({
   location: findLocationById(party.location_id),
   contact_one: findStudentById(party.contact_one_id),
   contact_two: parseContactTwo(party.contact_two),
+  status: (party.status as PartyDto["status"]) ?? "confirmed",
 }));

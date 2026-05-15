@@ -71,11 +71,6 @@ function convertStudent(backend: StudentDtoBackend): StudentDto {
   };
 }
 
-type StudentCreateDto = {
-  account_id: number;
-  data: StudentUpdateDto;
-};
-
 type IsRegisteredUpdate = {
   is_registered: boolean;
 };
@@ -112,7 +107,6 @@ export type {
   ResidenceUpdateDto,
   ResidenceUpdateWithDisplayDto,
   StudentAutocompleteInput,
-  StudentCreateDto,
   StudentData,
   StudentUpdateDto,
   StudentDto,

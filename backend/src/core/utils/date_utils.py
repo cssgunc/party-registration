@@ -1,6 +1,6 @@
 """Date utility functions for the application."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 
 def current_academic_year_start(date: datetime | None = None) -> datetime:
@@ -17,3 +17,21 @@ def is_same_academic_year(date1: datetime | None, date2: datetime | None = None)
         return False
 
     return current_academic_year_start(date1) == current_academic_year_start(date2)
+
+
+def business_days_ahead(target_date: datetime) -> int:
+    """Number of business days between today (UTC) and target_date."""
+    current_date = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+    if target_date.tzinfo is None:
+        target_date_only = target_date.replace(
+            hour=0, minute=0, second=0, microsecond=0, tzinfo=UTC
+        )
+    else:
+        target_date_only = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
+    business_days = 0
+    current = current_date
+    while current < target_date_only:
+        if current.weekday() < 5:
+            business_days += 1
+        current += timedelta(days=1)
+    return business_days

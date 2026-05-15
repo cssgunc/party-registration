@@ -151,7 +151,8 @@ class LocationService:
         )
         return result.scalar_one_or_none()
 
-    def assert_valid_location_hold(self, location: LocationDto) -> None:
+    @staticmethod
+    def assert_valid_location_hold(location: LocationDto) -> None:
         """Validate that location does not have an active hold."""
         if location.hold_expiration is not None and location.hold_expiration > datetime.now(UTC):
             raise LocationHoldActiveException(location.id, location.hold_expiration)

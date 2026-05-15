@@ -8,6 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { INCIDENT_SEVERITY_LABELS } from "@/lib/api/incident/incident.types";
 import { IncidentSeverity } from "@/lib/api/location/location.types";
 import { ContactPreference } from "@/lib/api/student/student.types";
 import { X } from "lucide-react";
@@ -205,11 +206,15 @@ export default function AdvancedPartySearch({
                 )}
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="remote_warning">Remote Warning</SelectItem>
-                <SelectItem value="in_person_warning">
-                  In-Person Warning
+                <SelectItem value="remote_warning">
+                  {INCIDENT_SEVERITY_LABELS.remote_warning}
                 </SelectItem>
-                <SelectItem value="citation">Citation</SelectItem>
+                <SelectItem value="in_person_warning">
+                  {INCIDENT_SEVERITY_LABELS.in_person_warning}
+                </SelectItem>
+                <SelectItem value="citation">
+                  {INCIDENT_SEVERITY_LABELS.citation}
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>

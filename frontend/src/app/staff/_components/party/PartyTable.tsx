@@ -1,23 +1,36 @@
 "use client";
 
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import { useSnackbar } from "@/contexts/SnackbarContext";
 import {
   useAdminParties,
+  useCancelAdminParty,
   useCreateAdminParty,
-  useDeleteAdminParty,
+  useRestoreAdminParty,
   useUpdateAdminParty,
 } from "@/lib/api/party/admin-party.queries";
 import { useDownloadPartiesCsv } from "@/lib/api/party/party.queries";
-import { AdminCreatePartyDto, PartyDto } from "@/lib/api/party/party.types";
+import {
+  AdminCreatePartyDto,
+  PartyDto,
+  PartyStatus,
+  getPartyValidationError,
+} from "@/lib/api/party/party.types";
 import {
   DEFAULT_TABLE_PARAMS,
   ServerTableParams,
 } from "@/lib/api/shared/query-params";
+import { getErrorMessage } from "@/lib/errors";
 import { formatTime } from "@/lib/utils";
 import { ColumnDef } from "@tanstack/react-table";
-import { isAxiosError } from "axios";
 import { format } from "date-fns";
+import { Ban, Check, Undo2, X } from "lucide-react";
 import { useState } from "react";
+import { DeleteConfirmDialog } from "../shared/dialog/DeleteConfirmDialog";
 import { InfoChip } from "../shared/sidebar/InfoChip";
 import { useSidebar } from "../shared/sidebar/SidebarContext";
 import { TableTemplate } from "../shared/table/TableTemplate";
@@ -44,27 +57,6 @@ const hasPartyChanged = (
   );
 };
 
-const getErrorMessage = (error: Error): string => {
-  if (isAxiosError(error)) {
-    const detail = error.response?.data as {
-      message?: string;
-      detail?: string;
-    };
-    switch (error.response?.status) {
-      case 404:
-        return "Party not found.";
-      case 403:
-        return "You do not have permission to perform this action.";
-      case 500:
-        return "Server error. Please try again later.";
-    }
-    if (detail?.detail) return String(detail.detail);
-    if (detail?.message) return String(detail.message);
-    if (error.message) return error.message;
-  }
-  return "Operation failed";
-};
-
 export const PartyTable = () => {
   const { openSnackbar } = useSnackbar();
   const { openSidebar, closeSidebar } = useSidebar();
@@ -79,7 +71,17 @@ export const PartyTable = () => {
 
   const createMutation = useCreateAdminParty({
     onError: (error: Error) => {
-      const message = getErrorMessage(error);
+      const validationError = getPartyValidationError(error);
+      const message =
+        validationError?.message ??
+        getErrorMessage(error, {
+          status: {
+            403: "You do not have permission to perform this action.",
+            404: "Party not found.",
+            500: "Server error. Please try again later.",
+          },
+          fallback: "Operation failed.",
+        });
 
       openSidebar(
         "create-party",
@@ -103,7 +105,17 @@ export const PartyTable = () => {
       error: Error,
       variables: { id: number; payload: AdminCreatePartyDto }
     ) => {
-      const message = getErrorMessage(error);
+      const validationError = getPartyValidationError(error);
+      const message =
+        validationError?.message ??
+        getErrorMessage(error, {
+          status: {
+            403: "You do not have permission to perform this action.",
+            404: "Party not found.",
+            500: "Server error. Please try again later.",
+          },
+          fallback: "Operation failed.",
+        });
 
       const editTarget =
         editingParty && editingParty.id === variables.id ? editingParty : null;
@@ -132,13 +144,39 @@ export const PartyTable = () => {
     },
   });
 
-  const deleteMutation = useDeleteAdminParty({
+  const cancelMutation = useCancelAdminParty({
     onError: (error: Error) => {
-      const message = getErrorMessage(error);
-      console.error("Failed to delete party:", message);
+      const validationError = getPartyValidationError(error);
+      const message =
+        validationError?.message ??
+        getErrorMessage(error, {
+          status: {
+            404: "Party not found.",
+          },
+          fallback: "Operation failed.",
+        });
+      openSnackbar(message, "error");
     },
     onSuccess: () => {
-      openSnackbar("Party deleted successfully", "success");
+      openSnackbar("Party cancelled successfully", "success");
+    },
+  });
+
+  const restoreMutation = useRestoreAdminParty({
+    onError: (error: Error) => {
+      const validationError = getPartyValidationError(error);
+      const message =
+        validationError?.message ??
+        getErrorMessage(error, {
+          status: {
+            404: "Party not found.",
+          },
+          fallback: "Operation failed.",
+        });
+      openSnackbar(message, "error");
+    },
+    onSuccess: () => {
+      openSnackbar("Party restored successfully", "success");
     },
   });
 
@@ -155,9 +193,7 @@ export const PartyTable = () => {
     );
   };
 
-  const handleDelete = (party: PartyDto) => {
-    deleteMutation.mutate(party.id);
-  };
+  const [partyToCancel, setPartyToCancel] = useState<PartyDto | null>(null);
 
   const handleCreate = () => {
     setEditingParty(null);
@@ -338,6 +374,33 @@ export const PartyTable = () => {
         );
       },
     },
+    {
+      id: "status",
+      accessorFn: (row) => row.status,
+      header: "Active",
+      enableColumnFilter: true,
+      meta: {
+        filter: {
+          type: "select",
+          backendField: "status",
+          filterLabel: "Active",
+          selectOptions: [PartyStatus.CONFIRMED, PartyStatus.CANCELLED],
+        },
+      },
+      cell: ({ row }) =>
+        row.original.status === PartyStatus.CANCELLED ? (
+          <HoverCard openDelay={0} closeDelay={0}>
+            <HoverCardTrigger asChild>
+              <X className="size-4 text-destructive cursor-default" />
+            </HoverCardTrigger>
+            <HoverCardContent>
+              This party was cancelled by the host
+            </HoverCardContent>
+          </HoverCard>
+        ) : (
+          <Check className="size-4" />
+        ),
+    },
   ];
 
   return (
@@ -347,17 +410,25 @@ export const PartyTable = () => {
         columns={columns}
         resourceName="Party"
         onEdit={handleEdit}
-        onDelete={handleDelete}
         onCreateNewRow={handleCreate}
         isLoading={partiesQuery.isLoading}
         isFetching={partiesQuery.isFetching}
         error={partiesQuery.error as Error | null}
-        getDeleteDescription={(party: PartyDto) =>
-          `Are you sure you want to delete this party on ${new Date(
-            party.party_datetime
-          ).toLocaleString()}? This action cannot be undone.`
-        }
-        isDeleting={deleteMutation.isPending}
+        rowActions={[
+          {
+            label: "Cancel",
+            icon: <Ban className="mr-2 size-4" />,
+            variant: "destructive",
+            isVisible: (party) => party.status !== PartyStatus.CANCELLED,
+            onClick: (party) => setPartyToCancel(party),
+          },
+          {
+            label: "Restore",
+            icon: <Undo2 className="mr-2 size-4" />,
+            isVisible: (party) => party.status === PartyStatus.CANCELLED,
+            onClick: (party) => restoreMutation.mutate(party.id),
+          },
+        ]}
         serverMeta={
           partiesQuery.data
             ? {
@@ -371,6 +442,28 @@ export const PartyTable = () => {
         onStateChange={setServerParams}
         onExportCsv={exportCsv}
         isExporting={isExporting}
+      />
+      <DeleteConfirmDialog
+        open={partyToCancel !== null}
+        onOpenChange={(open) => {
+          if (!open) setPartyToCancel(null);
+        }}
+        onConfirm={() => {
+          if (partyToCancel) cancelMutation.mutate(partyToCancel.id);
+        }}
+        title="Cancel Party"
+        description={
+          partyToCancel
+            ? `Are you sure you want to cancel this party on ${format(
+                partyToCancel.party_datetime,
+                "PPP 'at' p"
+              )}?`
+            : undefined
+        }
+        isDeleting={cancelMutation.isPending}
+        dismissLabel="Back"
+        confirmLabel="Cancel Party"
+        pendingLabel="Cancelling..."
       />
     </div>
   );

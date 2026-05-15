@@ -25,6 +25,7 @@ import {
   useUpdateStudent,
 } from "@/lib/api/student/student.queries";
 import { StudentDto } from "@/lib/api/student/student.types";
+import { getErrorMessage } from "@/lib/errors";
 import {
   cn,
   formatPhoneNumber,
@@ -63,6 +64,38 @@ const mapStudentToFormData = (student: StudentDto): StudentInfoValues => ({
 interface StudentInfoFormData extends StudentInfoValues {
   location_place_id?: string;
   formatted_address?: string;
+}
+
+function ProfileField({
+  label,
+  value,
+  isLoading,
+  className,
+}: {
+  label: string;
+  value: React.ReactNode;
+  isLoading: boolean;
+  className?: string;
+}) {
+  return (
+    <div className={cn(!isLoading && "sm:border-b", className)}>
+      <p className="subhead-content mb-2">{label}</p>
+      {isLoading ? (
+        <Skeleton className="h-6 w-full" />
+      ) : (
+        <p className="content">{value}</p>
+      )}
+    </div>
+  );
+}
+
+function WarningNote({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex flex-row gap-2">
+      <TriangleAlert className="w-4 h-4 content" />
+      <p className="content-sub italic flex-1">{children}</p>
+    </div>
+  );
 }
 
 export default function StudentInfo() {
@@ -143,30 +176,7 @@ export default function StudentInfo() {
 
       setIsEditing(false);
     } catch (error) {
-      // Handle API errors
-      console.error("Failed to update student info:", error);
-
-      // Check if it's an authentication error
-      if (error && typeof error === "object" && "response" in error) {
-        const axiosError = error as { response?: { status: number } };
-        if (axiosError.response?.status === 401) {
-          setErrors({
-            submit:
-              "Authentication required. Please log in to update your profile.",
-          });
-        } else {
-          setErrors({
-            submit: "Failed to update student information. Please try again.",
-          });
-        }
-      } else {
-        setErrors({
-          submit:
-            error instanceof Error
-              ? error.message
-              : "Failed to update student information",
-        });
-      }
+      setErrors({ submit: getErrorMessage(error) });
     } finally {
       setIsSubmitting(false);
     }
@@ -221,15 +231,18 @@ export default function StudentInfo() {
   if (!isEditing) {
     return (
       <div className="bg-card rounded-lg p-6 sm:px-10 sm:py-8 w-full flex flex-col">
-        <div className="relative flex justify-center mb-6">
-          <div className="absolute left-0 flex items-center gap-2">
+        <div className="mb-6 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 content justify-self-start self-start"
+          >
             <ArrowLeft className="h-4" />
-            <Link href="/">Back to home</Link>
-          </div>
+            Back to home
+          </Link>
           <h1 className="page-title">Profile</h1>
           <button
             onClick={() => setIsEditing(true)}
-            className="absolute right-0 bg-transparent"
+            className="justify-self-end bg-transparent"
             aria-label="Edit profile"
             disabled={isLoading || !student}
           >
@@ -239,62 +252,45 @@ export default function StudentInfo() {
 
         <section>
           <div className="my-4 sm:my-8 sm:grid sm:grid-cols-2 sm:gap-y-2 sm:gap-x-12">
-            <div className={cn("sm:mt-0", !isLoading && "sm:border-b")}>
-              <p className="subhead-content mb-2">First Name</p>
-              {isLoading ? (
-                <Skeleton className="h-6 w-full" />
-              ) : (
-                <p className="content">{displayData.first_name}</p>
-              )}
-            </div>
-
-            <div className={cn("mt-3 sm:mt-0", !isLoading && "sm:border-b")}>
-              <p className="subhead-content mb-2">Last Name</p>
-              {isLoading ? (
-                <Skeleton className="h-6 w-full" />
-              ) : (
-                <p className="content">{displayData.last_name}</p>
-              )}
-            </div>
-
-            <div className={cn("mt-3 sm:mt-6", !isLoading && "sm:border-b")}>
-              <p className="subhead-content mb-2">Phone Number</p>
-              {isLoading ? (
-                <Skeleton className="h-6 w-full" />
-              ) : (
-                <p className="content">
-                  {formatPhoneNumber(displayData.phone_number) || "—"}
-                </p>
-              )}
-            </div>
-
-            <div className={cn("mt-3 sm:mt-6", !isLoading && "sm:border-b")}>
-              <p className="subhead-content mb-2">Contact Method</p>
-              {isLoading ? (
-                <Skeleton className="h-6 w-full" />
-              ) : (
-                <p className="content">
-                  {displayData.contact_preference
-                    ? displayData.contact_preference.charAt(0).toUpperCase() +
-                      displayData.contact_preference.slice(1)
-                    : "—"}
-                </p>
-              )}
-            </div>
+            <ProfileField
+              label="First Name"
+              value={displayData.first_name}
+              isLoading={isLoading}
+              className="sm:mt-0"
+            />
+            <ProfileField
+              label="Last Name"
+              value={displayData.last_name}
+              isLoading={isLoading}
+              className="mt-3 sm:mt-0"
+            />
+            <ProfileField
+              label="Phone Number"
+              value={formatPhoneNumber(displayData.phone_number) || "—"}
+              isLoading={isLoading}
+              className="mt-3 sm:mt-6"
+            />
+            <ProfileField
+              label="Contact Method"
+              value={
+                displayData.contact_preference
+                  ? displayData.contact_preference.charAt(0).toUpperCase() +
+                    displayData.contact_preference.slice(1)
+                  : "—"
+              }
+              isLoading={isLoading}
+              className="mt-3 sm:mt-6"
+            />
           </div>
-          <div className={cn("mt-3 mb-8 sm:mt-6", !isLoading && "sm:border-b")}>
-            <p className="subhead-content mb-2">{school_year} Address</p>
-            {isLoading ? (
-              <Skeleton className="h-6 w-full" />
-            ) : (
-              <p className="content">
-                {student?.residence?.location.formatted_address ?? "None"}
-              </p>
-            )}
-          </div>
+          <ProfileField
+            label={`${school_year} Address`}
+            value={student?.residence?.location.formatted_address ?? "None"}
+            isLoading={isLoading}
+            className="mt-3 mb-8 sm:mt-6"
+          />
         </section>
 
-        <section className="sm:mb-4 pt-8 flex justify-center">
+        <section className="pt-8 flex justify-center">
           <Button variant="default">Log Out</Button>
         </section>
       </div>
@@ -333,12 +329,12 @@ export default function StudentInfo() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="bg-card rounded-lg w-full p-6 sm:p-10"
+      className="bg-card rounded-lg w-full p-6 sm:px-10 sm:py-8"
     >
       <div className="mb-6 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
         <Link
           href="/"
-          className="inline-flex items-center gap-2 content justify-self-start"
+          className="inline-flex items-center gap-2 content justify-self-start self-start"
         >
           <ArrowLeft className="h-4" />
           Back to home
@@ -360,12 +356,7 @@ export default function StudentInfo() {
                   <p className="content pb-2">{displayData.last_name}</p>
                 </div>
               </div>
-              <div className="flex flex-row gap-2">
-                <TriangleAlert className="w-4 h-4 content" />
-                <p className="content-sub italic flex-1">
-                  Your name is associated with your Onyen
-                </p>
-              </div>
+              <WarningNote>Your name is associated with your Onyen</WarningNote>
             </div>
 
             <div className="grid grid-cols-2 gap-12">
@@ -453,13 +444,10 @@ export default function StudentInfo() {
                   {student?.residence?.location.formatted_address}
                 </p>
 
-                <div className="flex flex-row mt-3 gap-2">
-                  <TriangleAlert className="w-4 h-4 content" />
-                  <p className="content-sub italic flex-1">
-                    You cannot change your address until {change_date}. If you
-                    are experiencing hardship, contact [email] for changes
-                  </p>
-                </div>
+                <WarningNote>
+                  You cannot change your address until {change_date}. If you are
+                  experiencing hardship, contact [email] for changes
+                </WarningNote>
               </div>
             )}
           </section>

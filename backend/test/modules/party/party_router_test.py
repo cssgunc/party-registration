@@ -6,20 +6,19 @@ import pytest
 import pytest_asyncio
 from httpx import AsyncClient
 from src.modules.account.account_entity import AccountEntity
-from src.modules.location.location_service import LocationHoldActiveException
-from src.modules.party.party_model import ContactDto, PartyDto, PartyStatus, ProximitySearchResponse
+from src.modules.party.party_model import (
+    ContactDto,
+    PartyDto,
+    PartyStatus,
+    ProximitySearchResponse,
+)
 from src.modules.party.party_service import (
-    ContactTwoMatchesContactOneException,
-    NoResidenceException,
-    PartyCancelledException,
-    PartyDateTooSoonException,
-    PartyInPastException,
     PartyNotFoundException,
-    PartyNotOwnedByStudentException,
-    PartySmartNotCompletedException,
+    PartyRule,
+    PartyValidationException,
 )
 from src.modules.student.student_entity import StudentEntity
-from src.modules.student.student_model import ContactPreference
+from src.modules.student.student_model import ContactPreference, StudentDto
 from test.modules.location.location_utils import GmapsMockUtils, LocationTestUtils
 from test.modules.party.party_utils import PartyTestUtils
 from test.modules.student.student_utils import StudentTestUtils
@@ -36,7 +35,8 @@ test_party_authentication = generate_auth_required_tests(
     ({"admin", "staff", "officer", "police_admin"}, "GET", "/api/parties", None),
     ({"admin", "staff", "officer", "police_admin"}, "GET", "/api/parties/csv", None),
     ({"admin", "staff"}, "GET", "/api/parties/1", None),
-    ({"student", "admin"}, "DELETE", "/api/parties/1", None),
+    ({"student", "staff", "admin"}, "POST", "/api/parties/1/cancel", None),
+    ({"admin"}, "POST", "/api/parties/1/restore", None),
     (
         {"admin", "officer", "police_admin"},
         "GET",
@@ -51,16 +51,71 @@ test_party_authentication = generate_auth_required_tests(
 )
 
 
-class TestPartyListRouter:
-    """Tests for GET /api/parties endpoint."""
+def _colliding_contact_two(contact_one: StudentDto, field: str) -> ContactDto:
+    """Build a ContactDto that collides with contact_one on the named field ("email" or "phone")."""
+    assert contact_one.phone_number is not None
+    return ContactDto(
+        email=contact_one.email if field == "email" else "different@unc.edu",
+        first_name="Other",
+        last_name="Person",
+        phone_number=contact_one.phone_number if field == "phone" else "9195559999",
+        contact_preference=ContactPreference.TEXT,
+    )
 
-    admin_client: AsyncClient
+
+class PartyRouterTestBase:
+    """Base for party router tests: binds shared util fixtures to self.*."""
+
     party_utils: PartyTestUtils
+    location_utils: LocationTestUtils
+    student_utils: StudentTestUtils
 
     @pytest.fixture(autouse=True)
-    def _setup(self, party_utils: PartyTestUtils, admin_client: AsyncClient):
+    def _bind_router_test_utils(
+        self,
+        party_utils: PartyTestUtils,
+        location_utils: LocationTestUtils,
+        student_utils: StudentTestUtils,
+    ):
         self.party_utils = party_utils
+        self.location_utils = location_utils
+        self.student_utils = student_utils
+
+
+class AdminRouterTestBase(PartyRouterTestBase):
+    admin_client: AsyncClient
+
+    @pytest.fixture(autouse=True)
+    def _bind_admin_client(self, admin_client: AsyncClient):
         self.admin_client = admin_client
+
+
+class StudentRouterTestBase(PartyRouterTestBase):
+    student_client: AsyncClient
+
+    @pytest.fixture(autouse=True)
+    def _bind_student_client(self, student_client: AsyncClient):
+        self.student_client = student_client
+
+
+class PoliceRouterTestBase(PartyRouterTestBase):
+    police_client: AsyncClient
+
+    @pytest.fixture(autouse=True)
+    def _bind_police_client(self, police_client: AsyncClient):
+        self.police_client = police_client
+
+
+class StaffRouterTestBase(PartyRouterTestBase):
+    staff_client: AsyncClient
+
+    @pytest.fixture(autouse=True)
+    def _bind_staff_client(self, staff_client: AsyncClient):
+        self.staff_client = staff_client
+
+
+class TestPartyListRouter(AdminRouterTestBase):
+    """Tests for GET /api/parties endpoint."""
 
     @pytest.mark.asyncio
     async def test_list_parties_empty(self):
@@ -88,23 +143,8 @@ class TestPartyListRouter:
             self.party_utils.assert_matches(entity, data_by_id[entity.id])
 
 
-class TestPartyListPaginationSortFilter:
+class TestPartyListPaginationSortFilter(AdminRouterTestBase):
     """Tests for pagination, sorting, and filtering on GET /api/parties endpoint."""
-
-    admin_client: AsyncClient
-    party_utils: PartyTestUtils
-    location_utils: LocationTestUtils
-
-    @pytest.fixture(autouse=True)
-    def _setup(
-        self,
-        party_utils: PartyTestUtils,
-        location_utils: LocationTestUtils,
-        admin_client: AsyncClient,
-    ):
-        self.party_utils = party_utils
-        self.location_utils = location_utils
-        self.admin_client = admin_client
 
     @pytest.mark.parametrize(
         "total_parties, page_number, page_size, expected_items",
@@ -211,16 +251,8 @@ class TestPartyListPaginationSortFilter:
         assert_res_paginated(response, PartyDto, total_records=2)
 
 
-class TestPartyGetRouter:
+class TestPartyGetRouter(AdminRouterTestBase):
     """Tests for GET /api/parties/{id} endpoint."""
-
-    admin_client: AsyncClient
-    party_utils: PartyTestUtils
-
-    @pytest.fixture(autouse=True)
-    def _setup(self, party_utils: PartyTestUtils, admin_client: AsyncClient):
-        self.party_utils = party_utils
-        self.admin_client = admin_client
 
     @pytest.mark.asyncio
     async def test_get_party_success(self):
@@ -239,58 +271,75 @@ class TestPartyGetRouter:
         assert_res_failure(response, PartyNotFoundException(999))
 
 
-class TestPartyDeleteRouter:
-    """Tests for DELETE /api/parties/{id} endpoint."""
-
-    admin_client: AsyncClient
-    party_utils: PartyTestUtils
-
-    @pytest.fixture(autouse=True)
-    def _setup(self, party_utils: PartyTestUtils, admin_client: AsyncClient):
-        self.party_utils = party_utils
-        self.admin_client = admin_client
+class TestPartyDeleteRouter(AdminRouterTestBase):
+    """Tests for DELETE /api/parties/{id} endpoint (admin)."""
 
     @pytest.mark.asyncio
-    async def test_delete_party_success(self):
-        """Test successfully deleting a party."""
+    async def test_admin_delete_party_cancels(self):
+        """Admin DELETE cancels the party (no hard-delete) and does not check ownership."""
         party = await self.party_utils.create_one()
 
-        response = await self.admin_client.delete(f"/api/parties/{party.id}")
+        response = await self.admin_client.post(f"/api/parties/{party.id}/cancel")
+        data = assert_res_success(response, PartyDto)
+
+        party.status = PartyStatus.CANCELLED
+        self.party_utils.assert_matches(party, data)
+
+        # Party still exists in the DB, just cancelled
+        all_parties = await self.party_utils.get_all()
+        assert party.id in [p.id for p in all_parties]
+
+    @pytest.mark.asyncio
+    async def test_admin_delete_cancelled_party_idempotent(self):
+        """Cancelling an already-cancelled party is a no-op (no error)."""
+        party = await self.party_utils.create_one()
+
+        await self.admin_client.post(f"/api/parties/{party.id}/cancel")
+
+        response = await self.admin_client.post(f"/api/parties/{party.id}/cancel")
+        data = assert_res_success(response, PartyDto)
+        party.status = PartyStatus.CANCELLED
+        self.party_utils.assert_matches(party, data)
+
+    @pytest.mark.asyncio
+    async def test_delete_party_not_found(self):
+        """Test cancelling a non-existent party."""
+        response = await self.admin_client.post("/api/parties/999/cancel")
+        assert_res_failure(response, PartyNotFoundException(999))
+
+
+class TestPartyRestoreRouter(AdminRouterTestBase):
+    """Tests for POST /api/parties/{id}/restore endpoint (admin only)."""
+
+    @pytest.mark.asyncio
+    async def test_admin_restore_cancelled_party(self):
+        """Admin can restore a cancelled party back to CONFIRMED."""
+        party = await self.party_utils.create_one()
+        await self.admin_client.post(f"/api/parties/{party.id}/cancel")
+
+        response = await self.admin_client.post(f"/api/parties/{party.id}/restore")
         data = assert_res_success(response, PartyDto)
 
         self.party_utils.assert_matches(party, data)
 
-        # Verify deletion
-        all_parties = await self.party_utils.get_all()
-        assert party.id not in [p.id for p in all_parties]
+    @pytest.mark.asyncio
+    async def test_admin_restore_confirmed_party_idempotent(self):
+        """Restoring an already-confirmed party is a no-op."""
+        party = await self.party_utils.create_one()
+
+        response = await self.admin_client.post(f"/api/parties/{party.id}/restore")
+        data = assert_res_success(response, PartyDto)
+
+        self.party_utils.assert_matches(party, data)
 
     @pytest.mark.asyncio
-    async def test_delete_party_not_found(self):
-        """Test deleting a non-existent party."""
-        response = await self.admin_client.delete("/api/parties/999")
+    async def test_restore_party_not_found(self):
+        response = await self.admin_client.post("/api/parties/999/restore")
         assert_res_failure(response, PartyNotFoundException(999))
 
 
-class TestPartyCreateAdminRouter:
+class TestPartyCreateAdminRouter(AdminRouterTestBase):
     """Tests for POST /api/parties endpoint (admin creation)."""
-
-    admin_client: AsyncClient
-    party_utils: PartyTestUtils
-    location_utils: LocationTestUtils
-    student_utils: StudentTestUtils
-
-    @pytest.fixture(autouse=True)
-    def _setup(
-        self,
-        party_utils: PartyTestUtils,
-        location_utils: LocationTestUtils,
-        student_utils: StudentTestUtils,
-        admin_client: AsyncClient,
-    ):
-        self.party_utils = party_utils
-        self.location_utils = location_utils
-        self.student_utils = student_utils
-        self.admin_client = admin_client
 
     @pytest.mark.asyncio
     async def test_create_party_as_admin_success(self):
@@ -335,62 +384,37 @@ class TestPartyCreateAdminRouter:
         response = await self.admin_client.post("/api/parties", json=payload_dict)
         assert_res_validation_error(response)
 
+    @pytest.mark.parametrize(
+        "collide_field,expected_rule",
+        [
+            ("email", PartyRule.CONTACT_TWO_EMAIL_MATCHES_CONTACT_ONE),
+            ("phone", PartyRule.CONTACT_TWO_PHONE_MATCHES_CONTACT_ONE),
+        ],
+    )
     @pytest.mark.asyncio
-    async def test_create_party_as_admin_duplicate_email(self):
-        """Test admin cannot create party with contact_two email matching contact_one."""
+    async def test_create_party_as_admin_contact_two_collides(
+        self, collide_field: str, expected_rule: PartyRule
+    ):
         location = await self.location_utils.create_one()
         student = await self.student_utils.create_one()
         student_dto = await student.load_dto(self.student_utils.session)
-
-        payload = await self.party_utils.next_admin_create_dto(
-            google_place_id=location.google_place_id,
-            contact_one_student_id=student.account_id,
-            contact_two=ContactDto(
-                email=student_dto.email,
-                first_name="Other",
-                last_name="Person",
-                phone_number="9195559999",
-                contact_preference=ContactPreference.TEXT,
-            ),
-        )
-
-        response = await self.admin_client.post(
-            "/api/parties", json=payload.model_dump(mode="json")
-        )
-        assert_res_failure(response, ContactTwoMatchesContactOneException("email"))
-
-    @pytest.mark.asyncio
-    async def test_create_party_as_admin_duplicate_phone(self):
-        """Test admin cannot create party with contact_two phone matching contact_one."""
-        location = await self.location_utils.create_one()
-        student = await self.student_utils.create_one()
         assert student.phone_number is not None
 
+        contact_two = _colliding_contact_two(student_dto, collide_field)
         payload = await self.party_utils.next_admin_create_dto(
             google_place_id=location.google_place_id,
             contact_one_student_id=student.account_id,
-            contact_two=ContactDto(
-                email="different@email.com",
-                first_name="Other",
-                last_name="Person",
-                phone_number=student.phone_number,
-                contact_preference=ContactPreference.TEXT,
-            ),
+            contact_two=contact_two,
         )
 
         response = await self.admin_client.post(
             "/api/parties", json=payload.model_dump(mode="json")
         )
-        assert_res_failure(response, ContactTwoMatchesContactOneException("phone number"))
+        assert_res_failure(response, PartyValidationException(expected_rule))
 
 
-class TestPartyCreateStudentRouter:
+class TestPartyCreateStudentRouter(StudentRouterTestBase):
     """Tests for POST /api/parties endpoint (student creation)."""
-
-    student_client: AsyncClient
-    party_utils: PartyTestUtils
-    location_utils: LocationTestUtils
-    student_utils: StudentTestUtils
 
     @pytest_asyncio.fixture
     async def current_student(self, student_account: AccountEntity) -> StudentEntity:
@@ -399,19 +423,6 @@ class TestPartyCreateStudentRouter:
             account_id=student_account.id,
             last_registered=datetime.now(UTC) - timedelta(days=1),
         )
-
-    @pytest.fixture(autouse=True)
-    def _setup(
-        self,
-        party_utils: PartyTestUtils,
-        location_utils: LocationTestUtils,
-        student_utils: StudentTestUtils,
-        student_client: AsyncClient,
-    ):
-        self.party_utils = party_utils
-        self.location_utils = location_utils
-        self.student_utils = student_utils
-        self.student_client = student_client
 
     @pytest.mark.asyncio
     async def test_create_party_as_student_success(self, current_student: StudentEntity):
@@ -440,7 +451,7 @@ class TestPartyCreateStudentRouter:
         response = await self.student_client.post(
             "/api/parties", json=payload.model_dump(mode="json")
         )
-        assert_res_failure(response, NoResidenceException())
+        assert_res_failure(response, PartyValidationException(PartyRule.NO_RESIDENCE))
 
     @pytest.mark.asyncio
     async def test_create_party_without_party_smart_fails(self, student_account: AccountEntity):
@@ -461,75 +472,82 @@ class TestPartyCreateStudentRouter:
         response = await self.student_client.post(
             "/api/parties", json=payload.model_dump(mode="json")
         )
-        assert_res_failure(response, PartySmartNotCompletedException())
+        assert_res_failure(response, PartyValidationException(PartyRule.PARTY_SMART_NOT_COMPLETED))
 
+    @pytest.mark.parametrize(
+        "collide_field,expected_rule",
+        [
+            ("email", PartyRule.CONTACT_TWO_EMAIL_MATCHES_CONTACT_ONE),
+            ("phone", PartyRule.CONTACT_TWO_PHONE_MATCHES_CONTACT_ONE),
+        ],
+    )
     @pytest.mark.asyncio
-    async def test_create_party_as_student_duplicate_email(self, current_student: StudentEntity):
-        """Test student cannot create party with contact_two email matching their own."""
-        student_dto = await current_student.load_dto(self.student_utils.session)
-        # Set up student residence
-        location = await self.location_utils.create_one()
-        await self.student_utils.set_student_residence(current_student, location.id)
-
-        payload = await self.party_utils.next_student_create_dto(
-            contact_two=ContactDto(
-                email=student_dto.email,
-                first_name="Other",
-                last_name="Person",
-                phone_number="9195559999",
-                contact_preference=ContactPreference.TEXT,
-            ),
-        )
-
-        response = await self.student_client.post(
-            "/api/parties", json=payload.model_dump(mode="json")
-        )
-        assert_res_failure(response, ContactTwoMatchesContactOneException("email"))
-
-    @pytest.mark.asyncio
-    async def test_create_party_as_student_duplicate_phone(self, current_student: StudentEntity):
-        """Test student cannot create party with contact_two phone matching their own."""
-        assert current_student.phone_number is not None
-        # Set up student residence
-        location = await self.location_utils.create_one()
-        await self.student_utils.set_student_residence(current_student, location.id)
-
-        payload = await self.party_utils.next_student_create_dto(
-            contact_two=ContactDto(
-                email="different@email.com",
-                first_name="Other",
-                last_name="Person",
-                phone_number=current_student.phone_number,
-                contact_preference=ContactPreference.TEXT,
-            ),
-        )
-
-        response = await self.student_client.post(
-            "/api/parties", json=payload.model_dump(mode="json")
-        )
-        assert_res_failure(response, ContactTwoMatchesContactOneException("phone number"))
-
-
-class TestPartyUpdateAdminRouter:
-    """Tests for PUT /api/parties/{id} endpoint (admin update)."""
-
-    admin_client: AsyncClient
-    party_utils: PartyTestUtils
-    location_utils: LocationTestUtils
-    student_utils: StudentTestUtils
-
-    @pytest.fixture(autouse=True)
-    def _setup(
+    async def test_create_party_as_student_contact_two_collides(
         self,
-        party_utils: PartyTestUtils,
-        location_utils: LocationTestUtils,
-        student_utils: StudentTestUtils,
-        admin_client: AsyncClient,
+        current_student: StudentEntity,
+        collide_field: str,
+        expected_rule: PartyRule,
     ):
-        self.party_utils = party_utils
-        self.location_utils = location_utils
-        self.student_utils = student_utils
-        self.admin_client = admin_client
+        """Student cannot create party when contact_two collides with their own email or phone."""
+        student_dto = await current_student.load_dto(self.student_utils.session)
+        location = await self.location_utils.create_one()
+        await self.student_utils.set_student_residence(current_student, location.id)
+
+        payload = await self.party_utils.next_student_create_dto(
+            contact_two=_colliding_contact_two(student_dto, collide_field),
+        )
+
+        response = await self.student_client.post(
+            "/api/parties", json=payload.model_dump(mode="json")
+        )
+        assert_res_failure(response, PartyValidationException(expected_rule))
+
+    @pytest.mark.asyncio
+    async def test_create_party_without_student_info_fails(self, current_student: StudentEntity):
+        """Student row exists but phone/contact_preference are null — rule fires."""
+        location = await self.location_utils.create_one()
+        await self.student_utils.set_student_residence(current_student, location.id)
+
+        current_student.phone_number = None
+        current_student.contact_preference = None
+        await self.student_utils.session.commit()
+
+        payload = await self.party_utils.next_student_create_dto()
+        response = await self.student_client.post(
+            "/api/parties", json=payload.model_dump(mode="json")
+        )
+        assert_res_failure(response, PartyValidationException(PartyRule.STUDENT_INFO_NOT_PROVIDED))
+
+    @pytest.mark.asyncio
+    async def test_create_party_date_too_soon_fails(self, current_student: StudentEntity):
+        """Student cannot create party scheduled less than 2 business days out."""
+        location = await self.location_utils.create_one()
+        await self.student_utils.set_student_residence(current_student, location.id)
+
+        payload = await self.party_utils.next_student_create_dto(
+            party_datetime=datetime.now(UTC) + timedelta(hours=12),
+        )
+        response = await self.student_client.post(
+            "/api/parties", json=payload.model_dump(mode="json")
+        )
+        assert_res_failure(response, PartyValidationException(PartyRule.PARTY_DATE_TOO_SOON))
+
+    @pytest.mark.asyncio
+    async def test_create_party_at_location_on_hold_fails(self, current_student: StudentEntity):
+        """Student cannot create party when their residence has an active hold."""
+        hold_expiration = datetime.now(UTC) + timedelta(days=30)
+        location_with_hold = await self.location_utils.create_one(hold_expiration=hold_expiration)
+        await self.student_utils.set_student_residence(current_student, location_with_hold.id)
+
+        payload = await self.party_utils.next_student_create_dto()
+        response = await self.student_client.post(
+            "/api/parties", json=payload.model_dump(mode="json")
+        )
+        assert_res_failure(response, PartyValidationException(PartyRule.LOCATION_HOLD_ACTIVE))
+
+
+class TestPartyUpdateAdminRouter(AdminRouterTestBase):
+    """Tests for PUT /api/parties/{id} endpoint (admin update)."""
 
     @pytest.mark.asyncio
     async def test_update_party_as_admin_success(self):
@@ -559,14 +577,21 @@ class TestPartyUpdateAdminRouter:
         assert data.contact_two.email == update_payload.contact_two.email
         assert data.location.google_place_id == update_payload.google_place_id
 
+    @pytest.mark.parametrize(
+        "collide_field,expected_rule",
+        [
+            ("email", PartyRule.CONTACT_TWO_EMAIL_MATCHES_CONTACT_ONE),
+            ("phone", PartyRule.CONTACT_TWO_PHONE_MATCHES_CONTACT_ONE),
+        ],
+    )
     @pytest.mark.asyncio
-    async def test_update_party_as_admin_duplicate_email(self):
-        """Test admin cannot update party with contact_two email matching contact_one."""
+    async def test_update_party_as_admin_contact_two_collides(
+        self, collide_field: str, expected_rule: PartyRule
+    ):
         location = await self.location_utils.create_one()
         student = await self.student_utils.create_one()
         student_dto = await student.load_dto(self.student_utils.session)
 
-        # Create a party first
         create_payload = await self.party_utils.next_admin_create_dto(
             google_place_id=location.google_place_id,
             contact_one_student_id=student.account_id,
@@ -576,58 +601,16 @@ class TestPartyUpdateAdminRouter:
         )
         created = assert_res_success(create_response, PartyDto, status=201)
 
-        # Attempt update with duplicate email
         update_payload = await self.party_utils.next_admin_create_dto(
             google_place_id=location.google_place_id,
             contact_one_student_id=student.account_id,
-            contact_two=ContactDto(
-                email=student_dto.email,
-                first_name="Other",
-                last_name="Person",
-                phone_number="9195559999",
-                contact_preference=ContactPreference.TEXT,
-            ),
+            contact_two=_colliding_contact_two(student_dto, collide_field),
         )
 
         response = await self.admin_client.put(
             f"/api/parties/{created.id}", json=update_payload.model_dump(mode="json")
         )
-        assert_res_failure(response, ContactTwoMatchesContactOneException("email"))
-
-    @pytest.mark.asyncio
-    async def test_update_party_as_admin_duplicate_phone(self):
-        """Test admin cannot update party with contact_two phone matching contact_one."""
-        location = await self.location_utils.create_one()
-        student = await self.student_utils.create_one()
-        assert student.phone_number is not None
-
-        # Create a party first
-        create_payload = await self.party_utils.next_admin_create_dto(
-            google_place_id=location.google_place_id,
-            contact_one_student_id=student.account_id,
-        )
-        create_response = await self.admin_client.post(
-            "/api/parties", json=create_payload.model_dump(mode="json")
-        )
-        created = assert_res_success(create_response, PartyDto, status=201)
-
-        # Attempt update with duplicate phone
-        update_payload = await self.party_utils.next_admin_create_dto(
-            google_place_id=location.google_place_id,
-            contact_one_student_id=student.account_id,
-            contact_two=ContactDto(
-                email="different@email.com",
-                first_name="Other",
-                last_name="Person",
-                phone_number=student.phone_number,
-                contact_preference=ContactPreference.TEXT,
-            ),
-        )
-
-        response = await self.admin_client.put(
-            f"/api/parties/{created.id}", json=update_payload.model_dump(mode="json")
-        )
-        assert_res_failure(response, ContactTwoMatchesContactOneException("phone number"))
+        assert_res_failure(response, PartyValidationException(expected_rule))
 
     @pytest.mark.asyncio
     async def test_update_party_as_admin_not_found(self):
@@ -689,13 +672,8 @@ class TestPartyUpdateAdminRouter:
         assert data.location.google_place_id == location_with_hold.google_place_id
 
 
-class TestPartyUpdateStudentRouter:
+class TestPartyUpdateStudentRouter(StudentRouterTestBase):
     """Tests for PUT /api/parties/{id} endpoint (student update)."""
-
-    student_client: AsyncClient
-    party_utils: PartyTestUtils
-    location_utils: LocationTestUtils
-    student_utils: StudentTestUtils
 
     @pytest_asyncio.fixture
     async def current_student(self, student_account: AccountEntity) -> StudentEntity:
@@ -704,19 +682,6 @@ class TestPartyUpdateStudentRouter:
             account_id=student_account.id,
             last_registered=datetime.now(UTC) - timedelta(days=1),
         )
-
-    @pytest.fixture(autouse=True)
-    def _setup(
-        self,
-        party_utils: PartyTestUtils,
-        location_utils: LocationTestUtils,
-        student_utils: StudentTestUtils,
-        student_client: AsyncClient,
-    ):
-        self.party_utils = party_utils
-        self.location_utils = location_utils
-        self.student_utils = student_utils
-        self.student_client = student_client
 
     @pytest.mark.asyncio
     async def test_update_party_as_student_success(self, current_student: StudentEntity):
@@ -744,67 +709,39 @@ class TestPartyUpdateStudentRouter:
         assert data.contact_two.email == update_payload.contact_two.email
         assert data.location.id == location.id
 
+    @pytest.mark.parametrize(
+        "collide_field,expected_rule",
+        [
+            ("email", PartyRule.CONTACT_TWO_EMAIL_MATCHES_CONTACT_ONE),
+            ("phone", PartyRule.CONTACT_TWO_PHONE_MATCHES_CONTACT_ONE),
+        ],
+    )
     @pytest.mark.asyncio
-    async def test_update_party_as_student_duplicate_email(self, current_student: StudentEntity):
-        """Test student cannot update party with contact_two email matching their own."""
+    async def test_update_party_as_student_contact_two_collides(
+        self,
+        current_student: StudentEntity,
+        collide_field: str,
+        expected_rule: PartyRule,
+    ):
+        """Student cannot update party when contact_two collides with their own email or phone."""
         student_dto = await current_student.load_dto(self.student_utils.session)
-        # Set up student residence
         location = await self.location_utils.create_one()
         await self.student_utils.set_student_residence(current_student, location.id)
 
-        # Create a party first
         create_payload = await self.party_utils.next_student_create_dto()
         create_response = await self.student_client.post(
             "/api/parties", json=create_payload.model_dump(mode="json")
         )
         created = assert_res_success(create_response, PartyDto, status=201)
 
-        # Attempt update with duplicate email
         update_payload = await self.party_utils.next_student_create_dto(
-            contact_two=ContactDto(
-                email=student_dto.email,
-                first_name="Other",
-                last_name="Person",
-                phone_number="9195559999",
-                contact_preference=ContactPreference.TEXT,
-            ),
+            contact_two=_colliding_contact_two(student_dto, collide_field),
         )
 
         response = await self.student_client.put(
             f"/api/parties/{created.id}", json=update_payload.model_dump(mode="json")
         )
-        assert_res_failure(response, ContactTwoMatchesContactOneException("email"))
-
-    @pytest.mark.asyncio
-    async def test_update_party_as_student_duplicate_phone(self, current_student: StudentEntity):
-        """Test student cannot update party with contact_two phone matching their own."""
-        assert current_student.phone_number is not None
-        # Set up student residence
-        location = await self.location_utils.create_one()
-        await self.student_utils.set_student_residence(current_student, location.id)
-
-        # Create a party first
-        create_payload = await self.party_utils.next_student_create_dto()
-        create_response = await self.student_client.post(
-            "/api/parties", json=create_payload.model_dump(mode="json")
-        )
-        created = assert_res_success(create_response, PartyDto, status=201)
-
-        # Attempt update with duplicate phone
-        update_payload = await self.party_utils.next_student_create_dto(
-            contact_two=ContactDto(
-                email="different@email.com",
-                first_name="Other",
-                last_name="Person",
-                phone_number=current_student.phone_number,
-                contact_preference=ContactPreference.TEXT,
-            ),
-        )
-
-        response = await self.student_client.put(
-            f"/api/parties/{created.id}", json=update_payload.model_dump(mode="json")
-        )
-        assert_res_failure(response, ContactTwoMatchesContactOneException("phone number"))
+        assert_res_failure(response, PartyValidationException(expected_rule))
 
     @pytest.mark.asyncio
     async def test_update_party_as_student_not_found(self, current_student: StudentEntity):
@@ -838,7 +775,7 @@ class TestPartyUpdateStudentRouter:
         response = await self.student_client.put(
             f"/api/parties/{created.id}", json=update_payload.model_dump(mode="json")
         )
-        assert_res_failure(response, PartyDateTooSoonException())
+        assert_res_failure(response, PartyValidationException(PartyRule.PARTY_DATE_TOO_SOON))
 
     @pytest.mark.asyncio
     async def test_update_party_as_student_party_smart_not_completed(
@@ -860,7 +797,7 @@ class TestPartyUpdateStudentRouter:
         response = await self.student_client.put(
             f"/api/parties/{party.id}", json=update_payload.model_dump(mode="json")
         )
-        assert_res_failure(response, PartySmartNotCompletedException())
+        assert_res_failure(response, PartyValidationException(PartyRule.PARTY_SMART_NOT_COMPLETED))
 
     @pytest.mark.asyncio
     async def test_update_party_as_student_location_on_hold(self, current_student: StudentEntity):
@@ -883,30 +820,30 @@ class TestPartyUpdateStudentRouter:
         response = await self.student_client.put(
             f"/api/parties/{created.id}", json=update_payload.model_dump(mode="json")
         )
-        assert_res_failure(
-            response, LocationHoldActiveException(location_with_hold.id, hold_expiration)
+        assert_res_failure(response, PartyValidationException(PartyRule.LOCATION_HOLD_ACTIVE))
+
+    @pytest.mark.asyncio
+    async def test_update_party_as_student_without_residence_fails(
+        self, current_student: StudentEntity
+    ):
+        """Student whose residence was unset cannot update an existing party."""
+        # Create the party directly in DB; the student has no residence set.
+        party = await self.party_utils.create_one(contact_one_id=current_student.account_id)
+
+        update_payload = await self.party_utils.next_student_create_dto()
+        response = await self.student_client.put(
+            f"/api/parties/{party.id}", json=update_payload.model_dump(mode="json")
         )
+        assert_res_failure(response, PartyValidationException(PartyRule.NO_RESIDENCE))
 
 
-class TestPartyNearbyRouter:
+class TestPartyNearbyRouter(AdminRouterTestBase):
     """Tests for GET /api/parties/nearby endpoint."""
 
-    admin_client: AsyncClient
-    party_utils: PartyTestUtils
-    location_utils: LocationTestUtils
     gmaps_utils: GmapsMockUtils
 
     @pytest.fixture(autouse=True)
-    def _setup(
-        self,
-        party_utils: PartyTestUtils,
-        location_utils: LocationTestUtils,
-        admin_client: AsyncClient,
-        gmaps_utils: GmapsMockUtils,
-    ):
-        self.party_utils = party_utils
-        self.location_utils = location_utils
-        self.admin_client = admin_client
+    def _bind_gmaps_utils(self, gmaps_utils: GmapsMockUtils):
         self.gmaps_utils = gmaps_utils
 
     @pytest.mark.asyncio
@@ -1226,16 +1163,8 @@ class TestPartyNearbyRouter:
         assert_res_validation_error(response)
 
 
-class TestPartyCSVRouter:
+class TestPartyCSVRouter(AdminRouterTestBase):
     """Tests for GET /api/parties/csv endpoint (admin/staff path — 15-column format)."""
-
-    admin_client: AsyncClient
-    party_utils: PartyTestUtils
-
-    @pytest.fixture(autouse=True)
-    def _setup(self, party_utils: PartyTestUtils, admin_client: AsyncClient):
-        self.party_utils = party_utils
-        self.admin_client = admin_client
 
     @pytest.mark.asyncio
     async def test_get_parties_csv_empty(self):
@@ -1350,16 +1279,8 @@ class TestPartyCSVRouter:
         assert response.status_code == 403
 
 
-class TestPartyCSVRouterPolice:
+class TestPartyCSVRouterPolice(PoliceRouterTestBase):
     """Tests for GET /api/parties/csv endpoint (police path — 11-column format)."""
-
-    police_client: AsyncClient
-    party_utils: PartyTestUtils
-
-    @pytest.fixture(autouse=True)
-    def _setup(self, party_utils: PartyTestUtils, police_client: AsyncClient):
-        self.party_utils = party_utils
-        self.police_client = police_client
 
     @pytest.mark.asyncio
     async def test_get_parties_csv_police_empty(self):
@@ -1460,23 +1381,8 @@ class TestPartyCSVRouterPolice:
         assert first_party.contact_two_email == row_2[8]
 
 
-class TestPartyCreateStatusRouter:
+class TestPartyCreateStatusRouter(AdminRouterTestBase):
     """Tests that party creation sets status=confirmed."""
-
-    admin_client: AsyncClient
-    party_utils: PartyTestUtils
-    location_utils: LocationTestUtils
-
-    @pytest.fixture(autouse=True)
-    def _setup(
-        self,
-        party_utils: PartyTestUtils,
-        location_utils: LocationTestUtils,
-        admin_client: AsyncClient,
-    ):
-        self.party_utils = party_utils
-        self.location_utils = location_utils
-        self.admin_client = admin_client
 
     @pytest.mark.asyncio
     async def test_post_party_sets_status_confirmed(self):
@@ -1491,57 +1397,44 @@ class TestPartyCreateStatusRouter:
         assert data.status == PartyStatus.CONFIRMED
 
 
-class TestStudentPartyDeleteRouter:
+class TestStudentPartyDeleteRouter(StudentRouterTestBase):
     """Tests for DELETE /api/parties/{id} endpoint (student)."""
-
-    student_client: AsyncClient
-    party_utils: PartyTestUtils
-    student_utils: StudentTestUtils
 
     @pytest_asyncio.fixture
     async def current_student(self, student_account: AccountEntity) -> StudentEntity:
         """Create student for the authenticated student client."""
         return await self.student_utils.create_one(account_id=student_account.id)
 
-    @pytest.fixture(autouse=True)
-    def _setup(
-        self,
-        party_utils: PartyTestUtils,
-        student_utils: StudentTestUtils,
-        student_client: AsyncClient,
-    ):
-        self.party_utils = party_utils
-        self.student_utils = student_utils
-        self.student_client = student_client
-
     @pytest.mark.asyncio
     async def test_student_delete_party_cancels(self, current_student: StudentEntity):
         """Test that student deleting a party cancels it (status=cancelled)."""
         party = await self.party_utils.create_one(contact_one_id=current_student.account_id)
 
-        response = await self.student_client.delete(f"/api/parties/{party.id}")
+        response = await self.student_client.post(f"/api/parties/{party.id}/cancel")
         data = assert_res_success(response, PartyDto)
 
-        assert data.status == PartyStatus.CANCELLED
-        assert data.id == party.id
+        party.status = PartyStatus.CANCELLED
+        self.party_utils.assert_matches(party, data)
 
     @pytest.mark.asyncio
-    async def test_student_delete_cancelled_party_fails(self, current_student: StudentEntity):
-        """Test that student cannot cancel an already-cancelled party."""
+    async def test_student_delete_cancelled_party_idempotent(self, current_student: StudentEntity):
+        """Cancelling an already-cancelled party is a no-op for the owner."""
         party = await self.party_utils.create_one(contact_one_id=current_student.account_id)
 
-        await self.student_client.delete(f"/api/parties/{party.id}")
+        await self.student_client.post(f"/api/parties/{party.id}/cancel")
 
-        response = await self.student_client.delete(f"/api/parties/{party.id}")
-        assert_res_failure(response, PartyCancelledException(party.id))
+        response = await self.student_client.post(f"/api/parties/{party.id}/cancel")
+        data = assert_res_success(response, PartyDto)
+        party.status = PartyStatus.CANCELLED
+        self.party_utils.assert_matches(party, data)
 
     @pytest.mark.asyncio
     async def test_student_delete_others_party_fails(self):
         """Test that student cannot cancel a party that belongs to another student."""
         party = await self.party_utils.create_one()
 
-        response = await self.student_client.delete(f"/api/parties/{party.id}")
-        assert_res_failure(response, PartyNotOwnedByStudentException(party.id))
+        response = await self.student_client.post(f"/api/parties/{party.id}/cancel")
+        assert_res_failure(response, PartyValidationException(PartyRule.PARTY_NOT_OWNED_BY_STUDENT))
 
     @pytest.mark.asyncio
     async def test_student_delete_past_party_fails(self, current_student: StudentEntity):
@@ -1552,17 +1445,12 @@ class TestStudentPartyDeleteRouter:
             party_datetime=past_datetime,
         )
 
-        response = await self.student_client.delete(f"/api/parties/{party.id}")
-        assert_res_failure(response, PartyInPastException())
+        response = await self.student_client.post(f"/api/parties/{party.id}/cancel")
+        assert_res_failure(response, PartyValidationException(PartyRule.PARTY_IN_PAST))
 
 
-class TestStudentPartyUpdateValidationRouter:
+class TestStudentPartyUpdateValidationRouter(StudentRouterTestBase):
     """Additional validation tests for PUT /api/parties/{id} endpoint (student)."""
-
-    student_client: AsyncClient
-    party_utils: PartyTestUtils
-    location_utils: LocationTestUtils
-    student_utils: StudentTestUtils
 
     @pytest_asyncio.fixture
     async def current_student(self, student_account: AccountEntity) -> StudentEntity:
@@ -1571,39 +1459,32 @@ class TestStudentPartyUpdateValidationRouter:
             account_id=student_account.id, last_registered=datetime.now(UTC) - timedelta(days=1)
         )
 
-    @pytest.fixture(autouse=True)
-    def _setup(
+    @pytest.mark.parametrize(
+        "scenario,expected_rule",
+        [
+            ("cancelled", PartyRule.PARTY_CANCELLED),
+            ("not_owned", PartyRule.PARTY_NOT_OWNED_BY_STUDENT),
+            ("in_past", PartyRule.PARTY_IN_PAST),
+        ],
+    )
+    @pytest.mark.asyncio
+    async def test_student_update_blocked_by_party_state(
         self,
-        party_utils: PartyTestUtils,
-        location_utils: LocationTestUtils,
-        student_utils: StudentTestUtils,
-        student_client: AsyncClient,
+        current_student: StudentEntity,
+        scenario: str,
+        expected_rule: PartyRule,
     ):
-        self.party_utils = party_utils
-        self.location_utils = location_utils
-        self.student_utils = student_utils
-        self.student_client = student_client
-
-    @pytest.mark.asyncio
-    async def test_student_update_cancelled_party_fails(self, current_student: StudentEntity):
-        """Test that student cannot update a cancelled party."""
-        party = await self.party_utils.create_one(contact_one_id=current_student.account_id)
-        await self.student_client.delete(f"/api/parties/{party.id}")
-
-        location = await self.location_utils.create_one()
-        update_payload = await self.party_utils.next_student_create_dto(
-            google_place_id=location.google_place_id
-        )
-
-        response = await self.student_client.put(
-            f"/api/parties/{party.id}", json=update_payload.model_dump(mode="json")
-        )
-        assert_res_failure(response, PartyCancelledException(party.id))
-
-    @pytest.mark.asyncio
-    async def test_student_update_others_party_fails(self, current_student: StudentEntity):
-        """Test that student cannot update a party that belongs to another student."""
-        party = await self.party_utils.create_one()
+        """Student updates are blocked when the existing party is cancelled, not theirs, or past."""
+        if scenario == "cancelled":
+            party = await self.party_utils.create_one(contact_one_id=current_student.account_id)
+            await self.student_client.post(f"/api/parties/{party.id}/cancel")
+        elif scenario == "not_owned":
+            party = await self.party_utils.create_one()
+        else:  # in_past
+            party = await self.party_utils.create_one(
+                contact_one_id=current_student.account_id,
+                party_datetime=datetime.now(UTC) - timedelta(days=1),
+            )
 
         location = await self.location_utils.create_one()
         update_payload = await self.party_utils.next_student_create_dto(
@@ -1613,50 +1494,16 @@ class TestStudentPartyUpdateValidationRouter:
         response = await self.student_client.put(
             f"/api/parties/{party.id}", json=update_payload.model_dump(mode="json")
         )
-        assert_res_failure(response, PartyNotOwnedByStudentException(party.id))
-
-    @pytest.mark.asyncio
-    async def test_student_update_past_party_fails(self, current_student: StudentEntity):
-        """Test that student cannot update a party that has already occurred."""
-        past_datetime = datetime.now(UTC) - timedelta(days=1)
-        party = await self.party_utils.create_one(
-            contact_one_id=current_student.account_id,
-            party_datetime=past_datetime,
-        )
-
-        location = await self.location_utils.create_one()
-        update_payload = await self.party_utils.next_student_create_dto(
-            google_place_id=location.google_place_id
-        )
-
-        response = await self.student_client.put(
-            f"/api/parties/{party.id}", json=update_payload.model_dump(mode="json")
-        )
-        assert_res_failure(response, PartyInPastException())
+        assert_res_failure(response, PartyValidationException(expected_rule))
 
 
-class TestStudentMyPartiesRouter:
+class TestStudentMyPartiesRouter(StudentRouterTestBase):
     """Tests for GET /api/students/me/parties endpoint filtering."""
-
-    student_client: AsyncClient
-    party_utils: PartyTestUtils
-    student_utils: StudentTestUtils
 
     @pytest_asyncio.fixture
     async def current_student(self, student_account: AccountEntity) -> StudentEntity:
         """Create student for the authenticated student client."""
         return await self.student_utils.create_one(account_id=student_account.id)
-
-    @pytest.fixture(autouse=True)
-    def _setup(
-        self,
-        party_utils: PartyTestUtils,
-        student_utils: StudentTestUtils,
-        student_client: AsyncClient,
-    ):
-        self.party_utils = party_utils
-        self.student_utils = student_utils
-        self.student_client = student_client
 
     @pytest.mark.asyncio
     async def test_get_my_parties_excludes_cancelled(self, current_student: StudentEntity):
@@ -1664,10 +1511,82 @@ class TestStudentMyPartiesRouter:
         party1 = await self.party_utils.create_one(contact_one_id=current_student.account_id)
         party2 = await self.party_utils.create_one(contact_one_id=current_student.account_id)
 
-        await self.student_client.delete(f"/api/parties/{party2.id}")
+        await self.student_client.post(f"/api/parties/{party2.id}/cancel")
 
         response = await self.student_client.get("/api/students/me/parties")
         parties = assert_res_success(response, list[PartyDto])
 
         assert len(parties) == 1
         assert parties[0].id == party1.id
+
+
+class TestPartyAsStaffRouter(StaffRouterTestBase):
+    """A staff member who used to be a student can still host their own parties.
+    Exercises POST/PUT/DELETE on /api/parties from a staff-authenticated client."""
+
+    @pytest_asyncio.fixture
+    async def current_staff_host(self, staff_account: AccountEntity) -> StudentEntity:
+        """Attach a Student record (with phone + recent Party Smart) to the staff
+        client's account, simulating a promoted student who still hosts parties."""
+        return await self.student_utils.create_one(
+            account_id=staff_account.id,
+            last_registered=datetime.now(UTC) - timedelta(days=1),
+        )
+
+    @pytest.mark.asyncio
+    async def test_create_party_as_staff_success(self, current_staff_host: StudentEntity):
+        """Staff member with a Student record can register a party via the
+        student-style endpoint."""
+        location = await self.location_utils.create_one()
+        await self.student_utils.set_student_residence(current_staff_host, location.id)
+
+        payload = await self.party_utils.next_student_create_dto()
+
+        response = await self.staff_client.post(
+            "/api/parties", json=payload.model_dump(mode="json")
+        )
+        data = assert_res_success(response, PartyDto, status=201)
+
+        assert data.contact_one.id == current_staff_host.account_id
+        assert data.location.id == location.id
+
+    @pytest.mark.asyncio
+    async def test_update_party_as_staff_success(self, current_staff_host: StudentEntity):
+        """Staff member can update their own hosted party."""
+        location = await self.location_utils.create_one()
+        await self.student_utils.set_student_residence(current_staff_host, location.id)
+
+        create_payload = await self.party_utils.next_student_create_dto()
+        create_response = await self.staff_client.post(
+            "/api/parties", json=create_payload.model_dump(mode="json")
+        )
+        created = assert_res_success(create_response, PartyDto, status=201)
+
+        update_payload = await self.party_utils.next_student_create_dto()
+        response = await self.staff_client.put(
+            f"/api/parties/{created.id}", json=update_payload.model_dump(mode="json")
+        )
+        data = assert_res_success(response, PartyDto)
+
+        assert data.id == created.id
+        assert data.contact_two.email == update_payload.contact_two.email
+
+    @pytest.mark.asyncio
+    async def test_delete_party_as_staff_cancels(self, current_staff_host: StudentEntity):
+        """Staff DELETE on their own party cancels (matches student behavior),
+        does not hard-delete (which is admin-only)."""
+        party = await self.party_utils.create_one(contact_one_id=current_staff_host.account_id)
+
+        response = await self.staff_client.post(f"/api/parties/{party.id}/cancel")
+        data = assert_res_success(response, PartyDto)
+
+        party.status = PartyStatus.CANCELLED
+        self.party_utils.assert_matches(party, data)
+
+    @pytest.mark.asyncio
+    async def test_delete_other_users_party_as_staff_fails(self, current_staff_host: StudentEntity):
+        """Staff cannot cancel a party they don't own (same rule as students)."""
+        party = await self.party_utils.create_one()
+
+        response = await self.staff_client.post(f"/api/parties/{party.id}/cancel")
+        assert_res_failure(response, PartyValidationException(PartyRule.PARTY_NOT_OWNED_BY_STUDENT))

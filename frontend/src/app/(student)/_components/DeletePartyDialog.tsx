@@ -28,12 +28,12 @@ export function DeletePartyDialog({
   const { openSnackbar } = useSnackbar();
   const deletePartyMutation = useDeleteParty();
 
-  const handleDelete = async () => {
+  const handleCancel = async () => {
     try {
       await deletePartyMutation.mutateAsync(party.id);
       onOpenChange(false);
     } catch {
-      openSnackbar("Failed to delete party", "error");
+      openSnackbar("Failed to cancel party", "error");
     }
   };
 
@@ -41,11 +41,11 @@ export function DeletePartyDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Delete Party</DialogTitle>
+          <DialogTitle>Cancel Party</DialogTitle>
           <DialogDescription>
-            Are you sure you want to delete the party on{" "}
+            Are you sure you want to cancel the party on{" "}
             {format(party.party_datetime, "PPP")} at{" "}
-            {format(party.party_datetime, "p")}? This action cannot be undone.
+            {format(party.party_datetime, "p")}?
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
@@ -54,14 +54,14 @@ export function DeletePartyDialog({
             onClick={() => onOpenChange(false)}
             disabled={deletePartyMutation.isPending}
           >
-            Cancel
+            Back
           </Button>
           <Button
             variant="destructive"
-            onClick={handleDelete}
+            onClick={handleCancel}
             disabled={deletePartyMutation.isPending}
           >
-            {deletePartyMutation.isPending ? "Deleting..." : "Delete"}
+            {deletePartyMutation.isPending ? "Cancelling..." : "Cancel Party"}
           </Button>
         </DialogFooter>
       </DialogContent>

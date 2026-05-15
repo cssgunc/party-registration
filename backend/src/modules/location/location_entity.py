@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Self
 
-from sqlalchemy import DECIMAL, Index, Integer, String
+from sqlalchemy import DECIMAL, Index, Integer, String, func
 from sqlalchemy.inspection import inspect
 from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column, relationship
 from src.core.database import EntityBase
@@ -42,6 +42,7 @@ class LocationEntity(MappedAsDataclass, EntityBase):
     state: Mapped[str | None] = mapped_column(String(50), default=None)  # e.g. "NC"
     country: Mapped[str | None] = mapped_column(String(2), default=None)  # e.g. "US"
     zip_code: Mapped[str | None] = mapped_column(String(10), default=None)  # e.g. "27514"
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, server_default=func.now(), init=False)
 
     # Relationships
     incidents: Mapped[list["IncidentEntity"]] = relationship(

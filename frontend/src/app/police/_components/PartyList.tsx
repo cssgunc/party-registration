@@ -8,12 +8,13 @@ import type {
 } from "@/lib/api/incident/incident.types";
 import { ExactMatchDto, PartyDto } from "@/lib/api/party/party.types";
 import { usePoliceCreateIncident } from "@/lib/api/party/police-party.queries";
+import { getErrorMessage } from "@/lib/errors";
 import { useEffect, useState } from "react";
 import PartyCard, { PartyCardData } from "./PartyCard";
 
 interface PartyListProps {
   parties?: PartyDto[];
-  onSelect?: (party: PartyDto) => void;
+  onSelect?: (party: PartyDto | null) => void;
   activeParty?: PartyDto;
   exactMatch?: ExactMatchDto;
 }
@@ -38,7 +39,7 @@ const PartyList = ({
       openSnackbar("Incident created successfully", "success");
     },
     onError: (error) => {
-      openSnackbar(error.message || "Failed to create incident", "error");
+      openSnackbar(getErrorMessage(error), "error");
     },
   });
 
@@ -93,51 +94,50 @@ const PartyList = ({
 
   return (
     <>
-      <div className="flex flex-col min-h-0 flex-1">
-        <div className="flex-1 min-h-0 w-full overflow-y-auto [scroll-behavior:smooth]">
-          {exactMatchData && (
-            <section>
-              <h2 className="px-4 pt-4 subhead-content">Exact Match:</h2>
-              <ul className="list-none">
-                <li className="border-b border-border">
-                  <PartyCard
-                    data={exactMatchData}
-                    // className="pt-0"
-                    onOpenIncidentDialog={(severity) =>
-                      openIncidentDialog(exactMatchData, severity)
-                    }
-                  />
-                </li>
-              </ul>
-            </section>
-          )}
-          {parties.length > 0 && (
-            <section>
-              {exactMatchData && (
-                <h2 className="px-4 pt-4 pb-2 subhead-content">
-                  Nearby Parties:
-                </h2>
-              )}
-              <ul className="list-none">
-                {parties.map((party) => {
-                  const cardData: PartyCardData = { hasParty: true, party };
-                  return (
-                    <li key={party.id}>
-                      <PartyCard
-                        data={cardData}
-                        onClick={() => onSelect?.(party)}
-                        isActive={activeParty?.id === party.id}
-                        onOpenIncidentDialog={(severity) =>
-                          openIncidentDialog(cardData, severity)
-                        }
-                      />
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          )}
-        </div>
+      <div className="flex flex-col flex-1 min-h-0 w-full overflow-y-auto scroll-smooth">
+        {exactMatchData && (
+          <section>
+            <h2 className="px-4 pt-4 subhead-content">Exact Match:</h2>
+            <ul className="list-none">
+              <li className="border-b border-border">
+                <PartyCard
+                  data={exactMatchData}
+                  onOpenIncidentDialog={(severity) =>
+                    openIncidentDialog(exactMatchData, severity)
+                  }
+                />
+              </li>
+            </ul>
+          </section>
+        )}
+        {parties.length > 0 && (
+          <section>
+            {exactMatchData && (
+              <h2 className="px-4 pt-4 pb-2 subhead-content">
+                Nearby Parties:
+              </h2>
+            )}
+            <ul className="list-none">
+              {parties.map((party) => {
+                const cardData: PartyCardData = { hasParty: true, party };
+                return (
+                  <li key={party.id}>
+                    <PartyCard
+                      data={cardData}
+                      onClick={() =>
+                        onSelect?.(activeParty?.id === party.id ? null : party)
+                      }
+                      isActive={activeParty?.id === party.id}
+                      onOpenIncidentDialog={(severity) =>
+                        openIncidentDialog(cardData, severity)
+                      }
+                    />
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        )}
       </div>
 
       <IncidentDialog

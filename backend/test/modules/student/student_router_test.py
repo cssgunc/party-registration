@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
-from src.modules.account.account_entity import AccountEntity, AccountRole
+from src.modules.account.account_entity import AccountEntity
 from src.modules.location.location_model import LocationDto
 from src.modules.party.party_model import PartyDto
 from src.modules.student.student_entity import StudentEntity
@@ -14,10 +14,7 @@ from src.modules.student.student_model import (
     StudentSuggestionDto,
 )
 from src.modules.student.student_service import (
-    AccountNotFoundException,
-    InvalidAccountRoleException,
     ResidenceAlreadyChosenException,
-    StudentAlreadyExistsException,
     StudentConflictException,
     StudentNotFoundException,
 )
@@ -71,15 +68,19 @@ test_student_search_no_results, test_student_search_ok = generate_search_tests(
 test_student_authentication = generate_auth_required_tests(
     ({"admin", "staff"}, "GET", "/api/students", None),
     ({"admin", "staff"}, "GET", "/api/students/12345", None),
-    ({"admin"}, "POST", "/api/students", StudentTestUtils.get_sample_create_data()),
     ({"admin"}, "PUT", "/api/students/12345", StudentTestUtils.get_sample_data()),
     ({"admin"}, "DELETE", "/api/students/12345", None),
     ({"admin", "staff"}, "PATCH", "/api/students/12345/is-registered", {"is_registered": True}),
     ({"admin", "staff"}, "POST", "/api/students/autocomplete", {"query": "test"}),
-    ({"student"}, "GET", "/api/students/me", None),
-    ({"student"}, "PUT", "/api/students/me", StudentTestUtils.get_sample_data()),
-    ({"student"}, "PUT", "/api/students/me/residence", {"residence_place_id": "ChIJTest"}),
-    ({"student"}, "GET", "/api/students/me/parties", None),
+    ({"admin", "staff", "student"}, "GET", "/api/students/me", None),
+    ({"admin", "staff", "student"}, "PUT", "/api/students/me", StudentTestUtils.get_sample_data()),
+    (
+        {"admin", "staff", "student"},
+        "PUT",
+        "/api/students/me/residence",
+        {"residence_place_id": "ChIJTest"},
+    ),
+    ({"admin", "staff", "student"}, "GET", "/api/students/me/parties", None),
 )
 
 STUDENT_HEADERS = (
@@ -298,102 +299,6 @@ class TestStudentCRUDRouter:
         self.admin_client = admin_client
 
     @pytest.mark.asyncio
-    async def test_create_student_success(self):
-        """Test successfully creating a student."""
-        payload = await self.student_utils.next_student_create()
-
-        response = await self.admin_client.post(
-            "/api/students", json=payload.model_dump(mode="json")
-        )
-        data = assert_res_success(response, StudentDto, status=201)
-
-        self.student_utils.assert_matches(payload.data, data)
-        assert data.id == payload.account_id
-
-    @pytest.mark.asyncio
-    async def test_create_student_with_datetime(self):
-        """Test creating a student with last_registered datetime."""
-        dt = datetime(2024, 3, 15, 10, 30, 0, tzinfo=UTC)
-        payload = await self.student_utils.next_student_create(last_registered=dt)
-
-        response = await self.admin_client.post(
-            "/api/students", json=payload.model_dump(mode="json")
-        )
-        data = assert_res_success(response, StudentDto, status=201)
-
-        self.student_utils.assert_matches(payload.data, data)
-        assert data.last_registered is not None
-
-    @pytest.mark.asyncio
-    async def test_create_student_nonexistent_account(self):
-        """Test creating a student with non-existent account ID."""
-        payload = await self.student_utils.next_student_create(account_id=999)
-
-        response = await self.admin_client.post(
-            "/api/students", json=payload.model_dump(mode="json")
-        )
-        assert_res_failure(response, AccountNotFoundException(999))
-
-    @pytest.mark.asyncio
-    async def test_create_student_wrong_role(self):
-        """Test creating a student with account that has non-student role."""
-        account = await self.student_utils.account_utils.create_one(role=AccountRole.ADMIN.value)
-        payload = await self.student_utils.next_student_create(account_id=account.id)
-
-        response = await self.admin_client.post(
-            "/api/students", json=payload.model_dump(mode="json")
-        )
-        assert_res_failure(response, InvalidAccountRoleException(account.id, AccountRole.ADMIN))
-
-    @pytest.mark.asyncio
-    async def test_create_student_duplicate_account(self):
-        """Test creating a student when account already has a student record."""
-        student = await self.student_utils.create_one()
-        payload = await self.student_utils.next_student_create(account_id=student.account_id)
-
-        response = await self.admin_client.post(
-            "/api/students", json=payload.model_dump(mode="json")
-        )
-        assert_res_failure(response, StudentAlreadyExistsException(student.account_id))
-
-    @pytest.mark.asyncio
-    async def test_create_student_duplicate_phone(self):
-        """Test creating students with duplicate phone numbers."""
-        student = await self.student_utils.create_one()
-        assert student.phone_number is not None
-        payload = await self.student_utils.next_student_create(phone_number=student.phone_number)
-
-        response = await self.admin_client.post(
-            "/api/students", json=payload.model_dump(mode="json")
-        )
-        assert_res_failure(response, StudentConflictException(student.phone_number))
-
-    @pytest.mark.asyncio
-    async def test_create_student_with_residence(
-        self, gmaps_utils: GmapsMockUtils, location_utils: LocationTestUtils
-    ):
-        """Test admin creating a student with a residence."""
-        location = await location_utils.create_one()
-        gmaps_utils.mock_place_details(
-            google_place_id=location.google_place_id,
-            formatted_address=location.formatted_address,
-            latitude=float(location.latitude),
-            longitude=float(location.longitude),
-        )
-
-        payload = await self.student_utils.next_student_create(
-            last_registered=datetime.now(UTC),
-            residence_place_id=location.google_place_id,
-        )
-
-        response = await self.admin_client.post(
-            "/api/students", json=payload.model_dump(mode="json")
-        )
-        data = assert_res_success(response, StudentDto, status=201)
-
-        self.student_utils.assert_residence(data, location)
-
-    @pytest.mark.asyncio
     async def test_get_student_success(self):
         """Test successfully getting a student by ID."""
         student = await self.student_utils.create_one()
@@ -502,7 +407,7 @@ class TestStudentCSVRouter:
         assert pid_no_res in data_rows
         row_no_res = data_rows[pid_no_res]
         assert row_no_res[7] == "No"
-        assert row_no_res[8] == "-"
+        assert row_no_res[8] is None
         phone_no_res = str(row_no_res[5])
         assert "(" in phone_no_res and ")" in phone_no_res and "-" in phone_no_res
         assert str(row_no_res[6])[0].isupper()
@@ -902,6 +807,35 @@ class TestStudentMeRouter:
         assert len(parties) == 1
         assert party2.id not in [p.id for p in parties]
         self.party_utils.assert_matches(parties[0], party1)
+
+
+class TestStudentMeRouterAsStaff:
+    """A staff member (e.g. promoted student) can use PUT /students/me to provide
+    the contact info needed before hosting a party."""
+
+    staff_client: AsyncClient
+    student_utils: StudentTestUtils
+
+    @pytest.fixture(autouse=True)
+    def _setup(self, student_utils: StudentTestUtils, staff_client: AsyncClient):
+        self.student_utils = student_utils
+        self.staff_client = staff_client
+
+    @pytest.mark.asyncio
+    async def test_update_me_creates_entity_for_staff(self, staff_account: AccountEntity):
+        """PUT /students/me upserts a Student record on a staff account."""
+        payload = SelfUpdateStudentDto(
+            contact_preference=ContactPreference.TEXT,
+            phone_number="9195550101",
+        )
+
+        response = await self.staff_client.put(
+            "/api/students/me", json=payload.model_dump(mode="json")
+        )
+        data = assert_res_success(response, StudentDto)
+
+        assert data.id == staff_account.id
+        self.student_utils.assert_matches(data, payload)
 
 
 class TestStudentResidenceRouter:

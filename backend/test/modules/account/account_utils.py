@@ -37,6 +37,49 @@ class AccountTestUtils(
             data_class=AccountData,
         )
 
+    @staticmethod
+    def build_client_account_entity(role: AccountRole) -> AccountEntity:
+        """Build the canonical in-memory AccountEntity that the test client uses
+        for the given role. Not session-attached; safe to call from contexts that
+        only need the DTO (`entity.to_dto()`) and from `initialize_client_account`,
+        which persists it."""
+
+        # Stable per-role identifiers for the built-in test client account. Role-distinct
+        # so multiple roles can be DB-backed in the same test without PK / unique-constraint
+        # collisions.
+        client_account_ids: dict[AccountRole, int] = {
+            AccountRole.STUDENT: 99997,
+            AccountRole.STAFF: 99998,
+            AccountRole.ADMIN: 99999,
+        }
+        client_account_pids: dict[AccountRole, str] = {
+            AccountRole.STUDENT: "999999997",
+            AccountRole.STAFF: "999999998",
+            AccountRole.ADMIN: "999999999",
+        }
+        entity = AccountEntity.from_data(
+            AccountData(
+                email=f"{role.value}@unc.edu",
+                first_name=role.value.capitalize(),
+                last_name="Client",
+                pid=client_account_pids[role],
+                onyen=f"{role.value}client",
+                role=role,
+            )
+        )
+        entity.id = client_account_ids[role]
+        return entity
+
+    async def initialize_client_account(self, role: AccountRole) -> AccountEntity:
+        """Persist a real `accounts` row matching the test client's JWT for `role`.
+        Tests opt into this only when the endpoint under test reads the account
+        from the DB (e.g. anything that FKs on accounts.id)."""
+        entity = AccountTestUtils.build_client_account_entity(role)
+        self.session.add(entity)
+        await self.session.commit()
+        await self.session.refresh(entity)
+        return entity
+
     @override
     @staticmethod
     def generate_defaults(count: int) -> dict:

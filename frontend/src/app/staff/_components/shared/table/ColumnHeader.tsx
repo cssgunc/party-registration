@@ -10,7 +10,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { Column } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, ChevronDown, Filter, X } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Check,
+  ChevronDown,
+  Filter,
+  X,
+} from "lucide-react";
 import { useState } from "react";
 
 interface ColumnHeaderProps<T> {
@@ -30,13 +37,13 @@ export function ColumnHeader<T>({
   const canFilter = column.getCanFilter();
 
   return (
-    <div className="flex items-center space-x-2">
+    <div className="flex h-full items-start">
       <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
             size="sm"
-            className="-ml-3 h-8 data-[state=open]:bg-accent"
+            className="-mx-4 -mt-2 h-12 justify-start rounded-none px-4 pt-2 data-[state=open]:bg-accent"
           >
             <span>{title}</span>
             {isFiltered && (
@@ -52,27 +59,31 @@ export function ColumnHeader<T>({
         <DropdownMenuContent align="start">
           <DropdownMenuItem
             onClick={() => {
-              column.toggleSorting(false);
+              if (isSorted === "asc") {
+                column.clearSorting();
+              } else {
+                column.toggleSorting(false);
+              }
               setOpen(false);
             }}
           >
             <ArrowUp className="mr-2 size-4" />
             Sort Ascending
-            {isSorted === "asc" && (
-              <span className="ml-auto text-primary">✓</span>
-            )}
+            {isSorted === "asc" && <Check className="ml-auto size-4" />}
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => {
-              column.toggleSorting(true);
+              if (isSorted === "desc") {
+                column.clearSorting();
+              } else {
+                column.toggleSorting(true);
+              }
               setOpen(false);
             }}
           >
             <ArrowDown className="mr-2 size-4" />
             Sort Descending
-            {isSorted === "desc" && (
-              <span className="ml-auto text-primary">✓</span>
-            )}
+            {isSorted === "desc" && <Check className="ml-auto size-4" />}
           </DropdownMenuItem>
           {canFilter && (
             <>

@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 from typing import ClassVar
 
 from fastapi import Depends
-from sqlalchemy import select
+from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from src.core.database import get_session
@@ -23,6 +23,8 @@ from .incident_model import (
     IncidentCreateDto,
     IncidentData,
     IncidentDto,
+    IncidentSeverity,
+    IncidentSeverityCounts,
     IncidentUpdateDto,
     PaginatedIncidentsResponse,
 )
@@ -86,7 +88,28 @@ class IncidentService:
             base_query=base_query,
             field_set=_INCIDENT_QUERY_FIELDS,
         )
-        return PaginatedIncidentsResponse(**result.model_dump())
+        severity_counts = await self._get_severity_counts(base_query, params)
+        return PaginatedIncidentsResponse(
+            **result.model_dump(),
+            severity_counts=severity_counts,
+        )
+
+    async def _get_severity_counts(
+        self, base_query: Select, params: ListQueryParams
+    ) -> IncidentSeverityCounts:
+        filtered = self.query_service.apply_filters(
+            base_query, params.filters, _INCIDENT_QUERY_FIELDS
+        )
+        filtered = self.query_service.apply_search(filtered, params.search, _INCIDENT_QUERY_FIELDS)
+        subq = filtered.subquery()
+        count_query = (
+            select(subq.c.severity, func.count()).select_from(subq).group_by(subq.c.severity)
+        )
+        result = await self.session.execute(count_query)
+        counts: dict[IncidentSeverity, int] = dict.fromkeys(IncidentSeverity, 0)
+        for severity, count in result.all():
+            counts[severity] = count
+        return IncidentSeverityCounts.from_counts(counts)
 
     async def get_incidents_with_addresses(
         self, params: ListQueryParams
@@ -118,7 +141,7 @@ class IncidentService:
                     incident.incident_datetime.strftime("%Y-%m-%d"),
                     incident.incident_datetime.strftime("%-I:%M %p"),
                     incident.description,
-                    incident.reference_id or "-",
+                    incident.reference_id or None,
                 ]
             )
         return exporter.to_bytes()

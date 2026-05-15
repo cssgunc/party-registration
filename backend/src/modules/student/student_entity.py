@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Self
 
-from sqlalchemy import CheckConstraint, Enum, ForeignKey, Integer, String, select
+from sqlalchemy import CheckConstraint, Enum, ForeignKey, Integer, String, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column, relationship, selectinload
 from src.core.database import EntityBase
@@ -35,6 +35,7 @@ class StudentEntity(MappedAsDataclass, EntityBase):
     residence_chosen_date: Mapped[datetime | None] = mapped_column(
         UTCDateTime, nullable=True, default=None
     )
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, server_default=func.now(), init=False)
 
     account: Mapped["AccountEntity"] = relationship("AccountEntity", init=False)
     residence: Mapped["LocationEntity | None"] = relationship(

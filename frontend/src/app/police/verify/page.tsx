@@ -10,7 +10,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useVerifyPoliceEmail } from "@/lib/api/auth/auth.queries";
-import { isAxiosError } from "axios";
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -32,17 +31,7 @@ function PoliceVerifyContent() {
   const [errorMessage, setErrorMessage] = useState(fallbackErrorMessage);
   const hasAttemptedRef = useRef(false);
   const verifyPoliceEmailMutation = useVerifyPoliceEmail({
-    onError: (error: Error) => {
-      if (
-        isAxiosError(error) &&
-        typeof error.response?.data?.detail === "string"
-      ) {
-        setErrorMessage(
-          `${error.response.data.detail}. Please try logging in to request a new link, or contact OCSL for help.`
-        );
-        return;
-      }
-
+    onError: () => {
       setErrorMessage(fallbackErrorMessage);
     },
   });
