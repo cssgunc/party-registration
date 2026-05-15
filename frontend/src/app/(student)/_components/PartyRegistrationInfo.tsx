@@ -1,73 +1,13 @@
 "use client";
 
-import {
-  Accordion,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Info } from "lucide-react";
-import { ReactNode, useState } from "react";
-
-type AccordionDialogItemProps = {
-  value: string;
-  title: string;
-  dialogTitle: string;
-  children: ReactNode;
-};
-
-function AccordionDialogItem({
-  value,
-  title,
-  dialogTitle,
-  children,
-}: AccordionDialogItemProps) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <AccordionItem value={value}>
-        <AccordionTrigger
-          className="[&>svg]:hidden"
-          onClick={() => setOpen(true)}
-        >
-          <span className="flex w-full items-center justify-between gap-4">
-            <span>{title}</span>
-            <Info className="size-4 shrink-0 text-muted-foreground" />
-          </span>
-        </AccordionTrigger>
-      </AccordionItem>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-4xl">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-semibold text-text">
-            {dialogTitle}
-          </DialogTitle>
-          <DialogDescription className="sr-only">
-            Modal with detailed information for this section.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="content space-y-4">{children}</div>
-      </DialogContent>
-    </Dialog>
-  );
-}
+import DialogItem from "./DialogItem";
 
 export default function PartyRegistrationInfo() {
   return (
     <div className="mt-4 2xl:mt-0">
       <h1 className="page-title">About Party Registration</h1>
-      <Accordion type="single" collapsible className="mt-5">
-        <AccordionDialogItem
-          value="1"
-          title="How does party registration work?"
-          dialogTitle="How does party registration work?"
-        >
+      <div className="card-shadow bg-card text-card-foreground content mt-5 rounded-md border">
+        <DialogItem title="How does party registration work?">
           <p>For first-time users*:</p>
           <p>
             Fill out the party registration form on-line (below) at least 72
@@ -97,13 +37,9 @@ export default function PartyRegistrationInfo() {
             text and give you a warning. You will have 20 minutes to shut the
             party down and avoid the police officers.
           </p>
-        </AccordionDialogItem>
+        </DialogItem>
 
-        <AccordionDialogItem
-          value="2"
-          title="Why register your party?"
-          dialogTitle="Why register your party?"
-        >
+        <DialogItem title="Why register your party?">
           <p>
             Unlike a citation for a noise violation, registration is FREE. You
             do not want the police officers to stop by - so limit your chance of
@@ -113,14 +49,10 @@ export default function PartyRegistrationInfo() {
             citation. Chapel Hill police will, in most circumstances, no longer
             give warnings to loud parties that have not been registered.
           </p>
-        </AccordionDialogItem>
+        </DialogItem>
 
-        <AccordionDialogItem
-          value="3"
-          title="Want to know the fine print?"
-          dialogTitle="Want to know the fine print?"
-        >
-          <ul className="list-disc list-outside ml-5 space-y-1">
+        <DialogItem title="Want to know the fine print?">
+          <ul className="ml-5 list-outside list-disc space-y-1">
             <li>You can register parties for any night of the week.</li>
             <li>
               You MUST register by the 72 hours (three business days) deadline
@@ -149,8 +81,8 @@ export default function PartyRegistrationInfo() {
               citation was received or second warning was issued.
             </li>
           </ul>
-        </AccordionDialogItem>
-      </Accordion>
+        </DialogItem>
+      </div>
     </div>
   );
 }
