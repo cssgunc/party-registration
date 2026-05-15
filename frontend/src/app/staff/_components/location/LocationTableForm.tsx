@@ -11,9 +11,15 @@ import {
   FieldLabel,
   FieldSet,
 } from "@/components/ui/field";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { addBusinessDays, isAfter, startOfDay } from "date-fns";
+import { Info } from "lucide-react";
 import { useState } from "react";
 import * as z from "zod";
 
@@ -130,7 +136,22 @@ export default function LocationTableForm({
           </Field>
 
           <Field data-invalid={!!errors.holdExpiration}>
-            <FieldLabel htmlFor="hold-expiration">Hold Expiration</FieldLabel>
+            <FieldLabel
+              htmlFor="hold-expiration"
+              className="flex items-center gap-1"
+            >
+              Hold Expiration
+              <HoverCard>
+                <HoverCardTrigger asChild>
+                  <Info className="h-3.5 w-3.5 cursor-pointer text-muted-foreground ml-1" />
+                </HoverCardTrigger>
+                <HoverCardContent className="max-w-64">
+                  A location has an active hold when a hold expiration date is
+                  set and has not yet passed. An active hold prevents students
+                  from registering parties at this location.
+                </HoverCardContent>
+              </HoverCard>
+            </FieldLabel>
             <DatePicker
               id="hold-expiration"
               value={formData.holdExpiration}
