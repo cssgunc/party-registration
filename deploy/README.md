@@ -110,6 +110,14 @@ In **Settings → CI/CD → Variables**, add a variable for every entry in
 `deploy/.env.prod.template`. Mark secrets (keys, passwords, tokens) as
 **Masked** and **Protected**.
 
+> **Alternative:** instead of one CI variable per env var, create a single
+> **File-type** variable (e.g. `ENV_PROD_FILE`) and paste the entire
+> `.env.prod` contents as its value. GitLab writes it to a temp file at job
+> runtime and `$ENV_PROD_FILE` resolves to the path, so the HEREDOC block
+> below collapses to a single `scp "$ENV_PROD_FILE" …:~/app/deploy/.env.prod`.
+> Tradeoff: the file is one opaque blob, so individual secrets aren't masked
+> per-var the way separate `Masked + Protected` entries are.
+
 Also add the following for the deploy job itself:
 
 | Variable | Description |
@@ -137,6 +145,15 @@ deploy:
     - mkdir -p ~/.ssh && chmod 700 ~/.ssh
     - ssh-keyscan "$DEPLOY_HOST" >> ~/.ssh/known_hosts
   script:
+    # ── Alternative (File-type variable) ──────────────────────────────────────
+    # If you used a single File-type CI variable (e.g. ENV_PROD_FILE) containing
+    # the whole .env.prod, skip the HEREDOC block below and replace it with:
+    #
+    #   - cp "$ENV_PROD_FILE" deploy/.env.prod
+    #
+    # Then keep the SAML cert + scp + ssh steps as-is.
+    # ──────────────────────────────────────────────────────────────────────────
+
     # Generate .env.prod from GitLab variables
     - |
       cat > deploy/.env.prod << EOF
@@ -163,6 +180,7 @@ deploy:
       GOOGLE_MAPS_API_KEY=$GOOGLE_MAPS_API_KEY
       NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=$NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
       NEXT_PUBLIC_GOOGLE_MAP_ID=$NEXT_PUBLIC_GOOGLE_MAP_ID
+      NEXT_PUBLIC_COURSE_LINK=$NEXT_PUBLIC_COURSE_LINK
       EOF
 
     # Write SAML certs
@@ -179,8 +197,11 @@ deploy:
 ```
 
 > The `cat > .env.prod << EOF` block should include any optional vars you've
-> set (e.g. `SMTP_USER`, `NEXT_PUBLIC_CHPD_EMAIL_DOMAIN`). Omit lines for vars
-> you haven't configured — the app will use its built-in defaults.
+> set (e.g. `SMTP_USER`, `NEXT_PUBLIC_CHPD_EMAIL_DOMAIN`,
+> `NEXT_PUBLIC_CONTACT_EMAIL`, `NEXT_PUBLIC_ACADEMIC_YEAR_SWITCH_DATE`,
+> `ACADEMIC_YEAR_SWITCH_DATE`). Omit lines for vars you haven't configured —
+> the app will use its built-in defaults. The frontend and backend academic
+> year switch dates must match if you override the default.
 
 ---
 

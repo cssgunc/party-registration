@@ -32,8 +32,10 @@ import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { PARTY_RULE_MESSAGES } from "@/lib/api/party/party.types";
 import { StudentDto } from "@/lib/api/student/student.types";
+import { clientEnv } from "@/lib/config/env.client";
 import {
   formatPhoneNumberInput,
+  getAcademicYearLabels,
   isFromThisSchoolYear,
   phoneNumberSchema,
 } from "@/lib/utils";
@@ -248,18 +250,7 @@ export default function PartyRegistrationForm({
     }
   };
 
-  const currentDate = new Date();
-  let school_year = "";
-  let change_date = "";
-  if (currentDate > new Date(currentDate.getFullYear(), 7, 1)) {
-    school_year =
-      currentDate.getFullYear() + "-" + (currentDate.getFullYear() + 1);
-    change_date = "August 1, " + (currentDate.getFullYear() + 1);
-  } else {
-    school_year =
-      currentDate.getFullYear() - 1 + "-" + currentDate.getFullYear();
-    change_date = "August 1, " + currentDate.getFullYear();
-  }
+  const { schoolYear, changeDate } = getAcademicYearLabels();
 
   const handleAddressSelect = (address: AutocompleteResult | null) => {
     updateField("address", address?.formatted_address || "");
@@ -350,8 +341,8 @@ export default function PartyRegistrationForm({
                   initialSelection={initialAddress}
                 />
                 <FieldDescription className="content-sub italic">
-                  This will be added to your profile as your {school_year}{" "}
-                  location. You may change it after {change_date}.
+                  This will be added to your profile as your {schoolYear}{" "}
+                  location. You may change it after {changeDate}.
                 </FieldDescription>
                 {errors.address && <FieldError>{errors.address}</FieldError>}
               </Field>
@@ -362,8 +353,15 @@ export default function PartyRegistrationForm({
                   {student?.residence?.location.formatted_address}
                 </p>
                 <p className="content-sub italic">
-                  You cannot change your address until {change_date}. If you are
-                  experiencing hardship, contact [email] for changes
+                  You cannot change your address until {changeDate}. If you are
+                  experiencing hardship, contact{" "}
+                  <a
+                    href={`mailto:${clientEnv.NEXT_PUBLIC_CONTACT_EMAIL}`}
+                    className="underline"
+                  >
+                    {clientEnv.NEXT_PUBLIC_CONTACT_EMAIL}
+                  </a>{" "}
+                  for changes
                 </p>
               </Field>
             )}
@@ -637,8 +635,8 @@ export default function PartyRegistrationForm({
             <DialogTitle>Confirm Address Change</DialogTitle>
             <DialogDescription>
               You are changing your registered address. This will update your{" "}
-              {school_year} residence on file. You will not be able to change it
-              again until {change_date}.
+              {schoolYear} residence on file. You will not be able to change it
+              again until {changeDate}.
             </DialogDescription>
           </DialogHeader>
           <div className="pt-2">

@@ -25,11 +25,13 @@ import {
   useUpdateStudent,
 } from "@/lib/api/student/student.queries";
 import { StudentDto } from "@/lib/api/student/student.types";
+import { clientEnv } from "@/lib/config/env.client";
 import { getErrorMessage } from "@/lib/errors";
 import {
   cn,
   formatPhoneNumber,
   formatPhoneNumberInput,
+  getAcademicYearLabels,
   isFromThisSchoolYear,
   phoneNumberSchema,
 } from "@/lib/utils";
@@ -203,18 +205,7 @@ export default function StudentInfo() {
     contact_preference:
       formData.contact_preference ?? student?.contact_preference ?? undefined,
   };
-  const currentDate = new Date();
-  let school_year = "";
-  let change_date = "";
-  if (currentDate < new Date("08-01")) {
-    school_year =
-      currentDate.getFullYear() + "-" + (currentDate.getFullYear() + 1);
-    change_date = "August 1, " + (currentDate.getFullYear() + 1);
-  } else {
-    school_year =
-      currentDate.getFullYear() - 1 + "-" + currentDate.getFullYear();
-    change_date = "August 1, " + currentDate.getFullYear();
-  }
+  const { schoolYear, changeDate } = getAcademicYearLabels();
 
   const validAddress = isFromThisSchoolYear(
     student?.residence?.residence_chosen_date
@@ -283,7 +274,7 @@ export default function StudentInfo() {
             />
           </div>
           <ProfileField
-            label={`${school_year} Address`}
+            label={`${schoolYear} Address`}
             value={student?.residence?.location.formatted_address ?? "None"}
             isLoading={isLoading}
             className="mt-3 mb-8 sm:mt-6"
@@ -418,7 +409,7 @@ export default function StudentInfo() {
                   className="mb-2"
                 >
                   <FieldLabel htmlFor="address" className="subhead-content">
-                    {school_year} Address
+                    {schoolYear} Address
                   </FieldLabel>
                   <AddressSearch
                     onSelect={handleAddressSelect}
@@ -438,15 +429,21 @@ export default function StudentInfo() {
             {validAddress && (
               <div className="col-span-2 mt-6">
                 <p className="subhead-content mt-3 sm:mt-0">
-                  {school_year} Address
+                  {schoolYear} Address
                 </p>
                 <p className="content my-2">
                   {student?.residence?.location.formatted_address}
                 </p>
 
                 <WarningNote>
-                  You cannot change your address until {change_date}. If you are
-                  experiencing hardship, contact [email] for changes
+                  You cannot change your address until {changeDate}. For
+                  extraneous circumstances, contact{" "}
+                  <a
+                    href={`mailto:${clientEnv.NEXT_PUBLIC_CONTACT_EMAIL}`}
+                    className="underline"
+                  >
+                    {clientEnv.NEXT_PUBLIC_CONTACT_EMAIL}
+                  </a>{" "}
                 </WarningNote>
               </div>
             )}

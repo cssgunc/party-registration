@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { clientEnv } from "@/lib/config/env.client";
 import { TriangleAlert } from "lucide-react";
 import Link from "next/link";
 
@@ -61,7 +62,9 @@ export default async function AuthErrorPage({ searchParams }: Props) {
         )}
         {isPermanent && (
           <Button asChild variant="outline">
-            <a href="mailto:offcampus@unc.edu">Contact Support</a>
+            <a href={`mailto:${clientEnv.NEXT_PUBLIC_CONTACT_EMAIL}`}>
+              Contact Support
+            </a>
           </Button>
         )}
       </div>

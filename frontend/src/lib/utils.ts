@@ -1,6 +1,7 @@
 import type { AppRole } from "@/lib/api/account/account.types";
+import { clientEnv } from "@/lib/config/env.client";
 import { type ClassValue, clsx } from "clsx";
-import { isAfter, isBefore, startOfDay } from "date-fns";
+import { format, isAfter, isBefore, startOfDay } from "date-fns";
 import { twMerge } from "tailwind-merge";
 import * as z from "zod";
 import { ContactPreference } from "./api/student/student.types";
@@ -56,20 +57,48 @@ export const phoneNumberSchema = z
   .transform((val) => val.replace(/\D/g, ""));
 
 /**
- * Check if a date is before or after August 1st.
- * Course completion and residence registration expires on August 1st each year.
+ * Returns true if the given date falls within the current academic year.
+ * The academic year boundary is configured via NEXT_PUBLIC_ACADEMIC_YEAR_SWITCH_DATE.
  */
 export function isFromThisSchoolYear(date: Date | null | undefined): boolean {
   if (!date) return false;
 
   const now = new Date();
-  const currentYear = now.getFullYear();
-  const augustFirst = new Date(currentYear, 7, 1);
-  const mostRecentAugust1 = isBefore(now, augustFirst)
-    ? new Date(currentYear - 1, 7, 1)
-    : augustFirst;
+  const switchThisYear = clientEnv.academicYearSwitchDate;
+  const mostRecentSwitch = isBefore(now, switchThisYear)
+    ? new Date(
+        switchThisYear.getFullYear() - 1,
+        switchThisYear.getMonth(),
+        switchThisYear.getDate()
+      )
+    : switchThisYear;
 
-  return isAfter(startOfDay(date), startOfDay(mostRecentAugust1));
+  return isAfter(startOfDay(date), startOfDay(mostRecentSwitch));
+}
+
+/**
+ * Labels for the current academic year, anchored at the configured switch date.
+ *   - schoolYear:  "2025-2026"
+ *   - changeDate:  "August 1, 2026" (the next switch, formatted)
+ */
+export function getAcademicYearLabels(): {
+  schoolYear: string;
+  changeDate: string;
+} {
+  const switchThisYear = clientEnv.academicYearSwitchDate;
+  const afterSwitch = new Date() >= switchThisYear;
+  const academicYearStart = afterSwitch
+    ? switchThisYear.getFullYear()
+    : switchThisYear.getFullYear() - 1;
+  const nextSwitch = new Date(
+    academicYearStart + 1,
+    switchThisYear.getMonth(),
+    switchThisYear.getDate()
+  );
+  return {
+    schoolYear: `${academicYearStart}-${academicYearStart + 1}`,
+    changeDate: format(nextSwitch, "MMMM d, yyyy"),
+  };
 }
 
 const ROLE_LABELS: Record<AppRole, string> = {
