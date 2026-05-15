@@ -11,6 +11,9 @@ export const authOptions: NextAuthOptions = {
   session: {
     strategy: "jwt",
   },
+  pages: {
+    error: "/auth-error",
+  },
   callbacks: {
     async session({
       session,
