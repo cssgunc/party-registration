@@ -353,7 +353,7 @@ class TestStudentCRUDRouter:
             f"/api/students/{students[1].account_id}",
             json=updated_data.model_dump(mode="json"),
         )
-        assert_res_failure(response, StudentConflictException(students[0].phone_number))
+        assert_res_failure(response, StudentConflictException(updated_data.phone_number or ""))
 
     @pytest.mark.asyncio
     async def test_delete_student_success(self):
@@ -773,7 +773,7 @@ class TestStudentMeRouter:
             "/api/students/me",
             json=updated_data.model_dump(mode="json"),
         )
-        assert_res_failure(response, StudentConflictException(other_student.phone_number))
+        assert_res_failure(response, StudentConflictException(updated_data.phone_number or ""))
 
     @pytest.mark.asyncio
     async def test_get_me_parties_empty(self, current_student: StudentEntity):

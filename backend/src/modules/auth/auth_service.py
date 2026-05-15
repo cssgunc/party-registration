@@ -1,11 +1,12 @@
 import hashlib
 from datetime import UTC, datetime, timedelta
+from typing import Literal
 from uuid import uuid4
 
 import jwt
 from fastapi import Depends
 from pydantic import TypeAdapter
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.config import env
@@ -55,29 +56,13 @@ class AuthService:
         return hashlib.sha256(jti.encode()).hexdigest()
 
     # JWT Operations (instance methods)
-    def create_account_access_token(self, account: AccountDto) -> tuple[str, datetime]:
-        """Create a JWT access token for a university account."""
+    def create_access_token(self, account: AccountDto | PoliceAccountDto) -> tuple[str, datetime]:
         expires_delta = timedelta(minutes=env.ACCESS_TOKEN_EXPIRE_MINUTES)
         expires_at = datetime.now(UTC) + expires_delta
 
         payload = AccessTokenPayload(
             sub=str(account.id),
             role=account.role.value,
-            exp=expires_at,
-            iat=datetime.now(UTC),
-        )
-
-        token = jwt.encode(payload.model_dump(), env.JWT_SECRET_KEY, algorithm=env.JWT_ALGORITHM)
-        return token, expires_at
-
-    def create_police_access_token(self, police: PoliceAccountDto) -> tuple[str, datetime]:
-        """Create a JWT access token for a police account."""
-        expires_delta = timedelta(minutes=env.ACCESS_TOKEN_EXPIRE_MINUTES)
-        expires_at = datetime.now(UTC) + expires_delta
-
-        payload = AccessTokenPayload(
-            sub=str(police.id),
-            role=police.role.value,
             exp=expires_at,
             iat=datetime.now(UTC),
         )
@@ -94,10 +79,6 @@ class AuthService:
                 algorithms=[env.JWT_ALGORITHM],
             )
             return TypeAdapter(AccessTokenPayload).validate_python(payload)
-        except jwt.ExpiredSignatureError as e:
-            raise CredentialsException() from e
-        except jwt.InvalidTokenError as e:
-            raise CredentialsException() from e
         except Exception as e:
             raise CredentialsException() from e
 
@@ -148,7 +129,43 @@ class AuthService:
 
         return token, expires_at
 
-    async def validate_refresh_token(self, token: str) -> tuple[int, str]:
+    async def revoke_refresh_token(self, token: str) -> None:
+        """Revoke a refresh token by removing it from the database allow-list."""
+        try:
+            payload = jwt.decode(
+                token,
+                env.REFRESH_TOKEN_SECRET_KEY,
+                algorithms=[env.JWT_ALGORITHM],
+                options={"verify_exp": False},
+            )
+            jti = payload.get("jti")
+            if jti:
+                token_hash = self._hash_token_id(jti)
+                await self.session.execute(
+                    delete(RefreshTokenEntity).where(RefreshTokenEntity.token_hash == token_hash)
+                )
+                await self.session.commit()
+        except jwt.InvalidTokenError:
+            pass
+
+    # High-Level Operations
+    async def exchange_for_tokens(self, account: AccountDto | PoliceAccountDto) -> TokensDto:
+        access_token, access_expires = self.create_access_token(account)
+        kwargs = (
+            {"police_id": account.id}
+            if isinstance(account, PoliceAccountDto)
+            else {"account_id": account.id}
+        )
+        refresh_token, refresh_expires = await self.create_refresh_token(**kwargs)
+
+        return TokensDto(
+            access_token=access_token,
+            access_token_expires=access_expires,
+            refresh_token=refresh_token,
+            refresh_token_expires=refresh_expires,
+        )
+
+    async def validate_refresh_token(self, token: str) -> tuple[int, Literal["account", "police"]]:
         """
         Validate a refresh token against the database allow-list.
 
@@ -162,9 +179,7 @@ class AuthService:
             payload = jwt.decode(
                 token, env.REFRESH_TOKEN_SECRET_KEY, algorithms=[env.JWT_ALGORITHM]
             )
-        except jwt.ExpiredSignatureError as e:
-            raise InvalidRefreshTokenException() from e
-        except jwt.InvalidTokenError as e:
+        except (jwt.ExpiredSignatureError, jwt.InvalidTokenError) as e:
             raise InvalidRefreshTokenException() from e
 
         jti = payload.get("jti")
@@ -191,62 +206,15 @@ class AuthService:
             return refresh_token_entity.account_id, "account"
         raise InvalidRefreshTokenException()
 
-    async def revoke_refresh_token(self, token: str) -> None:
-        """Revoke a refresh token by removing it from the database allow-list."""
-        try:
-            payload = jwt.decode(
-                token,
-                env.REFRESH_TOKEN_SECRET_KEY,
-                algorithms=[env.JWT_ALGORITHM],
-                options={"verify_exp": False},
-            )
-            jti = payload.get("jti")
-            if jti:
-                token_hash = self._hash_token_id(jti)
-                result = await self.session.execute(
-                    select(RefreshTokenEntity).where(RefreshTokenEntity.token_hash == token_hash)
-                )
-                refresh_token_entity = result.scalar_one_or_none()
-                if refresh_token_entity:
-                    await self.session.delete(refresh_token_entity)
-                    await self.session.commit()
-        except jwt.InvalidTokenError:
-            pass
-
-    # High-Level Operations
-    async def exchange_account_for_tokens(self, account: AccountDto) -> TokensDto:
-        """Exchange an account for a token pair (access + refresh)."""
-        access_token, access_expires = self.create_account_access_token(account)
-        refresh_token, refresh_expires = await self.create_refresh_token(account_id=account.id)
-
-        return TokensDto(
-            access_token=access_token,
-            access_token_expires=access_expires,
-            refresh_token=refresh_token,
-            refresh_token_expires=refresh_expires,
-        )
-
-    async def exchange_police_for_tokens(self, police: PoliceAccountDto) -> TokensDto:
-        """Exchange a police account for a token pair (access + refresh)."""
-        access_token, access_expires = self.create_police_access_token(police)
-        refresh_token, refresh_expires = await self.create_refresh_token(police_id=police.id)
-
-        return TokensDto(
-            access_token=access_token,
-            access_token_expires=access_expires,
-            refresh_token=refresh_token,
-            refresh_token_expires=refresh_expires,
-        )
-
     async def refresh_access_token(self, refresh_token: str) -> AccessTokenDto:
         """Refresh an access token using a valid refresh token."""
         token_id, role = await self.validate_refresh_token(refresh_token)
 
         if role == "police":
             police = await self.police_service.get_police_by_id(token_id)
-            access_token, access_expires = self.create_police_access_token(police)
+            access_token, access_expires = self.create_access_token(police)
         else:
             account = await self.account_service.get_account_by(id=token_id)
-            access_token, access_expires = self.create_account_access_token(account)
+            access_token, access_expires = self.create_access_token(account)
 
         return AccessTokenDto(access_token=access_token, access_token_expires=access_expires)

@@ -10,7 +10,6 @@ from src.modules.student.student_model import ContactPreference, SelfUpdateStude
 from src.modules.student.student_service import (
     ResidenceAlreadyChosenException,
     StudentConflictException,
-    StudentInfoNotProvidedException,
     StudentNotFoundException,
     StudentService,
 )
@@ -36,11 +35,6 @@ class TestStudentService:
         self.student_service = student_service
 
     @pytest.mark.asyncio
-    async def test_get_students_empty(self):
-        students = await self.student_service.get_students()
-        assert len(students) == 0
-
-    @pytest.mark.asyncio
     async def test_multiple_null_phone_numbers_do_not_conflict(self) -> None:
         """MySQL allows multiple NULLs in a UNIQUE index natively — no filtered index needed.
         Multiple unonboarded students (null phone_number) must coexist without conflict."""
@@ -54,16 +48,6 @@ class TestStudentService:
         student2 = await self.student_service.get_student_by_id(account2.id)
         assert student1.phone_number is None
         assert student2.phone_number is None
-
-    @pytest.mark.asyncio
-    async def test_get_students(self):
-        students = await self.student_utils.create_many(i=3)
-
-        fetched = await self.student_service.get_students()
-        assert len(fetched) == 3
-
-        for s, f in zip(students, fetched, strict=False):
-            self.student_utils.assert_matches(s, f)
 
     @pytest.mark.asyncio
     async def test_get_student_by_id(self):
@@ -251,35 +235,6 @@ class TestStudentService:
         updated = await self.student_service.update_student(student_entity.account_id, update_data)
 
         self.student_utils.assert_matches(updated, update_data)
-
-    @pytest.mark.asyncio
-    async def test_assert_student_entity_exists_raises_when_no_entity(self):
-        """assert_student_entity_exists raises StudentInfoNotProvidedException when no entity."""
-        account = await self.account_utils.create_one(role=AccountRole.STUDENT.value)
-
-        with pytest.raises(StudentInfoNotProvidedException):
-            await self.student_service.assert_student_entity_exists(account.id)
-
-    @pytest.mark.asyncio
-    async def test_assert_student_entity_exists_passes_when_entity_present(self):
-        """assert_student_entity_exists does not raise when Student entity exists."""
-        student_entity = await self.student_utils.create_one()
-
-        # Should not raise
-        await self.student_service.assert_student_entity_exists(student_entity.account_id)
-
-    @pytest.mark.asyncio
-    async def test_assert_student_entity_exists_raises_when_null_info(
-        self, test_session: AsyncSession
-    ):
-        """assert_student_entity_exists raises when entity exists but phone/preference are null."""
-        account = await self.account_utils.create_one(role=AccountRole.STUDENT.value)
-        entity = StudentEntity(account_id=account.id)
-        test_session.add(entity)
-        await test_session.commit()
-
-        with pytest.raises(StudentInfoNotProvidedException):
-            await self.student_service.assert_student_entity_exists(account.id)
 
     @pytest.mark.asyncio
     async def test_ensure_student_entity_exists_creates_entity(self, test_session: AsyncSession):

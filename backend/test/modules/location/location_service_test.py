@@ -31,12 +31,6 @@ class TestLocationServiceCRUD:
         self.location_service = location_service
 
     @pytest.mark.asyncio
-    async def test_get_locations_empty(self):
-        """Test getting all locations when none exist"""
-        locations = await self.location_service.get_locations()
-        assert locations == []
-
-    @pytest.mark.asyncio
     async def test_create_location(self):
         """Test creating a new location"""
         data = await self.location_utils.next_data()
@@ -65,17 +59,6 @@ class TestLocationServiceCRUD:
 
         with pytest.raises(LocationConflictException):
             await self.location_service.create_location(data)
-
-    @pytest.mark.asyncio
-    async def test_get_locations(self):
-        """Test getting all locations"""
-        locations = await self.location_utils.create_many(i=3)
-
-        fetched = await self.location_service.get_locations()
-
-        assert len(fetched) == 3
-        for loc, f in zip(locations, fetched, strict=False):
-            self.location_utils.assert_matches(loc, f)
 
     @pytest.mark.asyncio
     async def test_get_location_by_id(self):
@@ -303,32 +286,6 @@ class TestLocationServiceWithIncidents:
         # Verify incidents are retained
         assert len(updated.incidents) == 1
         self.incident_utils.assert_matches(updated.incidents[0], incident)
-
-    @pytest.mark.asyncio
-    async def test_get_locations_includes_incidents(self):
-        """Test that getting all locations includes their incidents."""
-        location1, location2 = await self.location_utils.create_many(i=2)
-
-        # Add incidents to both locations
-        incident1 = await self.incident_utils.create_one(location_id=location1.id)
-        incident2 = await self.incident_utils.create_one(location_id=location2.id)
-
-        # Fetch all locations
-        fetched_locations = await self.location_service.get_locations()
-
-        # Find the locations by id
-        loc1 = next((loc for loc in fetched_locations if loc.id == location1.id), None)
-        loc2 = next((loc for loc in fetched_locations if loc.id == location2.id), None)
-
-        assert loc1 is not None
-        assert loc2 is not None
-
-        # Verify incidents are included
-        assert len(loc1.incidents) == 1
-        self.incident_utils.assert_matches(loc1.incidents[0], incident1)
-
-        assert len(loc2.incidents) == 1
-        self.incident_utils.assert_matches(loc2.incidents[0], incident2)
 
 
 class TestLocationServiceGoogleMapsAutocomplete:

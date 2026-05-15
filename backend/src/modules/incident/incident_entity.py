@@ -42,6 +42,13 @@ class IncidentEntity(MappedAsDataclass, EntityBase):
             reference_id=data.reference_id,
         )
 
+    def set_from_data(self, data: IncidentData) -> None:
+        self.location_id = data.location_id
+        self.incident_datetime = data.incident_datetime
+        self.severity = data.severity
+        self.description = data.description
+        self.reference_id = data.reference_id
+
     def to_dto(self) -> IncidentDto:
         """Convert entity to model."""
         # Ensure incident_datetime is timezone-aware

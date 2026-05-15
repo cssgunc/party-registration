@@ -31,24 +31,24 @@ class TestAuthService:
     # ========================= JWT Creation Tests =========================
 
     @pytest.mark.asyncio
-    async def test_create_account_access_token(self, account_utils: AccountTestUtils) -> None:
+    async def test_create_access_token_account(self, account_utils: AccountTestUtils) -> None:
         """Test creating access token for account."""
         account_entity = await account_utils.create_one()
         account = account_entity.to_dto()
 
-        token, expires_at = self.auth_service.create_account_access_token(account)
+        token, expires_at = self.auth_service.create_access_token(account)
 
         payload = self.auth_utils.decode_token(token)
         self.auth_utils.assert_account_token_payload(payload, account)
         self.auth_utils.assert_expiration_approx(expires_at, env.ACCESS_TOKEN_EXPIRE_MINUTES * 60)
 
     @pytest.mark.asyncio
-    async def test_create_police_access_token(self, police_utils: PoliceTestUtils) -> None:
+    async def test_create_access_token_police(self, police_utils: PoliceTestUtils) -> None:
         """Test creating access token for police includes police id as sub."""
         police_entity = await police_utils.create_one()
         police = police_entity.to_dto()
 
-        token, expires_at = self.auth_service.create_police_access_token(police)
+        token, expires_at = self.auth_service.create_access_token(police)
 
         payload = self.auth_utils.decode_token(token)
         self.auth_utils.assert_police_token_payload(payload, police)
@@ -281,12 +281,12 @@ class TestAuthService:
     # ========================= High-Level Operations Tests =========================
 
     @pytest.mark.asyncio
-    async def test_exchange_account_for_tokens(self, account_utils: AccountTestUtils) -> None:
+    async def test_exchange_for_tokens_account(self, account_utils: AccountTestUtils) -> None:
         """Test exchanging account for token pair."""
         account_entity = await account_utils.create_one()
         account = account_entity.to_dto()
 
-        tokens = await self.auth_service.exchange_account_for_tokens(account)
+        tokens = await self.auth_service.exchange_for_tokens(account)
 
         access_payload = self.auth_utils.decode_token(tokens.access_token)
         self.auth_utils.assert_account_token_payload(access_payload, account)
@@ -297,12 +297,12 @@ class TestAuthService:
         assert refresh_payload["sub"] == str(account.id)
 
     @pytest.mark.asyncio
-    async def test_exchange_police_for_tokens(self, police_utils: PoliceTestUtils) -> None:
+    async def test_exchange_for_tokens_police(self, police_utils: PoliceTestUtils) -> None:
         """Test exchanging police account for token pair includes police id as sub."""
         police_entity = await police_utils.create_one()
         police = police_entity.to_dto()
 
-        tokens = await self.auth_service.exchange_police_for_tokens(police)
+        tokens = await self.auth_service.exchange_for_tokens(police)
 
         access_payload = self.auth_utils.decode_token(tokens.access_token)
         self.auth_utils.assert_police_token_payload(access_payload, police)

@@ -75,7 +75,7 @@ class PoliceService:
             raise PoliceNotFoundException(police_id)
         return police
 
-    async def _get_police_entity_by_email(self, email: str) -> PoliceEntity | None:
+    async def _find_police_entity_by_email(self, email: str) -> PoliceEntity | None:
         result = await self.session.execute(
             select(PoliceEntity).where(func.lower(PoliceEntity.email) == email.lower())
         )
@@ -125,7 +125,7 @@ class PoliceService:
             await self.session.commit()
         except IntegrityError as e:
             await self.session.rollback()
-            existing = await self._get_police_entity_by_email(email)
+            existing = await self._find_police_entity_by_email(email)
             if existing is None or existing.is_verified:
                 raise PoliceConflictException(email) from e
             existing.hashed_password = hashed_password
@@ -136,7 +136,7 @@ class PoliceService:
         await self.send_verification_email(email, token)
 
     async def retry_verification(self, email: str) -> None:
-        police = await self._get_police_entity_by_email(email)
+        police = await self._find_police_entity_by_email(email)
         if police is None or police.is_verified:
             # To prevent user enumeration, we return success even if the email doesn't exist or is
             # already verified.
@@ -198,7 +198,7 @@ class PoliceService:
         police = await self._get_police_entity_by_id(police_id)
 
         if email.lower() != police.email.lower():
-            existing = await self._get_police_entity_by_email(email)
+            existing = await self._find_police_entity_by_email(email)
             if existing is not None:
                 raise PoliceConflictException(email)
 
@@ -225,7 +225,7 @@ class PoliceService:
 
     async def verify_police_credentials(self, email: str, password: str) -> PoliceAccountDto:
         """Verify police credentials. Never reveals whether the account exists."""
-        police = await self._get_police_entity_by_email(email)
+        police = await self._find_police_entity_by_email(email)
         if police is None or not verify_password(password, police.hashed_password):
             raise CredentialsException()
         if not police.is_verified:

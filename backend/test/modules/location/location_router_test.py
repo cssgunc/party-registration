@@ -335,7 +335,7 @@ class TestLocationCRUDRouter:
         )
 
         response = await self.admin_client.post("/api/locations", json=request_data)
-        assert_res_failure(response, LocationConflictException(location.google_place_id))
+        assert_res_failure(response, LocationConflictException(location_data.google_place_id))
 
     @pytest.mark.asyncio
     async def test_update_location_success(self):
@@ -388,7 +388,7 @@ class TestLocationCRUDRouter:
         response = await self.admin_client.put(
             f"/api/locations/{locations[1].id}", json=request_data
         )
-        assert_res_failure(response, LocationConflictException(locations[0].google_place_id))
+        assert_res_failure(response, LocationConflictException(update_data.google_place_id))
 
     @pytest.mark.asyncio
     async def test_delete_location_success(self):

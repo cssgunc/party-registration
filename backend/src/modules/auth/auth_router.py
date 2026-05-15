@@ -70,7 +70,7 @@ async def exchange_account_data_for_tokens(
         await student_service.ensure_student_entity_exists(account.id)
     else:
         account = await account_service.provision_staff_account(data)
-    return await auth_service.exchange_account_for_tokens(account)
+    return await auth_service.exchange_for_tokens(account)
 
 
 @router.post("/police/signup", status_code=status.HTTP_204_NO_CONTENT)
@@ -124,7 +124,7 @@ async def police_login(
     police = await police_service.verify_police_credentials(credentials.email, credentials.password)
 
     # Generate token pair
-    return await auth_service.exchange_police_for_tokens(police)
+    return await auth_service.exchange_for_tokens(police)
 
 
 @router.post("/refresh")
