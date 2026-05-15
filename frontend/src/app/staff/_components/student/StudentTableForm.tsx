@@ -11,6 +11,11 @@ import {
   FieldLabel,
   FieldSet,
 } from "@/components/ui/field";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -23,6 +28,7 @@ import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { ResidenceDto } from "@/lib/api/student/student.types";
 import { formatPhoneNumberInput, phoneNumberSchema } from "@/lib/utils";
 import { addBusinessDays, isAfter, startOfDay } from "date-fns";
+import { Info } from "lucide-react";
 import { useState } from "react";
 import * as z from "zod";
 
@@ -274,7 +280,21 @@ export default function StudentTableForm({
           </Field>
 
           <Field data-invalid={!!errors.last_registered}>
-            <FieldLabel htmlFor="party-date">Last registered</FieldLabel>
+            <FieldLabel
+              htmlFor="party-date"
+              className="flex items-center gap-1"
+            >
+              Last Registered
+              <HoverCard>
+                <HoverCardTrigger asChild>
+                  <Info className="h-3.5 w-3.5 cursor-pointer text-muted-foreground ml-1" />
+                </HoverCardTrigger>
+                <HoverCardContent className="max-w-64">
+                  A student is considered registered if they have a last
+                  registered date within the current academic year.
+                </HoverCardContent>
+              </HoverCard>
+            </FieldLabel>
             <DatePicker
               id="last-registered"
               value={formData.last_registered}
