@@ -1,10 +1,10 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { hasActiveHold } from "@/lib/api/location/location.service";
+import { clientEnv } from "@/lib/config/env.client";
 import { isFromThisSchoolYear } from "@/lib/utils";
 import { format } from "date-fns";
 import { AlertTriangleIcon, CheckCircle, ExternalLink } from "lucide-react";
-import Link from "next/link";
 
 type CompletionCardProps = {
   last_registered: Date | null | undefined;
@@ -46,6 +46,9 @@ export default function StatusComponent({
   const isCompleted = isFromThisSchoolYear(last_registered);
   const hasResidenceHold = hasActiveHold(hold_expiration);
 
+  const expiresLabel = format(clientEnv.academicYearSwitchDate, "MMMM do");
+  const courseLink = clientEnv.NEXT_PUBLIC_COURSE_LINK;
+
   return (
     <Card className="p-4 rounded-md shadow-sm w-full bg-card">
       <CardContent className="p-0 flex flex-col gap-1 text-sm">
@@ -69,7 +72,7 @@ export default function StatusComponent({
                 </span>
               </p>
             </div>
-            <p className="italic content">Expires August 1st</p>
+            <p className="italic content">Expires {expiresLabel}</p>
           </>
         ) : (
           <div className="content">
@@ -77,16 +80,15 @@ export default function StatusComponent({
               <AlertTriangleIcon className="size-4 mb-0.5" />
               <p>Course not completed</p>
             </div>
-            <div className="flex items-center">
-              <a href="#" className="content underline ml-6">
-                Schedule a meeting
-              </a>
-              <Link href="/">
-                {" "}
-                {/*TODO add link to course information */}
-                <ExternalLink className="size-4 ml-2" />
-              </Link>
-            </div>
+            <a
+              href={courseLink}
+              className="content underline ml-6 inline-flex items-center"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Schedule a meeting
+              <ExternalLink className="size-4 ml-2" />
+            </a>
           </div>
         )}
       </CardContent>

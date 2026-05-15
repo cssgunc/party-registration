@@ -1,6 +1,7 @@
 "use client";
 
 import { isStudentAreaPath } from "@/lib/auth/route-access";
+import { clientEnv } from "@/lib/config/env.client";
 import { Heart } from "lucide-react";
 import { usePathname } from "next/navigation";
 
@@ -24,8 +25,11 @@ export default function Footer() {
       {showContact ? (
         <div>
           <span>Contact: </span>
-          <a href="mailto:offcampus@unc.edu" className="hover:underline">
-            offcampus@unc.edu
+          <a
+            href={`mailto:${clientEnv.NEXT_PUBLIC_CONTACT_EMAIL}`}
+            className="hover:underline"
+          >
+            {clientEnv.NEXT_PUBLIC_CONTACT_EMAIL}
           </a>
         </div>
       ) : (

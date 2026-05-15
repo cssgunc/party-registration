@@ -2,8 +2,11 @@
 Reads configuration from environment variables or .env file.
 """
 
+import re
+from datetime import date
 from pathlib import Path
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -54,6 +57,31 @@ class Config(BaseSettings):
     CHPD_EMAIL_DOMAIN: str = "chapelhillnc.gov"
     EMAIL_VERIFICATION_TOKEN_EXPIRE_HOURS: int = 24
     INVITE_TOKEN_EXPIRY_HOURS: int = 48
+
+    # Academic year switch date in MM-DD format. Course completion and residence
+    # registration roll over on this date each year.
+    ACADEMIC_YEAR_SWITCH_DATE: str = "08-01"
+
+    @field_validator("ACADEMIC_YEAR_SWITCH_DATE")
+    @classmethod
+    def _validate_academic_year_switch_date(cls, v: str) -> str:
+        if not re.fullmatch(r"\d{2}-\d{2}", v):
+            raise ValueError("ACADEMIC_YEAR_SWITCH_DATE must be MM-DD format (e.g. 08-01)")
+        month, day = (int(part) for part in v.split("-"))
+        try:
+            # Use a non-leap year so Feb 29 is rejected — date must be valid every year.
+            date(2001, month, day)
+        except ValueError as e:
+            raise ValueError(f"ACADEMIC_YEAR_SWITCH_DATE is not a valid calendar date: {e}") from e
+        return v
+
+    @property
+    def academic_year_switch_month(self) -> int:
+        return int(self.ACADEMIC_YEAR_SWITCH_DATE.split("-")[0])
+
+    @property
+    def academic_year_switch_day(self) -> int:
+        return int(self.ACADEMIC_YEAR_SWITCH_DATE.split("-")[1])
 
 
 env = Config()  # pyright: ignore[reportCallIssue]

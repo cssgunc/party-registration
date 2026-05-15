@@ -5,6 +5,18 @@ const notPlaceholder = (v: string) => v !== "REPLACE_ME";
 // Falls back to undefined for empty strings set when passing as Docker Args
 const emptyToUndefined = (v: unknown) => (v === "" ? undefined : v);
 
+// MM-DD validator: enforces zero-padded month/day and a real calendar date
+// (rejects e.g. 02-30). Uses a non-leap year so Feb 29 is rejected too —
+// the switch date should be valid every year.
+const mmDd = z
+  .string()
+  .regex(/^\d{2}-\d{2}$/, "Must be MM-DD format (e.g. 08-01)")
+  .refine((s) => {
+    const [m, d] = s.split("-").map(Number);
+    const probe = new Date(2001, m - 1, d);
+    return probe.getMonth() === m - 1 && probe.getDate() === d;
+  }, "Must be a valid calendar date (non-leap year)");
+
 const schema = z.object({
   NEXT_PUBLIC_API_BASE_URL: z.url(),
   NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: z
@@ -33,6 +45,15 @@ const schema = z.object({
     emptyToUndefined,
     z.coerce.number().positive().default(0.1)
   ),
+  NEXT_PUBLIC_CONTACT_EMAIL: z.preprocess(
+    emptyToUndefined,
+    z.email().default("offcampus@unc.edu")
+  ),
+  NEXT_PUBLIC_COURSE_LINK: z.url(),
+  NEXT_PUBLIC_ACADEMIC_YEAR_SWITCH_DATE: z.preprocess(
+    emptyToUndefined,
+    mmDd.default("08-01")
+  ),
 });
 
 // Explicitly reference each var so Next.js's static analyzer inlines them into
@@ -47,6 +68,10 @@ const result = schema.safeParse({
   NEXT_PUBLIC_CHPD_EMAIL_DOMAIN: process.env.NEXT_PUBLIC_CHPD_EMAIL_DOMAIN,
   NEXT_PUBLIC_PARTY_SEARCH_RADIUS_MILES:
     process.env.NEXT_PUBLIC_PARTY_SEARCH_RADIUS_MILES,
+  NEXT_PUBLIC_CONTACT_EMAIL: process.env.NEXT_PUBLIC_CONTACT_EMAIL,
+  NEXT_PUBLIC_COURSE_LINK: process.env.NEXT_PUBLIC_COURSE_LINK,
+  NEXT_PUBLIC_ACADEMIC_YEAR_SWITCH_DATE:
+    process.env.NEXT_PUBLIC_ACADEMIC_YEAR_SWITCH_DATE,
 });
 if (!result.success) {
   const issues = result.error.issues
@@ -57,4 +82,14 @@ if (!result.success) {
   );
 }
 
-export const clientEnv = result.data;
+const [switchMonth, switchDay] =
+  result.data.NEXT_PUBLIC_ACADEMIC_YEAR_SWITCH_DATE.split("-").map(Number);
+
+export const clientEnv = {
+  ...result.data,
+  // Date object for THIS year's academic year switch. To get a different
+  // year's switch, swap in the year: `new Date(otherYear, d.getMonth(), d.getDate())`.
+  get academicYearSwitchDate(): Date {
+    return new Date(new Date().getFullYear(), switchMonth - 1, switchDay);
+  },
+};

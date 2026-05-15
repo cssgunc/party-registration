@@ -1,7 +1,8 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any, Literal, TypedDict, Unpack, override
 
 from sqlalchemy.ext.asyncio import AsyncSession
+from src.core.utils.date_utils import current_academic_year_start
 from src.modules.student.student_entity import StudentEntity
 from src.modules.student.student_model import (
     ContactPreference,
@@ -125,10 +126,7 @@ class StudentTestUtils(
 
     def get_old_academic_year_date(self) -> datetime:
         """Get a date from the previous academic year."""
-        now = datetime.now(UTC)
-        if now.month >= 8:
-            return datetime(now.year - 1, 7, 1, tzinfo=UTC)
-        return datetime(now.year - 2, 7, 1, tzinfo=UTC)
+        return current_academic_year_start() - timedelta(days=1)
 
     async def set_student_residence(
         self, student: StudentEntity, location_id: int, chosen_date: datetime | None = None
