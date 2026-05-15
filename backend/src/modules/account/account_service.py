@@ -9,7 +9,7 @@ from src.core.config import env
 from src.core.database import get_session
 from src.core.exceptions import ConflictException, ForbiddenException, NotFoundException
 from src.core.utils.email_utils import EmailService
-from src.core.utils.excel_utils import ExcelExporter
+from src.core.utils.excel_utils import export_to_excel
 from src.core.utils.query_utils import (
     ListQueryParams,
     QueryFieldSet,
@@ -175,43 +175,35 @@ class AccountService:
         return PaginatedAccountsResponse(**result.model_dump())
 
     def export_accounts_to_excel(self, accounts_response: PaginatedAccountsResponse) -> bytes:
-        headers = ["Onyen", "Email", "First Name", "Last Name", "PID", "Role"]
-        exporter = ExcelExporter(sheet_title=f"Accounts {datetime.now(UTC).strftime('%Y-%m-%d')}")
-        exporter.set_headers(headers)
-        for account in accounts_response.items:
-            exporter.add_row(
-                [
-                    account.onyen,
-                    account.email,
-                    account.first_name,
-                    account.last_name,
-                    account.pid,
-                    account.role.value.capitalize(),
-                ]
-            )
-        return exporter.to_bytes()
+        return export_to_excel(
+            resource_name="Accounts",
+            field_map={
+                "Onyen": lambda a: a.onyen,
+                "Email": lambda a: a.email,
+                "First Name": lambda a: a.first_name,
+                "Last Name": lambda a: a.last_name,
+                "PID": lambda a: a.pid,
+                "Role": lambda a: a.role.value.capitalize(),
+            },
+            items=accounts_response.items,
+        )
 
     def export_aggregate_accounts_to_excel(
         self, accounts_response: PaginatedAggregateAccountsResponse
     ) -> bytes:
-        headers = ["Email", "First Name", "Last Name", "Onyen", "PID", "Role", "Status"]
-        exporter = ExcelExporter(
-            sheet_title=f"Aggregate Accounts {datetime.now(UTC).strftime('%Y-%m-%d')}"
+        return export_to_excel(
+            resource_name="Aggregate Accounts",
+            field_map={
+                "Email": lambda a: a.email,
+                "First Name": lambda a: a.first_name,
+                "Last Name": lambda a: a.last_name,
+                "Onyen": lambda a: a.onyen,
+                "PID": lambda a: a.pid,
+                "Role": lambda a: a.role.replace("_", " ").title(),
+                "Status": lambda a: a.status.value.capitalize(),
+            },
+            items=accounts_response.items,
         )
-        exporter.set_headers(headers)
-        for account in accounts_response.items:
-            exporter.add_row(
-                [
-                    account.email,
-                    account.first_name,
-                    account.last_name,
-                    account.onyen,
-                    account.pid,
-                    account.role.replace("_", " ").title(),
-                    account.status.value.capitalize(),
-                ]
-            )
-        return exporter.to_bytes()
 
     async def get_accounts_by_roles(
         self, roles: list[AccountRole] | None = None

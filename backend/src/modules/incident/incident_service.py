@@ -1,4 +1,3 @@
-from datetime import UTC, datetime
 from typing import ClassVar
 
 from fastapi import Depends
@@ -7,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from src.core.database import get_session
 from src.core.exceptions import NotFoundException
-from src.core.utils.excel_utils import ExcelExporter
+from src.core.utils.excel_utils import export_to_excel
 from src.core.utils.query_utils import (
     ListQueryParams,
     QueryFieldSet,
@@ -129,22 +128,18 @@ class IncidentService:
         return result.items
 
     def export_incidents_to_excel(self, incident_data: list[tuple[IncidentDto, str]]) -> bytes:
-        headers = ["Severity", "Address", "Date", "Time", "Description", "Reference ID"]
-        exporter = ExcelExporter(
-            sheet_title=f"Incidents {datetime.now(UTC).strftime('%Y-%m-%d')}"
-        ).set_headers(headers)
-        for incident, address in incident_data:
-            exporter.add_row(
-                [
-                    incident.severity.value.replace("_", " ").title(),
-                    address,
-                    incident.incident_datetime.strftime("%Y-%m-%d"),
-                    incident.incident_datetime.strftime("%-I:%M %p"),
-                    incident.description,
-                    incident.reference_id or None,
-                ]
-            )
-        return exporter.to_bytes()
+        return export_to_excel(
+            resource_name="Incidents",
+            field_map={
+                "Severity": lambda x: x[0].severity.value.replace("_", " ").title(),
+                "Address": lambda x: x[1],
+                "Date": lambda x: x[0].incident_datetime.strftime("%Y-%m-%d"),
+                "Time": lambda x: x[0].incident_datetime.strftime("%-I:%M %p"),
+                "Description": lambda x: x[0].description,
+                "Reference ID": lambda x: x[0].reference_id,
+            },
+            items=incident_data,
+        )
 
     async def get_incidents_by_location(self, location_id: int) -> list[IncidentDto]:
         """Get all incidents for a given location, ordered by incident datetime."""

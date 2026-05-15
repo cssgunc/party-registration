@@ -12,8 +12,8 @@ from src.core.config import env
 from src.core.database import get_session
 from src.core.exceptions import BadRequestException, NotFoundException
 from src.core.utils.date_utils import business_days_ahead, is_same_academic_year
-from src.core.utils.excel_utils import ExcelExporter
-from src.core.utils.phone_utils import digits_only
+from src.core.utils.excel_utils import export_to_excel
+from src.core.utils.phone_utils import digits_only, format_phone
 from src.core.utils.query_utils import (
     ListQueryParams,
     QueryFieldSet,
@@ -479,84 +479,66 @@ class PartyService:
         return c * r
 
     def export_parties_to_excel_police(self, parties_response: PaginatedPartiesResponse) -> bytes:
-        """Police format: 11 columns, full names, no residence."""
-        exporter = ExcelExporter(sheet_title=f"Parties {datetime.now(UTC).strftime('%Y-%m-%d')}")
-        exporter.set_headers(
-            [
-                "Address",
-                "Date of Party",
-                "Time of Party",
-                "Contact One Full Name",
-                "Contact One Email",
-                "Contact One Phone Number",
-                "Contact One Contact Preference",
-                "Contact Two Full Name",
-                "Contact Two Email",
-                "Contact Two Phone Number",
-                "Contact Two Contact Preference",
-            ]
+        return export_to_excel(
+            resource_name="Parties",
+            field_map={
+                "Address": lambda p: p.location.formatted_address,
+                "Date of Party": lambda p: p.party_datetime.strftime("%Y-%m-%d"),
+                "Time of Party": lambda p: p.party_datetime.strftime("%-I:%M %p"),
+                "Contact One Full Name": lambda p: (
+                    f"{p.contact_one.first_name} {p.contact_one.last_name}"
+                ),
+                "Contact One Email": lambda p: p.contact_one.email,
+                "Contact One Phone Number": lambda p: format_phone(
+                    p.contact_one.phone_number or ""
+                ),
+                "Contact One Contact Preference": lambda p: (
+                    p.contact_one.contact_preference.value.capitalize()
+                    if p.contact_one.contact_preference
+                    else None
+                ),
+                "Contact Two Full Name": lambda p: (
+                    f"{p.contact_two.first_name} {p.contact_two.last_name}"
+                ),
+                "Contact Two Email": lambda p: p.contact_two.email,
+                "Contact Two Phone Number": lambda p: format_phone(p.contact_two.phone_number),
+                "Contact Two Contact Preference": lambda p: (
+                    p.contact_two.contact_preference.value.capitalize()
+                ),
+            },
+            items=parties_response.items,
         )
-        for party in parties_response.items:
-            c1 = party.contact_one
-            c2 = party.contact_two
-            exporter.add_row(
-                [
-                    party.location.formatted_address,
-                    party.party_datetime.strftime("%Y-%m-%d"),
-                    party.party_datetime.strftime("%-I:%M %p"),
-                    f"{c1.first_name} {c1.last_name}",
-                    c1.email,
-                    ExcelExporter.format_phone(c1.phone_number or ""),
-                    c1.contact_preference.value.capitalize() if c1.contact_preference else None,
-                    f"{c2.first_name} {c2.last_name}",
-                    c2.email,
-                    ExcelExporter.format_phone(c2.phone_number),
-                    c2.contact_preference.value.capitalize(),
-                ]
-            )
-        return exporter.to_bytes()
 
     def export_parties_to_excel_staff(self, parties_response: PaginatedPartiesResponse) -> bytes:
-        """Staff/admin format: 14 columns, split names, includes residence."""
-        exporter = ExcelExporter(sheet_title=f"Parties {datetime.now(UTC).strftime('%Y-%m-%d')}")
-        exporter.set_headers(
-            [
-                "Address",
-                "Date of Party",
-                "Time of Party",
-                "Contact One First Name",
-                "Contact One Last Name",
-                "Contact One Email",
-                "Contact One Phone Number",
-                "Contact One Contact Preference",
-                "Contact One Residence",
-                "Contact Two First Name",
-                "Contact Two Last Name",
-                "Contact Two Email",
-                "Contact Two Phone Number",
-                "Contact Two Contact Preference",
-            ]
+        return export_to_excel(
+            resource_name="Parties",
+            field_map={
+                "Address": lambda p: p.location.formatted_address,
+                "Date of Party": lambda p: p.party_datetime.strftime("%Y-%m-%d"),
+                "Time of Party": lambda p: p.party_datetime.strftime("%-I:%M %p"),
+                "Contact One First Name": lambda p: p.contact_one.first_name,
+                "Contact One Last Name": lambda p: p.contact_one.last_name,
+                "Contact One Email": lambda p: p.contact_one.email,
+                "Contact One Phone Number": lambda p: format_phone(
+                    p.contact_one.phone_number or ""
+                ),
+                "Contact One Contact Preference": lambda p: (
+                    p.contact_one.contact_preference.value.capitalize()
+                    if p.contact_one.contact_preference
+                    else None
+                ),
+                "Contact One Residence": lambda p: (
+                    p.contact_one.residence.location.formatted_address
+                    if p.contact_one.residence
+                    else ""
+                ),
+                "Contact Two First Name": lambda p: p.contact_two.first_name,
+                "Contact Two Last Name": lambda p: p.contact_two.last_name,
+                "Contact Two Email": lambda p: p.contact_two.email,
+                "Contact Two Phone Number": lambda p: format_phone(p.contact_two.phone_number),
+                "Contact Two Contact Preference": lambda p: (
+                    p.contact_two.contact_preference.value.capitalize()
+                ),
+            },
+            items=parties_response.items,
         )
-        for party in parties_response.items:
-            c1 = party.contact_one
-            c2 = party.contact_two
-            residence_address = c1.residence.location.formatted_address if c1.residence else ""
-            exporter.add_row(
-                [
-                    party.location.formatted_address,
-                    party.party_datetime.strftime("%Y-%m-%d"),
-                    party.party_datetime.strftime("%-I:%M %p"),
-                    c1.first_name,
-                    c1.last_name,
-                    c1.email,
-                    ExcelExporter.format_phone(c1.phone_number or ""),
-                    c1.contact_preference.value.capitalize() if c1.contact_preference else None,
-                    residence_address,
-                    c2.first_name,
-                    c2.last_name,
-                    c2.email,
-                    ExcelExporter.format_phone(c2.phone_number),
-                    c2.contact_preference.value.capitalize(),
-                ]
-            )
-        return exporter.to_bytes()
