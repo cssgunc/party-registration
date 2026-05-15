@@ -17,7 +17,7 @@ from src.core.exceptions import (
 )
 from src.core.utils.bcrypt_utils import hash_password, verify_password
 from src.core.utils.email_utils import EmailService
-from src.core.utils.excel_utils import ExcelExporter
+from src.core.utils.excel_utils import export_to_excel
 from src.core.utils.query_utils import (
     ListQueryParams,
     QueryFieldSet,
@@ -95,17 +95,16 @@ class PoliceService:
         return PaginatedPoliceResponse(**result.model_dump())
 
     def export_police_to_excel(self, police_response: PaginatedPoliceResponse) -> bytes:
-        headers = ["Email", "Role"]
-        exporter = ExcelExporter(sheet_title="Police Accounts")
-        exporter.set_headers(headers)
-        for police in police_response.items:
-            exporter.add_row(
-                [
-                    police.email,
-                    "Police Admin" if police.role == PoliceRole.POLICE_ADMIN else "Officer",
-                ]
-            )
-        return exporter.to_bytes()
+        return export_to_excel(
+            resource_name="Police Accounts",
+            field_map={
+                "Email": lambda p: p.email,
+                "Role": lambda p: "Police Admin"
+                if p.role == PoliceRole.POLICE_ADMIN
+                else "Officer",
+            },
+            items=police_response.items,
+        )
 
     async def signup_police(self, email: str, password: str) -> None:
         if not email.endswith(f"@{env.CHPD_EMAIL_DOMAIN}"):

@@ -1,6 +1,6 @@
 import asyncio
 from contextlib import contextmanager
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import ClassVar
 
 import googlemaps
@@ -17,7 +17,7 @@ from src.core.exceptions import (
     InternalServerException,
     NotFoundException,
 )
-from src.core.utils.excel_utils import ExcelExporter
+from src.core.utils.excel_utils import export_to_excel
 from src.core.utils.query_utils import (
     ListQueryParams,
     QueryFieldSet,
@@ -195,31 +195,22 @@ class LocationService:
         return PaginatedLocationResponse(**result.model_dump())
 
     def export_locations_to_excel(self, locations_response: PaginatedLocationResponse) -> bytes:
-        """Export locations to an Excel file."""
-        exporter = ExcelExporter(sheet_title=f"Locations {datetime.now(UTC).strftime('%Y-%m-%d')}")
-        exporter.set_headers(
-            ["Address", "Remote Warning Count", "In-Person Warning Count", "Citation Count"]
+        return export_to_excel(
+            resource_name="Locations",
+            field_map={
+                "Address": lambda loc: loc.formatted_address,
+                "Remote Warning Count": lambda loc: sum(
+                    1 for i in loc.incidents if i.severity == IncidentSeverity.REMOTE_WARNING
+                ),
+                "In-Person Warning Count": lambda loc: sum(
+                    1 for i in loc.incidents if i.severity == IncidentSeverity.IN_PERSON_WARNING
+                ),
+                "Citation Count": lambda loc: sum(
+                    1 for i in loc.incidents if i.severity == IncidentSeverity.CITATION
+                ),
+            },
+            items=locations_response.items,
         )
-
-        for location in locations_response.items:
-            remote_warning_count, in_person_warning_count, citation_count = 0, 0, 0
-            for incident in location.incidents:
-                match incident.severity:
-                    case IncidentSeverity.REMOTE_WARNING:
-                        remote_warning_count += 1
-                    case IncidentSeverity.IN_PERSON_WARNING:
-                        in_person_warning_count += 1
-                    case IncidentSeverity.CITATION:
-                        citation_count += 1
-            exporter.add_row(
-                [
-                    location.formatted_address,
-                    remote_warning_count,
-                    in_person_warning_count,
-                    citation_count,
-                ]
-            )
-        return exporter.to_bytes()
 
     async def get_location_by_id(self, location_id: int) -> LocationDto:
         location_entity = await self._get_location_entity_by_id(location_id)

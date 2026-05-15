@@ -9,8 +9,8 @@ from sqlalchemy.orm import selectinload
 from src.core.database import get_session
 from src.core.exceptions import BadRequestException, ConflictException, NotFoundException
 from src.core.utils.date_utils import current_academic_year_start, is_same_academic_year
-from src.core.utils.excel_utils import ExcelExporter
-from src.core.utils.phone_utils import digits_only
+from src.core.utils.excel_utils import export_to_excel
+from src.core.utils.phone_utils import digits_only, format_phone
 from src.core.utils.query_utils import (
     ListQueryParams,
     QueryFieldSet,
@@ -161,50 +161,25 @@ class StudentService:
         return PaginatedStudentsResponse(**result.model_dump())
 
     def export_students_to_excel(self, students_response: PaginatedStudentsResponse) -> bytes:
-        headers = [
-            "Onyen",
-            "PID",
-            "First Name",
-            "Last Name",
-            "Email",
-            "Phone Number",
-            "Contact Preference",
-            "Is Registered",
-            "Residence Address",
-        ]
-        exporter = ExcelExporter(sheet_title=f"Students {datetime.now(UTC).strftime('%Y-%m-%d')}")
-        exporter.set_headers(headers)
-        for student in students_response.items:
-            # Mirrors the UI checkbox: "Yes" if last_registered is set
-            # (cleared to None when unmarked via PATCH /students/{id}/is-registered)
-            is_registered = "Yes" if student.last_registered is not None else "No"
-            residence_address = (
-                student.residence.location.formatted_address
-                if student.residence is not None
-                else None
-            )
-            phone = (
-                ExcelExporter.format_phone(student.phone_number) if student.phone_number else None
-            )
-            contact_preference = (
-                student.contact_preference.value.capitalize()
-                if student.contact_preference
-                else None
-            )
-            exporter.add_row(
-                [
-                    student.onyen,
-                    student.pid,
-                    student.first_name,
-                    student.last_name,
-                    student.email,
-                    phone,
-                    contact_preference,
-                    is_registered,
-                    residence_address,
-                ]
-            )
-        return exporter.to_bytes()
+        return export_to_excel(
+            resource_name="Students",
+            field_map={
+                "Onyen": lambda s: s.onyen,
+                "PID": lambda s: s.pid,
+                "First Name": lambda s: s.first_name,
+                "Last Name": lambda s: s.last_name,
+                "Email": lambda s: s.email,
+                "Phone Number": lambda s: format_phone(s.phone_number),
+                "Contact Preference": lambda s: (
+                    s.contact_preference.value.capitalize() if s.contact_preference else None
+                ),
+                "Is Registered": lambda s: "Yes" if s.last_registered is not None else "No",
+                "Residence Address": lambda s: (
+                    s.residence.location.formatted_address if s.residence is not None else None
+                ),
+            },
+            items=students_response.items,
+        )
 
     async def get_student_by_id(self, account_id: int) -> StudentDto:
         student_entity = await self._get_student_entity_by_account_id(account_id)
