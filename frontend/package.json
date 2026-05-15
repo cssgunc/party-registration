@@ -52,6 +52,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/saml2-js": "^3.0.4",
+    "@typescript/native-preview": "^7.0.0-dev.20260514.1",
     "baseline-browser-mapping": "^2.9.19",
     "eslint": "^9",
     "eslint-config-next": "15.5.9",
