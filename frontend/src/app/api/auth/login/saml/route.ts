@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
   const origin = serverEnv.NEXTAUTH_URL;
   const errorUrl = (msg: string) =>
     NextResponse.redirect(
-      new URL(`/api/auth/error?error=${encodeURIComponent(msg)}`, origin),
+      new URL(`/auth-error?error=${encodeURIComponent(msg)}`, origin),
       { status: 303 }
     );
 
