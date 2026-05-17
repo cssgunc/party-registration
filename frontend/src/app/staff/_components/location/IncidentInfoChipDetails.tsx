@@ -11,7 +11,7 @@ import { IncidentDto, LocationDto } from "@/lib/api/location/location.types";
 import { PaginatedResponse } from "@/lib/shared";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { DeleteConfirmDialog } from "../shared/dialog/DeleteConfirmDialog";
 import { useSidebar } from "../shared/sidebar/SidebarContext";
 import IncidentSidebarCard from "./IncidentSidebarCard";
@@ -38,9 +38,9 @@ export default function IncidentInfoChipDetails({
     null
   );
 
-  const requestDelete = (incidentId: number) => {
+  const requestDelete = useCallback((incidentId: number) => {
     setConfirmStateDelete(incidentId);
-  };
+  }, []);
 
   const deleteMutation = useDeleteIncidentInLocation({
     onSuccess: () => {
@@ -54,9 +54,9 @@ export default function IncidentInfoChipDetails({
     deleteMutation.mutate(confirmStateDelete);
   };
 
-  const handleEdit = (incident: IncidentDto) => {
+  const handleEdit = useCallback((incident: IncidentDto) => {
     setModalState({ mode: "edit", incident });
-  };
+  }, []);
 
   const handleAdd = () => {
     setModalState({ mode: "create" });
@@ -92,7 +92,7 @@ export default function IncidentInfoChipDetails({
     openSidebar(
       `incidents-${location.id}`,
       "Incidents at Location",
-      "Warnings & Citations go here",
+      "View existing incidents, or add a new one",
       <IncidentInfoChipDetails
         incidents={location.incidents}
         location={location}
@@ -124,9 +124,6 @@ export default function IncidentInfoChipDetails({
 
   return (
     <div className="">
-      <p className="text-sm text-gray-500 pb-4">
-        View existing incidents, or add a new one.
-      </p>
       <div>
         {incidents.map((incident) => (
           <IncidentSidebarCard

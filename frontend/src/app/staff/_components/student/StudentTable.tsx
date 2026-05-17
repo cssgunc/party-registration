@@ -77,10 +77,8 @@ export const StudentTable = () => {
           onSubmit={(data) => handleEditSubmit(editingStudent, data)}
           submissionError={getErrorMessage(error, {
             status: {
-              403: "You do not have permission to perform this action.",
               404: "Student not found.",
               409: "This phone number is taken by another student.",
-              500: "Server error. Please try again later.",
             },
             fallback: "Operation failed.",
           })}

@@ -1,10 +1,10 @@
+import apiClient from "@/lib/api/apiClient";
 import { downloadExcelFile } from "@/lib/api/shared/download-file";
 import {
   ListQueryParams,
   ServerTableParams,
   toAxiosParams,
 } from "@/lib/api/shared/query-params";
-import apiClient from "@/lib/network/apiClient";
 import { PaginatedResponse } from "@/lib/shared";
 import { AxiosInstance } from "axios";
 import type {

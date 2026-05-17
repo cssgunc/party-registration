@@ -17,7 +17,7 @@
     {
       "label": "Reset DB",
       "type": "shell",
-      "command": "${command:python.interpreterPath} -m script.reset_dev && alembic stamp head",
+      "command": "${command:python.interpreterPath} -m script.reset_dev && ${command:python.interpreterPath} -m alembic stamp head",
       "options": {
         "cwd": "${workspaceFolder}/backend"
       },

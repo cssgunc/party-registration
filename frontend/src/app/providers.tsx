@@ -1,7 +1,7 @@
 "use client";
 
 import { SnackbarProvider, useSnackbar } from "@/contexts/SnackbarContext";
-import { setupErrorInterceptor } from "@/lib/network/apiClient";
+import { setupErrorInterceptor } from "@/lib/api/apiClient";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SessionProvider } from "next-auth/react";
 import { useEffect } from "react";

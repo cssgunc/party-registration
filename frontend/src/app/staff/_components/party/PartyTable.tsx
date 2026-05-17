@@ -76,9 +76,7 @@ export const PartyTable = () => {
         validationError?.message ??
         getErrorMessage(error, {
           status: {
-            403: "You do not have permission to perform this action.",
             404: "Party not found.",
-            500: "Server error. Please try again later.",
           },
           fallback: "Operation failed.",
         });
@@ -110,9 +108,7 @@ export const PartyTable = () => {
         validationError?.message ??
         getErrorMessage(error, {
           status: {
-            403: "You do not have permission to perform this action.",
             404: "Party not found.",
-            500: "Server error. Please try again later.",
           },
           fallback: "Operation failed.",
         });

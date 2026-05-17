@@ -61,9 +61,7 @@ const ACCOUNT_STATUS_FILTER_OPTIONS = [
 
 const ACCOUNT_ERROR_OPTIONS = {
   status: {
-    403: "You do not have permission to perform this action.",
     404: "Account not found.",
-    500: "Server error. Please try again later.",
   },
   fallback: "Operation failed.",
 } as const;
@@ -144,9 +142,7 @@ export const AccountTable = () => {
       console.error("Failed to update police account:", error);
       const errorMessage = getErrorMessage(error, {
         status: {
-          403: "You do not have permission to perform this action.",
           404: "Account not found.",
-          500: "Server error. Please try again later.",
         },
         fallback: "Failed to update police account.",
       });

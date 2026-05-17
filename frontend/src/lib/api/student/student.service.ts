@@ -1,4 +1,4 @@
-import apiClient from "@/lib/network/apiClient";
+import apiClient from "@/lib/api/apiClient";
 import { AxiosInstance } from "axios";
 import {
   LocationDto,
