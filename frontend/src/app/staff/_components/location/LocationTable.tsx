@@ -208,7 +208,7 @@ export const LocationTable = () => {
               shortName={`${row.original.incidents.length}${" "}
                 ${row.original.incidents.length === 1 ? "incident" : "incidents"}`}
               title="Incidents"
-              description="Warnings & Citations go here"
+              description="View existing incidents, or add a new one"
               sidebarContent={
                 <IncidentInfoChipDetails
                   key={`${row.original.id}-${JSON.stringify(

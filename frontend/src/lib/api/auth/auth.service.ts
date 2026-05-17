@@ -1,6 +1,6 @@
+import apiClient from "@/lib/api/apiClient";
 import { clientEnv } from "@/lib/config/env.client";
 import { serverEnv } from "@/lib/config/env.server";
-import apiClient from "@/lib/network/apiClient";
 import axios from "axios";
 import { encode } from "next-auth/jwt";
 import { NextResponse } from "next/server";

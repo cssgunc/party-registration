@@ -4,33 +4,22 @@ import { DeletePartyDialog } from "@/app/(student)/_components/DeletePartyDialog
 import { EditPartyDialog } from "@/app/(student)/_components/EditPartyDialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Skeleton, SkeletonText } from "@/components/ui/skeleton";
+import { SkeletonText } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  INCIDENT_SEVERITY_LABELS,
-  IncidentDto,
-} from "@/lib/api/incident/incident.types";
+import { IncidentDto } from "@/lib/api/incident/incident.types";
 import { hasActiveHold } from "@/lib/api/location/location.service";
 import { PartyDto } from "@/lib/api/party/party.types";
 import {
   useCurrentStudent,
   useMyParties,
 } from "@/lib/api/student/student.queries";
-import {
-  formatPhoneNumber,
-  formatTime,
-  isFromThisSchoolYear,
-} from "@/lib/utils";
+import { isFromThisSchoolYear } from "@/lib/utils";
 import { format } from "date-fns/format";
-import { Ban, Mail, MoreVertical, Pencil, Phone, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import RegistrationIncidentCard from "./RegistrationIncidentCard";
+import RegistrationPartyCard from "./RegistrationPartyCard";
 
 export default function RegistrationTracker(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<"active" | "past" | "incidents">(
@@ -92,6 +81,15 @@ export default function RegistrationTracker(): React.JSX.Element {
   const hasNoParties = (partiesQuery.data?.length ?? 0) === 0;
   const showPartySmartPrompt = hasNoParties && !courseCompleted;
 
+  const handleEditParty = useCallback(
+    (party: PartyDto) => setEditParty(party),
+    []
+  );
+  const handleDeleteParty = useCallback(
+    (party: PartyDto) => setDeleteParty(party),
+    []
+  );
+
   const sortedIncidents = useMemo(() => {
     const incidents: IncidentDto[] =
       student?.residence?.location.incidents ?? [];
@@ -115,132 +113,6 @@ export default function RegistrationTracker(): React.JSX.Element {
 
     return Object.entries(groups);
   }, [sortedIncidents]);
-
-  const PartyCard = ({
-    party,
-    showActions,
-    showAddress,
-  }: {
-    party: PartyDto;
-    showActions?: boolean;
-    showAddress?: boolean;
-  }) => (
-    <div className="px-4 py-4 border-b border-gray-200 rounded-none">
-      <div>
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="flex content-bold gap-2">
-              <p>
-                {format(party.party_datetime, "M/d/yyyy")} @{" "}
-                {formatTime(party.party_datetime)}
-              </p>
-            </div>
-            {showAddress &&
-              (isPartiesPending ? (
-                <Skeleton className="h-4 w-3/4 my-2" />
-              ) : (
-                <h2 className="content-sub my-2 leading-2">
-                  {party.location.formatted_address}
-                </h2>
-              ))}
-          </div>
-
-          {showActions && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button className="shrink-0 bg-transparent hover:bg-transparent p-0 h-auto">
-                  <MoreVertical className="size-4 content cursor-pointer" />
-                  <p className="sr-only">Party actions</p>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setEditParty(party)}>
-                  <Pencil className="size-4" />
-                  Edit
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  variant="destructive"
-                  onClick={() => setDeleteParty(party)}
-                >
-                  <Ban className="size-4" />
-                  Cancel
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </div>
-
-        {/* Contacts Side by Side */}
-        <div className="sm:grid sm:grid-cols-2">
-          {/* Contact One */}
-
-          <div className="content ml-3">
-            <p>
-              {party.contact_one.first_name} {party.contact_one.last_name}
-            </p>
-            <div className="flex flex-col gap-0.5 mt-0.5">
-              <p className="flex items-center gap-1.5">
-                <Phone className="size-3 shrink-0" />
-                {formatPhoneNumber(party.contact_one.phone_number)}
-                <span className="capitalize">
-                  - {party.contact_one.contact_preference}
-                </span>
-              </p>
-              <p className="flex items-center gap-1.5">
-                <Mail className="size-3 shrink-0" />
-                {party.contact_one.email}
-              </p>
-            </div>
-          </div>
-
-          {/* Contact Two */}
-          <div className="ml-3 mt-3 sm:ml-0 sm:mt-0 content">
-            <p>
-              {party.contact_two.first_name} {party.contact_two.last_name}
-            </p>
-            <div className="flex flex-col gap-0.5 mt-0.5">
-              <p className="flex items-center gap-1.5">
-                <Phone className="size-3 shrink-0" />
-                {formatPhoneNumber(party.contact_two.phone_number)}
-                <span className="capitalize">
-                  - {party.contact_two.contact_preference}
-                </span>
-              </p>
-              <p className="flex items-center gap-1.5">
-                <Mail className="size-3 shrink-0" />
-                {party.contact_two.email}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  const IncidentCard = ({
-    date,
-    incidents,
-  }: {
-    date: string;
-    incidents: IncidentDto[];
-  }) => (
-    <div className="px-4 py-4 border-b border-gray-200 rounded-none">
-      <div>
-        <h2 className="content-bold">{date}</h2>
-        <div className="mt-2 space-y-3">
-          {incidents.map((incident) => (
-            <div key={incident.id}>
-              <p className="content">
-                {formatTime(incident.incident_datetime)} -{" "}
-                <span>{INCIDENT_SEVERITY_LABELS[incident.severity]}</span>
-              </p>
-              <p className="content ml-3 mt-1">{incident.description}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
 
   if (isPartiesError) {
     return (
@@ -324,7 +196,14 @@ export default function RegistrationTracker(): React.JSX.Element {
                 </p>
               ) : (
                 activeParties.map((party) => (
-                  <PartyCard key={party.id} party={party} showActions />
+                  <RegistrationPartyCard
+                    key={party.id}
+                    party={party}
+                    showActions
+                    isPartiesPending={isPartiesPending}
+                    onEdit={handleEditParty}
+                    onDelete={handleDeleteParty}
+                  />
                 ))
               )}
             </div>
@@ -346,7 +225,14 @@ export default function RegistrationTracker(): React.JSX.Element {
                 </p>
               ) : (
                 pastParties.map((party) => (
-                  <PartyCard key={party.id} party={party} showAddress />
+                  <RegistrationPartyCard
+                    key={party.id}
+                    party={party}
+                    showAddress
+                    isPartiesPending={isPartiesPending}
+                    onEdit={handleEditParty}
+                    onDelete={handleDeleteParty}
+                  />
                 ))
               )}
             </div>
@@ -364,7 +250,7 @@ export default function RegistrationTracker(): React.JSX.Element {
                 <p className="text-center content-sub py-8">No incidents</p>
               ) : (
                 groupedIncidents.map(([date, dayIncidents]) => (
-                  <IncidentCard
+                  <RegistrationIncidentCard
                     key={date}
                     date={date}
                     incidents={dayIncidents}

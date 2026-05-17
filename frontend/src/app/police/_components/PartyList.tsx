@@ -9,7 +9,7 @@ import type {
 import { ExactMatchDto, PartyDto } from "@/lib/api/party/party.types";
 import { usePoliceCreateIncident } from "@/lib/api/party/police-party.queries";
 import { getErrorMessage } from "@/lib/errors";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import PartyCard, { PartyCardData } from "./PartyCard";
 
 interface PartyListProps {
@@ -43,18 +43,21 @@ const PartyList = ({
     },
   });
 
-  const openIncidentDialog = (
-    data: PartyCardData,
-    severity: IncidentSeverity
-  ) => {
-    setSelectedData(data);
-    setIncidentType(severity);
-    setIncidentDialogOpen(true);
-  };
+  const openIncidentDialog = useCallback(
+    (data: PartyCardData, severity: IncidentSeverity) => {
+      setSelectedData(data);
+      setIncidentType(severity);
+      setIncidentDialogOpen(true);
+    },
+    []
+  );
 
-  const handleSubmit = (data: IncidentCreateDto) => {
-    createIncidentMutation.mutate(data);
-  };
+  const handleSubmit = useCallback(
+    (data: IncidentCreateDto) => {
+      createIncidentMutation.mutate(data);
+    },
+    [createIncidentMutation]
+  );
 
   // Scroll to the active party card after the page renders
   useEffect(() => {

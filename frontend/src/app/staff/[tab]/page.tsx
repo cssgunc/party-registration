@@ -50,7 +50,7 @@ export default function StaffTabPage() {
   }
 
   return (
-    <div className="container mx-auto px-6 pt-6 pb-1 h-full overflow-hidden flex flex-col min-h-0">
+    <div className="container mx-auto px-6 pt-6 pb-2 h-full overflow-hidden flex flex-col min-h-0">
       <Tabs
         value={tab as TabSlug}
         onValueChange={(value) => router.push(`/staff/${value}`)}
@@ -69,11 +69,7 @@ export default function StaffTabPage() {
         {STAFF_TABS.map((slug) => {
           if (TAB_CONFIG[slug].adminOnly && role !== "admin") return null;
           return (
-            <TabsContent
-              key={slug}
-              value={slug}
-              className="flex-1 min-h-0 overflow-hidden"
-            >
+            <TabsContent key={slug} value={slug} className="flex-1 min-h-0">
               {TAB_CONTENT[slug]}
             </TabsContent>
           );

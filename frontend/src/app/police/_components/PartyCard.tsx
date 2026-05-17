@@ -27,6 +27,7 @@ import { PartyDto } from "@/lib/api/party/party.types";
 import { cn, formatContactPreference, formatTime } from "@/lib/utils";
 import { format } from "date-fns";
 import { AlertTriangle, EllipsisVertical } from "lucide-react";
+import { memo } from "react";
 
 const INCIDENT_MENU_ITEMS: {
   severity: IncidentSeverity;
@@ -67,7 +68,7 @@ interface PartyCardProps {
   onOpenIncidentDialog: (severity: IncidentSeverity) => void;
 }
 
-export default function PartyCard({
+const PartyCard = memo(function PartyCard({
   data,
   onClick,
   isActive,
@@ -246,4 +247,6 @@ export default function PartyCard({
       </div>
     </article>
   );
-}
+});
+
+export default PartyCard;

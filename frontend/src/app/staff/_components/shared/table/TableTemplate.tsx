@@ -67,6 +67,7 @@ import {
 import { useSession } from "next-auth/react";
 import {
   ReactNode,
+  useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -400,17 +401,20 @@ export function TableTemplate<T extends object>({
     return filtered;
   }, [data, sortedData, columnFilters, isServerMode, columns]);
 
-  const handleDeleteClick = (row: T) => {
+  const handleDeleteClick = useCallback((row: T) => {
     setItemToDelete(row);
     setDeleteDialogOpen(true);
-  };
+  }, []);
 
-  const handleEditClick = (rowId: string, row: T) => {
-    setRowSelection({ [rowId]: true });
-    onEdit?.(row);
-  };
+  const handleEditClick = useCallback(
+    (rowId: string, row: T) => {
+      setRowSelection({ [rowId]: true });
+      onEdit?.(row);
+    },
+    [onEdit]
+  );
 
-  const confirmDelete = () => {
+  const confirmDelete = useCallback(() => {
     if (
       itemToDelete &&
       onDelete &&
@@ -418,71 +422,85 @@ export function TableTemplate<T extends object>({
     ) {
       onDelete(itemToDelete);
     }
-  };
+  }, [itemToDelete, onDelete, canDeleteRow]);
 
-  const columnsWithActions: ColumnDef<T, unknown>[] =
-    hasManagePermission && (onEdit || onDelete)
-      ? [
-          ...columns.map((column) =>
+  const columnsWithActions = useMemo(
+    () =>
+      hasManagePermission && (onEdit || onDelete)
+        ? [
+            ...columns.map((column) =>
+              isServerMode && column.meta?.filter
+                ? { ...column, filterFn: serverFilterPassthrough }
+                : column
+            ),
+            {
+              id: "actions",
+              enableSorting: false,
+              enableColumnFilter: false,
+              cell: ({ row }) => (
+                <div className="flex justify-end">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="size-8 p-0">
+                        <MoreHorizontal className="size-4" />
+                        <span className="sr-only">Open menu</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {onEdit && (!canEditRow || canEditRow(row.original)) && (
+                        <DropdownMenuItem
+                          onClick={() => handleEditClick(row.id, row.original)}
+                        >
+                          <Pencil className="mr-2 size-4" />
+                          Edit
+                        </DropdownMenuItem>
+                      )}
+                      {rowActions?.map((action) =>
+                        !action.isVisible || action.isVisible(row.original) ? (
+                          <DropdownMenuItem
+                            key={action.label}
+                            onClick={() => action.onClick(row.original)}
+                            variant={action.variant}
+                          >
+                            {action.icon}
+                            {action.label}
+                          </DropdownMenuItem>
+                        ) : null
+                      )}
+                      {onDelete &&
+                        (!canDeleteRow || canDeleteRow(row.original)) && (
+                          <DropdownMenuItem
+                            onClick={() => handleDeleteClick(row.original)}
+                            variant="destructive"
+                          >
+                            <Trash2 className="mr-2 size-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              ),
+            },
+          ]
+        : columns.map((column) =>
             isServerMode && column.meta?.filter
               ? { ...column, filterFn: serverFilterPassthrough }
               : column
           ),
-          {
-            id: "actions",
-            enableSorting: false,
-            enableColumnFilter: false,
-            cell: ({ row }) => (
-              <div className="flex justify-end">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="size-8 p-0">
-                      <MoreHorizontal className="size-4" />
-                      <span className="sr-only">Open menu</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    {onEdit && (!canEditRow || canEditRow(row.original)) && (
-                      <DropdownMenuItem
-                        onClick={() => handleEditClick(row.id, row.original)}
-                      >
-                        <Pencil className="mr-2 size-4" />
-                        Edit
-                      </DropdownMenuItem>
-                    )}
-                    {rowActions?.map((action) =>
-                      !action.isVisible || action.isVisible(row.original) ? (
-                        <DropdownMenuItem
-                          key={action.label}
-                          onClick={() => action.onClick(row.original)}
-                          variant={action.variant}
-                        >
-                          {action.icon}
-                          {action.label}
-                        </DropdownMenuItem>
-                      ) : null
-                    )}
-                    {onDelete &&
-                      (!canDeleteRow || canDeleteRow(row.original)) && (
-                        <DropdownMenuItem
-                          onClick={() => handleDeleteClick(row.original)}
-                          variant="destructive"
-                        >
-                          <Trash2 className="mr-2 size-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            ),
-          },
-        ]
-      : columns.map((column) =>
-          isServerMode && column.meta?.filter
-            ? { ...column, filterFn: serverFilterPassthrough }
-            : column
-        );
+    [
+      columns,
+      hasManagePermission,
+      onEdit,
+      onDelete,
+      canEditRow,
+      canDeleteRow,
+      rowActions,
+      isServerMode,
+      handleEditClick,
+      handleDeleteClick,
+    ]
+  );
 
   const customFilterFn = <T extends object>(
     row: Row<T>,
@@ -658,8 +676,8 @@ export function TableTemplate<T extends object>({
       )}
       {headerSlot && <div className="lg:hidden">{headerSlot}</div>}
 
-      <div className="flex min-h-0 h-full flex-col justify-between overflow-hidden">
-        <Card className="flex-1 min-h-0 overflow-hidden rounded-sm w-full max-w-none mx-0">
+      <div className="flex min-h-0 h-full flex-col justify-between">
+        <Card className="flex-1 min-h-0 rounded-sm w-full max-w-none mx-0">
           {error && (
             <span className="text-center py-8 text-destructive">
               <p>Error: {error.message}</p>
@@ -852,7 +870,7 @@ export function TableTemplate<T extends object>({
             </div>
 
             {/* Center: Pagination Navigation */}
-            <div className="flex min-w-0 overflow-x-auto justify-center text-sm">
+            <div className="flex min-w-0 justify-center text-sm">
               <Pagination className="w-max">
                 <PaginationContent>
                   <PaginationItem>

@@ -21,15 +21,17 @@ import {
   IncidentDto,
 } from "@/lib/api/incident/incident.types";
 import { formatTime } from "@/lib/utils";
+import { format } from "date-fns";
 import { ChevronDown, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { useSession } from "next-auth/react";
+import { memo } from "react";
 
 type IncidentSidebarCardProps = {
   incidents: IncidentDto;
   onDeleteIncidentAction: (incidentId: number) => void;
   onEditIncidentAction: (incident: IncidentDto) => void;
 };
-export default function IncidentSidebarCard({
+const IncidentSidebarCard = memo(function IncidentSidebarCard({
   incidents,
   onDeleteIncidentAction,
   onEditIncidentAction,
@@ -40,24 +42,18 @@ export default function IncidentSidebarCard({
     <div>
       <Collapsible>
         <div>
-          <div className="flex flex-row w-full items-center justify-left py-2 rounded cursor-pointer hover:bg-muted transition-colors">
+          <div className="flex flex-row w-full items-center justify-left py-2 px-2 rounded cursor-pointer hover:bg-muted transition-colors">
             <CollapsibleTrigger className="flex-1 text-left group" asChild>
               <div className="flex items-center">
-                <ChevronDown className="mr-2 transition-transform duration-100 group-data-[state=open]:rotate-180" />
+                <ChevronDown className="mr-2 size-4 transition-transform duration-100 group-data-[state=open]:rotate-180" />
                 <div className="flex items-center gap-10">
-                  <p className="content whitespace-nowrap">
-                    {new Date(incidents.incident_datetime).toLocaleDateString(
-                      "en-US",
-                      {
-                        month: "2-digit",
-                        day: "2-digit",
-                      }
-                    )}
+                  <p className="text-sm whitespace-nowrap">
+                    {format(incidents.incident_datetime, "MM/dd")}
                   </p>
-                  <p className="content w-20 whitespace-nowrap">
+                  <p className="text-sm w-20 whitespace-nowrap">
                     {formatTime(incidents.incident_datetime)}
                   </p>
-                  <HoverCard openDelay={0} closeDelay={4}>
+                  <HoverCard>
                     <HoverCardTrigger asChild>
                       <IncidentFlag type={incidents.severity} />
                     </HoverCardTrigger>
@@ -71,20 +67,20 @@ export default function IncidentSidebarCard({
             {role === "admin" && (
               <DropdownMenu>
                 <DropdownMenuTrigger className="ml-2">
-                  <MoreHorizontal />
+                  <MoreHorizontal className="size-4" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
                   <DropdownMenuItem
                     onClick={() => onEditIncidentAction?.(incidents)}
                   >
-                    <Pencil className="mr-2 h-4 w-4" />
+                    <Pencil className="mr-2 size-4" />
                     Edit
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => onDeleteIncidentAction(incidents.id)}
                     variant="destructive"
                   >
-                    <Trash2 className="mr-2 h-4 w-4" />
+                    <Trash2 className="mr-2 size-4" />
                     Delete
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -95,17 +91,19 @@ export default function IncidentSidebarCard({
         </div>
         <CollapsibleContent>
           <div className="py-2 px-6">
-            <p className="content italic">
+            <p className="text-sm italic">
               Reference ID: {incidents.reference_id || "None"}
             </p>
             {incidents.description ? (
-              <p className="content">{incidents.description}</p>
+              <p className="text-sm">Description: {incidents.description}</p>
             ) : (
-              <p className="content italic">No description provided.</p>
+              <p className="text-sm italic">No description provided.</p>
             )}
           </div>
         </CollapsibleContent>
       </Collapsible>
     </div>
   );
-}
+});
+
+export default IncidentSidebarCard;
