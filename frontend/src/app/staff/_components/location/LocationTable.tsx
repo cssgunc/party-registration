@@ -254,6 +254,7 @@ export const LocationTable = () => {
         data={locations}
         columns={columns}
         resourceName="Location"
+        pageSizeStorageKey="staff-locations"
         onEdit={handleEdit}
         onDelete={handleDelete}
         onCreateNewRow={handleCreate}

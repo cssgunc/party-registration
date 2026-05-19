@@ -104,6 +104,7 @@ export type TableProps<T> = {
   sortBy?: (a: T, b: T) => number;
   pageSize?: number;
   pageSizeOptions?: number[];
+  pageSizeStorageKey?: string;
   serverMeta?: {
     totalRecords: number;
     totalPages: number;
@@ -136,6 +137,23 @@ function areSortingStatesEqual(a: SortingState, b: SortingState) {
   );
 }
 
+function resolveStoredPageSize(
+  storageKey: string | undefined,
+  pageSizeOptions: number[]
+): number | undefined {
+  if (!storageKey || typeof window === "undefined") return undefined;
+  try {
+    const raw = window.localStorage.getItem(storageKey);
+    if (!raw) return undefined;
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed)) return undefined;
+    if (!pageSizeOptions.includes(parsed)) return undefined;
+    return parsed;
+  } catch {
+    return undefined;
+  }
+}
+
 export function TableTemplate<T extends object>({
   data,
   columns,
@@ -152,6 +170,7 @@ export function TableTemplate<T extends object>({
   sortBy,
   pageSize = 50,
   pageSizeOptions = [10, 25, 50, 100],
+  pageSizeStorageKey,
   serverMeta,
   onStateChange,
   onExportCsv,
@@ -163,6 +182,11 @@ export function TableTemplate<T extends object>({
   rowActions,
 }: TableProps<T>) {
   const isServerMode = !!serverMeta;
+  const pageSizeStorageKeyValue = pageSizeStorageKey
+    ? `admin-table:page-size:${pageSizeStorageKey}`
+    : undefined;
+  const resolvedPageSize =
+    resolveStoredPageSize(pageSizeStorageKeyValue, pageSizeOptions) ?? pageSize;
 
   const columnMap = useMemo((): ServerColumnMap => {
     const map: ServerColumnMap = {};
@@ -189,7 +213,7 @@ export function TableTemplate<T extends object>({
 
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
-    pageSize,
+    pageSize: resolvedPageSize,
   });
   const [sorting, setSorting] = useState<SortingState>(initialSort);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -222,10 +246,23 @@ export function TableTemplate<T extends object>({
   useEffect(() => {
     setPagination((prev) => ({
       ...prev,
-      pageSize,
+      pageSize: resolvedPageSize,
       pageIndex: 0,
     }));
-  }, [pageSize]);
+  }, [resolvedPageSize]);
+
+  useEffect(() => {
+    if (!pageSizeStorageKeyValue) return;
+    if (!pageSizeOptions.includes(pagination.pageSize)) return;
+    try {
+      window.localStorage.setItem(
+        pageSizeStorageKeyValue,
+        String(pagination.pageSize)
+      );
+    } catch {
+      return;
+    }
+  }, [pageSizeStorageKeyValue, pagination.pageSize, pageSizeOptions]);
 
   useEffect(() => {
     if (!isOpen && Object.keys(rowSelection).length > 0) {

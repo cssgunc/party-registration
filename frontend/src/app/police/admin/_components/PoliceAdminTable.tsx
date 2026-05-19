@@ -159,6 +159,7 @@ export default function PoliceAdminTable() {
       data={tableData}
       columns={columns}
       resourceName="Police Account"
+      pageSizeStorageKey="police-accounts"
       onEdit={handleEdit}
       onDelete={handleDelete}
       isLoading={policeAccountsQuery.isLoading}
