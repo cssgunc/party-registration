@@ -1,0 +1,42 @@
+{
+  "variant": "light",
+  "metadata": {
+    "name": "PartySmart UNC Map Style",
+    "description": "Light map style for the police-facing embedded map. Uses Google's default light colors and only adjusts visibility: hides commercial POIs (retail, lodging, entertainment, service, transit) and transit infrastructure (stations, railways, business corridors) so the red/blue party markers and the #4285F4 search-radius circle remain the dominant visual elements. Food and drink POIs, civic landmarks (schools, parks, government, places of worship, libraries, emergency services), and political/neighborhood labels stay at Google's defaults as orientation aids.",
+    "version": "1.0.0"
+  },
+  "styles": [
+    {
+      "id": "pointOfInterest.retail",
+      "label": { "visible": false }
+    },
+    {
+      "id": "pointOfInterest.lodging",
+      "label": { "visible": false }
+    },
+    {
+      "id": "pointOfInterest.entertainment",
+      "label": { "visible": false }
+    },
+    {
+      "id": "pointOfInterest.service",
+      "label": { "visible": false }
+    },
+    {
+      "id": "pointOfInterest.transit",
+      "label": { "visible": false }
+    },
+    {
+      "id": "infrastructure.transitStation",
+      "label": { "visible": false }
+    },
+    {
+      "id": "infrastructure.railwayTrack",
+      "geometry": { "visible": false }
+    },
+    {
+      "id": "infrastructure.businessCorridor",
+      "geometry": { "visible": false }
+    }
+  ]
+}

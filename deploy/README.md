@@ -50,6 +50,7 @@ The app uses Google Maps for the embedded party map and address autocomplete.
 1. In the Cloud Console go to **Google Maps Platform → Map Management**
 2. Click **Create Map ID**, select **JavaScript** and **Vector** map type
 3. Copy the Map ID — this is `NEXT_PUBLIC_GOOGLE_MAP_ID`
+4. Apply the map style: open the new Map ID, go to **Associated Styles → Create Map Style → Import JSON**, paste the contents of [`deploy/map-style.json`](map-style.json), save, and publish. Associate the new style with the Map ID so the embedded map renders with it.
 
 ### 3. Provision the database schema
 
@@ -211,6 +212,7 @@ deploy:
 - [ ] SP certs generated and `cert.pem` given to UNC IdP admin
 - [ ] Google Maps API key created with Maps JavaScript API and Places API enabled
 - [ ] Google Maps Map ID created and configured in Cloud Console
+- [ ] Map style imported from `deploy/map-style.json` and associated with the Map ID
 - [ ] All required CI/CD variables set in GitLab (or `.env.prod` filled in for manual deploy)
 - [ ] UNC IT confirmed the database login has DDL privileges (CREATE/ALTER/DROP TABLE)
 - [ ] Deploy run and containers started
@@ -244,6 +246,13 @@ The frontend has two categories of env vars with different behaviors:
 ### Database migrations
 
 The backend runs `alembic upgrade head` automatically on every container start before serving traffic. If migrations fail the container exits immediately — check backend logs before investigating anything else. The database login needs `CREATE TABLE / ALTER TABLE / DROP TABLE` privileges for the first startup (subsequent deploys only run incremental migrations).
+
+### Map style sync
+
+The embedded map's style lives in [`deploy/map-style.json`](map-style.json) and is applied to the Map ID via the Cloud Console — there is no API to deploy it alongside the app, so the repo and Cloud Console must be kept in sync manually:
+
+- **If you edit `deploy/map-style.json`** — re-import it into the Map Style associated with `NEXT_PUBLIC_GOOGLE_MAP_ID` in Cloud Console (**Map Management → [Map ID] → Associated Style → Import JSON**) and publish. The change takes effect on the next page load (no redeploy required — `mapId` is read at runtime).
+- **If you edit the style in the Cloud Console visual editor** — export the JSON from the style page and commit it back to `deploy/map-style.json` so the repo remains the source of truth.
 
 ### SAML certs
 
