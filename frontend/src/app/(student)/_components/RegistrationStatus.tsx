@@ -6,19 +6,19 @@ import { isFromThisSchoolYear } from "@/lib/utils";
 import { format } from "date-fns";
 import { AlertTriangleIcon, CheckCircle, ExternalLink } from "lucide-react";
 
-type CompletionCardProps = {
+type Props = {
   last_registered: Date | null | undefined;
   hold_expiration?: Date | null;
   isPending?: boolean;
   error?: Error | null;
 };
 
-export default function StatusComponent({
+export default function RegistrationStatus({
   last_registered = null,
   hold_expiration = null,
   isPending = false,
   error = null,
-}: CompletionCardProps) {
+}: Props) {
   if (error) {
     return (
       <Card className="p-4 rounded-md shadow-sm w-full bg-card">

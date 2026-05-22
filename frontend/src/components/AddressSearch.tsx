@@ -297,7 +297,7 @@ export default function AddressSearch({
           </div>
         </PopoverTrigger>
         <PopoverContent
-          className="w-[var(--radix-popover-trigger-width)] p-0"
+          className="w-(--radix-popover-trigger-width) p-0"
           align="start"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
@@ -342,13 +342,13 @@ export default function AddressSearch({
                       )}
                       onMouseEnter={() => setHighlightedIndex(index)}
                     >
-                      <MapPinIcon className="mr-2 size-4 text-muted-foreground flex-shrink-0" />
+                      <MapPinIcon className="mr-2 size-4 text-muted-foreground shrink-0" />
                       <span className="line-clamp-2 text-sm flex-1">
                         {suggestion.formatted_address}
                       </span>
                       <CheckIcon
                         className={cn(
-                          "ml-2 size-4 flex-shrink-0",
+                          "ml-2 size-4 shrink-0",
                           selectedAddress?.google_place_id ===
                             suggestion.google_place_id
                             ? "opacity-100"

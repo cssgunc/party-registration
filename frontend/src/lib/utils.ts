@@ -113,6 +113,32 @@ export function formatRoleLabel(role: AppRole): string {
   return ROLE_LABELS[role];
 }
 
+const ADDRESS_FIELD_ORDER = [
+  "street_number",
+  "street_name",
+  "unit",
+  "city",
+  "county",
+  "state",
+  "zip_code",
+  "country",
+] as const;
+
+export type AddressField = (typeof ADDRESS_FIELD_ORDER)[number];
+
+type AddressFields = Partial<Record<AddressField, string | null>>;
+
+export function formatAddress(
+  location: AddressFields | null | undefined,
+  fields: AddressField[]
+): string {
+  if (!location) return "";
+  return ADDRESS_FIELD_ORDER.filter((f) => fields.includes(f))
+    .map((f) => location[f])
+    .filter(Boolean)
+    .join(" ");
+}
+
 export function formatContactPreference(
   preference: ContactPreference | null | undefined
 ): string {

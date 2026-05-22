@@ -1,7 +1,7 @@
 "use client";
 
-import { DeletePartyDialog } from "@/app/(student)/_components/DeletePartyDialog";
-import { EditPartyDialog } from "@/app/(student)/_components/EditPartyDialog";
+import { DeletePartyDialog } from "@/app/(student)/_components/tracker/DeletePartyDialog";
+import { EditPartyDialog } from "@/app/(student)/_components/tracker/EditPartyDialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SkeletonText } from "@/components/ui/skeleton";
@@ -21,6 +21,27 @@ import { useCallback, useMemo, useState } from "react";
 import RegistrationIncidentCard from "./RegistrationIncidentCard";
 import RegistrationPartyCard from "./RegistrationPartyCard";
 
+function PartiesLoading() {
+  return (
+    <div className="px-4 py-4 gap-4 sm:gap-7 flex flex-col">
+      <SkeletonText className="pb-5 max-w-full" />
+      <SkeletonText className="pb-5 max-w-full" />
+      <SkeletonText className="pb-5 max-w-full" />
+      <SkeletonText className="pb-5 max-w-full" />
+      <SkeletonText className="max-w-full" />
+    </div>
+  );
+}
+
+function PartiesError() {
+  return (
+    <div className="flex h-full flex-col items-center justify-center text-center text-destructive py-8">
+      <p className="font-semibold mb-2">Error loading registrations</p>
+      <p className="text-sm">Please try again later.</p>
+    </div>
+  );
+}
+
 export default function RegistrationTracker(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<"active" | "past" | "incidents">(
     "active"
@@ -30,6 +51,7 @@ export default function RegistrationTracker(): React.JSX.Element {
 
   const { data: student } = useCurrentStudent();
   const partiesQuery = useMyParties();
+  const residenceLocationId = student?.residence?.location.id;
 
   const isPartiesPending = partiesQuery.isPending;
   const isPartiesError = partiesQuery.error;
@@ -114,17 +136,6 @@ export default function RegistrationTracker(): React.JSX.Element {
     return Object.entries(groups);
   }, [sortedIncidents]);
 
-  if (isPartiesError) {
-    return (
-      <Card className="w-full bg-card p-4 h-full">
-        <div className="text-center text-destructive py-8">
-          <p className="font-semibold mb-2">Error loading registrations</p>
-          <p className="text-sm">{isPartiesError.message}</p>
-        </div>
-      </Card>
-    );
-  }
-
   return (
     <div className="flex flex-col flex-1 min-h-0 mb-6">
       <Tabs
@@ -181,13 +192,9 @@ export default function RegistrationTracker(): React.JSX.Element {
           <TabsContent value="active" className="h-full">
             <div className="h-full w-full overflow-y-auto rounded-md bg-card">
               {isPartiesPending ? (
-                <div className="px-4 py-4 gap-4 sm:gap-7 flex flex-col">
-                  <SkeletonText className="pb-5 max-w-full" />
-                  <SkeletonText className="pb-5 max-w-full" />
-                  <SkeletonText className="pb-5 max-w-full" />
-                  <SkeletonText className="pb-5 max-w-full" />
-                  <SkeletonText className="max-w-full" />
-                </div>
+                <PartiesLoading />
+              ) : isPartiesError ? (
+                <PartiesError />
               ) : activeParties.length === 0 ? (
                 <p className="flex h-full items-center justify-center px-4 text-center content-sub text-base!">
                   {showPartySmartPrompt
@@ -200,6 +207,7 @@ export default function RegistrationTracker(): React.JSX.Element {
                     key={party.id}
                     party={party}
                     showActions
+                    residenceLocationId={residenceLocationId}
                     isPartiesPending={isPartiesPending}
                     onEdit={handleEditParty}
                     onDelete={handleDeleteParty}
@@ -212,13 +220,9 @@ export default function RegistrationTracker(): React.JSX.Element {
           <TabsContent value="past" className="h-full">
             <div className="h-full w-full overflow-y-auto rounded-md bg-card">
               {isPartiesPending ? (
-                <div className="px-4 py-4 gap-4 sm:gap-7 flex flex-col">
-                  <SkeletonText className="pb-5 max-w-full" />
-                  <SkeletonText className="pb-5 max-w-full" />
-                  <SkeletonText className="pb-5 max-w-full" />
-                  <SkeletonText className="pb-5 max-w-full" />
-                  <SkeletonText className="max-w-full" />
-                </div>
+                <PartiesLoading />
+              ) : isPartiesError ? (
+                <PartiesError />
               ) : pastParties.length === 0 ? (
                 <p className="text-center content-sub py-8">
                   No past registrations
@@ -229,6 +233,7 @@ export default function RegistrationTracker(): React.JSX.Element {
                     key={party.id}
                     party={party}
                     showAddress
+                    residenceLocationId={residenceLocationId}
                     isPartiesPending={isPartiesPending}
                     onEdit={handleEditParty}
                     onDelete={handleDeleteParty}
@@ -241,11 +246,7 @@ export default function RegistrationTracker(): React.JSX.Element {
           <TabsContent value="incidents" className="h-full">
             <div className="h-full w-full overflow-y-auto rounded-md bg-card">
               {isPartiesPending ? (
-                <div className="px-4 py-4 gap-4 sm:gap-7 flex flex-col">
-                  <SkeletonText className="pb-5 max-w-full" />
-                  <SkeletonText className="pb-5 max-w-full" />
-                  <SkeletonText className="pb-5 max-w-full" />
-                </div>
+                <PartiesLoading />
               ) : sortedIncidents.length === 0 ? (
                 <p className="text-center content-sub py-8">No incidents</p>
               ) : (

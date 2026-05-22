@@ -2,11 +2,15 @@
 
 import DialogItem from "./DialogItem";
 
-export default function PartyRegistrationInfo() {
+export default function PartyRegistrationInfo({
+  className,
+}: {
+  className?: string;
+}) {
   return (
-    <div className="mt-4 2xl:mt-0">
+    <div className={className}>
       <h1 className="page-title">About Party Registration</h1>
-      <div className="card-shadow bg-card text-card-foreground content mt-5 rounded-md border">
+      <div className="card-shadow bg-card text-card-foreground content mt-3 rounded-md border">
         <DialogItem title="How does party registration work?">
           <p>For first-time users*:</p>
           <p>

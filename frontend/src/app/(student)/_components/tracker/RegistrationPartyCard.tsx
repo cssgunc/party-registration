@@ -18,6 +18,7 @@ type Props = {
   party: PartyDto;
   showActions?: boolean;
   showAddress?: boolean;
+  residenceLocationId?: number;
   isPartiesPending?: boolean;
   onEdit: (party: PartyDto) => void;
   onDelete: (party: PartyDto) => void;
@@ -27,10 +28,15 @@ const RegistrationPartyCard = memo(function RegistrationPartyCard({
   party,
   showActions,
   showAddress,
+  residenceLocationId,
   isPartiesPending,
   onEdit,
   onDelete,
 }: Props) {
+  const shouldShowAddress =
+    showAddress ||
+    (!!residenceLocationId && party.location.id !== residenceLocationId);
+
   return (
     <div className="px-4 py-4 border-b border-gray-200 rounded-none">
       <div>
@@ -42,11 +48,11 @@ const RegistrationPartyCard = memo(function RegistrationPartyCard({
                 {formatTime(party.party_datetime)}
               </p>
             </div>
-            {showAddress &&
+            {shouldShowAddress &&
               (isPartiesPending ? (
                 <Skeleton className="h-4 w-3/4 my-2" />
               ) : (
-                <h2 className="content-sub my-2 leading-2">
+                <h2 className="content-sub my-0.5">
                   {party.location.formatted_address}
                 </h2>
               ))}
@@ -78,9 +84,9 @@ const RegistrationPartyCard = memo(function RegistrationPartyCard({
         </div>
 
         {/* Contacts Side by Side */}
-        <div className="sm:grid sm:grid-cols-2">
+        <div className="flex flex-wrap gap-y-3">
           {/* Contact One */}
-          <div className="content ml-3">
+          <div className="content ml-3 min-w-56">
             <p>
               {party.contact_one.first_name} {party.contact_one.last_name}
             </p>
@@ -100,7 +106,7 @@ const RegistrationPartyCard = memo(function RegistrationPartyCard({
           </div>
 
           {/* Contact Two */}
-          <div className="ml-3 mt-3 sm:ml-0 sm:mt-0 content">
+          <div className="content ml-3 min-w-56">
             <p>
               {party.contact_two.first_name} {party.contact_two.last_name}
             </p>
