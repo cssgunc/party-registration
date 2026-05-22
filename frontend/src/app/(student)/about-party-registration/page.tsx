@@ -1,6 +1,6 @@
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import PartyRegistrationInfo from "../_components/PartyRegistrationInfo";
+import PartyRegistrationInfo from "../_components/info/PartyRegistrationInfo";
 
 export default function AboutPartyRegistration() {
   return (
@@ -11,7 +11,7 @@ export default function AboutPartyRegistration() {
           <Link href="/">Back</Link>
         </nav>
         <div className="mx-8">
-          <PartyRegistrationInfo />
+          <PartyRegistrationInfo className="mt-4" />
         </div>
       </main>
     </div>

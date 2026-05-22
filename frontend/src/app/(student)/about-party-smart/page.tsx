@@ -1,6 +1,6 @@
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import PartySmartInfo from "../_components/PartySmartInfo";
+import PartySmartInfo from "../_components/info/PartySmartInfo";
 
 export default function AboutPartySmart() {
   return (
@@ -11,7 +11,7 @@ export default function AboutPartySmart() {
           <Link href="/new-party">Back</Link>
         </div>
         <div className="mx-0 sm:mx-8 flex-1 min-h-0 flex flex-col">
-          <PartySmartInfo />
+          <PartySmartInfo className="mt-4" />
         </div>
       </main>
     </div>
