@@ -179,7 +179,6 @@ export function TableTemplate<T extends object>({
   const { isOpen, openSidebar, closeSidebar } = useSidebar();
   const { data: session } = useSession();
   const role = session?.role;
-  const hideFooterMetaOnSmall = role === "admin";
   const hasManagePermission = canManageRows ?? role === "admin";
 
   const sortedData = useMemo(
@@ -620,61 +619,58 @@ export function TableTemplate<T extends object>({
     <div className="h-full min-h-0 flex flex-col gap-4">
       {/* Header with Search and Create Button */}
       {(resourceName || onCreateNewRow) && (
-        <div className="flex justify-between items-center w-full">
-          <div className="flex justify-between w-full gap-4">
-            <div className="flex-1 min-w-sm max-w-lg bg-card rounded-md">
-              <Input
-                type="text"
-                value={globalFilter}
-                onChange={(e) => setGlobalFilter(e.target.value)}
-                placeholder="Search all columns..."
-                className="p-2 pl-3 h-9 rounded-md"
-              />
+        <div className="flex items-center gap-2 w-full">
+          <div className="flex-1 min-w-0 max-w-lg bg-card rounded-md">
+            <Input
+              type="text"
+              value={globalFilter}
+              onChange={(e) => setGlobalFilter(e.target.value)}
+              placeholder="Search all columns..."
+              className="p-2 pl-3 h-9 rounded-md"
+            />
+          </div>
+          {headerSlot && (
+            <div className="hidden lg:flex flex-1 items-center justify-center min-w-0">
+              {headerSlot}
             </div>
-            {headerSlot && (
-              <div className="hidden lg:flex flex-1 items-center justify-center min-w-0 ml-1">
-                {headerSlot}
-              </div>
+          )}
+          <div className="shrink-0 ml-auto flex items-center gap-2">
+            {onExportCsv && (
+              <Button
+                onClick={() => {
+                  const params = columnMap
+                    ? buildServerTableParams(
+                        { pageIndex: 0, pageSize: pagination.pageSize },
+                        sorting,
+                        columnFilters,
+                        columnMap
+                      )
+                    : { page_number: 1, filters: {} };
+                  onExportCsv(params);
+                }}
+                disabled={isExporting}
+                variant="default"
+                size="icon"
+                className="h-9 w-9"
+                aria-label="Export CSV"
+                title="Export CSV"
+              >
+                {isExporting ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Download className="size-4" />
+                )}
+              </Button>
             )}
-            <div className="shrink-0 ml-auto flex items-center gap-2">
-              {onExportCsv && (
-                <Button
-                  onClick={() => {
-                    const params = columnMap
-                      ? buildServerTableParams(
-                          { pageIndex: 0, pageSize: pagination.pageSize },
-                          sorting,
-                          columnFilters,
-                          columnMap
-                        )
-                      : { page_number: 1, filters: {} };
-                    onExportCsv(params);
-                  }}
-                  disabled={isExporting}
-                  variant="default"
-                  size="icon"
-                  className="h-9 w-9"
-                  aria-label="Export CSV"
-                  title="Export CSV"
-                >
-                  {isExporting ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <Download className="size-4" />
-                  )}
-                </Button>
-              )}
-              {onCreateNewRow && hasManagePermission && (
-                <Button onClick={onCreateNewRow} className="h-9">
-                  <Plus className="mr-1" />
-                  <p>New row</p>
-                </Button>
-              )}
-            </div>
+            {onCreateNewRow && hasManagePermission && (
+              <Button onClick={onCreateNewRow} className="h-9">
+                <Plus className="sm:mr-1" />
+                <span className="hidden sm:inline">New row</span>
+              </Button>
+            )}
           </div>
         </div>
       )}
-      {headerSlot && <div className="lg:hidden">{headerSlot}</div>}
 
       <div className="flex min-h-0 h-full flex-col justify-between">
         <Card className="flex-1 min-h-0 rounded-sm w-full max-w-none mx-0">
@@ -846,7 +842,7 @@ export function TableTemplate<T extends object>({
             <div
               className={cn(
                 "items-center justify-start min-w-0",
-                hideFooterMetaOnSmall ? "hidden md:flex" : "flex"
+                "hidden md:flex"
               )}
             >
               {isLoading ? (
@@ -967,7 +963,7 @@ export function TableTemplate<T extends object>({
               <span
                 className={cn(
                   "text-sm text-muted-foreground whitespace-nowrap",
-                  hideFooterMetaOnSmall ? "hidden md:inline" : ""
+                  "hidden md:inline"
                 )}
               >
                 {" "}
