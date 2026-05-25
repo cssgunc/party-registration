@@ -1,4 +1,12 @@
-import { IncidentSeverity } from "@/lib/api/incident/incident.types";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
+import {
+  INCIDENT_SEVERITY_LABELS,
+  IncidentSeverity,
+} from "@/lib/api/incident/incident.types";
 import { cn } from "@/lib/utils";
 import { Flag } from "lucide-react";
 import { forwardRef } from "react";
@@ -11,9 +19,9 @@ const severityToColor: Record<IncidentSeverity, string> = {
 
 const IncidentFlag = forwardRef<
   SVGSVGElement,
-  { className?: string; type: IncidentSeverity }
->(function IncidentFlag({ className, type, ...props }, ref) {
-  return (
+  { className?: string; type: IncidentSeverity; hoverCard?: boolean }
+>(function IncidentFlag({ className, type, hoverCard, ...props }, ref) {
+  const flag = (
     <Flag
       ref={ref}
       className={cn(
@@ -23,6 +31,17 @@ const IncidentFlag = forwardRef<
       )}
       {...props}
     />
+  );
+
+  if (!hoverCard) return flag;
+
+  return (
+    <HoverCard>
+      <HoverCardTrigger asChild>{flag}</HoverCardTrigger>
+      <HoverCardContent>
+        <p>{INCIDENT_SEVERITY_LABELS[type]}</p>
+      </HoverCardContent>
+    </HoverCard>
   );
 });
 

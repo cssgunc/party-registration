@@ -241,7 +241,12 @@ export default function AddressSearch({
   }, [suggestions]);
 
   return (
-    <div className={cn("w-full", className)}>
+    <div
+      className={cn(
+        "w-full [&_input]:bg-card [&_input]:border-border",
+        className
+      )}
+    >
       <Popover
         open={open}
         onOpenChange={(nextOpen) => {

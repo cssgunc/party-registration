@@ -1,7 +1,7 @@
 "use client";
 
 import { PhoneLink } from "@/components/PhoneLink";
-import { PartyDto } from "@/lib/api/party/party.types";
+import { ExactMatchDto, PartyDto } from "@/lib/api/party/party.types";
 import { clientEnv } from "@/lib/config/env.client";
 import { formatAddress, formatContactPreference } from "@/lib/utils";
 import {
@@ -17,7 +17,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 type Poi = {
   key: string;
-  activePoiKey?: string;
   location: google.maps.LatLngLiteral;
 };
 
@@ -25,6 +24,7 @@ interface EmbeddedMapProps {
   parties: PartyDto[];
   activeParty?: PartyDto;
   center?: { lat: number; lng: number };
+  exactMatch?: ExactMatchDto;
   onSelect?: (party: PartyDto | null) => void;
 }
 
@@ -32,13 +32,14 @@ const EmbeddedMap = ({
   parties,
   activeParty,
   center,
+  exactMatch,
   onSelect,
 }: EmbeddedMapProps) => {
   const locations = useMemo(
     () =>
       parties && parties.length > 0
         ? parties.map((party) => ({
-            key: party.id.toString(),
+            key: party.location.google_place_id,
             location: {
               lat: party.location.latitude,
               lng: party.location.longitude,
@@ -49,7 +50,7 @@ const EmbeddedMap = ({
     [parties]
   );
 
-  const activePoiKey = activeParty ? activeParty.id.toString() : undefined;
+  const activePoiKey = activeParty?.location.google_place_id;
   const defaultZoom = center ? 17 : 14;
   const mapCenter =
     center ||
@@ -68,12 +69,21 @@ const EmbeddedMap = ({
     [center?.lat, center?.lng]
   );
 
+  const exactMatchKey = exactMatch?.google_place_id;
+
+  const exactMatchNoPartyLocation =
+    exactMatch && !exactMatch.party
+      ? exactMatch.location
+        ? {
+            lat: exactMatch.location.latitude,
+            lng: exactMatch.location.longitude,
+          }
+        : center
+      : undefined;
+
   return (
     <div className="w-full h-full overflow-hidden rounded-md">
-      <APIProvider
-        apiKey={API_KEY}
-        onLoad={() => console.log("Maps API loaded.")}
-      >
+      <APIProvider apiKey={API_KEY}>
         <Map
           key={mapKey}
           defaultZoom={defaultZoom}
@@ -85,6 +95,8 @@ const EmbeddedMap = ({
           <PoiMarkers
             pois={locations}
             activePoiKey={activePoiKey}
+            exactMatchKey={exactMatchKey}
+            exactMatchNoPartyLocation={exactMatchNoPartyLocation}
             onSelect={onSelect}
             searchCenter={searchCenter}
           />
@@ -97,9 +109,27 @@ const EmbeddedMap = ({
 type PoiMarkersProps = {
   pois: (Poi & { party?: PartyDto })[];
   activePoiKey?: string;
+  exactMatchKey?: string;
+  exactMatchNoPartyLocation?: google.maps.LatLngLiteral;
   onSelect?: (party: PartyDto | null) => void;
   searchCenter?: { lat: number; lng: number };
 };
+
+const PIN_COLORS = {
+  default: { background: "#EA4335", border: "#B31412" },
+  exactMatch: { background: "#1967D2", border: "#0D47A1" },
+  selected: { background: "#4285F4", border: "#1967D2" },
+} as const;
+
+function getPinColors(
+  key: string,
+  activePoiKey?: string,
+  exactMatchKey?: string
+) {
+  if (key === activePoiKey) return PIN_COLORS.selected;
+  if (key === exactMatchKey) return PIN_COLORS.exactMatch;
+  return PIN_COLORS.default;
+}
 
 const SELECTED_ZOOM = 17;
 const METERS_PER_MILE = 1609.344;
@@ -109,6 +139,8 @@ const SEARCH_RADIUS_METERS =
 const PoiMarkers = ({
   pois,
   activePoiKey,
+  exactMatchKey,
+  exactMatchNoPartyLocation,
   onSelect,
   searchCenter,
 }: PoiMarkersProps) => {
@@ -127,8 +159,8 @@ const PoiMarkers = ({
 
     const target = pois.find((p) => p.key === activePoiKey);
     if (target) {
+      if (map.getZoom() !== SELECTED_ZOOM) map.setZoom(SELECTED_ZOOM);
       map.panTo(target.location);
-      map.setZoom(SELECTED_ZOOM);
     }
   }, [activePoiKey, map, pois]);
 
@@ -175,32 +207,48 @@ const PoiMarkers = ({
 
   return (
     <>
-      {pois.map((poi: Poi) => (
+      {pois.map((poi: Poi) => {
+        const colors = getPinColors(poi.key, activePoiKey, exactMatchKey);
+        return (
+          <AdvancedMarker
+            key={poi.key}
+            position={poi.location}
+            clickable={true}
+            onClick={handleClick(poi)}
+          >
+            <Pin
+              background={colors.background}
+              glyphColor="#fff"
+              borderColor={colors.border}
+            />
+          </AdvancedMarker>
+        );
+      })}
+      {exactMatchNoPartyLocation && exactMatchKey && (
         <AdvancedMarker
-          key={poi.key}
-          position={poi.location}
-          clickable={true}
-          onClick={handleClick(poi)}
+          key={exactMatchKey}
+          position={exactMatchNoPartyLocation}
+          clickable={false}
         >
           <Pin
-            background={poi == selectedPoi ? "#4285F4" : "#EA4335"}
-            glyphColor={"#fff"}
-            borderColor={poi == selectedPoi ? "#1967D2" : "#B31412"}
+            background={PIN_COLORS.exactMatch.background}
+            glyphColor="#fff"
+            borderColor={PIN_COLORS.exactMatch.border}
           />
         </AdvancedMarker>
-      ))}
+      )}
       {selectedPoi && selectedPoi.party && (
         <InfoWindow
           position={selectedPoi.location}
           onCloseClick={handleClose}
           headerContent={
-            <div className="font-semibold text-sm flex">
+            <span className="font-semibold text-sm flex">
               {getShortAddress(selectedPoi.party.location)}
-            </div>
+            </span>
           }
         >
-          <div className="space-y-1.5 text-sm">
-            <p className="text-gray-700">
+          <div className="space-y-1.5 text-sm -translate-y-1">
+            <p>
               {format(selectedPoi.party.party_datetime, "MMM d, yyyy")} at{" "}
               {format(selectedPoi.party.party_datetime, "h:mm a")}
             </p>
@@ -218,7 +266,7 @@ const PoiMarkers = ({
                     selectedPoi.party.contact_one.contact_preference
                   }
                 />
-                <span className="text-gray-600">
+                <span>
                   {formatContactPreference(
                     selectedPoi.party.contact_one.contact_preference
                   )}

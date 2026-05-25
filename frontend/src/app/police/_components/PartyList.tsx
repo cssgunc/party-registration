@@ -116,9 +116,7 @@ const PartyList = ({
         {parties.length > 0 && (
           <section>
             {exactMatchData && (
-              <h2 className="px-4 pt-4 pb-2 subhead-content">
-                Nearby Parties:
-              </h2>
+              <h2 className="px-4 pt-4 subhead-content">Nearby Parties:</h2>
             )}
             <ul className="list-none">
               {parties.map((party) => {

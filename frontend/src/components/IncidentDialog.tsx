@@ -124,11 +124,13 @@ export default function IncidentDialog({
     });
   };
 
-  const title = mode === "edit" ? "Edit Incident" : "Add Incident";
+  const severityLabel = INCIDENT_SEVERITY_LABELS[formData.severity];
+  const title =
+    mode === "edit" ? `Edit ${severityLabel}` : `Add ${severityLabel}`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl bg-card">
+      <DialogContent className="max-w-2xl bg-card" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>
             <p className="text-base flex items-center justify-center gap-2">
