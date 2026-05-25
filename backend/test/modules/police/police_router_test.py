@@ -14,9 +14,8 @@ from test.utils.http.test_templates import assert_excel_response, generate_auth_
 test_police_auth = generate_auth_required_tests(
     ({"admin", "police_admin"}, "GET", "/api/police", None),
     ({"admin", "police_admin"}, "GET", "/api/police/1", None),
-    # PUT: police_admin is excluded because is_verified is a required field they cannot set
     (
-        {"admin"},
+        {"admin", "police_admin"},
         "PUT",
         "/api/police/1",
         {"email": "x@unc.edu", "role": "officer", "is_verified": True},
@@ -219,8 +218,8 @@ class TestPoliceCRUDRouter:
         assert updated.hashed_password == original_hashed_password
 
     @pytest.mark.asyncio
-    async def test_police_admin_cannot_set_is_verified(self) -> None:
-        """Test that police_admin is rejected from PUT entirely (admin-only route)."""
+    async def test_police_admin_can_update_police(self) -> None:
+        """Test that police_admin can update police accounts."""
         police = await self.police_utils.create_one()
         data = await self.police_utils.next_update_data()
 
@@ -229,7 +228,10 @@ class TestPoliceCRUDRouter:
             json=data.model_dump(mode="json"),
         )
 
-        assert_res_failure(response, ForbiddenException("Insufficient privileges"))
+        result = assert_res_success(response, PoliceAccountDto)
+        assert result.id == police.id
+        assert result.email == data.email
+        assert result.role == data.role
 
     @pytest.mark.asyncio
     async def test_delete_police_success(self) -> None:
