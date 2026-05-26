@@ -3,6 +3,13 @@ from typing import Self
 
 from pydantic import AwareDatetime, BaseModel, Field
 from src.core.utils.query_utils import PaginatedResponse
+from src.modules.location.location_base_model import LocationData
+
+
+class LocationSummaryDto(LocationData):
+    """Location embedded in incident responses."""
+
+    id: int
 
 
 class IncidentSeverity(Enum):
@@ -38,8 +45,15 @@ class IncidentData(IncidentFields):
     location_id: int
 
 
-class IncidentDto(IncidentData):
-    """Output DTO for an incident."""
+class IncidentDto(IncidentFields):
+    """Output DTO for an incident, with embedded location summary."""
+
+    id: int
+    location: LocationSummaryDto
+
+
+class NestedIncidentDto(IncidentFields):
+    """Incident DTO used when nested inside a location response."""
 
     id: int
 

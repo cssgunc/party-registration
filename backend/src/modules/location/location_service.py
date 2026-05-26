@@ -28,9 +28,9 @@ from src.core.utils.query_utils import (
 from src.modules.incident.incident_entity import IncidentEntity
 from src.modules.incident.incident_model import IncidentSeverity
 
+from .location_base_model import AddressData
 from .location_entity import LocationEntity
 from .location_model import (
-    AddressData,
     AutocompleteResult,
     LocationData,
     LocationDto,

@@ -22,16 +22,50 @@ type IncidentCreateDto = {
   reference_id?: string | null;
 };
 
-type IncidentDto = {
+type LocationSummaryDto = {
   id: number;
-  location_id: number;
+  google_place_id: string;
+  formatted_address: string;
+  latitude: number;
+  longitude: number;
+  hold_expiration: Date | null;
+  street_number: string | null;
+  street_name: string | null;
+  unit: string | null;
+  city: string | null;
+  county: string | null;
+  state: string | null;
+  country: string | null;
+  zip_code: string | null;
+};
+
+type LocationSummaryDtoBackend = Omit<LocationSummaryDto, "hold_expiration"> & {
+  hold_expiration: string | null;
+};
+
+type IncidentFields = {
+  id: number;
   incident_datetime: Date;
   description: string;
   severity: IncidentSeverity;
   reference_id?: string | null;
 };
 
-type IncidentDtoBackend = Omit<IncidentDto, "incident_datetime"> & {
+type IncidentDto = IncidentFields & {
+  location: LocationSummaryDto;
+};
+
+type IncidentDtoBackend = Omit<
+  IncidentDto,
+  "incident_datetime" | "location"
+> & {
+  incident_datetime: string;
+  location: LocationSummaryDtoBackend;
+};
+
+type NestedIncidentDto = IncidentFields;
+
+type NestedIncidentDtoBackend = Omit<NestedIncidentDto, "incident_datetime"> & {
   incident_datetime: string;
 };
 
@@ -46,7 +80,28 @@ type PaginatedIncidentsResponseBackend =
     severity_counts: IncidentSeverityCounts;
   };
 
+function convertLocationSummary(
+  backend: LocationSummaryDtoBackend
+): LocationSummaryDto {
+  return {
+    ...backend,
+    hold_expiration: backend.hold_expiration
+      ? new Date(backend.hold_expiration)
+      : null,
+  };
+}
+
 function convertIncident(backend: IncidentDtoBackend): IncidentDto {
+  return {
+    ...backend,
+    incident_datetime: new Date(backend.incident_datetime),
+    location: convertLocationSummary(backend.location),
+  };
+}
+
+function convertNestedIncident(
+  backend: NestedIncidentDtoBackend
+): NestedIncidentDto {
   return {
     ...backend,
     incident_datetime: new Date(backend.incident_datetime),
@@ -59,8 +114,18 @@ export type {
   IncidentDtoBackend,
   IncidentSeverity,
   IncidentSeverityCounts,
+  LocationSummaryDto,
+  LocationSummaryDtoBackend,
+  NestedIncidentDto,
+  NestedIncidentDtoBackend,
   PaginatedIncidentsResponse,
   PaginatedIncidentsResponseBackend,
 };
 
-export { convertIncident, INCIDENT_SEVERITIES, INCIDENT_SEVERITY_LABELS };
+export {
+  convertIncident,
+  convertLocationSummary,
+  convertNestedIncident,
+  INCIDENT_SEVERITIES,
+  INCIDENT_SEVERITY_LABELS,
+};

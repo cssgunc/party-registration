@@ -9,105 +9,51 @@ import {
   useUpdateLocation,
 } from "@/lib/api/location/location.queries";
 import { LocationCreate, LocationDto } from "@/lib/api/location/location.types";
-import {
-  DEFAULT_TABLE_PARAMS,
-  ServerTableParams,
-} from "@/lib/api/shared/query-params";
 import { getErrorMessage } from "@/lib/errors";
 import { ColumnDef } from "@tanstack/react-table";
-import { useState } from "react";
+import { format } from "date-fns";
+import IncidentInfoChipDetails from "../shared/details/IncidentInfoChipDetails";
+import { FormSidebar } from "../shared/sidebar/FormSidebar";
 import { InfoChip } from "../shared/sidebar/InfoChip";
-import { useSidebar } from "../shared/sidebar/SidebarContext";
+import { useFormSidebarState } from "../shared/sidebar/useFormSidebarState";
 import { TableTemplate } from "../shared/table/TableTemplate";
-import IncidentInfoChipDetails from "./IncidentInfoChipDetails";
+import { deleteAction, editAction } from "../shared/table/rowActions";
 import LocationTableForm from "./LocationTableForm";
 
-const hasLocationChanged = (
-  original: LocationDto | null,
-  updated: LocationCreate
-): boolean => {
-  if (!original) return true;
-
-  return (
-    original.google_place_id !== updated.google_place_id ||
-    original.hold_expiration !== updated.hold_expiration
-  );
-};
+const LOCATION_ERROR_OPTIONS = {
+  status: { 409: "This location already exists" },
+} as const;
 
 export const LocationTable = () => {
   const { openSnackbar } = useSnackbar();
-  const { openSidebar, closeSidebar } = useSidebar();
-  const [editingLocation, setEditingLocation] = useState<LocationDto | null>(
-    null
-  );
-  const [serverParams, setServerParams] =
-    useState<ServerTableParams>(DEFAULT_TABLE_PARAMS);
-
-  const locationsQuery = useLocations(serverParams);
-  const locations = locationsQuery.data?.items ?? [];
-
-  const { mutate: exportCsv, isPending: isExporting } =
-    useDownloadLocationsCsv();
-
-  const locationErrorOptions = {
-    status: { 409: "This location already exists." },
-    fallback: "Operation failed.",
-  } as const;
+  const exportMutation = useDownloadLocationsCsv();
+  const {
+    mode,
+    row,
+    submissionError,
+    setSubmissionError,
+    openCreate,
+    openEdit,
+    closeSidebar,
+  } = useFormSidebarState<LocationDto>();
 
   const createMutation = useCreateLocation({
     onError: (error: Error) => {
-      openSidebar(
-        "create-location",
-        "New Location",
-        "Add a new location to the system",
-        <LocationTableForm
-          onSubmit={handleCreateSubmit}
-          submissionError={getErrorMessage(error, locationErrorOptions)}
-        />
-      );
+      setSubmissionError(getErrorMessage(error, LOCATION_ERROR_OPTIONS));
     },
     onSuccess: () => {
       openSnackbar("Location created successfully", "success");
       closeSidebar();
-      setEditingLocation(null);
     },
   });
 
   const updateMutation = useUpdateLocation({
-    onError: (
-      error: Error,
-      variables: { id: number; payload: LocationCreate }
-    ) => {
-      const editTarget =
-        editingLocation && editingLocation.id === variables.id
-          ? editingLocation
-          : null;
-
-      if (!editTarget) {
-        return;
-      }
-
-      openSidebar(
-        `edit-location-${editTarget.id}`,
-        "Edit Location",
-        "Update location information",
-        <LocationTableForm
-          onSubmit={(data) => handleEditSubmit(editTarget.id, data)}
-          editData={{
-            address: editTarget.formatted_address || "",
-            placeId: editTarget.google_place_id || "",
-            holdExpiration: editTarget.hold_expiration || null,
-          }}
-          submissionError={getErrorMessage(error, locationErrorOptions)}
-        />
-      );
+    onError: (error: Error) => {
+      setSubmissionError(getErrorMessage(error, LOCATION_ERROR_OPTIONS));
     },
-    onSuccess: (data, variables) => {
-      if (hasLocationChanged(editingLocation, variables.payload)) {
-        openSnackbar("Location updated successfully", "success");
-      }
+    onSuccess: () => {
+      openSnackbar("Location updated successfully", "success");
       closeSidebar();
-      setEditingLocation(null);
     },
   });
 
@@ -119,67 +65,6 @@ export const LocationTable = () => {
       openSnackbar("Location deleted successfully", "success");
     },
   });
-
-  const handleEdit = (location: LocationDto) => {
-    setEditingLocation(location);
-
-    openSidebar(
-      `edit-location-${location.id}`,
-      "Edit Location",
-      "Update location information",
-      <LocationTableForm
-        onSubmit={(data) => handleEditSubmit(location.id, data)}
-        editData={{
-          address: location.formatted_address || "",
-          placeId: location.google_place_id || "",
-          holdExpiration: location.hold_expiration || null,
-        }}
-      />
-    );
-  };
-
-  const handleDelete = (location: LocationDto) => {
-    deleteMutation.mutate(location.id);
-  };
-
-  const handleCreate = () => {
-    setEditingLocation(null);
-    openSidebar(
-      "create-location",
-      "New Location",
-      "Add a new location to the system",
-      <LocationTableForm onSubmit={handleCreateSubmit} />
-    );
-  };
-
-  const handleCreateSubmit = async (data: {
-    address: string;
-    placeId: string;
-    holdExpiration: Date | null;
-  }) => {
-    const payload: LocationCreate = {
-      google_place_id: data.placeId,
-      hold_expiration: data.holdExpiration,
-    };
-
-    createMutation.mutate(payload);
-  };
-
-  const handleEditSubmit = async (
-    locationId: number,
-    data: {
-      address: string;
-      placeId: string;
-      holdExpiration: Date | null;
-    }
-  ) => {
-    const payload: LocationCreate = {
-      google_place_id: data.placeId,
-      hold_expiration: data.holdExpiration,
-    };
-
-    updateMutation.mutate({ id: locationId, payload });
-  };
 
   const columns: ColumnDef<LocationDto>[] = [
     {
@@ -241,7 +126,7 @@ export const LocationTable = () => {
       cell: ({ row }) => {
         const holdDate = row.getValue("hold_expiration") as Date | null;
         if (holdDate) {
-          const formattedDate = new Date(holdDate).toLocaleDateString();
+          const formattedDate = format(new Date(holdDate), "MM-dd-yyyy");
           return `Expires: ${formattedDate}`;
         }
         return "No";
@@ -249,35 +134,68 @@ export const LocationTable = () => {
     },
   ];
   return (
-    <div className="h-full min-h-0 flex flex-col">
+    <>
       <TableTemplate
-        data={locations}
+        useQuery={useLocations}
         columns={columns}
-        resourceName="Location"
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        onCreateNewRow={handleCreate}
-        isLoading={locationsQuery.isLoading}
-        isFetching={locationsQuery.isFetching}
-        error={locationsQuery.error as Error | null}
-        getDeleteDescription={(location: LocationDto) =>
-          `Are you sure you want to delete location ${location.formatted_address}? This action cannot be undone.`
-        }
-        isDeleting={deleteMutation.isPending}
-        serverMeta={
-          locationsQuery.data
-            ? {
-                totalRecords: locationsQuery.data.total_records,
-                totalPages: locationsQuery.data.total_pages,
-                sortBy: locationsQuery.data.sort_by,
-                sortOrder: locationsQuery.data.sort_order,
-              }
-            : undefined
-        }
-        onStateChange={setServerParams}
-        onExportCsv={exportCsv}
-        isExporting={isExporting}
+        onCreate={openCreate}
+        rowActions={[
+          editAction<LocationDto>({ onClick: openEdit }),
+          deleteAction<LocationDto>({
+            onClick: (location) => deleteMutation.mutate(location.id),
+            resourceName: "Location",
+            description: (location) =>
+              `Are you sure you want to delete location ${location.formatted_address}? This action cannot be undone.`,
+            isPending: deleteMutation.isPending,
+          }),
+        ]}
+        exportMutation={exportMutation}
       />
-    </div>
+      <FormSidebar
+        mode={mode}
+        row={row}
+        modes={{
+          create: {
+            key: "create-location",
+            title: "New Location",
+            description: "Add a new location to the system",
+            render: () => (
+              <LocationTableForm
+                onSubmit={(data) =>
+                  createMutation.mutate({
+                    google_place_id: data.placeId,
+                    hold_expiration: data.holdExpiration,
+                  })
+                }
+                submissionError={submissionError}
+              />
+            ),
+          },
+          edit: {
+            key: (location) => `edit-location-${location.id}`,
+            title: "Edit Location",
+            description: "Update location information",
+            render: (location) => (
+              <LocationTableForm
+                onSubmit={(data) => {
+                  const payload: LocationCreate = {
+                    google_place_id: data.placeId,
+                    hold_expiration: data.holdExpiration,
+                  };
+                  updateMutation.mutate({ id: location.id, payload });
+                }}
+                editData={{
+                  address: location.formatted_address || "",
+                  placeId: location.google_place_id || "",
+                  holdExpiration: location.hold_expiration || null,
+                }}
+                submissionError={submissionError}
+              />
+            ),
+          },
+        }}
+        onClose={closeSidebar}
+      />
+    </>
   );
 };

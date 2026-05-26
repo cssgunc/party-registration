@@ -1,7 +1,8 @@
 from typing import ClassVar
 
 from fastapi import Depends
-from sqlalchemy import Select, func, select
+from sqlalchemy import Select, cast, func, select
+from sqlalchemy import Time as SATime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from src.core.database import get_session
@@ -32,6 +33,7 @@ _INCIDENT_QUERY_FIELDS = QueryFieldSet(
     fields={
         "id": IncidentEntity.id,
         "incident_datetime": IncidentEntity.incident_datetime,
+        "incident_datetime_time": cast(IncidentEntity.incident_datetime, SATime()),
         "severity": IncidentEntity.severity,
         "description": IncidentEntity.description,
         "reference_id": IncidentEntity.reference_id,
@@ -70,7 +72,9 @@ class IncidentService:
 
     async def _get_incident_entity_by_id(self, incident_id: int) -> IncidentEntity:
         result = await self.session.execute(
-            select(IncidentEntity).where(IncidentEntity.id == incident_id)
+            select(IncidentEntity)
+            .where(IncidentEntity.id == incident_id)
+            .options(selectinload(IncidentEntity.location))
         )
         incident_entity = result.scalar_one_or_none()
         if incident_entity is None:
@@ -78,8 +82,10 @@ class IncidentService:
         return incident_entity
 
     async def get_incidents_paginated(self, params: ListQueryParams) -> PaginatedIncidentsResponse:
-        base_query = select(IncidentEntity).join(
-            LocationEntity, IncidentEntity.location_id == LocationEntity.id
+        base_query = (
+            select(IncidentEntity)
+            .join(LocationEntity, IncidentEntity.location_id == LocationEntity.id)
+            .options(selectinload(IncidentEntity.location))
         )
 
         result = await self.query_service.get_paginated(
@@ -147,6 +153,7 @@ class IncidentService:
             select(IncidentEntity)
             .where(IncidentEntity.location_id == location_id)
             .order_by(IncidentEntity.incident_datetime)
+            .options(selectinload(IncidentEntity.location))
         )
         incidents = result.scalars().all()
         return [incident.to_dto() for incident in incidents]
@@ -171,12 +178,14 @@ class IncidentService:
         self.session.add(new_incident)
         await self.session.commit()
         await self.session.refresh(new_incident)
-        return new_incident.to_dto()
+        return (await self._get_incident_entity_by_id(new_incident.id)).to_dto()
 
     async def update_incident(self, incident_id: int, data: IncidentUpdateDto) -> IncidentDto:
         """Update an existing incident's datetime, description, and severity."""
-        incident_entity = await self._get_incident_entity_by_id(incident_id)
+        # Resolve location first — get_or_create may commit (creating a new location).
+        # Fetch the incident entity after to avoid stale identity-map relationships.
         location = await self.location_service.get_or_create_location(data.location_place_id)
+        incident_entity = await self._get_incident_entity_by_id(incident_id)
         incident_entity.set_from_data(
             IncidentData(
                 location_id=location.id,
@@ -188,7 +197,7 @@ class IncidentService:
         )
         self.session.add(incident_entity)
         await self.session.commit()
-        await self.session.refresh(incident_entity)
+        await self.session.refresh(incident_entity, attribute_names=["location"])
         return incident_entity.to_dto()
 
     async def delete_incident(self, incident_id: int) -> IncidentDto:

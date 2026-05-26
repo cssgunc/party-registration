@@ -5,8 +5,14 @@ import { cn } from "@/lib/utils";
 import { XIcon } from "lucide-react";
 
 function Sidebar() {
-  const { isOpen, closeSidebar, content, title, description, headerAction } =
-    useSidebar();
+  const {
+    isOpen,
+    closeSidebar,
+    title,
+    description,
+    setBodyNode,
+    setHeaderActionNode,
+  } = useSidebar();
 
   return (
     <>
@@ -34,15 +40,15 @@ function Sidebar() {
           {title && (
             <div className="flex items-center justify-between">
               <h2 className="subhead-title text-foreground">{title}</h2>
-              {headerAction}
+              <div ref={setHeaderActionNode} />
             </div>
           )}
           {description && (
             <p className="text-sm text-muted-foreground">{description}</p>
           )}
         </div>
-        {/* Scrollable content */}
-        <div className="overflow-y-auto flex-1 px-6 pb-6">{content}</div>
+        {/* Scrollable content portal target */}
+        <div ref={setBodyNode} className="overflow-y-auto flex-1 px-6 pb-6" />
       </div>
     </>
   );

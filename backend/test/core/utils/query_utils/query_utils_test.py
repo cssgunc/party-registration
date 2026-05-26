@@ -13,7 +13,11 @@ from src.core.exceptions import BadRequestException
 from src.core.utils.query_utils import FilterParam, ListQueryParams
 from src.modules.incident.incident_model import IncidentDto, IncidentSeverity
 from test.modules.incident.incident_utils import IncidentTestUtils
-from test.utils.http.assertions import assert_res_failure, assert_res_paginated
+from test.utils.http.assertions import (
+    assert_res_failure,
+    assert_res_paginated,
+    assert_res_validation_error,
+)
 
 
 class TestQueryUtilsSorting:
@@ -514,3 +518,142 @@ class TestQueryUtilsDefaultSorting:
         self.incident_utils.assert_matches(paginated.items[0], i3.to_dto())
         self.incident_utils.assert_matches(paginated.items[1], i2.to_dto())
         self.incident_utils.assert_matches(paginated.items[2], i1.to_dto())
+
+
+def _at_time(hour: int, minute: int = 0) -> datetime:
+    """Create a UTC datetime on a fixed date with the given time of day."""
+    return datetime(2026, 7, 15, hour, minute, tzinfo=UTC)
+
+
+class TestQueryUtilsTimeRangeFilter:
+    """Test trange operator for time-of-day filtering with and without midnight wrap-around."""
+
+    admin_client: AsyncClient
+    incident_utils: IncidentTestUtils
+
+    @pytest.fixture(autouse=True)
+    def _setup(self, incident_utils: IncidentTestUtils, admin_client: AsyncClient):
+        self.incident_utils = incident_utils
+        self.admin_client = admin_client
+
+    @pytest.mark.asyncio
+    async def test_trange_normal_range_includes_matching(self):
+        """Normal range (21:00-23:00) includes records within the range."""
+        inside = await self.incident_utils.create_one(incident_datetime=_at_time(22, 0))
+        await self.incident_utils.create_one(incident_datetime=_at_time(20, 0))
+        await self.incident_utils.create_one(incident_datetime=_at_time(23, 30))
+
+        response = await self.admin_client.get(
+            "/api/incidents?incident_datetime_time_trange=21:00,23:00"
+        )
+        paginated = assert_res_paginated(response, IncidentDto, total_records=1)
+        self.incident_utils.assert_matches(paginated.items[0], inside.to_dto())
+
+    @pytest.mark.asyncio
+    async def test_trange_normal_range_boundary_values_included(self):
+        """Boundary times (exactly at from and to) are included in the range."""
+        at_start = await self.incident_utils.create_one(incident_datetime=_at_time(21, 0))
+        at_end = await self.incident_utils.create_one(incident_datetime=_at_time(23, 0))
+        await self.incident_utils.create_one(incident_datetime=_at_time(20, 59))
+        await self.incident_utils.create_one(incident_datetime=_at_time(23, 1))
+
+        response = await self.admin_client.get(
+            "/api/incidents?incident_datetime_time_trange=21:00,23:00"
+        )
+        paginated = assert_res_paginated(response, IncidentDto, total_records=2)
+        returned_by_id = {item.id: item for item in paginated.items}
+        self.incident_utils.assert_matches(returned_by_id[at_start.id], at_start.to_dto())
+        self.incident_utils.assert_matches(returned_by_id[at_end.id], at_end.to_dto())
+
+    @pytest.mark.asyncio
+    async def test_trange_midnight_wraparound_includes_both_sides(self):
+        """Midnight wrap-around (22:00-02:00) includes records before midnight and after."""
+        before_midnight = await self.incident_utils.create_one(incident_datetime=_at_time(23, 0))
+        after_midnight = await self.incident_utils.create_one(incident_datetime=_at_time(1, 30))
+        outside = await self.incident_utils.create_one(incident_datetime=_at_time(12, 0))
+
+        response = await self.admin_client.get(
+            "/api/incidents?incident_datetime_time_trange=22:00,02:00"
+        )
+        paginated = assert_res_paginated(response, IncidentDto, total_records=2)
+        returned_by_id = {item.id: item for item in paginated.items}
+        self.incident_utils.assert_matches(
+            returned_by_id[before_midnight.id], before_midnight.to_dto()
+        )
+        self.incident_utils.assert_matches(
+            returned_by_id[after_midnight.id], after_midnight.to_dto()
+        )
+        _ = outside  # referenced only to confirm it was created and excluded
+
+    @pytest.mark.asyncio
+    async def test_trange_midnight_wraparound_boundary_values_included(self):
+        """Boundary times for midnight wrap-around range are included."""
+        at_from = await self.incident_utils.create_one(incident_datetime=_at_time(22, 0))
+        at_to = await self.incident_utils.create_one(incident_datetime=_at_time(2, 0))
+        just_before_from = await self.incident_utils.create_one(incident_datetime=_at_time(21, 59))
+        just_after_to = await self.incident_utils.create_one(incident_datetime=_at_time(2, 1))
+
+        response = await self.admin_client.get(
+            "/api/incidents?incident_datetime_time_trange=22:00,02:00"
+        )
+        paginated = assert_res_paginated(response, IncidentDto, total_records=2)
+        returned_by_id = {item.id: item for item in paginated.items}
+        self.incident_utils.assert_matches(returned_by_id[at_from.id], at_from.to_dto())
+        self.incident_utils.assert_matches(returned_by_id[at_to.id], at_to.to_dto())
+        _ = just_before_from, just_after_to  # referenced to confirm exclusion
+
+    @pytest.mark.asyncio
+    async def test_trange_no_results_when_nothing_matches(self):
+        """Returns empty results when no records fall in the requested time range."""
+        await self.incident_utils.create_one(incident_datetime=_at_time(14, 0))
+        await self.incident_utils.create_one(incident_datetime=_at_time(15, 0))
+
+        response = await self.admin_client.get(
+            "/api/incidents?incident_datetime_time_trange=21:00,23:00"
+        )
+        assert_res_paginated(response, IncidentDto, total_records=0)
+
+    @pytest.mark.asyncio
+    async def test_trange_combined_with_other_filter(self):
+        """trange filter and a second filter are AND-ed together."""
+        matching = await self.incident_utils.create_one(
+            incident_datetime=_at_time(22, 0), severity="remote_warning"
+        )
+        await self.incident_utils.create_one(
+            incident_datetime=_at_time(22, 0), severity="in_person_warning"
+        )
+        await self.incident_utils.create_one(
+            incident_datetime=_at_time(10, 0), severity="remote_warning"
+        )
+
+        response = await self.admin_client.get(
+            "/api/incidents?incident_datetime_time_trange=21:00,23:00&severity_eq=remote_warning"
+        )
+        paginated = assert_res_paginated(response, IncidentDto, total_records=1)
+        self.incident_utils.assert_matches(paginated.items[0], matching.to_dto())
+
+    @pytest.mark.asyncio
+    async def test_trange_invalid_value_count_returns_422(self):
+        """trange with only one time value is rejected as a validation error (422)."""
+        response = await self.admin_client.get("/api/incidents?incident_datetime_time_trange=21:00")
+        assert_res_validation_error(response)
+
+    @pytest.mark.asyncio
+    async def test_time_gte_operator_on_time_field(self):
+        """Standard gte operator works on the virtual time field."""
+        after = await self.incident_utils.create_one(incident_datetime=_at_time(22, 0))
+        await self.incident_utils.create_one(incident_datetime=_at_time(20, 0))
+
+        response = await self.admin_client.get("/api/incidents?incident_datetime_time_gte=21:00")
+        paginated = assert_res_paginated(response, IncidentDto, total_records=1)
+        self.incident_utils.assert_matches(paginated.items[0], after.to_dto())
+
+    @pytest.mark.asyncio
+    async def test_time_lte_operator_on_time_field(self):
+        """Standard lte operator works on the virtual time field."""
+        before = await self.incident_utils.create_one(incident_datetime=_at_time(20, 0))
+        await self.incident_utils.create_one(incident_datetime=_at_time(22, 0))
+
+        response = await self.admin_client.get("/api/incidents?incident_datetime_time_lte=21:00")
+        paginated = assert_res_paginated(response, IncidentDto, total_records=1)
+        self.incident_utils.assert_matches(paginated.items[0], before.to_dto())

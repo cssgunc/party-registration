@@ -20,138 +20,68 @@ import {
   PartyStatus,
   getPartyValidationError,
 } from "@/lib/api/party/party.types";
-import {
-  DEFAULT_TABLE_PARAMS,
-  ServerTableParams,
-} from "@/lib/api/shared/query-params";
 import { getErrorMessage } from "@/lib/errors";
 import { formatTime } from "@/lib/utils";
 import { ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
 import { Ban, Check, Undo2, X } from "lucide-react";
-import { useState } from "react";
-import { DeleteConfirmDialog } from "../shared/dialog/DeleteConfirmDialog";
+import ContactInfoChipDetails from "../shared/details/ContactInfoChipDetails";
+import LocationInfoChipDetails from "../shared/details/LocationInfoChipDetails";
+import StudentInfoChipDetails from "../shared/details/StudentInfoChipDetails";
+import { FormSidebar } from "../shared/sidebar/FormSidebar";
 import { InfoChip } from "../shared/sidebar/InfoChip";
-import { useSidebar } from "../shared/sidebar/SidebarContext";
+import { useFormSidebarState } from "../shared/sidebar/useFormSidebarState";
 import { TableTemplate } from "../shared/table/TableTemplate";
-import PartyTableForm from "./PartyTableForm";
-import ContactInfoChipDetails from "./details/ContactInfoChipDetails";
-import LocationInfoChipDetails from "./details/LocationInfoChipDetails";
-import StudentInfoChipDetails from "./details/StudentInfoChipDetails";
+import { type RowAction, editAction } from "../shared/table/rowActions";
+import PartyTableForm, { PartyTableFormValues } from "./PartyTableForm";
 
-const hasPartyChanged = (
-  original: PartyDto | null,
-  updated: AdminCreatePartyDto
-): boolean => {
-  if (!original) return true;
+const PARTY_ERROR_OPTIONS = {
+  status: {
+    404: "Party not found",
+  },
+} as const;
 
-  return (
-    original.party_datetime.getTime() !== updated.party_datetime.getTime() ||
-    original.location.google_place_id !== updated.google_place_id ||
-    original.contact_two.email !== updated.contact_two.email ||
-    original.contact_two.first_name !== updated.contact_two.first_name ||
-    original.contact_two.last_name !== updated.contact_two.last_name ||
-    original.contact_two.phone_number !== updated.contact_two.phone_number ||
-    original.contact_two.contact_preference !==
-      updated.contact_two.contact_preference
-  );
-};
+const getPartyErrorMessage = (error: Error) =>
+  getPartyValidationError(error)?.message ??
+  getErrorMessage(error, PARTY_ERROR_OPTIONS);
 
 export const PartyTable = () => {
   const { openSnackbar } = useSnackbar();
-  const { openSidebar, closeSidebar } = useSidebar();
-  const [editingParty, setEditingParty] = useState<PartyDto | null>(null);
-  const [serverParams, setServerParams] =
-    useState<ServerTableParams>(DEFAULT_TABLE_PARAMS);
+  const {
+    mode,
+    row,
+    submissionError,
+    setSubmissionError,
+    openCreate,
+    openEdit,
+    closeSidebar,
+  } = useFormSidebarState<PartyDto>();
 
-  const partiesQuery = useAdminParties(serverParams);
-  const parties = partiesQuery.data?.items ?? [];
-
-  const { mutate: exportCsv, isPending: isExporting } = useDownloadPartiesCsv();
+  const exportMutation = useDownloadPartiesCsv();
 
   const createMutation = useCreateAdminParty({
     onError: (error: Error) => {
-      const validationError = getPartyValidationError(error);
-      const message =
-        validationError?.message ??
-        getErrorMessage(error, {
-          status: {
-            404: "Party not found.",
-          },
-          fallback: "Operation failed.",
-        });
-
-      openSidebar(
-        "create-party",
-        "New Party",
-        "Add a new party to the system",
-        <PartyTableForm
-          onSubmit={handleCreateSubmit}
-          submissionError={message}
-        />
-      );
+      setSubmissionError(getPartyErrorMessage(error));
     },
     onSuccess: () => {
       openSnackbar("Party created successfully", "success");
       closeSidebar();
-      setEditingParty(null);
     },
   });
 
   const updateMutation = useUpdateAdminParty({
-    onError: (
-      error: Error,
-      variables: { id: number; payload: AdminCreatePartyDto }
-    ) => {
-      const validationError = getPartyValidationError(error);
-      const message =
-        validationError?.message ??
-        getErrorMessage(error, {
-          status: {
-            404: "Party not found.",
-          },
-          fallback: "Operation failed.",
-        });
-
-      const editTarget =
-        editingParty && editingParty.id === variables.id ? editingParty : null;
-
-      if (!editTarget) {
-        return;
-      }
-
-      openSidebar(
-        `edit-party-${editTarget.id}`,
-        "Edit Party",
-        "Update party information",
-        <PartyTableForm
-          onSubmit={(data) => handleEditSubmit(editTarget.id, data)}
-          editData={editTarget}
-          submissionError={message}
-        />
-      );
+    onError: (error: Error) => {
+      setSubmissionError(getPartyErrorMessage(error));
     },
-    onSuccess: (data, variables) => {
-      if (hasPartyChanged(editingParty, variables.payload)) {
-        openSnackbar("Party updated successfully", "success");
-      }
+    onSuccess: () => {
+      openSnackbar("Party updated successfully", "success");
       closeSidebar();
-      setEditingParty(null);
     },
   });
 
   const cancelMutation = useCancelAdminParty({
     onError: (error: Error) => {
-      const validationError = getPartyValidationError(error);
-      const message =
-        validationError?.message ??
-        getErrorMessage(error, {
-          status: {
-            404: "Party not found.",
-          },
-          fallback: "Operation failed.",
-        });
-      openSnackbar(message, "error");
+      openSnackbar(getPartyErrorMessage(error), "error");
     },
     onSuccess: () => {
       openSnackbar("Party cancelled successfully", "success");
@@ -160,59 +90,14 @@ export const PartyTable = () => {
 
   const restoreMutation = useRestoreAdminParty({
     onError: (error: Error) => {
-      const validationError = getPartyValidationError(error);
-      const message =
-        validationError?.message ??
-        getErrorMessage(error, {
-          status: {
-            404: "Party not found.",
-          },
-          fallback: "Operation failed.",
-        });
-      openSnackbar(message, "error");
+      openSnackbar(getPartyErrorMessage(error), "error");
     },
     onSuccess: () => {
       openSnackbar("Party restored successfully", "success");
     },
   });
 
-  const handleEdit = (party: PartyDto) => {
-    setEditingParty(party);
-    openSidebar(
-      `edit-party-${party.id}`,
-      "Edit Party",
-      "Update party information",
-      <PartyTableForm
-        onSubmit={(data) => handleEditSubmit(party.id, data)}
-        editData={party}
-      />
-    );
-  };
-
-  const [partyToCancel, setPartyToCancel] = useState<PartyDto | null>(null);
-
-  const handleCreate = () => {
-    setEditingParty(null);
-    openSidebar(
-      "create-party",
-      "New Party",
-      "Add a new party to the system",
-      <PartyTableForm onSubmit={handleCreateSubmit} />
-    );
-  };
-
-  const buildPayload = (data: {
-    address: string;
-    placeId: string;
-    partyDate: Date;
-    partyTime: string;
-    contactOneStudentId: number;
-    contactTwoEmail: string;
-    contactTwoFirstName: string;
-    contactTwoLastName: string;
-    contactTwoPhoneNumber: string;
-    contactTwoPreference: "call" | "text" | string;
-  }) => {
+  const buildPayload = (data: PartyTableFormValues) => {
     // Construct party datetime
     const [hours, minutes] = data.partyTime.split(":").map(Number);
     const party_datetime = new Date(data.partyDate);
@@ -236,36 +121,14 @@ export const PartyTable = () => {
     return payload;
   };
 
-  const handleCreateSubmit = async (data: {
-    address: string;
-    placeId: string;
-    partyDate: Date;
-    partyTime: string;
-    contactOneStudentId: number;
-    contactTwoEmail: string;
-    contactTwoFirstName: string;
-    contactTwoLastName: string;
-    contactTwoPhoneNumber: string;
-    contactTwoPreference: "call" | "text" | string;
-  }) => {
+  const handleCreateSubmit = async (data: PartyTableFormValues) => {
     const payload = buildPayload(data);
     createMutation.mutate(payload);
   };
 
   const handleEditSubmit = async (
     partyId: number,
-    data: {
-      address: string;
-      placeId: string;
-      partyDate: Date;
-      partyTime: string;
-      contactOneStudentId: number;
-      contactTwoEmail: string;
-      contactTwoFirstName: string;
-      contactTwoLastName: string;
-      contactTwoPhoneNumber: string;
-      contactTwoPreference: "call" | "text" | string;
-    }
+    data: PartyTableFormValues
   ) => {
     const payload = buildPayload(data);
     updateMutation.mutate({ id: partyId, payload });
@@ -310,7 +173,7 @@ export const PartyTable = () => {
       accessorFn: (row) => format(row.party_datetime, "HH:mm"),
       header: "Time",
       enableColumnFilter: true,
-      meta: { filter: { type: "time" }, filterMode: "client" },
+      meta: { filter: { type: "time", backendField: "party_datetime_time" } },
       cell: ({ row }) => {
         const date = new Date(row.original.party_datetime);
         return formatTime(date);
@@ -400,67 +263,71 @@ export const PartyTable = () => {
   ];
 
   return (
-    <div className="h-full min-h-0 flex flex-col">
+    <>
       <TableTemplate
-        data={parties}
+        useQuery={useAdminParties}
         columns={columns}
-        resourceName="Party"
-        onEdit={handleEdit}
-        onCreateNewRow={handleCreate}
-        isLoading={partiesQuery.isLoading}
-        isFetching={partiesQuery.isFetching}
-        error={partiesQuery.error as Error | null}
+        onCreate={openCreate}
         rowActions={[
+          editAction<PartyDto>({ onClick: openEdit }),
           {
             label: "Cancel",
             icon: <Ban className="mr-2 size-4" />,
             variant: "destructive",
             isVisible: (party) => party.status !== PartyStatus.CANCELLED,
-            onClick: (party) => setPartyToCancel(party),
-          },
+            onClick: (party) => cancelMutation.mutate(party.id),
+            confirm: {
+              title: "Cancel Party",
+              description: (party) =>
+                `Are you sure you want to cancel this party on ${format(
+                  party.party_datetime,
+                  "PPP 'at' p"
+                )}?`,
+              isPending: cancelMutation.isPending,
+              dismissLabel: "Back",
+              confirmLabel: "Cancel Party",
+              pendingLabel: "Cancelling...",
+            },
+          } satisfies RowAction<PartyDto>,
           {
             label: "Restore",
             icon: <Undo2 className="mr-2 size-4" />,
             isVisible: (party) => party.status === PartyStatus.CANCELLED,
             onClick: (party) => restoreMutation.mutate(party.id),
-          },
+          } satisfies RowAction<PartyDto>,
         ]}
-        serverMeta={
-          partiesQuery.data
-            ? {
-                totalRecords: partiesQuery.data.total_records,
-                totalPages: partiesQuery.data.total_pages,
-                sortBy: partiesQuery.data.sort_by,
-                sortOrder: partiesQuery.data.sort_order,
-              }
-            : undefined
-        }
-        onStateChange={setServerParams}
-        onExportCsv={exportCsv}
-        isExporting={isExporting}
+        exportMutation={exportMutation}
       />
-      <DeleteConfirmDialog
-        open={partyToCancel !== null}
-        onOpenChange={(open) => {
-          if (!open) setPartyToCancel(null);
+      <FormSidebar
+        mode={mode}
+        row={row}
+        modes={{
+          create: {
+            key: "create-party",
+            title: "New Party",
+            description: "Add a new party to the system",
+            render: () => (
+              <PartyTableForm
+                onSubmit={handleCreateSubmit}
+                submissionError={submissionError}
+              />
+            ),
+          },
+          edit: {
+            key: (party) => `edit-party-${party.id}`,
+            title: "Edit Party",
+            description: "Update party information",
+            render: (party) => (
+              <PartyTableForm
+                onSubmit={(data) => handleEditSubmit(party.id, data)}
+                editData={party}
+                submissionError={submissionError}
+              />
+            ),
+          },
         }}
-        onConfirm={() => {
-          if (partyToCancel) cancelMutation.mutate(partyToCancel.id);
-        }}
-        title="Cancel Party"
-        description={
-          partyToCancel
-            ? `Are you sure you want to cancel this party on ${format(
-                partyToCancel.party_datetime,
-                "PPP 'at' p"
-              )}?`
-            : undefined
-        }
-        isDeleting={cancelMutation.isPending}
-        dismissLabel="Back"
-        confirmLabel="Cancel Party"
-        pendingLabel="Cancelling..."
+        onClose={closeSidebar}
       />
-    </div>
+    </>
   );
 };

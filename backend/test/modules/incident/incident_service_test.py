@@ -36,7 +36,7 @@ class TestIncidentService:
 
         incident = await self.incident_service.create_incident(create_dto)
 
-        assert incident.location_id == location.id
+        assert incident.location.id == location.id
         self.incident_utils.assert_matches(incident, create_dto)
 
     @pytest.mark.asyncio
@@ -52,12 +52,7 @@ class TestIncidentService:
         incident = await self.incident_service.create_incident(create_dto)
 
         assert incident.id is not None
-        all_locations = await self.location_utils.get_all()
-        created_location = next(
-            (loc for loc in all_locations if loc.id == incident.location_id), None
-        )
-        assert created_location is not None
-        assert created_location.google_place_id == location_data.google_place_id
+        assert incident.location.google_place_id == location_data.google_place_id
 
     @pytest.mark.asyncio
     async def test_create_incident_with_empty_description(self) -> None:
@@ -154,18 +149,8 @@ class TestIncidentService:
 
         updated = await self.incident_service.update_incident(incident_entity.id, update_dto)
 
-        assert updated.location_id != location.id
-        all_locations = await self.location_utils.get_all()
-        created_location = next(
-            (
-                candidate
-                for candidate in all_locations
-                if candidate.google_place_id == updated_location_data.google_place_id
-            ),
-            None,
-        )
-        assert created_location is not None
-        assert updated.location_id == created_location.id
+        assert updated.location.id != location.id
+        assert updated.location.google_place_id == updated_location_data.google_place_id
 
     @pytest.mark.asyncio
     async def test_create_incident_with_reference_id(self) -> None:

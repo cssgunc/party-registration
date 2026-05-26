@@ -22,8 +22,8 @@ import {
   INCIDENT_SEVERITIES,
   INCIDENT_SEVERITY_LABELS,
   IncidentCreateDto,
-  IncidentDto,
   IncidentSeverity,
+  NestedIncidentDto,
 } from "@/lib/api/incident/incident.types";
 import { LocationDto } from "@/lib/api/location/location.types";
 import { cn } from "@/lib/utils";
@@ -50,7 +50,7 @@ export interface IncidentDialogProps {
   locationPlaceId?: string;
   /** Fallback address string when location is null (used for unregistered locations) */
   formattedAddress?: string;
-  incident?: IncidentDto;
+  incident?: NestedIncidentDto;
   defaultSeverity?: IncidentSeverity;
   onSubmit: (data: IncidentCreateDto) => void;
   isSubmitting?: boolean;

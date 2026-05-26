@@ -1,22 +1,25 @@
 "use client";
-import { ReactNode, createContext, useContext, useState } from "react";
+import {
+  ReactNode,
+  createContext,
+  useCallback,
+  useContext,
+  useState,
+} from "react";
 
 type SidebarContextType = {
   isOpen: boolean;
   title: string | null;
   description: string | null;
-  content: ReactNode | null;
-  headerAction: ReactNode | null;
   selectedKey: string | null;
-  openSidebar: (
-    key: string,
-    title: string,
-    description: string,
-    content: ReactNode,
-    headerAction?: ReactNode
-  ) => void;
+  bodyNode: HTMLElement | null;
+  headerActionNode: HTMLElement | null;
+  setBodyNode: (node: HTMLElement | null) => void;
+  setHeaderActionNode: (node: HTMLElement | null) => void;
+  openSidebar: (key: string, title: string, description: string) => void;
   closeSidebar: () => void;
 };
+
 interface SidebarProviderProps {
   children: ReactNode;
 }
@@ -27,33 +30,28 @@ export function SidebarProvider({ children }: SidebarProviderProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [title, setTitle] = useState<string | null>(null);
   const [description, setDescription] = useState<string | null>(null);
-  const [content, setContent] = useState<ReactNode | null>(null);
-  const [headerAction, setHeaderAction] = useState<ReactNode | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [bodyNode, setBodyNode] = useState<HTMLElement | null>(null);
+  const [headerActionNode, setHeaderActionNode] = useState<HTMLElement | null>(
+    null
+  );
 
-  const openSidebar = (
-    key: string,
-    title: string,
-    description: string,
-    content: ReactNode,
-    headerAction?: ReactNode
-  ) => {
-    setContent(content);
-    setTitle(title);
-    setDescription(description);
-    setHeaderAction(headerAction ?? null);
-    setSelectedKey(key);
-    setIsOpen(true);
-  };
+  const openSidebar = useCallback(
+    (key: string, title: string, description: string) => {
+      setSelectedKey(key);
+      setTitle(title);
+      setDescription(description);
+      setIsOpen(true);
+    },
+    []
+  );
 
-  const closeSidebar = () => {
+  const closeSidebar = useCallback(() => {
     setIsOpen(false);
-    setContent(null);
-    setHeaderAction(null);
     setSelectedKey(null);
     setTitle(null);
     setDescription(null);
-  };
+  }, []);
 
   return (
     <SidebarContext.Provider
@@ -61,9 +59,11 @@ export function SidebarProvider({ children }: SidebarProviderProps) {
         isOpen,
         title,
         description,
-        content,
-        headerAction,
         selectedKey,
+        bodyNode,
+        headerActionNode,
+        setBodyNode,
+        setHeaderActionNode,
         openSidebar,
         closeSidebar,
       }}

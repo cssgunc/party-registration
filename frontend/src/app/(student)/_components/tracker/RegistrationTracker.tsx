@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SkeletonText } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { IncidentDto } from "@/lib/api/incident/incident.types";
+import { NestedIncidentDto } from "@/lib/api/incident/incident.types";
 import { hasActiveHold } from "@/lib/api/location/location.service";
 import { PartyDto } from "@/lib/api/party/party.types";
 import {
@@ -113,7 +113,7 @@ export default function RegistrationTracker(): React.JSX.Element {
   );
 
   const sortedIncidents = useMemo(() => {
-    const incidents: IncidentDto[] =
+    const incidents: NestedIncidentDto[] =
       student?.residence?.location.incidents ?? [];
     return [...incidents].sort(
       (a, b) =>
@@ -123,7 +123,7 @@ export default function RegistrationTracker(): React.JSX.Element {
   }, [student?.residence?.location.incidents]);
 
   const groupedIncidents = useMemo(() => {
-    const groups: Record<string, IncidentDto[]> = {};
+    const groups: Record<string, NestedIncidentDto[]> = {};
 
     sortedIncidents.forEach((incident) => {
       const dateKey = format(incident.incident_datetime, "MM/dd/yyyy");

@@ -21,7 +21,7 @@ import * as z from "zod";
 
 export const accountTableFormSchema = z.object({
   email: z.email({ pattern: z.regexes.html5Email }).min(1, "Email is required"),
-  role: z.string().min(1, "Role is required"),
+  role: z.enum(["staff", "admin"]),
 });
 
 type AccountTableFormValues = z.infer<typeof accountTableFormSchema>;
@@ -39,7 +39,7 @@ export default function AccountTableForm({
 }: AccountTableFormProps) {
   const [formData, setFormData] = useState<Partial<AccountTableFormValues>>({
     email: editData?.email ?? "",
-    role: editData?.role ?? "",
+    role: editData?.role ?? undefined,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);

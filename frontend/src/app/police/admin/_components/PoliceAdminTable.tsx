@@ -3,8 +3,13 @@
 import PoliceAccountTableForm, {
   type PoliceAccountFormValues,
 } from "@/app/staff/_components/account/PoliceAccountTableForm";
-import { useSidebar } from "@/app/staff/_components/shared/sidebar/SidebarContext";
+import { FormSidebar } from "@/app/staff/_components/shared/sidebar/FormSidebar";
+import { useFormSidebarState } from "@/app/staff/_components/shared/sidebar/useFormSidebarState";
 import { TableTemplate } from "@/app/staff/_components/shared/table/TableTemplate";
+import {
+  deleteAction,
+  editAction,
+} from "@/app/staff/_components/shared/table/rowActions";
 import { useSnackbar } from "@/contexts/SnackbarContext";
 import {
   useDeletePoliceAccount,
@@ -12,28 +17,24 @@ import {
   usePoliceAccountsPaginated,
   useUpdatePoliceAccount,
 } from "@/lib/api/account/account.queries";
-import type {
-  PoliceAccountDto,
-  PoliceAccountUpdate,
-} from "@/lib/api/police/police.types";
-import {
-  DEFAULT_TABLE_PARAMS,
-  type ServerTableParams,
-} from "@/lib/api/shared/query-params";
+import type { PoliceAccountDto } from "@/lib/api/police/police.types";
 import { getErrorMessage } from "@/lib/errors";
 import { formatRoleLabel } from "@/lib/utils";
 import { ColumnDef } from "@tanstack/react-table";
 import { useSession } from "next-auth/react";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 export default function PoliceAdminTable() {
   const { data: session } = useSession();
-  const { openSidebar, closeSidebar } = useSidebar();
   const { openSnackbar } = useSnackbar();
-  const [serverParams, setServerParams] =
-    useState<ServerTableParams>(DEFAULT_TABLE_PARAMS);
-
-  const policeAccountsQuery = usePoliceAccountsPaginated(serverParams);
+  const {
+    mode,
+    row,
+    submissionError,
+    setSubmissionError,
+    openEdit,
+    closeSidebar,
+  } = useFormSidebarState<PoliceAccountDto>();
   const downloadPoliceAccountsCsv = useDownloadPoliceAccountsCsv({
     onError: () => {
       openSnackbar("Failed to export police accounts.", "error");
@@ -41,29 +42,12 @@ export default function PoliceAdminTable() {
   });
 
   const updatePoliceAccountMutation = useUpdatePoliceAccount({
-    onError: (
-      error: Error,
-      variables: { id: number; data: PoliceAccountUpdate }
-    ) => {
-      openSidebar(
-        `edit-police-${variables.id}`,
-        "Edit Police Account",
-        "Update police account credentials",
-        <PoliceAccountTableForm
-          onSubmit={(data) => handlePoliceEditSubmit(variables.id, data)}
-          submissionError={getErrorMessage(error)}
-          editData={{
-            email: variables.data.email,
-            role: variables.data.role,
-            is_verified: variables.data.is_verified,
-          }}
-          disableVerificationToggle
-        />
-      );
+    onError: (error: Error) => {
+      setSubmissionError(getErrorMessage(error));
     },
     onSuccess: () => {
-      closeSidebar();
       openSnackbar("Police account updated successfully", "success");
+      closeSidebar();
     },
   });
 
@@ -77,23 +61,6 @@ export default function PoliceAdminTable() {
   });
 
   const currentPoliceId = session?.id ? Number(session.id) : null;
-
-  const handleEdit = (row: PoliceAccountDto) => {
-    openSidebar(
-      `edit-police-${row.id}`,
-      "Edit Police Account",
-      "Update police account credentials",
-      <PoliceAccountTableForm
-        onSubmit={(data) => handlePoliceEditSubmit(row.id, data)}
-        editData={{
-          email: row.email,
-          role: row.role,
-          is_verified: row.is_verified,
-        }}
-        disableVerificationToggle
-      />
-    );
-  };
 
   const handleDelete = (row: PoliceAccountDto) => {
     if (row.id === currentPoliceId) {
@@ -150,37 +117,48 @@ export default function PoliceAdminTable() {
     []
   );
 
-  const tableData = policeAccountsQuery.data?.items ?? [];
-
   return (
-    <TableTemplate
-      data={tableData}
-      columns={columns}
-      resourceName="Police Account"
-      onEdit={handleEdit}
-      onDelete={handleDelete}
-      isLoading={policeAccountsQuery.isLoading}
-      isFetching={policeAccountsQuery.isFetching}
-      error={(policeAccountsQuery.error as Error | null) ?? null}
-      getDeleteDescription={(row: PoliceAccountDto) =>
-        `Are you sure you want to delete police account ${row.email}? This action cannot be undone.`
-      }
-      isDeleting={deletePoliceAccountMutation.isPending}
-      serverMeta={
-        policeAccountsQuery.data
-          ? {
-              totalRecords: policeAccountsQuery.data.total_records,
-              totalPages: policeAccountsQuery.data.total_pages,
-              sortBy: policeAccountsQuery.data.sort_by,
-              sortOrder: policeAccountsQuery.data.sort_order,
-            }
-          : undefined
-      }
-      onStateChange={setServerParams}
-      canManageRows
-      canDeleteRow={(row) => row.id !== currentPoliceId}
-      onExportCsv={(params) => downloadPoliceAccountsCsv.mutate(params)}
-      isExporting={downloadPoliceAccountsCsv.isPending}
-    />
+    <>
+      <TableTemplate
+        useQuery={usePoliceAccountsPaginated}
+        columns={columns}
+        rowActions={[
+          editAction<PoliceAccountDto>({ onClick: openEdit }),
+          deleteAction<PoliceAccountDto>({
+            onClick: handleDelete,
+            resourceName: "Police Account",
+            description: (row) =>
+              `Are you sure you want to delete police account ${row.email}? This action cannot be undone.`,
+            isPending: deletePoliceAccountMutation.isPending,
+            isVisible: (row) => row.id !== currentPoliceId,
+          }),
+        ]}
+        exportMutation={downloadPoliceAccountsCsv}
+      />
+      <FormSidebar
+        mode={mode}
+        row={row}
+        modes={{
+          edit: {
+            key: (account) => `edit-police-${account.id}`,
+            title: "Edit Police Account",
+            description: "Update police account credentials",
+            render: (account) => (
+              <PoliceAccountTableForm
+                onSubmit={(data) => handlePoliceEditSubmit(account.id, data)}
+                submissionError={submissionError}
+                editData={{
+                  email: account.email,
+                  role: account.role,
+                  is_verified: account.is_verified,
+                }}
+                disableVerificationToggle
+              />
+            ),
+          },
+        }}
+        onClose={closeSidebar}
+      />
+    </>
   );
 }

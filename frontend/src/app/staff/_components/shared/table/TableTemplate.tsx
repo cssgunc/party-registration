@@ -1,5 +1,6 @@
 "use client";
 
+import PaginationControls from "@/components/PaginationControls";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -9,21 +10,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -35,197 +21,110 @@ import {
 } from "@/components/ui/table";
 import {
   ColumnFilterMeta,
-  FilterValue,
   ListQueryParams,
-  ServerColumnMap,
   ServerTableParams,
   buildServerTableParams,
 } from "@/lib/api/shared/query-params";
 import { getErrorMessage } from "@/lib/errors";
+import { PaginatedResponse } from "@/lib/shared";
 import { cn } from "@/lib/utils";
 import {
   ColumnDef,
-  ColumnFiltersState,
-  PaginationState,
-  Row,
   RowSelectionState,
-  SortingState,
   flexRender,
   getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import {
-  Download,
-  Loader2,
-  MoreHorizontal,
-  Pencil,
-  Plus,
-  Trash2,
-} from "lucide-react";
+import { Download, Loader2, MoreHorizontal, Plus } from "lucide-react";
 import { useSession } from "next-auth/react";
 import {
   ReactNode,
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
-import { DeleteConfirmDialog } from "../dialog/DeleteConfirmDialog";
+import { ConfirmDialog } from "../dialog/ConfirmDialog";
+import { SidebarContent } from "../sidebar/SidebarContent";
 import { useSidebar } from "../sidebar/SidebarContext";
 import { ColumnHeader } from "./ColumnHeader";
 import { FilterInput } from "./FilterInput";
+import { RowAction } from "./rowActions";
+import { useMeasuredFillerRows } from "./useMeasuredFillerRows";
+import { useServerTableState } from "./useServerTableState";
+
+type FilterSidebarState = {
+  columnId: string;
+  columnName: string;
+};
 
 declare module "@tanstack/react-table" {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface ColumnMeta<TData, TValue> {
     filter?: ColumnFilterMeta;
-    /** "client" = always filter this column on the loaded page, even in server mode */
-    filterMode?: "client" | "server";
   }
 }
 
+export type TableQuery<T> = {
+  data: PaginatedResponse<T> | undefined;
+  isLoading: boolean;
+  isFetching: boolean;
+  error: unknown;
+};
+
+export type ExportMutation = {
+  mutate: (params: ListQueryParams) => void;
+  isPending: boolean;
+};
+
 export type TableProps<T> = {
-  data: T[];
+  useQuery: (params: ServerTableParams) => TableQuery<T>;
   columns: ColumnDef<T, unknown>[];
-  resourceName?: string;
-  onEdit?: (row: T) => void;
-  onDelete?: (row: T) => void;
-  onCreateNewRow?: () => void;
-  isLoading?: boolean;
-  isFetching?: boolean;
-  error?: Error | null;
-  getDeleteDescription?: (row: T) => string;
-  isDeleting?: boolean;
-  initialSort?: SortingState;
-  sortBy?: (a: T, b: T) => number;
-  pageSize?: number;
-  pageSizeOptions?: number[];
-  serverMeta?: {
-    totalRecords: number;
-    totalPages: number;
-    sortBy: string;
-    sortOrder: "asc" | "desc";
-  };
-  onStateChange?: (params: ServerTableParams) => void;
-  onExportCsv?: (params: ListQueryParams) => void;
-  isExporting?: boolean;
-  headerSlot?: ReactNode;
-  canManageRows?: boolean;
-  canEditRow?: (row: T) => boolean;
-  canDeleteRow?: (row: T) => boolean;
-  rowActions?: {
-    label: string;
-    onClick: (row: T) => void;
-    icon?: ReactNode;
-    isVisible?: (row: T) => boolean;
-    variant?: "default" | "destructive";
-  }[];
+  onCreate?: () => void;
+  exportMutation?: ExportMutation;
+  headerSlot?: ReactNode | ((query: TableQuery<T>) => ReactNode);
+  rowActions?: RowAction<T>[];
 };
 
 const serverFilterPassthrough = () => true;
 
-function areSortingStatesEqual(a: SortingState, b: SortingState) {
-  if (a.length !== b.length) return false;
-
-  return a.every(
-    (sort, index) => sort.id === b[index]?.id && sort.desc === b[index]?.desc
-  );
-}
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 export function TableTemplate<T extends object>({
-  data,
+  useQuery,
   columns,
-  resourceName = "Item",
-  onEdit,
-  onDelete,
-  onCreateNewRow,
-  isLoading,
-  isFetching,
-  error,
-  getDeleteDescription,
-  isDeleting,
-  initialSort = [],
-  sortBy,
-  pageSize = 50,
-  pageSizeOptions = [10, 25, 50, 100],
-  serverMeta,
-  onStateChange,
-  onExportCsv,
-  isExporting,
+  onCreate,
+  exportMutation,
   headerSlot,
-  canManageRows,
-  canEditRow,
-  canDeleteRow,
   rowActions,
 }: TableProps<T>) {
-  const isServerMode = !!serverMeta;
+  const serverTableState = useServerTableState({
+    columns,
+  });
+  const query = useQuery(serverTableState.serverParams);
+  const data = query.data?.items ?? [];
+  const { isLoading, isFetching } = query;
+  const error = query.error as Error | null;
 
-  const columnMap = useMemo((): ServerColumnMap => {
-    const map: ServerColumnMap = {};
-    for (const col of columns) {
-      const id = col.id ?? (col as { accessorKey?: string }).accessorKey;
-      const filterMeta = col.meta?.filter;
-      if (id && filterMeta) {
-        map[String(id)] = filterMeta;
-      }
-    }
-    return map;
-  }, [columns]);
-
-  const { isOpen, openSidebar, closeSidebar } = useSidebar();
+  const { isOpen } = useSidebar();
+  const [filterSidebar, setFilterSidebar] = useState<FilterSidebarState | null>(
+    null
+  );
   const { data: session } = useSession();
   const role = session?.role;
-  const hasManagePermission = canManageRows ?? role === "admin";
+  const hasManagePermission = role === "admin" || role === "police_admin";
 
-  const sortedData = useMemo(
-    () => (sortBy ? [...data].sort(sortBy) : data),
-    [data, sortBy]
-  );
-
-  const [pagination, setPagination] = useState<PaginationState>({
-    pageIndex: 0,
-    pageSize,
-  });
-  const [sorting, setSorting] = useState<SortingState>(initialSort);
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState<T | null>(null);
-  const [globalFilter, setGlobalFilter] = useState<string>("");
-  const [fillerMetrics, setFillerMetrics] = useState({
-    fullRows: 0,
-    partialRowHeight: 0,
-  });
+
+  const [pendingConfirm, setPendingConfirm] = useState<{
+    action: RowAction<T>;
+    row: T;
+  } | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const tableHeaderRef = useRef<HTMLTableSectionElement | null>(null);
   const sampleRowRef = useRef<HTMLTableRowElement | null>(null);
-
-  // Refs to avoid stale closures in debounced effects
-  const paginationRef = useRef(pagination);
-  const sortingRef = useRef(sorting);
-  const columnFiltersRef = useRef(columnFilters);
-  useEffect(() => {
-    paginationRef.current = pagination;
-  }, [pagination]);
-  useEffect(() => {
-    sortingRef.current = sorting;
-  }, [sorting]);
-  useEffect(() => {
-    columnFiltersRef.current = columnFilters;
-  }, [columnFilters]);
-
-  useEffect(() => {
-    setPagination((prev) => ({
-      ...prev,
-      pageSize,
-      pageIndex: 0,
-    }));
-  }, [pageSize]);
+  const syncServerSorting = serverTableState.actions.syncServerSorting;
 
   useEffect(() => {
     if (!isOpen && Object.keys(rowSelection).length > 0) {
@@ -233,448 +132,180 @@ export function TableTemplate<T extends object>({
     }
   }, [isOpen, rowSelection]);
 
-  const filterDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const globalFilterRef = useRef(globalFilter);
   useEffect(() => {
-    globalFilterRef.current = globalFilter;
-  }, [globalFilter]);
+    syncServerSorting(query.data?.sort_by, query.data?.sort_order);
+  }, [query.data?.sort_by, query.data?.sort_order, syncServerSorting]);
 
-  // Server mode: immediate callback on pagination/sorting change
-  useEffect(() => {
-    if (!isServerMode || !onStateChange || !columnMap) return;
-    onStateChange(
-      buildServerTableParams(
-        paginationRef.current,
-        sortingRef.current,
-        columnFiltersRef.current,
-        columnMap,
-        globalFilterRef.current || undefined
-      )
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pagination, sorting]);
+  const displayData = data;
 
-  // Server mode: debounced callback on filter change (reset page to 0 first)
-  useEffect(() => {
-    if (!isServerMode || !onStateChange || !columnMap) return;
-    if (filterDebounceRef.current) clearTimeout(filterDebounceRef.current);
-    filterDebounceRef.current = setTimeout(() => {
-      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
-      onStateChange(
-        buildServerTableParams(
-          { ...paginationRef.current, pageIndex: 0 },
-          sortingRef.current,
-          columnFiltersRef.current,
-          columnMap,
-          globalFilterRef.current || undefined
-        )
-      );
-    }, 300);
-    return () => {
-      if (filterDebounceRef.current) clearTimeout(filterDebounceRef.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [columnFilters]);
+  const showActionsColumn =
+    hasManagePermission && (rowActions?.length ?? 0) > 0;
 
-  // Server mode: sync sorting state from server response (server is source of truth)
-  useEffect(() => {
-    if (!isServerMode || !columnMap || !serverMeta) return;
-    const columnId = Object.entries(columnMap).find(
-      ([, config]) => config.backendField === serverMeta.sortBy
-    )?.[0];
-    if (!columnId) return;
-    const nextSorting = [
-      { id: columnId, desc: serverMeta.sortOrder === "desc" },
-    ];
-
-    setSorting((prev) =>
-      areSortingStatesEqual(prev, nextSorting) ? prev : nextSorting
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [serverMeta?.sortBy, serverMeta?.sortOrder]);
-
-  // Server mode: debounced callback on search (globalFilter) change
-  useEffect(() => {
-    if (!isServerMode || !onStateChange || !columnMap) return;
-    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-    searchDebounceRef.current = setTimeout(() => {
-      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
-      onStateChange(
-        buildServerTableParams(
-          { ...paginationRef.current, pageIndex: 0 },
-          sortingRef.current,
-          columnFiltersRef.current,
-          columnMap,
-          globalFilter || undefined
-        )
-      );
-    }, 300);
-    return () => {
-      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [globalFilter]);
-
-  function flattenValues<T extends object>(obj: T): string {
-    const result: string[] = [];
-
-    const walk = (val: unknown): void => {
-      if (val == null) return;
-
-      if (
-        typeof val === "string" ||
-        typeof val === "number" ||
-        typeof val === "boolean"
-      ) {
-        result.push(String(val));
-        return;
+  const handleActionClick = useCallback(
+    (action: RowAction<T>, rowId: string, row: T) => {
+      if (action.selectRow) {
+        setRowSelection({ [rowId]: true });
       }
-
-      if (val instanceof Date) {
-        result.push(val.toISOString());
-        return;
+      if (action.confirm) {
+        setPendingConfirm({ action, row });
+      } else {
+        action.onClick(row);
       }
-
-      if (Array.isArray(val)) {
-        val.forEach((child) => walk(child));
-        return;
-      }
-
-      if (typeof val === "object") {
-        Object.values(val).forEach((child) => walk(child));
-        return;
-      }
-    };
-
-    walk(obj);
-    return result.join(" ").toLowerCase();
-  }
-
-  // In server mode, apply client-only column filters on the loaded page (global search is backend)
-  const displayData = useMemo(() => {
-    if (!isServerMode) return sortedData;
-
-    let filtered = data;
-
-    for (const filter of columnFilters) {
-      if (!filter.value) continue;
-      const col = columns.find((c) => {
-        const id = c.id ?? (c as { accessorKey?: string }).accessorKey;
-        return id === filter.id;
-      });
-      if (col?.meta?.filterMode !== "client") continue;
-      const accessorFn = (
-        col as { accessorFn?: (row: T, idx: number) => unknown }
-      ).accessorFn;
-      if (!accessorFn) continue;
-      const rawFilter = filter.value as FilterValue | undefined;
-      if (!rawFilter?.operator) continue;
-      const { operator, value: filterVal } = rawFilter;
-      if (operator === "null") {
-        filtered = filtered.filter((row) => accessorFn(row, 0) == null);
-      } else if (operator === "notnull") {
-        filtered = filtered.filter((row) => accessorFn(row, 0) != null);
-      } else if (operator === "between") {
-        const range = filterVal as { from?: string; to?: string } | undefined;
-        filtered = filtered.filter((row) => {
-          const val = String(accessorFn(row, 0));
-          return (
-            (!range?.from || val >= range.from) &&
-            (!range?.to || val <= range.to)
-          );
-        });
-      } else if (filterVal != null && filterVal !== "") {
-        const fv = String(filterVal).toLowerCase();
-        filtered = filtered.filter((row) => {
-          const val = String(accessorFn(row, 0));
-          if (operator === "contains") return val.toLowerCase().includes(fv);
-          if (operator === "eq") return val.toLowerCase() === fv;
-          if (operator === "ne") return val.toLowerCase() !== fv;
-          if (operator === "gte") return val >= String(filterVal);
-          if (operator === "lte") return val <= String(filterVal);
-          return true;
-        });
-      }
-    }
-
-    return filtered;
-  }, [data, sortedData, columnFilters, isServerMode, columns]);
-
-  const handleDeleteClick = useCallback((row: T) => {
-    setItemToDelete(row);
-    setDeleteDialogOpen(true);
-  }, []);
-
-  const handleEditClick = useCallback(
-    (rowId: string, row: T) => {
-      setRowSelection({ [rowId]: true });
-      onEdit?.(row);
     },
-    [onEdit]
+    []
   );
 
-  const confirmDelete = useCallback(() => {
-    if (
-      itemToDelete &&
-      onDelete &&
-      (canDeleteRow ? canDeleteRow(itemToDelete) : true)
-    ) {
-      onDelete(itemToDelete);
-    }
-  }, [itemToDelete, onDelete, canDeleteRow]);
-
-  const columnsWithActions = useMemo(
-    () =>
-      hasManagePermission && (onEdit || onDelete)
-        ? [
-            ...columns.map((column) =>
-              isServerMode && column.meta?.filter
-                ? { ...column, filterFn: serverFilterPassthrough }
-                : column
-            ),
-            {
-              id: "actions",
-              enableSorting: false,
-              enableColumnFilter: false,
-              cell: ({ row }) => (
-                <div className="flex justify-end">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="size-8 p-0">
-                        <MoreHorizontal className="size-4" />
-                        <span className="sr-only">Open menu</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {onEdit && (!canEditRow || canEditRow(row.original)) && (
-                        <DropdownMenuItem
-                          onClick={() => handleEditClick(row.id, row.original)}
-                        >
-                          <Pencil className="mr-2 size-4" />
-                          Edit
-                        </DropdownMenuItem>
-                      )}
-                      {rowActions?.map((action) =>
-                        !action.isVisible || action.isVisible(row.original) ? (
-                          <DropdownMenuItem
-                            key={action.label}
-                            onClick={() => action.onClick(row.original)}
-                            variant={action.variant}
-                          >
-                            {action.icon}
-                            {action.label}
-                          </DropdownMenuItem>
-                        ) : null
-                      )}
-                      {onDelete &&
-                        (!canDeleteRow || canDeleteRow(row.original)) && (
-                          <DropdownMenuItem
-                            onClick={() => handleDeleteClick(row.original)}
-                            variant="destructive"
-                          >
-                            <Trash2 className="mr-2 size-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              ),
-            },
-          ]
-        : columns.map((column) =>
-            isServerMode && column.meta?.filter
-              ? { ...column, filterFn: serverFilterPassthrough }
-              : column
-          ),
-    [
-      columns,
-      hasManagePermission,
-      onEdit,
-      onDelete,
-      canEditRow,
-      canDeleteRow,
-      rowActions,
-      isServerMode,
-      handleEditClick,
-      handleDeleteClick,
-    ]
-  );
-
-  const customFilterFn = <T extends object>(
-    row: Row<T>,
-    _columnId: string,
-    filterValue: string
-  ): boolean => {
-    if (!filterValue) return true;
-    const flattened = flattenValues(row.original);
-    return flattened.includes(filterValue.toLowerCase());
-  };
+  const columnsWithActions = useMemo(() => {
+    const baseColumns = columns.map((column) =>
+      column.meta?.filter
+        ? { ...column, filterFn: serverFilterPassthrough }
+        : column
+    );
+    if (!showActionsColumn) return baseColumns;
+    return [
+      ...baseColumns,
+      {
+        id: "actions",
+        enableSorting: false,
+        enableColumnFilter: false,
+        cell: ({ row }) => {
+          const visibleActions =
+            rowActions?.filter(
+              (action) => !action.isVisible || action.isVisible(row.original)
+            ) ?? [];
+          if (visibleActions.length === 0) return null;
+          return (
+            <div className="flex justify-end">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="size-8 p-0">
+                    <MoreHorizontal className="size-4" />
+                    <span className="sr-only">Open menu</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {visibleActions.map((action) => (
+                    <DropdownMenuItem
+                      key={action.label}
+                      onClick={() =>
+                        handleActionClick(action, row.id, row.original)
+                      }
+                      variant={action.variant}
+                    >
+                      {action.icon}
+                      {action.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          );
+        },
+      },
+    ];
+  }, [columns, showActionsColumn, rowActions, handleActionClick]);
 
   const table = useReactTable({
     data: displayData,
     columns: columnsWithActions,
     state: {
-      sorting,
-      columnFilters,
-      pagination,
-      globalFilter,
+      ...serverTableState.tableState,
       rowSelection,
     },
-    ...(isServerMode
-      ? {
-          manualSorting: true,
-          manualFiltering: true,
-          manualPagination: true,
-          pageCount: serverMeta!.totalPages,
-        }
-      : {
-          globalFilterFn: customFilterFn,
-          getSortedRowModel: getSortedRowModel(),
-          getFilteredRowModel: getFilteredRowModel(),
-          getPaginationRowModel: getPaginationRowModel(),
-        }),
-    onSortingChange: (updater) => {
-      const next = typeof updater === "function" ? updater(sorting) : updater;
-      if (isServerMode) setPagination((prev) => ({ ...prev, pageIndex: 0 }));
-      setSorting(next);
-    },
-    onColumnFiltersChange: setColumnFilters,
+    manualSorting: true,
+    manualFiltering: true,
+    manualPagination: true,
+    pageCount: query.data?.total_pages ?? 0,
+    onSortingChange: serverTableState.actions.onSortingChange,
+    onColumnFiltersChange: serverTableState.actions.setColumnFilters,
+    onGlobalFilterChange: serverTableState.actions.setGlobalFilter,
+    onPaginationChange: serverTableState.actions.setPagination,
     getCoreRowModel: getCoreRowModel(),
-    onGlobalFilterChange: setGlobalFilter,
-    onPaginationChange: setPagination,
     onRowSelectionChange: setRowSelection,
   });
 
   const visibleRows = table.getRowModel().rows;
-  useLayoutEffect(() => {
-    const scrollContainer = scrollContainerRef.current;
-    const tableHeader = tableHeaderRef.current;
-
-    if (!scrollContainer || !tableHeader) return;
-
-    const updateVisibleRowCapacity = () => {
-      const availableBodyHeight =
-        scrollContainer.clientHeight -
-        tableHeader.getBoundingClientRect().height;
-      const measuredRowHeight =
-        sampleRowRef.current?.getBoundingClientRect().height ?? 49;
-
-      if (availableBodyHeight <= 0 || measuredRowHeight <= 0) {
-        setFillerMetrics({ fullRows: 0, partialRowHeight: 0 });
-        return;
-      }
-
-      const remainingHeight = Math.max(
-        availableBodyHeight - visibleRows.length * measuredRowHeight,
-        0
-      );
-      const fullRows = Math.floor(remainingHeight / measuredRowHeight);
-      const partialRowHeight = remainingHeight - fullRows * measuredRowHeight;
-
-      setFillerMetrics({
-        fullRows,
-        partialRowHeight: partialRowHeight > 1 ? partialRowHeight : 0,
-      });
-    };
-
-    updateVisibleRowCapacity();
-
-    const resizeObserver = new ResizeObserver(updateVisibleRowCapacity);
-    resizeObserver.observe(scrollContainer);
-    resizeObserver.observe(tableHeader);
-    if (sampleRowRef.current) {
-      resizeObserver.observe(sampleRowRef.current);
-    }
-
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, [visibleRows.length, columnsWithActions.length]);
-
-  const fillerRowCount = visibleRows.length > 0 ? fillerMetrics.fullRows : 0;
-  const partialFillerRowHeight =
-    visibleRows.length > 0 ? fillerMetrics.partialRowHeight : 0;
+  const fillerRows = useMeasuredFillerRows({
+    visibleRowCount: visibleRows.length,
+    scrollContainerRef,
+    tableHeaderRef,
+    sampleRowRef,
+  });
   const activePage = table.getState().pagination.pageIndex;
   const activePageSize = table.getState().pagination.pageSize;
-  const filteredRowCount = isServerMode
-    ? serverMeta!.totalRecords
-    : table.getFilteredRowModel().rows.length;
+  const filteredRowCount = query.data?.total_records ?? 0;
   const pageCount = table.getPageCount();
-  const maxVisiblePages = 3;
-  const pageStart = Math.max(
-    0,
-    Math.min(
-      activePage - Math.floor(maxVisiblePages / 2),
-      pageCount - maxVisiblePages
-    )
-  );
-  const pageEnd = Math.min(pageStart + maxVisiblePages, pageCount);
-  const pageIndexes = Array.from(
-    { length: Math.max(pageEnd - pageStart, 0) },
-    (_, index) => pageStart + index
-  );
 
   return (
     <div className="h-full min-h-0 flex flex-col gap-4">
-      {/* Header with Search and Create Button */}
-      {(resourceName || onCreateNewRow) && (
-        <div className="flex items-center gap-2 w-full">
-          <div className="flex-1 min-w-0 max-w-lg bg-card rounded-md">
-            <Input
-              type="text"
-              value={globalFilter}
-              onChange={(e) => setGlobalFilter(e.target.value)}
-              placeholder="Search all columns..."
-              className="p-2 pl-3 h-9 rounded-md"
-            />
-          </div>
-          {headerSlot && (
-            <div className="hidden lg:flex flex-1 items-center justify-center min-w-0">
-              {headerSlot}
-            </div>
-          )}
-          <div className="shrink-0 ml-auto flex items-center gap-2">
-            {onExportCsv && (
-              <Button
-                onClick={() => {
-                  const params = columnMap
-                    ? buildServerTableParams(
-                        { pageIndex: 0, pageSize: pagination.pageSize },
-                        sorting,
-                        columnFilters,
-                        columnMap
-                      )
-                    : { page_number: 1, filters: {} };
-                  onExportCsv(params);
-                }}
-                disabled={isExporting}
-                variant="default"
-                size="icon"
-                className="h-9 w-9"
-                aria-label="Export CSV"
-                title="Export CSV"
-              >
-                {isExporting ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <Download className="size-4" />
-                )}
-              </Button>
-            )}
-            {onCreateNewRow && hasManagePermission && (
-              <Button onClick={onCreateNewRow} className="h-9">
-                <Plus className="sm:mr-1" />
-                <span className="hidden sm:inline">New row</span>
-              </Button>
-            )}
-          </div>
+      {/* Toolbar */}
+      <div className="flex items-center gap-2 w-full">
+        {/* Global Search */}
+        <div className="flex-1 min-w-0 max-w-lg bg-card rounded-md">
+          <Input
+            type="text"
+            value={serverTableState.tableState.globalFilter}
+            onChange={(e) =>
+              serverTableState.actions.setGlobalFilter(e.target.value)
+            }
+            placeholder="Search all columns..."
+            className="p-2 pl-3 h-9 rounded-md"
+          />
         </div>
-      )}
+
+        {/* Header Slot */}
+        {headerSlot && (
+          <div className="hidden lg:flex flex-1 items-center justify-center min-w-0">
+            {typeof headerSlot === "function" ? headerSlot(query) : headerSlot}
+          </div>
+        )}
+
+        {/* Toolbar Actions */}
+        <div className="shrink-0 ml-auto flex items-center gap-2">
+          {/* Export Button */}
+          {exportMutation && (
+            <Button
+              onClick={() => {
+                exportMutation.mutate(
+                  buildServerTableParams(
+                    {
+                      pageIndex: 0,
+                      pageSize: serverTableState.tableState.pagination.pageSize,
+                    },
+                    serverTableState.tableState.sorting,
+                    serverTableState.tableState.columnFilters,
+                    serverTableState.columnFilterMap
+                  )
+                );
+              }}
+              disabled={exportMutation.isPending}
+              variant="default"
+              size="icon"
+              className="h-9 w-9"
+              aria-label="Export CSV"
+              title="Export CSV"
+            >
+              {exportMutation.isPending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Download className="size-4" />
+              )}
+            </Button>
+          )}
+
+          {/* Create Button */}
+          {onCreate && hasManagePermission && (
+            <Button onClick={onCreate} className="h-9">
+              <Plus className="sm:mr-1" />
+              <span className="hidden sm:inline">New row</span>
+            </Button>
+          )}
+        </div>
+      </div>
 
       <div className="flex min-h-0 h-full flex-col justify-between">
         <Card className="flex-1 min-h-0 rounded-sm w-full max-w-none mx-0">
+          {/* Table Scroll Container */}
           <div
             ref={scrollContainerRef}
             className={cn(
@@ -683,6 +314,7 @@ export function TableTemplate<T extends object>({
             )}
           >
             <Table className="bg-card rounded-sm">
+              {/* Table Head */}
               <TableHeader ref={tableHeaderRef}>
                 {table.getHeaderGroups().map((headerGroup) => (
                   <TableRow key={headerGroup.id}>
@@ -713,15 +345,10 @@ export function TableTemplate<T extends object>({
                                   ? columnDef.header
                                   : header.column.id);
 
-                              openSidebar(
-                                `filter-${header.column.id}`,
-                                `Filter ${columnName}`,
-                                `Refine results by ${columnName.toLowerCase()}`,
-                                <FilterInput
-                                  column={header.column}
-                                  onClose={() => closeSidebar()}
-                                />
-                              );
+                              setFilterSidebar({
+                                columnId: header.column.id,
+                                columnName,
+                              });
                             }}
                           />
                         )}
@@ -730,7 +357,9 @@ export function TableTemplate<T extends object>({
                   </TableRow>
                 ))}
               </TableHeader>
+
               <TableBody>
+                {/* Loading State */}
                 {isLoading ? (
                   Array.from({ length: Math.max(activePageSize, 5) }).map(
                     (_, rowIndex) => (
@@ -756,7 +385,8 @@ export function TableTemplate<T extends object>({
                       </TableRow>
                     )
                   )
-                ) : error ? (
+                ) : /* Error State */
+                error ? (
                   <TableRow>
                     <TableCell
                       colSpan={columnsWithActions.length}
@@ -765,8 +395,10 @@ export function TableTemplate<T extends object>({
                       Error: {getErrorMessage(error)}
                     </TableCell>
                   </TableRow>
-                ) : visibleRows.length ? (
+                ) : /* Populated State */
+                visibleRows.length ? (
                   <>
+                    {/* Data Rows */}
                     {visibleRows.map((row) => (
                       <TableRow
                         key={row.id}
@@ -794,22 +426,28 @@ export function TableTemplate<T extends object>({
                         ))}
                       </TableRow>
                     ))}
-                    {Array.from({ length: fillerRowCount }).map((_, index) => (
-                      <TableRow
-                        key={`filler-row-${index}`}
-                        className="pointer-events-none"
-                      >
-                        <TableCell
-                          colSpan={columnsWithActions.length}
-                          className="h-12.25 px-4"
-                        />
-                      </TableRow>
-                    ))}
-                    {partialFillerRowHeight > 0 && (
+
+                    {/* Full Filler Rows */}
+                    {Array.from({ length: fillerRows.fillerRowCount }).map(
+                      (_, index) => (
+                        <TableRow
+                          key={`filler-row-${index}`}
+                          className="pointer-events-none"
+                        >
+                          <TableCell
+                            colSpan={columnsWithActions.length}
+                            className="h-12.25 px-4"
+                          />
+                        </TableRow>
+                      )
+                    )}
+
+                    {/* Partial Filler Row */}
+                    {fillerRows.partialFillerRowHeight > 0 && (
                       <TableRow
                         key="filler-row-partial"
                         className="pointer-events-none"
-                        style={{ height: partialFillerRowHeight }}
+                        style={{ height: fillerRows.partialFillerRowHeight }}
                       >
                         <TableCell
                           colSpan={columnsWithActions.length}
@@ -819,6 +457,7 @@ export function TableTemplate<T extends object>({
                     )}
                   </>
                 ) : (
+                  /* Empty State */
                   <TableRow>
                     <TableCell
                       colSpan={columnsWithActions.length}
@@ -835,183 +474,66 @@ export function TableTemplate<T extends object>({
 
         {/* Pagination Controls */}
         {!error && (
-          <div className="flex items-center justify-between gap-2 p-2 mt-2">
-            {/* Left: Results */}
-            <div
-              className={cn(
-                "items-center justify-start min-w-0",
-                "hidden md:flex"
-              )}
-            >
-              {isLoading ? (
-                <Skeleton className="h-4 w-36" />
-              ) : (
-                <span className="text-sm text-muted-foreground whitespace-nowrap">
-                  Results{" "}
-                  {table.getState().pagination.pageIndex *
-                    table.getState().pagination.pageSize +
-                    1}{" "}
-                  -{" "}
-                  {filteredRowCount <
-                  (table.getState().pagination.pageIndex + 1) *
-                    table.getState().pagination.pageSize
-                    ? filteredRowCount
-                    : (table.getState().pagination.pageIndex + 1) *
-                      table.getState().pagination.pageSize}{" "}
-                  of {filteredRowCount}
-                </span>
-              )}
-            </div>
-
-            {/* Center: Pagination Navigation */}
-            <div className="flex min-w-0 justify-center text-sm">
-              <Pagination className="w-max">
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        if (isLoading) return;
-                        table.previousPage();
-                      }}
-                      className={
-                        isLoading || !table.getCanPreviousPage()
-                          ? "pointer-events-none opacity-50"
-                          : "cursor-pointer"
-                      }
-                    />
-                  </PaginationItem>
-                  {isLoading ? (
-                    <PaginationItem className="flex items-center gap-2">
-                      {Array.from({ length: 2 }).map((_, index) => (
-                        <Skeleton key={index} className="h-8 w-8 rounded-md" />
-                      ))}
-                    </PaginationItem>
-                  ) : (
-                    <>
-                      {pageStart > 0 && (
-                        <PaginationItem>
-                          <PaginationLink
-                            href="#"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              table.setPageIndex(0);
-                            }}
-                            className="cursor-pointer"
-                            aria-label="Go to first page"
-                          >
-                            <MoreHorizontal />
-                          </PaginationLink>
-                        </PaginationItem>
-                      )}
-                      {pageIndexes.map((pageIndex) => (
-                        <PaginationItem key={pageIndex}>
-                          <PaginationLink
-                            href="#"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              table.setPageIndex(pageIndex);
-                            }}
-                            isActive={activePage === pageIndex}
-                            className="cursor-pointer"
-                          >
-                            {pageIndex + 1}
-                          </PaginationLink>
-                        </PaginationItem>
-                      ))}
-                      {pageEnd < pageCount && (
-                        <PaginationItem>
-                          <PaginationLink
-                            href="#"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              table.setPageIndex(pageCount - 1);
-                            }}
-                            className="cursor-pointer"
-                            aria-label="Go to last page"
-                          >
-                            <MoreHorizontal />
-                          </PaginationLink>
-                        </PaginationItem>
-                      )}
-                    </>
-                  )}
-                  <PaginationItem>
-                    <PaginationNext
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        if (isLoading) return;
-                        table.nextPage();
-                      }}
-                      className={
-                        isLoading || !table.getCanNextPage()
-                          ? "pointer-events-none opacity-50"
-                          : "cursor-pointer"
-                      }
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
-            </div>
-
-            {/* Right: Rows per page */}
-            <div className="flex items-center justify-end gap-2">
-              <span
-                className={cn(
-                  "text-sm text-muted-foreground whitespace-nowrap",
-                  "hidden md:inline"
-                )}
-              >
-                {" "}
-                Rows per page:
-              </span>
-              {isLoading ? (
-                <Skeleton className="h-8 w-20 rounded-md" />
-              ) : (
-                <Select
-                  value={String(activePageSize)}
-                  onValueChange={(value) => {
-                    table.setPageSize(Number(value));
-                    table.setPageIndex(0);
-                  }}
-                >
-                  <SelectTrigger className="bg-card w-20">
-                    <SelectValue placeholder="Rows" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-40 overflow-y-auto ">
-                    {pageSizeOptions.map((size) => (
-                      <SelectItem key={size} value={String(size)}>
-                        {size}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-          </div>
+          <PaginationControls
+            className="p-2 mt-2"
+            currentPage={activePage}
+            pageCount={pageCount}
+            onPageChange={(page) => table.setPageIndex(page)}
+            pageSize={activePageSize}
+            onPageSizeChange={(size) => table.setPageSize(size)}
+            pageSizeOptions={PAGE_SIZE_OPTIONS}
+            totalCount={filteredRowCount}
+            isLoading={isLoading}
+          />
         )}
       </div>
 
-      {/* Delete Confirmation Dialog */}
-      {onDelete && (
-        <DeleteConfirmDialog
-          open={deleteDialogOpen}
+      {/* Confirmation Dialog */}
+      {pendingConfirm?.action.confirm && (
+        <ConfirmDialog
+          open={pendingConfirm !== null}
           onOpenChange={(open) => {
-            setDeleteDialogOpen(open);
-            if (!open) setItemToDelete(null);
+            if (!open) setPendingConfirm(null);
           }}
-          onConfirm={confirmDelete}
-          title={`Delete ${resourceName}`}
-          description={
-            itemToDelete && getDeleteDescription
-              ? getDeleteDescription(itemToDelete)
-              : `Are you sure you want to delete this ${resourceName.toLowerCase()}? This action cannot be undone.`
+          onConfirm={() => pendingConfirm?.action.onClick(pendingConfirm.row)}
+          variant={pendingConfirm.action.variant}
+          {...pendingConfirm.action.confirm}
+          description={pendingConfirm.action.confirm.description?.(
+            pendingConfirm.row
+          )}
+          confirmLabel={
+            pendingConfirm.action.confirm.confirmLabel ??
+            pendingConfirm.action.label
           }
-          isDeleting={isDeleting}
         />
       )}
+
+      {/* Filter Sidebar */}
+      <SidebarContent
+        open={filterSidebar !== null}
+        onOpenChange={(o) => !o && setFilterSidebar(null)}
+        sidebarKey={
+          filterSidebar ? `filter-${filterSidebar.columnId}` : "filter"
+        }
+        title={filterSidebar ? `Filter ${filterSidebar.columnName}` : ""}
+        description={
+          filterSidebar
+            ? `Refine results by ${filterSidebar.columnName.toLowerCase()}`
+            : ""
+        }
+      >
+        {filterSidebar &&
+          (() => {
+            const column = table.getColumn(filterSidebar.columnId);
+            if (!column) return null;
+            return (
+              <FilterInput
+                column={column}
+                onClose={() => setFilterSidebar(null)}
+              />
+            );
+          })()}
+      </SidebarContent>
     </div>
   );
 }
