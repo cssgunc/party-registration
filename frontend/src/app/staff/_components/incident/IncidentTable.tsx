@@ -334,6 +334,7 @@ export const IncidentTable = () => {
         data={incidents}
         columns={columns}
         resourceName="Incident"
+        pageSizeStorageKey="staff-incidents"
         onEdit={handleEdit}
         onDelete={handleDelete}
         onCreateNewRow={handleCreate}
