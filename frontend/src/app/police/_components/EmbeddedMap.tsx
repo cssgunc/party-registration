@@ -39,7 +39,7 @@ const EmbeddedMap = ({
     () =>
       parties && parties.length > 0
         ? parties.map((party) => ({
-            key: party.location.google_place_id,
+            key: String(party.id),
             location: {
               lat: party.location.latitude,
               lng: party.location.longitude,
@@ -50,7 +50,16 @@ const EmbeddedMap = ({
     [parties]
   );
 
-  const activePoiKey = activeParty?.location.google_place_id;
+  const activePoiKey =
+    activeParty?.id !== undefined ? String(activeParty.id) : undefined;
+
+  const exactMatchPoiKey = useMemo(() => {
+    if (!exactMatch?.google_place_id || !parties) return undefined;
+    const match = parties.find(
+      (p) => p.location.google_place_id === exactMatch.google_place_id
+    );
+    return match ? String(match.id) : undefined;
+  }, [exactMatch?.google_place_id, parties]);
   const defaultZoom = center ? 17 : 14;
   const mapCenter =
     center ||
@@ -95,6 +104,7 @@ const EmbeddedMap = ({
           <PoiMarkers
             pois={locations}
             activePoiKey={activePoiKey}
+            exactMatchPoiKey={exactMatchPoiKey}
             exactMatchKey={exactMatchKey}
             exactMatchNoPartyLocation={exactMatchNoPartyLocation}
             onSelect={onSelect}
@@ -109,6 +119,7 @@ const EmbeddedMap = ({
 type PoiMarkersProps = {
   pois: (Poi & { party?: PartyDto })[];
   activePoiKey?: string;
+  exactMatchPoiKey?: string;
   exactMatchKey?: string;
   exactMatchNoPartyLocation?: google.maps.LatLngLiteral;
   onSelect?: (party: PartyDto | null) => void;
@@ -124,10 +135,10 @@ const PIN_COLORS = {
 function getPinColors(
   key: string,
   activePoiKey?: string,
-  exactMatchKey?: string
+  exactMatchPoiKey?: string
 ) {
   if (key === activePoiKey) return PIN_COLORS.selected;
-  if (key === exactMatchKey) return PIN_COLORS.exactMatch;
+  if (key === exactMatchPoiKey) return PIN_COLORS.exactMatch;
   return PIN_COLORS.default;
 }
 
@@ -139,6 +150,7 @@ const SEARCH_RADIUS_METERS =
 const PoiMarkers = ({
   pois,
   activePoiKey,
+  exactMatchPoiKey,
   exactMatchKey,
   exactMatchNoPartyLocation,
   onSelect,
@@ -162,6 +174,8 @@ const PoiMarkers = ({
       if (map.getZoom() !== SELECTED_ZOOM) map.setZoom(SELECTED_ZOOM);
       map.panTo(target.location);
     }
+
+    setSelectedPoi((prev) => (prev?.key === activePoiKey ? prev : null));
   }, [activePoiKey, map, pois]);
 
   useEffect(() => {
@@ -208,7 +222,7 @@ const PoiMarkers = ({
   return (
     <>
       {pois.map((poi: Poi) => {
-        const colors = getPinColors(poi.key, activePoiKey, exactMatchKey);
+        const colors = getPinColors(poi.key, activePoiKey, exactMatchPoiKey);
         return (
           <AdvancedMarker
             key={poi.key}
@@ -242,12 +256,18 @@ const PoiMarkers = ({
           position={selectedPoi.location}
           onCloseClick={handleClose}
           headerContent={
-            <span className="font-semibold text-sm flex">
+            <span
+              className="font-semibold text-sm flex"
+              style={{ fontFamily: "var(--font-avenir-next)" }}
+            >
               {getShortAddress(selectedPoi.party.location)}
             </span>
           }
         >
-          <div className="space-y-1.5 text-sm -translate-y-1">
+          <div
+            className="space-y-1.5 text-sm -translate-y-1"
+            style={{ fontFamily: "var(--font-avenir-next)" }}
+          >
             <p>
               {format(selectedPoi.party.party_datetime, "MMM d, yyyy")} at{" "}
               {format(selectedPoi.party.party_datetime, "h:mm a")}
