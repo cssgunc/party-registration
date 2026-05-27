@@ -14,8 +14,8 @@ export default function PoliceAdminLayout({
 }) {
   return (
     <SidebarProvider>
-      <main className="h-full overflow-y-auto lg:overflow-hidden bg-background px-4 py-4 md:px-6 md:py-6">
-        <div className="mx-auto h-full max-w-6xl min-h-0 flex flex-col">
+      <main className="h-full overflow-y-auto lg:overflow-hidden bg-background">
+        <div className="container mx-auto px-6 pt-6 pb-2 h-full min-h-0 flex flex-col">
           <header className="mb-4">
             <h1 className="page-title text-secondary">
               Police Admin Dashboard

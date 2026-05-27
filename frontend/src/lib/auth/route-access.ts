@@ -8,7 +8,7 @@ export const ALLOWED_ROLES_FOR_PATH: Record<string, AppRole[]> = {
   "/new-party": STUDENT_AREA_ROLES,
   "/profile": STUDENT_AREA_ROLES,
   "/staff": ["staff", "admin"],
-  "/police/admin": ["police_admin"],
+  "/police/admin": ["police_admin", "admin"],
   "/police": ["officer", "police_admin", "admin"],
 };
 
