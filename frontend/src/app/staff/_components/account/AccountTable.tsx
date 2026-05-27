@@ -369,6 +369,7 @@ export const AccountTable = () => {
         data={aggregateQuery.data?.items ?? []}
         columns={columns}
         resourceName="Account"
+        pageSizeStorageKey="staff-accounts"
         onEdit={handleEdit}
         onDelete={handleDelete}
         onCreateNewRow={handleCreate}

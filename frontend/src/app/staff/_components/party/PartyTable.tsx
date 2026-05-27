@@ -405,6 +405,7 @@ export const PartyTable = () => {
         data={parties}
         columns={columns}
         resourceName="Party"
+        pageSizeStorageKey="staff-parties"
         onEdit={handleEdit}
         onCreateNewRow={handleCreate}
         isLoading={partiesQuery.isLoading}

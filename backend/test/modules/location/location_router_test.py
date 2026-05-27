@@ -64,7 +64,7 @@ test_location_search_no_results, test_location_search_ok = generate_search_tests
 )
 
 test_location_authentication = generate_auth_required_tests(
-    ({"admin", "staff"}, "GET", "/api/locations", None),
+    ({"admin", "staff", "police_admin"}, "GET", "/api/locations", None),
     ({"admin"}, "POST", "/api/locations", {"google_place_id": "ChIJ123abc"}),
     ({"admin", "staff"}, "GET", "/api/locations/1", None),
     ({"admin"}, "PUT", "/api/locations/1", {"google_place_id": "ChIJ123abc"}),

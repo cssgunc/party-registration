@@ -258,6 +258,7 @@ export const StudentTable = () => {
         data={students}
         columns={columns}
         resourceName="Student"
+        pageSizeStorageKey="staff-students"
         onEdit={handleEdit}
         onDelete={handleDelete}
         isLoading={studentsQuery.isLoading}
