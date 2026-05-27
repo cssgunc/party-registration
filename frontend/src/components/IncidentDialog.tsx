@@ -93,7 +93,7 @@ export default function IncidentDialog({
     }
   };
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = (event: React.SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const result = incidentSchema.safeParse(formData);

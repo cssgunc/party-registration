@@ -5,6 +5,13 @@ import { IncidentTable } from "@/app/staff/_components/incident/IncidentTable";
 import { LocationTable } from "@/app/staff/_components/location/LocationTable";
 import { PartyTable } from "@/app/staff/_components/party/PartyTable";
 import { StudentTable } from "@/app/staff/_components/student/StudentTable";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
@@ -49,31 +56,44 @@ export default function StaffTabPage() {
     return null; // briefly render nothing while redirecting
   }
 
+  const visibleTabs = STAFF_TABS.filter(
+    (slug) => !TAB_CONFIG[slug].adminOnly || role === "admin"
+  );
+
   return (
     <div className="container mx-auto px-6 pt-6 pb-2 h-full overflow-hidden flex flex-col min-h-0">
       <Tabs
         value={tab as TabSlug}
         onValueChange={(value) => router.push(`/staff/${value}`)}
-        className="flex h-full min-h-0 flex-col"
+        className="flex h-full min-h-0 flex-col gap-4"
       >
-        <TabsList>
-          {STAFF_TABS.map((slug) => {
-            if (TAB_CONFIG[slug].adminOnly && role !== "admin") return null;
-            return (
-              <TabsTrigger key={slug} value={slug}>
+        <Select
+          value={tab as TabSlug}
+          onValueChange={(value) => router.push(`/staff/${value}`)}
+        >
+          <SelectTrigger className="sm:hidden w-40">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {visibleTabs.map((slug) => (
+              <SelectItem key={slug} value={slug}>
                 {TAB_CONFIG[slug].label}
-              </TabsTrigger>
-            );
-          })}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <TabsList className="hidden sm:flex w-fit">
+          {visibleTabs.map((slug) => (
+            <TabsTrigger key={slug} value={slug}>
+              {TAB_CONFIG[slug].label}
+            </TabsTrigger>
+          ))}
         </TabsList>
-        {STAFF_TABS.map((slug) => {
-          if (TAB_CONFIG[slug].adminOnly && role !== "admin") return null;
-          return (
-            <TabsContent key={slug} value={slug} className="flex-1 min-h-0">
-              {TAB_CONTENT[slug]}
-            </TabsContent>
-          );
-        })}
+        {visibleTabs.map((slug) => (
+          <TabsContent key={slug} value={slug} className="flex-1 min-h-0">
+            {TAB_CONTENT[slug]}
+          </TabsContent>
+        ))}
       </Tabs>
     </div>
   );

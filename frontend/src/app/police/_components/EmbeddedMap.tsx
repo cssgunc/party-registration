@@ -3,7 +3,7 @@
 import { PhoneLink } from "@/components/PhoneLink";
 import { PartyDto } from "@/lib/api/party/party.types";
 import { clientEnv } from "@/lib/config/env.client";
-import { formatContactPreference } from "@/lib/utils";
+import { formatAddress, formatContactPreference } from "@/lib/utils";
 import {
   APIProvider,
   AdvancedMarker,
@@ -116,11 +116,10 @@ const PoiMarkers = ({
   const [selectedPoi, setSelectedPoi] = useState<(typeof pois)[0] | null>(null);
 
   const getShortAddress = (location: PartyDto["location"]): string => {
-    const parts = [];
-    if (location.street_number) parts.push(location.street_number);
-    if (location.street_name) parts.push(location.street_name);
-    if (location.unit) parts.push(`Unit ${location.unit}`);
-    return parts.join(" ") || location.formatted_address;
+    return (
+      formatAddress(location, ["street_number", "street_name", "unit"]) ||
+      location.formatted_address
+    );
   };
 
   useEffect(() => {

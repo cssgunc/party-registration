@@ -16,7 +16,7 @@ import {
 } from "@/lib/api/student/admin-student.queries";
 import { StudentDto, StudentUpdateDto } from "@/lib/api/student/student.types";
 import { getErrorMessage } from "@/lib/errors";
-import { isFromThisSchoolYear } from "@/lib/utils";
+import { formatAddress, isFromThisSchoolYear } from "@/lib/utils";
 import { ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
 import LocationInfoChipDetails from "../party/details/LocationInfoChipDetails";
@@ -206,9 +206,10 @@ export const StudentTable = () => {
           return "—";
         }
         const location = student.residence.location;
-        const shortName = [location.street_number, location.street_name]
-          .filter(Boolean)
-          .join(" ");
+        const shortName = formatAddress(location, [
+          "street_number",
+          "street_name",
+        ]);
         return (
           <InfoChip
             chipKey={`student-${student.id}-residence`}

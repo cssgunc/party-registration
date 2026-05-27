@@ -2,11 +2,11 @@
 
 import DialogItem from "./DialogItem";
 
-export default function PartySmartInfo() {
+export default function PartySmartInfo({ className }: { className?: string }) {
   return (
-    <div className="mt-4 2xl:mt-0">
+    <div className={className}>
       <h1 className="page-title">About Party Smart</h1>
-      <div className="card-shadow bg-card text-card-foreground content mt-5 rounded-md border">
+      <div className="card-shadow bg-card text-card-foreground content mt-3 rounded-md border">
         <DialogItem title="How to reduce risk before the Party">
           <ul className="ml-5 list-outside list-disc space-y-2 leading-relaxed">
             <li>
