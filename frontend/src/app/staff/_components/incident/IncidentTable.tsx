@@ -28,6 +28,7 @@ import { getErrorMessage } from "@/lib/errors";
 import { formatTime } from "@/lib/utils";
 import { ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
+import { useSession } from "next-auth/react";
 import { useMemo, useState } from "react";
 import LocationInfoChipDetails from "../party/details/LocationInfoChipDetails";
 import { InfoChip } from "../shared/sidebar/InfoChip";
@@ -68,6 +69,7 @@ function truncateDescription(
 export const IncidentTable = () => {
   const { openSidebar, closeSidebar } = useSidebar();
   const { openSnackbar } = useSnackbar();
+  const { data: session } = useSession();
   const [editingIncident, setEditingIncident] = useState<IncidentDto | null>(
     null
   );
@@ -361,6 +363,9 @@ export const IncidentTable = () => {
         onStateChange={setServerParams}
         onExportCsv={exportCsv}
         isExporting={isExporting}
+        canManageRows={
+          session?.role === "admin" || session?.role === "police_admin"
+        }
         headerSlot={
           <IncidentSeverityCountsHeader
             counts={incidentsQuery.data?.severity_counts}
