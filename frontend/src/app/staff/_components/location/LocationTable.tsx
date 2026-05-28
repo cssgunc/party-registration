@@ -138,7 +138,7 @@ export const LocationTable = () => {
       <TableTemplate
         useQuery={useLocations}
         columns={columns}
-        onCreate={openCreate}
+        createAction={{ label: "New Location", fn: openCreate }}
         pageSizeStorageKey="staff-locations"
         rowActions={[
           editAction<LocationDto>({ onClick: openEdit }),

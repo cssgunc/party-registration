@@ -191,7 +191,7 @@ export const IncidentTable = () => {
       <TableTemplate
         useQuery={useIncidents}
         columns={columns}
-        onCreate={openCreate}
+        createAction={{ label: "New Incident", fn: openCreate }}
         pageSizeStorageKey="staff-incidents"
         rowActions={[
           editAction<IncidentDto>({ onClick: openEdit }),

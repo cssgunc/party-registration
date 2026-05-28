@@ -81,7 +81,7 @@ export type ExportMutation = {
 export type TableProps<T> = {
   useQuery: (params: ServerTableParams) => TableQuery<T>;
   columns: ColumnDef<T, unknown>[];
-  onCreate?: () => void;
+  createAction?: { label: string; fn: () => void };
   exportMutation?: ExportMutation;
   headerSlot?: ReactNode | ((query: TableQuery<T>) => ReactNode);
   rowActions?: RowAction<T>[];
@@ -95,7 +95,7 @@ const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 export function TableTemplate<T extends object>({
   useQuery,
   columns,
-  onCreate,
+  createAction,
   exportMutation,
   headerSlot,
   rowActions,
@@ -241,6 +241,13 @@ export function TableTemplate<T extends object>({
 
   return (
     <div className="h-full min-h-0 flex flex-col gap-4">
+      {/* Mobile Header Slot (below toolbar on small screens) */}
+      {headerSlot && (
+        <div className="flex md:hidden items-center justify-center w-full">
+          {typeof headerSlot === "function" ? headerSlot(query) : headerSlot}
+        </div>
+      )}
+
       {/* Toolbar */}
       <div className="flex items-center gap-2 w-full">
         {/* Global Search */}
@@ -256,9 +263,9 @@ export function TableTemplate<T extends object>({
           />
         </div>
 
-        {/* Header Slot */}
+        {/* Header Slot (desktop: inline in toolbar) */}
         {headerSlot && (
-          <div className="hidden lg:flex flex-1 items-center justify-center min-w-0">
+          <div className="hidden md:flex flex-1 items-center justify-center min-w-0">
             {typeof headerSlot === "function" ? headerSlot(query) : headerSlot}
           </div>
         )}
@@ -297,10 +304,10 @@ export function TableTemplate<T extends object>({
           )}
 
           {/* Create Button */}
-          {onCreate && hasManagePermission && (
-            <Button onClick={onCreate} className="h-9">
+          {createAction && hasManagePermission && (
+            <Button onClick={createAction.fn} className="h-9">
               <Plus className="sm:mr-1" />
-              <span className="hidden sm:inline">New row</span>
+              <span className="hidden sm:inline">{createAction.label}</span>
             </Button>
           )}
         </div>

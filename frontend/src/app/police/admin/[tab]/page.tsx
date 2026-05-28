@@ -1,6 +1,6 @@
 "use client";
 
-import PoliceAdminTable from "@/app/police/admin/_components/PoliceAdminTable";
+import PoliceAccountsTable from "@/app/police/admin/_components/PoliceAccountsTable";
 import {
   DEFAULT_POLICE_ADMIN_TAB,
   POLICE_ADMIN_TABS,
@@ -19,7 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useParams, useRouter } from "next/navigation";
 
 const TAB_CONTENT: Record<PoliceAdminTabSlug, React.ReactNode> = {
-  accounts: <PoliceAdminTable />,
+  accounts: <PoliceAccountsTable />,
   incidents: <IncidentTable />,
 };
 

@@ -14,7 +14,7 @@ export function IncidentSeverityCountsHeader({
   isLoading?: boolean;
 }) {
   return (
-    <div className="@container w-full flex items-center gap-6">
+    <div className="@container w-full flex items-center gap-6 ml-3">
       {INCIDENT_SEVERITIES.map((severity) => (
         <div
           key={severity}

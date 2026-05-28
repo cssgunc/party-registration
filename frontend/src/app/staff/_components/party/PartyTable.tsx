@@ -164,8 +164,7 @@ export const PartyTable = () => {
       enableColumnFilter: true,
       meta: { filter: { type: "datetime", backendField: "party_datetime" } },
       cell: ({ row }) => {
-        const date = new Date(row.original.party_datetime);
-        return date.toLocaleDateString();
+        return format(row.original.party_datetime, "M/d/yyyy");
       },
     },
     {
@@ -267,7 +266,7 @@ export const PartyTable = () => {
       <TableTemplate
         useQuery={useAdminParties}
         columns={columns}
-        onCreate={openCreate}
+        createAction={{ label: "New Party", fn: openCreate }}
         pageSizeStorageKey="staff-parties"
         rowActions={[
           editAction<PartyDto>({ onClick: openEdit }),

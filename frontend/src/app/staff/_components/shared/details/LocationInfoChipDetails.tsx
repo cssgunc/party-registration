@@ -9,6 +9,7 @@ import {
   getInPersonWarningCount,
   getRemoteWarningCount,
 } from "@/lib/api/location/location.types";
+import { format } from "date-fns";
 
 interface LocationInfoChipDetailsProps {
   data: LocationSummaryDto | LocationDto;
@@ -36,7 +37,7 @@ function LocationInfoChipDetails({ data }: LocationInfoChipDetailsProps) {
         [
           "Active Hold",
           hasActiveHold(data.hold_expiration)
-            ? "Active: Expires " + data.hold_expiration?.toDateString()
+            ? "Active: Expires " + format(data.hold_expiration!, "MMM d, yyyy")
             : "No",
         ],
       ]}

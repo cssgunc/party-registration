@@ -24,7 +24,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { useSession } from "next-auth/react";
 import { useMemo } from "react";
 
-export default function PoliceAdminTable() {
+export default function PoliceAccountsTable() {
   const { data: session } = useSession();
   const { openSnackbar } = useSnackbar();
   const {

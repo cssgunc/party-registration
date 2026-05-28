@@ -2,6 +2,7 @@
 
 import { InfoChipDetails } from "@/app/staff/_components/shared/sidebar/InfoChipDetails";
 import { PartyDto } from "@/lib/api/party/party.types";
+import { format } from "date-fns";
 
 interface PartyInfoChipDetailsProps {
   data: PartyDto;
@@ -12,7 +13,7 @@ export function PartyInfoChipDetails({ data }: PartyInfoChipDetailsProps) {
     <InfoChipDetails
       fields={[
         ["Address", data.location.formatted_address],
-        ["Date", data.party_datetime.toDateString()],
+        ["Date", format(data.party_datetime, "MMM d, yyyy")],
         ["First Name", data.contact_one.first_name],
         ["Last Name", data.contact_one.last_name],
       ]}
