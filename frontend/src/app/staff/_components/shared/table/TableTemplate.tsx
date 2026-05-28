@@ -85,6 +85,7 @@ export type TableProps<T> = {
   exportMutation?: ExportMutation;
   headerSlot?: ReactNode | ((query: TableQuery<T>) => ReactNode);
   rowActions?: RowAction<T>[];
+  pageSizeStorageKey?: string;
 };
 
 const serverFilterPassthrough = () => true;
@@ -98,9 +99,11 @@ export function TableTemplate<T extends object>({
   exportMutation,
   headerSlot,
   rowActions,
+  pageSizeStorageKey,
 }: TableProps<T>) {
   const serverTableState = useServerTableState({
     columns,
+    pageSizeStorageKey,
   });
   const query = useQuery(serverTableState.serverParams);
   const data = query.data?.items ?? [];

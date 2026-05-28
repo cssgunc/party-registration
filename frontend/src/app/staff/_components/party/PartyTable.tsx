@@ -268,6 +268,7 @@ export const PartyTable = () => {
         useQuery={useAdminParties}
         columns={columns}
         onCreate={openCreate}
+        pageSizeStorageKey="staff-parties"
         rowActions={[
           editAction<PartyDto>({ onClick: openEdit }),
           {

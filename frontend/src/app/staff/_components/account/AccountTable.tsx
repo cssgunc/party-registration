@@ -266,6 +266,7 @@ export const AccountTable = () => {
         useQuery={useAggregateAccounts}
         columns={columns}
         onCreate={openCreate}
+        pageSizeStorageKey="staff-accounts"
         rowActions={[
           editAction<AggregateAccountDto>({
             onClick: handleEdit,

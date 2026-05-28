@@ -122,6 +122,7 @@ export default function PoliceAdminTable() {
       <TableTemplate
         useQuery={usePoliceAccountsPaginated}
         columns={columns}
+        pageSizeStorageKey="police-accounts"
         rowActions={[
           editAction<PoliceAccountDto>({ onClick: openEdit }),
           deleteAction<PoliceAccountDto>({

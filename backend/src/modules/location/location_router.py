@@ -100,7 +100,7 @@ async def get_place_details(
 async def get_locations(
     params: ListQueryParams = parse_list_query_params(),
     location_service: LocationService = Depends(),
-    _=Depends(authenticate_by_role("staff", "admin")),
+    _=Depends(authenticate_by_role("staff", "admin", "police_admin")),
 ) -> PaginatedLocationResponse:
     """
     Returns all locations with pagination, sorting, and filtering.

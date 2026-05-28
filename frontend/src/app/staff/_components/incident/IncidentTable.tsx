@@ -192,6 +192,7 @@ export const IncidentTable = () => {
         useQuery={useIncidents}
         columns={columns}
         onCreate={openCreate}
+        pageSizeStorageKey="staff-incidents"
         rowActions={[
           editAction<IncidentDto>({ onClick: openEdit }),
           deleteAction<IncidentDto>({

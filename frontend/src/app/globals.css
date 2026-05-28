@@ -146,7 +146,7 @@
 
 @layer base {
   * {
-    @apply border-border outline-red-500/50;
+    @apply border-border outline-ring/50;
   }
 
   /* Prevent rubber-band overscroll only while a dialog overlay is open.

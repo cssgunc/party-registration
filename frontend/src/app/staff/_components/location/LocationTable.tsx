@@ -139,6 +139,7 @@ export const LocationTable = () => {
         useQuery={useLocations}
         columns={columns}
         onCreate={openCreate}
+        pageSizeStorageKey="staff-locations"
         rowActions={[
           editAction<LocationDto>({ onClick: openEdit }),
           deleteAction<LocationDto>({

@@ -195,6 +195,7 @@ export const StudentTable = () => {
       <TableTemplate
         useQuery={useStudents}
         columns={columns}
+        pageSizeStorageKey="staff-students"
         rowActions={[
           editAction<StudentDto>({ onClick: openEdit }),
           deleteAction<StudentDto>({

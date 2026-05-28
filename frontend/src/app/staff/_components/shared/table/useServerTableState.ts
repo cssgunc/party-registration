@@ -33,9 +33,29 @@ function areSortingStatesEqual(a: SortingState, b: SortingState) {
 }
 
 const DEFAULT_PAGE_SIZE = 50;
+const VALID_PAGE_SIZES = [10, 25, 50, 100];
+
+function resolveStoredPageSize(
+  storageKey: string | undefined
+): number | undefined {
+  if (!storageKey || typeof window === "undefined") return undefined;
+  try {
+    const raw = window.localStorage.getItem(
+      `admin-table:page-size:${storageKey}`
+    );
+    if (!raw) return undefined;
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed)) return undefined;
+    if (!VALID_PAGE_SIZES.includes(parsed)) return undefined;
+    return parsed;
+  } catch {
+    return undefined;
+  }
+}
 
 type UseServerTableStateArgs<T> = {
   columns: ColumnDef<T, unknown>[];
+  pageSizeStorageKey?: string;
 };
 
 type UseServerTableStateResult = {
@@ -61,12 +81,13 @@ type UseServerTableStateResult = {
 
 export function useServerTableState<T>({
   columns,
+  pageSizeStorageKey,
 }: UseServerTableStateArgs<T>): UseServerTableStateResult {
   const [serverParams, setServerParams] =
     useState<ServerTableParams>(DEFAULT_TABLE_PARAMS);
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
-    pageSize: DEFAULT_PAGE_SIZE,
+    pageSize: resolveStoredPageSize(pageSizeStorageKey) ?? DEFAULT_PAGE_SIZE,
   });
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -127,6 +148,19 @@ export function useServerTableState<T>({
   useEffect(() => {
     globalFilterRef.current = globalFilter;
   }, [globalFilter]);
+
+  useEffect(() => {
+    if (!pageSizeStorageKey) return;
+    if (!VALID_PAGE_SIZES.includes(pagination.pageSize)) return;
+    try {
+      window.localStorage.setItem(
+        `admin-table:page-size:${pageSizeStorageKey}`,
+        String(pagination.pageSize)
+      );
+    } catch {
+      return;
+    }
+  }, [pageSizeStorageKey, pagination.pageSize]);
 
   useEffect(() => {
     updateServerParams();
