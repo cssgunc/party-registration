@@ -25,7 +25,7 @@ export function IncidentSeverityCountsHeader({
             {INCIDENT_SEVERITY_LABELS[severity]}s
           </span>
           {isLoading || !counts ? (
-            <Skeleton className="h-4 w-6" />
+            <Skeleton className="h-4 w-5" />
           ) : (
             <span className="font-medium tabular-nums">{counts[severity]}</span>
           )}
