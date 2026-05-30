@@ -27,6 +27,7 @@ from src.modules.student.student_service import StudentService
 
 from ..location.location_entity import LocationEntity
 from ..location.location_service import LocationNotFoundException, LocationService
+from ..notification.notification_service import NotificationService
 from ..student.student_entity import StudentEntity
 from .party_entity import PartyEntity
 from .party_model import (
@@ -187,11 +188,13 @@ class PartyService:
         location_service: LocationService = Depends(),
         student_service: StudentService = Depends(),
         query_service: QueryService = Depends(),
+        notification_service: NotificationService = Depends(),
     ):
         self.session = session
         self.location_service = location_service
         self.student_service = student_service
         self.query_service = query_service
+        self.notification_service = notification_service
 
     async def _get_party_entity_by_id(self, party_id: int) -> PartyEntity:
         result = await self.session.execute(
@@ -305,7 +308,9 @@ class PartyService:
         new_party = PartyEntity.from_draft(draft)
         self.session.add(new_party)
         await self.session.commit()
-        return await new_party.load_dto(self.session)
+        party_dto = await new_party.load_dto(self.session)
+        await self.notification_service.notify_party_created(party_dto)
+        return party_dto
 
     async def create_party_from_admin_dto(self, dto: AdminCreatePartyDto) -> PartyDto:
         draft = await self._build_admin_draft(dto)
@@ -318,12 +323,15 @@ class PartyService:
         new_party = PartyEntity.from_draft(draft)
         self.session.add(new_party)
         await self.session.commit()
-        return await new_party.load_dto(self.session)
+        party_dto = await new_party.load_dto(self.session)
+        await self.notification_service.notify_party_created(party_dto)
+        return party_dto
 
     async def update_party_from_student_dto(
         self, party_id: int, dto: StudentCreatePartyDto, student_id: int
     ) -> PartyDto:
         party_entity = await self._get_party_entity_by_id(party_id)
+        old_contact_two_email = party_entity.contact_two_email
         draft = await self._build_student_draft(dto, student_id, existing=party_entity.to_dto())
         PartyRule.check_for(
             draft,
@@ -341,12 +349,16 @@ class PartyService:
         party_entity.apply_draft(draft)
         self.session.add(party_entity)
         await self.session.commit()
-        return await party_entity.load_dto(self.session)
+        party_dto = await party_entity.load_dto(self.session)
+        if draft.contact_two.email.lower() != old_contact_two_email.lower():
+            await self.notification_service.notify_contact_two_changed(party_dto)
+        return party_dto
 
     async def update_party_from_admin_dto(
         self, party_id: int, dto: AdminCreatePartyDto
     ) -> PartyDto:
         party_entity = await self._get_party_entity_by_id(party_id)
+        old_contact_two_email = party_entity.contact_two_email
         draft = await self._build_admin_draft(dto, existing=party_entity.to_dto())
         PartyRule.check_for(
             draft,
@@ -357,7 +369,10 @@ class PartyService:
         party_entity.apply_draft(draft)
         self.session.add(party_entity)
         await self.session.commit()
-        return await party_entity.load_dto(self.session)
+        party_dto = await party_entity.load_dto(self.session)
+        if draft.contact_two.email.lower() != old_contact_two_email.lower():
+            await self.notification_service.notify_contact_two_changed(party_dto)
+        return party_dto
 
     async def cancel_party(self, party_id: int, student_id: int | None) -> PartyDto:
         """Cancel a party. If student_id is given, only the owner can cancel.

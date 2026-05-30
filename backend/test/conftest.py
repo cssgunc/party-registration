@@ -3,6 +3,7 @@ import os
 from sqlalchemy import text
 
 os.environ["GOOGLE_MAPS_API_KEY"] = "invalid_google_maps_api_key_for_tests"
+os.environ["API_BASE_URL"] = "http://localhost:8000"
 
 from collections.abc import AsyncGenerator, Callable
 from typing import Any
@@ -27,6 +28,7 @@ from src.modules.account.account_service import AccountService
 from src.modules.auth.auth_service import AuthService
 from src.modules.incident.incident_service import IncidentService
 from src.modules.location.location_service import LocationService
+from src.modules.notification.notification_service import NotificationService
 from src.modules.party.party_service import PartyService
 from src.modules.police.police_model import PoliceAccountDto, PoliceRole
 from src.modules.police.police_service import PoliceService
@@ -303,16 +305,23 @@ def incident_service(test_session: AsyncSession, location_service: LocationServi
 
 
 @pytest.fixture()
+def notification_service(test_session: AsyncSession, mock_email_service: EmailService):
+    return NotificationService(session=test_session, email_service=mock_email_service)
+
+
+@pytest.fixture()
 def party_service(
     test_session: AsyncSession,
     location_service: LocationService,
     student_service: StudentService,
+    notification_service: NotificationService,
 ):
     return PartyService(
         session=test_session,
         location_service=location_service,
         student_service=student_service,
         query_service=QueryService(test_session),
+        notification_service=notification_service,
     )
 
 

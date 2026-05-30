@@ -29,9 +29,6 @@ const avenirNext = localFont({
 export const metadata: Metadata = {
   title: "Party Registration",
   description: "Party Registration",
-  icons: {
-    icon: "/Home1CarolinaBlue.png",
-  },
 };
 
 export default function RootLayout({

@@ -19,7 +19,8 @@ import { isAxiosError } from "axios";
 import { Eye, EyeOff } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import * as React from "react";
+import { useState } from "react";
 import * as z from "zod";
 
 const allowedDomain = clientEnv.NEXT_PUBLIC_CHPD_EMAIL_DOMAIN;
@@ -81,7 +82,7 @@ export default function PoliceSignupPage() {
     }
   };
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: React.SubmitEvent) {
     event.preventDefault();
     setSubmissionError(null);
 
@@ -150,7 +151,7 @@ export default function PoliceSignupPage() {
                   id="email"
                   type="email"
                   autoComplete="email"
-                  placeholder="officer@chapelhillnc.gov"
+                  placeholder={`officer@${allowedDomain}`}
                   value={formData.email}
                   onChange={(e) => updateField("email", e.target.value)}
                   aria-invalid={!!errors.email}

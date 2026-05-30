@@ -7,13 +7,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { usePoliceLogin } from "@/lib/api/auth/auth.queries";
+import { clientEnv } from "@/lib/config/env.client";
 import { getErrorMessage } from "@/lib/errors";
 import { isAxiosError } from "axios";
 import { Eye, EyeOff } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { FormEvent, Suspense, useState } from "react";
+import * as React from "react";
+import { Suspense, useState } from "react";
 import * as z from "zod";
 
 const policeLoginSchema = z.object({
@@ -84,7 +86,7 @@ function PoliceLoginForm() {
     }
   };
 
-  function handleSubmit(e: FormEvent) {
+  function handleSubmit(e: React.SubmitEvent) {
     e.preventDefault();
     setSubmissionError(null);
     setShowResendVerification(false);
@@ -127,7 +129,7 @@ function PoliceLoginForm() {
               <Input
                 id="email"
                 type="email"
-                placeholder="officer@chapelhillnc.gov"
+                placeholder={`officer@${clientEnv.NEXT_PUBLIC_CHPD_EMAIL_DOMAIN}`}
                 value={formData.email}
                 onChange={(e) => updateField("email", e.target.value)}
                 autoComplete="email"
