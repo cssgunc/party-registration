@@ -85,7 +85,7 @@ _ACCOUNT_QUERY_FIELDS = QueryFieldSet(
         "role": AccountEntity.role,
     },
     searchable=("email", "first_name", "last_name", "pid", "onyen"),
-    default_sort=SortParam(field="email", order=SortOrder.ASC),
+    default_sort=SortParam(field="onyen", order=SortOrder.DESC),
 )
 
 
@@ -93,7 +93,7 @@ def _build_aggregate_query_fields(fields: dict) -> QueryFieldSet:
     return QueryFieldSet(
         fields=fields,
         searchable=("email", "first_name", "last_name", "onyen", "pid"),
-        default_sort=SortParam(field="email", order=SortOrder.ASC),
+        default_sort=SortParam(field="onyen", order=SortOrder.DESC),
     )
 
 

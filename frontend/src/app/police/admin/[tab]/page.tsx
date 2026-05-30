@@ -6,6 +6,7 @@ import {
   POLICE_ADMIN_TABS,
   POLICE_ADMIN_TAB_CONFIG,
   type PoliceAdminTabSlug,
+  isPoliceAdminTabSlug,
 } from "@/app/police/admin/_lib/tabs";
 import { IncidentTable } from "@/app/staff/_components/incident/IncidentTable";
 import {
@@ -27,14 +28,14 @@ export default function PoliceAdminTabPage() {
   const { tab } = useParams<{ tab: string }>();
   const router = useRouter();
 
-  const isValidTab = POLICE_ADMIN_TABS.includes(tab as PoliceAdminTabSlug);
+  const isValidTab = isPoliceAdminTabSlug(tab);
 
   if (!isValidTab) {
     router.replace(`/police/admin/${DEFAULT_POLICE_ADMIN_TAB}`);
     return null;
   }
 
-  const currentTab = tab as PoliceAdminTabSlug;
+  const currentTab = tab;
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4">

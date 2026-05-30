@@ -110,7 +110,7 @@ export const IncidentTable = () => {
       meta: { filter: { type: "datetime", backendField: "incident_datetime" } },
       cell: ({ row }) => {
         const date = row.original.incident_datetime;
-        return format(date, "MM-dd-yyyy");
+        return format(date, "M/d/yyyy");
       },
     },
     {
