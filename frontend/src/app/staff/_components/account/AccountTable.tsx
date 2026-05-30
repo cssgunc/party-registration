@@ -265,7 +265,7 @@ export const AccountTable = () => {
       <TableTemplate
         useQuery={useAggregateAccounts}
         columns={columns}
-        createAction={{ label: "New Account", fn: openCreate }}
+        createAction={{ label: "New Invite", fn: openCreate }}
         pageSizeStorageKey="staff-accounts"
         rowActions={[
           editAction<AggregateAccountDto>({

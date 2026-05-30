@@ -137,7 +137,7 @@ export default function AccountTableForm({
               </div>
             )}
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Submitting..." : "Save Changes"}
+              {isSubmitting ? "Submitting..." : "Send Invite"}
             </Button>
           </Field>
         </FieldSet>
