@@ -1,13 +1,13 @@
 import {
   INCIDENT_SEVERITY_LABELS,
-  IncidentDto,
+  NestedIncidentDto,
 } from "@/lib/api/incident/incident.types";
 import { formatTime } from "@/lib/utils";
 import { memo } from "react";
 
 type Props = {
   date: string;
-  incidents: IncidentDto[];
+  incidents: NestedIncidentDto[];
 };
 
 const RegistrationIncidentCard = memo(function RegistrationIncidentCard({

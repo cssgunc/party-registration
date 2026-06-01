@@ -69,7 +69,9 @@ export default function RegistrationStatus({
               <p className="content">
                 Completed on{" "}
                 <span className="content-bold">
-                  {last_registered?.toLocaleDateString()}
+                  {last_registered
+                    ? format(last_registered, "M/d/yyyy")
+                    : undefined}
                 </span>
               </p>
             </div>

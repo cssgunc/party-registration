@@ -11,7 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { IncidentDto } from "@/lib/api/incident/incident.types";
+import { NestedIncidentDto } from "@/lib/api/incident/incident.types";
 import { formatTime } from "@/lib/utils";
 import { format } from "date-fns";
 import { ChevronDown, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
@@ -19,9 +19,9 @@ import { useSession } from "next-auth/react";
 import { memo } from "react";
 
 type IncidentSidebarCardProps = {
-  incidents: IncidentDto;
+  incidents: NestedIncidentDto;
   onDeleteIncidentAction: (incidentId: number) => void;
-  onEditIncidentAction: (incident: IncidentDto) => void;
+  onEditIncidentAction: (incident: NestedIncidentDto) => void;
 };
 const IncidentSidebarCard = memo(function IncidentSidebarCard({
   incidents,

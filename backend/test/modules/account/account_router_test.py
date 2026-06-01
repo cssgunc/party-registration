@@ -36,6 +36,7 @@ test_account_sort, test_account_filter = generate_filter_sort_tests(
         "email",
         "first_name",
         "last_name",
+        "onyen",
         "pid",
         "role",
     ],
@@ -129,6 +130,19 @@ class TestAccountRouter:
         paginated = assert_res_paginated(response, AccountDto, total_records=4)
         emails = [a.email for a in paginated.items]
         assert emails == sorted(emails)
+
+    @pytest.mark.asyncio
+    async def test_get_accounts_sort_by_onyen_desc(self):
+        staff = await self.account_utils.create_one(role="staff", onyen="zzzaccount")
+        admin = await self.account_utils.create_one(role="admin", onyen="aaaaccount")
+        await self.account_utils.create_one(role="student", onyen="yyystudent")
+
+        response = await self.admin_client.get(
+            "/api/accounts", params={"sort_by": "onyen", "sort_order": "desc"}
+        )
+
+        paginated = assert_res_paginated(response, AccountDto, total_records=2)
+        assert [account.onyen for account in paginated.items] == [staff.onyen, admin.onyen]
 
     @pytest.mark.parametrize("role", [InviteTokenRole.ADMIN, InviteTokenRole.STAFF])
     @pytest.mark.asyncio
@@ -519,6 +533,20 @@ class TestAggregateAccountCSVRouter:
         paginated = assert_res_paginated(response, AggregateAccountDto, total_records=2)
         emails = [dto.email for dto in paginated.items]
         assert emails == sorted(emails)
+
+    @pytest.mark.asyncio
+    async def test_aggregate_sort_by_onyen_desc(self):
+        staff = await self.account_utils.create_one(role="staff", onyen="zzzaccount")
+        admin = await self.account_utils.create_one(role="admin", onyen="aaaaccount")
+        await self.account_utils.create_one(role="student", onyen="yyystudent")
+
+        response = await self.admin_client.get(
+            "/api/accounts/aggregate",
+            params={"sort_by": "onyen", "sort_order": "desc"},
+        )
+
+        paginated = assert_res_paginated(response, AggregateAccountDto, total_records=2)
+        assert [account.onyen for account in paginated.items] == [staff.onyen, admin.onyen]
 
     @pytest.mark.asyncio
     async def test_aggregate_pagination(self):

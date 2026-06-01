@@ -6,7 +6,12 @@ from sqlalchemy import Enum, ForeignKey, Integer, String, func
 from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column, relationship
 from src.core.database import EntityBase
 from src.core.types import UTCDateTime
-from src.modules.incident.incident_model import IncidentData, IncidentDto, IncidentSeverity
+from src.modules.incident.incident_model import (
+    IncidentData,
+    IncidentDto,
+    IncidentSeverity,
+    NestedIncidentDto,
+)
 
 if TYPE_CHECKING:
     from src.modules.location.location_entity import LocationEntity
@@ -49,17 +54,26 @@ class IncidentEntity(MappedAsDataclass, EntityBase):
         self.description = data.description
         self.reference_id = data.reference_id
 
-    def to_dto(self) -> IncidentDto:
-        """Convert entity to model."""
-        # Ensure incident_datetime is timezone-aware
-        incident_dt = self.incident_datetime
-        if incident_dt.tzinfo is None:
-            incident_dt = incident_dt.replace(tzinfo=UTC)
+    def _normalized_datetime(self) -> datetime:
+        dt = self.incident_datetime
+        return dt if dt.tzinfo is not None else dt.replace(tzinfo=UTC)
 
+    def to_dto(self) -> IncidentDto:
+        """Convert entity to IncidentDto (location relationship must be loaded)."""
         return IncidentDto(
             id=self.id,
-            location_id=self.location_id,
-            incident_datetime=incident_dt,
+            location=self.location.to_summary_dto(),
+            incident_datetime=self._normalized_datetime(),
+            description=self.description,
+            severity=self.severity,
+            reference_id=self.reference_id,
+        )
+
+    def to_nested_dto(self) -> NestedIncidentDto:
+        """Convert entity to NestedIncidentDto (no location field, for use inside LocationDto)."""
+        return NestedIncidentDto(
+            id=self.id,
+            incident_datetime=self._normalized_datetime(),
             description=self.description,
             severity=self.severity,
             reference_id=self.reference_id,

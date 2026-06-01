@@ -3,6 +3,7 @@ import {
   useDeleteIncident,
   useUpdateIncident,
 } from "@/lib/api/incident/incident.queries";
+import { IncidentDto } from "@/lib/api/incident/incident.types";
 import { ListQueryParams } from "@/lib/api/shared/query-params";
 import { OptimisticMutationOptions, PaginatedResponse } from "@/lib/shared";
 import {
@@ -14,7 +15,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { LocationService } from "./location.service";
-import { IncidentDto, LocationCreate, LocationDto } from "./location.types";
+import { LocationCreate, LocationDto } from "./location.types";
 
 const locationService = new LocationService();
 

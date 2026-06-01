@@ -9,6 +9,7 @@ from src.modules.incident.incident_model import (
     IncidentDto,
     IncidentSeverity,
     IncidentUpdateDto,
+    NestedIncidentDto,
 )
 from test.modules.location.location_utils import LocationTestUtils
 from test.utils.resource_test_utils import ResourceTestUtils
@@ -26,7 +27,7 @@ class IncidentTestUtils(
     ResourceTestUtils[
         IncidentEntity,
         IncidentData,
-        IncidentDto | IncidentCreateDto | IncidentUpdateDto,
+        IncidentDto | IncidentCreateDto | IncidentUpdateDto | NestedIncidentDto,
     ]
 ):
     def __init__(self, session: AsyncSession, location_utils: LocationTestUtils):
@@ -100,6 +101,21 @@ class IncidentTestUtils(
             local_overrides["location_id"] = location.id
         return await super().next_dict(**local_overrides)
 
+    @override
+    def entity_to_dict(self, entity: IncidentEntity) -> dict:
+        # Build dict directly from entity fields — avoid to_dto() which requires location loaded
+        incident_dt = entity.incident_datetime
+        if incident_dt.tzinfo is None:
+            incident_dt = incident_dt.replace(tzinfo=UTC)
+        return {
+            "id": entity.id,
+            "location_id": entity.location_id,
+            "incident_datetime": incident_dt,
+            "description": entity.description,
+            "severity": entity.severity,
+            "reference_id": entity.reference_id,
+        }
+
     # ================================ Typing Overrides ================================
 
     @override
@@ -125,6 +141,26 @@ class IncidentTestUtils(
     @override
     async def create_one(self, **overrides: Unpack[IncidentOverrides]) -> IncidentEntity:
         return await super().create_one(**overrides)
+
+    @override
+    def assert_matches(
+        self,
+        resource1: IncidentEntity
+        | IncidentData
+        | IncidentDto
+        | IncidentCreateDto
+        | IncidentUpdateDto
+        | NestedIncidentDto
+        | None,
+        resource2: IncidentEntity
+        | IncidentData
+        | IncidentDto
+        | IncidentCreateDto
+        | IncidentUpdateDto
+        | NestedIncidentDto
+        | None,
+    ) -> None:
+        return super().assert_matches(resource1, resource2)
 
 
 def assert_severity_counts(
