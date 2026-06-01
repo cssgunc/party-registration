@@ -128,7 +128,7 @@ export default function PoliceSignupPage() {
                 id="email"
                 type="email"
                 autoComplete="email"
-                placeholder="officer@chapelhillnc.gov"
+                placeholder={`officer@${allowedDomain}`}
                 value={formData.email}
                 onChange={(e) => updateField("email", e.target.value)}
                 aria-invalid={!!errors.email}

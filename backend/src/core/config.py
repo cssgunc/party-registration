@@ -6,7 +6,7 @@ import re
 from datetime import date
 from pathlib import Path
 
-from pydantic import field_validator
+from pydantic import EmailStr, HttpUrl, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -26,7 +26,8 @@ class Config(BaseSettings):
     MYSQL_PORT: int = 3306
 
     # Frontend configuration
-    FRONTEND_BASE_URL: str
+    FRONTEND_BASE_URL: HttpUrl
+    API_BASE_URL: HttpUrl
 
     # Google Maps
     GOOGLE_MAPS_API_KEY: str
@@ -47,7 +48,9 @@ class Config(BaseSettings):
     SMTP_TLS: bool
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
-    EMAIL_FROM: str = "ocsl-no-reply@unc.edu"
+    EMAIL_FROM: EmailStr = "ocsl-no-reply@unc.edu"
+    CONTACT_EMAIL: EmailStr = "offcampus@unc.edu"
+    OCSL_WEBSITE_URL: HttpUrl = HttpUrl("https://offcampus.unc.edu/unc-party-registration")
 
     # Logging
     SQLALCHEMY_ECHO: bool = False
