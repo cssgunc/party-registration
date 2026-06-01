@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { SkeletonText } from "@/components/ui/skeleton";
 import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
-import { PartyDto } from "@/lib/api/party/party.types";
+import { PartyPoliceDto } from "@/lib/api/party/party.types";
 import {
   usePartiesNearby,
   usePlaceDetails,
@@ -49,7 +49,7 @@ export default function PolicePage() {
   const [searchAddress, setSearchAddress] = useState<AutocompleteResult | null>(
     null
   );
-  const [activeParty, setActiveParty] = useState<PartyDto | undefined>();
+  const [activeParty, setActiveParty] = useState<PartyPoliceDto | undefined>();
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
   const [advancedFilters, setAdvancedFilters] = useState<AdvancedPartyFilters>({
     timeFilterType: "",
@@ -118,7 +118,9 @@ export default function PolicePage() {
           normalizePhone(party.contact_one.phone_number ?? "").includes(
             phoneQuery
           ) ||
-          normalizePhone(party.contact_two.phone_number).includes(phoneQuery);
+          normalizePhone(party.contact_two.phone_number ?? "").includes(
+            phoneQuery
+          );
         if (!matchesPhone) return false;
       }
 
@@ -175,7 +177,7 @@ export default function PolicePage() {
     setCurrentPage(0);
   }, [filteredParties.length]);
 
-  function handleActiveParty(party: PartyDto | null): void {
+  function handleActiveParty(party: PartyPoliceDto | null): void {
     setActiveParty(party ?? undefined);
   }
 

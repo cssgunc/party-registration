@@ -2,7 +2,7 @@ import enum
 import math
 from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import ClassVar
+from typing import ClassVar, Literal, overload
 
 from fastapi import Depends
 from sqlalchemy import Time as SATime
@@ -34,6 +34,7 @@ from .party_entity import PartyEntity
 from .party_model import (
     AdminCreatePartyDto,
     ExactMatchDto,
+    PaginatedPartiesPoliceResponse,
     PaginatedPartiesResponse,
     PartyDraft,
     PartyDto,
@@ -207,7 +208,19 @@ class PartyService:
             raise PartyNotFoundException(party_id)
         return party_entity
 
-    async def get_parties_paginated(self, params: ListQueryParams) -> PaginatedPartiesResponse:
+    @overload
+    async def get_parties_paginated(
+        self, params: ListQueryParams, as_police: Literal[True]
+    ) -> PaginatedPartiesPoliceResponse: ...
+
+    @overload
+    async def get_parties_paginated(
+        self, params: ListQueryParams, as_police: Literal[False] = ...
+    ) -> PaginatedPartiesResponse: ...
+
+    async def get_parties_paginated(
+        self, params: ListQueryParams, as_police: bool = False
+    ) -> PaginatedPartiesResponse | PaginatedPartiesPoliceResponse:
         """
         Get parties with server-side pagination, sorting, and filtering.
 
@@ -220,9 +233,8 @@ class PartyService:
         - contact_one_id: Filter by contact one (student) ID
 
         Returns:
-            PaginatedPartiesResponse with items and metadata
+            PaginatedPartiesResponse (staff/admin) or PaginatedPartiesPoliceResponse (police)
         """
-        # Build base query with JOINs for filter/sort and eager loading for hydration
         base_query = (
             select(PartyEntity)
             .join(LocationEntity, PartyEntity.location_id == LocationEntity.id)
@@ -231,11 +243,15 @@ class PartyService:
             .options(*_PARTY_LOAD_OPTIONS)
         )
 
+        converter = (lambda e: e.to_police_dto()) if as_police else (lambda e: e.to_dto())
         result = await self.query_service.get_paginated(
             params=params,
             base_query=base_query,
+            dto_converter=converter,
             field_set=_PARTY_QUERY_FIELDS,
         )
+        if as_police:
+            return PaginatedPartiesPoliceResponse(**result.model_dump())
         return PaginatedPartiesResponse(**result.model_dump())
 
     async def get_party_by_id(self, party_id: int) -> PartyDto:
@@ -448,11 +464,11 @@ class PartyService:
         )
         parties = result.scalars().all()
 
-        exact_party: PartyDto | None = None
+        exact_party = None
         if db_location is not None:
             for p in parties:
                 if p.location_id == db_location.id:
-                    exact_party = p.to_dto()
+                    exact_party = p.to_police_dto()
                     break
 
         nearby_with_distance: list[tuple[PartyEntity, float]] = []
@@ -469,7 +485,7 @@ class PartyService:
                 nearby_with_distance.append((p, distance))
         nearby_with_distance.sort(key=lambda x: x[1])
         nearby = [
-            p.to_dto()
+            p.to_police_dto()
             for p, _ in nearby_with_distance
             if exact_party is None or p.id != exact_party.id
         ]

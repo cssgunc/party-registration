@@ -23,7 +23,7 @@ import {
   getInPersonWarningCount,
   getRemoteWarningCount,
 } from "@/lib/api/location/location.types";
-import { PartyDto } from "@/lib/api/party/party.types";
+import { PartyPoliceDto } from "@/lib/api/party/party.types";
 import {
   buildMapsUrl,
   cn,
@@ -54,7 +54,7 @@ const INCIDENT_MENU_ITEMS: {
 ];
 
 export type PartyCardData =
-  | { hasParty: true; party: PartyDto }
+  | { hasParty: true; party: PartyPoliceDto }
   | {
       hasParty: false;
       location: LocationDto | null;

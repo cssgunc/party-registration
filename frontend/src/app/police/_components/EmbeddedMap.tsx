@@ -1,7 +1,7 @@
 "use client";
 
 import { PhoneLink } from "@/components/PhoneLink";
-import { ExactMatchDto, PartyDto } from "@/lib/api/party/party.types";
+import { ExactMatchDto, PartyPoliceDto } from "@/lib/api/party/party.types";
 import { clientEnv } from "@/lib/config/env.client";
 import { formatAddress, formatContactPreference } from "@/lib/utils";
 import {
@@ -21,11 +21,11 @@ type Poi = {
 };
 
 interface EmbeddedMapProps {
-  parties: PartyDto[];
-  activeParty?: PartyDto;
+  parties: PartyPoliceDto[];
+  activeParty?: PartyPoliceDto;
   center?: { lat: number; lng: number };
   exactMatch?: ExactMatchDto;
-  onSelect?: (party: PartyDto | null) => void;
+  onSelect?: (party: PartyPoliceDto | null) => void;
 }
 
 const EmbeddedMap = ({
@@ -117,12 +117,12 @@ const EmbeddedMap = ({
 };
 
 type PoiMarkersProps = {
-  pois: (Poi & { party?: PartyDto })[];
+  pois: (Poi & { party?: PartyPoliceDto })[];
   activePoiKey?: string;
   exactMatchPoiKey?: string;
   exactMatchKey?: string;
   exactMatchNoPartyLocation?: google.maps.LatLngLiteral;
-  onSelect?: (party: PartyDto | null) => void;
+  onSelect?: (party: PartyPoliceDto | null) => void;
   searchCenter?: { lat: number; lng: number };
 };
 
@@ -159,7 +159,7 @@ const PoiMarkers = ({
   const map = useMap();
   const [selectedPoi, setSelectedPoi] = useState<(typeof pois)[0] | null>(null);
 
-  const getShortAddress = (location: PartyDto["location"]): string => {
+  const getShortAddress = (location: PartyPoliceDto["location"]): string => {
     return (
       formatAddress(location, ["street_number", "street_name", "unit"]) ||
       location.formatted_address

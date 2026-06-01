@@ -8,6 +8,9 @@ import {
   AdminCreatePartyDto,
   PartyDto,
   PartyDtoBackend,
+  PartyDtoBackendOf,
+  PartyDtoOf,
+  PartyRole,
   ProximitySearchResponse,
   ProximitySearchResponseBackend,
   StudentCreatePartyDto,
@@ -29,23 +32,29 @@ export class PartyService {
   }
 
   /**
-   * List parties (GET /api/parties)
+   * List parties (GET /api/parties).
+   * Pass role="police" to get ContactPoliceDto contacts (no email/PII).
+   * Defaults to full PartyDto for staff/admin callers.
    */
-  async listParties(
-    params?: ListQueryParams
-  ): Promise<PaginatedResponse<PartyDto>> {
-    const response = await this.client.get<PaginatedResponse<PartyDtoBackend>>(
-      "/parties",
-      { params: params ? toAxiosParams(params) : undefined }
-    );
+  async listParties<R extends PartyRole = "default">(
+    params?: ListQueryParams,
+    role?: R
+  ): Promise<PaginatedResponse<PartyDtoOf<R>>> {
+    const response = await this.client.get<
+      PaginatedResponse<PartyDtoBackendOf<R>>
+    >("/parties", { params: params ? toAxiosParams(params) : undefined });
     return {
       ...response.data,
-      items: response.data.items.map(convertParty),
+      items: response.data.items.map((item) =>
+        convertParty(item, (role ?? "default") as R)
+      ),
     };
   }
 
   /**
-   * Get nearby parties (GET /api/parties/nearby)
+   * Get nearby parties (GET /api/parties/nearby).
+   * Always returns ProximitySearchResponse with PartyPoliceDto items
+   * — /nearby is only used in the police view context.
    */
   async getPartiesNearby(
     placeId: string,

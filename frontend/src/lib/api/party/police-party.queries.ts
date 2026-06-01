@@ -16,7 +16,7 @@ import { PartyService } from "./party.service";
 import {
   NEARBY_KEY,
   PARTIES_KEY,
-  PartyDto,
+  PartyPoliceDto,
   ProximitySearchResponse,
 } from "./party.types";
 
@@ -27,7 +27,7 @@ const partyService = new PartyService();
 const PLACE_DETAILS_KEY = ["place-details"] as const;
 
 type PoliceCreateIncidentContext = {
-  previousData: readonly [readonly unknown[], PartyDto[] | undefined][];
+  previousData: readonly [readonly unknown[], PartyPoliceDto[] | undefined][];
   previousNearbyData: readonly [
     readonly unknown[],
     ProximitySearchResponse | undefined,
@@ -84,7 +84,7 @@ function createOptimisticLocation(
 }
 
 function addOptimisticIncidentToParty(
-  party: PartyDto,
+  party: PartyPoliceDto,
   locationPlaceId: string,
   optimisticIncident: IncidentDto
 ) {
@@ -150,7 +150,7 @@ export function usePlaceDetails(
 
 export function usePoliceParties(
   { startDate, endDate }: { startDate?: Date; endDate?: Date },
-  options?: UseQueryOptions<PartyDto[]>
+  options?: UseQueryOptions<PartyPoliceDto[]>
 ) {
   return useQuery({
     queryKey: [...PARTIES_KEY, startDate, endDate],
@@ -166,7 +166,7 @@ export function usePoliceParties(
         endOfDay.setHours(23, 59, 59, 999);
         params.filters.party_datetime_lte = endOfDay.toISOString();
       }
-      const page = await partyService.listParties(params);
+      const page = await partyService.listParties(params, "police");
       return page.items;
     },
     enabled: !!startDate && !!endDate,
@@ -207,7 +207,7 @@ export function usePoliceCreateIncident<TContext = unknown>(
       await queryClient.cancelQueries({ queryKey: PARTIES_KEY });
       await queryClient.cancelQueries({ queryKey: NEARBY_KEY });
 
-      const previousData = queryClient.getQueriesData<PartyDto[]>({
+      const previousData = queryClient.getQueriesData<PartyPoliceDto[]>({
         queryKey: PARTIES_KEY,
       });
       const previousNearbyData =
@@ -217,7 +217,7 @@ export function usePoliceCreateIncident<TContext = unknown>(
 
       const optimisticIncident = createOptimisticIncident(payload);
 
-      queryClient.setQueriesData<PartyDto[]>(
+      queryClient.setQueriesData<PartyPoliceDto[]>(
         { queryKey: PARTIES_KEY },
         (old) => {
           if (!Array.isArray(old)) return old;

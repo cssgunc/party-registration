@@ -6,16 +6,16 @@ import type {
   IncidentCreateDto,
   IncidentSeverity,
 } from "@/lib/api/incident/incident.types";
-import { ExactMatchDto, PartyDto } from "@/lib/api/party/party.types";
+import { ExactMatchDto, PartyPoliceDto } from "@/lib/api/party/party.types";
 import { usePoliceCreateIncident } from "@/lib/api/party/police-party.queries";
 import { getErrorMessage } from "@/lib/errors";
 import { useCallback, useEffect, useRef, useState } from "react";
 import PartyCard, { PartyCardData } from "./PartyCard";
 
 interface PartyListProps {
-  parties?: PartyDto[];
-  onSelect?: (party: PartyDto | null) => void;
-  activeParty?: PartyDto;
+  parties?: PartyPoliceDto[];
+  onSelect?: (party: PartyPoliceDto | null) => void;
+  activeParty?: PartyPoliceDto;
   exactMatch?: ExactMatchDto;
 }
 

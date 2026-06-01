@@ -7,8 +7,10 @@ from src.modules.party.party_entity import PartyEntity
 from src.modules.party.party_model import (
     AdminCreatePartyDto,
     ContactDto,
+    ContactPoliceDto,
     PartyData,
     PartyDto,
+    PartyPoliceDto,
     PartyStatus,
     StudentCreatePartyDto,
 )
@@ -52,7 +54,7 @@ class PartyTestUtils(
     ResourceTestUtils[
         PartyEntity,
         PartyData,
-        PartyDto,
+        PartyDto | PartyPoliceDto,
     ]
 ):
     def __init__(
@@ -157,8 +159,8 @@ class PartyTestUtils(
     @override
     def assert_matches(
         self,
-        resource1: PartyEntity | PartyData | PartyDto | None,
-        resource2: PartyEntity | PartyData | PartyDto | None,
+        resource1: PartyEntity | PartyData | PartyDto | PartyPoliceDto | None,
+        resource2: PartyEntity | PartyData | PartyDto | PartyPoliceDto | None,
     ) -> None:
         """Assert that two party resources match, with special handling for nested objects."""
         assert resource1 is not None, "First party is None"
@@ -177,7 +179,9 @@ class PartyTestUtils(
 
         # Compare location
         location_id_1, location_id_2 = [
-            party.location.id if isinstance(party, PartyDto) else party.location_id
+            party.location.id
+            if isinstance(party, (PartyDto, PartyPoliceDto))
+            else party.location_id
             for party in (resource1, resource2)
         ]
 
@@ -185,41 +189,36 @@ class PartyTestUtils(
             f"Location ID mismatch: {location_id_1} != {location_id_2}"
         )
 
-        if isinstance(resource1, PartyDto) and isinstance(resource2, PartyDto):
+        if isinstance(resource1, (PartyDto, PartyPoliceDto)) and isinstance(
+            resource2, (PartyDto, PartyPoliceDto)
+        ):
             self.location_utils.assert_matches(resource1.location, resource2.location)
 
-        # Compare contact_one
-        contact_one_id_1, contact_one_id_2 = [
-            party.contact_one.id if isinstance(party, PartyDto) else party.contact_one_id
-            for party in (resource1, resource2)
-        ]
+        # Compare contact_one — shared-key comparison handles StudentEntity, StudentDto,
+        # and ContactPoliceDto uniformly. PartyData only carries contact_one_id, not a DTO.
+        if not isinstance(resource1, PartyData) and not isinstance(resource2, PartyData):
+            self.student_utils.assert_matches(
+                resource1.contact_one,
+                resource2.contact_one,
+            )
 
-        assert contact_one_id_1 == contact_one_id_2, (
-            f"Contact one ID mismatch: {contact_one_id_1} != {contact_one_id_2}"
-        )
-
-        if isinstance(resource1, PartyDto) and isinstance(resource2, PartyDto):
-            self.student_utils.assert_matches(resource1.contact_one, resource2.contact_one)
-
-        # Compare contact_two fields
-        contact_two_1, contact_two_2 = [
-            (
-                party.contact_two
-                if not isinstance(party, PartyEntity)
-                else ContactDto(
+        # Compare contact_two — police DTOs use ContactPoliceDto (no email)
+        def _to_contact_two(
+            party: PartyEntity | PartyData | PartyDto | PartyPoliceDto,
+        ) -> ContactDto | ContactPoliceDto:
+            if isinstance(party, PartyEntity):
+                return ContactDto(
                     email=party.contact_two_email,
                     first_name=party.contact_two_first_name,
                     last_name=party.contact_two_last_name,
                     phone_number=party.contact_two_phone_number,
                     contact_preference=party.contact_two_contact_preference,
                 )
-            )
-            for party in (resource1, resource2)
-        ]
+            return party.contact_two
 
-        assert contact_two_1.model_dump() == contact_two_2.model_dump(), (
-            f"Contact two mismatch: {contact_two_1} != {contact_two_2}"
-        )
+        contact_two_1 = _to_contact_two(resource1)
+        contact_two_2 = _to_contact_two(resource2)
+        self.student_utils.assert_matches(contact_two_1, contact_two_2)
 
         # Check ID and status when both have them
         if not isinstance(resource1, PartyData) and not isinstance(resource2, PartyData):

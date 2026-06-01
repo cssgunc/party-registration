@@ -9,6 +9,7 @@ from src.modules.account.account_entity import AccountEntity
 from src.modules.party.party_model import (
     ContactDto,
     PartyDto,
+    PartyPoliceDto,
     PartyStatus,
     ProximitySearchResponse,
 )
@@ -1590,3 +1591,133 @@ class TestPartyAsStaffRouter(StaffRouterTestBase):
 
         response = await self.staff_client.post(f"/api/parties/{party.id}/cancel")
         assert_res_failure(response, PartyValidationException(PartyRule.PARTY_NOT_OWNED_BY_STUDENT))
+
+
+class TestPartyListPoliceRouter(PoliceRouterTestBase):
+    """Police receive ContactPoliceDto contacts (no PII) on GET /api/parties."""
+
+    @pytest.mark.asyncio
+    async def test_police_list_parties_empty(self):
+        response = await self.police_client.get("/api/parties")
+        paginated = assert_res_paginated(
+            response, PartyPoliceDto, total_records=0, page_size=0, total_pages=0
+        )
+        assert paginated.items == []
+
+    @pytest.mark.asyncio
+    async def test_police_list_parties_returns_police_dto(self):
+        entities = await self.party_utils.create_many(i=2)
+
+        response = await self.police_client.get("/api/parties")
+        paginated = assert_res_paginated(
+            response, PartyPoliceDto, total_records=2, page_size=2, total_pages=1
+        )
+
+        data_by_id = {p.id: p for p in paginated.items}
+        for entity in entities:
+            assert entity.id in data_by_id
+            self.party_utils.assert_matches(entity, data_by_id[entity.id])
+
+    @pytest.mark.asyncio
+    async def test_police_contacts_have_no_email(self):
+        """ContactPoliceDto must not expose email, pid, onyen, or residence."""
+        await self.party_utils.create_one()
+
+        response = await self.police_client.get("/api/parties")
+        paginated = assert_res_paginated(
+            response, PartyPoliceDto, total_records=1, page_size=1, total_pages=1
+        )
+        party = paginated.items[0]
+
+        annotation = PartyPoliceDto.model_fields["contact_one"].annotation
+        assert annotation is not None, "contact_one annotation must not be None"
+        contact_police_fields = set(annotation.model_fields)
+        for forbidden in ("email", "pid", "onyen", "residence", "last_registered"):
+            assert forbidden not in contact_police_fields, (
+                f"ContactPoliceDto must not expose '{forbidden}'"
+            )
+        assert hasattr(party.contact_one, "first_name")
+        assert hasattr(party.contact_one, "phone_number")
+        assert hasattr(party.contact_one, "contact_preference")
+        assert not hasattr(party.contact_one, "email")
+
+
+class TestPartyNearbyPoliceRouter(PoliceRouterTestBase):
+    """All callers of GET /api/parties/nearby receive PartyPoliceDto contacts (no email)."""
+
+    gmaps_utils: GmapsMockUtils
+
+    @pytest.fixture(autouse=True)
+    def _bind_gmaps_utils(self, gmaps_utils: GmapsMockUtils):
+        self.gmaps_utils = gmaps_utils
+
+    @pytest.mark.asyncio
+    async def test_nearby_returns_police_dto_for_police(self):
+        """Police officer receives PartyPoliceDto items in nearby list."""
+        search_lat = 40.7128
+        search_lon = -74.0060
+
+        search_location_data = await self.location_utils.next_data(
+            latitude=search_lat, longitude=search_lon
+        )
+        self.gmaps_utils.mock_place_details(**search_location_data.model_dump())
+
+        location = await self.location_utils.create_one(
+            latitude=search_lat + get_lat_offset_within_radius(),
+            longitude=search_lon,
+        )
+        now = datetime.now(UTC)
+        party = await self.party_utils.create_one(
+            location_id=location.id,
+            party_datetime=now + timedelta(hours=2),
+        )
+
+        params = {
+            "place_id": search_location_data.google_place_id,
+            "start_date": now.isoformat(),
+            "end_date": (now + timedelta(days=1)).isoformat(),
+        }
+        response = await self.police_client.get("/api/parties/nearby", params=params)
+        data = assert_res_success(response, ProximitySearchResponse)
+
+        assert len(data.nearby) == 1
+        nearby_party = data.nearby[0]
+        assert nearby_party.id == party.id
+        self.party_utils.assert_matches(party, nearby_party)
+        assert not hasattr(nearby_party.contact_one, "email")
+        assert not hasattr(nearby_party.contact_two, "email")
+
+    @pytest.mark.asyncio
+    async def test_exact_match_party_is_police_dto(self):
+        """Exact match party is PartyPoliceDto — no email on contacts."""
+        search_lat = 40.7128
+        search_lon = -74.0060
+
+        db_location = await self.location_utils.create_one(
+            latitude=search_lat, longitude=search_lon
+        )
+        self.gmaps_utils.mock_place_details(
+            google_place_id=db_location.google_place_id,
+            formatted_address=db_location.formatted_address,
+            latitude=float(db_location.latitude),
+            longitude=float(db_location.longitude),
+        )
+        now = datetime.now(UTC)
+        party = await self.party_utils.create_one(
+            location_id=db_location.id,
+            party_datetime=now + timedelta(hours=2),
+        )
+
+        params = {
+            "place_id": db_location.google_place_id,
+            "start_date": now.isoformat(),
+            "end_date": (now + timedelta(days=1)).isoformat(),
+        }
+        response = await self.police_client.get("/api/parties/nearby", params=params)
+        data = assert_res_success(response, ProximitySearchResponse)
+
+        assert data.exact_match.party is not None
+        assert data.exact_match.party.id == party.id
+        self.party_utils.assert_matches(party, data.exact_match.party)
+        assert not hasattr(data.exact_match.party.contact_one, "email")
+        assert not hasattr(data.exact_match.party.contact_two, "email")
