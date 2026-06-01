@@ -28,21 +28,19 @@ export const policeAccountFormSchema = z.object({
 
 export type PoliceAccountFormValues = z.infer<typeof policeAccountFormSchema>;
 
-interface PoliceAccountFormProps {
+interface Props {
   onSubmit: (data: PoliceAccountFormValues) => void | Promise<void>;
   editData?: { email: string; role: PoliceRole; is_verified: boolean };
   submissionError?: string | null;
-  title?: string;
   disableVerificationToggle?: boolean;
 }
 
-export default function PoliceAccountForm({
+export default function PoliceAccountTableForm({
   onSubmit,
   editData,
   submissionError,
-  title,
   disableVerificationToggle = false,
-}: PoliceAccountFormProps) {
+}: Props) {
   const [formData, setFormData] = useState<Partial<PoliceAccountFormValues>>({
     email: editData?.email ?? "",
     role: editData?.role ?? "officer",
@@ -92,7 +90,6 @@ export default function PoliceAccountForm({
 
   return (
     <form onSubmit={handleSubmit}>
-      {title && <h2 className="text-xl font-semibold mb-4">{title}</h2>}
       <FieldGroup>
         <FieldSet>
           <Field data-invalid={!!errors.email}>

@@ -74,7 +74,7 @@ export const createPartyTableFormSchema = (isAdmin: boolean) => {
   });
 };
 
-type PartyTableFormValues = z.infer<
+export type PartyTableFormValues = z.infer<
   ReturnType<typeof createPartyTableFormSchema>
 >;
 

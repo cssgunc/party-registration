@@ -5,11 +5,11 @@ from unittest.mock import MagicMock
 import googlemaps
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
+from src.modules.incident.incident_model import LocationSummaryDto
+from src.modules.location.location_base_model import AddressData, LocationData
 from src.modules.location.location_entity import LocationEntity
 from src.modules.location.location_model import (
-    AddressData,
     AutocompleteResult,
-    LocationData,
     LocationDto,
 )
 from test.utils.resource_test_utils import ResourceTestUtils
@@ -35,7 +35,7 @@ class LocationTestUtils(
     ResourceTestUtils[
         LocationEntity,
         LocationData,
-        LocationDto | AddressData | AutocompleteResult,
+        LocationDto | AddressData | AutocompleteResult | LocationSummaryDto,
     ]
 ):
     def __init__(self, session: AsyncSession):
@@ -126,12 +126,14 @@ class LocationTestUtils(
         resource1: LocationEntity
         | LocationData
         | LocationDto
+        | LocationSummaryDto
         | AddressData
         | AutocompleteResult
         | None,
         resource2: LocationEntity
         | LocationData
         | LocationDto
+        | LocationSummaryDto
         | AddressData
         | AutocompleteResult
         | None,

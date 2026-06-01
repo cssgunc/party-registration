@@ -37,7 +37,22 @@ type PoliceCreateIncidentContext = {
 function createOptimisticIncident(payload: IncidentCreateDto): IncidentDto {
   return {
     id: Date.now(),
-    location_id: 0,
+    location: {
+      id: 0,
+      google_place_id: payload.location_place_id,
+      formatted_address: "",
+      latitude: 0,
+      longitude: 0,
+      hold_expiration: null,
+      street_number: null,
+      street_name: null,
+      unit: null,
+      city: null,
+      county: null,
+      state: null,
+      country: null,
+      zip_code: null,
+    },
     incident_datetime: payload.incident_datetime,
     description: payload.description,
     severity: payload.severity,

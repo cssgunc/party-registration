@@ -12,10 +12,9 @@ from src.core.utils.query_utils import (
     parse_list_query_params,
 )
 from src.modules.auth.auth_model import AuthPrincipal
+from src.modules.location.location_base_model import AddressData, LocationData
 from src.modules.location.location_model import (
-    AddressData,
     LocationCreate,
-    LocationData,
     LocationDto,
     PaginatedLocationResponse,
 )

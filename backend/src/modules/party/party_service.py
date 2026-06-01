@@ -5,7 +5,8 @@ from datetime import UTC, datetime
 from typing import ClassVar
 
 from fastapi import Depends
-from sqlalchemy import func, select
+from sqlalchemy import Time as SATime
+from sqlalchemy import cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from src.core.config import env
@@ -45,6 +46,7 @@ _PARTY_QUERY_FIELDS = QueryFieldSet(
     fields={
         "id": PartyEntity.id,
         "party_datetime": PartyEntity.party_datetime,
+        "party_datetime_time": cast(PartyEntity.party_datetime, SATime()),
         "status": PartyEntity.status,
         "contact_one.id": PartyEntity.contact_one_id,
         "contact_one.first_name": AccountEntity.first_name,
@@ -83,7 +85,7 @@ _PARTY_QUERY_FIELDS = QueryFieldSet(
         "contact_two.email",
         "contact_two.phone_number",
     ),
-    default_sort=SortParam(field="party_datetime", order=SortOrder.ASC),
+    default_sort=SortParam(field="party_datetime", order=SortOrder.DESC),
 )
 
 _PARTY_LOAD_OPTIONS = (

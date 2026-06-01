@@ -3,23 +3,29 @@ import { Button } from "@/components/ui/button";
 import { useCreateIncident } from "@/lib/api/incident/incident.queries";
 import { IncidentCreateDto } from "@/lib/api/incident/incident.types";
 import {
-  LOCATIONS_KEY,
   useDeleteIncidentInLocation,
   useUpdateIncidentInLocation,
 } from "@/lib/api/location/location.queries";
-import { IncidentDto, LocationDto } from "@/lib/api/location/location.types";
-import { PaginatedResponse } from "@/lib/shared";
-import { useQueryClient } from "@tanstack/react-query";
+import {
+  LocationDto,
+  NestedIncidentDto,
+} from "@/lib/api/location/location.types";
 import { useSession } from "next-auth/react";
 import { useCallback, useState } from "react";
-import { DeleteConfirmDialog } from "../shared/dialog/DeleteConfirmDialog";
-import { useSidebar } from "../shared/sidebar/SidebarContext";
-import IncidentSidebarCard from "./IncidentSidebarCard";
+import { createPortal } from "react-dom";
+import IncidentSidebarCard from "../../location/IncidentSidebarCard";
+import { ConfirmDialog } from "../dialog/ConfirmDialog";
+import { useSidebar } from "../sidebar/SidebarContext";
 
 type IncidentSidebarProps = {
-  incidents: IncidentDto[];
+  incidents: NestedIncidentDto[];
   location: LocationDto;
 };
+
+type ModalState =
+  | { mode: "create" }
+  | { mode: "edit"; incident: NestedIncidentDto }
+  | null;
 
 export default function IncidentInfoChipDetails({
   incidents,
@@ -27,13 +33,9 @@ export default function IncidentInfoChipDetails({
 }: IncidentSidebarProps) {
   const { data: session } = useSession();
   const role = session?.role;
-  type ModalState =
-    | { mode: "create" }
-    | { mode: "edit"; incident: IncidentDto }
-    | null;
-  const [modalState, setModalState] = useState<ModalState>(null);
-  const { openSidebar } = useSidebar();
+  const { headerActionNode } = useSidebar();
 
+  const [modalState, setModalState] = useState<ModalState>(null);
   const [confirmStateDelete, setConfirmStateDelete] = useState<number | null>(
     null
   );
@@ -44,7 +46,6 @@ export default function IncidentInfoChipDetails({
 
   const deleteMutation = useDeleteIncidentInLocation({
     onSuccess: () => {
-      refreshSidebar(location.id);
       setConfirmStateDelete(null);
     },
   });
@@ -54,7 +55,7 @@ export default function IncidentInfoChipDetails({
     deleteMutation.mutate(confirmStateDelete);
   };
 
-  const handleEdit = useCallback((incident: IncidentDto) => {
+  const handleEdit = useCallback((incident: NestedIncidentDto) => {
     setModalState({ mode: "edit", incident });
   }, []);
 
@@ -62,48 +63,19 @@ export default function IncidentInfoChipDetails({
     setModalState({ mode: "create" });
   };
   const closeModal = () => setModalState(null);
-  const queryClient = useQueryClient();
 
   const createMutation = useCreateIncident({
     onSuccess: () => {
-      refreshSidebar(location.id);
       setModalState(null);
     },
   });
 
   const updateMutation = useUpdateIncidentInLocation({
     onSuccess: () => {
-      refreshSidebar(location.id);
       setModalState(null);
     },
   });
 
-  const refreshSidebar = (locationId: number) => {
-    const pages = queryClient.getQueriesData<PaginatedResponse<LocationDto>>({
-      queryKey: LOCATIONS_KEY,
-    });
-
-    const location = pages
-      .flatMap(([, data]) => data?.items ?? [])
-      .find((l) => l.id === locationId);
-
-    if (!location) return;
-
-    openSidebar(
-      `incidents-${location.id}`,
-      "Incidents at Location",
-      "View existing incidents, or add a new one",
-      <IncidentInfoChipDetails
-        incidents={location.incidents}
-        location={location}
-      />,
-      role === "admin" ? (
-        <Button variant="default" size="sm" onClick={handleAdd}>
-          Add New
-        </Button>
-      ) : undefined
-    );
-  };
   const handleCreateIncident = (data: IncidentCreateDto) => {
     createMutation.mutate(data);
   };
@@ -124,6 +96,14 @@ export default function IncidentInfoChipDetails({
 
   return (
     <div className="">
+      {role === "admin" &&
+        headerActionNode &&
+        createPortal(
+          <Button variant="default" size="sm" onClick={handleAdd}>
+            Add New
+          </Button>,
+          headerActionNode
+        )}
       <div>
         {incidents.map((incident) => (
           <IncidentSidebarCard
@@ -134,7 +114,7 @@ export default function IncidentInfoChipDetails({
           />
         ))}
       </div>
-      <DeleteConfirmDialog
+      <ConfirmDialog
         open={confirmStateDelete !== null}
         onOpenChange={(open) => {
           if (!open) {
@@ -144,6 +124,8 @@ export default function IncidentInfoChipDetails({
         onConfirm={handleDelete}
         title="Delete Incident"
         description="Are you sure you want to delete this incident? This action cannot be undone."
+        confirmLabel="Delete"
+        pendingLabel="Deleting..."
       />
 
       <IncidentDialog

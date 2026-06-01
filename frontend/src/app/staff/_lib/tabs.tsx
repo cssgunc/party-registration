@@ -8,6 +8,10 @@ export const STAFF_TABS = [
 
 export type TabSlug = (typeof STAFF_TABS)[number];
 
+export function isStaffTabSlug(value: string): value is TabSlug {
+  return STAFF_TABS.some((tab) => tab === value);
+}
+
 export const DEFAULT_TAB: TabSlug = "parties";
 
 export const TAB_CONFIG: Record<
