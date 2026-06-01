@@ -93,13 +93,40 @@ class PaginatedPartiesResponse(PaginatedResponse[PartyDto]):
     pass
 
 
+class ContactPoliceDto(BaseModel):
+    """Police-visible contact shape: name + operational contact info only.
+    Used for both contact_one and contact_two in PartyPoliceDto."""
+
+    first_name: str
+    last_name: str
+    phone_number: str | None
+    contact_preference: ContactPreference | None
+
+
+class PartyPoliceDto(BaseModel):
+    """Police view of a party — contact PII (email, pid, onyen, residence) stripped."""
+
+    id: int
+    party_datetime: AwareDatetime
+    location: LocationDto
+    contact_one: ContactPoliceDto
+    contact_two: ContactPoliceDto
+    status: PartyStatus
+
+
+class PaginatedPartiesPoliceResponse(PaginatedResponse[PartyPoliceDto]):
+    """Paginated response for parties (police view)."""
+
+    pass
+
+
 class ExactMatchDto(BaseModel):
     google_place_id: str
     formatted_address: str
     location: LocationDto | None = Field(None, description="null if location not in DB")
-    party: PartyDto | None = Field(None, description="null if no party in date range")
+    party: PartyPoliceDto | None = Field(None, description="null if no party in date range")
 
 
 class ProximitySearchResponse(BaseModel):
     exact_match: ExactMatchDto
-    nearby: list[PartyDto]
+    nearby: list[PartyPoliceDto]
