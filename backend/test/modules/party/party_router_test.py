@@ -1245,7 +1245,7 @@ class TestPartyCSVRouter(AdminRouterTestBase):
         assert rows[0] == expected_headers
         assert sheet["A1"].font.bold is True
 
-        first_party = parties[0]
+        first_party = parties[-1]
         row_2 = rows[1]
 
         # col 0: address
@@ -1348,7 +1348,7 @@ class TestPartyCSVRouterPolice(PoliceRouterTestBase):
 
         assert rows[0] == expected_headers
 
-        first_party = parties[0]
+        first_party = parties[-1]
         row_2 = rows[1]
 
         # col 0: address

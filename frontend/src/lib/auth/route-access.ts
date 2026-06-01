@@ -12,16 +12,16 @@ export const ALLOWED_ROLES_FOR_PATH: Record<string, AppRole[]> = {
   "/police": ["officer", "police_admin", "admin"],
 };
 
-export function getRequiredRolesForPath(pathname: string): AppRole[] | null {
+export function getAllowedRoles(pathname: string): AppRole[] {
   if (pathname === "/") return STUDENT_AREA_ROLES;
   for (const [prefix, roles] of Object.entries(ALLOWED_ROLES_FOR_PATH)) {
     if (pathname === prefix || pathname.startsWith(`${prefix}/`)) return roles;
   }
-  return null;
+  return [];
 }
 
 export function isStudentAreaPath(pathname: string): boolean {
-  return getRequiredRolesForPath(pathname)?.includes("student") ?? false;
+  return getAllowedRoles(pathname).includes("student");
 }
 
 export function getDashboardPath(role: AppRole | undefined): string {

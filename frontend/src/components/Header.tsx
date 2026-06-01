@@ -10,10 +10,14 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { useCurrentPrincipal } from "@/lib/api/auth/auth.queries";
-import { getDashboardPath, isStudentAreaPath } from "@/lib/auth/route-access";
+import {
+  getAllowedRoles,
+  getDashboardPath,
+  isStudentAreaPath,
+} from "@/lib/auth/route-access";
 import { signOut } from "@/lib/auth/signout";
 import { cn } from "@/lib/utils";
-import { LogOut, Shield, User } from "lucide-react";
+import { LogOut, User } from "lucide-react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -28,8 +32,10 @@ export default function Header({ className }: { className?: string }) {
   const role = session?.role;
   const pathname = usePathname();
   const showEditProfile =
-    (role === "student" || role === "staff" || role === "admin") &&
+    role &&
+    getAllowedRoles("/").includes(role) &&
     isStudentAreaPath(pathname ?? "");
+
   const isAccount = currentPrincipal?.principal_type === "account";
   const firstName = isAccount ? currentPrincipal.first_name : undefined;
   const lastName = isAccount ? currentPrincipal.last_name : undefined;
@@ -74,14 +80,7 @@ export default function Header({ className }: { className?: string }) {
                 </DropdownMenuItem>
               </Link>
             )}
-            {role === "police_admin" && (
-              <Link href="/police/admin">
-                <DropdownMenuItem>
-                  <Shield className="size-4" />
-                  <span>Police Admin Dashboard</span>
-                </DropdownMenuItem>
-              </Link>
-            )}
+
             <DropdownMenuItem
               onClick={() =>
                 signOut({

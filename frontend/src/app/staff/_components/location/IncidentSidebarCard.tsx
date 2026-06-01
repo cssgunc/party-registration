@@ -11,15 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card";
-import {
-  INCIDENT_SEVERITY_LABELS,
-  IncidentDto,
-} from "@/lib/api/incident/incident.types";
+import { IncidentDto } from "@/lib/api/incident/incident.types";
 import { formatTime } from "@/lib/utils";
 import { format } from "date-fns";
 import { ChevronDown, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
@@ -53,14 +45,7 @@ const IncidentSidebarCard = memo(function IncidentSidebarCard({
                   <p className="text-sm w-20 whitespace-nowrap">
                     {formatTime(incidents.incident_datetime)}
                   </p>
-                  <HoverCard>
-                    <HoverCardTrigger asChild>
-                      <IncidentFlag type={incidents.severity} />
-                    </HoverCardTrigger>
-                    <HoverCardContent>
-                      <p>{INCIDENT_SEVERITY_LABELS[incidents.severity]}</p>
-                    </HoverCardContent>
-                  </HoverCard>
+                  <IncidentFlag type={incidents.severity} hoverCard />
                 </div>
               </div>
             </CollapsibleTrigger>

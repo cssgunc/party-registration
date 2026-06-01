@@ -1,8 +1,8 @@
 "use client";
 
-import PoliceAccountForm, {
+import PoliceAccountTableForm, {
   type PoliceAccountFormValues,
-} from "@/app/staff/_components/account/PoliceAccountForm";
+} from "@/app/staff/_components/account/PoliceAccountTableForm";
 import { useSidebar } from "@/app/staff/_components/shared/sidebar/SidebarContext";
 import { TableTemplate } from "@/app/staff/_components/shared/table/TableTemplate";
 import { useSnackbar } from "@/contexts/SnackbarContext";
@@ -49,8 +49,7 @@ export default function PoliceAdminTable() {
         `edit-police-${variables.id}`,
         "Edit Police Account",
         "Update police account credentials",
-        <PoliceAccountForm
-          title="Edit Police Account"
+        <PoliceAccountTableForm
           onSubmit={(data) => handlePoliceEditSubmit(variables.id, data)}
           submissionError={getErrorMessage(error)}
           editData={{
@@ -84,8 +83,7 @@ export default function PoliceAdminTable() {
       `edit-police-${row.id}`,
       "Edit Police Account",
       "Update police account credentials",
-      <PoliceAccountForm
-        title="Edit Police Account"
+      <PoliceAccountTableForm
         onSubmit={(data) => handlePoliceEditSubmit(row.id, data)}
         editData={{
           email: row.email,
@@ -180,7 +178,7 @@ export default function PoliceAdminTable() {
           : undefined
       }
       onStateChange={setServerParams}
-      canManageRows={session?.role === "police_admin"}
+      canManageRows
       canDeleteRow={(row) => row.id !== currentPoliceId}
       onExportCsv={(params) => downloadPoliceAccountsCsv.mutate(params)}
       isExporting={downloadPoliceAccountsCsv.isPending}

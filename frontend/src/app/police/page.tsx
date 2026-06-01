@@ -5,6 +5,7 @@ import PartyCsvExportButton from "@/app/police/_components/PartyCsvExportButton"
 import PartyList from "@/app/police/_components/PartyList";
 import AddressSearch from "@/components/AddressSearch";
 import DateRangeFilter from "@/components/DateRangeFilter";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import {
@@ -32,8 +33,12 @@ import {
   usePlaceDetails,
   usePoliceParties,
 } from "@/lib/api/party/police-party.queries";
+import { getAllowedRoles } from "@/lib/auth/route-access";
 import { cn } from "@/lib/utils";
 import { startOfDay } from "date-fns";
+import { Filter, Shield } from "lucide-react";
+import { useSession } from "next-auth/react";
+import Link from "next/link";
 import { type MouseEvent, useEffect, useMemo, useState } from "react";
 import AdvancedPartySearch, {
   AdvancedPartyFilters,
@@ -43,17 +48,25 @@ const locationService = new LocationService();
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
 
 export default function PolicePage() {
+  const { data: session } = useSession();
+  const canAccessAdmin =
+    !!session?.role && getAllowedRoles("/police/admin").includes(session.role);
   const today = startOfDay(new Date());
   const [currentPage, setCurrentPage] = useState(0);
-  const [pageSize, setPageSize] = useState<(typeof PAGE_SIZE_OPTIONS)[number]>(
-    PAGE_SIZE_OPTIONS[0]
-  );
+  const [pageSize, setPageSize] =
+    useState<(typeof PAGE_SIZE_OPTIONS)[number]>(25);
+  useEffect(() => {
+    if (window.matchMedia("(max-width: 639px)").matches) {
+      setPageSize(10);
+    }
+  }, []);
   const [startDate, setStartDate] = useState<Date | undefined>(today);
   const [endDate, setEndDate] = useState<Date | undefined>(today);
   const [searchAddress, setSearchAddress] = useState<AutocompleteResult | null>(
     null
   );
   const [activeParty, setActiveParty] = useState<PartyDto | undefined>();
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
   const [advancedFilters, setAdvancedFilters] = useState<AdvancedPartyFilters>({
     timeFilterType: "",
     startTime: "",
@@ -196,7 +209,7 @@ export default function PolicePage() {
     (currentPage + 1) * pageSize
   );
   const showPagination = !isPartiesLoading && totalPages > 1;
-  const showPaginationRow = isPartiesLoading || showPagination;
+  const showPaginationRow = isPartiesLoading || !error;
 
   const maxVisiblePages = 3;
   const pageStart = Math.max(
@@ -216,22 +229,36 @@ export default function PolicePage() {
     <main className="h-full overflow-y-auto lg:overflow-hidden px-4 py-4 md:px-6">
       <div className="grid lg:h-full gap-6 lg:grid-cols-[minmax(22rem,34rem)_minmax(0,1fr)]">
         {/* Left panel */}
-        <aside className="flex flex-col min-h-0 lg:h-full">
+        <section
+          aria-labelledby="police-party-search"
+          className="flex flex-col min-h-0 lg:h-full"
+        >
           {/* Header */}
-          <header className="flex items-center justify-between gap-3 px-1 pb-4">
-            <h1 className="page-title text-secondary">Party Search</h1>
+          <header className="flex items-center justify-between gap-3 mb-3 pl-1">
+            <h1 id="police-party-search" className="page-title text-secondary">
+              Registered Parties
+            </h1>
             <div className="flex items-center gap-2">
               <PartyCsvExportButton startDate={startDate} endDate={endDate} />
+              {canAccessAdmin && (
+                <Button asChild size="sm">
+                  <Link href="/police/admin">
+                    <Shield className="size-4" />
+                    <span className="hidden sm:inline">Admin Dashboard</span>
+                  </Link>
+                </Button>
+              )}
             </div>
           </header>
 
           {/* Search filters */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-1 pb-4">
             <div className="flex flex-col gap-2 order-2 sm:order-1">
-              <Label htmlFor="address">Enter Address</Label>
+              <Label htmlFor="address" className="text-base leading-none">
+                Proximity Search
+              </Label>
               <AddressSearch
                 id="address"
-                className="[&_input]:bg-card [&_input]:border-border"
                 value={searchAddress?.formatted_address || ""}
                 onSelect={setSearchAddress}
                 placeholder="Search by address..."
@@ -239,24 +266,45 @@ export default function PolicePage() {
               />
             </div>
             <div className="flex flex-col gap-2 order-1 sm:order-2">
-              <Label htmlFor="date-range">Date Search</Label>
-              <DateRangeFilter
-                id="date-range"
-                value={{ from: startDate, to: endDate }}
-                onChange={(range) => {
-                  setStartDate(range?.from);
-                  setEndDate(range?.to);
-                }}
-              />
+              <Label htmlFor="date-range" className="text-base leading-none">
+                Date Filter
+              </Label>
+              <div className="flex items-center gap-1">
+                <div className="flex-1 min-w-0">
+                  <DateRangeFilter
+                    id="date-range"
+                    value={{ from: startDate, to: endDate }}
+                    onChange={(range) => {
+                      setStartDate(range?.from);
+                      setEndDate(range?.to);
+                    }}
+                    dateFormat={{ fromFormat: "M/dd/yy", toFormat: "M/dd/yy" }}
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsAdvancedOpen((o) => !o)}
+                  title="Advanced filters"
+                >
+                  <Filter
+                    className="size-4 text-secondary"
+                    fill={isAdvancedOpen ? "currentColor" : "none"}
+                  />
+                </Button>
+              </div>
             </div>
           </div>
 
-          <div className="px-1 pb-4">
-            <AdvancedPartySearch
-              filters={advancedFilters}
-              onFiltersChange={setAdvancedFilters}
-            />
-          </div>
+          {isAdvancedOpen && (
+            <div className="px-1 pb-4">
+              <AdvancedPartySearch
+                filters={advancedFilters}
+                onFiltersChange={setAdvancedFilters}
+              />
+            </div>
+          )}
 
           {/* Party list */}
           <Card className="flex flex-col w-full lg:h-0 lg:min-h-0 lg:flex-1 lg:overflow-hidden">
@@ -291,8 +339,13 @@ export default function PolicePage() {
           </Card>
           {showPaginationRow && (
             <div className="flex items-center justify-between gap-2 md:gap-4 pt-3 px-2">
-              <div className="min-w-0 flex justify-start overflow-x-auto text-sm">
-                <Pagination className="mx-0 w-max justify-start">
+              <div className="min-w-0 flex justify-start text-sm">
+                <Pagination
+                  className={cn(
+                    "mx-0 w-max justify-start",
+                    !isPartiesLoading && !showPagination && "invisible"
+                  )}
+                >
                   <PaginationContent>
                     <PaginationItem>
                       <PaginationPrevious
@@ -398,7 +451,7 @@ export default function PolicePage() {
               </div>
             </div>
           )}
-        </aside>
+        </section>
 
         <section
           className="flex lg:min-h-0 flex-col"
@@ -419,6 +472,7 @@ export default function PolicePage() {
                   ? { lat: placeDetails.latitude, lng: placeDetails.longitude }
                   : undefined
               }
+              exactMatch={searchAddress ? nearbyData?.exact_match : undefined}
               onSelect={handleActiveParty}
             />
           </div>

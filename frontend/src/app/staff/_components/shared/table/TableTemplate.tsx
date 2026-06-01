@@ -41,6 +41,7 @@ import {
   ServerTableParams,
   buildServerTableParams,
 } from "@/lib/api/shared/query-params";
+import { getErrorMessage } from "@/lib/errors";
 import { cn } from "@/lib/utils";
 import {
   ColumnDef,
@@ -711,165 +712,162 @@ export function TableTemplate<T extends object>({
 
       <div className="flex min-h-0 h-full flex-col justify-between">
         <Card className="flex-1 min-h-0 rounded-sm w-full max-w-none mx-0">
-          {error && (
-            <span className="text-center py-8 text-destructive">
-              <p>Error: {error.message}</p>
-            </span>
-          )}
+          <div
+            ref={scrollContainerRef}
+            className={cn(
+              "h-full overflow-y-auto",
+              (isFetching || isLoading) && "opacity-60 pointer-events-none"
+            )}
+          >
+            <Table className="bg-card rounded-sm">
+              <TableHeader ref={tableHeaderRef}>
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => (
+                      <TableHead
+                        key={header.id}
+                        className={
+                          header.column.id === "actions"
+                            ? "h-12 w-0 pr-4 pt-2 align-top text-right"
+                            : "h-12 pt-2 align-top first:pl-6 last:pr-6"
+                        }
+                      >
+                        {header.isPlaceholder ||
+                        header.column.id === "actions" ? null : (
+                          <ColumnHeader
+                            column={header.column}
+                            title={
+                              typeof header.column.columnDef.header === "string"
+                                ? header.column.columnDef.header
+                                : header.column.id
+                            }
+                            onFilterClick={() => {
+                              if (isLoading) return;
+                              const columnDef = header.column.columnDef;
+                              const columnName =
+                                columnDef.meta?.filter?.filterLabel ??
+                                (typeof columnDef.header === "string"
+                                  ? columnDef.header
+                                  : header.column.id);
 
-          {!error && (
-            <div
-              ref={scrollContainerRef}
-              className={cn(
-                "h-full overflow-y-auto",
-                (isFetching || isLoading) && "opacity-60 pointer-events-none"
-              )}
-            >
-              <Table className="bg-card rounded-sm">
-                <TableHeader ref={tableHeaderRef}>
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <TableRow key={headerGroup.id}>
-                      {headerGroup.headers.map((header) => (
-                        <TableHead
-                          key={header.id}
-                          className={
-                            header.column.id === "actions"
-                              ? "h-12 w-0 pr-4 pt-2 align-top text-right"
-                              : "h-12 pt-2 align-top first:pl-6 last:pr-6"
-                          }
-                        >
-                          {header.isPlaceholder ||
-                          header.column.id === "actions" ? null : (
-                            <ColumnHeader
-                              column={header.column}
-                              title={
-                                typeof header.column.columnDef.header ===
-                                "string"
-                                  ? header.column.columnDef.header
-                                  : header.column.id
-                              }
-                              onFilterClick={() => {
-                                if (isLoading) return;
-                                const columnDef = header.column.columnDef;
-                                const columnName =
-                                  columnDef.meta?.filter?.filterLabel ??
-                                  (typeof columnDef.header === "string"
-                                    ? columnDef.header
-                                    : header.column.id);
-
-                                openSidebar(
-                                  `filter-${header.column.id}`,
-                                  `Filter ${columnName}`,
-                                  `Refine results by ${columnName.toLowerCase()}`,
-                                  <FilterInput
-                                    column={header.column}
-                                    onClose={() => closeSidebar()}
-                                  />
-                                );
-                              }}
-                            />
-                          )}
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                  ))}
-                </TableHeader>
-                <TableBody>
-                  {isLoading ? (
-                    Array.from({ length: Math.max(activePageSize, 5) }).map(
-                      (_, rowIndex) => (
-                        <TableRow key={`loading-row-${rowIndex}`}>
-                          {table.getVisibleLeafColumns().map((column) => (
-                            <TableCell
-                              key={`loading-cell-${rowIndex}-${column.id}`}
+                              openSidebar(
+                                `filter-${header.column.id}`,
+                                `Filter ${columnName}`,
+                                `Refine results by ${columnName.toLowerCase()}`,
+                                <FilterInput
+                                  column={header.column}
+                                  onClose={() => closeSidebar()}
+                                />
+                              );
+                            }}
+                          />
+                        )}
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  Array.from({ length: Math.max(activePageSize, 5) }).map(
+                    (_, rowIndex) => (
+                      <TableRow key={`loading-row-${rowIndex}`}>
+                        {table.getVisibleLeafColumns().map((column) => (
+                          <TableCell
+                            key={`loading-cell-${rowIndex}-${column.id}`}
+                            className={
+                              column.id === "actions"
+                                ? "pr-4"
+                                : "first:pl-6 last:pr-6"
+                            }
+                          >
+                            <Skeleton
                               className={
                                 column.id === "actions"
-                                  ? "pr-4"
-                                  : "first:pl-6 last:pr-6"
+                                  ? "h-8 w-8 ml-auto"
+                                  : "h-4 w-full"
                               }
-                            >
-                              <Skeleton
-                                className={
-                                  column.id === "actions"
-                                    ? "h-8 w-8 ml-auto"
-                                    : "h-4 w-full"
-                                }
-                              />
-                            </TableCell>
-                          ))}
-                        </TableRow>
-                      )
-                    )
-                  ) : visibleRows.length ? (
-                    <>
-                      {visibleRows.map((row) => (
-                        <TableRow
-                          key={row.id}
-                          ref={
-                            row.id === visibleRows[0]?.id ? sampleRowRef : null
-                          }
-                          className={cn(
-                            row.getIsSelected() &&
-                              "bg-accent hover:bg-secondary"
-                          )}
-                        >
-                          {row.getVisibleCells().map((cell) => (
-                            <TableCell
-                              key={cell.id}
-                              className={cn(
-                                cell.column.id === "actions"
-                                  ? "pr-4"
-                                  : "first:pl-6 last:pr-6"
-                              )}
-                            >
-                              {flexRender(
-                                cell.column.columnDef.cell,
-                                cell.getContext()
-                              )}
-                            </TableCell>
-                          ))}
-                        </TableRow>
-                      ))}
-                      {Array.from({ length: fillerRowCount }).map(
-                        (_, index) => (
-                          <TableRow
-                            key={`filler-row-${index}`}
-                            className="pointer-events-none"
-                          >
-                            <TableCell
-                              colSpan={columnsWithActions.length}
-                              className="h-12.25 px-4"
                             />
-                          </TableRow>
-                        )
-                      )}
-                      {partialFillerRowHeight > 0 && (
-                        <TableRow
-                          key="filler-row-partial"
-                          className="pointer-events-none"
-                          style={{ height: partialFillerRowHeight }}
-                        >
-                          <TableCell
-                            colSpan={columnsWithActions.length}
-                            className="p-0"
-                          />
-                        </TableRow>
-                      )}
-                    </>
-                  ) : (
-                    <TableRow>
-                      <TableCell
-                        colSpan={columnsWithActions.length}
-                        className="h-12 px-4 text-center"
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    )
+                  )
+                ) : error ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={columnsWithActions.length}
+                      className="h-12 px-4 text-center text-destructive"
+                    >
+                      Error: {getErrorMessage(error)}
+                    </TableCell>
+                  </TableRow>
+                ) : visibleRows.length ? (
+                  <>
+                    {visibleRows.map((row) => (
+                      <TableRow
+                        key={row.id}
+                        ref={
+                          row.id === visibleRows[0]?.id ? sampleRowRef : null
+                        }
+                        className={cn(
+                          row.getIsSelected() && "bg-accent hover:bg-secondary"
+                        )}
                       >
-                        No results.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+                        {row.getVisibleCells().map((cell) => (
+                          <TableCell
+                            key={cell.id}
+                            className={cn(
+                              cell.column.id === "actions"
+                                ? "pr-4"
+                                : "first:pl-6 last:pr-6"
+                            )}
+                          >
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext()
+                            )}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                    {Array.from({ length: fillerRowCount }).map((_, index) => (
+                      <TableRow
+                        key={`filler-row-${index}`}
+                        className="pointer-events-none"
+                      >
+                        <TableCell
+                          colSpan={columnsWithActions.length}
+                          className="h-12.25 px-4"
+                        />
+                      </TableRow>
+                    ))}
+                    {partialFillerRowHeight > 0 && (
+                      <TableRow
+                        key="filler-row-partial"
+                        className="pointer-events-none"
+                        style={{ height: partialFillerRowHeight }}
+                      >
+                        <TableCell
+                          colSpan={columnsWithActions.length}
+                          className="p-0"
+                        />
+                      </TableRow>
+                    )}
+                  </>
+                ) : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={columnsWithActions.length}
+                      className="h-12 px-4 text-center"
+                    >
+                      No results.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </Card>
 
         {/* Pagination Controls */}

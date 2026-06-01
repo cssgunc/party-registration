@@ -57,7 +57,7 @@ async def update_police(
     police_id: int,
     data: PoliceAccountUpdate,
     police_service: PoliceService = Depends(),
-    _=Depends(authenticate_by_role("admin")),
+    _=Depends(authenticate_by_role("police_admin", "admin")),
 ) -> PoliceAccountDto:
     return await police_service.update_police(police_id, data.email, data.role, data.is_verified)
 

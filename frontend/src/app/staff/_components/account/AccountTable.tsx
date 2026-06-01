@@ -38,9 +38,9 @@ import * as z from "zod";
 import { useSidebar } from "../shared/sidebar/SidebarContext";
 import { TableTemplate } from "../shared/table/TableTemplate";
 import AccountTableForm, { accountTableFormSchema } from "./AccountTableForm";
-import PoliceAccountForm, {
+import PoliceAccountTableForm, {
   type PoliceAccountFormValues,
-} from "./PoliceAccountForm";
+} from "./PoliceAccountTableForm";
 
 type AccountTableFormValues = z.infer<typeof accountTableFormSchema>;
 
@@ -151,7 +151,7 @@ export const AccountTable = () => {
         `edit-police-${variables.id}`,
         "Edit Police Account",
         "Update police account credentials",
-        <PoliceAccountForm
+        <PoliceAccountTableForm
           onSubmit={(data) => handlePoliceEditSubmit(variables.id, data)}
           submissionError={errorMessage}
           editData={{
@@ -212,7 +212,7 @@ export const AccountTable = () => {
         `edit-police-${row.source_id}`,
         "Edit Police Account",
         "Update police account credentials",
-        <PoliceAccountForm
+        <PoliceAccountTableForm
           onSubmit={(data) => handlePoliceEditSubmit(row.source_id, data)}
           editData={{
             email: row.email,

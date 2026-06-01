@@ -82,7 +82,7 @@ _PARTY_QUERY_FIELDS = QueryFieldSet(
         "contact_two.email",
         "contact_two.phone_number",
     ),
-    default_sort=SortParam(field="party_datetime", order=SortOrder.ASC),
+    default_sort=SortParam(field="party_datetime", order=SortOrder.DESC),
 )
 
 _PARTY_LOAD_OPTIONS = (
