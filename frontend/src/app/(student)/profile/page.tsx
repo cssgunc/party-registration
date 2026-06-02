@@ -233,7 +233,7 @@ function StudentInfo() {
             <p className="text-sm">Please try again later.</p>
           </div>
         ) : (
-          <section>
+          <div>
             <div className="flex flex-wrap gap-x-12 gap-y-6 mb-4">
               <ProfileField
                 label="First Name"
@@ -271,12 +271,12 @@ function StudentInfo() {
               isLoading={isLoading}
               className="my-6"
             />
-          </section>
+          </div>
         )}
 
-        <section className="flex justify-center">
+        <div className="flex justify-center">
           <Button variant="default">Log Out</Button>
-        </section>
+        </div>
       </div>
     );
   }
@@ -317,7 +317,7 @@ function StudentInfo() {
       </div>
       <FieldGroup>
         <FieldSet className="rounded-lg w-full flex flex-col">
-          <section>
+          <div>
             <div className="mb-3">
               <div className="flex flex-wrap gap-x-12 gap-y-2">
                 <div className="flex-1 min-w-50">
@@ -434,7 +434,7 @@ function StudentInfo() {
                 </WarningNote>
               </div>
             )}
-          </section>
+          </div>
 
           {errors.submit && (
             <div className="p-4 bg-red-50 border border-red-200 rounded-md text-center">
