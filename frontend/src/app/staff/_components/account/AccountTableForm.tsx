@@ -1,13 +1,15 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { FieldGroup, FieldSet } from "@/components/ui/field";
 import {
-  Field,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-  FieldSet,
-} from "@/components/ui/field";
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -16,7 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
 import * as z from "zod";
 
 export const accountTableFormSchema = z.object({
@@ -37,111 +40,84 @@ export default function AccountTableForm({
   editData,
   submissionError,
 }: AccountTableFormProps) {
-  const [formData, setFormData] = useState<Partial<AccountTableFormValues>>({
-    email: editData?.email ?? "",
-    role: editData?.role ?? undefined,
+  const form = useForm<AccountTableFormValues>({
+    resolver: zodResolver(accountTableFormSchema),
+    defaultValues: {
+      email: editData?.email ?? "",
+      role: editData?.role ?? undefined,
+    },
   });
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setErrors({});
-
-    const result = accountTableFormSchema.safeParse(formData);
-
-    if (!result.success) {
-      const fieldErrors: Record<string, string> = {};
-      result.error.issues.forEach((issue) => {
-        if (issue.path[0]) {
-          fieldErrors[issue.path[0].toString()] = issue.message;
-        }
-      });
-      setErrors(fieldErrors);
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      await onSubmit(result.data);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const updateField = <K extends keyof AccountTableFormValues>(
-    field: K,
-    value: AccountTableFormValues[K]
-  ) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
-        return newErrors;
-      });
-    }
-  };
+  const isSubmitting = form.formState.isSubmitting;
 
   const isEditMode = !!editData;
   return (
-    <form onSubmit={handleSubmit}>
-      <FieldGroup>
-        <FieldSet>
-          <Field data-invalid={!!errors.email}>
-            <FieldLabel htmlFor="email">Email</FieldLabel>
-            <Input
-              id="email"
-              type="email"
-              placeholder="staff@unc.edu"
-              value={formData.email}
-              onChange={(e) => updateField("email", e.target.value)}
-              aria-invalid={!!errors.email}
-              disabled={isEditMode}
-              title={
-                isEditMode
-                  ? "Email cannot be changed after invite is sent"
-                  : undefined
-              }
-              autoComplete="off"
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)}>
+        <FieldGroup>
+          <FieldSet>
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      type="email"
+                      placeholder="staff@unc.edu"
+                      disabled={isEditMode}
+                      title={
+                        isEditMode
+                          ? "Email cannot be changed after invite is sent"
+                          : undefined
+                      }
+                      autoComplete="off"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-            {errors.email && <FieldError>{errors.email}</FieldError>}
-          </Field>
 
-          <Field data-invalid={!!errors.role}>
-            <FieldLabel htmlFor="role">Role</FieldLabel>
-            <Select
-              value={formData.role}
-              onValueChange={(value) =>
-                updateField("role", value as "staff" | "admin")
-              }
-            >
-              <SelectTrigger id="role">
-                <SelectValue placeholder="Select role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="staff">Staff</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-              </SelectContent>
-            </Select>
-            {errors.role && <FieldError>{errors.role}</FieldError>}
-          </Field>
+            <FormField
+              control={form.control}
+              name="role"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Role</FormLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select role" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="staff">Staff</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <Field orientation="vertical" className="space-y-3">
-            {submissionError && (
-              <div
-                className="rounded-md bg-destructive/10 p-3 text-sm text-destructive"
-                role="alert"
-              >
-                {submissionError}
-              </div>
-            )}
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Submitting..." : "Send Invite"}
-            </Button>
-          </Field>
-        </FieldSet>
-      </FieldGroup>
-    </form>
+            <div className="space-y-3">
+              {submissionError && (
+                <div
+                  className="rounded-md bg-destructive/10 p-3 text-sm text-destructive"
+                  role="alert"
+                >
+                  {submissionError}
+                </div>
+              )}
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Submitting..." : "Send Invite"}
+              </Button>
+            </div>
+          </FieldSet>
+        </FieldGroup>
+      </form>
+    </Form>
   );
 }

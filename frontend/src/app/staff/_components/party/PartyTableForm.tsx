@@ -4,14 +4,15 @@ import AddressSearch from "@/components/AddressSearch";
 import DatePicker from "@/components/DatePicker";
 import StudentSearch from "@/components/StudentSearch";
 import { Button } from "@/components/ui/button";
+import { FieldGroup, FieldLegend, FieldSet } from "@/components/ui/field";
 import {
-  Field,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-  FieldLegend,
-  FieldSet,
-} from "@/components/ui/field";
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -24,11 +25,12 @@ import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { PARTY_RULE_MESSAGES, PartyDto } from "@/lib/api/party/party.types";
 import { AdminStudentService } from "@/lib/api/student/admin-student.service";
-import { StudentSuggestionDto } from "@/lib/api/student/student.types";
 import { formatPhoneNumberInput, phoneNumberSchema } from "@/lib/utils";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { addBusinessDays, format, isAfter, startOfDay } from "date-fns";
 import { useSession } from "next-auth/react";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useForm } from "react-hook-form";
 import * as z from "zod";
 
 export const createPartyTableFormSchema = (isAdmin: boolean) => {
@@ -77,6 +79,9 @@ export const createPartyTableFormSchema = (isAdmin: boolean) => {
 export type PartyTableFormValues = z.infer<
   ReturnType<typeof createPartyTableFormSchema>
 >;
+type PartyTableFormInput = z.input<
+  ReturnType<typeof createPartyTableFormSchema>
+>;
 
 interface PartyTableFormProps {
   onSubmit: (data: PartyTableFormValues) => void | Promise<void>;
@@ -94,309 +99,283 @@ export default function PartyTableForm({
   const locationService = useMemo(() => new LocationService(), []);
   const adminStudentService = useMemo(() => new AdminStudentService(), []);
 
-  const partyTableFormSchema = createPartyTableFormSchema(isAdmin);
+  const partyTableFormSchema = useMemo(
+    () => createPartyTableFormSchema(isAdmin),
+    [isAdmin]
+  );
 
-  const [formData, setFormData] = useState<Partial<PartyTableFormValues>>({
-    address: editData?.location.formatted_address ?? "",
-    placeId: editData?.location.google_place_id ?? undefined,
-    partyDate: editData?.party_datetime ?? undefined,
-    partyTime: editData?.party_datetime
-      ? format(editData.party_datetime, "HH:mm")
-      : "",
-    contactOneStudentId: editData?.contact_one.id ?? undefined,
-    contactTwoEmail: editData?.contact_two.email ?? "",
-    contactTwoFirstName: editData?.contact_two.first_name ?? "",
-    contactTwoLastName: editData?.contact_two.last_name ?? "",
-    contactTwoPhoneNumber: editData?.contact_two.phone_number ?? "",
-    contactTwoPreference: editData?.contact_two.contact_preference ?? undefined,
+  const form = useForm<PartyTableFormInput, unknown, PartyTableFormValues>({
+    resolver: zodResolver(partyTableFormSchema),
+    defaultValues: {
+      address: editData?.location.formatted_address ?? "",
+      placeId: editData?.location.google_place_id ?? "",
+      partyDate: editData?.party_datetime ?? undefined,
+      partyTime: editData?.party_datetime
+        ? format(editData.party_datetime, "HH:mm")
+        : "",
+      contactOneStudentId: editData?.contact_one.id ?? undefined,
+      contactTwoEmail: editData?.contact_two.email ?? "",
+      contactTwoFirstName: editData?.contact_two.first_name ?? "",
+      contactTwoLastName: editData?.contact_two.last_name ?? "",
+      contactTwoPhoneNumber: editData?.contact_two.phone_number ?? "",
+      contactTwoPreference:
+        editData?.contact_two.contact_preference ?? undefined,
+    },
   });
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setErrors({});
-
-    const result = partyTableFormSchema.safeParse(formData);
-
-    if (!result.success) {
-      const fieldErrors: Record<string, string> = {};
-      result.error.issues.forEach((issue) => {
-        if (issue.path[0]) {
-          fieldErrors[issue.path[0].toString()] = issue.message;
-        }
-      });
-      setErrors(fieldErrors);
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      await onSubmit(result.data);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleStudentSelect = (student: StudentSuggestionDto | null) => {
-    setFormData((prev) => ({
-      ...prev,
-      contactOneStudentId: student?.student_id ?? undefined,
-    }));
-    if (errors.contactOneStudentId) {
-      setErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors.contactOneStudentId;
-        return newErrors;
-      });
-    }
-  };
+  const isSubmitting = form.formState.isSubmitting;
 
   const handleAddressSelect = (address: AutocompleteResult | null) => {
-    setFormData((prev) => ({
-      ...prev,
-      address: address?.formatted_address || "",
-      placeId: address?.google_place_id || undefined,
-    }));
-    if (errors.address) {
-      setErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors.address;
-        return newErrors;
-      });
-    }
-  };
-
-  const updateField = <K extends keyof PartyTableFormValues>(
-    field: K,
-    value: PartyTableFormValues[K]
-  ) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
-        return newErrors;
-      });
-    }
+    form.setValue("address", address?.formatted_address || "", {
+      shouldValidate: true,
+    });
+    form.setValue("placeId", address?.google_place_id || "", {
+      shouldValidate: true,
+    });
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <FieldGroup>
-        <FieldSet>
-          <Field data-invalid={!!errors.address}>
-            <FieldLabel htmlFor="party-address">Party Address</FieldLabel>
-            <AddressSearch
-              id="party-address"
-              value={formData.address}
-              initialSelection={
-                editData?.location
-                  ? {
-                      formatted_address: editData.location.formatted_address,
-                      google_place_id: editData.location.google_place_id,
-                    }
-                  : null
-              }
-              onSelect={handleAddressSelect}
-              locationService={locationService}
-              placeholder="Search for the party address..."
-              className="w-full"
-              error={errors.address}
-              chapelHillOnly
-            />
-            {errors.address && <FieldError>{errors.address}</FieldError>}
-          </Field>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field data-invalid={!!errors.partyDate}>
-              <FieldLabel htmlFor="party-date">Party Date</FieldLabel>
-              <DatePicker
-                id="party-date"
-                dateFormat="MM/dd/yy"
-                value={formData.partyDate ?? null}
-                onChange={(date) => updateField("partyDate", date as Date)}
-                forwardDate={true}
-                disabled={
-                  isAdmin
-                    ? undefined
-                    : (date) =>
-                        !isAfter(
-                          startOfDay(date),
-                          addBusinessDays(startOfDay(new Date()), 1)
-                        )
-                }
-              />
-              {errors.partyDate && <FieldError>{errors.partyDate}</FieldError>}
-            </Field>
-
-            <Field data-invalid={!!errors.partyTime}>
-              <FieldLabel htmlFor="party-time">Party Time</FieldLabel>
-              <Input
-                id="party-time"
-                type="time"
-                value={formData.partyTime}
-                onChange={(e) => updateField("partyTime", e.target.value)}
-                aria-invalid={!!errors.partyTime}
-                autoComplete="off"
-              />
-              {errors.partyTime && <FieldError>{errors.partyTime}</FieldError>}
-            </Field>
-          </div>
-
-          <Field data-invalid={!!errors.contactOneStudentId}>
-            <FieldLabel htmlFor="contact-one-student">First Contact</FieldLabel>
-            <StudentSearch
-              initialSelection={
-                editData?.contact_one
-                  ? {
-                      student_id: editData.contact_one.id,
-                      first_name: editData.contact_one.first_name,
-                      last_name: editData.contact_one.last_name,
-                      matched_field_name: "email",
-                      matched_field_value: editData.contact_one.email,
-                    }
-                  : null
-              }
-              onSelect={handleStudentSelect}
-              adminStudentService={adminStudentService}
-              placeholder="Search by name, PID, email, onyen, etc..."
-              className="w-full"
-              error={errors.contactOneStudentId}
-            />
-            {errors.contactOneStudentId && (
-              <FieldError>{errors.contactOneStudentId}</FieldError>
-            )}
-          </Field>
-
-          <FieldSet className="pt-2">
-            <FieldLegend className="font-semibold text-foreground">
-              Second Contact Information
-            </FieldLegend>
-
-            <Field data-invalid={!!errors.contactTwoEmail}>
-              <FieldLabel htmlFor="contact-two-email">Contact Email</FieldLabel>
-              <Input
-                id="contact-two-email"
-                type="email"
-                placeholder="student@unc.edu"
-                value={formData.contactTwoEmail}
-                onChange={(e) => updateField("contactTwoEmail", e.target.value)}
-                aria-invalid={!!errors.contactTwoEmail}
-                autoComplete="off"
-              />
-              {errors.contactTwoEmail && (
-                <FieldError>{errors.contactTwoEmail}</FieldError>
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)}>
+        <FieldGroup>
+          <FieldSet>
+            <FormField
+              control={form.control}
+              name="address"
+              render={({ field, fieldState }) => (
+                <FormItem>
+                  <FormLabel>Party Address</FormLabel>
+                  <FormControl>
+                    <AddressSearch
+                      value={field.value}
+                      initialSelection={
+                        editData?.location
+                          ? {
+                              formatted_address:
+                                editData.location.formatted_address,
+                              google_place_id:
+                                editData.location.google_place_id,
+                            }
+                          : null
+                      }
+                      onSelect={handleAddressSelect}
+                      locationService={locationService}
+                      placeholder="Search for the party address..."
+                      className="w-full"
+                      error={fieldState.error?.message}
+                      chapelHillOnly
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
               )}
-            </Field>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field data-invalid={!!errors.contactTwoFirstName}>
-                <FieldLabel htmlFor="contact-two-first-name">
-                  First Name
-                </FieldLabel>
-                <Input
-                  id="contact-two-first-name"
-                  type="text"
-                  placeholder="John"
-                  value={formData.contactTwoFirstName}
-                  onChange={(e) =>
-                    updateField("contactTwoFirstName", e.target.value)
-                  }
-                  aria-invalid={!!errors.contactTwoFirstName}
-                  autoComplete="off"
-                />
-                {errors.contactTwoFirstName && (
-                  <FieldError>{errors.contactTwoFirstName}</FieldError>
-                )}
-              </Field>
+            />
 
-              <Field data-invalid={!!errors.contactTwoLastName}>
-                <FieldLabel htmlFor="contact-two-last-name">
-                  Last Name
-                </FieldLabel>
-                <Input
-                  id="contact-two-last-name"
-                  type="text"
-                  placeholder="Doe"
-                  value={formData.contactTwoLastName}
-                  onChange={(e) =>
-                    updateField("contactTwoLastName", e.target.value)
-                  }
-                  aria-invalid={!!errors.contactTwoLastName}
-                  autoComplete="off"
-                />
-                {errors.contactTwoLastName && (
-                  <FieldError>{errors.contactTwoLastName}</FieldError>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="partyDate"
+                render={({ field, fieldState }) => (
+                  <FormItem>
+                    <FormLabel>Party Date</FormLabel>
+                    <FormControl>
+                      <DatePicker
+                        dateFormat="MM/dd/yy"
+                        value={field.value ?? null}
+                        onChange={field.onChange}
+                        aria-invalid={fieldState.invalid}
+                        forwardDate={true}
+                        disabled={
+                          isAdmin
+                            ? undefined
+                            : (date) =>
+                                !isAfter(
+                                  startOfDay(date),
+                                  addBusinessDays(startOfDay(new Date()), 1)
+                                )
+                        }
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )}
-              </Field>
+              />
+
+              <FormField
+                control={form.control}
+                name="partyTime"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Party Time</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="time" autoComplete="off" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
 
-            <Field data-invalid={!!errors.contactTwoPhoneNumber}>
-              <FieldLabel htmlFor="contact-two-phone-number">
-                {" "}
-                Phone Number
-              </FieldLabel>
-              <Input
-                id="contact-two-phone-number"
-                type="tel"
-                placeholder="(123) 456-7890"
-                value={formatPhoneNumberInput(
-                  formData.contactTwoPhoneNumber || ""
+            <FormField
+              control={form.control}
+              name="contactOneStudentId"
+              render={({ field, fieldState }) => (
+                <FormItem>
+                  <FormLabel>First Contact</FormLabel>
+                  <FormControl>
+                    <StudentSearch
+                      initialSelection={
+                        editData?.contact_one
+                          ? {
+                              student_id: editData.contact_one.id,
+                              first_name: editData.contact_one.first_name,
+                              last_name: editData.contact_one.last_name,
+                              matched_field_name: "email",
+                              matched_field_value: editData.contact_one.email,
+                            }
+                          : null
+                      }
+                      onSelect={(student) =>
+                        field.onChange(student?.student_id ?? undefined)
+                      }
+                      adminStudentService={adminStudentService}
+                      placeholder="Search by name, PID, email, onyen, etc..."
+                      className="w-full"
+                      error={fieldState.error?.message}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FieldSet className="pt-2">
+              <FieldLegend className="font-semibold text-foreground">
+                Second Contact Information
+              </FieldLegend>
+
+              <FormField
+                control={form.control}
+                name="contactTwoEmail"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Contact Email</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        type="email"
+                        placeholder="student@unc.edu"
+                        autoComplete="off"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )}
-                onChange={(e) => {
-                  const digitsOnly = e.target.value
-                    .replace(/\D/g, "")
-                    .slice(0, 10);
-                  updateField("contactTwoPhoneNumber", digitsOnly);
-                }}
-                aria-invalid={!!errors.contactTwoPhoneNumber}
-                maxLength={14}
-                autoComplete="off"
               />
-              {errors.contactTwoPhoneNumber && (
-                <FieldError>{errors.contactTwoPhoneNumber}</FieldError>
-              )}
-            </Field>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="contactTwoFirstName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>First Name</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          type="text"
+                          placeholder="John"
+                          autoComplete="off"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-            <Field data-invalid={!!errors.contactTwoPreference}>
-              <FieldLabel htmlFor="contact-two-preference">
-                Contact Preference
-              </FieldLabel>
-              <Select
-                value={formData.contactTwoPreference}
-                onValueChange={(value) =>
-                  updateField("contactTwoPreference", value as "call" | "text")
-                }
-              >
-                <SelectTrigger id="contact-two-preference">
-                  <SelectValue placeholder="Select preference" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="call">Call</SelectItem>
-                  <SelectItem value="text">Text</SelectItem>
-                </SelectContent>
-              </Select>
-              {errors.contactTwoPreference && (
-                <FieldError>{errors.contactTwoPreference}</FieldError>
-              )}
-            </Field>
-          </FieldSet>
-
-          <Field orientation="vertical" className="space-y-3">
-            {submissionError && (
-              <div
-                className="rounded-md bg-destructive/10 p-3 text-sm text-destructive"
-                role="alert"
-              >
-                {submissionError}
+                <FormField
+                  control={form.control}
+                  name="contactTwoLastName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Last Name</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          type="text"
+                          placeholder="Doe"
+                          autoComplete="off"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
-            )}
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Submitting..." : "Save Changes"}
-            </Button>
-          </Field>
-        </FieldSet>
-      </FieldGroup>
-    </form>
+
+              <FormField
+                control={form.control}
+                name="contactTwoPhoneNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone Number</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        type="tel"
+                        placeholder="(123) 456-7890"
+                        value={formatPhoneNumberInput(field.value ?? "")}
+                        onChange={(e) =>
+                          field.onChange(
+                            e.target.value.replace(/\D/g, "").slice(0, 10)
+                          )
+                        }
+                        maxLength={14}
+                        autoComplete="off"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="contactTwoPreference"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Contact Preference</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select preference" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="call">Call</SelectItem>
+                        <SelectItem value="text">Text</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </FieldSet>
+
+            <div className="space-y-3">
+              {submissionError && (
+                <div
+                  className="rounded-md bg-destructive/10 p-3 text-sm text-destructive"
+                  role="alert"
+                >
+                  {submissionError}
+                </div>
+              )}
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Submitting..." : "Save Changes"}
+              </Button>
+            </div>
+          </FieldSet>
+        </FieldGroup>
+      </form>
+    </Form>
   );
 }

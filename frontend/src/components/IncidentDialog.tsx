@@ -8,6 +8,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -27,8 +36,9 @@ import {
 } from "@/lib/api/incident/incident.types";
 import { LocationDto } from "@/lib/api/location/location.types";
 import { cn } from "@/lib/utils";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
-import { useState } from "react";
+import { useForm } from "react-hook-form";
 import * as z from "zod";
 
 const incidentSchema = z.object({
@@ -70,51 +80,23 @@ export default function IncidentDialog({
 }: IncidentDialogProps) {
   const defaultDatetime = incident?.incident_datetime ?? new Date();
 
-  const [formData, setFormData] = useState<IncidentFormValues>({
-    severity: incident?.severity ?? defaultSeverity,
-    date: defaultDatetime,
-    time: format(defaultDatetime, "HH:mm"),
-    description: incident?.description ?? "",
-    reference_id: incident?.reference_id ?? undefined,
+  const form = useForm<IncidentFormValues>({
+    resolver: zodResolver(incidentSchema),
+    defaultValues: {
+      severity: incident?.severity ?? defaultSeverity,
+      date: defaultDatetime,
+      time: format(defaultDatetime, "HH:mm"),
+      description: incident?.description ?? "",
+      reference_id: incident?.reference_id ?? undefined,
+    },
   });
-  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const updateField = <K extends keyof IncidentFormValues>(
-    field: K,
-    value: IncidentFormValues[K]
-  ) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors((prev) => {
-        const next = { ...prev };
-        delete next[field];
-        return next;
-      });
-    }
-  };
-
-  const handleSubmit = (event: React.SyntheticEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    const result = incidentSchema.safeParse(formData);
-
-    if (!result.success) {
-      const fieldErrors: Record<string, string> = {};
-      result.error.issues.forEach((issue) => {
-        if (issue.path[0]) {
-          fieldErrors[issue.path[0].toString()] = issue.message;
-        }
-      });
-      setErrors(fieldErrors);
-      return;
-    }
-
-    const { date, time, severity, description, reference_id } = result.data;
+  const handleValid = (data: IncidentFormValues) => {
+    const { date, time, severity, description, reference_id } = data;
     const [hours, minutes] = time.split(":").map(Number);
     const incident_datetime = new Date(date);
     incident_datetime.setHours(hours ?? 0, minutes ?? 0, 0, 0);
 
-    setErrors({});
     onSubmit({
       location_place_id: locationPlaceId ?? location?.google_place_id ?? "",
       incident_datetime,
@@ -124,7 +106,7 @@ export default function IncidentDialog({
     });
   };
 
-  const severityLabel = INCIDENT_SEVERITY_LABELS[formData.severity];
+  const severityLabel = INCIDENT_SEVERITY_LABELS[form.watch("severity")];
   const title =
     mode === "edit" ? `Edit ${severityLabel}` : `Add ${severityLabel}`;
 
@@ -139,101 +121,128 @@ export default function IncidentDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="incident-address">Selected Address</Label>
-            <Input
-              id="incident-address"
-              value={location?.formatted_address || formattedAddress || ""}
-              disabled
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+        <Form {...form}>
+          <form className="space-y-4" onSubmit={form.handleSubmit(handleValid)}>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="incident-type">Incident Type</Label>
-              <Select
-                value={formData.severity}
-                onValueChange={(v) =>
-                  updateField("severity", v as IncidentSeverity)
-                }
-              >
-                <SelectTrigger id="incident-type" className="w-full">
-                  <SelectValue placeholder="Enter incident type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {INCIDENT_SEVERITIES.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {INCIDENT_SEVERITY_LABELS[s]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="incident-reference-id">Reference ID</Label>
+              <Label htmlFor="incident-address">Selected Address</Label>
               <Input
-                id="incident-reference-id"
-                value={formData.reference_id ?? ""}
-                onChange={(e) =>
-                  updateField("reference_id", e.target.value || undefined)
-                }
-                placeholder="Optional"
+                id="incident-address"
+                value={location?.formatted_address || formattedAddress || ""}
+                disabled
               />
             </div>
 
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="incident-date">Date</Label>
-              <DatePicker
-                id="incident-date"
-                value={formData.date}
-                onChange={(date) => updateField("date", date ?? new Date())}
-                placeholder="Pick a date"
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="severity"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Incident Type</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Enter incident type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {INCIDENT_SEVERITIES.map((s) => (
+                          <SelectItem key={s} value={s}>
+                            {INCIDENT_SEVERITY_LABELS[s]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-              {errors.date && (
-                <p className="text-sm text-destructive">{errors.date}</p>
-              )}
+
+              <FormField
+                control={form.control}
+                name="reference_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Reference ID</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        value={field.value ?? ""}
+                        onChange={(e) =>
+                          field.onChange(e.target.value || undefined)
+                        }
+                        placeholder="Optional"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="date"
+                render={({ field, fieldState }) => (
+                  <FormItem>
+                    <FormLabel>Date</FormLabel>
+                    <FormControl>
+                      <DatePicker
+                        value={field.value}
+                        onChange={(date) => field.onChange(date ?? new Date())}
+                        aria-invalid={fieldState.invalid}
+                        placeholder="Pick a date"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="time"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Incident Time</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="time" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
 
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="incident-time">Incident Time</Label>
-              <Input
-                id="incident-time"
-                type="time"
-                value={formData.time}
-                onChange={(e) => updateField("time", e.target.value)}
-              />
-              {errors.time && (
-                <p className="text-sm text-destructive">{errors.time}</p>
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      {...field}
+                      rows={4}
+                      className={cn(
+                        "shadow-xs input-shadow transition-[color,box-shadow] focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:ring-destructive/20"
+                      )}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Optional details about the incident.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
               )}
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="incident-description">Description</Label>
-            <Textarea
-              id="incident-description"
-              rows={4}
-              value={formData.description}
-              className={cn(
-                "shadow-xs input-shadow transition-[color,box-shadow] focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:ring-destructive/20"
-              )}
-              onChange={(event) =>
-                updateField("description", event.target.value)
-              }
             />
-            <p className="text-sm text-muted-foreground">
-              Optional details about the incident.
-            </p>
-          </div>
 
-          <div className="flex justify-center gap-2">
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Saving changes..." : "Save Changes"}
-            </Button>
-          </div>
-        </form>
+            <div className="flex justify-center gap-2">
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Saving changes..." : "Save Changes"}
+              </Button>
+            </div>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

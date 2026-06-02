@@ -3,14 +3,16 @@
 import AddressSearch from "@/components/AddressSearch";
 import DatePicker from "@/components/DatePicker";
 import { Button } from "@/components/ui/button";
+import { FieldGroup, FieldSet } from "@/components/ui/field";
 import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-  FieldSet,
-} from "@/components/ui/field";
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -28,8 +30,9 @@ import {
 } from "@/lib/api/incident/incident.types";
 import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
-import { useState } from "react";
+import { useForm } from "react-hook-form";
 import * as z from "zod";
 
 const incidentSeverityValues: IncidentSeverity[] = [
@@ -71,207 +74,185 @@ export default function IncidentTableForm({
       }
     : null;
 
-  const [formData, setFormData] = useState<IncidentTableFormValues>({
-    location_place_id: editData?.location?.google_place_id ?? "",
-    incident_datetime: editData?.incident_datetime ?? new Date(),
-    incident_time: editData?.incident_datetime
-      ? format(editData.incident_datetime, "HH:mm")
-      : "",
-    severity: editData?.severity ?? "in_person_warning",
-    description: editData?.description ?? "",
-    reference_id: editData?.reference_id ?? null,
+  const form = useForm<IncidentTableFormValues>({
+    resolver: zodResolver(incidentTableFormSchema),
+    defaultValues: {
+      location_place_id: editData?.location?.google_place_id ?? "",
+      incident_datetime: editData?.incident_datetime ?? new Date(),
+      incident_time: editData?.incident_datetime
+        ? format(editData.incident_datetime, "HH:mm")
+        : "",
+      severity: editData?.severity ?? "in_person_warning",
+      description: editData?.description ?? "",
+      reference_id: editData?.reference_id ?? null,
+    },
   });
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmitting = form.formState.isSubmitting;
 
-  const updateField = <K extends keyof IncidentTableFormValues>(
-    field: K,
-    value: IncidentTableFormValues[K]
-  ) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors((prev) => {
-        const next = { ...prev };
-        delete next[field];
-        return next;
-      });
-    }
-  };
+  const handleValid = (data: IncidentTableFormValues) => {
+    const [hours, minutes] = data.incident_time.split(":").map(Number);
+    const combined_datetime = new Date(data.incident_datetime);
+    combined_datetime.setHours(hours, minutes, 0, 0);
 
-  const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setErrors({});
-
-    const result = incidentTableFormSchema.safeParse(formData);
-
-    if (!result.success) {
-      const fieldErrors: Record<string, string> = {};
-      result.error.issues.forEach((issue) => {
-        if (issue.path[0]) {
-          fieldErrors[issue.path[0].toString()] = issue.message;
-        }
-      });
-      setErrors(fieldErrors);
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const { incident_datetime, incident_time } = result.data;
-      const [hours, minutes] = incident_time.split(":").map(Number);
-      const combined_datetime = new Date(incident_datetime);
-      combined_datetime.setHours(hours, minutes, 0, 0);
-
-      await onSubmit({
-        location_place_id: result.data.location_place_id,
-        incident_datetime: combined_datetime,
-        description: result.data.description,
-        severity: result.data.severity,
-        reference_id: result.data.reference_id || null,
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleAddressSelect = (address: AutocompleteResult | null) => {
-    setFormData((prev) => ({
-      ...prev,
-      location_place_id: address?.google_place_id || "",
-    }));
-    if (errors.location_place_id) {
-      setErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors.location_place_id;
-        return newErrors;
-      });
-    }
+    return onSubmit({
+      location_place_id: data.location_place_id,
+      incident_datetime: combined_datetime,
+      description: data.description,
+      severity: data.severity,
+      reference_id: data.reference_id || null,
+    });
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <FieldGroup>
-        <FieldSet>
-          <Field data-invalid={!!errors.location_place_id}>
-            <FieldLabel>Location</FieldLabel>
-            <AddressSearch
-              value={
-                formData.location_place_id ===
-                editData?.location?.google_place_id
-                  ? (editData?.location?.formatted_address ?? "")
-                  : ""
-              }
-              initialSelection={initialAddressSelection}
-              onSelect={handleAddressSelect}
-              locationService={locationService}
-              placeholder="Search for the location address..."
-              className="w-full"
-              error={errors.location_place_id}
-              chapelHillOnly
-            />
-            {errors.location_place_id && (
-              <FieldError>{errors.location_place_id}</FieldError>
-            )}
-          </Field>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field data-invalid={!!errors.incident_datetime}>
-              <FieldLabel htmlFor="incident-date">Incident Date</FieldLabel>
-              <DatePicker
-                id="incident-date"
-                dateFormat="MM/dd/yy"
-                value={formData.incident_datetime ?? null}
-                onChange={(date) =>
-                  updateField("incident_datetime", date as Date)
-                }
-              />
-              {errors.incident_datetime && (
-                <FieldError>{errors.incident_datetime}</FieldError>
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleValid)}>
+        <FieldGroup>
+          <FieldSet>
+            <FormField
+              control={form.control}
+              name="location_place_id"
+              render={({ field, fieldState }) => (
+                <FormItem>
+                  <FormLabel>Location</FormLabel>
+                  <FormControl>
+                    <AddressSearch
+                      value={
+                        field.value === editData?.location?.google_place_id
+                          ? (editData?.location?.formatted_address ?? "")
+                          : ""
+                      }
+                      initialSelection={initialAddressSelection}
+                      onSelect={(address) =>
+                        field.onChange(address?.google_place_id || "")
+                      }
+                      locationService={locationService}
+                      placeholder="Search for the location address..."
+                      className="w-full"
+                      error={fieldState.error?.message}
+                      chapelHillOnly
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
               )}
-            </Field>
+            />
 
-            <Field data-invalid={!!errors.incident_time}>
-              <FieldLabel htmlFor="incident-time">Incident Time</FieldLabel>
-              <Input
-                id="incident-time"
-                type="time"
-                value={formData.incident_time}
-                onChange={(e) => updateField("incident_time", e.target.value)}
-                aria-invalid={!!errors.incident_time}
-                autoComplete="off"
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="incident_datetime"
+                render={({ field, fieldState }) => (
+                  <FormItem>
+                    <FormLabel>Incident Date</FormLabel>
+                    <FormControl>
+                      <DatePicker
+                        dateFormat="MM/dd/yy"
+                        value={field.value ?? null}
+                        onChange={field.onChange}
+                        aria-invalid={fieldState.invalid}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-              {errors.incident_time && (
-                <FieldError>{errors.incident_time}</FieldError>
+
+              <FormField
+                control={form.control}
+                name="incident_time"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Incident Time</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="time" autoComplete="off" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="severity"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Severity</FormLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select severity" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {incidentSeverityValues.map((severity) => (
+                        <SelectItem key={severity} value={severity}>
+                          {INCIDENT_SEVERITY_LABELS[severity]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
               )}
-            </Field>
-          </div>
-
-          <Field data-invalid={!!errors.severity}>
-            <FieldLabel>Severity</FieldLabel>
-            <Select
-              value={formData.severity}
-              onValueChange={(value) =>
-                updateField("severity", value as IncidentSeverity)
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select severity" />
-              </SelectTrigger>
-              <SelectContent>
-                {incidentSeverityValues.map((severity) => (
-                  <SelectItem key={severity} value={severity}>
-                    {INCIDENT_SEVERITY_LABELS[severity]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.severity && <FieldError>{errors.severity}</FieldError>}
-          </Field>
-
-          <Field data-invalid={!!errors.reference_id}>
-            <FieldLabel>Reference ID</FieldLabel>
-            <Input
-              value={formData.reference_id ?? ""}
-              onChange={(e) => updateField("reference_id", e.target.value)}
-              placeholder="Optional"
-              autoComplete="off"
             />
-            <FieldDescription>
-              Add a ticket or report ID if one exists.
-            </FieldDescription>
-            {errors.reference_id && (
-              <FieldError>{errors.reference_id}</FieldError>
-            )}
-          </Field>
 
-          <Field data-invalid={!!errors.description}>
-            <FieldLabel>Description</FieldLabel>
-            <Textarea
-              value={formData.description ?? ""}
-              onChange={(e) => updateField("description", e.target.value)}
-              placeholder="Optional"
-              className=" w-full min-h-24 px-3 py-2 rounded-md border border-input bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-vertical shadow-xs input-shadow transition-[color,box-shadow] focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 "
+            <FormField
+              control={form.control}
+              name="reference_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Reference ID</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      value={field.value ?? ""}
+                      placeholder="Optional"
+                      autoComplete="off"
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Add a ticket or report ID if one exists.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-            {errors.description && (
-              <FieldError>{errors.description}</FieldError>
-            )}
-          </Field>
 
-          <Field orientation="vertical" className="space-y-3">
-            {submissionError && (
-              <div
-                className="rounded-md bg-destructive/10 p-3 text-sm text-destructive"
-                role="alert"
-              >
-                {submissionError}
-              </div>
-            )}
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Submitting..." : "Save"}
-            </Button>
-          </Field>
-        </FieldSet>
-      </FieldGroup>
-    </form>
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      {...field}
+                      placeholder="Optional"
+                      className=" w-full min-h-24 px-3 py-2 rounded-md border border-input bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-vertical shadow-xs input-shadow transition-[color,box-shadow] focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 "
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="space-y-3">
+              {submissionError && (
+                <div
+                  className="rounded-md bg-destructive/10 p-3 text-sm text-destructive"
+                  role="alert"
+                >
+                  {submissionError}
+                </div>
+              )}
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Submitting..." : "Save"}
+              </Button>
+            </div>
+          </FieldSet>
+        </FieldGroup>
+      </form>
+    </Form>
   );
 }
