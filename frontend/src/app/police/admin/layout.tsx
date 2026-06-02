@@ -14,7 +14,7 @@ export default function PoliceAdminLayout({
 }) {
   return (
     <SidebarProvider>
-      <main className="h-full overflow-y-auto lg:overflow-hidden bg-background">
+      <div className="h-full overflow-y-auto lg:overflow-hidden bg-background">
         <div className="container mx-auto px-6 pt-6 pb-2 h-full min-h-0 flex flex-col">
           <header className="mb-4">
             <h1 className="page-title text-secondary">
@@ -23,7 +23,7 @@ export default function PoliceAdminLayout({
           </header>
           <div className="flex-1 min-h-0">{children}</div>
         </div>
-      </main>
+      </div>
       <Sidebar />
     </SidebarProvider>
   );

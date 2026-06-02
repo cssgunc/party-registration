@@ -458,7 +458,7 @@ function StudentInfo() {
 export default function StudentProfilePage() {
   return (
     <div className="flex flex-col items-center h-full overflow-y-auto">
-      <main className="w-5/6 mx-4 my-4 max-w-2xl flex flex-col">
+      <div className="w-5/6 mx-4 my-4 max-w-2xl flex flex-col">
         <nav className="flex items-center content pb-2">
           <ArrowLeft className="h-4" />
           <Link href="/">Back</Link>
@@ -466,7 +466,7 @@ export default function StudentProfilePage() {
         <Card className="max-w-4xl mt-2 w-full border">
           <StudentInfo />
         </Card>
-      </main>
+      </div>
     </div>
   );
 }

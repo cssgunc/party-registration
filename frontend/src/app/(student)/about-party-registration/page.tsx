@@ -5,7 +5,7 @@ import PartyRegistrationInfo from "../_components/info/PartyRegistrationInfo";
 export default function AboutPartyRegistration() {
   return (
     <div className="flex flex-col items-center">
-      <main className="mx-4 mt-4 max-w-4xl">
+      <div className="mx-4 mt-4 max-w-4xl">
         <nav className="flex items-center content">
           <ArrowLeft className="h-4" />
           <Link href="/">Back</Link>
@@ -13,7 +13,7 @@ export default function AboutPartyRegistration() {
         <div className="mx-8">
           <PartyRegistrationInfo className="mt-4" />
         </div>
-      </main>
+      </div>
     </div>
   );
 }

@@ -43,7 +43,7 @@ export default function RootLayout({
       >
         <Providers>
           <Header />
-          <div className="flex-1 overflow-hidden min-h-0">{children}</div>
+          <main className="flex-1 overflow-hidden min-h-0">{children}</main>
           <Footer />
         </Providers>
       </body>

@@ -40,7 +40,7 @@ function NotificationsContent() {
   const hasMutationError = unsubscribe.isError || resubscribe.isError;
 
   return (
-    <main className="flex h-full items-center justify-center px-4 py-6">
+    <div className="flex h-full items-center justify-center px-4 py-6">
       <Card className="w-full max-w-md">
         <CardHeader className="px-10 pt-8 text-center">
           <div className="flex justify-center mb-3">
@@ -105,6 +105,6 @@ function NotificationsContent() {
           )}
         </CardContent>
       </Card>
-    </main>
+    </div>
   );
 }
