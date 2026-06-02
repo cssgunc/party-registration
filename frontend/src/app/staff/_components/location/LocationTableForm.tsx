@@ -18,7 +18,6 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { addBusinessDays, isAfter, startOfDay } from "date-fns";
@@ -47,7 +46,6 @@ export default function LocationTableForm({
   editData,
   submissionError,
 }: LocationTableFormProps) {
-  const locationService = new LocationService();
   const initialAddressSelection: AutocompleteResult | null =
     editData?.address && editData?.placeId
       ? {
@@ -95,7 +93,6 @@ export default function LocationTableForm({
                       value={field.value}
                       initialSelection={initialAddressSelection}
                       onSelect={handleAddressSelect}
-                      locationService={locationService}
                       placeholder="Search for the location address..."
                       className="w-full"
                       error={fieldState.error?.message}
@@ -149,7 +146,7 @@ export default function LocationTableForm({
               )}
             />
 
-            <div className="space-y-3">
+            <div className="space-y-3 *:w-full">
               {submissionError && (
                 <div
                   className="rounded-md bg-destructive/10 p-3 text-sm text-destructive"

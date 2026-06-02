@@ -102,7 +102,7 @@ export default function AccountTableForm({
               )}
             />
 
-            <div className="space-y-3">
+            <div className="space-y-3 *:w-full">
               {submissionError && (
                 <div
                   className="rounded-md bg-destructive/10 p-3 text-sm text-destructive"

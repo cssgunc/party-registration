@@ -21,7 +21,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
 import {
   useCurrentStudent,
@@ -45,8 +44,6 @@ import Link from "next/link";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-
-const locationService = new LocationService();
 
 const studentInfoSchema = z.object({
   first_name: z.string().min(1, "First name is required"),
@@ -354,7 +351,6 @@ function StudentInfo() {
                     <p className="subhead-content">{schoolYear} Address</p>
                     <AddressSearch
                       onSelect={handleAddressSelect}
-                      locationService={locationService}
                       placeholder="Search for the location address..."
                       className="w-full"
                       chapelHillOnly

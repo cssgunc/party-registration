@@ -114,7 +114,7 @@ export default function StudentTableForm({
                   <FormControl>
                     <Input
                       {...field}
-                      placeholder="123456789"
+                      placeholder="730456789"
                       disabled={isPIDEditMode}
                       title={ssoTitle}
                       autoComplete="off"
@@ -315,7 +315,7 @@ export default function StudentTableForm({
               )}
             />
 
-            <div className="space-y-3">
+            <div className="space-y-3 *:w-full">
               {submissionError && (
                 <div
                   className="rounded-md bg-destructive/10 p-3 text-sm text-destructive"

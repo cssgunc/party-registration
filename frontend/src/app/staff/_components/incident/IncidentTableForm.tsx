@@ -28,7 +28,6 @@ import {
   IncidentDto,
   IncidentSeverity,
 } from "@/lib/api/incident/incident.types";
-import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
@@ -65,8 +64,6 @@ export default function IncidentTableForm({
   editData,
   submissionError,
 }: IncidentTableFormProps) {
-  const locationService = new LocationService();
-
   const initialAddressSelection: AutocompleteResult | null = editData?.location
     ? {
         formatted_address: editData.location.formatted_address,
@@ -125,7 +122,6 @@ export default function IncidentTableForm({
                       onSelect={(address) =>
                         field.onChange(address?.google_place_id || "")
                       }
-                      locationService={locationService}
                       placeholder="Search for the location address..."
                       className="w-full"
                       error={fieldState.error?.message}
@@ -237,7 +233,7 @@ export default function IncidentTableForm({
               )}
             />
 
-            <div className="space-y-3">
+            <div className="space-y-3 *:w-full">
               {submissionError && (
                 <div
                   className="rounded-md bg-destructive/10 p-3 text-sm text-destructive"

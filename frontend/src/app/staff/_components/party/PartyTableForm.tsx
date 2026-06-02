@@ -21,10 +21,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { PARTY_RULE_MESSAGES, PartyDto } from "@/lib/api/party/party.types";
-import { AdminStudentService } from "@/lib/api/student/admin-student.service";
 import { formatPhoneNumberInput, phoneNumberSchema } from "@/lib/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { addBusinessDays, format, isAfter, startOfDay } from "date-fns";
@@ -96,8 +94,6 @@ export default function PartyTableForm({
 }: PartyTableFormProps) {
   const { data: session } = useSession();
   const isAdmin = session?.role === "admin";
-  const locationService = useMemo(() => new LocationService(), []);
-  const adminStudentService = useMemo(() => new AdminStudentService(), []);
 
   const partyTableFormSchema = useMemo(
     () => createPartyTableFormSchema(isAdmin),
@@ -158,7 +154,6 @@ export default function PartyTableForm({
                           : null
                       }
                       onSelect={handleAddressSelect}
-                      locationService={locationService}
                       placeholder="Search for the party address..."
                       className="w-full"
                       error={fieldState.error?.message}
@@ -237,7 +232,6 @@ export default function PartyTableForm({
                       onSelect={(student) =>
                         field.onChange(student?.student_id ?? undefined)
                       }
-                      adminStudentService={adminStudentService}
                       placeholder="Search by name, PID, email, onyen, etc..."
                       className="w-full"
                       error={fieldState.error?.message}
@@ -360,7 +354,7 @@ export default function PartyTableForm({
               />
             </FieldSet>
 
-            <div className="space-y-3">
+            <div className="space-y-3 *:w-full">
               {submissionError && (
                 <div
                   className="rounded-md bg-destructive/10 p-3 text-sm text-destructive"
