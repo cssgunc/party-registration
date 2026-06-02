@@ -35,6 +35,7 @@ jobs:
       REFRESH_TOKEN_SECRET_KEY: "test-refresh-secret-for-ci"
       INTERNAL_API_SECRET: "test-internal-secret-for-ci"
       FRONTEND_BASE_URL: "http://localhost:3000"
+      API_BASE_URL: "http://localhost:8000"
       SMTP_HOST: "localhost"
       SMTP_PORT: 1025
       SMTP_TLS: "false"

@@ -6,16 +6,16 @@ import type {
   IncidentCreateDto,
   IncidentSeverity,
 } from "@/lib/api/incident/incident.types";
-import { ExactMatchDto, PartyDto } from "@/lib/api/party/party.types";
+import { ExactMatchDto, PartyPoliceDto } from "@/lib/api/party/party.types";
 import { usePoliceCreateIncident } from "@/lib/api/party/police-party.queries";
 import { getErrorMessage } from "@/lib/errors";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import PartyCard, { PartyCardData } from "./PartyCard";
 
 interface PartyListProps {
-  parties?: PartyDto[];
-  onSelect?: (party: PartyDto | null) => void;
-  activeParty?: PartyDto;
+  parties?: PartyPoliceDto[];
+  onSelect?: (party: PartyPoliceDto | null) => void;
+  activeParty?: PartyPoliceDto;
   exactMatch?: ExactMatchDto;
 }
 
@@ -25,6 +25,7 @@ const PartyList = ({
   activeParty,
   exactMatch,
 }: PartyListProps) => {
+  const listRef = useRef<HTMLDivElement>(null);
   const [incidentDialogOpen, setIncidentDialogOpen] = useState(false);
   const [incidentType, setIncidentType] =
     useState<IncidentSeverity>("in_person_warning");
@@ -59,11 +60,25 @@ const PartyList = ({
     [createIncidentMutation]
   );
 
-  // Scroll to the active party card after the page renders
   useEffect(() => {
-    if (!activeParty) return;
-    const el = document.querySelector(`[data-party-id="${activeParty.id}"]`);
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    if (!activeParty || !listRef.current) return;
+    const container = listRef.current;
+    const el = container.querySelector(`[data-party-id="${activeParty.id}"]`);
+    if (!el) return;
+    const elRect = el.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    const elTop = elRect.top - containerRect.top + container.scrollTop;
+    const elBottom = elTop + elRect.height;
+    const containerTop = container.scrollTop;
+    const containerBottom = containerTop + container.clientHeight;
+    if (elTop < containerTop) {
+      container.scrollTo({ top: elTop, behavior: "smooth" });
+    } else if (elBottom > containerBottom) {
+      container.scrollTo({
+        top: elBottom - container.clientHeight,
+        behavior: "smooth",
+      });
+    }
   }, [activeParty, parties]);
 
   if (parties.length === 0 && !exactMatch) {
@@ -97,7 +112,10 @@ const PartyList = ({
 
   return (
     <>
-      <div className="flex flex-col flex-1 min-h-0 w-full overflow-y-auto scroll-smooth">
+      <div
+        ref={listRef}
+        className="flex flex-col flex-1 min-h-0 w-full overflow-y-auto scroll-smooth"
+      >
         {exactMatchData && (
           <section>
             <h2 className="px-4 pt-4 subhead-content">Exact Match:</h2>
@@ -116,15 +134,13 @@ const PartyList = ({
         {parties.length > 0 && (
           <section>
             {exactMatchData && (
-              <h2 className="px-4 pt-4 pb-2 subhead-content">
-                Nearby Parties:
-              </h2>
+              <h2 className="px-4 pt-4 subhead-content">Nearby Parties:</h2>
             )}
             <ul className="list-none">
               {parties.map((party) => {
                 const cardData: PartyCardData = { hasParty: true, party };
                 return (
-                  <li key={party.id}>
+                  <li key={party.id} data-party-id={party.id}>
                     <PartyCard
                       data={cardData}
                       onClick={() =>

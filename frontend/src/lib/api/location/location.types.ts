@@ -1,9 +1,9 @@
 import {
   type IncidentCreateDto,
-  type IncidentDto,
-  type IncidentDtoBackend,
   type IncidentSeverity,
-  convertIncident,
+  type NestedIncidentDto,
+  type NestedIncidentDtoBackend,
+  convertNestedIncident,
 } from "../incident/incident.types";
 
 /**
@@ -56,7 +56,7 @@ type IncidentData = IncidentCreateDto;
  */
 type LocationDto = LocationData & {
   id: number;
-  incidents: IncidentDto[];
+  incidents: NestedIncidentDto[];
 };
 
 /**
@@ -64,7 +64,7 @@ type LocationDto = LocationData & {
  */
 type LocationDtoBackend = Omit<LocationDto, "hold_expiration" | "incidents"> & {
   hold_expiration: string | null;
-  incidents: IncidentDtoBackend[];
+  incidents: NestedIncidentDtoBackend[];
 };
 
 /**
@@ -76,7 +76,7 @@ function convertLocation(backend: LocationDtoBackend): LocationDto {
     hold_expiration: backend.hold_expiration
       ? new Date(backend.hold_expiration)
       : null,
-    incidents: backend.incidents.map(convertIncident),
+    incidents: backend.incidents.map(convertNestedIncident),
   };
 }
 
@@ -94,13 +94,13 @@ export type {
   AutocompleteResult,
   IncidentCreateDto,
   IncidentData,
-  IncidentDto,
-  IncidentDtoBackend,
   IncidentSeverity,
   LocationCreate,
   LocationData,
   LocationDto,
   LocationDtoBackend,
+  NestedIncidentDto,
+  NestedIncidentDtoBackend,
 };
 
 /**
@@ -135,7 +135,6 @@ function getCitationCount(location: LocationDto): number {
 }
 
 export {
-  convertIncident,
   convertLocation,
   countIncidentsBySeverity,
   getCitationCount,

@@ -1,8 +1,5 @@
 import { AppRole } from "@/lib/api/account/account.types";
-import {
-  getDashboardPath,
-  getRequiredRolesForPath,
-} from "@/lib/auth/route-access";
+import { getAllowedRoles, getDashboardPath } from "@/lib/auth/route-access";
 import { serverEnv } from "@/lib/config/env.server";
 import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
@@ -44,8 +41,8 @@ export async function proxy(req: NextRequest) {
     return NextResponse.next();
   }
 
-  const allowedRoles = getRequiredRolesForPath(pathname);
-  if (!allowedRoles) return NextResponse.next();
+  const allowedRoles = getAllowedRoles(pathname);
+  if (allowedRoles.length === 0) return NextResponse.next();
 
   if (isAuthenticated) {
     if (userRole && allowedRoles.includes(userRole)) {

@@ -31,6 +31,7 @@ export function getErrorMessage(
       return options.status?.[500] ?? DEFAULT_STATUS_MESSAGES[500];
     }
   }
+  console.log(error);
   if (options.fallback) {
     return options.fallback;
   }

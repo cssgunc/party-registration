@@ -1,6 +1,5 @@
 "use client";
 
-import { useSidebar } from "@/app/staff/_components/shared/sidebar/SidebarContext";
 import IncidentFlag from "@/components/icons/IncidentFlag";
 import { useSnackbar } from "@/contexts/SnackbarContext";
 import {
@@ -11,50 +10,23 @@ import {
 } from "@/lib/api/incident/incident.queries";
 import {
   INCIDENT_SEVERITY_LABELS,
-  IncidentCreateDto,
   IncidentDto,
+  PaginatedIncidentsResponse,
 } from "@/lib/api/incident/incident.types";
-import {
-  useLocations,
-  useUpdateIncidentInLocation,
-} from "@/lib/api/location/location.queries";
-import { LocationDto } from "@/lib/api/location/location.types";
-import {
-  DEFAULT_TABLE_PARAMS,
-  FilterValue,
-  ServerTableParams,
-} from "@/lib/api/shared/query-params";
+import { useUpdateIncidentInLocation } from "@/lib/api/location/location.queries";
 import { getErrorMessage } from "@/lib/errors";
-import { formatTime } from "@/lib/utils";
+import { formatAddress, formatTime } from "@/lib/utils";
 import { ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
-import { useMemo, useState } from "react";
-import LocationInfoChipDetails from "../party/details/LocationInfoChipDetails";
+import DescriptionInfoChipDetails from "../shared/details/DescriptionInfoChipDetails";
+import LocationInfoChipDetails from "../shared/details/LocationInfoChipDetails";
+import { FormSidebar } from "../shared/sidebar/FormSidebar";
 import { InfoChip } from "../shared/sidebar/InfoChip";
+import { useFormSidebarState } from "../shared/sidebar/useFormSidebarState";
 import { TableTemplate } from "../shared/table/TableTemplate";
-import IncidentDescriptionChipDetails from "./IncidentDescriptionChipDetails";
+import { deleteAction, editAction } from "../shared/table/rowActions";
 import { IncidentSeverityCountsHeader } from "./IncidentSeverityCountsHeader";
 import IncidentTableForm from "./IncidentTableForm";
-
-const hasIncidentChanged = (
-  original: IncidentDto | null,
-  updated: IncidentCreateDto,
-  locationById: Map<number, LocationDto>
-): boolean => {
-  if (!original) return true;
-
-  const originalLocation = locationById.get(original.location_id);
-  const originalLocationPlaceId = originalLocation?.google_place_id ?? "";
-
-  return (
-    originalLocationPlaceId !== updated.location_place_id ||
-    original.incident_datetime.getTime() !==
-      updated.incident_datetime.getTime() ||
-    original.description !== updated.description ||
-    original.severity !== updated.severity ||
-    original.reference_id !== updated.reference_id
-  );
-};
 
 function truncateDescription(
   description: string | undefined,
@@ -66,108 +38,35 @@ function truncateDescription(
 }
 
 export const IncidentTable = () => {
-  const { openSidebar, closeSidebar } = useSidebar();
   const { openSnackbar } = useSnackbar();
-  const [editingIncident, setEditingIncident] = useState<IncidentDto | null>(
-    null
-  );
-  const [serverParams, setServerParams] =
-    useState<ServerTableParams>(DEFAULT_TABLE_PARAMS);
-
-  const incidentsQuery = useIncidents(serverParams);
-  const locationsQuery = useLocations();
-  const { mutate: exportCsv, isPending: isExporting } =
-    useDownloadIncidentsCsv();
-
-  const incidents = useMemo(
-    () => incidentsQuery.data?.items ?? [],
-    [incidentsQuery.data]
-  );
-  const locations = useMemo(
-    () => locationsQuery.data?.items ?? [],
-    [locationsQuery.data]
-  );
-
-  const locationLabelById = useMemo(
-    () =>
-      new Map(
-        locations.map((location) => [location.id, location.formatted_address])
-      ),
-    [locations]
-  );
-
-  const locationById = useMemo(
-    () => new Map(locations.map((location) => [location.id, location])),
-    [locations]
-  );
-
-  const reopenCreateSidebar = (submissionError?: string | null) => {
-    openSidebar(
-      "create-incident",
-      "New Incident",
-      "Add a new incident to the system",
-      <IncidentTableForm
-        allLocations={locations}
-        onSubmit={handleCreateSubmit}
-        submissionError={submissionError}
-      />
-    );
-  };
-
-  const reopenEditSidebar = (
-    incident: IncidentDto,
-    submissionError?: string | null
-  ) => {
-    openSidebar(
-      `edit-incident-${incident.id}`,
-      "Edit Incident",
-      "Update incident information",
-      <IncidentTableForm
-        allLocations={locations}
-        editData={incident}
-        onSubmit={(data) => handleEditSubmit(incident.id, data)}
-        submissionError={submissionError}
-      />
-    );
-  };
+  const {
+    mode,
+    row,
+    submissionError,
+    setSubmissionError,
+    openCreate,
+    openEdit,
+    closeSidebar,
+  } = useFormSidebarState<IncidentDto>();
+  const exportMutation = useDownloadIncidentsCsv();
 
   const createMutation = useCreateIncident({
     onError: (error: Error) => {
-      reopenCreateSidebar(getErrorMessage(error));
+      setSubmissionError(getErrorMessage(error));
     },
     onSuccess: () => {
       openSnackbar("Incident created successfully", "success");
       closeSidebar();
-      setEditingIncident(null);
     },
   });
 
   const updateMutation = useUpdateIncidentInLocation({
-    onError: (
-      error: Error,
-      variables: { id: number; payload: Partial<IncidentCreateDto> }
-    ) => {
-      const targetIncident =
-        editingIncident && editingIncident.id === variables.id
-          ? editingIncident
-          : incidents.find((incident) => incident.id === variables.id) || null;
-
-      if (targetIncident) {
-        reopenEditSidebar(targetIncident, getErrorMessage(error));
-      }
+    onError: (error: Error) => {
+      setSubmissionError(getErrorMessage(error));
     },
-    onSuccess: (_data, variables) => {
-      if (
-        hasIncidentChanged(
-          editingIncident,
-          variables.payload as IncidentCreateDto,
-          locationById
-        )
-      ) {
-        openSnackbar("Incident updated successfully", "success");
-      }
+    onSuccess: () => {
+      openSnackbar("Incident updated successfully", "success");
       closeSidebar();
-      setEditingIncident(null);
     },
   });
 
@@ -180,47 +79,18 @@ export const IncidentTable = () => {
     },
   });
 
-  const handleCreate = () => {
-    setEditingIncident(null);
-    reopenCreateSidebar();
-  };
-
-  const handleCreateSubmit = async (data: IncidentCreateDto) => {
-    createMutation.mutate(data);
-  };
-
-  const handleEdit = (incident: IncidentDto) => {
-    setEditingIncident(incident);
-    reopenEditSidebar(incident);
-  };
-
-  const handleEditSubmit = async (
-    incidentId: number,
-    data: IncidentCreateDto
-  ) => {
-    updateMutation.mutate({ id: incidentId, payload: data });
-  };
-
-  const handleDelete = (incident: IncidentDto) => {
-    deleteMutation.mutate(incident.id);
-  };
-
   const columns: ColumnDef<IncidentDto>[] = [
     {
       id: "location",
-      accessorFn: (row) =>
-        locationLabelById.get(row.location_id) ||
-        `Location #${row.location_id}`,
+      accessorFn: (row) => row.location?.formatted_address ?? "",
       header: "Address",
       enableColumnFilter: true,
       meta: {
         filter: { type: "text", backendField: "location.formatted_address" },
       },
       cell: ({ row }) => {
-        const location = locationById.get(row.original.location_id);
-        if (!location) {
-          return "—";
-        }
+        const location = row.original.location;
+        if (!location) return "—";
         return (
           <InfoChip
             chipKey={`incident-${row.original.id}-location`}
@@ -240,7 +110,7 @@ export const IncidentTable = () => {
       meta: { filter: { type: "datetime", backendField: "incident_datetime" } },
       cell: ({ row }) => {
         const date = row.original.incident_datetime;
-        return date.toLocaleDateString();
+        return format(date, "M/d/yyyy");
       },
     },
     {
@@ -248,22 +118,12 @@ export const IncidentTable = () => {
       accessorFn: (row) => format(row.incident_datetime, "HH:mm"),
       header: "Time",
       enableColumnFilter: true,
-      meta: { filter: { type: "time" }, filterMode: "client" },
+      meta: {
+        filter: { type: "time", backendField: "incident_datetime_time" },
+      },
       cell: ({ row }) => {
         const date = new Date(row.original.incident_datetime);
         return formatTime(date);
-      },
-      filterFn: (row, _columnId, filterValue) => {
-        if (!filterValue) return true;
-        const { operator, value } = filterValue as FilterValue;
-        if (!value) return true;
-        const date = new Date(row.original.incident_datetime);
-        const rowTime = `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
-        const fv = String(value);
-        if (operator === "eq") return rowTime === fv;
-        if (operator === "gte") return rowTime >= fv;
-        if (operator === "lte") return rowTime <= fv;
-        return true;
       },
     },
     {
@@ -319,9 +179,7 @@ export const IncidentTable = () => {
             title="Incident Description"
             description="View the full incident description"
             shortName={truncateDescription(description)}
-            sidebarContent={
-              <IncidentDescriptionChipDetails data={row.original} />
-            }
+            sidebarContent={<DescriptionInfoChipDetails data={row.original} />}
           />
         );
       },
@@ -329,44 +187,65 @@ export const IncidentTable = () => {
   ];
 
   return (
-    <div className="h-full min-h-0 flex flex-col">
+    <>
       <TableTemplate
-        data={incidents}
+        useQuery={useIncidents}
         columns={columns}
-        resourceName="Incident"
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        onCreateNewRow={handleCreate}
-        isLoading={incidentsQuery.isLoading || locationsQuery.isLoading}
-        isFetching={incidentsQuery.isFetching}
-        error={
-          (incidentsQuery.error as Error | null) ||
-          (locationsQuery.error as Error | null)
-        }
-        getDeleteDescription={(incident: IncidentDto) =>
-          `Are you sure you want to delete incident #${incident.id}? This action cannot be undone.`
-        }
-        isDeleting={deleteMutation.isPending}
-        serverMeta={
-          incidentsQuery.data
-            ? {
-                totalRecords: incidentsQuery.data.total_records,
-                totalPages: incidentsQuery.data.total_pages,
-                sortBy: incidentsQuery.data.sort_by,
-                sortOrder: incidentsQuery.data.sort_order,
-              }
-            : undefined
-        }
-        onStateChange={setServerParams}
-        onExportCsv={exportCsv}
-        isExporting={isExporting}
-        headerSlot={
+        createAction={{ label: "New Incident", fn: openCreate }}
+        pageSizeStorageKey="staff-incidents"
+        rowActions={[
+          editAction<IncidentDto>({ onClick: openEdit }),
+          deleteAction<IncidentDto>({
+            onClick: (incident) => deleteMutation.mutate(incident.id),
+            resourceName: "Incident",
+            description: (incident) =>
+              `Are you sure you want to delete this incident at ${formatAddress(incident.location, ["street_number", "street_name", "unit"])}? This action cannot be undone.`,
+            isPending: deleteMutation.isPending,
+          }),
+        ]}
+        exportMutation={exportMutation}
+        headerSlot={(query) => (
           <IncidentSeverityCountsHeader
-            counts={incidentsQuery.data?.severity_counts}
-            isLoading={incidentsQuery.isLoading || incidentsQuery.isFetching}
+            counts={
+              (query.data as PaginatedIncidentsResponse | undefined)
+                ?.severity_counts
+            }
+            isLoading={query.isLoading || query.isFetching}
           />
-        }
+        )}
       />
-    </div>
+      <FormSidebar
+        mode={mode}
+        row={row}
+        modes={{
+          create: {
+            key: "create-incident",
+            title: "New Incident",
+            description: "Add a new incident to the system",
+            render: () => (
+              <IncidentTableForm
+                onSubmit={(data) => createMutation.mutate(data)}
+                submissionError={submissionError}
+              />
+            ),
+          },
+          edit: {
+            key: (incident) => `edit-incident-${incident.id}`,
+            title: "Edit Incident",
+            description: "Update incident information",
+            render: (incident) => (
+              <IncidentTableForm
+                editData={incident}
+                onSubmit={(data) =>
+                  updateMutation.mutate({ id: incident.id, payload: data })
+                }
+                submissionError={submissionError}
+              />
+            ),
+          },
+        }}
+        onClose={closeSidebar}
+      />
+    </>
   );
 };

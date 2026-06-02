@@ -3,13 +3,11 @@
 import { InfoChipDetails } from "@/app/staff/_components/shared/sidebar/InfoChipDetails";
 import { IncidentDto } from "@/lib/api/incident/incident.types";
 
-interface IncidentDescriptionChipDetailsProps {
+interface Props {
   data: IncidentDto;
 }
 
-function IncidentDescriptionChipDetails({
-  data,
-}: IncidentDescriptionChipDetailsProps) {
+function DescriptionInfoChipDetails({ data }: Props) {
   return (
     <InfoChipDetails
       fields={[["Description", data.description || "No description provided"]]}
@@ -17,4 +15,4 @@ function IncidentDescriptionChipDetails({
   );
 }
 
-export default IncidentDescriptionChipDetails;
+export default DescriptionInfoChipDetails;

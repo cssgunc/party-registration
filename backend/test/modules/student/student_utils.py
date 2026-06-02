@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Any, Literal, TypedDict, Unpack, override
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.utils.date_utils import current_academic_year_start
+from src.modules.party.party_model import ContactDto, ContactPoliceDto
 from src.modules.student.student_entity import StudentEntity
 from src.modules.student.student_model import (
     ContactPreference,
@@ -38,7 +39,7 @@ class StudentTestUtils(
     ResourceTestUtils[
         StudentEntity,
         StudentData,
-        StudentDto | StudentUpdateDto | SelfUpdateStudentDto,
+        StudentDto | StudentUpdateDto | SelfUpdateStudentDto | ContactDto | ContactPoliceDto,
     ]
 ):
     def __init__(

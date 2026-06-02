@@ -2,10 +2,11 @@ import enum
 import math
 from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import ClassVar
+from typing import ClassVar, Literal, overload
 
 from fastapi import Depends
-from sqlalchemy import func, select
+from sqlalchemy import Time as SATime
+from sqlalchemy import cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from src.core.config import env
@@ -27,11 +28,13 @@ from src.modules.student.student_service import StudentService
 
 from ..location.location_entity import LocationEntity
 from ..location.location_service import LocationNotFoundException, LocationService
+from ..notification.notification_service import NotificationService
 from ..student.student_entity import StudentEntity
 from .party_entity import PartyEntity
 from .party_model import (
     AdminCreatePartyDto,
     ExactMatchDto,
+    PaginatedPartiesPoliceResponse,
     PaginatedPartiesResponse,
     PartyDraft,
     PartyDto,
@@ -44,6 +47,7 @@ _PARTY_QUERY_FIELDS = QueryFieldSet(
     fields={
         "id": PartyEntity.id,
         "party_datetime": PartyEntity.party_datetime,
+        "party_datetime_time": cast(PartyEntity.party_datetime, SATime()),
         "status": PartyEntity.status,
         "contact_one.id": PartyEntity.contact_one_id,
         "contact_one.first_name": AccountEntity.first_name,
@@ -82,7 +86,7 @@ _PARTY_QUERY_FIELDS = QueryFieldSet(
         "contact_two.email",
         "contact_two.phone_number",
     ),
-    default_sort=SortParam(field="party_datetime", order=SortOrder.ASC),
+    default_sort=SortParam(field="party_datetime", order=SortOrder.DESC),
 )
 
 _PARTY_LOAD_OPTIONS = (
@@ -187,11 +191,13 @@ class PartyService:
         location_service: LocationService = Depends(),
         student_service: StudentService = Depends(),
         query_service: QueryService = Depends(),
+        notification_service: NotificationService = Depends(),
     ):
         self.session = session
         self.location_service = location_service
         self.student_service = student_service
         self.query_service = query_service
+        self.notification_service = notification_service
 
     async def _get_party_entity_by_id(self, party_id: int) -> PartyEntity:
         result = await self.session.execute(
@@ -202,7 +208,19 @@ class PartyService:
             raise PartyNotFoundException(party_id)
         return party_entity
 
-    async def get_parties_paginated(self, params: ListQueryParams) -> PaginatedPartiesResponse:
+    @overload
+    async def get_parties_paginated(
+        self, params: ListQueryParams, as_police: Literal[True]
+    ) -> PaginatedPartiesPoliceResponse: ...
+
+    @overload
+    async def get_parties_paginated(
+        self, params: ListQueryParams, as_police: Literal[False] = ...
+    ) -> PaginatedPartiesResponse: ...
+
+    async def get_parties_paginated(
+        self, params: ListQueryParams, as_police: bool = False
+    ) -> PaginatedPartiesResponse | PaginatedPartiesPoliceResponse:
         """
         Get parties with server-side pagination, sorting, and filtering.
 
@@ -215,9 +233,8 @@ class PartyService:
         - contact_one_id: Filter by contact one (student) ID
 
         Returns:
-            PaginatedPartiesResponse with items and metadata
+            PaginatedPartiesResponse (staff/admin) or PaginatedPartiesPoliceResponse (police)
         """
-        # Build base query with JOINs for filter/sort and eager loading for hydration
         base_query = (
             select(PartyEntity)
             .join(LocationEntity, PartyEntity.location_id == LocationEntity.id)
@@ -226,11 +243,15 @@ class PartyService:
             .options(*_PARTY_LOAD_OPTIONS)
         )
 
+        converter = (lambda e: e.to_police_dto()) if as_police else (lambda e: e.to_dto())
         result = await self.query_service.get_paginated(
             params=params,
             base_query=base_query,
+            dto_converter=converter,
             field_set=_PARTY_QUERY_FIELDS,
         )
+        if as_police:
+            return PaginatedPartiesPoliceResponse(**result.model_dump())
         return PaginatedPartiesResponse(**result.model_dump())
 
     async def get_party_by_id(self, party_id: int) -> PartyDto:
@@ -305,7 +326,9 @@ class PartyService:
         new_party = PartyEntity.from_draft(draft)
         self.session.add(new_party)
         await self.session.commit()
-        return await new_party.load_dto(self.session)
+        party_dto = await new_party.load_dto(self.session)
+        await self.notification_service.notify_party_created(party_dto)
+        return party_dto
 
     async def create_party_from_admin_dto(self, dto: AdminCreatePartyDto) -> PartyDto:
         draft = await self._build_admin_draft(dto)
@@ -318,12 +341,15 @@ class PartyService:
         new_party = PartyEntity.from_draft(draft)
         self.session.add(new_party)
         await self.session.commit()
-        return await new_party.load_dto(self.session)
+        party_dto = await new_party.load_dto(self.session)
+        await self.notification_service.notify_party_created(party_dto)
+        return party_dto
 
     async def update_party_from_student_dto(
         self, party_id: int, dto: StudentCreatePartyDto, student_id: int
     ) -> PartyDto:
         party_entity = await self._get_party_entity_by_id(party_id)
+        old_contact_two_email = party_entity.contact_two_email
         draft = await self._build_student_draft(dto, student_id, existing=party_entity.to_dto())
         PartyRule.check_for(
             draft,
@@ -341,12 +367,16 @@ class PartyService:
         party_entity.apply_draft(draft)
         self.session.add(party_entity)
         await self.session.commit()
-        return await party_entity.load_dto(self.session)
+        party_dto = await party_entity.load_dto(self.session)
+        if draft.contact_two.email.lower() != old_contact_two_email.lower():
+            await self.notification_service.notify_contact_two_changed(party_dto)
+        return party_dto
 
     async def update_party_from_admin_dto(
         self, party_id: int, dto: AdminCreatePartyDto
     ) -> PartyDto:
         party_entity = await self._get_party_entity_by_id(party_id)
+        old_contact_two_email = party_entity.contact_two_email
         draft = await self._build_admin_draft(dto, existing=party_entity.to_dto())
         PartyRule.check_for(
             draft,
@@ -357,7 +387,10 @@ class PartyService:
         party_entity.apply_draft(draft)
         self.session.add(party_entity)
         await self.session.commit()
-        return await party_entity.load_dto(self.session)
+        party_dto = await party_entity.load_dto(self.session)
+        if draft.contact_two.email.lower() != old_contact_two_email.lower():
+            await self.notification_service.notify_contact_two_changed(party_dto)
+        return party_dto
 
     async def cancel_party(self, party_id: int, student_id: int | None) -> PartyDto:
         """Cancel a party. If student_id is given, only the owner can cancel.
@@ -431,11 +464,11 @@ class PartyService:
         )
         parties = result.scalars().all()
 
-        exact_party: PartyDto | None = None
+        exact_party = None
         if db_location is not None:
             for p in parties:
                 if p.location_id == db_location.id:
-                    exact_party = p.to_dto()
+                    exact_party = p.to_police_dto()
                     break
 
         nearby_with_distance: list[tuple[PartyEntity, float]] = []
@@ -452,7 +485,7 @@ class PartyService:
                 nearby_with_distance.append((p, distance))
         nearby_with_distance.sort(key=lambda x: x[1])
         nearby = [
-            p.to_dto()
+            p.to_police_dto()
             for p, _ in nearby_with_distance
             if exact_party is None or p.id != exact_party.id
         ]

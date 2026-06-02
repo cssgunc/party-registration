@@ -27,12 +27,9 @@ import {
   IncidentSeverity,
 } from "@/lib/api/incident/incident.types";
 import { LocationService } from "@/lib/api/location/location.service";
-import {
-  AutocompleteResult,
-  LocationDto,
-} from "@/lib/api/location/location.types";
+import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { format } from "date-fns";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import * as z from "zod";
 
 const incidentSeverityValues: IncidentSeverity[] = [
@@ -56,28 +53,26 @@ type IncidentTableFormValues = z.infer<typeof incidentTableFormSchema>;
 
 interface IncidentTableFormProps {
   onSubmit: (data: IncidentCreateDto) => void | Promise<void>;
-  allLocations: LocationDto[];
   editData?: IncidentDto;
   submissionError?: string | null;
 }
 
 export default function IncidentTableForm({
   onSubmit,
-  allLocations,
   editData,
   submissionError,
 }: IncidentTableFormProps) {
-  // When editing, find the google_place_id from locations array by location_id
-  const editLocationPlaceId = useMemo(() => {
-    if (!editData?.location_id) return "";
-    const location = allLocations.find(
-      (loc) => loc.id === editData.location_id
-    );
-    return location ? location.google_place_id : "";
-  }, [editData?.location_id, allLocations]);
+  const locationService = new LocationService();
+
+  const initialAddressSelection: AutocompleteResult | null = editData?.location
+    ? {
+        formatted_address: editData.location.formatted_address,
+        google_place_id: editData.location.google_place_id,
+      }
+    : null;
 
   const [formData, setFormData] = useState<IncidentTableFormValues>({
-    location_place_id: editLocationPlaceId,
+    location_place_id: editData?.location?.google_place_id ?? "",
     incident_datetime: editData?.incident_datetime ?? new Date(),
     incident_time: editData?.incident_datetime
       ? format(editData.incident_datetime, "HH:mm")
@@ -86,26 +81,8 @@ export default function IncidentTableForm({
     description: editData?.description ?? "",
     reference_id: editData?.reference_id ?? null,
   });
-  const locationService = new LocationService();
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const address = useMemo(() => {
-    if (formData.location_place_id === "") return "";
-    return (
-      allLocations.find(
-        (loc) => loc.google_place_id === formData.location_place_id
-      )?.formatted_address ?? ""
-    );
-  }, [formData.location_place_id, allLocations]);
-
-  const initialAddressSelection: AutocompleteResult | null =
-    address && formData?.location_place_id
-      ? {
-          formatted_address: address,
-          google_place_id: formData.location_place_id,
-        }
-      : null;
 
   const updateField = <K extends keyof IncidentTableFormValues>(
     field: K,
@@ -178,7 +155,12 @@ export default function IncidentTableForm({
           <Field data-invalid={!!errors.location_place_id}>
             <FieldLabel>Location</FieldLabel>
             <AddressSearch
-              value={address}
+              value={
+                formData.location_place_id ===
+                editData?.location?.google_place_id
+                  ? (editData?.location?.formatted_address ?? "")
+                  : ""
+              }
               initialSelection={initialAddressSelection}
               onSelect={handleAddressSelect}
               locationService={locationService}

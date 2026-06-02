@@ -54,16 +54,78 @@ type PartyDtoBackend = Omit<
 };
 
 /**
- * Convert party from backend format (string dates) to frontend format (Date objects)
+ * Police-visible contact shape: name + operational contact info only.
+ * Used for both contact_one and contact_two in PartyPoliceDto.
  */
-export function convertParty(backend: PartyDtoBackend): PartyDto {
-  return {
+type ContactPoliceDto = {
+  first_name: string;
+  last_name: string;
+  phone_number: string | null;
+  contact_preference: ContactPreference | null;
+};
+
+/**
+ * Police view of a party — contact PII (email, pid, onyen, residence) stripped.
+ * location keeps full LocationDto (hold + incidents included).
+ */
+type PartyPoliceDto = {
+  id: number;
+  party_datetime: Date;
+  location: LocationDto;
+  contact_one: ContactPoliceDto;
+  contact_two: ContactPoliceDto;
+  status: PartyStatus;
+};
+
+type PartyPoliceDtoBackend = Omit<
+  PartyPoliceDto,
+  "party_datetime" | "location"
+> & {
+  party_datetime: string;
+  location: LocationDtoBackend;
+};
+
+/**
+ * Role discriminant used to select the correct party DTO shape.
+ * "police" → PartyPoliceDto (contacts stripped of PII)
+ * "default" → PartyDto (full contact info for staff/admin)
+ */
+type PartyRole = "police" | "default";
+type PartyDtoOf<R extends PartyRole> = R extends "police"
+  ? PartyPoliceDto
+  : PartyDto;
+type PartyDtoBackendOf<R extends PartyRole> = R extends "police"
+  ? PartyPoliceDtoBackend
+  : PartyDtoBackend;
+
+/**
+ * Single generic converter — role param drives both input type narrowing and output type.
+ * Omitting role defaults to "default" (full PartyDto).
+ */
+export function convertParty<R extends PartyRole>(
+  backend: PartyDtoBackendOf<R>,
+  role: R
+): PartyDtoOf<R>;
+export function convertParty(backend: PartyDtoBackend): PartyDto;
+export function convertParty(
+  backend: PartyDtoBackend | PartyPoliceDtoBackend,
+  role: PartyRole = "default"
+): PartyDto | PartyPoliceDto {
+  const base = {
     id: backend.id,
     party_datetime: new Date(backend.party_datetime),
     location: convertLocation(backend.location),
-    contact_one: convertStudent(backend.contact_one),
-    contact_two: backend.contact_two,
     status: backend.status,
+  };
+  if (role === "police") {
+    const b = backend as PartyPoliceDtoBackend;
+    return { ...base, contact_one: b.contact_one, contact_two: b.contact_two };
+  }
+  const b = backend as PartyDtoBackend;
+  return {
+    ...base,
+    contact_one: convertStudent(b.contact_one),
+    contact_two: b.contact_two,
   };
 }
 
@@ -94,31 +156,33 @@ type AdminCreatePartyDto = {
 type CreatePartyDto = StudentCreatePartyDto | AdminCreatePartyDto;
 
 /**
- * Exact match result from proximity search
+ * Exact match result from proximity search.
+ * party is always PartyPoliceDto — /nearby is only used in the police view context.
  */
 type ExactMatchDto = {
   google_place_id: string;
   formatted_address: string;
   location: LocationDto | null;
-  party: PartyDto | null;
+  party: PartyPoliceDto | null;
 };
 
 type ExactMatchDtoBackend = Omit<ExactMatchDto, "location" | "party"> & {
   location: LocationDtoBackend | null;
-  party: PartyDtoBackend | null;
+  party: PartyPoliceDtoBackend | null;
 };
 
 /**
- * Response from GET /parties/nearby
+ * Response from GET /parties/nearby.
+ * All party items are PartyPoliceDto (contacts stripped of PII).
  */
 type ProximitySearchResponse = {
   exact_match: ExactMatchDto;
-  nearby: PartyDto[];
+  nearby: PartyPoliceDto[];
 };
 
 type ProximitySearchResponseBackend = {
   exact_match: ExactMatchDtoBackend;
-  nearby: PartyDtoBackend[];
+  nearby: PartyPoliceDtoBackend[];
 };
 
 function convertProximitySearchResponse(
@@ -132,10 +196,10 @@ function convertProximitySearchResponse(
         ? convertLocation(backend.exact_match.location)
         : null,
       party: backend.exact_match.party
-        ? convertParty(backend.exact_match.party)
+        ? convertParty(backend.exact_match.party, "police")
         : null,
     },
-    nearby: backend.nearby.map(convertParty),
+    nearby: backend.nearby.map((p) => convertParty(p, "police")),
   };
 }
 
@@ -227,10 +291,16 @@ export const MY_PARTIES_KEY = [...PARTIES_KEY, "me"] as const;
 export type {
   AdminCreatePartyDto,
   ContactDto,
+  ContactPoliceDto,
   CreatePartyDto,
   ExactMatchDto,
   PartyDto,
   PartyDtoBackend,
+  PartyDtoBackendOf,
+  PartyDtoOf,
+  PartyPoliceDto,
+  PartyPoliceDtoBackend,
+  PartyRole,
   PartyValidationError,
   ProximitySearchResponse,
   ProximitySearchResponseBackend,

@@ -29,7 +29,7 @@ export default function PartyCsvExportButton({
   };
 
   return (
-    <div className="flex flex-col items-end gap-1">
+    <div className="flex flex-col items-end gap-1 text-base">
       <Button
         onClick={handleDownload}
         disabled={!startDate || !endDate || isPending}
@@ -38,6 +38,9 @@ export default function PartyCsvExportButton({
         aria-label="Download parties in the list as Excel"
         title="Download parties in the list as Excel"
       >
+        <span className="hidden sm:inline">
+          {isPending ? "Exporting…" : "Export"}
+        </span>
         {isPending ? (
           <Loader2 className="size-4 animate-spin" />
         ) : (
