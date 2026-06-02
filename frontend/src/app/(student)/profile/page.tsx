@@ -215,14 +215,15 @@ function StudentInfo() {
         <div className="mb-6 flex justify-between items-center">
           <h1 className="page-title">Profile</h1>
           {!error && (
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setIsEditing(true)}
-              className="bg-transparent"
               aria-label="Edit profile"
               disabled={isLoading || !student}
             >
-              <Pencil className="content cursor-pointer" />
-            </button>
+              <Pencil className="content" />
+            </Button>
           )}
         </div>
 

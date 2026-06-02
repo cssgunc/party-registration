@@ -150,10 +150,12 @@ export default function PoliceSignupPage() {
                   aria-invalid={!!errors.password}
                   className="pr-10"
                 />
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="icon-sm"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-muted-foreground hover:text-foreground"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? (
@@ -161,7 +163,7 @@ export default function PoliceSignupPage() {
                   ) : (
                     <Eye className="size-4" />
                   )}
-                </button>
+                </Button>
               </div>
               {errors.password && (
                 <p className="text-sm text-destructive">{errors.password}</p>
@@ -182,10 +184,12 @@ export default function PoliceSignupPage() {
                   aria-invalid={!!errors.confirm_password}
                   className="pr-10"
                 />
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="icon-sm"
                   onClick={() => setShowConfirmPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-muted-foreground hover:text-foreground"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   aria-label={
                     showConfirmPassword ? "Hide password" : "Show password"
                   }
@@ -195,7 +199,7 @@ export default function PoliceSignupPage() {
                   ) : (
                     <Eye className="size-4" />
                   )}
-                </button>
+                </Button>
               </div>
               {errors.confirm_password && (
                 <p className="text-sm text-destructive">

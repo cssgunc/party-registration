@@ -2,6 +2,7 @@
 
 import { PhoneLink } from "@/components/PhoneLink";
 import IncidentFlag from "@/components/icons/IncidentFlag";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -160,14 +161,16 @@ const PartyCard = memo(function PartyCard({
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="icon-sm"
                 onClick={(e) => e.stopPropagation()}
-                className="rounded-md p-1 text-secondary transition-colors hover:bg-accent hover:text-foreground"
+                className="text-secondary hover:text-foreground"
                 aria-label="Open incident menu"
               >
                 <EllipsisVertical height={16} />
-              </button>
+              </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-52" align="end">
               {INCIDENT_MENU_ITEMS.map(({ severity, label }) => (
