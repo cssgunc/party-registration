@@ -100,8 +100,13 @@ export default function IncidentInfoChipDetails({
       {role === "admin" &&
         headerActionNode &&
         createPortal(
-          <Button variant="default" size="sm" onClick={handleAdd}>
-            <PlusIcon className="size-4" />
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleAdd}
+            aria-label="Add new incident"
+          >
+            <PlusIcon className="size-4" aria-hidden="true" />
           </Button>,
           headerActionNode
         )}

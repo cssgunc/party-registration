@@ -101,17 +101,30 @@ function PaginationLast({
 function PaginationPrevious({
   className,
   text = "Previous",
+  showLabel,
+  labelClassName,
   ...props
-}: React.ComponentProps<typeof PaginationLink> & { text?: string }) {
+}: React.ComponentProps<typeof PaginationLink> & {
+  text?: string;
+  showLabel?: boolean;
+  labelClassName?: string;
+}) {
+  const labelClass =
+    labelClassName ??
+    (showLabel === undefined
+      ? "hidden sm:block"
+      : showLabel
+        ? undefined
+        : "hidden");
   return (
     <PaginationLink
       aria-label="Go to previous page"
-      size="default"
-      className={cn("pl-1.5!", className)}
+      size={showLabel === false ? "icon" : "default"}
+      className={cn(showLabel !== false && "pl-1.5!", className)}
       {...props}
     >
       <ChevronLeftIcon data-icon="inline-start" className="cn-rtl-flip" />
-      <span className="hidden sm:block">{text}</span>
+      <span className={labelClass}>{text}</span>
     </PaginationLink>
   );
 }
@@ -119,16 +132,29 @@ function PaginationPrevious({
 function PaginationNext({
   className,
   text = "Next",
+  showLabel,
+  labelClassName,
   ...props
-}: React.ComponentProps<typeof PaginationLink> & { text?: string }) {
+}: React.ComponentProps<typeof PaginationLink> & {
+  text?: string;
+  showLabel?: boolean;
+  labelClassName?: string;
+}) {
+  const labelClass =
+    labelClassName ??
+    (showLabel === undefined
+      ? "hidden sm:block"
+      : showLabel
+        ? undefined
+        : "hidden");
   return (
     <PaginationLink
       aria-label="Go to next page"
-      size="default"
-      className={cn("pr-1.5!", className)}
+      size={showLabel === false ? "icon" : "default"}
+      className={cn(showLabel !== false && "pr-1.5!", className)}
       {...props}
     >
-      <span className="hidden sm:block">{text}</span>
+      <span className={labelClass}>{text}</span>
       <ChevronRightIcon data-icon="inline-end" className="cn-rtl-flip" />
     </PaginationLink>
   );

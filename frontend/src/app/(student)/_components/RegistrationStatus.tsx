@@ -64,7 +64,7 @@ export default function RegistrationStatus({
         )}
         {isCompleted ? (
           <>
-            <div className="flex items-center gap-2 text-gray-800">
+            <div className="flex items-center gap-2">
               <CheckCircle className="size-4 mb-0.5" />
               <p className="content">
                 Completed on{" "}
@@ -90,7 +90,7 @@ export default function RegistrationStatus({
               rel="noopener noreferrer"
             >
               Schedule a meeting
-              <ExternalLink className="size-4 ml-2" />
+              <ExternalLink className="size-4 ml-2" aria-hidden="true" />
             </a>
           </div>
         )}

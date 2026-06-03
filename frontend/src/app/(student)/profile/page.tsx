@@ -55,7 +55,7 @@ function ProfileField({
   label,
   value,
   isLoading,
-  className,
+  className = "flex-1 min-w-50",
 }: {
   label: string;
   value: React.ReactNode;
@@ -63,8 +63,8 @@ function ProfileField({
   className?: string;
 }) {
   return (
-    <div className={cn(!isLoading && "border-b", className)}>
-      <p className="subhead-content mb-2">{label}</p>
+    <div className={cn(!isLoading && "", className)}>
+      <p className="subhead-content mb-1">{label}</p>
       {isLoading ? (
         <Skeleton className="h-6 w-full" />
       ) : (
@@ -77,7 +77,7 @@ function ProfileField({
 function WarningNote({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex flex-row gap-2">
-      <TriangleAlert className="w-4 h-4 content" />
+      <TriangleAlert className="w-4 h-4 content-sub translate-y-0.5" />
       <p className="content-sub italic flex-1">{children}</p>
     </div>
   );
@@ -163,7 +163,7 @@ function StudentInfo() {
   if (!isEditing) {
     return (
       <div className="bg-card rounded-lg p-8 w-full flex flex-col">
-        <div className="mb-6 flex justify-between items-center">
+        <div className="flex justify-between items-center">
           <h1 className="page-title">Profile</h1>
           {!error && (
             <Button
@@ -173,7 +173,7 @@ function StudentInfo() {
               aria-label="Edit profile"
               disabled={isLoading || !student}
             >
-              <Pencil className="content" />
+              <Pencil className="size-5" />
             </Button>
           )}
         </div>
@@ -184,25 +184,22 @@ function StudentInfo() {
             <p className="text-sm">Please try again later.</p>
           </div>
         ) : (
-          <div>
+          <div className="mt-6 mb-8">
             <div className="flex flex-wrap gap-x-12 gap-y-6 mb-4">
               <ProfileField
                 label="First Name"
                 value={displayData.first_name}
                 isLoading={isLoading}
-                className="flex-1 min-w-50"
               />
               <ProfileField
                 label="Last Name"
                 value={displayData.last_name}
                 isLoading={isLoading}
-                className="flex-1 min-w-50"
               />
               <ProfileField
                 label="Phone Number"
                 value={formatPhoneNumber(displayData.phone_number) || "—"}
                 isLoading={isLoading}
-                className="flex-1 min-w-50"
               />
               <ProfileField
                 label="Contact Method"
@@ -213,14 +210,13 @@ function StudentInfo() {
                     : "—"
                 }
                 isLoading={isLoading}
-                className="flex-1 min-w-50"
               />
             </div>
             <ProfileField
               label={`${schoolYear} Address`}
               value={student?.residence?.location.formatted_address ?? "None"}
               isLoading={isLoading}
-              className="my-6"
+              className="mt-6"
             />
           </div>
         )}
@@ -257,17 +253,19 @@ function StudentInfo() {
         <FieldGroup>
           <FieldSet className="rounded-lg w-full flex flex-col">
             <div>
-              <div className="mb-3">
-                <div className="flex flex-wrap gap-x-12 gap-y-2">
-                  <div className="flex-1 min-w-50">
-                    <p className="subhead-content mb-2">First Name</p>
-                    <p className="content pb-2">{displayData.first_name}</p>
-                  </div>
+              <div className="mb-6">
+                <div className="flex flex-wrap gap-x-12 gap-y-2 mb-2">
+                  <ProfileField
+                    label="First Name"
+                    value={displayData.first_name}
+                    isLoading={false}
+                  />
 
-                  <div className="flex-1 min-w-50">
-                    <p className="subhead-content mb-2">Last Name</p>
-                    <p className="content pb-2">{displayData.last_name}</p>
-                  </div>
+                  <ProfileField
+                    label="Last Name"
+                    value={displayData.last_name}
+                    isLoading={false}
+                  />
                 </div>
                 <WarningNote>
                   Your name is associated with your Onyen
@@ -313,8 +311,8 @@ function StudentInfo() {
 
               {validAddress && (
                 <div className="mt-6">
-                  <p className="subhead-content">{schoolYear} Address</p>
-                  <p className="content my-2">
+                  <p className="subhead-content mb-1">{schoolYear} Address</p>
+                  <p className="content mb-2">
                     {student?.residence?.location.formatted_address}
                   </p>
 

@@ -71,12 +71,13 @@ export default function PaginationControls({
         className
       )}
     >
-      <div className="hidden @lg:flex items-center justify-start min-w-0">
+      <div className="flex items-center justify-start min-w-0">
         {isLoading ? (
-          <Skeleton className="h-4 w-36" />
+          <Skeleton className="h-4 w-22" />
         ) : (
           <span className="text-sm text-muted-foreground whitespace-nowrap">
-            Results {rangeStart} - {rangeEnd} of {totalCount}
+            <span className="hidden @xl:inline">Results </span>
+            {rangeStart} - {rangeEnd} of {totalCount}
           </span>
         )}
       </div>
@@ -97,6 +98,7 @@ export default function PaginationControls({
                     ? "pointer-events-none opacity-50"
                     : "cursor-pointer"
                 )}
+                labelClassName="hidden @lg:block"
               />
             </PaginationItem>
             {isLoading ? (
@@ -167,6 +169,7 @@ export default function PaginationControls({
                     ? "pointer-events-none opacity-50"
                     : "cursor-pointer"
                 )}
+                labelClassName="hidden @lg:block"
               />
             </PaginationItem>
           </PaginationContent>
@@ -174,7 +177,7 @@ export default function PaginationControls({
       </div>
 
       <div className="flex items-center justify-end gap-2">
-        <span className="hidden @md:inline text-sm text-muted-foreground whitespace-nowrap">
+        <span className="hidden @xl:inline text-sm text-muted-foreground whitespace-nowrap">
           Rows per page:
         </span>
         {isLoading ? (
