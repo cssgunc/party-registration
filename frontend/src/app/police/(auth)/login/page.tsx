@@ -2,23 +2,15 @@
 
 import AuthCard from "@/app/police/(auth)/_components/AuthCard";
 import ResendVerificationButton from "@/app/police/(auth)/_components/ResendVerificationButton";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/form/SubmitButton";
+import { PasswordField, TextField } from "@/components/form/fields";
 import { CardContent } from "@/components/ui/card";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+import { Form } from "@/components/ui/form";
 import { usePoliceLogin } from "@/lib/api/auth/auth.queries";
 import { clientEnv } from "@/lib/config/env.client";
 import { getErrorMessage } from "@/lib/errors";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { isAxiosError } from "axios";
-import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
@@ -46,7 +38,6 @@ function PoliceLoginForm() {
 
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [showResendVerification, setShowResendVerification] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<PoliceLoginFormValues>({
     resolver: zodResolver(policeLoginSchema),
@@ -99,60 +90,20 @@ function PoliceLoginForm() {
             }}
             className="space-y-5"
           >
-            <FormField
+            <TextField
               control={form.control}
               name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      type="email"
-                      placeholder={`officer@${clientEnv.NEXT_PUBLIC_CHPD_EMAIL_DOMAIN}`}
-                      autoComplete="email"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              label="Email"
+              type="email"
+              placeholder={`officer@${clientEnv.NEXT_PUBLIC_CHPD_EMAIL_DOMAIN}`}
+              autoComplete="email"
             />
 
-            <FormField
+            <PasswordField
               control={form.control}
               name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Password</FormLabel>
-                  <div className="relative">
-                    <FormControl>
-                      <Input
-                        {...field}
-                        type={showPassword ? "text" : "password"}
-                        autoComplete="current-password"
-                        className="pr-10"
-                      />
-                    </FormControl>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => setShowPassword((v) => !v)}
-                      className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      aria-label={
-                        showPassword ? "Hide password" : "Show password"
-                      }
-                    >
-                      {showPassword ? (
-                        <EyeOff className="size-4" />
-                      ) : (
-                        <Eye className="size-4" />
-                      )}
-                    </Button>
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
+              label="Password"
+              autoComplete="current-password"
             />
 
             {submissionError && (
@@ -165,13 +116,12 @@ function PoliceLoginForm() {
               <ResendVerificationButton email={email} />
             )}
 
-            <Button
-              type="submit"
+            <SubmitButton
+              pending={policeLoginMutation.isPending}
+              label="Sign In"
+              pendingLabel="Signing in..."
               className="w-full"
-              disabled={policeLoginMutation.isPending}
-            >
-              {policeLoginMutation.isPending ? "Signing in..." : "Sign In"}
-            </Button>
+            />
           </form>
         </Form>
 

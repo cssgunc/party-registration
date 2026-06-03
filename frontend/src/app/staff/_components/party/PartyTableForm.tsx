@@ -1,29 +1,24 @@
 "use client";
 
-import AddressSearch from "@/components/AddressSearch";
-import DatePicker from "@/components/DatePicker";
 import StudentSearch from "@/components/StudentSearch";
-import { Button } from "@/components/ui/button";
-import { FieldGroup, FieldLegend, FieldSet } from "@/components/ui/field";
+import { FormShell } from "@/components/form/FormShell";
 import {
-  Form,
+  AddressField,
+  DateField,
+  PhoneField,
+  SelectField,
+  TextField,
+} from "@/components/form/fields";
+import { FieldLegend, FieldSet } from "@/components/ui/field";
+import {
   FormControl,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { PARTY_RULE_MESSAGES, PartyDto } from "@/lib/api/party/party.types";
-import { formatPhoneNumberInput, phoneNumberSchema } from "@/lib/utils";
+import { phoneNumberSchema } from "@/lib/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { addBusinessDays, format, isAfter, startOfDay } from "date-fns";
 import { useSession } from "next-auth/react";
@@ -33,13 +28,9 @@ import * as z from "zod";
 
 export const createPartyTableFormSchema = (isAdmin: boolean) => {
   const partyDateSchema = isAdmin
-    ? z.date({
-        message: "Party date is required",
-      })
+    ? z.date({ message: "Party date is required" })
     : z
-        .date({
-          message: "Party date is required",
-        })
+        .date({ message: "Party date is required" })
         .refine(
           (date) =>
             isAfter(
@@ -118,258 +109,141 @@ export default function PartyTableForm({
         editData?.contact_two.contact_preference ?? undefined,
     },
   });
-  const isSubmitting = form.formState.isSubmitting;
-
-  const handleAddressSelect = (address: AutocompleteResult | null) => {
-    form.setValue("address", address?.formatted_address || "", {
-      shouldValidate: true,
-    });
-    form.setValue("placeId", address?.google_place_id || "", {
-      shouldValidate: true,
-    });
-  };
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)}>
-        <FieldGroup>
-          <FieldSet>
-            <FormField
-              control={form.control}
-              name="address"
-              render={({ field, fieldState }) => (
-                <FormItem>
-                  <FormLabel>Party Address</FormLabel>
-                  <FormControl>
-                    <AddressSearch
-                      value={field.value}
-                      initialSelection={
-                        editData?.location
-                          ? {
-                              formatted_address:
-                                editData.location.formatted_address,
-                              google_place_id:
-                                editData.location.google_place_id,
-                            }
-                          : null
+    <FormShell
+      form={form}
+      onSubmit={onSubmit}
+      submitLabel="Save Changes"
+      submissionError={submissionError}
+    >
+      <AddressField
+        control={form.control}
+        name="address"
+        label="Party Address"
+        placeholder="Search for the party address..."
+        chapelHillOnly
+        initialSelection={
+          editData?.location
+            ? {
+                formatted_address: editData.location.formatted_address,
+                google_place_id: editData.location.google_place_id,
+              }
+            : null
+        }
+        onSelect={(address) =>
+          form.setValue("placeId", address?.google_place_id || "", {
+            shouldValidate: true,
+          })
+        }
+      />
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <DateField
+          control={form.control}
+          name="partyDate"
+          label="Party Date"
+          dateFormat="MM/dd/yy"
+          forwardDate={true}
+          disabled={
+            isAdmin
+              ? undefined
+              : (date) =>
+                  !isAfter(
+                    startOfDay(date),
+                    addBusinessDays(startOfDay(new Date()), 1)
+                  )
+          }
+        />
+        <TextField
+          control={form.control}
+          name="partyTime"
+          label="Party Time"
+          type="time"
+          autoComplete="off"
+        />
+      </div>
+
+      <FormField
+        control={form.control}
+        name="contactOneStudentId"
+        render={({ field, fieldState }) => (
+          <FormItem>
+            <FormLabel>First Contact</FormLabel>
+            <FormControl>
+              <StudentSearch
+                initialSelection={
+                  editData?.contact_one
+                    ? {
+                        student_id: editData.contact_one.id,
+                        first_name: editData.contact_one.first_name,
+                        last_name: editData.contact_one.last_name,
+                        matched_field_name: "email",
+                        matched_field_value: editData.contact_one.email,
                       }
-                      onSelect={handleAddressSelect}
-                      placeholder="Search for the party address..."
-                      className="w-full"
-                      error={fieldState.error?.message}
-                      chapelHillOnly
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="partyDate"
-                render={({ field, fieldState }) => (
-                  <FormItem>
-                    <FormLabel>Party Date</FormLabel>
-                    <FormControl>
-                      <DatePicker
-                        dateFormat="MM/dd/yy"
-                        value={field.value ?? null}
-                        onChange={field.onChange}
-                        aria-invalid={fieldState.invalid}
-                        forwardDate={true}
-                        disabled={
-                          isAdmin
-                            ? undefined
-                            : (date) =>
-                                !isAfter(
-                                  startOfDay(date),
-                                  addBusinessDays(startOfDay(new Date()), 1)
-                                )
-                        }
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                    : null
+                }
+                onSelect={(student) =>
+                  field.onChange(student?.student_id ?? undefined)
+                }
+                placeholder="Search by name, PID, email, onyen, etc..."
+                error={fieldState.error?.message}
               />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
 
-              <FormField
-                control={form.control}
-                name="partyTime"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Party Time</FormLabel>
-                    <FormControl>
-                      <Input {...field} type="time" autoComplete="off" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+      <FieldSet className="pt-2">
+        <FieldLegend className="font-semibold text-foreground">
+          Second Contact Information
+        </FieldLegend>
 
-            <FormField
-              control={form.control}
-              name="contactOneStudentId"
-              render={({ field, fieldState }) => (
-                <FormItem>
-                  <FormLabel>First Contact</FormLabel>
-                  <FormControl>
-                    <StudentSearch
-                      initialSelection={
-                        editData?.contact_one
-                          ? {
-                              student_id: editData.contact_one.id,
-                              first_name: editData.contact_one.first_name,
-                              last_name: editData.contact_one.last_name,
-                              matched_field_name: "email",
-                              matched_field_value: editData.contact_one.email,
-                            }
-                          : null
-                      }
-                      onSelect={(student) =>
-                        field.onChange(student?.student_id ?? undefined)
-                      }
-                      placeholder="Search by name, PID, email, onyen, etc..."
-                      className="w-full"
-                      error={fieldState.error?.message}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+        <TextField
+          control={form.control}
+          name="contactTwoEmail"
+          label="Contact Email"
+          type="email"
+          placeholder="student@unc.edu"
+          autoComplete="off"
+        />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <TextField
+            control={form.control}
+            name="contactTwoFirstName"
+            label="First Name"
+            type="text"
+            placeholder="John"
+            autoComplete="off"
+          />
+          <TextField
+            control={form.control}
+            name="contactTwoLastName"
+            label="Last Name"
+            type="text"
+            placeholder="Doe"
+            autoComplete="off"
+          />
+        </div>
 
-            <FieldSet className="pt-2">
-              <FieldLegend className="font-semibold text-foreground">
-                Second Contact Information
-              </FieldLegend>
+        <PhoneField
+          control={form.control}
+          name="contactTwoPhoneNumber"
+          label="Phone Number"
+        />
 
-              <FormField
-                control={form.control}
-                name="contactTwoEmail"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Contact Email</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        type="email"
-                        placeholder="student@unc.edu"
-                        autoComplete="off"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="contactTwoFirstName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>First Name</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          type="text"
-                          placeholder="John"
-                          autoComplete="off"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="contactTwoLastName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Last Name</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          type="text"
-                          placeholder="Doe"
-                          autoComplete="off"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <FormField
-                control={form.control}
-                name="contactTwoPhoneNumber"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Phone Number</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        type="tel"
-                        placeholder="(123) 456-7890"
-                        value={formatPhoneNumberInput(field.value ?? "")}
-                        onChange={(e) =>
-                          field.onChange(
-                            e.target.value.replace(/\D/g, "").slice(0, 10)
-                          )
-                        }
-                        maxLength={14}
-                        autoComplete="off"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="contactTwoPreference"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Contact Preference</FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select preference" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="call">Call</SelectItem>
-                        <SelectItem value="text">Text</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </FieldSet>
-
-            <div className="space-y-3 *:w-full">
-              {submissionError && (
-                <div
-                  className="rounded-md bg-destructive/10 p-3 text-sm text-destructive"
-                  role="alert"
-                >
-                  {submissionError}
-                </div>
-              )}
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Submitting..." : "Save Changes"}
-              </Button>
-            </div>
-          </FieldSet>
-        </FieldGroup>
-      </form>
-    </Form>
+        <SelectField
+          control={form.control}
+          name="contactTwoPreference"
+          label="Contact Preference"
+          placeholder="Select preference"
+          options={[
+            { value: "call", label: "Call" },
+            { value: "text", label: "Text" },
+          ]}
+        />
+      </FieldSet>
+    </FormShell>
   );
 }

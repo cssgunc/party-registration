@@ -1,32 +1,20 @@
 "use client";
 
-import DatePicker from "@/components/DatePicker";
-import { Button } from "@/components/ui/button";
+import { FormShell } from "@/components/form/FormShell";
+import {
+  DateField,
+  SelectField,
+  TextField,
+  TextareaField,
+} from "@/components/form/fields";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import {
   INCIDENT_SEVERITIES,
   INCIDENT_SEVERITY_LABELS,
@@ -35,7 +23,6 @@ import {
   NestedIncidentDto,
 } from "@/lib/api/incident/incident.types";
 import { LocationDto } from "@/lib/api/location/location.types";
-import { cn } from "@/lib/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { useForm } from "react-hook-form";
@@ -102,7 +89,7 @@ export default function IncidentDialog({
       incident_datetime,
       description,
       severity,
-      reference_id: reference_id ?? null,
+      reference_id: reference_id || null,
     });
   };
 
@@ -121,128 +108,67 @@ export default function IncidentDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <Form {...form}>
-          <form className="space-y-4" onSubmit={form.handleSubmit(handleValid)}>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="incident-address">Selected Address</Label>
-              <Input
-                id="incident-address"
-                value={location?.formatted_address || formattedAddress || ""}
-                disabled
-              />
-            </div>
+        <FormShell
+          form={form}
+          onSubmit={handleValid}
+          submitLabel="Save Changes"
+          pendingLabel="Saving changes..."
+          pending={isSubmitting}
+          submitClassName="self-center"
+        >
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="incident-address">Selected Address</Label>
+            <Input
+              id="incident-address"
+              value={location?.formatted_address || formattedAddress || ""}
+              disabled
+            />
+          </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="severity"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Incident Type</FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <FormControl>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Enter incident type" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {INCIDENT_SEVERITIES.map((s) => (
-                          <SelectItem key={s} value={s}>
-                            {INCIDENT_SEVERITY_LABELS[s]}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="reference_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Reference ID</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        value={field.value ?? ""}
-                        onChange={(e) =>
-                          field.onChange(e.target.value || undefined)
-                        }
-                        placeholder="Optional"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="date"
-                render={({ field, fieldState }) => (
-                  <FormItem>
-                    <FormLabel>Date</FormLabel>
-                    <FormControl>
-                      <DatePicker
-                        value={field.value}
-                        onChange={(date) => field.onChange(date ?? new Date())}
-                        aria-invalid={fieldState.invalid}
-                        placeholder="Pick a date"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="time"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Incident Time</FormLabel>
-                    <FormControl>
-                      <Input {...field} type="time" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <FormField
+          <div className="grid grid-cols-2 gap-4">
+            <SelectField
               control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      {...field}
-                      rows={4}
-                      className={cn(
-                        "shadow-xs input-shadow transition-[color,box-shadow] focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:ring-destructive/20"
-                      )}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Optional details about the incident.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
+              name="severity"
+              label="Incident Type"
+              triggerClassName="w-full"
+              placeholder="Enter incident type"
+              options={INCIDENT_SEVERITIES.map((s) => ({
+                value: s,
+                label: INCIDENT_SEVERITY_LABELS[s],
+              }))}
             />
 
-            <div className="flex justify-center gap-2">
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Saving changes..." : "Save Changes"}
-              </Button>
-            </div>
-          </form>
-        </Form>
+            <TextField
+              control={form.control}
+              name="reference_id"
+              label="Reference ID"
+              placeholder="Optional"
+            />
+
+            <DateField
+              control={form.control}
+              name="date"
+              label="Date"
+              placeholder="Pick a date"
+            />
+
+            <TextField
+              control={form.control}
+              name="time"
+              label="Incident Time"
+              type="time"
+            />
+          </div>
+
+          <TextareaField
+            control={form.control}
+            name="description"
+            label="Description"
+            rows={4}
+            textareaClassName="shadow-xs input-shadow transition-[color,box-shadow] focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:ring-destructive/20"
+            description="Optional details about the incident."
+          />
+        </FormShell>
       </DialogContent>
     </Dialog>
   );

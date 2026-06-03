@@ -33,9 +33,8 @@ function Sidebar() {
         {...(description ? {} : { "aria-describedby": undefined })}
         className="w-full max-w-[25em] gap-0 bg-card p-0 sm:max-w-[25em]"
       >
-        <SheetHeader className="mb-2 gap-0 px-6 pb-2 pt-6">
-          {/* pr leaves room for the built-in close button (top-right) */}
-          <div className="flex items-center justify-between pr-8">
+        <SheetHeader className="mb-2 gap-0 px-6 pb-2 pt-12">
+          <div className="flex items-center justify-between">
             <SheetTitle className="subhead-title text-foreground">
               {title ?? ""}
             </SheetTitle>

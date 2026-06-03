@@ -1,7 +1,13 @@
 "use client";
 
-import AddressSearch from "@/components/AddressSearch";
-import DatePicker from "@/components/DatePicker";
+import { SubmitButton } from "@/components/form/SubmitButton";
+import {
+  AddressField,
+  DateField,
+  PhoneField,
+  SelectField,
+  TextField,
+} from "@/components/form/fields";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,23 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Field, FieldGroup, FieldLabel, FieldSet } from "@/components/ui/field";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Form } from "@/components/ui/form";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
@@ -229,13 +219,6 @@ export default function PartyRegistrationForm({
 
   const { schoolYear, changeDate } = getAcademicYearLabels();
 
-  const handleAddressSelect = (address: AutocompleteResult | null) => {
-    form.setValue("address", address?.formatted_address || "", {
-      shouldValidate: true,
-    });
-    setPlaceId(address?.google_place_id || "");
-  };
-
   // Build initial address object for AddressSearch if we have prefilled values
   const initialAddress: AutocompleteResult | undefined =
     initialValues?.address && initialValues?.placeId
@@ -257,47 +240,29 @@ export default function PartyRegistrationForm({
           <FieldSet>
             <div className="flex flex-col gap-4 lg:gap-6">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:gap-8">
-                <FormField
+                <DateField
                   control={form.control}
                   name="partyDate"
-                  render={({ field, fieldState }) => (
-                    <FormItem>
-                      <FormLabel className="content-bold">Party Date</FormLabel>
-                      <FormControl>
-                        <DatePicker
-                          value={field.value ?? null}
-                          onChange={field.onChange}
-                          disabled={(date) =>
-                            !isAfter(
-                              startOfDay(date),
-                              addBusinessDays(startOfDay(new Date()), 1)
-                            )
-                          }
-                          forwardDate={true}
-                          aria-invalid={fieldState.invalid}
-                          inputClassName="content"
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Must be at least 2 business days from today
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  label="Party Date"
+                  labelClassName="content-bold"
+                  inputClassName="content"
+                  forwardDate={true}
+                  description="Must be at least 2 business days from today"
+                  disabled={(date) =>
+                    !isAfter(
+                      startOfDay(date),
+                      addBusinessDays(startOfDay(new Date()), 1)
+                    )
+                  }
                 />
 
-                <FormField
+                <TextField
                   control={form.control}
                   name="partyTime"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="content-bold">Party Time</FormLabel>
-                      <FormControl>
-                        <Input {...field} type="time" className="content" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  label="Party Time"
+                  labelClassName="content-bold"
+                  inputClassName="content"
+                  type="time"
                 />
               </div>
 
@@ -309,32 +274,24 @@ export default function PartyRegistrationForm({
                   <Skeleton className="h-10 w-full" />
                 </Field>
               ) : !validResidence ? (
-                <FormField
+                <AddressField
                   control={form.control}
                   name="address"
-                  render={({ field, fieldState }) => (
-                    <FormItem>
-                      <FormLabel className="content-bold">
-                        Party Address
-                      </FormLabel>
-                      <FormControl>
-                        <AddressSearch
-                          value={field.value}
-                          onSelect={handleAddressSelect}
-                          locationService={locationService}
-                          placeholder="Search for the party address..."
-                          className="w-full"
-                          error={fieldState.error?.message}
-                          initialSelection={initialAddress}
-                        />
-                      </FormControl>
-                      <FormDescription className="content-sub italic">
-                        This will be added to your profile as your {schoolYear}{" "}
-                        location. You may change it after {changeDate}.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  label="Party Address"
+                  labelClassName="content-bold"
+                  placeholder="Search for the party address..."
+                  locationService={locationService}
+                  initialSelection={initialAddress}
+                  onSelect={(address) =>
+                    setPlaceId(address?.google_place_id || "")
+                  }
+                  descriptionClassName="content-sub italic"
+                  description={
+                    <>
+                      This will be added to your profile as your {schoolYear}{" "}
+                      location. You may change it after {changeDate}.
+                    </>
+                  }
                 />
               ) : (
                 <Field className="col-span-2 gap-1">
@@ -345,15 +302,14 @@ export default function PartyRegistrationForm({
                     {student?.residence?.location.formatted_address}
                   </p>
                   <p className="content-sub italic">
-                    You cannot change your address until {changeDate}. If you
-                    are experiencing hardship, contact{" "}
+                    You cannot change your address until {changeDate}. For
+                    extraneous circumstances, contact{" "}
                     <a
                       href={`mailto:${clientEnv.NEXT_PUBLIC_CONTACT_EMAIL}`}
                       className="underline"
                     >
                       {clientEnv.NEXT_PUBLIC_CONTACT_EMAIL}
                     </a>{" "}
-                    for changes
                   </p>
                 </Field>
               )}
@@ -402,31 +358,13 @@ export default function PartyRegistrationForm({
                     </p>
                   </Field>
                 ) : (
-                  <FormField
+                  <PhoneField
                     control={form.control}
                     name="studentPhoneNumber"
-                    render={({ field }) => (
-                      <FormItem className="gap-1">
-                        <FormLabel className="content-bold">
-                          Phone Number
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            type="tel"
-                            placeholder="(123) 456-7890"
-                            value={formatPhoneNumberInput(field.value ?? "")}
-                            onChange={(e) =>
-                              field.onChange(
-                                e.target.value.replace(/\D/g, "").slice(0, 10)
-                              )
-                            }
-                            className="content"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                    label="Phone Number"
+                    labelClassName="content-bold"
+                    inputClassName="content"
+                    className="gap-1"
                   />
                 )}
                 {isStudentLoading ? (
@@ -446,35 +384,19 @@ export default function PartyRegistrationForm({
                     </p>
                   </Field>
                 ) : (
-                  <FormField
+                  <SelectField
                     control={form.control}
                     name="studentContactPreference"
-                    render={({ field }) => (
-                      <FormItem className="gap-1">
-                        <FormLabel className="content-bold">
-                          Contact Preference
-                        </FormLabel>
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                        >
-                          <FormControl>
-                            <SelectTrigger className="content">
-                              <SelectValue placeholder="Select your preference" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="call" className="content">
-                              Call
-                            </SelectItem>
-                            <SelectItem value="text" className="content">
-                              Text
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                    label="Contact Preference"
+                    labelClassName="content-bold"
+                    triggerClassName="content"
+                    itemClassName="content"
+                    placeholder="Select your preference"
+                    className="gap-1"
+                    options={[
+                      { value: "call", label: "Call" },
+                      { value: "text", label: "Text" },
+                    ]}
                   />
                 )}
                 <Field className="gap-1">
@@ -491,113 +413,56 @@ export default function PartyRegistrationForm({
             <div className="flex flex-col gap-4 lg:gap-6">
               <h2 className="subhead-content">Second Contact Information</h2>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
-                <FormField
+                <TextField
                   control={form.control}
                   name="secondContactFirstName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="content-bold">First Name</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="" className="content" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  label="First Name"
+                  labelClassName="content-bold"
+                  inputClassName="content"
+                  placeholder=""
                 />
 
-                <FormField
+                <TextField
                   control={form.control}
                   name="secondContactLastName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="content-bold">Last Name</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="" className="content" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  label="Last Name"
+                  labelClassName="content-bold"
+                  inputClassName="content"
+                  placeholder=""
                 />
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
-                <FormField
+                <PhoneField
                   control={form.control}
                   name="phoneNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="content-bold">
-                        Phone Number
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          type="tel"
-                          placeholder="(123) 456-7890"
-                          value={formatPhoneNumberInput(field.value ?? "")}
-                          onChange={(e) =>
-                            field.onChange(
-                              e.target.value.replace(/\D/g, "").slice(0, 10)
-                            )
-                          }
-                          className="content"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  label="Phone Number"
+                  labelClassName="content-bold"
+                  inputClassName="content"
                 />
 
-                <FormField
+                <SelectField
                   control={form.control}
                   name="contactPreference"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="content-bold">
-                        Contact Preference
-                      </FormLabel>
-                      <Select
-                        value={field.value}
-                        onValueChange={field.onChange}
-                      >
-                        <FormControl>
-                          <SelectTrigger className="content">
-                            <SelectValue placeholder="Select your preference" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="call" className="content">
-                            Call
-                          </SelectItem>
-                          <SelectItem value="text" className="content">
-                            Text
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  label="Contact Preference"
+                  labelClassName="content-bold"
+                  triggerClassName="content"
+                  itemClassName="content"
+                  placeholder="Select your preference"
+                  options={[
+                    { value: "call", label: "Call" },
+                    { value: "text", label: "Text" },
+                  ]}
                 />
               </div>
 
-              <FormField
+              <TextField
                 control={form.control}
                 name="contactTwoEmail"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="content-bold">
-                      Contact Email
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        type="email"
-                        placeholder="student@unc.edu"
-                        className="content"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                label="Contact Email"
+                labelClassName="content-bold"
+                inputClassName="content"
+                type="email"
+                placeholder="student@unc.edu"
               />
             </div>
 
@@ -614,9 +479,11 @@ export default function PartyRegistrationForm({
                   {submissionError}
                 </div>
               )}
-              <Button type="submit" disabled={isSubmitting} className="w-fit!">
-                {isSubmitting ? "Submitting..." : "Submit Event"}
-              </Button>
+              <SubmitButton
+                pending={isSubmitting}
+                label="Submit Event"
+                className="w-fit!"
+              />
             </Field>
           </FieldSet>
         </FieldGroup>

@@ -1,25 +1,12 @@
 "use client";
 
 import AddressSearch from "@/components/AddressSearch";
+import { SubmitButton } from "@/components/form/SubmitButton";
+import { PhoneField, SelectField } from "@/components/form/fields";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { FieldGroup, FieldSet } from "@/components/ui/field";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Form } from "@/components/ui/form";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
 import {
@@ -33,7 +20,6 @@ import { getErrorMessage } from "@/lib/errors";
 import {
   cn,
   formatPhoneNumber,
-  formatPhoneNumberInput,
   getAcademicYearLabels,
   isFromThisSchoolYear,
   phoneNumberSchema,
@@ -289,62 +275,28 @@ function StudentInfo() {
               </div>
 
               <div className="flex flex-wrap gap-x-12 gap-y-4">
-                <FormField
+                <PhoneField
                   control={form.control}
                   name="phone_number"
-                  render={({ field }) => (
-                    <FormItem className="flex-1 min-w-50">
-                      <FormLabel className="subhead-content">
-                        Phone Number
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          type="tel"
-                          placeholder="(123) 456-7890"
-                          value={formatPhoneNumberInput(field.value ?? "")}
-                          onChange={(e) =>
-                            field.onChange(
-                              e.target.value.replace(/\D/g, "").slice(0, 10)
-                            )
-                          }
-                          className="content"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  label="Phone Number"
+                  labelClassName="subhead-content"
+                  inputClassName="content"
+                  className="flex-1 min-w-50"
                 />
 
-                <FormField
+                <SelectField
                   control={form.control}
                   name="contact_preference"
-                  render={({ field }) => (
-                    <FormItem className="flex-1 min-w-50">
-                      <FormLabel className="subhead-content">
-                        Contact Method
-                      </FormLabel>
-                      <Select
-                        value={field.value}
-                        onValueChange={field.onChange}
-                      >
-                        <FormControl>
-                          <SelectTrigger className="content">
-                            <SelectValue placeholder="Select your preference" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="call" className="content">
-                            Call
-                          </SelectItem>
-                          <SelectItem value="text" className="content">
-                            Text
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  label="Contact Method"
+                  labelClassName="subhead-content"
+                  triggerClassName="content"
+                  itemClassName="content"
+                  placeholder="Select your preference"
+                  className="flex-1 min-w-50"
+                  options={[
+                    { value: "call", label: "Call" },
+                    { value: "text", label: "Text" },
+                  ]}
                 />
                 {!validAddress && (
                   <div className="basis-full flex flex-col gap-2">
@@ -390,9 +342,11 @@ function StudentInfo() {
               <Button type="button" onClick={handleCancel}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Saving..." : "Save"}
-              </Button>
+              <SubmitButton
+                pending={isSubmitting}
+                label="Save"
+                pendingLabel="Saving..."
+              />
             </div>
           </FieldSet>
         </FieldGroup>
