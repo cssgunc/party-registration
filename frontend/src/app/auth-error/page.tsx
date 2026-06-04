@@ -48,7 +48,7 @@ export default async function AuthErrorPage({ searchParams }: Props) {
   const isPermanent = error === "AccessDenied" || error === "MissingEmail";
 
   return (
-    <main className="flex h-full items-center justify-center px-4">
+    <div className="flex h-full items-center justify-center px-4">
       <div className="flex flex-col items-center text-center max-w-md gap-4">
         <TriangleAlert className="size-12 text-destructive" />
         <div className="space-y-2">
@@ -68,6 +68,6 @@ export default async function AuthErrorPage({ searchParams }: Props) {
           </Button>
         )}
       </div>
-    </main>
+    </div>
   );
 }

@@ -19,7 +19,7 @@ export default function Footer() {
   const showContact = isStudentAreaPath(pathname ?? "");
 
   return (
-    <div
+    <footer
       className={`${variants[VARIANT]} px-6 py-2 flex justify-between items-center text-xs shrink-0`}
     >
       {showContact ? (
@@ -38,6 +38,6 @@ export default function Footer() {
       <span className="flex items-center gap-1">
         Made with <Heart className="size-3 fill-current" /> by CS+SG
       </span>
-    </div>
+    </footer>
   );
 }

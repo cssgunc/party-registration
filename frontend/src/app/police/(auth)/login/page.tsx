@@ -2,18 +2,19 @@
 
 import AuthCard from "@/app/police/(auth)/_components/AuthCard";
 import ResendVerificationButton from "@/app/police/(auth)/_components/ResendVerificationButton";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/form/SubmitButton";
+import { PasswordField, TextField } from "@/components/form/fields";
 import { CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Form } from "@/components/ui/form";
 import { usePoliceLogin } from "@/lib/api/auth/auth.queries";
 import { clientEnv } from "@/lib/config/env.client";
 import { getErrorMessage } from "@/lib/errors";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { isAxiosError } from "axios";
-import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
+import { useForm } from "react-hook-form";
 import * as z from "zod";
 
 const policeLoginSchema = z.object({
@@ -35,14 +36,17 @@ function PoliceLoginForm() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/police";
 
-  const [formData, setFormData] = useState<Partial<PoliceLoginFormValues>>({
-    email: "",
-    password: "",
-  });
-  const [errors, setErrors] = useState<Record<string, string>>({});
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [showResendVerification, setShowResendVerification] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+
+  const form = useForm<PoliceLoginFormValues>({
+    resolver: zodResolver(policeLoginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+  const email = form.watch("email");
 
   const policeLoginMutation = usePoliceLogin({
     onSuccess: () => {
@@ -70,108 +74,56 @@ function PoliceLoginForm() {
     },
   });
 
-  const updateField = <K extends keyof PoliceLoginFormValues>(
-    field: K,
-    value: PoliceLoginFormValues[K]
-  ) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors((prev) => {
-        const next = { ...prev };
-        delete next[field];
-        return next;
-      });
-    }
+  const handleValid = (data: PoliceLoginFormValues) => {
+    policeLoginMutation.mutate(data);
   };
-
-  function handleSubmit(e: { preventDefault: () => void }) {
-    e.preventDefault();
-    setSubmissionError(null);
-    setShowResendVerification(false);
-
-    const result = policeLoginSchema.safeParse(formData);
-    if (!result.success) {
-      const fieldErrors: Record<string, string> = {};
-      result.error.issues.forEach((issue) => {
-        if (issue.path[0]) {
-          fieldErrors[issue.path[0].toString()] = issue.message;
-        }
-      });
-      setErrors(fieldErrors);
-      return;
-    }
-
-    policeLoginMutation.mutate(result.data);
-  }
 
   return (
     <AuthCard title="Police Sign In">
       <CardContent className="px-10 pb-6">
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
+        <Form {...form}>
+          <form
+            onSubmit={(e) => {
+              setSubmissionError(null);
+              setShowResendVerification(false);
+              form.handleSubmit(handleValid)(e);
+            }}
+            className="space-y-5"
+          >
+            <TextField
+              control={form.control}
+              name="email"
+              label="Email"
               type="email"
               placeholder={`officer@${clientEnv.NEXT_PUBLIC_CHPD_EMAIL_DOMAIN}`}
-              value={formData.email}
-              onChange={(e) => updateField("email", e.target.value)}
               autoComplete="email"
-              aria-invalid={!!errors.email}
             />
-            {errors.email && (
-              <p className="text-sm text-destructive">{errors.email}</p>
+
+            <PasswordField
+              control={form.control}
+              name="password"
+              label="Password"
+              autoComplete="current-password"
+            />
+
+            {submissionError && (
+              <p className="text-sm text-destructive text-center">
+                {submissionError}
+              </p>
             )}
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <div className="relative">
-              <Input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                value={formData.password}
-                onChange={(e) => updateField("password", e.target.value)}
-                autoComplete="current-password"
-                aria-invalid={!!errors.password}
-                className="pr-10"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-muted-foreground hover:text-foreground"
-                aria-label={showPassword ? "Hide password" : "Show password"}
-              >
-                {showPassword ? (
-                  <EyeOff className="size-4" />
-                ) : (
-                  <Eye className="size-4" />
-                )}
-              </button>
-            </div>
-            {errors.password && (
-              <p className="text-sm text-destructive">{errors.password}</p>
+            {showResendVerification && email && (
+              <ResendVerificationButton email={email} />
             )}
-          </div>
 
-          {submissionError && (
-            <p className="text-sm text-destructive text-center">
-              {submissionError}
-            </p>
-          )}
-
-          {showResendVerification && formData.email && (
-            <ResendVerificationButton email={formData.email} />
-          )}
-
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={policeLoginMutation.isPending}
-          >
-            {policeLoginMutation.isPending ? "Signing in..." : "Sign In"}
-          </Button>
-        </form>
+            <SubmitButton
+              pending={policeLoginMutation.isPending}
+              label="Sign In"
+              pendingLabel="Signing in..."
+              className="w-full"
+            />
+          </form>
+        </Form>
 
         <p className="mt-4 text-center text-sm text-muted-foreground">
           Need an account?{" "}

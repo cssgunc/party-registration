@@ -101,8 +101,12 @@ function PaginationLast({
 function PaginationPrevious({
   className,
   text = "Previous",
+  labelClassName = "hidden sm:block",
   ...props
-}: React.ComponentProps<typeof PaginationLink> & { text?: string }) {
+}: React.ComponentProps<typeof PaginationLink> & {
+  text?: string;
+  labelClassName?: string;
+}) {
   return (
     <PaginationLink
       aria-label="Go to previous page"
@@ -111,7 +115,7 @@ function PaginationPrevious({
       {...props}
     >
       <ChevronLeftIcon data-icon="inline-start" className="cn-rtl-flip" />
-      <span className="hidden sm:block">{text}</span>
+      <span className={labelClassName}>{text}</span>
     </PaginationLink>
   );
 }
@@ -119,8 +123,12 @@ function PaginationPrevious({
 function PaginationNext({
   className,
   text = "Next",
+  labelClassName = "hidden sm:block",
   ...props
-}: React.ComponentProps<typeof PaginationLink> & { text?: string }) {
+}: React.ComponentProps<typeof PaginationLink> & {
+  text?: string;
+  labelClassName?: string;
+}) {
   return (
     <PaginationLink
       aria-label="Go to next page"
@@ -128,7 +136,7 @@ function PaginationNext({
       className={cn("pr-1.5!", className)}
       {...props}
     >
-      <span className="hidden sm:block">{text}</span>
+      <span className={labelClassName}>{text}</span>
       <ChevronRightIcon data-icon="inline-end" className="cn-rtl-flip" />
     </PaginationLink>
   );
