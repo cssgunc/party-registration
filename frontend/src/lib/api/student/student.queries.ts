@@ -6,7 +6,7 @@ import {
   ResidenceUpdateWithDisplayDto,
   STUDENTS_KEY,
   StudentData,
-  StudentDto,
+  StudentSelfDto,
 } from "@/lib/api/student/student.types";
 import { OptimisticMutationOptions } from "@/lib/shared";
 import {
@@ -23,8 +23,8 @@ const UNIQUE_STUDENT_FIELDS = [
   "phone_number",
 ] as const satisfies (keyof StudentData)[];
 
-export function useCurrentStudent(options?: UseQueryOptions<StudentDto>) {
-  return useQuery<StudentDto, Error>({
+export function useCurrentStudent(options?: UseQueryOptions<StudentSelfDto>) {
+  return useQuery<StudentSelfDto, Error>({
     queryKey: CURRENT_STUDENT_KEY,
     queryFn: () => studentService.getCurrentStudent(),
     ...options,
@@ -32,7 +32,7 @@ export function useCurrentStudent(options?: UseQueryOptions<StudentDto>) {
 }
 
 export function useUpdateStudent(
-  options?: OptimisticMutationOptions<StudentDto, Error, StudentData>
+  options?: OptimisticMutationOptions<StudentSelfDto, Error, StudentData>
 ) {
   const queryClient = useQueryClient();
 
@@ -44,7 +44,7 @@ export function useUpdateStudent(
       await queryClient.cancelQueries({ queryKey: STUDENTS_KEY });
 
       const previous =
-        queryClient.getQueryData<StudentDto>(CURRENT_STUDENT_KEY);
+        queryClient.getQueryData<StudentSelfDto>(CURRENT_STUDENT_KEY);
 
       // Only optimistically update if no unique fields are changing
       const hasUniqueFieldChange = UNIQUE_STUDENT_FIELDS.some(
@@ -53,7 +53,7 @@ export function useUpdateStudent(
 
       if (!hasUniqueFieldChange && previous) {
         // Safe to optimistically update - only non-unique fields changed
-        queryClient.setQueryData<StudentDto>(CURRENT_STUDENT_KEY, {
+        queryClient.setQueryData<StudentSelfDto>(CURRENT_STUDENT_KEY, {
           ...previous,
           ...data,
         });
@@ -87,15 +87,15 @@ export function useUpdateResidence() {
     LocationDto,
     Error,
     ResidenceUpdateWithDisplayDto,
-    { previous: StudentDto | undefined }
+    { previous: StudentSelfDto | undefined }
   >({
     mutationFn: ({ residence_place_id }) =>
       studentService.updateResidence({ residence_place_id }),
     onMutate: async (variables) => {
       await queryClient.cancelQueries({ queryKey: CURRENT_STUDENT_KEY });
       const previous =
-        queryClient.getQueryData<StudentDto>(CURRENT_STUDENT_KEY);
-      queryClient.setQueryData<StudentDto>(CURRENT_STUDENT_KEY, (old) =>
+        queryClient.getQueryData<StudentSelfDto>(CURRENT_STUDENT_KEY);
+      queryClient.setQueryData<StudentSelfDto>(CURRENT_STUDENT_KEY, (old) =>
         old
           ? {
               ...old,

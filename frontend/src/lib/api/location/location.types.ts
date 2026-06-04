@@ -3,7 +3,10 @@ import {
   type IncidentSeverity,
   type NestedIncidentDto,
   type NestedIncidentDtoBackend,
+  type NestedIncidentStudentDto,
+  type NestedIncidentStudentDtoBackend,
   convertNestedIncident,
+  convertNestedIncidentStudent,
 } from "../incident/incident.types";
 
 /**
@@ -81,6 +84,34 @@ function convertLocation(backend: LocationDtoBackend): LocationDto {
 }
 
 /**
+ * Location DTO for student self-view — incidents restricted to type and date/time.
+ */
+type LocationStudentDto = LocationData & {
+  id: number;
+  incidents: NestedIncidentStudentDto[];
+};
+
+type LocationStudentDtoBackend = Omit<
+  LocationStudentDto,
+  "hold_expiration" | "incidents"
+> & {
+  hold_expiration: string | null;
+  incidents: NestedIncidentStudentDtoBackend[];
+};
+
+function convertLocationStudent(
+  backend: LocationStudentDtoBackend
+): LocationStudentDto {
+  return {
+    ...backend,
+    hold_expiration: backend.hold_expiration
+      ? new Date(backend.hold_expiration)
+      : null,
+    incidents: backend.incidents.map(convertNestedIncidentStudent),
+  };
+}
+
+/**
  * Input for creating/updating a location
  */
 type LocationCreate = {
@@ -99,8 +130,12 @@ export type {
   LocationData,
   LocationDto,
   LocationDtoBackend,
+  LocationStudentDto,
+  LocationStudentDtoBackend,
   NestedIncidentDto,
   NestedIncidentDtoBackend,
+  NestedIncidentStudentDto,
+  NestedIncidentStudentDtoBackend,
 };
 
 /**
@@ -136,6 +171,7 @@ function getCitationCount(location: LocationDto): number {
 
 export {
   convertLocation,
+  convertLocationStudent,
   countIncidentsBySeverity,
   getCitationCount,
   getInPersonWarningCount,

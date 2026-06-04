@@ -21,6 +21,7 @@ from .student_model import (
     ResidenceUpdateDto,
     SelfUpdateStudentDto,
     StudentDto,
+    StudentSelfDto,
     StudentSuggestionDto,
     StudentUpdateDto,
 )
@@ -34,8 +35,8 @@ _OPENAPI_PARAMS = get_paginated_openapi_params(StudentService.QUERY_FIELDS)
 async def get_me(
     student_service: StudentService = Depends(),
     user: AuthPrincipal = Depends(authenticate_by_role("student", "staff", "admin")),
-) -> StudentDto:
-    return await student_service.get_student_me_dto(user.id)
+) -> StudentSelfDto:
+    return await student_service.get_student_me_self_dto(user.id)
 
 
 @student_router.put("/me")
@@ -43,7 +44,7 @@ async def update_me(
     data: SelfUpdateStudentDto,
     student_service: StudentService = Depends(),
     user: AuthPrincipal = Depends(authenticate_by_role("student", "staff", "admin")),
-) -> StudentDto:
+) -> StudentSelfDto:
     return await student_service.update_student_self(user.id, data)
 
 

@@ -10,6 +10,7 @@ from src.modules.student.student_model import (
     SelfUpdateStudentDto,
     StudentData,
     StudentDto,
+    StudentSelfDto,
     StudentSuggestionDto,
     StudentUpdateDto,
 )
@@ -39,7 +40,12 @@ class StudentTestUtils(
     ResourceTestUtils[
         StudentEntity,
         StudentData,
-        StudentDto | StudentUpdateDto | SelfUpdateStudentDto | ContactDto | ContactPoliceDto,
+        StudentDto
+        | StudentSelfDto
+        | StudentUpdateDto
+        | SelfUpdateStudentDto
+        | ContactDto
+        | ContactPoliceDto,
     ]
 ):
     def __init__(

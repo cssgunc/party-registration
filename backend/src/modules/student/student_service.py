@@ -30,6 +30,7 @@ from .student_model import (
     SelfUpdateStudentDto,
     StudentData,
     StudentDto,
+    StudentSelfDto,
     StudentSuggestionDto,
     StudentUpdateDto,
 )
@@ -121,6 +122,17 @@ class StudentService:
         await self.session.refresh(student_entity, ["account", "residence"])
         return student_entity.to_dto()
 
+    async def _save_student_self(self, student_entity: StudentEntity) -> StudentSelfDto:
+        phone_number = student_entity.phone_number
+        try:
+            self.session.add(student_entity)
+            await self.session.commit()
+        except IntegrityError as e:
+            await self.session.rollback()
+            raise StudentConflictException(phone_number or "") from e
+        await self.session.refresh(student_entity, ["account", "residence"])
+        return student_entity.to_self_dto()
+
     async def _get_student_entity_by_account_id(self, account_id: int) -> StudentEntity:
         result = await self.session.execute(
             select(StudentEntity)
@@ -200,17 +212,17 @@ class StudentService:
         except IntegrityError:
             await self.session.rollback()
 
-    async def get_student_me_dto(self, account_id: int) -> StudentDto:
+    async def get_student_me_self_dto(self, account_id: int) -> StudentSelfDto:
         """
-        Get StudentDto for the authenticated student. Returns a partial DTO (null phone/preference)
-        if the Student entity does not exist yet — i.e., the student has not yet provided info.
+        Get StudentSelfDto for the authenticated student — residence incidents restricted to
+        type and date/time (no description or reference_id).
         """
         try:
             student_entity = await self._get_student_entity_by_account_id(account_id)
-            return student_entity.to_dto()
+            return student_entity.to_self_dto()
         except StudentNotFoundException:
             account = await self.account_service.get_account_entity_by(id=account_id)
-            return account.to_student_dto()
+            return account.to_student_self_dto()
 
     async def update_student(self, account_id: int, data: StudentUpdateDto) -> StudentDto:
         student_entity = await self._get_student_entity_by_account_id(account_id)
@@ -230,7 +242,9 @@ class StudentService:
 
         return await self._save_student(student_entity)
 
-    async def update_student_self(self, account_id: int, data: SelfUpdateStudentDto) -> StudentDto:
+    async def update_student_self(
+        self, account_id: int, data: SelfUpdateStudentDto
+    ) -> StudentSelfDto:
         result = await self.session.execute(
             select(StudentEntity)
             .where(StudentEntity.account_id == account_id)
@@ -246,12 +260,12 @@ class StudentService:
                 phone_number=data.phone_number,
             )
             student_entity = StudentEntity.from_data(student_data, account_id)
-            return await self._save_student(student_entity)
+            return await self._save_student_self(student_entity)
 
         student_entity.contact_preference = data.contact_preference
         student_entity.phone_number = data.phone_number
 
-        return await self._save_student(student_entity)
+        return await self._save_student_self(student_entity)
 
     async def update_residence(self, account_id: int, residence_place_id: str) -> LocationDto:
         """Update student's residence. Can only be done once per academic year."""

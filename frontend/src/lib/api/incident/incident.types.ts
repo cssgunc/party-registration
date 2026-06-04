@@ -69,6 +69,19 @@ type NestedIncidentDtoBackend = Omit<NestedIncidentDto, "incident_datetime"> & {
   incident_datetime: string;
 };
 
+type NestedIncidentStudentDto = {
+  id: number;
+  incident_datetime: Date;
+  severity: IncidentSeverity;
+};
+
+type NestedIncidentStudentDtoBackend = Omit<
+  NestedIncidentStudentDto,
+  "incident_datetime"
+> & {
+  incident_datetime: string;
+};
+
 type IncidentSeverityCounts = Record<IncidentSeverity, number>;
 
 type PaginatedIncidentsResponse = PaginatedResponse<IncidentDto> & {
@@ -108,6 +121,15 @@ function convertNestedIncident(
   };
 }
 
+function convertNestedIncidentStudent(
+  backend: NestedIncidentStudentDtoBackend
+): NestedIncidentStudentDto {
+  return {
+    ...backend,
+    incident_datetime: new Date(backend.incident_datetime),
+  };
+}
+
 export type {
   IncidentCreateDto,
   IncidentDto,
@@ -118,6 +140,8 @@ export type {
   LocationSummaryDtoBackend,
   NestedIncidentDto,
   NestedIncidentDtoBackend,
+  NestedIncidentStudentDto,
+  NestedIncidentStudentDtoBackend,
   PaginatedIncidentsResponse,
   PaginatedIncidentsResponseBackend,
 };
@@ -126,6 +150,7 @@ export {
   convertIncident,
   convertLocationSummary,
   convertNestedIncident,
+  convertNestedIncidentStudent,
   INCIDENT_SEVERITIES,
   INCIDENT_SEVERITY_LABELS,
 };

@@ -6,7 +6,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.modules.account.account_entity import AccountRole
 from src.modules.location.location_service import LocationService
 from src.modules.student.student_entity import StudentEntity
-from src.modules.student.student_model import ContactPreference, SelfUpdateStudentDto, StudentDto
+from src.modules.student.student_model import (
+    ContactPreference,
+    SelfUpdateStudentDto,
+    StudentSelfDto,
+)
 from src.modules.student.student_service import (
     ResidenceAlreadyChosenException,
     StudentConflictException,
@@ -153,24 +157,24 @@ class TestStudentService:
             await self.student_service.update_is_registered(99999, is_registered=True)
 
     @pytest.mark.asyncio
-    async def test_get_student_me_dto_no_entity(self):
+    async def test_get_student_me_self_dto_no_entity(self):
         """Account with student role but no Student entity returns partial DTO with nulls."""
         account = await self.account_utils.create_one(role=AccountRole.STUDENT.value)
 
-        dto = await self.student_service.get_student_me_dto(account.id)
+        dto = await self.student_service.get_student_me_self_dto(account.id)
 
-        assert isinstance(dto, StudentDto)
+        assert isinstance(dto, StudentSelfDto)
         assert dto.phone_number is None
         assert dto.contact_preference is None
         assert dto.last_registered is None
         assert dto.residence is None
 
     @pytest.mark.asyncio
-    async def test_get_student_me_dto_with_entity(self):
+    async def test_get_student_me_self_dto_with_entity(self):
         """Account with Student entity returns full DTO."""
         student_entity = await self.student_utils.create_one()
 
-        dto = await self.student_service.get_student_me_dto(student_entity.account_id)
+        dto = await self.student_service.get_student_me_self_dto(student_entity.account_id)
 
         self.student_utils.assert_matches(dto, student_entity)
 

@@ -7,7 +7,14 @@ from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column, relationshi
 from src.core.database import EntityBase
 from src.core.types import UTCDateTime
 
-from .student_model import ContactPreference, ResidenceDto, StudentData, StudentDto
+from .student_model import (
+    ContactPreference,
+    ResidenceDto,
+    ResidenceStudentDto,
+    StudentData,
+    StudentDto,
+    StudentSelfDto,
+)
 
 if TYPE_CHECKING:
     from src.modules.account.account_entity import AccountEntity
@@ -88,6 +95,40 @@ class StudentEntity(MappedAsDataclass, EntityBase):
             )
 
         return StudentDto(
+            id=self.account_id,
+            pid=self.account.pid,
+            email=self.account.email,
+            first_name=self.account.first_name,
+            last_name=self.account.last_name,
+            onyen=self.account.onyen,
+            phone_number=self.phone_number,
+            contact_preference=self.contact_preference,
+            last_registered=last_reg,
+            residence=residence_dto,
+        )
+
+    def to_self_dto(self) -> "StudentSelfDto":
+        """Student self-view DTO — residence incidents restricted to type and date/time."""
+        last_reg = self.last_registered
+        if last_reg is not None and last_reg.tzinfo is None:
+            last_reg = last_reg.replace(tzinfo=UTC)
+
+        residence_chosen = self.residence_chosen_date
+        if residence_chosen is not None and residence_chosen.tzinfo is None:
+            residence_chosen = residence_chosen.replace(tzinfo=UTC)
+
+        residence_dto = None
+        if (
+            self.residence_id is not None
+            and self.residence is not None
+            and residence_chosen is not None
+        ):
+            residence_dto = ResidenceStudentDto(
+                location=self.residence.to_student_dto(),
+                residence_chosen_date=residence_chosen,
+            )
+
+        return StudentSelfDto(
             id=self.account_id,
             pid=self.account.pid,
             email=self.account.email,

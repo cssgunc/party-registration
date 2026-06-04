@@ -6,7 +6,7 @@ from src.core.types import PhoneNumber
 from src.core.utils.query_utils import PaginatedResponse
 
 if TYPE_CHECKING:
-    from src.modules.location.location_model import LocationDto
+    from src.modules.location.location_model import LocationDto, LocationStudentDto
 
 
 class ContactPreference(enum.Enum):
@@ -53,6 +53,13 @@ class ResidenceDto(BaseModel):
     residence_chosen_date: AwareDatetime
 
 
+class ResidenceStudentDto(BaseModel):
+    """Residence DTO for student self-view; incidents restricted to type and date/time."""
+
+    location: "LocationStudentDto"
+    residence_chosen_date: AwareDatetime
+
+
 class StudentDto(BaseModel):
     """
     Admin-facing Student DTO combining student and account data.
@@ -77,6 +84,21 @@ class StudentDto(BaseModel):
     contact_preference: ContactPreference | None = None
     last_registered: AwareDatetime | None = None
     residence: ResidenceDto | None = None
+
+
+class StudentSelfDto(BaseModel):
+    """Student self-view DTO — same as StudentDto but residence incidents are restricted."""
+
+    id: int
+    pid: str
+    email: EmailStr
+    first_name: str
+    last_name: str
+    onyen: str
+    phone_number: str | None = None
+    contact_preference: ContactPreference | None = None
+    last_registered: AwareDatetime | None = None
+    residence: ResidenceStudentDto | None = None
 
 
 class IsRegisteredUpdate(BaseModel):
@@ -109,7 +131,9 @@ class PaginatedStudentsResponse(PaginatedResponse[StudentDto]):
 
 # Resolve forward references after all models are defined
 if not TYPE_CHECKING:
-    from src.modules.location.location_model import LocationDto
+    from src.modules.location.location_model import LocationDto, LocationStudentDto
 
     ResidenceDto.model_rebuild()
     StudentDto.model_rebuild()
+    ResidenceStudentDto.model_rebuild()
+    StudentSelfDto.model_rebuild()

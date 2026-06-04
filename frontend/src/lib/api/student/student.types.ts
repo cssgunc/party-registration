@@ -1,7 +1,10 @@
 import {
   LocationDto,
   LocationDtoBackend,
+  LocationStudentDto,
+  LocationStudentDtoBackend,
   convertLocation,
+  convertLocationStudent,
 } from "../location/location.types";
 
 type ContactPreference = "call" | "text";
@@ -45,6 +48,54 @@ type StudentDtoBackend = Omit<StudentDto, "last_registered" | "residence"> & {
   last_registered: string | null;
   residence: ResidenceDtoBackend | null;
 };
+
+type ResidenceStudentDto = {
+  location: LocationStudentDto;
+  residence_chosen_date: Date;
+};
+
+type ResidenceStudentDtoBackend = {
+  location: LocationStudentDtoBackend;
+  residence_chosen_date: string;
+};
+
+type StudentSelfDto = {
+  id: number;
+  pid: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  onyen: string;
+  phone_number: string | null;
+  contact_preference: ContactPreference | null;
+  last_registered: Date | null;
+  residence: ResidenceStudentDto | null;
+};
+
+type StudentSelfDtoBackend = Omit<
+  StudentSelfDto,
+  "last_registered" | "residence"
+> & {
+  last_registered: string | null;
+  residence: ResidenceStudentDtoBackend | null;
+};
+
+function convertStudentSelf(backend: StudentSelfDtoBackend): StudentSelfDto {
+  return {
+    ...backend,
+    last_registered: backend.last_registered
+      ? new Date(backend.last_registered)
+      : null,
+    residence: backend.residence
+      ? {
+          location: convertLocationStudent(backend.residence.location),
+          residence_chosen_date: new Date(
+            backend.residence.residence_chosen_date
+          ),
+        }
+      : null,
+  };
+}
 
 type ResidenceUpdateDto = {
   residence_place_id: string;
@@ -104,6 +155,8 @@ export type {
   ContactPreference,
   IsRegisteredUpdate,
   ResidenceDto,
+  ResidenceStudentDto,
+  ResidenceStudentDtoBackend,
   ResidenceUpdateDto,
   ResidenceUpdateWithDisplayDto,
   StudentAutocompleteInput,
@@ -111,7 +164,9 @@ export type {
   StudentUpdateDto,
   StudentDto,
   StudentDtoBackend,
+  StudentSelfDto,
+  StudentSelfDtoBackend,
   StudentSuggestionDto,
 };
 
-export { convertStudent };
+export { convertStudent, convertStudentSelf };

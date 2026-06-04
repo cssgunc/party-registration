@@ -31,7 +31,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { PARTY_RULE_MESSAGES } from "@/lib/api/party/party.types";
-import { StudentDto } from "@/lib/api/student/student.types";
+import { StudentSelfDto } from "@/lib/api/student/student.types";
 import { clientEnv } from "@/lib/config/env.client";
 import {
   formatPhoneNumberInput,
@@ -96,7 +96,7 @@ interface PartyRegistrationFormProps {
   locationService?: LocationService;
   initialValues?: PartyFormInitialValues;
   /** The authenticated student */
-  student?: StudentDto | null;
+  student?: StudentSelfDto | null;
   /** Whether this form is used for creating or editing a party */
   mode?: "create" | "edit";
   /** Server-side validation message to surface as a banner above the submit button. */

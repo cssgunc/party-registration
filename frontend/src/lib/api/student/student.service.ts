@@ -9,25 +9,26 @@ import { PartyDto, PartyDtoBackend, convertParty } from "../party/party.types";
 import {
   ResidenceUpdateDto,
   StudentData,
-  StudentDto,
-  StudentDtoBackend,
-  convertStudent,
+  StudentSelfDto,
+  StudentSelfDtoBackend,
+  convertStudentSelf,
 } from "./student.types";
 
 export class StudentService {
   constructor(private client: AxiosInstance = apiClient) {}
 
-  async getCurrentStudent(): Promise<StudentDto> {
-    const response = await this.client.get<StudentDtoBackend>("/students/me");
-    return convertStudent(response.data);
+  async getCurrentStudent(): Promise<StudentSelfDto> {
+    const response =
+      await this.client.get<StudentSelfDtoBackend>("/students/me");
+    return convertStudentSelf(response.data);
   }
 
-  async updateMe(data: StudentData): Promise<StudentDto> {
-    const response = await this.client.put<StudentDtoBackend>(
+  async updateMe(data: StudentData): Promise<StudentSelfDto> {
+    const response = await this.client.put<StudentSelfDtoBackend>(
       "/students/me",
       data
     );
-    return convertStudent(response.data);
+    return convertStudentSelf(response.data);
   }
 
   async updateResidence(data: ResidenceUpdateDto): Promise<LocationDto> {
