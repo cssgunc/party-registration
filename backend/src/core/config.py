@@ -6,7 +6,7 @@ import re
 from datetime import date
 from pathlib import Path
 
-from pydantic import EmailStr, HttpUrl, field_validator
+from pydantic import EmailStr, Field, HttpUrl, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -49,21 +49,32 @@ class Config(BaseSettings):
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
     EMAIL_FROM: EmailStr = "ocsl-no-reply@unc.edu"
-    CONTACT_EMAIL: EmailStr = "offcampus@unc.edu"
     OCSL_WEBSITE_URL: HttpUrl = HttpUrl("https://offcampus.unc.edu/unc-party-registration")
 
     # Logging
     SQLALCHEMY_ECHO: bool = False
 
     # App Configuration
-    PARTY_SEARCH_RADIUS_MILES: float = 0.1
-    CHPD_EMAIL_DOMAIN: str = "chapelhillnc.gov"
+    # These four use NEXT_PUBLIC_ names so the single env var is shared with the
+    # frontend build — no duplicate entries needed in .env files.
+    PARTY_SEARCH_RADIUS_MILES: float = Field(
+        default=0.1, validation_alias="NEXT_PUBLIC_PARTY_SEARCH_RADIUS_MILES"
+    )
+    CHPD_EMAIL_DOMAIN: str = Field(
+        default="chapelhillnc.gov", validation_alias="NEXT_PUBLIC_CHPD_EMAIL_DOMAIN"
+    )
+    CONTACT_EMAIL: EmailStr = Field(
+        default="offcampus@unc.edu", validation_alias="NEXT_PUBLIC_CONTACT_EMAIL"
+    )
+    ACADEMIC_YEAR_SWITCH_DATE: str = Field(
+        default="08-01", validation_alias="NEXT_PUBLIC_ACADEMIC_YEAR_SWITCH_DATE"
+    )
+    PARTY_MIN_LEAD_HOURS: int = Field(
+        default=24, validation_alias="NEXT_PUBLIC_PARTY_MIN_LEAD_HOURS"
+    )
+    PARTY_MAX_LEAD_DAYS: int = Field(default=30, validation_alias="NEXT_PUBLIC_PARTY_MAX_LEAD_DAYS")
     EMAIL_VERIFICATION_TOKEN_EXPIRE_HOURS: int = 24
     INVITE_TOKEN_EXPIRY_HOURS: int = 48
-
-    # Academic year switch date in MM-DD format. Course completion and residence
-    # registration roll over on this date each year.
-    ACADEMIC_YEAR_SWITCH_DATE: str = "08-01"
 
     @field_validator("ACADEMIC_YEAR_SWITCH_DATE")
     @classmethod

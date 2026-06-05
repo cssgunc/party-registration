@@ -2,15 +2,13 @@
 import PartyRegistrationForm, {
   PartyFormInitialValues,
   PartyFormValues,
+  partyFormValuesToDto,
 } from "@/app/(student)/_components/PartyRegistrationForm";
 import { Card } from "@/components/ui/card";
 import { useSnackbar } from "@/contexts/SnackbarContext";
 import { hasActiveHold } from "@/lib/api/location/location.service";
 import { useRegisterParty } from "@/lib/api/party/party.queries";
-import {
-  StudentCreatePartyDto,
-  getPartyValidationError,
-} from "@/lib/api/party/party.types";
+import { getPartyValidationError } from "@/lib/api/party/party.types";
 import {
   useCurrentStudent,
   useMyParties,
@@ -67,8 +65,10 @@ export default function RegistrationForm() {
     }
 
     return {
-      address: lastParty.location.formatted_address,
-      placeId: lastParty.location.google_place_id,
+      location: {
+        formatted_address: lastParty.location.formatted_address,
+        google_place_id: lastParty.location.google_place_id,
+      },
       secondContactFirstName: lastParty.contact_two.first_name,
       secondContactLastName: lastParty.contact_two.last_name,
       phoneNumber: lastParty.contact_two.phone_number,
@@ -77,33 +77,11 @@ export default function RegistrationForm() {
     };
   }, [partiesQuery.data]);
 
-  const formToData = (
-    values: PartyFormValues,
-    placeId: string
-  ): StudentCreatePartyDto => {
-    const [hours, minutes] = values.partyTime.split(":");
-    const partyDateTime = new Date(values.partyDate);
-    partyDateTime.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
-
-    return {
-      type: "student",
-      party_datetime: partyDateTime,
-      google_place_id: placeId,
-      contact_two: {
-        email: values.contactTwoEmail,
-        first_name: values.secondContactFirstName,
-        last_name: values.secondContactLastName,
-        phone_number: values.phoneNumber,
-        contact_preference: values.contactPreference,
-      },
-    };
-  };
-
-  const handleSubmit = async (values: PartyFormValues, placeId: string) => {
+  const handleSubmit = async (values: PartyFormValues) => {
     setSubmissionError(null);
     try {
-      // If student provided contact info inline (first-time onboarding), save it first
-      if (values.studentPhoneNumber && values.studentContactPreference) {
+      // If student didn't have contact info yet, save what they entered inline
+      if (!studentQuery.data?.phone_number) {
         await updateStudentMutation.mutateAsync({
           phone_number: values.studentPhoneNumber,
           contact_preference: values.studentContactPreference,
@@ -111,13 +89,15 @@ export default function RegistrationForm() {
         });
       }
 
-      const partyData = formToData(values, placeId);
+      const partyData = partyFormValuesToDto(values);
       const hasValidResidence = isFromThisSchoolYear(
         studentQuery.data?.residence?.residence_chosen_date
       );
       await registerPartyMutation.mutateAsync({
         partyData,
-        residencePlaceId: hasValidResidence ? undefined : placeId,
+        residencePlaceId: hasValidResidence
+          ? undefined
+          : values.location.google_place_id,
       });
       openSnackbar("Party created successfully!", "success");
       router.push("/");

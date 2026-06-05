@@ -214,7 +214,9 @@ function convertProximitySearchResponse(
  */
 const PartyRuleCode = {
   STUDENT_INFO_NOT_PROVIDED: "STUDENT_INFO_NOT_PROVIDED",
+  PARTY_SAME_DAY: "PARTY_SAME_DAY",
   PARTY_DATE_TOO_SOON: "PARTY_DATE_TOO_SOON",
+  PARTY_DATE_TOO_FAR: "PARTY_DATE_TOO_FAR",
   PARTY_SMART_NOT_COMPLETED: "PARTY_SMART_NOT_COMPLETED",
   NO_RESIDENCE: "NO_RESIDENCE",
   LOCATION_HOLD_ACTIVE: "LOCATION_HOLD_ACTIVE",
@@ -237,7 +239,9 @@ type PartyRuleCode = (typeof PartyRuleCode)[keyof typeof PartyRuleCode];
 const PARTY_RULE_MESSAGES = {
   STUDENT_INFO_NOT_PROVIDED:
     "Please provide your phone number and contact preference before registering a party.",
-  PARTY_DATE_TOO_SOON: "Party must be at least 2 business days in the future.",
+  PARTY_SAME_DAY: "A party is already registered on that day.",
+  PARTY_DATE_TOO_SOON: "Party must be at least 24 hours in the future.",
+  PARTY_DATE_TOO_FAR: "Party cannot be scheduled more than 30 days in advance.",
   PARTY_SMART_NOT_COMPLETED:
     "The Party Smart course must be completed for the current academic year before registering a party.",
   NO_RESIDENCE: "Please select a residence before registering a party.",

@@ -14,32 +14,30 @@ export default function PartyRegistrationInfo({
         <DialogItem title="How does party registration work?">
           <p>For first-time users*:</p>
           <p>
-            Fill out the party registration form on-line (below) at least 72
-            regular business hours (three weekdays) in advance of the
-            gathering**, wait for a response from the program administrators,
-            and schedule a time to meet with them (will take no more than 15
-            minutes and will be via video call).
+            Fill out the party registration form on-line (below) at least 24
+            hours in advance of the gathering**, wait for a response from the
+            program administrators, and schedule a time to meet with them (will
+            take no more than 15 minutes and will be via video call).
           </p>
           <p className="content-sub">
             *party registration renews every academic year, so you are
             considered a first time user the first time you register each year.
           </p>
           <p className="content-sub">
-            **For example, if your party is on a Friday night, your form needs
-            to be submitted by the preceding Tuesday at 5:00 p.m. If your
-            gathering is on a Monday evening, your form would need to be in by
-            the preceding Wednesday at 5:00 p.m.
+            **For example, if your party is on Saturday at 9:00 p.m., your form
+            needs to be submitted by Friday at 9:00 p.m. at the latest. Only one
+            party may be registered per calendar day.
           </p>
           <p>For Repeat Users:</p>
           <p>
-            Fill out the party registration form on-line (below) at least 48
-            regular business hours (two weekdays) in advance, wait for a
-            response from the program administrators. On the registration form,
-            provide us with two contact persons, two UNC-Chapel Hill emails, two
-            cell phone numbers, and your local Chapel Hill address. If a noise
-            complaint on your house is received, Chapel Hill police will call or
-            text and give you a warning. You will have 20 minutes to shut the
-            party down and avoid the police officers.
+            Fill out the party registration form on-line (below) at least 24
+            hours in advance, wait for a response from the program
+            administrators. On the registration form, provide us with two
+            contact persons, two UNC-Chapel Hill emails, two cell phone numbers,
+            and your local Chapel Hill address. If a noise complaint on your
+            house is received, Chapel Hill police will call or text and give you
+            a warning. You will have 20 minutes to shut the party down and avoid
+            the police officers.
           </p>
         </DialogItem>
 
@@ -59,8 +57,8 @@ export default function PartyRegistrationInfo({
           <ul className="ml-5 list-outside list-disc space-y-1">
             <li>You can register parties for any night of the week.</li>
             <li>
-              You MUST register by the 72 hours (three business days) deadline
-              each week. No exceptions.
+              You MUST register at least 24 hours in advance. No exceptions. You
+              may not register more than one party per day.
             </li>
             <li>
               You MUST live at the house being registered. You cannot register a

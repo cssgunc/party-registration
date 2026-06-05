@@ -94,6 +94,7 @@ function StudentInfo() {
 
   const form = useForm<StudentInfoValues>({
     resolver: zodResolver(studentInfoSchema),
+    mode: "onBlur",
     defaultValues: {
       first_name: "",
       last_name: "",

@@ -26,6 +26,7 @@ export default function AccountTableForm({
 }: AccountTableFormProps) {
   const form = useForm<AccountTableFormValues>({
     resolver: zodResolver(accountTableFormSchema),
+    mode: "onBlur",
     defaultValues: {
       email: editData?.email ?? "",
       role: editData?.role ?? undefined,

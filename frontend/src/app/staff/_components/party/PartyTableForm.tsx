@@ -93,6 +93,7 @@ export default function PartyTableForm({
 
   const form = useForm<PartyTableFormInput, unknown, PartyTableFormValues>({
     resolver: zodResolver(partyTableFormSchema),
+    mode: "onBlur",
     defaultValues: {
       address: editData?.location.formatted_address ?? "",
       placeId: editData?.location.google_place_id ?? "",

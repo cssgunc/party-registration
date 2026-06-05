@@ -3,6 +3,7 @@
 import PartyRegistrationForm, {
   PartyFormInitialValues,
   PartyFormValues,
+  partyFormValuesToDto,
 } from "@/app/(student)/_components/PartyRegistrationForm";
 import {
   Dialog,
@@ -12,11 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { useSnackbar } from "@/contexts/SnackbarContext";
 import { useUpdateParty } from "@/lib/api/party/party.queries";
-import {
-  PartyDto,
-  StudentCreatePartyDto,
-  getPartyValidationError,
-} from "@/lib/api/party/party.types";
+import { PartyDto, getPartyValidationError } from "@/lib/api/party/party.types";
 import { useCurrentStudent } from "@/lib/api/student/student.queries";
 import { getErrorMessage } from "@/lib/errors";
 import { format } from "date-fns";
@@ -40,8 +37,10 @@ export function EditPartyDialog({
 
   const partyDate = new Date(party.party_datetime);
   const initialValues: PartyFormInitialValues = {
-    address: party.location.formatted_address,
-    placeId: party.location.google_place_id,
+    location: {
+      formatted_address: party.location.formatted_address,
+      google_place_id: party.location.google_place_id,
+    },
     partyDate,
     partyTime: format(partyDate, "HH:mm"),
     secondContactFirstName: party.contact_two.first_name,
@@ -51,32 +50,10 @@ export function EditPartyDialog({
     contactTwoEmail: party.contact_two.email,
   };
 
-  const formToData = (
-    values: PartyFormValues,
-    placeId: string
-  ): StudentCreatePartyDto => {
-    const [hours, minutes] = values.partyTime.split(":");
-    const partyDateTime = new Date(values.partyDate);
-    partyDateTime.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
-
-    return {
-      type: "student",
-      party_datetime: partyDateTime,
-      google_place_id: placeId,
-      contact_two: {
-        email: values.contactTwoEmail,
-        first_name: values.secondContactFirstName,
-        last_name: values.secondContactLastName,
-        phone_number: values.phoneNumber,
-        contact_preference: values.contactPreference,
-      },
-    };
-  };
-
-  const handleSubmit = async (values: PartyFormValues, placeId: string) => {
+  const handleSubmit = async (values: PartyFormValues) => {
     setSubmissionError(null);
     try {
-      const partyData = formToData(values, placeId);
+      const partyData = partyFormValuesToDto(values);
       await updatePartyMutation.mutateAsync({
         partyId: party.id,
         data: partyData,

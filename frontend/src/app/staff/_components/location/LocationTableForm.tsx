@@ -49,6 +49,7 @@ export default function LocationTableForm({
     LocationTableFormValues
   >({
     resolver: zodResolver(locationTableFormSchema),
+    mode: "onBlur",
     defaultValues: {
       address: editData?.address ?? "",
       placeId: editData?.placeId ?? "",

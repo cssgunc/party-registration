@@ -69,6 +69,7 @@ export default function IncidentDialog({
 
   const form = useForm<IncidentFormValues>({
     resolver: zodResolver(incidentSchema),
+    mode: "onBlur",
     defaultValues: {
       severity: incident?.severity ?? defaultSeverity,
       date: defaultDatetime,

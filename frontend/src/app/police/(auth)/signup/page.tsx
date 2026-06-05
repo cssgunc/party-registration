@@ -41,6 +41,7 @@ export default function PoliceSignupPage() {
 
   const form = useForm<PoliceSignupFormValues>({
     resolver: zodResolver(policeSignupSchema),
+    mode: "onBlur",
     defaultValues: {
       email: "",
       password: "",

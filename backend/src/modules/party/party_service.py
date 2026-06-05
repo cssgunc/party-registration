@@ -1,8 +1,10 @@
 import enum
+import inspect
 import math
-from collections.abc import Callable
-from datetime import UTC, datetime
+from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime, time
 from typing import ClassVar, Literal, overload
+from zoneinfo import ZoneInfo
 
 from fastapi import Depends
 from sqlalchemy import Time as SATime
@@ -12,7 +14,7 @@ from sqlalchemy.orm import selectinload
 from src.core.config import env
 from src.core.database import get_session
 from src.core.exceptions import BadRequestException, NotFoundException
-from src.core.utils.date_utils import business_days_ahead, is_same_academic_year
+from src.core.utils.date_utils import hours_ahead, is_same_academic_year
 from src.core.utils.excel_utils import export_to_excel
 from src.core.utils.phone_utils import digits_only, format_phone
 from src.core.utils.query_utils import (
@@ -42,6 +44,8 @@ from .party_model import (
     ProximitySearchResponse,
     StudentCreatePartyDto,
 )
+
+_ET = ZoneInfo("America/New_York")
 
 _PARTY_QUERY_FIELDS = QueryFieldSet(
     fields={
@@ -96,9 +100,30 @@ _PARTY_LOAD_OPTIONS = (
 )
 
 
+async def _has_same_day_conflict(draft: "PartyDraft", session: AsyncSession) -> bool:
+    """Return True if the student already has a non-cancelled party on the same Eastern-time date.
+
+    The DB stores datetimes in UTC, so we convert the ET calendar day to a UTC range for the query.
+    """
+    et_date = draft.party_datetime.astimezone(_ET).date()
+    day_start_utc = datetime.combine(et_date, time.min, tzinfo=_ET).astimezone(UTC)
+    day_end_utc = datetime.combine(et_date, time.max, tzinfo=_ET).astimezone(UTC)
+    stmt = select(PartyEntity.id).where(
+        PartyEntity.contact_one_id == draft.contact_one.id,
+        PartyEntity.status != PartyStatus.CANCELLED,
+        PartyEntity.party_datetime >= day_start_utc,
+        PartyEntity.party_datetime <= day_end_utc,
+    )
+    if draft.existing is not None:
+        stmt = stmt.where(PartyEntity.id != draft.existing.id)
+    result = await session.execute(stmt.limit(1))
+    return result.scalar_one_or_none() is not None
+
+
 class PartyRule(enum.Enum):
     """Validation rules for party operations. The enum value is the API error code.
-    Each rule's predicate returns True when the violation applies (matching the code name)."""
+    Each rule's predicate returns True when the violation applies (matching the code name).
+    Predicates may be sync (lambda) or async (taking draft + session for DB queries)."""
 
     STUDENT_INFO_NOT_PROVIDED = (
         "STUDENT_INFO_NOT_PROVIDED",
@@ -107,8 +132,18 @@ class PartyRule(enum.Enum):
     )
     PARTY_DATE_TOO_SOON = (
         "PARTY_DATE_TOO_SOON",
-        "Party date must be at least 2 business days from now",
-        lambda d: business_days_ahead(d.party_datetime) < 2,
+        "Party must be at least 24 hours in the future",
+        lambda d: hours_ahead(d.party_datetime) < env.PARTY_MIN_LEAD_HOURS,
+    )
+    PARTY_SAME_DAY = (
+        "PARTY_SAME_DAY",
+        "A party is already registered on that day",
+        _has_same_day_conflict,
+    )
+    PARTY_DATE_TOO_FAR = (
+        "PARTY_DATE_TOO_FAR",
+        "Party cannot be scheduled more than 30 days in advance",
+        lambda d: hours_ahead(d.party_datetime) > env.PARTY_MAX_LEAD_DAYS * 24,
     )
     PARTY_SMART_NOT_COMPLETED = (
         "PARTY_SMART_NOT_COMPLETED",
@@ -154,21 +189,23 @@ class PartyRule(enum.Enum):
     )
 
     message: str
-    is_violated_by: Callable[[PartyDraft], bool]
+    is_violated_by: (
+        Callable[["PartyDraft"], bool] | Callable[["PartyDraft", AsyncSession], Awaitable[bool]]
+    )
 
-    def __new__(cls, code: str, message: str, is_violated_by: Callable[[PartyDraft], bool]):
+    def __new__(
+        cls,
+        code: str,
+        message: str,
+        is_violated_by: (
+            Callable[["PartyDraft"], bool] | Callable[["PartyDraft", AsyncSession], Awaitable[bool]]
+        ),
+    ):
         obj = object.__new__(cls)
         obj._value_ = code
         obj.message = message
         obj.is_violated_by = is_violated_by
         return obj
-
-    @staticmethod
-    def check_for(draft: PartyDraft, *rules: "PartyRule") -> None:
-        """Check the draft for any of the given violations, raising on the first match."""
-        for rule in rules:
-            if rule.is_violated_by(draft):
-                raise PartyValidationException(rule)
 
 
 class PartyValidationException(BadRequestException):
@@ -198,6 +235,17 @@ class PartyService:
         self.student_service = student_service
         self.query_service = query_service
         self.notification_service = notification_service
+
+    async def _check_rules(self, draft: PartyDraft, *rules: PartyRule) -> None:
+        """Check the draft against the given rules, raising on the first violation.
+        Predicates may be sync or async; async ones receive self.session for DB queries."""
+        for rule in rules:
+            if inspect.iscoroutinefunction(rule.is_violated_by):
+                violated = await rule.is_violated_by(draft, self.session)  # type: ignore[call-arg]
+            else:
+                violated = rule.is_violated_by(draft)  # type: ignore[call-arg]
+            if violated:
+                raise PartyValidationException(rule)
 
     async def _get_party_entity_by_id(self, party_id: int) -> PartyEntity:
         result = await self.session.execute(
@@ -313,10 +361,12 @@ class PartyService:
         self, dto: StudentCreatePartyDto, student_id: int
     ) -> PartyDto:
         draft = await self._build_student_draft(dto, student_id)
-        PartyRule.check_for(
+        await self._check_rules(
             draft,
             PartyRule.STUDENT_INFO_NOT_PROVIDED,
+            PartyRule.PARTY_SAME_DAY,
             PartyRule.PARTY_DATE_TOO_SOON,
+            PartyRule.PARTY_DATE_TOO_FAR,
             PartyRule.PARTY_SMART_NOT_COMPLETED,
             PartyRule.NO_RESIDENCE,
             PartyRule.LOCATION_HOLD_ACTIVE,
@@ -332,7 +382,7 @@ class PartyService:
 
     async def create_party_from_admin_dto(self, dto: AdminCreatePartyDto) -> PartyDto:
         draft = await self._build_admin_draft(dto)
-        PartyRule.check_for(
+        await self._check_rules(
             draft,
             PartyRule.STUDENT_INFO_NOT_PROVIDED,
             PartyRule.CONTACT_TWO_EMAIL_MATCHES_CONTACT_ONE,
@@ -351,13 +401,15 @@ class PartyService:
         party_entity = await self._get_party_entity_by_id(party_id)
         old_contact_two_email = party_entity.contact_two_email
         draft = await self._build_student_draft(dto, student_id, existing=party_entity.to_dto())
-        PartyRule.check_for(
+        await self._check_rules(
             draft,
             PartyRule.STUDENT_INFO_NOT_PROVIDED,
             PartyRule.PARTY_NOT_OWNED_BY_STUDENT,
             PartyRule.PARTY_CANCELLED,
             PartyRule.PARTY_IN_PAST,
+            PartyRule.PARTY_SAME_DAY,
             PartyRule.PARTY_DATE_TOO_SOON,
+            PartyRule.PARTY_DATE_TOO_FAR,
             PartyRule.PARTY_SMART_NOT_COMPLETED,
             PartyRule.NO_RESIDENCE,
             PartyRule.LOCATION_HOLD_ACTIVE,
@@ -378,7 +430,7 @@ class PartyService:
         party_entity = await self._get_party_entity_by_id(party_id)
         old_contact_two_email = party_entity.contact_two_email
         draft = await self._build_admin_draft(dto, existing=party_entity.to_dto())
-        PartyRule.check_for(
+        await self._check_rules(
             draft,
             PartyRule.STUDENT_INFO_NOT_PROVIDED,
             PartyRule.CONTACT_TWO_EMAIL_MATCHES_CONTACT_ONE,
