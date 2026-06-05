@@ -1,8 +1,12 @@
 "use client";
 import { useSidebar } from "@/app/staff/_components/shared/sidebar/SidebarContext";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { XIcon } from "lucide-react";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 
 function Sidebar() {
   const {
@@ -15,42 +19,37 @@ function Sidebar() {
   } = useSidebar();
 
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className={cn(
-          "fixed inset-0 bg-modal-overlay z-40 transition-opacity duration-300",
-          isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
-        )}
-        onClick={closeSidebar}
-      />
-
-      {/* Sidebar */}
-      <div
-        className={cn(
-          "fixed top-0 right-0 h-full w-full max-w-[25em] bg-card shadow-lg z-50 flex flex-col transform transition-transform duration-300 ease-in-out",
-          isOpen ? "translate-x-0" : "translate-x-full"
-        )}
+    <Sheet
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) closeSidebar();
+      }}
+    >
+      <SheetContent
+        side="right"
+        // Radix wires aria-describedby automatically when a SheetDescription
+        // is rendered; opt out explicitly when there is no description so it
+        // doesn't warn about a dangling reference.
+        {...(description ? {} : { "aria-describedby": undefined })}
+        className="w-full max-w-[25em] gap-0 bg-card p-0 sm:max-w-[25em]"
       >
-        {/* Header — stays visible because only the content area below scrolls */}
-        <div className="bg-card px-6 pt-6 pb-2 mb-2">
-          <Button className="bg-card hover:bg-card pb-6" onClick={closeSidebar}>
-            <XIcon className="text-muted-foreground size-6 -m-8" />
-          </Button>
-          {title && (
-            <div className="flex items-center justify-between">
-              <h2 className="subhead-title text-foreground">{title}</h2>
-              <div ref={setHeaderActionNode} />
-            </div>
-          )}
+        <SheetHeader className="mb-2 gap-0 px-6 pb-2 pt-12">
+          <div className="flex items-center justify-between">
+            <SheetTitle className="subhead-title text-foreground">
+              {title ?? ""}
+            </SheetTitle>
+            <div ref={setHeaderActionNode} />
+          </div>
           {description && (
-            <p className="text-sm text-muted-foreground">{description}</p>
+            <SheetDescription className="text-sm text-muted-foreground">
+              {description}
+            </SheetDescription>
           )}
-        </div>
+        </SheetHeader>
         {/* Scrollable content portal target */}
-        <div ref={setBodyNode} className="overflow-y-auto flex-1 px-6 pb-6" />
-      </div>
-    </>
+        <div ref={setBodyNode} className="flex-1 overflow-y-auto px-6 pb-6" />
+      </SheetContent>
+    </Sheet>
   );
 }
 

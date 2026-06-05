@@ -21,6 +21,10 @@ import { useCallback, useMemo, useState } from "react";
 import RegistrationIncidentCard from "./RegistrationIncidentCard";
 import RegistrationPartyCard from "./RegistrationPartyCard";
 
+const EMPTY_CLASS =
+  "flex h-full items-center justify-center px-12 text-center content-sub text-base!";
+const TAB_CONTENT_CLASS = "h-full w-full overflow-y-auto rounded-md bg-card";
+
 function PartiesLoading() {
   return (
     <div className="px-4 py-4 gap-4 sm:gap-7 flex flex-col">
@@ -42,10 +46,10 @@ function PartiesError() {
   );
 }
 
+type TabValue = "active" | "past" | "incidents";
+
 export default function RegistrationTracker(): React.JSX.Element {
-  const [activeTab, setActiveTab] = useState<"active" | "past" | "incidents">(
-    "active"
-  );
+  const [activeTab, setActiveTab] = useState<TabValue>("active");
   const [editParty, setEditParty] = useState<PartyDto | null>(null);
   const [deleteParty, setDeleteParty] = useState<PartyDto | null>(null);
 
@@ -136,35 +140,94 @@ export default function RegistrationTracker(): React.JSX.Element {
     return Object.entries(groups);
   }, [sortedIncidents]);
 
+  const tabs: Array<{
+    value: TabValue;
+    label: string;
+    children: React.ReactNode;
+  }> = [
+    {
+      value: "active",
+      label: "Active",
+      children:
+        activeParties.length === 0 ? (
+          <p className={EMPTY_CLASS}>
+            {showPartySmartPrompt
+              ? "Schedule and attend the Party Smart course below to register your first party!"
+              : "No active registrations"}
+          </p>
+        ) : (
+          activeParties.map((party) => (
+            <RegistrationPartyCard
+              key={party.id}
+              party={party}
+              showActions
+              residenceLocationId={residenceLocationId}
+              isPartiesPending={isPartiesPending}
+              onEdit={handleEditParty}
+              onDelete={handleDeleteParty}
+            />
+          ))
+        ),
+    },
+    {
+      value: "past",
+      label: "Past",
+      children:
+        pastParties.length === 0 ? (
+          <p className={EMPTY_CLASS}>Your party history will appear here.</p>
+        ) : (
+          pastParties.map((party) => (
+            <RegistrationPartyCard
+              key={party.id}
+              party={party}
+              showAddress
+              residenceLocationId={residenceLocationId}
+              isPartiesPending={isPartiesPending}
+              onEdit={handleEditParty}
+              onDelete={handleDeleteParty}
+            />
+          ))
+        ),
+    },
+    {
+      value: "incidents",
+      label: "Incidents",
+      children:
+        sortedIncidents.length === 0 ? (
+          <p className={EMPTY_CLASS}>
+            Violations reported at your residence, like noise complaints, will
+            appear here and may result in a hold on future party registrations.
+          </p>
+        ) : (
+          groupedIncidents.map(([date, dayIncidents]) => (
+            <RegistrationIncidentCard
+              key={date}
+              date={date}
+              incidents={dayIncidents}
+            />
+          ))
+        ),
+    },
+  ];
+
   return (
     <div className="flex flex-col flex-1 min-h-0 mb-6">
       <Tabs
         value={activeTab}
-        onValueChange={(value) =>
-          setActiveTab(value as "active" | "past" | "incidents")
-        }
+        onValueChange={(value) => setActiveTab(value as TabValue)}
         className="flex flex-col flex-1 min-h-0"
       >
         <div className="mt-2 flex items-end justify-between shrink-0">
           <TabsList className="w-fit flex gap-4">
-            <TabsTrigger
-              value="active"
-              className="px-0 subhead-content cursor-pointer"
-            >
-              Active
-            </TabsTrigger>
-            <TabsTrigger
-              value="past"
-              className="px-0 subhead-content cursor-pointer"
-            >
-              Past
-            </TabsTrigger>
-            <TabsTrigger
-              value="incidents"
-              className="px-0 subhead-content cursor-pointer"
-            >
-              Incidents
-            </TabsTrigger>
+            {tabs.map(({ value, label }) => (
+              <TabsTrigger
+                key={value}
+                value={value}
+                className="px-0 subhead-content cursor-pointer"
+              >
+                {label}
+              </TabsTrigger>
+            ))}
           </TabsList>
           <div>
             {courseCompleted && !residenceHasActiveHold ? (
@@ -189,77 +252,19 @@ export default function RegistrationTracker(): React.JSX.Element {
         </div>
 
         <Card className="w-full flex-1 min-h-0 overflow-hidden mt-2 flex flex-col">
-          <TabsContent value="active" className="h-full">
-            <div className="h-full w-full overflow-y-auto rounded-md bg-card">
-              {isPartiesPending ? (
-                <PartiesLoading />
-              ) : isPartiesError ? (
-                <PartiesError />
-              ) : activeParties.length === 0 ? (
-                <p className="flex h-full items-center justify-center px-4 text-center content-sub text-base!">
-                  {showPartySmartPrompt
-                    ? "Schedule and attend the Party Smart course below to register your first party!"
-                    : "No active registrations"}
-                </p>
-              ) : (
-                activeParties.map((party) => (
-                  <RegistrationPartyCard
-                    key={party.id}
-                    party={party}
-                    showActions
-                    residenceLocationId={residenceLocationId}
-                    isPartiesPending={isPartiesPending}
-                    onEdit={handleEditParty}
-                    onDelete={handleDeleteParty}
-                  />
-                ))
-              )}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="past" className="h-full">
-            <div className="h-full w-full overflow-y-auto rounded-md bg-card">
-              {isPartiesPending ? (
-                <PartiesLoading />
-              ) : isPartiesError ? (
-                <PartiesError />
-              ) : pastParties.length === 0 ? (
-                <p className="text-center content-sub py-8">
-                  No past registrations
-                </p>
-              ) : (
-                pastParties.map((party) => (
-                  <RegistrationPartyCard
-                    key={party.id}
-                    party={party}
-                    showAddress
-                    residenceLocationId={residenceLocationId}
-                    isPartiesPending={isPartiesPending}
-                    onEdit={handleEditParty}
-                    onDelete={handleDeleteParty}
-                  />
-                ))
-              )}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="incidents" className="h-full">
-            <div className="h-full w-full overflow-y-auto rounded-md bg-card">
-              {isPartiesPending ? (
-                <PartiesLoading />
-              ) : sortedIncidents.length === 0 ? (
-                <p className="text-center content-sub py-8">No incidents</p>
-              ) : (
-                groupedIncidents.map(([date, dayIncidents]) => (
-                  <RegistrationIncidentCard
-                    key={date}
-                    date={date}
-                    incidents={dayIncidents}
-                  />
-                ))
-              )}
-            </div>
-          </TabsContent>
+          {tabs.map(({ value, children }) => (
+            <TabsContent key={value} value={value} className="h-full">
+              <div className={TAB_CONTENT_CLASS}>
+                {isPartiesPending ? (
+                  <PartiesLoading />
+                ) : isPartiesError ? (
+                  <PartiesError />
+                ) : (
+                  children
+                )}
+              </div>
+            </TabsContent>
+          ))}
         </Card>
       </Tabs>
 

@@ -117,8 +117,13 @@ const PartyList = ({
         className="flex flex-col flex-1 min-h-0 w-full overflow-y-auto scroll-smooth"
       >
         {exactMatchData && (
-          <section>
-            <h2 className="px-4 pt-4 subhead-content">Exact Match:</h2>
+          <section aria-labelledby="party-list-exact-match">
+            <h2
+              id="party-list-exact-match"
+              className="px-4 pt-4 subhead-content"
+            >
+              Exact Match:
+            </h2>
             <ul className="list-none">
               <li className="border-b border-border">
                 <PartyCard
@@ -132,7 +137,7 @@ const PartyList = ({
           </section>
         )}
         {parties.length > 0 && (
-          <section>
+          <section aria-label="Nearby parties">
             {exactMatchData && (
               <h2 className="px-4 pt-4 subhead-content">Nearby Parties:</h2>
             )}

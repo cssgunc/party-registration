@@ -197,7 +197,7 @@ export default function PolicePage() {
   const showPaginationRow = isPartiesLoading || !error;
 
   return (
-    <main className="h-full overflow-y-auto lg:overflow-hidden px-4 py-4 md:px-6">
+    <div className="h-full overflow-y-auto lg:overflow-hidden px-4 py-4 md:px-6">
       <div className="grid lg:h-full gap-6 lg:grid-cols-[minmax(22rem,34rem)_minmax(0,1fr)]">
         {/* Left panel */}
         <section
@@ -350,6 +350,6 @@ export default function PolicePage() {
           </div>
         </section>
       </div>
-    </main>
+    </div>
   );
 }

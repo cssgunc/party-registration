@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -20,13 +21,14 @@ export default function DialogItem({ title, children }: DialogItemProps) {
 
   return (
     <>
-      <button
+      <Button
+        variant="ghost"
         onClick={() => setOpen(true)}
-        className="flex w-full cursor-pointer items-center justify-between gap-4 border-b px-6 py-4 text-left last:border-b-0 hover:bg-muted/50"
+        className="flex h-auto w-full items-center justify-between gap-4 rounded-none border-b px-6 has-[>svg]:px-4 py-4 text-left last:border-b-0 hover:bg-muted/50"
       >
         <span>{title}</span>
         <Info className="size-4 shrink-0 text-muted-foreground" />
-      </button>
+      </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-4xl">
           <DialogHeader>

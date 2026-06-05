@@ -376,7 +376,11 @@ export default function AddressSearch({
       )}
 
       {internalError && (
-        <p className="mt-2 text-sm text-destructive" role="alert">
+        <p
+          id="address-error"
+          className="mt-2 text-sm text-destructive"
+          role="alert"
+        >
           {internalError}
         </p>
       )}

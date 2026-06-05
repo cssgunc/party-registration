@@ -51,8 +51,11 @@ const IncidentSidebarCard = memo(function IncidentSidebarCard({
             </CollapsibleTrigger>
             {role === "admin" && (
               <DropdownMenu>
-                <DropdownMenuTrigger className="ml-2">
-                  <MoreHorizontal className="size-4" />
+                <DropdownMenuTrigger
+                  className="ml-2"
+                  aria-label="Incident options"
+                >
+                  <MoreHorizontal className="size-4" aria-hidden="true" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
                   <DropdownMenuItem

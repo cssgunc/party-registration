@@ -137,7 +137,7 @@ export default function RegistrationForm() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <main className="mx-4 mt-4">
+      <div className="mx-4 mt-4">
         <nav className="flex items-center content pb-2 lg:hidden">
           <ArrowLeft className="h-4" />
           <Link href="/">Back</Link>
@@ -168,7 +168,7 @@ export default function RegistrationForm() {
             </div>
           </div>
         </Card>
-      </main>
+      </div>
     </div>
   );
 }

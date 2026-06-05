@@ -42,7 +42,7 @@ export default function Header({ className }: { className?: string }) {
   const email = currentPrincipal?.email ?? session?.user?.email ?? null;
 
   return (
-    <div
+    <header
       className={cn(
         "bg-primary h-(--app-header-height) px-6 w-full flex justify-between items-center",
         className
@@ -97,6 +97,6 @@ export default function Header({ className }: { className?: string }) {
           </DropdownMenuContent>
         </DropdownMenu>
       ) : null}
-    </div>
+    </header>
   );
 }

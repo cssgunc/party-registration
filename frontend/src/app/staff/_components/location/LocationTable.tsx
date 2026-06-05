@@ -124,12 +124,12 @@ export const LocationTable = () => {
         },
       },
       cell: ({ row }) => {
-        const holdDate = row.getValue("hold_expiration") as Date | null;
+        const holdDate = row.getValue<Date | null>("hold_expiration");
         if (holdDate) {
-          const formattedDate = format(new Date(holdDate), "MM-dd-yyyy");
+          const formattedDate = format(holdDate, "M/dd/yyyy");
           return `Expires: ${formattedDate}`;
         }
-        return "No";
+        return "None";
       },
     },
   ];

@@ -10,6 +10,7 @@ import {
   LocationDto,
   NestedIncidentDto,
 } from "@/lib/api/location/location.types";
+import { PlusIcon } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useCallback, useState } from "react";
 import { createPortal } from "react-dom";
@@ -99,8 +100,13 @@ export default function IncidentInfoChipDetails({
       {role === "admin" &&
         headerActionNode &&
         createPortal(
-          <Button variant="default" size="sm" onClick={handleAdd}>
-            Add New
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleAdd}
+            aria-label="Add new incident"
+          >
+            <PlusIcon className="size-4" aria-hidden="true" />
           </Button>,
           headerActionNode
         )}
