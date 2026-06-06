@@ -47,6 +47,10 @@ from .party_model import (
 
 _ET = ZoneInfo("America/New_York")
 
+PartyRulePredicate = (
+    Callable[["PartyDraft"], bool] | Callable[["PartyDraft", AsyncSession], Awaitable[bool]]
+)
+
 _PARTY_QUERY_FIELDS = QueryFieldSet(
     fields={
         "id": PartyEntity.id,
@@ -189,17 +193,13 @@ class PartyRule(enum.Enum):
     )
 
     message: str
-    is_violated_by: (
-        Callable[["PartyDraft"], bool] | Callable[["PartyDraft", AsyncSession], Awaitable[bool]]
-    )
+    is_violated_by: PartyRulePredicate
 
     def __new__(
         cls,
         code: str,
         message: str,
-        is_violated_by: (
-            Callable[["PartyDraft"], bool] | Callable[["PartyDraft", AsyncSession], Awaitable[bool]]
-        ),
+        is_violated_by: PartyRulePredicate,
     ):
         obj = object.__new__(cls)
         obj._value_ = code
@@ -241,7 +241,7 @@ class PartyService:
         Predicates may be sync or async; async ones receive self.session for DB queries."""
         for rule in rules:
             if inspect.iscoroutinefunction(rule.is_violated_by):
-                violated = await rule.is_violated_by(draft, self.session)  # type: ignore[call-arg]
+                violated = await rule.is_violated_by(draft, self.session)
             else:
                 violated = rule.is_violated_by(draft)  # type: ignore[call-arg]
             if violated:
@@ -364,9 +364,9 @@ class PartyService:
         await self._check_rules(
             draft,
             PartyRule.STUDENT_INFO_NOT_PROVIDED,
-            PartyRule.PARTY_SAME_DAY,
             PartyRule.PARTY_DATE_TOO_SOON,
             PartyRule.PARTY_DATE_TOO_FAR,
+            PartyRule.PARTY_SAME_DAY,
             PartyRule.PARTY_SMART_NOT_COMPLETED,
             PartyRule.NO_RESIDENCE,
             PartyRule.LOCATION_HOLD_ACTIVE,
@@ -407,9 +407,9 @@ class PartyService:
             PartyRule.PARTY_NOT_OWNED_BY_STUDENT,
             PartyRule.PARTY_CANCELLED,
             PartyRule.PARTY_IN_PAST,
-            PartyRule.PARTY_SAME_DAY,
             PartyRule.PARTY_DATE_TOO_SOON,
             PartyRule.PARTY_DATE_TOO_FAR,
+            PartyRule.PARTY_SAME_DAY,
             PartyRule.PARTY_SMART_NOT_COMPLETED,
             PartyRule.NO_RESIDENCE,
             PartyRule.LOCATION_HOLD_ACTIVE,
