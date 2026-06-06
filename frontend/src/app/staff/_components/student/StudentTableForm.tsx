@@ -67,6 +67,7 @@ export default function StudentTableForm({
     StudentTableFormValues
   >({
     resolver: zodResolver(studentTableFormSchema),
+    mode: "onBlur",
     defaultValues: {
       pid: editData?.pid ?? "",
       first_name: editData?.first_name ?? "",

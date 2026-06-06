@@ -57,6 +57,7 @@ export default function IncidentTableForm({
 
   const form = useForm<IncidentTableFormValues>({
     resolver: zodResolver(incidentTableFormSchema),
+    mode: "onBlur",
     defaultValues: {
       location_place_id: editData?.location?.google_place_id ?? "",
       incident_datetime: editData?.incident_datetime ?? new Date(),

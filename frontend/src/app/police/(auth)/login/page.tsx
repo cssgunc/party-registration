@@ -41,6 +41,7 @@ function PoliceLoginForm() {
 
   const form = useForm<PoliceLoginFormValues>({
     resolver: zodResolver(policeLoginSchema),
+    mode: "onBlur",
     defaultValues: {
       email: "",
       password: "",

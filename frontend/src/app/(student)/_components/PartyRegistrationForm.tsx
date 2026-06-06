@@ -22,32 +22,43 @@ import { Form } from "@/components/ui/form";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
-import { PARTY_RULE_MESSAGES } from "@/lib/api/party/party.types";
+import {
+  PARTY_RULE_MESSAGES,
+  StudentCreatePartyDto,
+} from "@/lib/api/party/party.types";
 import { StudentDto } from "@/lib/api/student/student.types";
 import { clientEnv } from "@/lib/config/env.client";
 import {
+  cn,
+  formatContactPreference,
   formatPhoneNumberInput,
   getAcademicYearLabels,
   isFromThisSchoolYear,
   phoneNumberSchema,
 } from "@/lib/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { addBusinessDays, isAfter, startOfDay } from "date-fns";
-import { useEffect, useRef, useState } from "react";
+import { addDays, addHours, isAfter, set, startOfDay } from "date-fns";
+import React, { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 
-const partyFormSchema = z.object({
-  address: z.string().min(1, "Address is required"),
+const partyDateNotTooFar = (date: Date) =>
+  !isAfter(
+    startOfDay(date),
+    addDays(startOfDay(new Date()), clientEnv.NEXT_PUBLIC_PARTY_MAX_LEAD_DAYS)
+  );
+
+const partyFormBaseSchema = z.object({
+  location: z.object(
+    {
+      formatted_address: z.string(),
+      google_place_id: z.string(),
+    },
+    { message: "Please select an address from the dropdown" }
+  ),
   partyDate: z
-    .date({
-      message: "Party date is required",
-    })
-    .refine(
-      (date) =>
-        isAfter(startOfDay(date), addBusinessDays(startOfDay(new Date()), 1)),
-      PARTY_RULE_MESSAGES.PARTY_DATE_TOO_SOON
-    ),
+    .date({ message: "Party date is required" })
+    .refine(partyDateNotTooFar, PARTY_RULE_MESSAGES.PARTY_DATE_TOO_FAR),
   partyTime: z.string().min(1, "Party time is required"),
   secondContactFirstName: z.string().min(1, "First name is required"),
   secondContactLastName: z.string().min(1, "Last name is required"),
@@ -61,21 +72,105 @@ const partyFormSchema = z.object({
     .refine((v) => v.toLowerCase().endsWith("@unc.edu"), {
       message: "Contact two email must be a UNC email address (@unc.edu)",
     }),
-  studentPhoneNumber: phoneNumberSchema.optional(),
-  studentContactPreference: z.enum(["call", "text"]).optional(),
+  studentPhoneNumber: phoneNumberSchema,
+  studentContactPreference: z.enum(["call", "text"], {
+    message: "Please select a contact preference",
+  }),
+  studentEmail: z.string(),
 });
 
-type PartyFormValues = z.infer<typeof partyFormSchema>;
+type PartyFormValues = z.infer<typeof partyFormBaseSchema>;
+
+const refinePartyDatetimeNotTooSoon = (
+  data: PartyFormValues,
+  ctx: z.RefinementCtx
+) => {
+  if (!data.partyDate || !data.partyTime) return;
+  const [hours, minutes] = data.partyTime.split(":").map(Number);
+  const partyDatetime = set(data.partyDate, {
+    hours,
+    minutes,
+    seconds: 0,
+    milliseconds: 0,
+  });
+  if (
+    !isAfter(
+      partyDatetime,
+      addHours(new Date(), clientEnv.NEXT_PUBLIC_PARTY_MIN_LEAD_HOURS)
+    )
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      message: PARTY_RULE_MESSAGES.PARTY_DATE_TOO_SOON,
+      path: ["partyTime"],
+    });
+  }
+};
+
+const refineContactTwoEmailDiffers = (
+  data: PartyFormValues,
+  ctx: z.RefinementCtx
+) => {
+  if (!data.studentEmail) return;
+  if (
+    data.contactTwoEmail.trim().toLowerCase() ===
+    data.studentEmail.trim().toLowerCase()
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      message: PARTY_RULE_MESSAGES.CONTACT_TWO_EMAIL_MATCHES_CONTACT_ONE,
+      path: ["contactTwoEmail"],
+    });
+  }
+};
+
+const refineContactTwoPhoneDiffers = (
+  data: PartyFormValues,
+  ctx: z.RefinementCtx
+) => {
+  if (!data.studentPhoneNumber || !data.phoneNumber) return;
+  if (data.studentPhoneNumber === data.phoneNumber) {
+    ctx.addIssue({
+      code: "custom",
+      message: PARTY_RULE_MESSAGES.CONTACT_TWO_PHONE_MATCHES_CONTACT_ONE,
+      path: ["phoneNumber"],
+    });
+  }
+};
+
+const partyFormSchema = partyFormBaseSchema
+  .superRefine(refinePartyDatetimeNotTooSoon)
+  .superRefine(refineContactTwoEmailDiffers)
+  .superRefine(refineContactTwoPhoneDiffers);
 
 export { partyFormSchema };
 export type { PartyFormValues };
+
+export const partyFormValuesToDto = (
+  values: PartyFormValues
+): StudentCreatePartyDto => {
+  const [hours, minutes] = values.partyTime.split(":");
+  const partyDateTime = new Date(values.partyDate);
+  partyDateTime.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+  return {
+    type: "student",
+    party_datetime: partyDateTime,
+    google_place_id: values.location.google_place_id,
+    contact_two: {
+      email: values.contactTwoEmail,
+      first_name: values.secondContactFirstName,
+      last_name: values.secondContactLastName,
+      phone_number: values.phoneNumber,
+      contact_preference: values.contactPreference,
+    },
+  };
+};
 
 /**
  * Initial values that can be passed to prefill the form
  */
 export interface PartyFormInitialValues {
-  address?: string;
-  placeId?: string;
+  location?: AutocompleteResult;
   partyDate?: Date;
   partyTime?: string;
   secondContactFirstName?: string;
@@ -86,7 +181,7 @@ export interface PartyFormInitialValues {
 }
 
 interface PartyRegistrationFormProps {
-  onSubmit: (data: PartyFormValues, placeId: string) => void | Promise<void>;
+  onSubmit: (data: PartyFormValues) => void | Promise<void>;
   locationService?: LocationService;
   initialValues?: PartyFormInitialValues;
   /** The authenticated student */
@@ -99,7 +194,6 @@ interface PartyRegistrationFormProps {
 
 // Default party time (e.g., 8:00 PM)
 const DEFAULT_PARTY_TIME = "20:00";
-// Default contact preference
 const DEFAULT_CONTACT_PREFERENCE: "call" | "text" = "text";
 
 export default function PartyRegistrationForm({
@@ -111,8 +205,17 @@ export default function PartyRegistrationForm({
 }: PartyRegistrationFormProps) {
   const form = useForm<PartyFormValues>({
     resolver: zodResolver(partyFormSchema),
+    mode: "onBlur",
     defaultValues: {
-      address: initialValues?.address ?? "",
+      location:
+        initialValues?.location ??
+        (student?.residence &&
+        isFromThisSchoolYear(student.residence.residence_chosen_date)
+          ? {
+              formatted_address: student.residence.location.formatted_address,
+              google_place_id: student.residence.location.google_place_id,
+            }
+          : undefined),
       partyDate: initialValues?.partyDate ?? undefined,
       partyTime: initialValues?.partyTime ?? DEFAULT_PARTY_TIME,
       phoneNumber: initialValues?.phoneNumber ?? "",
@@ -121,112 +224,70 @@ export default function PartyRegistrationForm({
       contactPreference:
         initialValues?.contactPreference ?? DEFAULT_CONTACT_PREFERENCE,
       contactTwoEmail: initialValues?.contactTwoEmail ?? "",
-      studentPhoneNumber: undefined,
-      studentContactPreference: undefined,
+      studentPhoneNumber: student?.phone_number ?? "",
+      studentContactPreference: student?.contact_preference ?? undefined,
+      studentEmail: student?.email ?? "",
     },
   });
 
-  const [placeId, setPlaceId] = useState<string>(
-    initialValues?.placeId ?? student?.residence?.location.google_place_id ?? ""
-  );
-
-  // If the student fixture loads after the first render, sync placeId from
-  // their residence so the form's internal state stays honest with what'll
-  // be sent on submit.
+  // When student data arrives after the first render, sync their existing
+  // contact info and residence into the form so Zod validation passes naturally.
   useEffect(() => {
-    if (initialValues?.placeId || placeId) return;
-    const residencePlaceId = student?.residence?.location.google_place_id;
-    if (residencePlaceId) setPlaceId(residencePlaceId);
-  }, [student, initialValues?.placeId, placeId]);
+    if (!student) return;
+
+    const residence = student.residence;
+    const residenceLocation =
+      !initialValues?.location &&
+      residence &&
+      isFromThisSchoolYear(residence.residence_chosen_date)
+        ? {
+            formatted_address: residence.location.formatted_address,
+            google_place_id: residence.location.google_place_id,
+          }
+        : undefined;
+
+    form.reset(
+      (values) => ({
+        ...values,
+        studentPhoneNumber:
+          values.studentPhoneNumber || student.phone_number || "",
+        studentContactPreference:
+          values.studentContactPreference ??
+          student.contact_preference ??
+          undefined,
+        studentEmail: values.studentEmail || student.email || "",
+        location: values.location ?? residenceLocation,
+      }),
+      { keepErrors: true, keepDirty: true, keepTouched: true }
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [student, initialValues?.location?.google_place_id]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAddressConfirmation, setShowAddressConfirmation] = useState(false);
-  const pendingSubmitRef = useRef<{
-    data: PartyFormValues;
-    placeId: string;
-  } | null>(null);
+
+  const pendingSubmitRef = useRef<PartyFormValues | null>(null);
 
   const handleValid = async (data: PartyFormValues) => {
-    // If student hasn't provided contact info yet, validate inline fields
-    if (!student?.phone_number) {
-      let hasStudentInfoError = false;
-      // STUDENT_INFO_NOT_PROVIDED — banner-style: show same message twice
-      // so it appears beneath whichever field the user is missing.
-      if (!data.studentPhoneNumber) {
-        form.setError("studentPhoneNumber", {
-          message: PARTY_RULE_MESSAGES.STUDENT_INFO_NOT_PROVIDED,
-        });
-        hasStudentInfoError = true;
-      }
-      if (!data.studentContactPreference) {
-        form.setError("studentContactPreference", {
-          message: PARTY_RULE_MESSAGES.STUDENT_INFO_NOT_PROVIDED,
-        });
-        hasStudentInfoError = true;
-      }
-      if (hasStudentInfoError) return;
-    }
+    const locationChanged =
+      !initialValues?.location ||
+      data.location.google_place_id !== initialValues.location.google_place_id;
 
-    // Validate contact two differs from contact one (the student)
-    let hasContactTwoError = false;
-    if (
-      student?.email &&
-      data.contactTwoEmail.trim().toLowerCase() ===
-        student.email.trim().toLowerCase()
-    ) {
-      form.setError("contactTwoEmail", {
-        message: PARTY_RULE_MESSAGES.CONTACT_TWO_EMAIL_MATCHES_CONTACT_ONE,
-      });
-      hasContactTwoError = true;
-    }
-    const studentPhone = student?.phone_number ?? data.studentPhoneNumber;
-    if (studentPhone) {
-      const c1Digits = studentPhone.replace(/\D/g, "");
-      const c2Digits = data.phoneNumber;
-      if (c1Digits === c2Digits) {
-        form.setError("phoneNumber", {
-          message: PARTY_RULE_MESSAGES.CONTACT_TWO_PHONE_MATCHES_CONTACT_ONE,
-        });
-        hasContactTwoError = true;
-      }
-    }
-    if (hasContactTwoError) return;
-
-    if (!placeId) {
-      form.setError("address", {
-        message: "Please select an address from the dropdown",
-      });
-      return;
-    }
-
-    const addressChanged =
-      !initialValues?.address || data.address !== initialValues.address;
-
-    if (addressChanged) {
-      pendingSubmitRef.current = { data, placeId };
+    if (locationChanged) {
+      pendingSubmitRef.current = data;
       setShowAddressConfirmation(true);
       return;
     }
 
-    // Proceed with submission if address didn't change
     setIsSubmitting(true);
     try {
-      await onSubmit(data, placeId);
+      await onSubmit(data);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const { schoolYear, changeDate } = getAcademicYearLabels();
-
-  // Build initial address object for AddressSearch if we have prefilled values
-  const initialAddress: AutocompleteResult | undefined =
-    initialValues?.address && initialValues?.placeId
-      ? {
-          formatted_address: initialValues.address,
-          google_place_id: initialValues.placeId,
-        }
-      : undefined;
 
   const validResidence = isFromThisSchoolYear(
     student?.residence?.residence_chosen_date
@@ -247,12 +308,10 @@ export default function PartyRegistrationForm({
                   labelClassName="content-bold"
                   inputClassName="content"
                   forwardDate={true}
-                  description="Must be at least 2 business days from today"
+                  description={`Must be at least ${clientEnv.NEXT_PUBLIC_PARTY_MIN_LEAD_HOURS} hours in advance, and no more than ${clientEnv.NEXT_PUBLIC_PARTY_MAX_LEAD_DAYS} days out`}
                   disabled={(date) =>
-                    !isAfter(
-                      startOfDay(date),
-                      addBusinessDays(startOfDay(new Date()), 1)
-                    )
+                    !isAfter(startOfDay(date), startOfDay(new Date())) ||
+                    !partyDateNotTooFar(date)
                   }
                 />
 
@@ -266,53 +325,52 @@ export default function PartyRegistrationForm({
                 />
               </div>
 
-              {isStudentLoading ? (
-                <Field>
-                  <FieldLabel className="content-bold">
-                    Party Address
-                  </FieldLabel>
-                  <Skeleton className="h-10 w-full" />
-                </Field>
-              ) : !validResidence ? (
-                <AddressField
-                  control={form.control}
-                  name="address"
-                  label="Party Address"
-                  labelClassName="content-bold"
-                  placeholder="Search for the party address..."
-                  locationService={locationService}
-                  initialSelection={initialAddress}
-                  onSelect={(address) =>
-                    setPlaceId(address?.google_place_id || "")
-                  }
-                  descriptionClassName="content-sub italic"
-                  description={
-                    <>
-                      This will be added to your profile as your {schoolYear}{" "}
-                      location. You may change it after {changeDate}.
-                    </>
-                  }
-                />
-              ) : (
-                <Field className="col-span-2 gap-1">
-                  <FieldLabel className="content-bold">
-                    Party Address
-                  </FieldLabel>
-                  <p className="content">
-                    {student?.residence?.location.formatted_address}
-                  </p>
-                  <p className="content-sub italic">
-                    You cannot change your address until {changeDate}. For
-                    extraneous circumstances, contact{" "}
-                    <a
-                      href={`mailto:${clientEnv.NEXT_PUBLIC_CONTACT_EMAIL}`}
-                      className="underline"
-                    >
-                      {clientEnv.NEXT_PUBLIC_CONTACT_EMAIL}
-                    </a>{" "}
-                  </p>
-                </Field>
-              )}
+              <StudentInfoField
+                label="Party Address"
+                value={
+                  validResidence
+                    ? student?.residence?.location.formatted_address
+                    : undefined
+                }
+                isLoading={isStudentLoading}
+                fieldClassName="col-span-2"
+                skeletonClassName="h-10 w-full"
+                description={
+                  validResidence ? (
+                    <p className="content-sub italic">
+                      You cannot change your address until {changeDate}. For
+                      extraneous circumstances, contact{" "}
+                      <a
+                        href={`mailto:${clientEnv.NEXT_PUBLIC_CONTACT_EMAIL}`}
+                        className="underline"
+                      >
+                        {clientEnv.NEXT_PUBLIC_CONTACT_EMAIL}
+                      </a>{" "}
+                    </p>
+                  ) : undefined
+                }
+                editField={
+                  <AddressField
+                    control={form.control}
+                    name="location"
+                    label="Party Address"
+                    labelClassName="content-bold"
+                    placeholder="Search for the party address..."
+                    locationService={locationService}
+                    initialSelection={initialValues?.location}
+                    value={form.watch("location")?.formatted_address}
+                    getStoredValue={(address) => address ?? undefined}
+                    chapelHillOnly
+                    descriptionClassName="content-sub italic ml-1 -mt-2"
+                    description={
+                      <>
+                        This will be added to your profile as your {schoolYear}{" "}
+                        location. You may change it after {changeDate}.
+                      </>
+                    }
+                  />
+                }
+              />
             </div>
 
             <div className="flex flex-col gap-4 lg:gap-6">
@@ -325,88 +383,63 @@ export default function PartyRegistrationForm({
                 </p>
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
-                <Field className="gap-1">
-                  <FieldLabel className="content-bold">First Name</FieldLabel>
-                  {isStudentLoading ? (
-                    <Skeleton className="h-6 w-full" />
-                  ) : (
-                    <p className="content">{student?.first_name}</p>
-                  )}
-                </Field>
-                <Field className="gap-1">
-                  <FieldLabel className="content-bold">Last Name</FieldLabel>
-                  {isStudentLoading ? (
-                    <Skeleton className="h-6 w-full" />
-                  ) : (
-                    <p className="content">{student?.last_name}</p>
-                  )}
-                </Field>
-                {isStudentLoading ? (
-                  <Field className="gap-1">
-                    <FieldLabel className="content-bold">
-                      Phone Number
-                    </FieldLabel>
-                    <Skeleton className="h-6 w-full" />
-                  </Field>
-                ) : student?.phone_number != null ? (
-                  <Field className="gap-1">
-                    <FieldLabel className="content-bold">
-                      Phone Number
-                    </FieldLabel>
-                    <p className="content">
-                      {formatPhoneNumberInput(student.phone_number)}
-                    </p>
-                  </Field>
-                ) : (
-                  <PhoneField
-                    control={form.control}
-                    name="studentPhoneNumber"
-                    label="Phone Number"
-                    labelClassName="content-bold"
-                    inputClassName="content"
-                    className="gap-1"
-                  />
-                )}
-                {isStudentLoading ? (
-                  <Field className="gap-1">
-                    <FieldLabel className="content-bold">
-                      Contact Preference
-                    </FieldLabel>
-                    <Skeleton className="h-6 w-full" />
-                  </Field>
-                ) : student?.phone_number != null ? (
-                  <Field className="gap-1">
-                    <FieldLabel className="content-bold">
-                      Contact Preference
-                    </FieldLabel>
-                    <p className="content capitalize">
-                      {student.contact_preference}
-                    </p>
-                  </Field>
-                ) : (
-                  <SelectField
-                    control={form.control}
-                    name="studentContactPreference"
-                    label="Contact Preference"
-                    labelClassName="content-bold"
-                    triggerClassName="content"
-                    itemClassName="content"
-                    placeholder="Select your preference"
-                    className="gap-1"
-                    options={[
-                      { value: "call", label: "Call" },
-                      { value: "text", label: "Text" },
-                    ]}
-                  />
-                )}
-                <Field className="gap-1">
-                  <FieldLabel className="content-bold">Email</FieldLabel>
-                  {isStudentLoading ? (
-                    <Skeleton className="h-6 w-full" />
-                  ) : (
-                    <p className="content">{student?.email}</p>
-                  )}
-                </Field>
+                <StudentInfoField
+                  label="First Name"
+                  value={student?.first_name}
+                  isLoading={isStudentLoading}
+                />
+                <StudentInfoField
+                  label="Last Name"
+                  value={student?.last_name}
+                  isLoading={isStudentLoading}
+                />
+                <StudentInfoField
+                  label="Phone Number"
+                  value={
+                    student?.phone_number != null
+                      ? formatPhoneNumberInput(student.phone_number)
+                      : undefined
+                  }
+                  isLoading={isStudentLoading}
+                  editField={
+                    <PhoneField
+                      control={form.control}
+                      name="studentPhoneNumber"
+                      label="Phone Number"
+                      labelClassName="content-bold"
+                      inputClassName="content"
+                    />
+                  }
+                />
+                <StudentInfoField
+                  label="Contact Preference"
+                  value={
+                    student?.phone_number != null
+                      ? formatContactPreference(student.contact_preference)
+                      : undefined
+                  }
+                  isLoading={isStudentLoading}
+                  editField={
+                    <SelectField
+                      control={form.control}
+                      name="studentContactPreference"
+                      label="Contact Preference"
+                      labelClassName="content-bold"
+                      triggerClassName="content"
+                      itemClassName="content"
+                      placeholder="Select your preference"
+                      options={[
+                        { value: "call", label: "Call" },
+                        { value: "text", label: "Text" },
+                      ]}
+                    />
+                  }
+                />
+                <StudentInfoField
+                  label="Email"
+                  value={student?.email}
+                  isLoading={isStudentLoading}
+                />
               </div>
             </div>
 
@@ -503,10 +536,10 @@ export default function PartyRegistrationForm({
             </DialogDescription>
           </DialogHeader>
           <div className="pt-2">
-            <p className="text-sm">
+            <p className="text-base">
               <span className="font-semibold">New Address:</span>
               <br />
-              {pendingSubmitRef.current?.data.address}
+              {pendingSubmitRef.current?.location.formatted_address}
             </p>
           </div>
           <DialogFooter>
@@ -526,9 +559,7 @@ export default function PartyRegistrationForm({
                 setShowAddressConfirmation(false);
                 setIsSubmitting(true);
                 try {
-                  const { data, placeId: submitPlaceId } =
-                    pendingSubmitRef.current!;
-                  await onSubmit(data, submitPlaceId);
+                  await onSubmit(pendingSubmitRef.current!);
                 } finally {
                   setIsSubmitting(false);
                   pendingSubmitRef.current = null;
@@ -541,5 +572,40 @@ export default function PartyRegistrationForm({
         </DialogContent>
       </Dialog>
     </Form>
+  );
+}
+
+function StudentInfoField({
+  label,
+  value,
+  isLoading,
+  editField,
+  fieldClassName,
+  skeletonClassName,
+  description,
+}: {
+  label: string;
+  value?: React.ReactNode;
+  isLoading: boolean;
+  editField?: React.ReactNode;
+  fieldClassName?: string;
+  skeletonClassName?: string;
+  description?: React.ReactNode;
+}) {
+  if (value == null && !isLoading && editField != null) {
+    return <>{editField}</>;
+  }
+  return (
+    <Field className={cn("gap-1", fieldClassName)}>
+      <FieldLabel className="content-bold">{label}</FieldLabel>
+      {isLoading ? (
+        <Skeleton className={skeletonClassName ?? "h-6 w-full"} />
+      ) : (
+        <>
+          <p className="content">{value}</p>
+          {description}
+        </>
+      )}
+    </Field>
   );
 }

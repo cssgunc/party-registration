@@ -41,6 +41,7 @@ export default function PoliceAccountTableForm({
 }: Props) {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
+    mode: "onBlur",
     defaultValues: {
       email: editData?.email ?? "",
       role: editData?.role ?? "officer",
