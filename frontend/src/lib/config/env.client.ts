@@ -49,7 +49,10 @@ const schema = z.object({
     emptyToUndefined,
     z.email().default("offcampus@unc.edu")
   ),
-  NEXT_PUBLIC_COURSE_LINK: z.url(),
+  NEXT_PUBLIC_COURSE_LINK: z.preprocess(
+    emptyToUndefined,
+    z.url().default("https://go.unc.edu/PartySmartClass")
+  ),
   NEXT_PUBLIC_PARTY_MIN_LEAD_HOURS: z.preprocess(
     emptyToUndefined,
     z.coerce.number().int().positive().default(24)
