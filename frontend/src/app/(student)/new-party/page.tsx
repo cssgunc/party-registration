@@ -1,6 +1,5 @@
 "use client";
 import PartyRegistrationForm, {
-  PartyFormInitialValues,
   PartyFormValues,
   partyFormValuesToDto,
 } from "@/app/(student)/_components/PartyRegistrationForm";
@@ -11,19 +10,17 @@ import { useRegisterParty } from "@/lib/api/party/party.queries";
 import { getPartyValidationError } from "@/lib/api/party/party.types";
 import {
   useCurrentStudent,
-  useMyParties,
   useUpdateStudent,
 } from "@/lib/api/student/student.queries";
 import { isFromThisSchoolYear } from "@/lib/utils";
 import { ArrowLeft, Info } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function RegistrationForm() {
   const registerPartyMutation = useRegisterParty();
   const updateStudentMutation = useUpdateStudent();
-  const partiesQuery = useMyParties();
   const studentQuery = useCurrentStudent();
   const router = useRouter();
   const { openSnackbar } = useSnackbar();
@@ -42,40 +39,6 @@ export default function RegistrationForm() {
     if (!isRedirectingBlockedStudent) return;
     router.replace("/");
   }, [isRedirectingBlockedStudent, router]);
-
-  /**
-   * Get initial values from the student's most recent party (if they have one).
-   * Prefills second contact information to save time for repeat registrations.
-   */
-  const initialValues: PartyFormInitialValues | undefined = useMemo(() => {
-    if (!partiesQuery.data || partiesQuery.data.length === 0) {
-      return undefined;
-    }
-
-    // Sort parties by date (most recent first) and get the latest
-    const sortedParties = [...partiesQuery.data].sort(
-      (a, b) =>
-        new Date(b.party_datetime).getTime() -
-        new Date(a.party_datetime).getTime()
-    );
-    const lastParty = sortedParties[0];
-
-    if (!lastParty.contact_two) {
-      return undefined;
-    }
-
-    return {
-      location: {
-        formatted_address: lastParty.location.formatted_address,
-        google_place_id: lastParty.location.google_place_id,
-      },
-      secondContactFirstName: lastParty.contact_two.first_name,
-      secondContactLastName: lastParty.contact_two.last_name,
-      phoneNumber: lastParty.contact_two.phone_number,
-      contactPreference: lastParty.contact_two.contact_preference,
-      contactTwoEmail: lastParty.contact_two.email,
-    };
-  }, [partiesQuery.data]);
 
   const handleSubmit = async (values: PartyFormValues) => {
     setSubmissionError(null);
@@ -141,7 +104,6 @@ export default function RegistrationForm() {
 
               <PartyRegistrationForm
                 onSubmit={handleSubmit}
-                initialValues={initialValues}
                 student={studentQuery.data}
                 submissionError={submissionError}
               />
