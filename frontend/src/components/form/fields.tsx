@@ -105,6 +105,7 @@ type PhoneFieldProps<T extends FieldValues> = BaseFieldProps<T> & {
   placeholder?: string;
   disabled?: boolean;
   inputClassName?: string;
+  autoComplete?: string;
 };
 
 export function PhoneField<T extends FieldValues>({
@@ -118,6 +119,7 @@ export function PhoneField<T extends FieldValues>({
   inputClassName,
   placeholder = "(123) 456-7890",
   disabled,
+  autoComplete = "off",
 }: PhoneFieldProps<T>) {
   return (
     <FormField
@@ -132,7 +134,7 @@ export function PhoneField<T extends FieldValues>({
               placeholder={placeholder}
               disabled={disabled}
               maxLength={14}
-              autoComplete="off"
+              autoComplete={autoComplete}
               name={field.name}
               ref={field.ref}
               onBlur={field.onBlur}

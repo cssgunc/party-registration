@@ -453,6 +453,7 @@ export default function PartyRegistrationForm({
                   labelClassName="content-bold"
                   inputClassName="content"
                   placeholder=""
+                  autoComplete="section-contact-two given-name"
                 />
 
                 <TextField
@@ -462,6 +463,7 @@ export default function PartyRegistrationForm({
                   labelClassName="content-bold"
                   inputClassName="content"
                   placeholder=""
+                  autoComplete="section-contact-two family-name"
                 />
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
@@ -471,6 +473,7 @@ export default function PartyRegistrationForm({
                   label="Phone Number"
                   labelClassName="content-bold"
                   inputClassName="content"
+                  autoComplete="section-contact-two tel"
                 />
 
                 <SelectField
@@ -496,6 +499,7 @@ export default function PartyRegistrationForm({
                 inputClassName="content"
                 type="email"
                 placeholder="student@unc.edu"
+                autoComplete="section-contact-two email"
               />
             </div>
 
