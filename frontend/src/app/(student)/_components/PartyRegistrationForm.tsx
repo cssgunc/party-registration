@@ -269,9 +269,12 @@ export default function PartyRegistrationForm({
   const pendingSubmitRef = useRef<PartyFormValues | null>(null);
 
   const handleValid = async (data: PartyFormValues) => {
+    const baselineGooglePlaceId =
+      initialValues?.location?.google_place_id ??
+      (validResidence ? student?.residence?.location.google_place_id : null);
     const locationChanged =
-      !initialValues?.location ||
-      data.location.google_place_id !== initialValues.location.google_place_id;
+      !baselineGooglePlaceId ||
+      data.location.google_place_id !== baselineGooglePlaceId;
 
     if (locationChanged) {
       pendingSubmitRef.current = data;
@@ -453,7 +456,7 @@ export default function PartyRegistrationForm({
                   labelClassName="content-bold"
                   inputClassName="content"
                   placeholder=""
-                  autoComplete="section-contact-two given-name"
+                  autoComplete="section-contact-two field-1"
                 />
 
                 <TextField
@@ -463,7 +466,7 @@ export default function PartyRegistrationForm({
                   labelClassName="content-bold"
                   inputClassName="content"
                   placeholder=""
-                  autoComplete="section-contact-two family-name"
+                  autoComplete="section-contact-two field-2"
                 />
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
@@ -473,7 +476,7 @@ export default function PartyRegistrationForm({
                   label="Phone Number"
                   labelClassName="content-bold"
                   inputClassName="content"
-                  autoComplete="section-contact-two tel"
+                  autoComplete="section-contact-two field-3"
                 />
 
                 <SelectField
@@ -499,7 +502,7 @@ export default function PartyRegistrationForm({
                 inputClassName="content"
                 type="email"
                 placeholder="student@unc.edu"
-                autoComplete="section-contact-two email"
+                autoComplete="section-contact-two field-4"
               />
             </div>
 
