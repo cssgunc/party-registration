@@ -25,6 +25,7 @@ import { InfoChip } from "../shared/sidebar/InfoChip";
 import { useFormSidebarState } from "../shared/sidebar/useFormSidebarState";
 import { TableTemplate } from "../shared/table/TableTemplate";
 import { deleteAction, editAction } from "../shared/table/rowActions";
+import { useServerTableState } from "../shared/table/useServerTableState";
 import { IncidentSeverityCountsHeader } from "./IncidentSeverityCountsHeader";
 import IncidentTableForm from "./IncidentTableForm";
 
@@ -186,13 +187,19 @@ export const IncidentTable = () => {
     },
   ];
 
+  const serverTableState = useServerTableState({
+    columns,
+    pageSizeStorageKey: "staff-incidents",
+  });
+  const query = useIncidents(serverTableState.serverParams);
+
   return (
     <>
       <TableTemplate
-        useQuery={useIncidents}
+        query={query}
+        serverTableState={serverTableState}
         columns={columns}
         createAction={{ label: "New Incident", fn: openCreate }}
-        pageSizeStorageKey="staff-incidents"
         rowActions={[
           editAction<IncidentDto>({ onClick: openEdit }),
           deleteAction<IncidentDto>({
@@ -204,7 +211,7 @@ export const IncidentTable = () => {
           }),
         ]}
         exportMutation={exportMutation}
-        headerSlot={(query) => (
+        headerSlot={
           <IncidentSeverityCountsHeader
             counts={
               (query.data as PaginatedIncidentsResponse | undefined)
@@ -212,7 +219,7 @@ export const IncidentTable = () => {
             }
             isLoading={query.isLoading || query.isFetching}
           />
-        )}
+        }
       />
       <FormSidebar
         mode={mode}

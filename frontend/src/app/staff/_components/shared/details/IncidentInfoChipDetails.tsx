@@ -12,7 +12,7 @@ import {
 } from "@/lib/api/location/location.types";
 import { PlusIcon } from "lucide-react";
 import { useSession } from "next-auth/react";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { createPortal } from "react-dom";
 import IncidentSidebarCard from "../../location/IncidentSidebarCard";
 import { ConfirmDialog } from "../dialog/ConfirmDialog";
@@ -41,10 +41,6 @@ export default function IncidentInfoChipDetails({
     null
   );
 
-  const requestDelete = useCallback((incidentId: number) => {
-    setConfirmStateDelete(incidentId);
-  }, []);
-
   const deleteMutation = useDeleteIncidentInLocation({
     onSuccess: () => {
       setConfirmStateDelete(null);
@@ -55,15 +51,6 @@ export default function IncidentInfoChipDetails({
     if (confirmStateDelete === null) return;
     deleteMutation.mutate(confirmStateDelete);
   };
-
-  const handleEdit = useCallback((incident: NestedIncidentDto) => {
-    setModalState({ mode: "edit", incident });
-  }, []);
-
-  const handleAdd = () => {
-    setModalState({ mode: "create" });
-  };
-  const closeModal = () => setModalState(null);
 
   const createMutation = useCreateIncident({
     onSuccess: () => {
@@ -77,9 +64,7 @@ export default function IncidentInfoChipDetails({
     },
   });
 
-  const handleCreateIncident = (data: IncidentCreateDto) => {
-    createMutation.mutate(data);
-  };
+  const handleCreateIncident = createMutation.mutate;
 
   const handleEditIncident = (data: IncidentCreateDto) => {
     if (modalState?.mode !== "edit") return;
@@ -103,7 +88,9 @@ export default function IncidentInfoChipDetails({
           <Button
             variant="default"
             size="sm"
-            onClick={handleAdd}
+            onClick={() => {
+              setModalState({ mode: "create" });
+            }}
             aria-label="Add new incident"
           >
             <PlusIcon className="size-4" aria-hidden="true" />
@@ -115,8 +102,10 @@ export default function IncidentInfoChipDetails({
           <IncidentSidebarCard
             incidents={incident}
             key={incident.id}
-            onDeleteIncidentAction={requestDelete}
-            onEditIncidentAction={handleEdit}
+            onDeleteIncidentAction={setConfirmStateDelete}
+            onEditIncidentAction={(incident: NestedIncidentDto) => {
+              setModalState({ mode: "edit", incident });
+            }}
           />
         ))}
       </div>
@@ -142,7 +131,7 @@ export default function IncidentInfoChipDetails({
         }
         open={modalState !== null}
         onOpenChange={(open) => {
-          if (!open) closeModal();
+          if (!open) setModalState(null);
         }}
         mode={modalState?.mode ?? "create"}
         incident={modalState?.mode === "edit" ? modalState.incident : undefined}

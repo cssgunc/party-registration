@@ -6,6 +6,7 @@ import "./src/lib/config/env.client";
 const nextConfig: NextConfig = {
   output: "standalone",
   serverExternalPackages: ["saml2-js"],
+  reactCompiler: true,
   turbopack: {
     root: process.cwd(),
   },

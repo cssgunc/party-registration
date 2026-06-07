@@ -22,7 +22,6 @@ import { phoneNumberSchema } from "@/lib/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { addBusinessDays, format, isAfter, startOfDay } from "date-fns";
 import { useSession } from "next-auth/react";
-import { useMemo } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 
@@ -86,10 +85,7 @@ export default function PartyTableForm({
   const { data: session } = useSession();
   const isAdmin = session?.role === "admin";
 
-  const partyTableFormSchema = useMemo(
-    () => createPartyTableFormSchema(isAdmin),
-    [isAdmin]
-  );
+  const partyTableFormSchema = createPartyTableFormSchema(isAdmin);
 
   const form = useForm<PartyTableFormInput, unknown, PartyTableFormValues>({
     resolver: zodResolver(partyTableFormSchema),

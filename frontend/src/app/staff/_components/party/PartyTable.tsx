@@ -33,6 +33,7 @@ import { InfoChip } from "../shared/sidebar/InfoChip";
 import { useFormSidebarState } from "../shared/sidebar/useFormSidebarState";
 import { TableTemplate } from "../shared/table/TableTemplate";
 import { type RowAction, editAction } from "../shared/table/rowActions";
+import { useServerTableState } from "../shared/table/useServerTableState";
 import PartyTableForm, { PartyTableFormValues } from "./PartyTableForm";
 
 const PARTY_ERROR_OPTIONS = {
@@ -261,13 +262,19 @@ export const PartyTable = () => {
     },
   ];
 
+  const serverTableState = useServerTableState({
+    columns,
+    pageSizeStorageKey: "staff-parties",
+  });
+  const query = useAdminParties(serverTableState.serverParams);
+
   return (
     <>
       <TableTemplate
-        useQuery={useAdminParties}
+        query={query}
+        serverTableState={serverTableState}
         columns={columns}
         createAction={{ label: "New Party", fn: openCreate }}
-        pageSizeStorageKey="staff-parties"
         rowActions={[
           editAction<PartyDto>({ onClick: openEdit }),
           {

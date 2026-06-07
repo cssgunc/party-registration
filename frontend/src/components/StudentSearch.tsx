@@ -117,6 +117,7 @@ export default function StudentSearch({
   const initialMatchedFieldName = initialSelection?.matched_field_name ?? "";
   const initialMatchedFieldValue = initialSelection?.matched_field_value ?? "";
 
+  // eslint-disable-next-line react-no-manual-memo/no-hook-memo -- compiler skips this component; useMemo provides reference stability for the effect dep below
   const normalizedInitialSelection = useMemo(
     () =>
       initialStudentId === null
@@ -143,8 +144,7 @@ export default function StudentSearch({
     if (value && !initialSelection) {
       setSearchTerm(value);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
+  }, [initialSelection, value]);
 
   useEffect(() => {
     if (normalizedInitialSelection) {

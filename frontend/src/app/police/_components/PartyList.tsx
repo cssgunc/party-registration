@@ -2,14 +2,11 @@
 
 import IncidentDialog from "@/components/IncidentDialog";
 import { useSnackbar } from "@/contexts/SnackbarContext";
-import type {
-  IncidentCreateDto,
-  IncidentSeverity,
-} from "@/lib/api/incident/incident.types";
+import type { IncidentSeverity } from "@/lib/api/incident/incident.types";
 import { ExactMatchDto, PartyPoliceDto } from "@/lib/api/party/party.types";
 import { usePoliceCreateIncident } from "@/lib/api/party/police-party.queries";
 import { getErrorMessage } from "@/lib/errors";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import PartyCard, { PartyCardData } from "./PartyCard";
 
 interface PartyListProps {
@@ -44,21 +41,14 @@ const PartyList = ({
     },
   });
 
-  const openIncidentDialog = useCallback(
-    (data: PartyCardData, severity: IncidentSeverity) => {
-      setSelectedData(data);
-      setIncidentType(severity);
-      setIncidentDialogOpen(true);
-    },
-    []
-  );
-
-  const handleSubmit = useCallback(
-    (data: IncidentCreateDto) => {
-      createIncidentMutation.mutate(data);
-    },
-    [createIncidentMutation]
-  );
+  const openIncidentDialog = (
+    data: PartyCardData,
+    severity: IncidentSeverity
+  ) => {
+    setSelectedData(data);
+    setIncidentType(severity);
+    setIncidentDialogOpen(true);
+  };
 
   useEffect(() => {
     if (!activeParty || !listRef.current) return;
@@ -175,7 +165,7 @@ const PartyList = ({
         formattedAddress={
           selectedData?.hasParty ? undefined : selectedData?.formattedAddress
         }
-        onSubmit={handleSubmit}
+        onSubmit={createIncidentMutation.mutate}
         isSubmitting={createIncidentMutation.isPending}
         key={dialogKey}
       />

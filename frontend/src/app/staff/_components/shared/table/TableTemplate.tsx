@@ -22,7 +22,6 @@ import {
 import {
   ColumnFilterMeta,
   ListQueryParams,
-  ServerTableParams,
   buildServerTableParams,
 } from "@/lib/api/shared/query-params";
 import { getErrorMessage } from "@/lib/errors";
@@ -37,14 +36,7 @@ import {
 } from "@tanstack/react-table";
 import { Download, Loader2, MoreHorizontal, Plus } from "lucide-react";
 import { useSession } from "next-auth/react";
-import {
-  ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import { ConfirmDialog } from "../dialog/ConfirmDialog";
 import { SidebarContent } from "../sidebar/SidebarContent";
 import { useSidebar } from "../sidebar/SidebarContext";
@@ -52,7 +44,7 @@ import { ColumnHeader } from "./ColumnHeader";
 import { FilterInput } from "./FilterInput";
 import { RowAction } from "./rowActions";
 import { useMeasuredFillerRows } from "./useMeasuredFillerRows";
-import { useServerTableState } from "./useServerTableState";
+import { UseServerTableStateResult } from "./useServerTableState";
 
 type FilterSidebarState = {
   columnId: string;
@@ -79,13 +71,13 @@ export type ExportMutation = {
 };
 
 export type TableProps<T> = {
-  useQuery: (params: ServerTableParams) => TableQuery<T>;
+  query: TableQuery<T>;
+  serverTableState: UseServerTableStateResult;
   columns: ColumnDef<T, unknown>[];
   createAction?: { label: string; fn: () => void };
   exportMutation?: ExportMutation;
   headerSlot?: ReactNode | ((query: TableQuery<T>) => ReactNode);
   rowActions?: RowAction<T>[];
-  pageSizeStorageKey?: string;
 };
 
 const serverFilterPassthrough = () => true;
@@ -93,19 +85,14 @@ const serverFilterPassthrough = () => true;
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 export function TableTemplate<T extends object>({
-  useQuery,
+  query,
+  serverTableState,
   columns,
   createAction,
   exportMutation,
   headerSlot,
   rowActions,
-  pageSizeStorageKey,
 }: TableProps<T>) {
-  const serverTableState = useServerTableState({
-    columns,
-    pageSizeStorageKey,
-  });
-  const query = useQuery(serverTableState.serverParams);
   const data = query.data?.items ?? [];
   const { isLoading, isFetching } = query;
   const error = query.error as Error | null;
@@ -144,69 +131,65 @@ export function TableTemplate<T extends object>({
   const showActionsColumn =
     hasManagePermission && (rowActions?.length ?? 0) > 0;
 
-  const handleActionClick = useCallback(
-    (action: RowAction<T>, rowId: string, row: T) => {
-      if (action.selectRow) {
-        setRowSelection({ [rowId]: true });
-      }
-      if (action.confirm) {
-        setPendingConfirm({ action, row });
-      } else {
-        action.onClick(row);
-      }
-    },
-    []
-  );
+  const handleActionClick = (action: RowAction<T>, rowId: string, row: T) => {
+    if (action.selectRow) {
+      setRowSelection({ [rowId]: true });
+    }
+    if (action.confirm) {
+      setPendingConfirm({ action, row });
+    } else {
+      action.onClick(row);
+    }
+  };
 
-  const columnsWithActions = useMemo(() => {
-    const baseColumns = columns.map((column) =>
-      column.meta?.filter
-        ? { ...column, filterFn: serverFilterPassthrough }
-        : column
-    );
-    if (!showActionsColumn) return baseColumns;
-    return [
-      ...baseColumns,
-      {
-        id: "actions",
-        enableSorting: false,
-        enableColumnFilter: false,
-        cell: ({ row }) => {
-          const visibleActions =
-            rowActions?.filter(
-              (action) => !action.isVisible || action.isVisible(row.original)
-            ) ?? [];
-          if (visibleActions.length === 0) return null;
-          return (
-            <div className="flex justify-end">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="size-8 p-0">
-                    <MoreHorizontal className="size-4" />
-                    <span className="sr-only">Open menu</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {visibleActions.map((action) => (
-                    <DropdownMenuItem
-                      key={action.label}
-                      onClick={() =>
-                        handleActionClick(action, row.id, row.original)
-                      }
-                      variant={action.variant}
-                    >
-                      {action.icon}
-                      {action.label}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          );
+  const baseColumns = columns.map((column) =>
+    column.meta?.filter
+      ? { ...column, filterFn: serverFilterPassthrough }
+      : column
+  );
+  const columnsWithActions: ColumnDef<T, unknown>[] = showActionsColumn
+    ? [
+        ...baseColumns,
+        {
+          id: "actions",
+          enableSorting: false,
+          enableColumnFilter: false,
+          cell: ({ row }) => {
+            const visibleActions =
+              rowActions?.filter(
+                (action) => !action.isVisible || action.isVisible(row.original)
+              ) ?? [];
+            if (visibleActions.length === 0) return null;
+            return (
+              <div className="flex justify-end">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="size-8 p-0">
+                      <MoreHorizontal className="size-4" />
+                      <span className="sr-only">Open menu</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {visibleActions.map((action) => (
+                      <DropdownMenuItem
+                        key={action.label}
+                        onClick={() =>
+                          handleActionClick(action, row.id, row.original)
+                        }
+                        variant={action.variant}
+                      >
+                        {action.icon}
+                        {action.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            );
+          },
         },
-      },
-    ];
-  }, [columns, showActionsColumn, rowActions, handleActionClick]);
+      ]
+    : baseColumns;
 
   const table = useReactTable({
     data: displayData,

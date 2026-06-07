@@ -16,7 +16,6 @@ import {
 } from "@/lib/utils";
 import { format } from "date-fns/format";
 import { Ban, Mail, MoreVertical, Pencil, Phone } from "lucide-react";
-import { memo } from "react";
 
 type Props = {
   party: PartyDto;
@@ -28,7 +27,7 @@ type Props = {
   onDelete: (party: PartyDto) => void;
 };
 
-const RegistrationPartyCard = memo(function RegistrationPartyCard({
+function RegistrationPartyCard({
   party,
   showActions,
   showAddress,
@@ -138,6 +137,6 @@ const RegistrationPartyCard = memo(function RegistrationPartyCard({
       </div>
     </div>
   );
-});
+}
 
 export default RegistrationPartyCard;

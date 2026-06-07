@@ -1,4 +1,5 @@
 import { FlatCompat } from "@eslint/eslintrc";
+import noManualMemo from "eslint-plugin-react-no-manual-memo";
 import { dirname } from "path";
 import { fileURLToPath } from "url";
 
@@ -11,6 +12,14 @@ const compat = new FlatCompat({
 
 const eslintConfig = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
+  {
+    plugins: { "react-no-manual-memo": noManualMemo },
+    rules: {
+      "react-no-manual-memo/no-hook-memo": "warn",
+      "react-no-manual-memo/no-component-memo": "warn",
+      "react-no-manual-memo/no-custom-memo-hook": "warn",
+    },
+  },
   {
     ignores: [
       "node_modules/**",

@@ -41,8 +41,8 @@ export function SidebarContent({
       closeSidebar();
       activeSidebarKeyRef.current = null;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, sidebarKey, title, description]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- selectedKey is intentionally excluded; the ref pattern handles stale reads without re-running on every key change
+  }, [open, sidebarKey, title, description, openSidebar, closeSidebar]);
 
   // On unmount while active, close the chrome
   useEffect(() => {
@@ -54,8 +54,7 @@ export function SidebarContent({
         closeSidebar();
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [closeSidebar]);
 
   // Keep a ref to the latest selectedKey so the unmount cleanup can read it
   const selectedKeyRef = useRef(selectedKey);

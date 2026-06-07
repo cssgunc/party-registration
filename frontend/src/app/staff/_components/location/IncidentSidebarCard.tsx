@@ -16,14 +16,14 @@ import { formatTime } from "@/lib/utils";
 import { format } from "date-fns";
 import { ChevronDown, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { useSession } from "next-auth/react";
-import { memo } from "react";
 
 type IncidentSidebarCardProps = {
   incidents: NestedIncidentDto;
   onDeleteIncidentAction: (incidentId: number) => void;
   onEditIncidentAction: (incident: NestedIncidentDto) => void;
 };
-const IncidentSidebarCard = memo(function IncidentSidebarCard({
+
+function IncidentSidebarCard({
   incidents,
   onDeleteIncidentAction,
   onEditIncidentAction,
@@ -92,6 +92,6 @@ const IncidentSidebarCard = memo(function IncidentSidebarCard({
       </Collapsible>
     </div>
   );
-});
+}
 
 export default IncidentSidebarCard;
