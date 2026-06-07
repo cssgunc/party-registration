@@ -36,7 +36,7 @@ import {
 } from "@tanstack/react-table";
 import { Download, Loader2, MoreHorizontal, Plus } from "lucide-react";
 import { useSession } from "next-auth/react";
-import { ReactNode, useEffect, useRef, useState } from "react";
+import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { ConfirmDialog } from "../dialog/ConfirmDialog";
 import { SidebarContent } from "../sidebar/SidebarContent";
 import { useSidebar } from "../sidebar/SidebarContext";
@@ -93,6 +93,7 @@ export function TableTemplate<T extends object>({
   headerSlot,
   rowActions,
 }: TableProps<T>) {
+  "use no memo";
   const data = query.data?.items ?? [];
   const { isLoading, isFetching } = query;
   const error = query.error as Error | null;
@@ -131,65 +132,69 @@ export function TableTemplate<T extends object>({
   const showActionsColumn =
     hasManagePermission && (rowActions?.length ?? 0) > 0;
 
-  const handleActionClick = (action: RowAction<T>, rowId: string, row: T) => {
-    if (action.selectRow) {
-      setRowSelection({ [rowId]: true });
-    }
-    if (action.confirm) {
-      setPendingConfirm({ action, row });
-    } else {
-      action.onClick(row);
-    }
-  };
+  // eslint-disable-next-line react-no-manual-memo/no-hook-memo -- TanStack Table requires stable column references; new array identity each render causes internal state resets and infinite update loops
+  const columnsWithActions: ColumnDef<T, unknown>[] = useMemo(() => {
+    const baseColumns = columns.map((column) =>
+      column.meta?.filter
+        ? { ...column, filterFn: serverFilterPassthrough }
+        : column
+    );
+    if (!showActionsColumn) return baseColumns;
 
-  const baseColumns = columns.map((column) =>
-    column.meta?.filter
-      ? { ...column, filterFn: serverFilterPassthrough }
-      : column
-  );
-  const columnsWithActions: ColumnDef<T, unknown>[] = showActionsColumn
-    ? [
-        ...baseColumns,
-        {
-          id: "actions",
-          enableSorting: false,
-          enableColumnFilter: false,
-          cell: ({ row }) => {
-            const visibleActions =
-              rowActions?.filter(
-                (action) => !action.isVisible || action.isVisible(row.original)
-              ) ?? [];
-            if (visibleActions.length === 0) return null;
-            return (
-              <div className="flex justify-end">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="size-8 p-0">
-                      <MoreHorizontal className="size-4" />
-                      <span className="sr-only">Open menu</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    {visibleActions.map((action) => (
-                      <DropdownMenuItem
-                        key={action.label}
-                        onClick={() =>
-                          handleActionClick(action, row.id, row.original)
-                        }
-                        variant={action.variant}
-                      >
-                        {action.icon}
-                        {action.label}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            );
-          },
+    const handleActionClick = (action: RowAction<T>, rowId: string, row: T) => {
+      if (action.selectRow) setRowSelection({ [rowId]: true });
+      if (action.confirm) setPendingConfirm({ action, row });
+      else action.onClick(row);
+    };
+
+    return [
+      ...baseColumns,
+      {
+        id: "actions",
+        enableSorting: false,
+        enableColumnFilter: false,
+        cell: ({ row }) => {
+          const visibleActions =
+            rowActions?.filter(
+              (action) => !action.isVisible || action.isVisible(row.original)
+            ) ?? [];
+          if (visibleActions.length === 0) return null;
+          return (
+            <div className="flex justify-end">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="size-8 p-0">
+                    <MoreHorizontal className="size-4" />
+                    <span className="sr-only">Open menu</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {visibleActions.map((action) => (
+                    <DropdownMenuItem
+                      key={action.label}
+                      onClick={() =>
+                        handleActionClick(action, row.id, row.original)
+                      }
+                      variant={action.variant}
+                    >
+                      {action.icon}
+                      {action.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          );
         },
-      ]
-    : baseColumns;
+      },
+    ];
+  }, [
+    columns,
+    showActionsColumn,
+    rowActions,
+    setRowSelection,
+    setPendingConfirm,
+  ]);
 
   const table = useReactTable({
     data: displayData,

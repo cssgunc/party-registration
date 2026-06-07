@@ -64,8 +64,6 @@ export default function IncidentInfoChipDetails({
     },
   });
 
-  const handleCreateIncident = createMutation.mutate;
-
   const handleEditIncident = (data: IncidentCreateDto) => {
     if (modalState?.mode !== "edit") return;
     updateMutation.mutate({
@@ -138,7 +136,7 @@ export default function IncidentInfoChipDetails({
         onSubmit={
           modalState?.mode === "edit"
             ? handleEditIncident
-            : handleCreateIncident
+            : createMutation.mutate
         }
         location={location}
       />
