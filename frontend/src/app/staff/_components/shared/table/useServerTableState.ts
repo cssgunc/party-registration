@@ -106,7 +106,17 @@ export function useServerTableState<T>({
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState<string>("");
 
-  const columnFilterMap = buildColumnFilterMap(columns);
+  const columnFilterMapRef = useRef<ServerColumnMap>(
+    buildColumnFilterMap(columns)
+  );
+  const newColumnFilterMap = buildColumnFilterMap(columns);
+  if (
+    JSON.stringify(newColumnFilterMap) !==
+    JSON.stringify(columnFilterMapRef.current)
+  ) {
+    columnFilterMapRef.current = newColumnFilterMap;
+  }
+  const columnFilterMap = columnFilterMapRef.current;
 
   const paginationRef = useRef(pagination);
   const sortingRef = useRef(sorting);
