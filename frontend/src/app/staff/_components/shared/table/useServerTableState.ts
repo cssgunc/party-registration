@@ -19,10 +19,23 @@ import {
   SetStateAction,
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
+
+function buildColumnFilterMap<T>(
+  columns: ColumnDef<T, unknown>[]
+): ServerColumnMap {
+  const map: ServerColumnMap = {};
+  for (const col of columns) {
+    const id = col.id ?? (col as { accessorKey?: string }).accessorKey;
+    const filterMeta = col.meta?.filter as ColumnFilterMeta | undefined;
+    if (id && filterMeta) {
+      map[String(id)] = filterMeta;
+    }
+  }
+  return map;
+}
 
 function areSortingStatesEqual(a: SortingState, b: SortingState) {
   if (a.length !== b.length) return false;
@@ -58,7 +71,7 @@ type UseServerTableStateArgs<T> = {
   pageSizeStorageKey?: string;
 };
 
-type UseServerTableStateResult = {
+export type UseServerTableStateResult = {
   serverParams: ServerTableParams;
   columnFilterMap: ServerColumnMap;
   tableState: {
@@ -93,17 +106,17 @@ export function useServerTableState<T>({
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState<string>("");
 
-  const columnFilterMap = useMemo((): ServerColumnMap => {
-    const map: ServerColumnMap = {};
-    for (const col of columns) {
-      const id = col.id ?? (col as { accessorKey?: string }).accessorKey;
-      const filterMeta = col.meta?.filter as ColumnFilterMeta | undefined;
-      if (id && filterMeta) {
-        map[String(id)] = filterMeta;
-      }
-    }
-    return map;
-  }, [columns]);
+  const columnFilterMapRef = useRef<ServerColumnMap>(
+    buildColumnFilterMap(columns)
+  );
+  const newColumnFilterMap = buildColumnFilterMap(columns);
+  if (
+    JSON.stringify(newColumnFilterMap) !==
+    JSON.stringify(columnFilterMapRef.current)
+  ) {
+    columnFilterMapRef.current = newColumnFilterMap;
+  }
+  const columnFilterMap = columnFilterMapRef.current;
 
   const paginationRef = useRef(pagination);
   const sortingRef = useRef(sorting);
@@ -112,6 +125,7 @@ export function useServerTableState<T>({
   const filterDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // eslint-disable-next-line react-no-manual-memo/no-hook-memo -- needed as a stable effect dep; compiler skips custom hooks with manual memos
   const updateServerParams = useCallback(
     ({
       pageIndex = paginationRef.current.pageIndex,
@@ -190,13 +204,14 @@ export function useServerTableState<T>({
     };
   }, [globalFilter, updateServerParams]);
 
-  const onSortingChange = useCallback<OnChangeFn<SortingState>>((updater) => {
+  const onSortingChange: OnChangeFn<SortingState> = (updater) => {
     setPagination((prev) => ({ ...prev, pageIndex: 0 }));
     setSorting((prev) =>
       typeof updater === "function" ? updater(prev) : updater
     );
-  }, []);
+  };
 
+  // eslint-disable-next-line react-no-manual-memo/no-hook-memo -- stable ref needed as effect dep in TableTemplate; unstable reference causes stale query.data to overwrite user sort selection
   const syncServerSorting = useCallback(
     (serverSortBy?: string, serverSortOrder?: "asc" | "desc") => {
       const columnId = Object.entries(columnFilterMap).find(

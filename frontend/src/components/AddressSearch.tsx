@@ -18,7 +18,9 @@ import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { cn } from "@/lib/utils";
 import { CheckIcon, Loader2Icon, MapPinIcon, XIcon } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+
+const locationService = new LocationService();
 
 interface AddressSearchProps {
   value?: string;
@@ -27,7 +29,6 @@ interface AddressSearchProps {
   placeholder?: string;
   className?: string;
   disabled?: boolean;
-  locationService?: LocationService;
   error?: string;
   chapelHillOnly?: boolean;
   id?: string;
@@ -44,16 +45,10 @@ export default function AddressSearch({
   placeholder = "Search for an address...",
   className,
   disabled = false,
-  locationService,
   error: externalError,
   chapelHillOnly = false,
   id,
 }: AddressSearchProps) {
-  const resolvedLocationService = useMemo(
-    () => locationService ?? new LocationService(),
-    [locationService]
-  );
-
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState(
     initialSelection?.formatted_address ?? value
@@ -112,8 +107,7 @@ export default function AddressSearch({
       setInternalError(null);
 
       try {
-        const results =
-          await resolvedLocationService.autocompleteAddress(trimmedInput);
+        const results = await locationService.autocompleteAddress(trimmedInput);
         setSuggestions(
           chapelHillOnly
             ? results.filter((r) =>
@@ -145,7 +139,7 @@ export default function AddressSearch({
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [searchTerm, resolvedLocationService, selectedAddress, chapelHillOnly]);
+  }, [searchTerm, selectedAddress, chapelHillOnly]);
 
   /**
    * Handle address selection from dropdown

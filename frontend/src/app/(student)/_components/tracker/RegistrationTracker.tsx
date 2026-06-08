@@ -17,12 +17,58 @@ import { isFromThisSchoolYear } from "@/lib/utils";
 import { format } from "date-fns/format";
 import { Plus } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useMemo, useState } from "react";
+import { useState } from "react";
 import RegistrationIncidentCard from "./RegistrationIncidentCard";
 import RegistrationPartyCard from "./RegistrationPartyCard";
 
 const EMPTY_CLASS =
   "flex h-full items-center justify-center px-12 text-center content-sub text-base!";
+
+function splitParties(parties: PartyDto[]): {
+  activeParties: PartyDto[];
+  pastParties: PartyDto[];
+} {
+  const now = new Date();
+  const active: PartyDto[] = [];
+  const past: PartyDto[] = [];
+
+  parties.forEach((party) => {
+    const partyDate = new Date(party.party_datetime);
+    const twelveHoursAfterParty = new Date(
+      partyDate.getTime() + 12 * 60 * 60 * 1000
+    );
+    if (now > twelveHoursAfterParty) {
+      past.push(party);
+    } else {
+      active.push(party);
+    }
+  });
+
+  active.sort(
+    (a, b) =>
+      Math.abs(new Date(a.party_datetime).getTime() - now.getTime()) -
+      Math.abs(new Date(b.party_datetime).getTime() - now.getTime())
+  );
+  past.sort(
+    (a, b) =>
+      new Date(b.party_datetime).getTime() -
+      new Date(a.party_datetime).getTime()
+  );
+
+  return { activeParties: active, pastParties: past };
+}
+
+function groupIncidentsByDate(
+  incidents: NestedIncidentDto[]
+): [string, NestedIncidentDto[]][] {
+  const groups: Record<string, NestedIncidentDto[]> = {};
+  incidents.forEach((incident) => {
+    const dateKey = format(incident.incident_datetime, "MM/dd/yyyy");
+    if (!groups[dateKey]) groups[dateKey] = [];
+    groups[dateKey].push(incident);
+  });
+  return Object.entries(groups);
+}
 const TAB_CONTENT_CLASS = "h-full w-full overflow-y-auto rounded-md bg-card";
 
 function PartiesLoading() {
@@ -71,74 +117,20 @@ export default function RegistrationTracker(): React.JSX.Element {
       ? "Complete the Party Smart Course to register a party"
       : undefined;
 
-  const { activeParties, pastParties } = useMemo(() => {
-    const parties = partiesQuery.data ?? [];
-    const now = new Date();
-    const active: PartyDto[] = [];
-    const past: PartyDto[] = [];
-
-    parties.forEach((party) => {
-      const partyDate = new Date(party.party_datetime);
-      const twelveHoursAfterParty = new Date(
-        partyDate.getTime() + 12 * 60 * 60 * 1000
-      );
-
-      if (now > twelveHoursAfterParty) {
-        past.push(party);
-      } else {
-        active.push(party);
-      }
-    });
-
-    active.sort(
-      (a, b) =>
-        Math.abs(new Date(a.party_datetime).getTime() - now.getTime()) -
-        Math.abs(new Date(b.party_datetime).getTime() - now.getTime())
-    );
-    past.sort(
-      (a, b) =>
-        new Date(b.party_datetime).getTime() -
-        new Date(a.party_datetime).getTime()
-    );
-
-    return { activeParties: active, pastParties: past };
-  }, [partiesQuery.data]);
+  const { activeParties, pastParties } = splitParties(partiesQuery.data ?? []);
 
   const hasNoParties = (partiesQuery.data?.length ?? 0) === 0;
   const showPartySmartPrompt = hasNoParties && !courseCompleted;
 
-  const handleEditParty = useCallback(
-    (party: PartyDto) => setEditParty(party),
-    []
+  const sortedIncidents = [
+    ...(student?.residence?.location.incidents ?? []),
+  ].sort(
+    (a, b) =>
+      new Date(b.incident_datetime).getTime() -
+      new Date(a.incident_datetime).getTime()
   );
-  const handleDeleteParty = useCallback(
-    (party: PartyDto) => setDeleteParty(party),
-    []
-  );
 
-  const sortedIncidents = useMemo(() => {
-    const incidents: NestedIncidentDto[] =
-      student?.residence?.location.incidents ?? [];
-    return [...incidents].sort(
-      (a, b) =>
-        new Date(b.incident_datetime).getTime() -
-        new Date(a.incident_datetime).getTime()
-    );
-  }, [student?.residence?.location.incidents]);
-
-  const groupedIncidents = useMemo(() => {
-    const groups: Record<string, NestedIncidentDto[]> = {};
-
-    sortedIncidents.forEach((incident) => {
-      const dateKey = format(incident.incident_datetime, "MM/dd/yyyy");
-      if (!groups[dateKey]) {
-        groups[dateKey] = [];
-      }
-      groups[dateKey].push(incident);
-    });
-
-    return Object.entries(groups);
-  }, [sortedIncidents]);
+  const groupedIncidents = groupIncidentsByDate(sortedIncidents);
 
   const tabs: Array<{
     value: TabValue;
@@ -163,8 +155,8 @@ export default function RegistrationTracker(): React.JSX.Element {
               showActions
               residenceLocationId={residenceLocationId}
               isPartiesPending={isPartiesPending}
-              onEdit={handleEditParty}
-              onDelete={handleDeleteParty}
+              onEdit={setEditParty}
+              onDelete={setDeleteParty}
             />
           ))
         ),
@@ -183,8 +175,8 @@ export default function RegistrationTracker(): React.JSX.Element {
               showAddress
               residenceLocationId={residenceLocationId}
               isPartiesPending={isPartiesPending}
-              onEdit={handleEditParty}
-              onDelete={handleDeleteParty}
+              onEdit={setEditParty}
+              onDelete={setDeleteParty}
             />
           ))
         ),

@@ -1,8 +1,8 @@
 import IncidentDialog from "@/components/IncidentDialog";
 import { Button } from "@/components/ui/button";
-import { useCreateIncident } from "@/lib/api/incident/incident.queries";
 import { IncidentCreateDto } from "@/lib/api/incident/incident.types";
 import {
+  useCreateIncidentInLocation,
   useDeleteIncidentInLocation,
   useUpdateIncidentInLocation,
 } from "@/lib/api/location/location.queries";
@@ -12,7 +12,7 @@ import {
 } from "@/lib/api/location/location.types";
 import { PlusIcon } from "lucide-react";
 import { useSession } from "next-auth/react";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { createPortal } from "react-dom";
 import IncidentSidebarCard from "../../location/IncidentSidebarCard";
 import { ConfirmDialog } from "../dialog/ConfirmDialog";
@@ -41,10 +41,6 @@ export default function IncidentInfoChipDetails({
     null
   );
 
-  const requestDelete = useCallback((incidentId: number) => {
-    setConfirmStateDelete(incidentId);
-  }, []);
-
   const deleteMutation = useDeleteIncidentInLocation({
     onSuccess: () => {
       setConfirmStateDelete(null);
@@ -56,16 +52,7 @@ export default function IncidentInfoChipDetails({
     deleteMutation.mutate(confirmStateDelete);
   };
 
-  const handleEdit = useCallback((incident: NestedIncidentDto) => {
-    setModalState({ mode: "edit", incident });
-  }, []);
-
-  const handleAdd = () => {
-    setModalState({ mode: "create" });
-  };
-  const closeModal = () => setModalState(null);
-
-  const createMutation = useCreateIncident({
+  const createMutation = useCreateIncidentInLocation({
     onSuccess: () => {
       setModalState(null);
     },
@@ -76,10 +63,6 @@ export default function IncidentInfoChipDetails({
       setModalState(null);
     },
   });
-
-  const handleCreateIncident = (data: IncidentCreateDto) => {
-    createMutation.mutate(data);
-  };
 
   const handleEditIncident = (data: IncidentCreateDto) => {
     if (modalState?.mode !== "edit") return;
@@ -103,7 +86,9 @@ export default function IncidentInfoChipDetails({
           <Button
             variant="default"
             size="sm"
-            onClick={handleAdd}
+            onClick={() => {
+              setModalState({ mode: "create" });
+            }}
             aria-label="Add new incident"
           >
             <PlusIcon className="size-4" aria-hidden="true" />
@@ -111,14 +96,22 @@ export default function IncidentInfoChipDetails({
           headerActionNode
         )}
       <div>
-        {incidents.map((incident) => (
-          <IncidentSidebarCard
-            incidents={incident}
-            key={incident.id}
-            onDeleteIncidentAction={requestDelete}
-            onEditIncidentAction={handleEdit}
-          />
-        ))}
+        {incidents.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4 text-center">
+            No incidents
+          </p>
+        ) : (
+          incidents.map((incident) => (
+            <IncidentSidebarCard
+              incidents={incident}
+              key={incident.id}
+              onDeleteIncidentAction={setConfirmStateDelete}
+              onEditIncidentAction={(incident: NestedIncidentDto) => {
+                setModalState({ mode: "edit", incident });
+              }}
+            />
+          ))
+        )}
       </div>
       <ConfirmDialog
         open={confirmStateDelete !== null}
@@ -142,14 +135,14 @@ export default function IncidentInfoChipDetails({
         }
         open={modalState !== null}
         onOpenChange={(open) => {
-          if (!open) closeModal();
+          if (!open) setModalState(null);
         }}
         mode={modalState?.mode ?? "create"}
         incident={modalState?.mode === "edit" ? modalState.incident : undefined}
         onSubmit={
           modalState?.mode === "edit"
             ? handleEditIncident
-            : handleCreateIncident
+            : createMutation.mutate
         }
         location={location}
       />

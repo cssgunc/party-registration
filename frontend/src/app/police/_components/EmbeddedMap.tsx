@@ -13,7 +13,7 @@ import {
   useMap,
 } from "@vis.gl/react-google-maps";
 import { format } from "date-fns";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 type Poi = {
   key: string;
@@ -35,31 +35,29 @@ const EmbeddedMap = ({
   exactMatch,
   onSelect,
 }: EmbeddedMapProps) => {
-  const locations = useMemo(
-    () =>
-      parties && parties.length > 0
-        ? parties.map((party) => ({
-            key: String(party.id),
-            location: {
-              lat: party.location.latitude,
-              lng: party.location.longitude,
-            },
-            party,
-          }))
-        : [],
-    [parties]
-  );
+  const locations =
+    parties && parties.length > 0
+      ? parties.map((party) => ({
+          key: String(party.id),
+          location: {
+            lat: party.location.latitude,
+            lng: party.location.longitude,
+          },
+          party,
+        }))
+      : [];
 
   const activePoiKey =
     activeParty?.id !== undefined ? String(activeParty.id) : undefined;
 
-  const exactMatchPoiKey = useMemo(() => {
-    if (!exactMatch?.google_place_id || !parties) return undefined;
-    const match = parties.find(
-      (p) => p.location.google_place_id === exactMatch.google_place_id
-    );
-    return match ? String(match.id) : undefined;
-  }, [exactMatch?.google_place_id, parties]);
+  const exactMatchPoiMatch = exactMatch?.google_place_id
+    ? parties?.find(
+        (p) => p.location.google_place_id === exactMatch.google_place_id
+      )
+    : undefined;
+  const exactMatchPoiKey = exactMatchPoiMatch
+    ? String(exactMatchPoiMatch.id)
+    : undefined;
   const defaultZoom = center ? 17 : 14;
   const mapCenter =
     center ||
@@ -70,13 +68,9 @@ const EmbeddedMap = ({
   const API_KEY = clientEnv.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const mapKey = center ? `${center.lat}-${center.lng}` : "default";
 
-  // Stabilize reference so the circle effect doesn't re-fire when the parent
-  // passes a new inline object with the same lat/lng values.
-  const searchCenter = useMemo(
-    () => (center ? { lat: center.lat, lng: center.lng } : undefined),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [center?.lat, center?.lng]
-  );
+  const searchCenter = center
+    ? { lat: center.lat, lng: center.lng }
+    : undefined;
 
   const exactMatchKey = exactMatch?.google_place_id;
 
@@ -198,7 +192,7 @@ const PoiMarkers = ({
     };
   }, [map, searchCenter]);
 
-  const handleClick = useCallback(
+  const handleClick =
     (poi: (typeof pois)[0]) => (ev: google.maps.MapMouseEvent) => {
       if (!map || !ev.latLng) return;
       map.panTo(ev.latLng);
@@ -208,16 +202,14 @@ const PoiMarkers = ({
       if (poi.party && onSelect) {
         onSelect(poi.party);
       }
-    },
-    [map, onSelect]
-  );
+    };
 
-  const handleClose = useCallback(() => {
+  const handleClose = () => {
     setSelectedPoi(null);
     if (onSelect) {
       onSelect(null);
     }
-  }, [onSelect]);
+  };
 
   return (
     <>

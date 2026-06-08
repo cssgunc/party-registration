@@ -1,5 +1,5 @@
 "use client";
-
+/* eslint-disable react-no-manual-memo/no-hook-memo -- "use no memo" opts this file out of React Compiler; all manual memos here are load-bearing */
 import PaginationControls from "@/components/PaginationControls";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -22,7 +22,6 @@ import {
 import {
   ColumnFilterMeta,
   ListQueryParams,
-  ServerTableParams,
   buildServerTableParams,
 } from "@/lib/api/shared/query-params";
 import { getErrorMessage } from "@/lib/errors";
@@ -52,7 +51,7 @@ import { ColumnHeader } from "./ColumnHeader";
 import { FilterInput } from "./FilterInput";
 import { RowAction } from "./rowActions";
 import { useMeasuredFillerRows } from "./useMeasuredFillerRows";
-import { useServerTableState } from "./useServerTableState";
+import { UseServerTableStateResult } from "./useServerTableState";
 
 type FilterSidebarState = {
   columnId: string;
@@ -79,13 +78,13 @@ export type ExportMutation = {
 };
 
 export type TableProps<T> = {
-  useQuery: (params: ServerTableParams) => TableQuery<T>;
+  query: TableQuery<T>;
+  serverTableState: UseServerTableStateResult;
   columns: ColumnDef<T, unknown>[];
   createAction?: { label: string; fn: () => void };
   exportMutation?: ExportMutation;
   headerSlot?: ReactNode | ((query: TableQuery<T>) => ReactNode);
   rowActions?: RowAction<T>[];
-  pageSizeStorageKey?: string;
 };
 
 const serverFilterPassthrough = () => true;
@@ -93,19 +92,15 @@ const serverFilterPassthrough = () => true;
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 export function TableTemplate<T extends object>({
-  useQuery,
+  query,
+  serverTableState,
   columns,
   createAction,
   exportMutation,
   headerSlot,
   rowActions,
-  pageSizeStorageKey,
 }: TableProps<T>) {
-  const serverTableState = useServerTableState({
-    columns,
-    pageSizeStorageKey,
-  });
-  const query = useQuery(serverTableState.serverParams);
+  "use no memo";
   const data = query.data?.items ?? [];
   const { isLoading, isFetching } = query;
   const error = query.error as Error | null;
@@ -129,6 +124,10 @@ export function TableTemplate<T extends object>({
   const sampleRowRef = useRef<HTMLTableRowElement | null>(null);
   const syncServerSorting = serverTableState.actions.syncServerSorting;
 
+  const handleFilterSidebarOpenChange = useCallback((open: boolean) => {
+    if (!open) setFilterSidebar(null);
+  }, []);
+
   useEffect(() => {
     if (!isOpen && Object.keys(rowSelection).length > 0) {
       setRowSelection({});
@@ -144,27 +143,20 @@ export function TableTemplate<T extends object>({
   const showActionsColumn =
     hasManagePermission && (rowActions?.length ?? 0) > 0;
 
-  const handleActionClick = useCallback(
-    (action: RowAction<T>, rowId: string, row: T) => {
-      if (action.selectRow) {
-        setRowSelection({ [rowId]: true });
-      }
-      if (action.confirm) {
-        setPendingConfirm({ action, row });
-      } else {
-        action.onClick(row);
-      }
-    },
-    []
-  );
-
-  const columnsWithActions = useMemo(() => {
+  const columnsWithActions: ColumnDef<T, unknown>[] = useMemo(() => {
     const baseColumns = columns.map((column) =>
       column.meta?.filter
         ? { ...column, filterFn: serverFilterPassthrough }
         : column
     );
     if (!showActionsColumn) return baseColumns;
+
+    const handleActionClick = (action: RowAction<T>, rowId: string, row: T) => {
+      if (action.selectRow) setRowSelection({ [rowId]: true });
+      if (action.confirm) setPendingConfirm({ action, row });
+      else action.onClick(row);
+    };
+
     return [
       ...baseColumns,
       {
@@ -206,7 +198,13 @@ export function TableTemplate<T extends object>({
         },
       },
     ];
-  }, [columns, showActionsColumn, rowActions, handleActionClick]);
+  }, [
+    columns,
+    showActionsColumn,
+    rowActions,
+    setRowSelection,
+    setPendingConfirm,
+  ]);
 
   const table = useReactTable({
     data: displayData,
@@ -521,7 +519,7 @@ export function TableTemplate<T extends object>({
       {/* Filter Sidebar */}
       <SidebarContent
         open={filterSidebar !== null}
-        onOpenChange={(o) => !o && setFilterSidebar(null)}
+        onOpenChange={handleFilterSidebarOpenChange}
         sidebarKey={
           filterSidebar ? `filter-${filterSidebar.columnId}` : "filter"
         }

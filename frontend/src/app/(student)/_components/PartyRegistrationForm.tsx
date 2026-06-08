@@ -20,7 +20,6 @@ import {
 import { Field, FieldGroup, FieldLabel, FieldSet } from "@/components/ui/field";
 import { Form } from "@/components/ui/form";
 import { Skeleton } from "@/components/ui/skeleton";
-import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
 import {
   PARTY_RULE_MESSAGES,
@@ -182,7 +181,6 @@ export interface PartyFormInitialValues {
 
 interface PartyRegistrationFormProps {
   onSubmit: (data: PartyFormValues) => void | Promise<void>;
-  locationService?: LocationService;
   initialValues?: PartyFormInitialValues;
   /** The authenticated student */
   student?: StudentDto | null;
@@ -198,7 +196,6 @@ const DEFAULT_CONTACT_PREFERENCE: "call" | "text" = "text";
 
 export default function PartyRegistrationForm({
   onSubmit,
-  locationService = new LocationService(),
   initialValues,
   student,
   submissionError,
@@ -359,7 +356,6 @@ export default function PartyRegistrationForm({
                     label="Party Address"
                     labelClassName="content-bold"
                     placeholder="Search for the party address..."
-                    locationService={locationService}
                     initialSelection={initialValues?.location}
                     value={form.watch("location")?.formatted_address}
                     getStoredValue={(address) => address ?? undefined}

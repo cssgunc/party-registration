@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { SkeletonText } from "@/components/ui/skeleton";
-import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
 import { PartyPoliceDto } from "@/lib/api/party/party.types";
 import {
@@ -23,13 +22,90 @@ import { startOfDay } from "date-fns";
 import { Filter, Shield } from "lucide-react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import AdvancedPartySearch, {
   AdvancedPartyFilters,
 } from "./_components/AdvancedPartySearch";
 
-const locationService = new LocationService();
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
+
+function normalizeStr(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function normalizePhone(value: string): string {
+  return value.replace(/\D/g, "");
+}
+
+function toMinutes(time: string): number | null {
+  const [h, m] = time.split(":").map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return null;
+  return h * 60 + m;
+}
+
+function filterParties(
+  parties: PartyPoliceDto[],
+  filters: AdvancedPartyFilters
+): PartyPoliceDto[] {
+  return parties.filter((party) => {
+    const contactOneName = `${party.contact_one.first_name} ${party.contact_one.last_name}`;
+    const contactTwoName = `${party.contact_two.first_name} ${party.contact_two.last_name}`;
+
+    if (filters.name) {
+      const nameQuery = normalizeStr(filters.name);
+      const matchesName =
+        normalizeStr(contactOneName).includes(nameQuery) ||
+        normalizeStr(contactTwoName).includes(nameQuery);
+      if (!matchesName) return false;
+    }
+
+    if (filters.phone) {
+      const phoneQuery = normalizePhone(filters.phone);
+      const matchesPhone =
+        normalizePhone(party.contact_one.phone_number ?? "").includes(
+          phoneQuery
+        ) ||
+        normalizePhone(party.contact_two.phone_number ?? "").includes(
+          phoneQuery
+        );
+      if (!matchesPhone) return false;
+    }
+
+    if (filters.contactPreference) {
+      const preference = filters.contactPreference;
+      const matchesPreference =
+        party.contact_one.contact_preference === preference ||
+        party.contact_two.contact_preference === preference;
+      if (!matchesPreference) return false;
+    }
+
+    if (filters.severity) {
+      const hasSeverity = party.location.incidents.some(
+        (incident) => incident.severity === filters.severity
+      );
+      if (!hasSeverity) return false;
+    }
+
+    if (filters.startTime) {
+      const filterTimeMinutes = toMinutes(filters.startTime);
+      if (filterTimeMinutes === null) return false;
+
+      const partyTimeMinutes =
+        party.party_datetime.getHours() * 60 +
+        party.party_datetime.getMinutes();
+
+      if (filters.timeFilterType === "before") {
+        if (!(partyTimeMinutes < filterTimeMinutes)) return false;
+      } else if (filters.timeFilterType === "after") {
+        if (!(partyTimeMinutes > filterTimeMinutes)) return false;
+      } else {
+        if (partyTimeMinutes !== filterTimeMinutes) return false;
+      }
+    }
+
+    return true;
+  });
+}
 
 export default function PolicePage() {
   const { data: session } = useSession();
@@ -83,94 +159,16 @@ export default function PolicePage() {
     (isAddressSearchActive ? isFetchingNearby : isFetchingAll);
 
   // Use nearby list if address search is active, otherwise use all parties
-  const baseParties = useMemo(() => activeParties ?? [], [activeParties]);
+  const baseParties = activeParties ?? [];
 
-  const filteredParties = useMemo(() => {
-    function normalize(value: string): string {
-      return value.trim().toLowerCase();
-    }
-
-    function normalizePhone(value: string): string {
-      return value.replace(/\D/g, "");
-    }
-
-    function toMinutes(time: string): number | null {
-      const [h, m] = time.split(":").map(Number);
-      if (Number.isNaN(h) || Number.isNaN(m)) return null;
-      return h * 60 + m;
-    }
-
-    return baseParties.filter((party) => {
-      const contactOneName = `${party.contact_one.first_name} ${party.contact_one.last_name}`;
-      const contactTwoName = `${party.contact_two.first_name} ${party.contact_two.last_name}`;
-
-      if (advancedFilters.name) {
-        const nameQuery = normalize(advancedFilters.name);
-        const matchesName =
-          normalize(contactOneName).includes(nameQuery) ||
-          normalize(contactTwoName).includes(nameQuery);
-        if (!matchesName) return false;
-      }
-
-      if (advancedFilters.phone) {
-        const phoneQuery = normalizePhone(advancedFilters.phone);
-        const matchesPhone =
-          normalizePhone(party.contact_one.phone_number ?? "").includes(
-            phoneQuery
-          ) ||
-          normalizePhone(party.contact_two.phone_number ?? "").includes(
-            phoneQuery
-          );
-        if (!matchesPhone) return false;
-      }
-
-      if (advancedFilters.contactPreference) {
-        const preference = advancedFilters.contactPreference;
-        const matchesPreference =
-          party.contact_one.contact_preference === preference ||
-          party.contact_two.contact_preference === preference;
-        if (!matchesPreference) return false;
-      }
-
-      if (advancedFilters.severity) {
-        const hasSeverity = party.location.incidents.some(
-          (incident) => incident.severity === advancedFilters.severity
-        );
-        if (!hasSeverity) return false;
-      }
-
-      if (advancedFilters.startTime) {
-        const filterTimeMinutes = toMinutes(advancedFilters.startTime);
-        if (filterTimeMinutes === null) return false;
-
-        const partyTimeMinutes =
-          party.party_datetime.getHours() * 60 +
-          party.party_datetime.getMinutes();
-
-        if (advancedFilters.timeFilterType === "before") {
-          if (!(partyTimeMinutes < filterTimeMinutes)) return false;
-        } else if (advancedFilters.timeFilterType === "after") {
-          if (!(partyTimeMinutes > filterTimeMinutes)) return false;
-        } else {
-          if (partyTimeMinutes !== filterTimeMinutes) return false;
-        }
-      }
-
-      return true;
-    });
-  }, [advancedFilters, baseParties]);
+  const filteredParties = filterParties(baseParties, advancedFilters);
 
   // Include exact match party in map pins even though it's excluded from the nearby list
   const exactMatchParty = nearbyData?.exact_match?.party;
-  const mapParties = useMemo(() => {
-    if (!exactMatchParty) return filteredParties;
-    const alreadyIncluded = filteredParties.some(
-      (p) => p.id === exactMatchParty.id
-    );
-    return alreadyIncluded
-      ? filteredParties
-      : [exactMatchParty, ...filteredParties];
-  }, [filteredParties, exactMatchParty]);
+  const mapParties =
+    exactMatchParty && !filteredParties.some((p) => p.id === exactMatchParty.id)
+      ? [exactMatchParty, ...filteredParties]
+      : filteredParties;
 
   // Reset to first page when the party list changes (filters/date range updated)
   useEffect(() => {
@@ -233,7 +231,6 @@ export default function PolicePage() {
                 value={searchAddress?.formatted_address || ""}
                 onSelect={setSearchAddress}
                 placeholder="Search by address..."
-                locationService={locationService}
               />
             </div>
             <div className="flex flex-col gap-2 order-1 sm:order-2">

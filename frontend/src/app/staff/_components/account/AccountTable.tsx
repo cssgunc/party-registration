@@ -32,6 +32,7 @@ import {
   deleteAction,
   editAction,
 } from "../shared/table/rowActions";
+import { useServerTableState } from "../shared/table/useServerTableState";
 import AccountTableForm, { accountTableFormSchema } from "./AccountTableForm";
 import PoliceAccountTableForm, {
   type PoliceAccountFormValues,
@@ -260,13 +261,19 @@ export const AccountTable = () => {
     },
   ];
 
+  const serverTableState = useServerTableState({
+    columns,
+    pageSizeStorageKey: "staff-accounts",
+  });
+  const query = useAggregateAccounts(serverTableState.serverParams);
+
   return (
     <>
       <TableTemplate
-        useQuery={useAggregateAccounts}
+        query={query}
+        serverTableState={serverTableState}
         columns={columns}
         createAction={{ label: "New Invite", fn: openCreate }}
-        pageSizeStorageKey="staff-accounts"
         rowActions={[
           editAction<AggregateAccountDto>({
             onClick: handleEdit,

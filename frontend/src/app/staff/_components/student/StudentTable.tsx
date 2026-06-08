@@ -19,6 +19,7 @@ import { InfoChip } from "../shared/sidebar/InfoChip";
 import { useFormSidebarState } from "../shared/sidebar/useFormSidebarState";
 import { TableTemplate } from "../shared/table/TableTemplate";
 import { deleteAction, editAction } from "../shared/table/rowActions";
+import { useServerTableState } from "../shared/table/useServerTableState";
 import StudentTableForm from "./StudentTableForm";
 
 const STUDENT_ERROR_OPTIONS = {
@@ -190,12 +191,18 @@ export const StudentTable = () => {
     },
   ];
 
+  const serverTableState = useServerTableState({
+    columns,
+    pageSizeStorageKey: "staff-students",
+  });
+  const query = useStudents(serverTableState.serverParams);
+
   return (
     <>
       <TableTemplate
-        useQuery={useStudents}
+        query={query}
+        serverTableState={serverTableState}
         columns={columns}
-        pageSizeStorageKey="staff-students"
         rowActions={[
           editAction<StudentDto>({ onClick: openEdit }),
           deleteAction<StudentDto>({

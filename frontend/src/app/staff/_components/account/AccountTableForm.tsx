@@ -39,7 +39,7 @@ export default function AccountTableForm({
     <FormShell
       form={form}
       onSubmit={onSubmit}
-      submitLabel="Send Invite"
+      submitLabel={isEditMode ? "Save Changes" : "Send Invite"}
       submissionError={submissionError}
     >
       <TextField
