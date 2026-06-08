@@ -8,6 +8,7 @@ to SQLAlchemy queries in a type-safe and flexible manner.
 from collections.abc import Callable
 from contextlib import suppress
 from datetime import datetime
+from datetime import time as time_type
 from enum import Enum, StrEnum
 from typing import Any, Self
 
@@ -15,8 +16,9 @@ from fastapi import Depends, Request
 from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy import Select, asc, desc, func, or_, select
+from sqlalchemy import Select, and_, asc, cast, desc, func, or_, select
 from sqlalchemy import String as SAString
+from sqlalchemy import Time as SATime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import SQLColumnExpression
 from src.core.database import get_session
@@ -173,11 +175,13 @@ class SortParam(BaseModel):
         return cls(field=sort_by, order=sort_order)
 
 
-def _parse_filter_value(value: str) -> bool | int | datetime | str:
+def _parse_filter_value(value: str) -> bool | int | time_type | datetime | str:
     if value.lower() in ("true", "false"):
         return value.lower() == "true"
     with suppress(ValueError):
         return int(value)
+    with suppress(ValueError):
+        return time_type.fromisoformat(value)
     with suppress(ValueError):
         return datetime.fromisoformat(value)
     with suppress(ValueError):
@@ -208,6 +212,21 @@ def _validate_contains(field: QueryField) -> None:
         raise BadRequestException("Operator 'contains' is only supported for string fields")
 
 
+def _validate_trange(field: QueryField) -> None:
+    field_type = getattr(field, "type", None)
+    if isinstance(field_type, (SAString, SAEnum)):
+        raise BadRequestException("Operator 'trange' is only supported for datetime/time fields")
+
+
+def _apply_trange(field: QueryField, value: list[time_type]) -> Any:
+    from_time, to_time = value[0], value[1]
+    time_field = cast(field, SATime)
+    if from_time <= to_time:
+        return and_(time_field >= from_time, time_field <= to_time)
+    # Midnight wrap-around: e.g. 22:00 to 02:00
+    return or_(time_field >= from_time, time_field <= to_time)
+
+
 def _op(
     value: str,
     *,
@@ -236,7 +255,7 @@ class FilterOperator(StrEnum):
 
     @property
     def is_list(self) -> bool:
-        return self in (FilterOperator.IN, FilterOperator.NOT_IN)
+        return self in (FilterOperator.IN, FilterOperator.NOT_IN, FilterOperator.TRANGE)
 
     EQUALS = _op("eq", apply=lambda f, v: f == v)
     NOT_EQUALS = _op("ne", apply=lambda f, v: f != v)
@@ -253,6 +272,7 @@ class FilterOperator(StrEnum):
     NOT_IN = _op("nin", apply=lambda f, v: ~f.in_(v))
     IS_NULL = _op("null", apply=lambda f, _: f.is_(None))
     NOT_NULL = _op("notnull", apply=lambda f, _: f.is_not(None))
+    TRANGE = _op("trange", apply=_apply_trange, validate=_validate_trange)
 
 
 def _format_searchable_entry(entry: str | tuple[str, ...]) -> str:
@@ -360,6 +380,9 @@ class FilterParam(BaseModel):
 
         if operator in (FilterOperator.IN, FilterOperator.NOT_IN) and not isinstance(v, list):
             raise ValueError(f"Operator {operator} requires a list value")
+
+        if operator == FilterOperator.TRANGE and (not isinstance(v, list) or len(v) != 2):
+            raise ValueError("Operator 'trange' requires exactly two time values (from,to)")
 
         return v
 

@@ -67,7 +67,7 @@ export default function StudentDashboard() {
         <div className="flex-1" />
         <div className="flex flex-col items-center text-center content [@media(max-height:725px)]:hidden">
           <AlertTriangleIcon />
-          <p className="max-w-md">
+          <p className="max-w-md mt-1">
             Keep in mind that the party registration program only pertains to
             nuisance noise complaints. Calls to 911 for other violations will
             likely result in local law enforcement showing up without a warning.

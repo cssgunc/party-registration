@@ -24,6 +24,7 @@ from src.modules.auth.auth_model import AuthPrincipal
 from .party_model import (
     AdminCreatePartyDto,
     CreatePartyDto,
+    PaginatedPartiesPoliceResponse,
     PaginatedPartiesResponse,
     PartyDto,
     ProximitySearchResponse,
@@ -77,9 +78,13 @@ async def create_party(
 async def list_parties(
     params: ListQueryParams = parse_list_query_params(),
     party_service: PartyService = Depends(),
-    _=Depends(authenticate_by_role("admin", "staff", "officer", "police_admin")),
-) -> PaginatedPartiesResponse:
-    return await party_service.get_parties_paginated(params)
+    principal: AuthPrincipal = Depends(
+        authenticate_by_role("admin", "staff", "officer", "police_admin")
+    ),
+) -> PaginatedPartiesResponse | PaginatedPartiesPoliceResponse:
+    return await party_service.get_parties_paginated(
+        params, as_police=principal.principal_type == "police"
+    )
 
 
 @party_router.get("/nearby")

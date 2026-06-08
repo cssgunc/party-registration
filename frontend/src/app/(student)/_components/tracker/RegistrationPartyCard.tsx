@@ -9,10 +9,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PartyDto } from "@/lib/api/party/party.types";
-import { formatPhoneNumber, formatTime } from "@/lib/utils";
+import {
+  formatContactPreference,
+  formatPhoneNumber,
+  formatTime,
+} from "@/lib/utils";
 import { format } from "date-fns/format";
 import { Ban, Mail, MoreVertical, Pencil, Phone } from "lucide-react";
-import { memo } from "react";
 
 type Props = {
   party: PartyDto;
@@ -24,7 +27,7 @@ type Props = {
   onDelete: (party: PartyDto) => void;
 };
 
-const RegistrationPartyCard = memo(function RegistrationPartyCard({
+function RegistrationPartyCard({
   party,
   showActions,
   showAddress,
@@ -94,8 +97,11 @@ const RegistrationPartyCard = memo(function RegistrationPartyCard({
               <p className="flex items-center gap-1.5">
                 <Phone className="size-3 shrink-0" />
                 {formatPhoneNumber(party.contact_one.phone_number)}
-                <span className="capitalize">
-                  - {party.contact_one.contact_preference}
+                <span>
+                  -{" "}
+                  {formatContactPreference(
+                    party.contact_one.contact_preference
+                  )}
                 </span>
               </p>
               <p className="flex items-center gap-1.5">
@@ -114,8 +120,11 @@ const RegistrationPartyCard = memo(function RegistrationPartyCard({
               <p className="flex items-center gap-1.5">
                 <Phone className="size-3 shrink-0" />
                 {formatPhoneNumber(party.contact_two.phone_number)}
-                <span className="capitalize">
-                  - {party.contact_two.contact_preference}
+                <span>
+                  -{" "}
+                  {formatContactPreference(
+                    party.contact_two.contact_preference
+                  )}
                 </span>
               </p>
               <p className="flex items-center gap-1.5">
@@ -128,6 +137,6 @@ const RegistrationPartyCard = memo(function RegistrationPartyCard({
       </div>
     </div>
   );
-});
+}
 
 export default RegistrationPartyCard;

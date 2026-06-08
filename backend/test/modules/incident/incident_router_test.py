@@ -130,10 +130,7 @@ class TestIncidentRouter:
         )
         data = assert_res_success(response, IncidentDto, status=201)
 
-        all_locations = await self.location_utils.get_all()
-        created_location = next((loc for loc in all_locations if loc.id == data.location_id), None)
-        assert created_location is not None
-        assert created_location.google_place_id == location_data.google_place_id
+        assert data.location.google_place_id == location_data.google_place_id
 
     @pytest.mark.asyncio
     async def test_create_incident_place_not_found(self) -> None:
@@ -283,7 +280,7 @@ class TestIncidentRouter:
         )
         data = assert_res_success(response, IncidentDto)
 
-        assert data.location_id != original_location.id
+        assert data.location.id != original_location.id
 
     @pytest.mark.asyncio
     async def test_update_incident_can_clear_reference_id(self) -> None:
@@ -328,6 +325,61 @@ class TestIncidentRouter:
         response = await self.admin_client.delete("/api/incidents/999")
 
         assert_res_failure(response, IncidentNotFoundException(999))
+
+    @pytest.mark.asyncio
+    async def test_create_incident_embeds_location(self) -> None:
+        """Test that creating an incident returns the embedded location."""
+        location = await self.location_utils.create_one()
+        create_dto = await self.incident_utils.next_create_dto(
+            location_place_id=location.google_place_id
+        )
+
+        response = await self.admin_client.post(
+            "/api/incidents", json=create_dto.model_dump(mode="json")
+        )
+        data = assert_res_success(response, IncidentDto, status=201)
+
+        self.location_utils.assert_matches(data.location, location)
+
+    @pytest.mark.asyncio
+    async def test_update_incident_embeds_location(self) -> None:
+        """Test that updating an incident returns the embedded location."""
+        location = await self.location_utils.create_one()
+        incident = await self.incident_utils.create_one(location_id=location.id)
+        update_dto = await self.incident_utils.next_update_dto(
+            location_place_id=location.google_place_id
+        )
+
+        response = await self.admin_client.put(
+            f"/api/incidents/{incident.id}", json=update_dto.model_dump(mode="json")
+        )
+        data = assert_res_success(response, IncidentDto)
+
+        self.location_utils.assert_matches(data.location, location)
+
+    @pytest.mark.asyncio
+    async def test_delete_incident_embeds_location(self) -> None:
+        """Test that deleting an incident returns the embedded location."""
+        location = await self.location_utils.create_one()
+        incident = await self.incident_utils.create_one(location_id=location.id)
+
+        response = await self.admin_client.delete(f"/api/incidents/{incident.id}")
+        data = assert_res_success(response, IncidentDto)
+
+        self.location_utils.assert_matches(data.location, location)
+
+    @pytest.mark.asyncio
+    async def test_get_incidents_by_location_embeds_location(self) -> None:
+        """Test that GET /locations/:id/incidents returns incidents with embedded location."""
+        location = await self.location_utils.create_one()
+        await self.incident_utils.create_many(i=2, location_id=location.id)
+
+        response = await self.admin_client.get(f"/api/locations/{location.id}/incidents")
+        data = assert_res_success(response, list[IncidentDto])
+
+        assert len(data) == 2
+        for incident in data:
+            self.location_utils.assert_matches(incident.location, location)
 
 
 class TestIncidentCSVRouter:

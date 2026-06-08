@@ -12,10 +12,9 @@ from src.core.utils.query_utils import (
     parse_list_query_params,
 )
 from src.modules.auth.auth_model import AuthPrincipal
+from src.modules.location.location_base_model import AddressData, LocationData
 from src.modules.location.location_model import (
-    AddressData,
     LocationCreate,
-    LocationData,
     LocationDto,
     PaginatedLocationResponse,
 )
@@ -101,7 +100,7 @@ async def get_place_details(
 async def get_locations(
     params: ListQueryParams = parse_list_query_params(),
     location_service: LocationService = Depends(),
-    _=Depends(authenticate_by_role("staff", "admin")),
+    _=Depends(authenticate_by_role("staff", "admin", "police_admin")),
 ) -> PaginatedLocationResponse:
     """
     Returns all locations with pagination, sorting, and filtering.

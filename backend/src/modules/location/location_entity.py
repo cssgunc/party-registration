@@ -6,6 +6,7 @@ from sqlalchemy.inspection import inspect
 from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column, relationship
 from src.core.database import EntityBase
 from src.core.types import UTCDateTime
+from src.modules.incident.incident_model import LocationSummaryDto
 
 from .location_model import LocationData, LocationDto
 
@@ -55,6 +56,27 @@ class LocationEntity(MappedAsDataclass, EntityBase):
 
     __table_args__ = (Index("idx_lat_lng", "latitude", "longitude"),)
 
+    def to_summary_dto(self) -> LocationSummaryDto:
+        hold_exp = self.hold_expiration
+        if hold_exp is not None and hold_exp.tzinfo is None:
+            hold_exp = hold_exp.replace(tzinfo=UTC)
+        return LocationSummaryDto(
+            id=self.id,
+            google_place_id=self.google_place_id,
+            formatted_address=self.formatted_address,
+            latitude=float(self.latitude),
+            longitude=float(self.longitude),
+            hold_expiration=hold_exp,
+            street_number=self.street_number,
+            street_name=self.street_name,
+            unit=self.unit,
+            city=self.city,
+            county=self.county,
+            state=self.state,
+            country=self.country,
+            zip_code=self.zip_code,
+        )
+
     def to_dto(self) -> LocationDto:
         # Check if incidents relationship is loaded to avoid lazy loading in tests
         # This prevents issues when LocationEntity is created without loading relationships
@@ -80,7 +102,7 @@ class LocationEntity(MappedAsDataclass, EntityBase):
             country=self.country,
             zip_code=self.zip_code,
             hold_expiration=hold_exp,
-            incidents=[incident.to_dto() for incident in self.incidents]
+            incidents=[incident.to_nested_dto() for incident in self.incidents]
             if incidents_loaded
             else [],
         )

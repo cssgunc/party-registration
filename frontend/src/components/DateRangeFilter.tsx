@@ -11,17 +11,26 @@ import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { type DateRange } from "react-day-picker";
 
+interface DateFormatConfig {
+  fromFormat?: string;
+  toFormat?: string;
+}
+
 interface DateRangeFilterProps {
   id?: string;
   value: DateRange | undefined;
   onChange: (range: DateRange | undefined) => void;
+  dateFormat?: DateFormatConfig;
 }
 
 export default function DateRangeFilter({
   id,
   value,
   onChange,
+  dateFormat,
 }: DateRangeFilterProps) {
+  const fromFormat = dateFormat?.fromFormat ?? "MM/dd/yyyy";
+  const toFormat = dateFormat?.toFormat ?? "MM/dd/yyyy";
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -33,11 +42,10 @@ export default function DateRangeFilter({
           {value?.from ? (
             value.to ? (
               <span>
-                {format(value.from, "MM/dd/yyyy")} –{" "}
-                {format(value.to, "MM/dd/yyyy")}
+                {format(value.from, fromFormat)} - {format(value.to, toFormat)}
               </span>
             ) : (
-              <span>{format(value.from, "MM/dd/yyyy")}</span>
+              <span>{format(value.from, fromFormat)}</span>
             )
           ) : (
             <span className="text-muted-foreground">Pick a date range...</span>

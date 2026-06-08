@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 
 import googlemaps
 import pytest
-from src.modules.location.location_model import AddressData
+from src.modules.location.location_base_model import AddressData
 from src.modules.location.location_service import (
     GoogleMapsAPIException,
     InvalidPlaceIdException,

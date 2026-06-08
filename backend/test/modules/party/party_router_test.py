@@ -1,5 +1,6 @@
 from datetime import UTC, datetime, timedelta
 from io import BytesIO
+from zoneinfo import ZoneInfo
 
 import openpyxl
 import pytest
@@ -9,6 +10,7 @@ from src.modules.account.account_entity import AccountEntity
 from src.modules.party.party_model import (
     ContactDto,
     PartyDto,
+    PartyPoliceDto,
     PartyStatus,
     ProximitySearchResponse,
 )
@@ -375,6 +377,35 @@ class TestPartyCreateAdminRouter(AdminRouterTestBase):
         assert data.location.google_place_id == location_with_hold.google_place_id
 
     @pytest.mark.asyncio
+    async def test_create_party_as_admin_same_day_succeeds(self):
+        """Admin can create a party on a day another exists, bypassing PARTY_SAME_DAY."""
+        conflict_datetime = datetime.now(UTC) + timedelta(days=2)
+        first_payload = await self.party_utils.next_admin_create_dto(
+            party_datetime=conflict_datetime,
+        )
+        await self.admin_client.post("/api/parties", json=first_payload.model_dump(mode="json"))
+
+        second_payload = await self.party_utils.next_admin_create_dto(
+            contact_one_student_id=first_payload.contact_one_student_id,
+            party_datetime=conflict_datetime.replace(hour=(conflict_datetime.hour + 1) % 24),
+        )
+        response = await self.admin_client.post(
+            "/api/parties", json=second_payload.model_dump(mode="json")
+        )
+        assert_res_success(response, PartyDto, status=201)
+
+    @pytest.mark.asyncio
+    async def test_create_party_as_admin_date_too_far_succeeds(self):
+        """Admin can create a party more than 30 days out (bypasses PARTY_DATE_TOO_FAR)."""
+        payload = await self.party_utils.next_admin_create_dto(
+            party_datetime=datetime.now(UTC) + timedelta(days=31),
+        )
+        response = await self.admin_client.post(
+            "/api/parties", json=payload.model_dump(mode="json")
+        )
+        assert_res_success(response, PartyDto, status=201)
+
+    @pytest.mark.asyncio
     async def test_create_party_as_admin_validation_errors(self):
         """Test validation errors for admin party creation."""
         payload = await self.party_utils.next_admin_create_dto()
@@ -520,7 +551,7 @@ class TestPartyCreateStudentRouter(StudentRouterTestBase):
 
     @pytest.mark.asyncio
     async def test_create_party_date_too_soon_fails(self, current_student: StudentEntity):
-        """Student cannot create party scheduled less than 2 business days out."""
+        """Student cannot create party scheduled less than 24 hours out."""
         location = await self.location_utils.create_one()
         await self.student_utils.set_student_residence(current_student, location.id)
 
@@ -531,6 +562,72 @@ class TestPartyCreateStudentRouter(StudentRouterTestBase):
             "/api/parties", json=payload.model_dump(mode="json")
         )
         assert_res_failure(response, PartyValidationException(PartyRule.PARTY_DATE_TOO_SOON))
+
+    @pytest.mark.asyncio
+    async def test_create_party_same_day_fails(self, current_student: StudentEntity):
+        """Student cannot register a second party on a day they already have one."""
+        location = await self.location_utils.create_one()
+        await self.student_utils.set_student_residence(current_student, location.id)
+
+        existing_datetime = datetime.now(UTC) + timedelta(days=2)
+        await self.party_utils.create_one(
+            contact_one_id=current_student.account_id,
+            party_datetime=existing_datetime,
+        )
+
+        payload = await self.party_utils.next_student_create_dto(
+            party_datetime=existing_datetime.replace(hour=(existing_datetime.hour + 1) % 24),
+        )
+        response = await self.student_client.post(
+            "/api/parties", json=payload.model_dump(mode="json")
+        )
+        assert_res_failure(response, PartyValidationException(PartyRule.PARTY_SAME_DAY))
+
+    @pytest.mark.asyncio
+    async def test_create_party_same_day_uses_eastern_time(self, current_student: StudentEntity):
+        """PARTY_SAME_DAY uses Eastern time, not UTC.
+        A party at 11:30 PM ET falls on the next UTC date; a second party at
+        9 PM ET on the same ET evening should still be blocked."""
+        location = await self.location_utils.create_one()
+        await self.student_utils.set_student_residence(current_student, location.id)
+
+        # Saturday 11:30 PM ET = Sunday 04:30 UTC — different UTC date, same ET date
+        et = ZoneInfo("America/New_York")
+        # Pick a fixed ET datetime two days out so it clears the 24-hour rule.
+        # Use a Saturday night to make the UTC/ET split obvious (11 PM ET = 4 AM UTC next day).
+        base_et = datetime.now(et).replace(hour=23, minute=0, second=0, microsecond=0)
+        # Move to a day that's safely > 24 h ahead
+        base_et = base_et + timedelta(days=2)
+
+        await self.party_utils.create_one(
+            contact_one_id=current_student.account_id,
+            party_datetime=base_et.astimezone(UTC),
+        )
+
+        # Second party at 9 PM ET on the same ET evening — different UTC date from base_et
+        # but same ET calendar day
+        second_et = base_et.replace(hour=21)
+        payload = await self.party_utils.next_student_create_dto(
+            party_datetime=second_et.astimezone(UTC),
+        )
+        response = await self.student_client.post(
+            "/api/parties", json=payload.model_dump(mode="json")
+        )
+        assert_res_failure(response, PartyValidationException(PartyRule.PARTY_SAME_DAY))
+
+    @pytest.mark.asyncio
+    async def test_create_party_date_too_far_fails(self, current_student: StudentEntity):
+        """Student cannot create a party more than 30 days in advance."""
+        location = await self.location_utils.create_one()
+        await self.student_utils.set_student_residence(current_student, location.id)
+
+        payload = await self.party_utils.next_student_create_dto(
+            party_datetime=datetime.now(UTC) + timedelta(days=31),
+        )
+        response = await self.student_client.post(
+            "/api/parties", json=payload.model_dump(mode="json")
+        )
+        assert_res_failure(response, PartyValidationException(PartyRule.PARTY_DATE_TOO_FAR))
 
     @pytest.mark.asyncio
     async def test_create_party_at_location_on_hold_fails(self, current_student: StudentEntity):
@@ -647,6 +744,57 @@ class TestPartyUpdateAdminRouter(AdminRouterTestBase):
         assert_res_validation_error(response)
 
     @pytest.mark.asyncio
+    async def test_update_party_as_admin_same_day_succeeds(self):
+        """Admin can update a party to a day another exists, bypassing PARTY_SAME_DAY."""
+        conflict_datetime = datetime.now(UTC) + timedelta(days=2)
+
+        # Create a separate party on the conflict day for the same student
+        blocker_payload = await self.party_utils.next_admin_create_dto(
+            party_datetime=conflict_datetime,
+        )
+        await self.admin_client.post("/api/parties", json=blocker_payload.model_dump(mode="json"))
+
+        # Create the party to be updated (different day)
+        create_payload = await self.party_utils.next_admin_create_dto(
+            contact_one_student_id=blocker_payload.contact_one_student_id,
+            party_datetime=conflict_datetime + timedelta(days=1),
+        )
+        create_response = await self.admin_client.post(
+            "/api/parties", json=create_payload.model_dump(mode="json")
+        )
+        created = assert_res_success(create_response, PartyDto, status=201)
+
+        # Admin moves it onto the conflict day — should succeed
+        update_payload = await self.party_utils.next_admin_create_dto(
+            google_place_id=create_payload.google_place_id,
+            contact_one_student_id=create_payload.contact_one_student_id,
+            party_datetime=conflict_datetime.replace(hour=(conflict_datetime.hour + 1) % 24),
+        )
+        response = await self.admin_client.put(
+            f"/api/parties/{created.id}", json=update_payload.model_dump(mode="json")
+        )
+        assert_res_success(response, PartyDto)
+
+    @pytest.mark.asyncio
+    async def test_update_party_as_admin_date_too_far_succeeds(self):
+        """Admin can update a party to more than 30 days out (bypasses PARTY_DATE_TOO_FAR)."""
+        create_payload = await self.party_utils.next_admin_create_dto()
+        create_response = await self.admin_client.post(
+            "/api/parties", json=create_payload.model_dump(mode="json")
+        )
+        created = assert_res_success(create_response, PartyDto, status=201)
+
+        update_payload = await self.party_utils.next_admin_create_dto(
+            google_place_id=create_payload.google_place_id,
+            contact_one_student_id=create_payload.contact_one_student_id,
+            party_datetime=datetime.now(UTC) + timedelta(days=31),
+        )
+        response = await self.admin_client.put(
+            f"/api/parties/{created.id}", json=update_payload.model_dump(mode="json")
+        )
+        assert_res_success(response, PartyDto)
+
+    @pytest.mark.asyncio
     async def test_update_party_as_admin_location_on_hold(self):
         """Test admin can update party at location on hold (admins skip hold validation)."""
         hold_expiration = datetime.now(UTC) + timedelta(days=30)
@@ -758,7 +906,7 @@ class TestPartyUpdateStudentRouter(StudentRouterTestBase):
 
     @pytest.mark.asyncio
     async def test_update_party_as_student_date_too_soon(self, current_student: StudentEntity):
-        """Test student cannot update party with a date less than 2 business days away."""
+        """Test student cannot update party with a date less than 24 hours away."""
         location = await self.location_utils.create_one()
         await self.student_utils.set_student_residence(current_student, location.id)
 
@@ -776,6 +924,59 @@ class TestPartyUpdateStudentRouter(StudentRouterTestBase):
             f"/api/parties/{created.id}", json=update_payload.model_dump(mode="json")
         )
         assert_res_failure(response, PartyValidationException(PartyRule.PARTY_DATE_TOO_SOON))
+
+    @pytest.mark.asyncio
+    async def test_update_party_as_student_same_day_fails(self, current_student: StudentEntity):
+        """Student cannot update a party to a day they already have another party."""
+        location = await self.location_utils.create_one()
+        await self.student_utils.set_student_residence(current_student, location.id)
+
+        conflict_datetime = datetime.now(UTC) + timedelta(days=2)
+
+        # Create a party that occupies the conflict day
+        await self.party_utils.create_one(
+            contact_one_id=current_student.account_id,
+            party_datetime=conflict_datetime,
+        )
+
+        # Create the party to be updated (different day)
+        create_payload = await self.party_utils.next_student_create_dto(
+            party_datetime=conflict_datetime + timedelta(days=1),
+        )
+        create_response = await self.student_client.post(
+            "/api/parties", json=create_payload.model_dump(mode="json")
+        )
+        created = assert_res_success(create_response, PartyDto, status=201)
+
+        # Try to move it onto the conflict day
+        update_payload = await self.party_utils.next_student_create_dto(
+            party_datetime=conflict_datetime.replace(hour=(conflict_datetime.hour + 1) % 24),
+        )
+        response = await self.student_client.put(
+            f"/api/parties/{created.id}", json=update_payload.model_dump(mode="json")
+        )
+        assert_res_failure(response, PartyValidationException(PartyRule.PARTY_SAME_DAY))
+
+    @pytest.mark.asyncio
+    async def test_update_party_as_student_date_too_far_fails(self, current_student: StudentEntity):
+        """Student cannot update a party to more than 30 days in advance."""
+        location = await self.location_utils.create_one()
+        await self.student_utils.set_student_residence(current_student, location.id)
+
+        create_payload = await self.party_utils.next_student_create_dto()
+        create_response = await self.student_client.post(
+            "/api/parties", json=create_payload.model_dump(mode="json")
+        )
+        created = assert_res_success(create_response, PartyDto, status=201)
+
+        update_payload = await self.party_utils.next_student_create_dto(
+            party_datetime=datetime.now(UTC) + timedelta(days=31),
+        )
+
+        response = await self.student_client.put(
+            f"/api/parties/{created.id}", json=update_payload.model_dump(mode="json")
+        )
+        assert_res_failure(response, PartyValidationException(PartyRule.PARTY_DATE_TOO_FAR))
 
     @pytest.mark.asyncio
     async def test_update_party_as_student_party_smart_not_completed(
@@ -1245,7 +1446,7 @@ class TestPartyCSVRouter(AdminRouterTestBase):
         assert rows[0] == expected_headers
         assert sheet["A1"].font.bold is True
 
-        first_party = parties[0]
+        first_party = parties[-1]
         row_2 = rows[1]
 
         # col 0: address
@@ -1348,7 +1549,7 @@ class TestPartyCSVRouterPolice(PoliceRouterTestBase):
 
         assert rows[0] == expected_headers
 
-        first_party = parties[0]
+        first_party = parties[-1]
         row_2 = rows[1]
 
         # col 0: address
@@ -1590,3 +1791,133 @@ class TestPartyAsStaffRouter(StaffRouterTestBase):
 
         response = await self.staff_client.post(f"/api/parties/{party.id}/cancel")
         assert_res_failure(response, PartyValidationException(PartyRule.PARTY_NOT_OWNED_BY_STUDENT))
+
+
+class TestPartyListPoliceRouter(PoliceRouterTestBase):
+    """Police receive ContactPoliceDto contacts (no PII) on GET /api/parties."""
+
+    @pytest.mark.asyncio
+    async def test_police_list_parties_empty(self):
+        response = await self.police_client.get("/api/parties")
+        paginated = assert_res_paginated(
+            response, PartyPoliceDto, total_records=0, page_size=0, total_pages=0
+        )
+        assert paginated.items == []
+
+    @pytest.mark.asyncio
+    async def test_police_list_parties_returns_police_dto(self):
+        entities = await self.party_utils.create_many(i=2)
+
+        response = await self.police_client.get("/api/parties")
+        paginated = assert_res_paginated(
+            response, PartyPoliceDto, total_records=2, page_size=2, total_pages=1
+        )
+
+        data_by_id = {p.id: p for p in paginated.items}
+        for entity in entities:
+            assert entity.id in data_by_id
+            self.party_utils.assert_matches(entity, data_by_id[entity.id])
+
+    @pytest.mark.asyncio
+    async def test_police_contacts_have_no_email(self):
+        """ContactPoliceDto must not expose email, pid, onyen, or residence."""
+        await self.party_utils.create_one()
+
+        response = await self.police_client.get("/api/parties")
+        paginated = assert_res_paginated(
+            response, PartyPoliceDto, total_records=1, page_size=1, total_pages=1
+        )
+        party = paginated.items[0]
+
+        annotation = PartyPoliceDto.model_fields["contact_one"].annotation
+        assert annotation is not None, "contact_one annotation must not be None"
+        contact_police_fields = set(annotation.model_fields)
+        for forbidden in ("email", "pid", "onyen", "residence", "last_registered"):
+            assert forbidden not in contact_police_fields, (
+                f"ContactPoliceDto must not expose '{forbidden}'"
+            )
+        assert hasattr(party.contact_one, "first_name")
+        assert hasattr(party.contact_one, "phone_number")
+        assert hasattr(party.contact_one, "contact_preference")
+        assert not hasattr(party.contact_one, "email")
+
+
+class TestPartyNearbyPoliceRouter(PoliceRouterTestBase):
+    """All callers of GET /api/parties/nearby receive PartyPoliceDto contacts (no email)."""
+
+    gmaps_utils: GmapsMockUtils
+
+    @pytest.fixture(autouse=True)
+    def _bind_gmaps_utils(self, gmaps_utils: GmapsMockUtils):
+        self.gmaps_utils = gmaps_utils
+
+    @pytest.mark.asyncio
+    async def test_nearby_returns_police_dto_for_police(self):
+        """Police officer receives PartyPoliceDto items in nearby list."""
+        search_lat = 40.7128
+        search_lon = -74.0060
+
+        search_location_data = await self.location_utils.next_data(
+            latitude=search_lat, longitude=search_lon
+        )
+        self.gmaps_utils.mock_place_details(**search_location_data.model_dump())
+
+        location = await self.location_utils.create_one(
+            latitude=search_lat + get_lat_offset_within_radius(),
+            longitude=search_lon,
+        )
+        now = datetime.now(UTC)
+        party = await self.party_utils.create_one(
+            location_id=location.id,
+            party_datetime=now + timedelta(hours=2),
+        )
+
+        params = {
+            "place_id": search_location_data.google_place_id,
+            "start_date": now.isoformat(),
+            "end_date": (now + timedelta(days=1)).isoformat(),
+        }
+        response = await self.police_client.get("/api/parties/nearby", params=params)
+        data = assert_res_success(response, ProximitySearchResponse)
+
+        assert len(data.nearby) == 1
+        nearby_party = data.nearby[0]
+        assert nearby_party.id == party.id
+        self.party_utils.assert_matches(party, nearby_party)
+        assert not hasattr(nearby_party.contact_one, "email")
+        assert not hasattr(nearby_party.contact_two, "email")
+
+    @pytest.mark.asyncio
+    async def test_exact_match_party_is_police_dto(self):
+        """Exact match party is PartyPoliceDto — no email on contacts."""
+        search_lat = 40.7128
+        search_lon = -74.0060
+
+        db_location = await self.location_utils.create_one(
+            latitude=search_lat, longitude=search_lon
+        )
+        self.gmaps_utils.mock_place_details(
+            google_place_id=db_location.google_place_id,
+            formatted_address=db_location.formatted_address,
+            latitude=float(db_location.latitude),
+            longitude=float(db_location.longitude),
+        )
+        now = datetime.now(UTC)
+        party = await self.party_utils.create_one(
+            location_id=db_location.id,
+            party_datetime=now + timedelta(hours=2),
+        )
+
+        params = {
+            "place_id": db_location.google_place_id,
+            "start_date": now.isoformat(),
+            "end_date": (now + timedelta(days=1)).isoformat(),
+        }
+        response = await self.police_client.get("/api/parties/nearby", params=params)
+        data = assert_res_success(response, ProximitySearchResponse)
+
+        assert data.exact_match.party is not None
+        assert data.exact_match.party.id == party.id
+        self.party_utils.assert_matches(party, data.exact_match.party)
+        assert not hasattr(data.exact_match.party.contact_one, "email")
+        assert not hasattr(data.exact_match.party.contact_two, "email")

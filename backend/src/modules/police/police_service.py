@@ -1,6 +1,7 @@
 import secrets
 from datetime import UTC, datetime, timedelta
 from typing import ClassVar
+from urllib.parse import urljoin
 
 from fastapi import Depends
 from sqlalchemy import func, select
@@ -162,7 +163,7 @@ class PoliceService:
         return token
 
     async def send_verification_email(self, to: str, token: str) -> None:
-        verification_url = f"{env.FRONTEND_BASE_URL}/police/verify?token={token}"
+        verification_url = urljoin(str(env.FRONTEND_BASE_URL), f"/police/verify?token={token}")
         html = f"""
             <p>Welcome to PartySmart.</p>
             <p>Click the link below to verify your email address:</p>

@@ -1,12 +1,7 @@
 "use client";
 
-import { useSidebar } from "@/app/staff/_components/shared/sidebar/SidebarContext";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useSnackbar } from "@/contexts/SnackbarContext";
-import {
-  DEFAULT_TABLE_PARAMS,
-  ServerTableParams,
-} from "@/lib/api/shared/query-params";
 import {
   useDeleteStudent,
   useDownloadStudentsCsv,
@@ -14,30 +9,25 @@ import {
   useUpdateIsRegistered,
   useUpdateStudent,
 } from "@/lib/api/student/admin-student.queries";
-import { StudentDto, StudentUpdateDto } from "@/lib/api/student/student.types";
+import { StudentDto } from "@/lib/api/student/student.types";
 import { getErrorMessage } from "@/lib/errors";
 import { formatAddress, isFromThisSchoolYear } from "@/lib/utils";
 import { ColumnDef } from "@tanstack/react-table";
-import { useState } from "react";
-import LocationInfoChipDetails from "../party/details/LocationInfoChipDetails";
+import LocationInfoChipDetails from "../shared/details/LocationInfoChipDetails";
+import { FormSidebar } from "../shared/sidebar/FormSidebar";
 import { InfoChip } from "../shared/sidebar/InfoChip";
+import { useFormSidebarState } from "../shared/sidebar/useFormSidebarState";
 import { TableTemplate } from "../shared/table/TableTemplate";
+import { deleteAction, editAction } from "../shared/table/rowActions";
+import { useServerTableState } from "../shared/table/useServerTableState";
 import StudentTableForm from "./StudentTableForm";
 
-const hasStudentChanged = (
-  original: StudentDto | null,
-  updated: StudentUpdateDto
-): boolean => {
-  if (!original) return true;
-
-  return (
-    original.first_name !== updated.first_name ||
-    original.last_name !== updated.last_name ||
-    original.phone_number !== updated.phone_number ||
-    original.contact_preference !== updated.contact_preference ||
-    original.last_registered?.getTime() !== updated.last_registered?.getTime()
-  );
-};
+const STUDENT_ERROR_OPTIONS = {
+  status: {
+    404: "Student not found",
+    409: "This phone number is taken by another student",
+  },
+} as const;
 
 const toEditData = (student: StudentDto) => ({
   ...student,
@@ -48,50 +38,23 @@ const toEditData = (student: StudentDto) => ({
 
 export const StudentTable = () => {
   const { openSnackbar } = useSnackbar();
-  const { openSidebar, closeSidebar } = useSidebar();
-  const [editingStudent, setEditingStudent] = useState<StudentDto | null>(null);
-  const [serverParams, setServerParams] =
-    useState<ServerTableParams>(DEFAULT_TABLE_PARAMS);
+  const { mode, row, openEdit, closeSidebar } =
+    useFormSidebarState<StudentDto>();
 
-  const studentsQuery = useStudents(serverParams);
-  const students = studentsQuery.data?.items ?? [];
-
-  const { mutate: exportCsv, isPending: isExporting } =
-    useDownloadStudentsCsv();
+  const exportMutation = useDownloadStudentsCsv();
 
   const checkboxMutation = useUpdateIsRegistered();
 
   const editFormMutation = useUpdateStudent({
     onOptimisticUpdate: () => {
+      // Optimistic close — toast handles error visibility (no reopen).
       closeSidebar();
-      setEditingStudent(null);
     },
     onError: (error) => {
-      if (!editingStudent) return;
-
-      openSidebar(
-        `edit-student-${editingStudent.id}`,
-        "Edit Student",
-        "Update student information",
-        <StudentTableForm
-          onSubmit={(data) => handleEditSubmit(editingStudent, data)}
-          submissionError={getErrorMessage(error, {
-            status: {
-              404: "Student not found.",
-              409: "This phone number is taken by another student.",
-            },
-            fallback: "Operation failed.",
-          })}
-          editData={toEditData(editingStudent)}
-        />
-      );
+      openSnackbar(getErrorMessage(error, STUDENT_ERROR_OPTIONS), "error");
     },
-    onSuccess: (data, variables) => {
-      if (hasStudentChanged(editingStudent, variables.data)) {
-        openSnackbar("Student updated successfully", "success");
-      }
-      closeSidebar();
-      setEditingStudent(null);
+    onSuccess: () => {
+      openSnackbar("Student updated successfully", "success");
     },
   });
 
@@ -103,30 +66,6 @@ export const StudentTable = () => {
       openSnackbar("Student deleted successfully", "success");
     },
   });
-
-  const handleEdit = (student: StudentDto) => {
-    setEditingStudent(student);
-    openSidebar(
-      `edit-student-${student.id}`,
-      "Edit Student",
-      "Update student information",
-      <StudentTableForm
-        onSubmit={(data) => handleEditSubmit(student, data)}
-        editData={toEditData(student)}
-      />
-    );
-  };
-
-  const handleDelete = (student: StudentDto) => {
-    deleteMutation.mutate(student.id);
-  };
-
-  const handleEditSubmit = async (
-    student: StudentDto,
-    data: StudentUpdateDto
-  ) => {
-    editFormMutation.mutate({ id: student.id, data });
-  };
 
   const columns: ColumnDef<StudentDto>[] = [
     {
@@ -252,35 +191,50 @@ export const StudentTable = () => {
     },
   ];
 
+  const serverTableState = useServerTableState({
+    columns,
+    pageSizeStorageKey: "staff-students",
+  });
+  const query = useStudents(serverTableState.serverParams);
+
   return (
-    <div className="h-full min-h-0 flex flex-col">
+    <>
       <TableTemplate
-        data={students}
+        query={query}
+        serverTableState={serverTableState}
         columns={columns}
-        resourceName="Student"
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        isLoading={studentsQuery.isLoading}
-        isFetching={studentsQuery.isFetching}
-        error={studentsQuery.error}
-        getDeleteDescription={(student: StudentDto) =>
-          `Are you sure you want to delete ${student.first_name} ${student.last_name}? This action cannot be undone.`
-        }
-        isDeleting={deleteMutation.isPending}
-        serverMeta={
-          studentsQuery.data
-            ? {
-                totalRecords: studentsQuery.data.total_records,
-                totalPages: studentsQuery.data.total_pages,
-                sortBy: studentsQuery.data.sort_by,
-                sortOrder: studentsQuery.data.sort_order,
-              }
-            : undefined
-        }
-        onStateChange={setServerParams}
-        onExportCsv={exportCsv}
-        isExporting={isExporting}
+        rowActions={[
+          editAction<StudentDto>({ onClick: openEdit }),
+          deleteAction<StudentDto>({
+            onClick: (student) => deleteMutation.mutate(student.id),
+            resourceName: "Student",
+            description: (student) =>
+              `Are you sure you want to delete ${student.first_name} ${student.last_name}? This action cannot be undone.`,
+            isPending: deleteMutation.isPending,
+          }),
+        ]}
+        exportMutation={exportMutation}
       />
-    </div>
+      <FormSidebar
+        mode={mode}
+        row={row}
+        modes={{
+          edit: {
+            key: (student) => `edit-student-${student.id}`,
+            title: "Edit Student",
+            description: "Update student information",
+            render: (student) => (
+              <StudentTableForm
+                onSubmit={(data) =>
+                  editFormMutation.mutate({ id: student.id, data })
+                }
+                editData={toEditData(student)}
+              />
+            ),
+          },
+        }}
+        onClose={closeSidebar}
+      />
+    </>
   );
 };

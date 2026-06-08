@@ -22,12 +22,14 @@ from .account.invite_token_entity import InviteTokenEntity
 from .auth.refresh_token_entity import RefreshTokenEntity
 from .incident.incident_entity import IncidentEntity
 from .location.location_entity import LocationEntity
+from .notification.email_unsubscribe_entity import EmailUnsubscribeEntity
 from .party.party_entity import PartyEntity
 from .police.police_entity import PoliceEntity
 from .student.student_entity import StudentEntity
 
 __all__ = [
     "AccountEntity",
+    "EmailUnsubscribeEntity",
     "IncidentEntity",
     "InviteTokenEntity",
     "LocationEntity",

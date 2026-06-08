@@ -51,6 +51,7 @@ export default function DatePicker({
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false);
   const [lastClosedAt, setLastClosedAt] = React.useState(0);
+  const openedFromInput = React.useRef(false);
   const [inputValue, setInputValue] = React.useState(
     value ? format(value, dateFormat) : ""
   );
@@ -86,6 +87,7 @@ export default function DatePicker({
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "ArrowDown" || e.key === "Enter") {
       e.preventDefault();
+      openedFromInput.current = true;
       setOpen(true);
     }
   }
@@ -99,7 +101,10 @@ export default function DatePicker({
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
         onClick={() => {
-          if (Date.now() - lastClosedAt > 150) setOpen(true);
+          if (Date.now() - lastClosedAt > 150) {
+            openedFromInput.current = true;
+            setOpen(true);
+          }
         }}
         autoComplete="off"
         placeholder={placeholder}
@@ -140,7 +145,12 @@ export default function DatePicker({
           <PopoverContent
             className={cn("w-auto p-0", popoverContentClassName)}
             align="end"
-            onOpenAutoFocus={(e) => e.preventDefault()}
+            onOpenAutoFocus={(e) => {
+              if (openedFromInput.current) {
+                openedFromInput.current = false;
+                e.preventDefault();
+              }
+            }}
           >
             <Calendar
               mode="single"

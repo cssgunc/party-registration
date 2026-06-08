@@ -1,7 +1,13 @@
 "use client";
 
-import AddressSearch from "@/components/AddressSearch";
-import DatePicker from "@/components/DatePicker";
+import { SubmitButton } from "@/components/form/SubmitButton";
+import {
+  AddressField,
+  DateField,
+  PhoneField,
+  SelectField,
+  TextField,
+} from "@/components/form/fields";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,49 +17,47 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-  FieldSet,
-} from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Field, FieldGroup, FieldLabel, FieldSet } from "@/components/ui/field";
+import { Form } from "@/components/ui/form";
 import { Skeleton } from "@/components/ui/skeleton";
-import { LocationService } from "@/lib/api/location/location.service";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
-import { PARTY_RULE_MESSAGES } from "@/lib/api/party/party.types";
+import {
+  PARTY_RULE_MESSAGES,
+  StudentCreatePartyDto,
+} from "@/lib/api/party/party.types";
 import { StudentDto } from "@/lib/api/student/student.types";
 import { clientEnv } from "@/lib/config/env.client";
 import {
+  cn,
+  formatContactPreference,
   formatPhoneNumberInput,
   getAcademicYearLabels,
   isFromThisSchoolYear,
   phoneNumberSchema,
 } from "@/lib/utils";
-import { addBusinessDays, isAfter, startOfDay } from "date-fns";
-import { useEffect, useRef, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { addDays, addHours, isAfter, set, startOfDay } from "date-fns";
+import React, { useEffect, useRef, useState } from "react";
+import { useForm } from "react-hook-form";
 import * as z from "zod";
 
-const partyFormSchema = z.object({
-  address: z.string().min(1, "Address is required"),
+const partyDateNotTooFar = (date: Date) =>
+  !isAfter(
+    startOfDay(date),
+    addDays(startOfDay(new Date()), clientEnv.NEXT_PUBLIC_PARTY_MAX_LEAD_DAYS)
+  );
+
+const partyFormBaseSchema = z.object({
+  location: z.object(
+    {
+      formatted_address: z.string(),
+      google_place_id: z.string(),
+    },
+    { message: "Please select an address from the dropdown" }
+  ),
   partyDate: z
-    .date({
-      message: "Party date is required",
-    })
-    .refine(
-      (date) =>
-        isAfter(startOfDay(date), addBusinessDays(startOfDay(new Date()), 1)),
-      PARTY_RULE_MESSAGES.PARTY_DATE_TOO_SOON
-    ),
+    .date({ message: "Party date is required" })
+    .refine(partyDateNotTooFar, PARTY_RULE_MESSAGES.PARTY_DATE_TOO_FAR),
   partyTime: z.string().min(1, "Party time is required"),
   secondContactFirstName: z.string().min(1, "First name is required"),
   secondContactLastName: z.string().min(1, "Last name is required"),
@@ -67,21 +71,105 @@ const partyFormSchema = z.object({
     .refine((v) => v.toLowerCase().endsWith("@unc.edu"), {
       message: "Contact two email must be a UNC email address (@unc.edu)",
     }),
-  studentPhoneNumber: phoneNumberSchema.optional(),
-  studentContactPreference: z.enum(["call", "text"]).optional(),
+  studentPhoneNumber: phoneNumberSchema,
+  studentContactPreference: z.enum(["call", "text"], {
+    message: "Please select a contact preference",
+  }),
+  studentEmail: z.string(),
 });
 
-type PartyFormValues = z.infer<typeof partyFormSchema>;
+type PartyFormValues = z.infer<typeof partyFormBaseSchema>;
+
+const refinePartyDatetimeNotTooSoon = (
+  data: PartyFormValues,
+  ctx: z.RefinementCtx
+) => {
+  if (!data.partyDate || !data.partyTime) return;
+  const [hours, minutes] = data.partyTime.split(":").map(Number);
+  const partyDatetime = set(data.partyDate, {
+    hours,
+    minutes,
+    seconds: 0,
+    milliseconds: 0,
+  });
+  if (
+    !isAfter(
+      partyDatetime,
+      addHours(new Date(), clientEnv.NEXT_PUBLIC_PARTY_MIN_LEAD_HOURS)
+    )
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      message: PARTY_RULE_MESSAGES.PARTY_DATE_TOO_SOON,
+      path: ["partyTime"],
+    });
+  }
+};
+
+const refineContactTwoEmailDiffers = (
+  data: PartyFormValues,
+  ctx: z.RefinementCtx
+) => {
+  if (!data.studentEmail) return;
+  if (
+    data.contactTwoEmail.trim().toLowerCase() ===
+    data.studentEmail.trim().toLowerCase()
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      message: PARTY_RULE_MESSAGES.CONTACT_TWO_EMAIL_MATCHES_CONTACT_ONE,
+      path: ["contactTwoEmail"],
+    });
+  }
+};
+
+const refineContactTwoPhoneDiffers = (
+  data: PartyFormValues,
+  ctx: z.RefinementCtx
+) => {
+  if (!data.studentPhoneNumber || !data.phoneNumber) return;
+  if (data.studentPhoneNumber === data.phoneNumber) {
+    ctx.addIssue({
+      code: "custom",
+      message: PARTY_RULE_MESSAGES.CONTACT_TWO_PHONE_MATCHES_CONTACT_ONE,
+      path: ["phoneNumber"],
+    });
+  }
+};
+
+const partyFormSchema = partyFormBaseSchema
+  .superRefine(refinePartyDatetimeNotTooSoon)
+  .superRefine(refineContactTwoEmailDiffers)
+  .superRefine(refineContactTwoPhoneDiffers);
 
 export { partyFormSchema };
 export type { PartyFormValues };
+
+export const partyFormValuesToDto = (
+  values: PartyFormValues
+): StudentCreatePartyDto => {
+  const [hours, minutes] = values.partyTime.split(":");
+  const partyDateTime = new Date(values.partyDate);
+  partyDateTime.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+  return {
+    type: "student",
+    party_datetime: partyDateTime,
+    google_place_id: values.location.google_place_id,
+    contact_two: {
+      email: values.contactTwoEmail,
+      first_name: values.secondContactFirstName,
+      last_name: values.secondContactLastName,
+      phone_number: values.phoneNumber,
+      contact_preference: values.contactPreference,
+    },
+  };
+};
 
 /**
  * Initial values that can be passed to prefill the form
  */
 export interface PartyFormInitialValues {
-  address?: string;
-  placeId?: string;
+  location?: AutocompleteResult;
   partyDate?: Date;
   partyTime?: string;
   secondContactFirstName?: string;
@@ -92,8 +180,7 @@ export interface PartyFormInitialValues {
 }
 
 interface PartyRegistrationFormProps {
-  onSubmit: (data: PartyFormValues, placeId: string) => void | Promise<void>;
-  locationService?: LocationService;
+  onSubmit: (data: PartyFormValues) => void | Promise<void>;
   initialValues?: PartyFormInitialValues;
   /** The authenticated student */
   student?: StudentDto | null;
@@ -105,166 +192,102 @@ interface PartyRegistrationFormProps {
 
 // Default party time (e.g., 8:00 PM)
 const DEFAULT_PARTY_TIME = "20:00";
-// Default contact preference
 const DEFAULT_CONTACT_PREFERENCE: "call" | "text" = "text";
 
 export default function PartyRegistrationForm({
   onSubmit,
-  locationService = new LocationService(),
   initialValues,
   student,
   submissionError,
 }: PartyRegistrationFormProps) {
-  const [formData, setFormData] = useState<Partial<PartyFormValues>>({
-    address: initialValues?.address ?? "",
-    partyDate: initialValues?.partyDate ?? undefined,
-    partyTime: initialValues?.partyTime ?? DEFAULT_PARTY_TIME,
-    phoneNumber: initialValues?.phoneNumber ?? "",
-    secondContactFirstName: initialValues?.secondContactFirstName ?? "",
-    secondContactLastName: initialValues?.secondContactLastName ?? "",
-    contactPreference:
-      initialValues?.contactPreference ?? DEFAULT_CONTACT_PREFERENCE,
-    contactTwoEmail: initialValues?.contactTwoEmail ?? "",
+  const form = useForm<PartyFormValues>({
+    resolver: zodResolver(partyFormSchema),
+    mode: "onBlur",
+    defaultValues: {
+      location:
+        initialValues?.location ??
+        (student?.residence &&
+        isFromThisSchoolYear(student.residence.residence_chosen_date)
+          ? {
+              formatted_address: student.residence.location.formatted_address,
+              google_place_id: student.residence.location.google_place_id,
+            }
+          : undefined),
+      partyDate: initialValues?.partyDate ?? undefined,
+      partyTime: initialValues?.partyTime ?? DEFAULT_PARTY_TIME,
+      phoneNumber: initialValues?.phoneNumber ?? "",
+      secondContactFirstName: initialValues?.secondContactFirstName ?? "",
+      secondContactLastName: initialValues?.secondContactLastName ?? "",
+      contactPreference:
+        initialValues?.contactPreference ?? DEFAULT_CONTACT_PREFERENCE,
+      contactTwoEmail: initialValues?.contactTwoEmail ?? "",
+      studentPhoneNumber: student?.phone_number ?? "",
+      studentContactPreference: student?.contact_preference ?? undefined,
+      studentEmail: student?.email ?? "",
+    },
   });
 
-  const [placeId, setPlaceId] = useState<string>(
-    initialValues?.placeId ?? student?.residence?.location.google_place_id ?? ""
-  );
-
-  // If the student fixture loads after the first render, sync placeId from
-  // their residence so the form's internal state stays honest with what'll
-  // be sent on submit.
+  // When student data arrives after the first render, sync their existing
+  // contact info and residence into the form so Zod validation passes naturally.
   useEffect(() => {
-    if (initialValues?.placeId || placeId) return;
-    const residencePlaceId = student?.residence?.location.google_place_id;
-    if (residencePlaceId) setPlaceId(residencePlaceId);
-  }, [student, initialValues?.placeId, placeId]);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+    if (!student) return;
+
+    const residence = student.residence;
+    const residenceLocation =
+      !initialValues?.location &&
+      residence &&
+      isFromThisSchoolYear(residence.residence_chosen_date)
+        ? {
+            formatted_address: residence.location.formatted_address,
+            google_place_id: residence.location.google_place_id,
+          }
+        : undefined;
+
+    form.reset(
+      (values) => ({
+        ...values,
+        studentPhoneNumber:
+          values.studentPhoneNumber || student.phone_number || "",
+        studentContactPreference:
+          values.studentContactPreference ??
+          student.contact_preference ??
+          undefined,
+        studentEmail: values.studentEmail || student.email || "",
+        location: values.location ?? residenceLocation,
+      }),
+      { keepErrors: true, keepDirty: true, keepTouched: true }
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [student, initialValues?.location?.google_place_id]);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAddressConfirmation, setShowAddressConfirmation] = useState(false);
-  const pendingSubmitRef = useRef<{
-    data: PartyFormValues;
-    placeId: string;
-  } | null>(null);
 
-  const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setErrors({});
+  const pendingSubmitRef = useRef<PartyFormValues | null>(null);
 
-    const result = partyFormSchema.safeParse(formData);
+  const handleValid = async (data: PartyFormValues) => {
+    const baselineGooglePlaceId =
+      initialValues?.location?.google_place_id ??
+      (validResidence ? student?.residence?.location.google_place_id : null);
+    const locationChanged =
+      !baselineGooglePlaceId ||
+      data.location.google_place_id !== baselineGooglePlaceId;
 
-    if (!result.success) {
-      const fieldErrors: Record<string, string> = {};
-      result.error.issues.forEach((issue) => {
-        if (issue.path[0]) {
-          fieldErrors[issue.path[0].toString()] = issue.message;
-        }
-      });
-      setErrors(fieldErrors);
-      return;
-    }
-
-    // If student hasn't provided contact info yet, validate inline fields
-    if (!student?.phone_number) {
-      const studentInfoErrors: Record<string, string> = {};
-      if (
-        !result.data.studentPhoneNumber ||
-        !result.data.studentContactPreference
-      ) {
-        // STUDENT_INFO_NOT_PROVIDED — banner-style: show same message twice
-        // so it appears beneath whichever field the user is missing.
-        if (!result.data.studentPhoneNumber) {
-          studentInfoErrors.studentPhoneNumber =
-            PARTY_RULE_MESSAGES.STUDENT_INFO_NOT_PROVIDED;
-        }
-        if (!result.data.studentContactPreference) {
-          studentInfoErrors.studentContactPreference =
-            PARTY_RULE_MESSAGES.STUDENT_INFO_NOT_PROVIDED;
-        }
-        setErrors((prev) => ({ ...prev, ...studentInfoErrors }));
-        return;
-      }
-    }
-
-    // Validate contact two differs from contact one (the student)
-    const contactTwoErrors: Record<string, string> = {};
-    if (
-      student?.email &&
-      result.data.contactTwoEmail.trim().toLowerCase() ===
-        student.email.trim().toLowerCase()
-    ) {
-      contactTwoErrors.contactTwoEmail =
-        PARTY_RULE_MESSAGES.CONTACT_TWO_EMAIL_MATCHES_CONTACT_ONE;
-    }
-    const studentPhone =
-      student?.phone_number ?? result.data.studentPhoneNumber;
-    if (studentPhone) {
-      const c1Digits = studentPhone.replace(/\D/g, "");
-      const c2Digits = result.data.phoneNumber;
-      if (c1Digits === c2Digits) {
-        contactTwoErrors.phoneNumber =
-          PARTY_RULE_MESSAGES.CONTACT_TWO_PHONE_MATCHES_CONTACT_ONE;
-      }
-    }
-    if (Object.keys(contactTwoErrors).length > 0) {
-      setErrors(contactTwoErrors);
-      return;
-    }
-
-    // Only set the address error if it wasn't already set by Zod
-    if (!placeId) {
-      setErrors((prev) => ({
-        ...prev,
-        address: prev.address || "Please select an address from the dropdown",
-      }));
-      return;
-    }
-
-    const addressChanged =
-      !initialValues?.address || result.data.address !== initialValues.address;
-
-    if (addressChanged) {
-      pendingSubmitRef.current = { data: result.data, placeId };
+    if (locationChanged) {
+      pendingSubmitRef.current = data;
       setShowAddressConfirmation(true);
       return;
     }
 
-    // Proceed with submission if address didn't change
     setIsSubmitting(true);
     try {
-      await onSubmit(result.data, placeId); // ⭐ now sends placeId too
+      await onSubmit(data);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const updateField = <K extends keyof PartyFormValues>(
-    field: K,
-    value: PartyFormValues[K]
-  ) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      const newErrors = { ...errors };
-      delete newErrors[field];
-      setErrors(newErrors);
-    }
-  };
-
   const { schoolYear, changeDate } = getAcademicYearLabels();
-
-  const handleAddressSelect = (address: AutocompleteResult | null) => {
-    updateField("address", address?.formatted_address || "");
-    setPlaceId(address?.google_place_id || "");
-  };
-
-  // Build initial address object for AddressSearch if we have prefilled values
-  const initialAddress: AutocompleteResult | undefined =
-    initialValues?.address && initialValues?.placeId
-      ? {
-          formatted_address: initialValues.address,
-          google_place_id: initialValues.placeId,
-        }
-      : undefined;
 
   const validResidence = isFromThisSchoolYear(
     student?.residence?.residence_chosen_date
@@ -272,359 +295,235 @@ export default function PartyRegistrationForm({
   const isStudentLoading = student === undefined;
 
   return (
-    <form onSubmit={handleSubmit}>
-      <FieldGroup>
-        <FieldSet>
-          <div className="flex flex-col gap-4 lg:gap-6">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:gap-8">
-              <Field data-invalid={!!errors.partyDate}>
-                <FieldLabel htmlFor="party-date" className="content-bold">
-                  Party Date
-                </FieldLabel>
-                <DatePicker
-                  id="party-date"
-                  value={formData.partyDate ?? null}
-                  onChange={(date) => updateField("partyDate", date as Date)}
-                  disabled={(date) =>
-                    !isAfter(
-                      startOfDay(date),
-                      addBusinessDays(startOfDay(new Date()), 1)
-                    )
-                  }
-                  forwardDate={true}
-                  aria-invalid={!!errors.partyDate}
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleValid)}>
+        <FieldGroup>
+          <FieldSet>
+            <div className="flex flex-col gap-4 lg:gap-6">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:gap-8">
+                <DateField
+                  control={form.control}
+                  name="partyDate"
+                  label="Party Date"
+                  labelClassName="content-bold"
                   inputClassName="content"
+                  forwardDate={true}
+                  description={`Must be at least ${clientEnv.NEXT_PUBLIC_PARTY_MIN_LEAD_HOURS} hours in advance, and no more than ${clientEnv.NEXT_PUBLIC_PARTY_MAX_LEAD_DAYS} days out`}
+                  disabled={(date) =>
+                    !isAfter(startOfDay(date), startOfDay(new Date())) ||
+                    !partyDateNotTooFar(date)
+                  }
                 />
-                <FieldDescription>
-                  Must be at least 2 business days from today
-                </FieldDescription>
-                {errors.partyDate && (
-                  <FieldError>{errors.partyDate}</FieldError>
-                )}
-              </Field>
 
-              <Field data-invalid={!!errors.partyTime}>
-                <FieldLabel htmlFor="party-time" className="content-bold">
-                  Party Time
-                </FieldLabel>
-                <Input
-                  id="party-time"
+                <TextField
+                  control={form.control}
+                  name="partyTime"
+                  label="Party Time"
+                  labelClassName="content-bold"
+                  inputClassName="content"
                   type="time"
-                  value={formData.partyTime}
-                  onChange={(e) => updateField("partyTime", e.target.value)}
-                  aria-invalid={!!errors.partyTime}
-                  className="content"
                 />
-                {errors.partyTime && (
-                  <FieldError>{errors.partyTime}</FieldError>
-                )}
-              </Field>
-            </div>
+              </div>
 
-            {isStudentLoading ? (
-              <Field>
-                <FieldLabel className="content-bold">Party Address</FieldLabel>
-                <Skeleton className="h-10 w-full" />
-              </Field>
-            ) : !validResidence ? (
-              <Field data-invalid={!!errors.address}>
-                <FieldLabel htmlFor="party-address" className="content-bold">
-                  Party Address
-                </FieldLabel>
-                <AddressSearch
-                  value={formData.address}
-                  onSelect={handleAddressSelect}
-                  locationService={locationService}
-                  placeholder="Search for the party address..."
-                  className="w-full"
-                  error={errors.address}
-                  initialSelection={initialAddress}
-                />
-                <FieldDescription className="content-sub italic">
-                  This will be added to your profile as your {schoolYear}{" "}
-                  location. You may change it after {changeDate}.
-                </FieldDescription>
-                {errors.address && <FieldError>{errors.address}</FieldError>}
-              </Field>
-            ) : (
-              <Field className="col-span-2 gap-1">
-                <FieldLabel className="content-bold">Party Address</FieldLabel>
-                <p className="content">
-                  {student?.residence?.location.formatted_address}
-                </p>
-                <p className="content-sub italic">
-                  You cannot change your address until {changeDate}. If you are
-                  experiencing hardship, contact{" "}
-                  <a
-                    href={`mailto:${clientEnv.NEXT_PUBLIC_CONTACT_EMAIL}`}
-                    className="underline"
-                  >
-                    {clientEnv.NEXT_PUBLIC_CONTACT_EMAIL}
-                  </a>{" "}
-                  for changes
-                </p>
-              </Field>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-4 lg:gap-6">
-            <div className="flex flex-col gap-1">
-              <h2 className="subhead-content">Your Contact Information</h2>
-              <p className="content-sub italic">
-                {student?.phone_number != null
-                  ? "You can edit preferences in your Profile Information."
-                  : "Please provide your contact information to complete registration."}
-              </p>
-            </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
-              <Field className="gap-1">
-                <FieldLabel className="content-bold">First Name</FieldLabel>
-                {isStudentLoading ? (
-                  <Skeleton className="h-6 w-full" />
-                ) : (
-                  <p className="content">{student?.first_name}</p>
-                )}
-              </Field>
-              <Field className="gap-1">
-                <FieldLabel className="content-bold">Last Name</FieldLabel>
-                {isStudentLoading ? (
-                  <Skeleton className="h-6 w-full" />
-                ) : (
-                  <p className="content">{student?.last_name}</p>
-                )}
-              </Field>
-              <Field
-                className="gap-1"
-                data-invalid={!!errors.studentPhoneNumber}
-              >
-                <FieldLabel className="content-bold">Phone Number</FieldLabel>
-                {isStudentLoading ? (
-                  <Skeleton className="h-6 w-full" />
-                ) : student?.phone_number != null ? (
-                  <p className="content">
-                    {formatPhoneNumberInput(student.phone_number)}
-                  </p>
-                ) : (
-                  <>
-                    <Input
-                      id="student-phone-number"
-                      type="tel"
-                      placeholder="(123) 456-7890"
-                      value={formatPhoneNumberInput(
-                        formData.studentPhoneNumber ?? ""
-                      )}
-                      onChange={(e) =>
-                        updateField(
-                          "studentPhoneNumber",
-                          e.target.value.replace(/\D/g, "").slice(0, 10)
-                        )
-                      }
-                      aria-invalid={!!errors.studentPhoneNumber}
-                      className="content"
-                    />
-                    {errors.studentPhoneNumber && (
-                      <FieldError>{errors.studentPhoneNumber}</FieldError>
-                    )}
-                  </>
-                )}
-              </Field>
-              <Field
-                className="gap-1"
-                data-invalid={!!errors.studentContactPreference}
-              >
-                <FieldLabel className="content-bold">
-                  Contact Preference
-                </FieldLabel>
-                {isStudentLoading ? (
-                  <Skeleton className="h-6 w-full" />
-                ) : student?.phone_number != null ? (
-                  <p className="content capitalize">
-                    {student.contact_preference}
-                  </p>
-                ) : (
-                  <>
-                    <Select
-                      value={formData.studentContactPreference}
-                      onValueChange={(value: "call" | "text") =>
-                        updateField("studentContactPreference", value)
-                      }
-                    >
-                      <SelectTrigger
-                        aria-invalid={!!errors.studentContactPreference}
-                        className="content"
+              <StudentInfoField
+                label="Party Address"
+                value={
+                  validResidence
+                    ? student?.residence?.location.formatted_address
+                    : undefined
+                }
+                isLoading={isStudentLoading}
+                fieldClassName="col-span-2"
+                skeletonClassName="h-10 w-full"
+                description={
+                  validResidence ? (
+                    <p className="content-sub italic">
+                      You cannot change your address until {changeDate}. For
+                      extraneous circumstances, contact{" "}
+                      <a
+                        href={`mailto:${clientEnv.NEXT_PUBLIC_CONTACT_EMAIL}`}
+                        className="underline"
                       >
-                        <SelectValue placeholder="Select your preference" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="call" className="content">
-                          Call
-                        </SelectItem>
-                        <SelectItem value="text" className="content">
-                          Text
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    {errors.studentContactPreference && (
-                      <FieldError>{errors.studentContactPreference}</FieldError>
-                    )}
-                  </>
-                )}
-              </Field>
-              <Field className="gap-1">
-                <FieldLabel className="content-bold">Email</FieldLabel>
-                {isStudentLoading ? (
-                  <Skeleton className="h-6 w-full" />
-                ) : (
-                  <p className="content">{student?.email}</p>
-                )}
-              </Field>
+                        {clientEnv.NEXT_PUBLIC_CONTACT_EMAIL}
+                      </a>{" "}
+                    </p>
+                  ) : undefined
+                }
+                editField={
+                  <AddressField
+                    control={form.control}
+                    name="location"
+                    label="Party Address"
+                    labelClassName="content-bold"
+                    placeholder="Search for the party address..."
+                    initialSelection={initialValues?.location}
+                    value={form.watch("location")?.formatted_address}
+                    getStoredValue={(address) => address ?? undefined}
+                    chapelHillOnly
+                    descriptionClassName="content-sub italic ml-1 -mt-2"
+                    description={
+                      <>
+                        This will be added to your profile as your {schoolYear}{" "}
+                        location. You may change it after {changeDate}.
+                      </>
+                    }
+                  />
+                }
+              />
             </div>
-          </div>
 
-          <div className="flex flex-col gap-4 lg:gap-6">
-            <h2 className="subhead-content">Second Contact Information</h2>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
-              <Field data-invalid={!!errors.secondContactFirstName}>
-                <FieldLabel
-                  htmlFor="second-contact-first-name"
-                  className="content-bold"
-                >
-                  First Name
-                </FieldLabel>
-                <Input
-                  id="second-contact-first-name"
+            <div className="flex flex-col gap-4 lg:gap-6">
+              <div className="flex flex-col gap-1">
+                <h2 className="subhead-content">Your Contact Information</h2>
+                <p className="content-sub italic">
+                  {student?.phone_number != null
+                    ? "You can edit preferences in your Profile Information."
+                    : "Please provide your contact information to complete registration."}
+                </p>
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
+                <StudentInfoField
+                  label="First Name"
+                  value={student?.first_name}
+                  isLoading={isStudentLoading}
+                />
+                <StudentInfoField
+                  label="Last Name"
+                  value={student?.last_name}
+                  isLoading={isStudentLoading}
+                />
+                <StudentInfoField
+                  label="Phone Number"
+                  value={
+                    student?.phone_number != null
+                      ? formatPhoneNumberInput(student.phone_number)
+                      : undefined
+                  }
+                  isLoading={isStudentLoading}
+                  editField={
+                    <PhoneField
+                      control={form.control}
+                      name="studentPhoneNumber"
+                      label="Phone Number"
+                      labelClassName="content-bold"
+                      inputClassName="content"
+                    />
+                  }
+                />
+                <StudentInfoField
+                  label="Contact Preference"
+                  value={
+                    student?.phone_number != null
+                      ? formatContactPreference(student.contact_preference)
+                      : undefined
+                  }
+                  isLoading={isStudentLoading}
+                  editField={
+                    <SelectField
+                      control={form.control}
+                      name="studentContactPreference"
+                      label="Contact Preference"
+                      labelClassName="content-bold"
+                      triggerClassName="content"
+                      itemClassName="content"
+                      placeholder="Select your preference"
+                      options={[
+                        { value: "call", label: "Call" },
+                        { value: "text", label: "Text" },
+                      ]}
+                    />
+                  }
+                />
+                <StudentInfoField
+                  label="Email"
+                  value={student?.email}
+                  isLoading={isStudentLoading}
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-4 lg:gap-6">
+              <h2 className="subhead-content">Second Contact Information</h2>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
+                <TextField
+                  control={form.control}
+                  name="secondContactFirstName"
+                  label="First Name"
+                  labelClassName="content-bold"
+                  inputClassName="content"
                   placeholder=""
-                  value={formData.secondContactFirstName}
-                  onChange={(e) =>
-                    updateField("secondContactFirstName", e.target.value)
-                  }
-                  aria-invalid={!!errors.secondContactFirstName}
-                  className="content"
+                  autoComplete="section-contact-two field-1"
                 />
-                {errors.secondContactFirstName && (
-                  <FieldError>{errors.secondContactFirstName}</FieldError>
-                )}
-              </Field>
 
-              <Field data-invalid={!!errors.secondContactLastName}>
-                <FieldLabel
-                  htmlFor="second-contact-last-name"
-                  className="content-bold"
-                >
-                  Last Name
-                </FieldLabel>
-                <Input
-                  id="second-contact-last-name"
+                <TextField
+                  control={form.control}
+                  name="secondContactLastName"
+                  label="Last Name"
+                  labelClassName="content-bold"
+                  inputClassName="content"
                   placeholder=""
-                  value={formData.secondContactLastName}
-                  onChange={(e) =>
-                    updateField("secondContactLastName", e.target.value)
-                  }
-                  aria-invalid={!!errors.secondContactLastName}
-                  className="content"
+                  autoComplete="section-contact-two field-2"
                 />
-                {errors.secondContactLastName && (
-                  <FieldError>{errors.secondContactLastName}</FieldError>
-                )}
-              </Field>
-            </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
-              <Field data-invalid={!!errors.phoneNumber}>
-                <FieldLabel htmlFor="phone-number" className="content-bold">
-                  Phone Number
-                </FieldLabel>
-                <Input
-                  id="phone-number"
-                  type="tel"
-                  placeholder="(123) 456-7890"
-                  value={formatPhoneNumberInput(formData.phoneNumber ?? "")}
-                  onChange={(e) =>
-                    updateField(
-                      "phoneNumber",
-                      e.target.value.replace(/\D/g, "").slice(0, 10)
-                    )
-                  }
-                  aria-invalid={!!errors.phoneNumber}
-                  className="content"
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
+                <PhoneField
+                  control={form.control}
+                  name="phoneNumber"
+                  label="Phone Number"
+                  labelClassName="content-bold"
+                  inputClassName="content"
+                  autoComplete="section-contact-two field-3"
                 />
-                {errors.phoneNumber && (
-                  <FieldError>{errors.phoneNumber}</FieldError>
-                )}
-              </Field>
 
-              <Field data-invalid={!!errors.contactPreference}>
-                <FieldLabel
-                  htmlFor="contact-preference"
-                  className="content-bold"
-                >
-                  Contact Preference
-                </FieldLabel>
-                <Select
-                  value={formData.contactPreference}
-                  onValueChange={(value) =>
-                    updateField("contactPreference", value as "call" | "text")
-                  }
-                >
-                  <SelectTrigger
-                    id="contact-preference"
-                    aria-invalid={!!errors.contactPreference}
-                    className="content"
-                  >
-                    <SelectValue placeholder="Select your preference" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="call" className="content">
-                      Call
-                    </SelectItem>
-                    <SelectItem value="text" className="content">
-                      Text
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                {errors.contactPreference && (
-                  <FieldError>{errors.contactPreference}</FieldError>
-                )}
-              </Field>
-            </div>
+                <SelectField
+                  control={form.control}
+                  name="contactPreference"
+                  label="Contact Preference"
+                  labelClassName="content-bold"
+                  triggerClassName="content"
+                  itemClassName="content"
+                  placeholder="Select your preference"
+                  options={[
+                    { value: "call", label: "Call" },
+                    { value: "text", label: "Text" },
+                  ]}
+                />
+              </div>
 
-            <Field data-invalid={!!errors.contactTwoEmail}>
-              <FieldLabel htmlFor="contact-email" className="content-bold">
-                Contact Email
-              </FieldLabel>
-              <Input
-                id="contact-email"
+              <TextField
+                control={form.control}
+                name="contactTwoEmail"
+                label="Contact Email"
+                labelClassName="content-bold"
+                inputClassName="content"
                 type="email"
                 placeholder="student@unc.edu"
-                value={formData.contactTwoEmail}
-                onChange={(e) => updateField("contactTwoEmail", e.target.value)}
-                aria-invalid={!!errors.contactTwoEmail}
-                className="content"
+                autoComplete="section-contact-two field-4"
               />
-              {errors.contactTwoEmail && (
-                <FieldError>{errors.contactTwoEmail}</FieldError>
-              )}
-            </Field>
-          </div>
+            </div>
 
-          <Field className="flex flex-col items-center">
-            <p className="content text-center my-2 lg:my-4">
-              Please ensure all information provided is correct before
-              submitting
-            </p>
-            {submissionError && (
-              <div
-                className="w-full rounded-md bg-destructive/10 p-3 text-sm text-destructive mb-2"
-                role="alert"
-              >
-                {submissionError}
-              </div>
-            )}
-            <Button type="submit" disabled={isSubmitting} className="w-fit!">
-              {isSubmitting ? "Submitting..." : "Submit Event"}
-            </Button>
-          </Field>
-        </FieldSet>
-      </FieldGroup>
+            <Field className="flex flex-col items-center">
+              <p className="content text-center my-2 lg:my-4">
+                Please ensure all information provided is correct before
+                submitting
+              </p>
+              {submissionError && (
+                <div
+                  className="w-full rounded-md bg-destructive/10 p-3 text-sm text-destructive mb-2"
+                  role="alert"
+                >
+                  {submissionError}
+                </div>
+              )}
+              <SubmitButton
+                pending={isSubmitting}
+                label="Submit Event"
+                className="w-fit!"
+              />
+            </Field>
+          </FieldSet>
+        </FieldGroup>
+      </form>
 
       <Dialog
         open={showAddressConfirmation}
@@ -640,10 +539,10 @@ export default function PartyRegistrationForm({
             </DialogDescription>
           </DialogHeader>
           <div className="pt-2">
-            <p className="text-sm">
+            <p className="text-base">
               <span className="font-semibold">New Address:</span>
               <br />
-              {pendingSubmitRef.current?.data.address}
+              {pendingSubmitRef.current?.location.formatted_address}
             </p>
           </div>
           <DialogFooter>
@@ -663,9 +562,7 @@ export default function PartyRegistrationForm({
                 setShowAddressConfirmation(false);
                 setIsSubmitting(true);
                 try {
-                  const { data, placeId: submitPlaceId } =
-                    pendingSubmitRef.current!;
-                  await onSubmit(data, submitPlaceId);
+                  await onSubmit(pendingSubmitRef.current!);
                 } finally {
                   setIsSubmitting(false);
                   pendingSubmitRef.current = null;
@@ -677,6 +574,41 @@ export default function PartyRegistrationForm({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </form>
+    </Form>
+  );
+}
+
+function StudentInfoField({
+  label,
+  value,
+  isLoading,
+  editField,
+  fieldClassName,
+  skeletonClassName,
+  description,
+}: {
+  label: string;
+  value?: React.ReactNode;
+  isLoading: boolean;
+  editField?: React.ReactNode;
+  fieldClassName?: string;
+  skeletonClassName?: string;
+  description?: React.ReactNode;
+}) {
+  if (value == null && !isLoading && editField != null) {
+    return <>{editField}</>;
+  }
+  return (
+    <Field className={cn("gap-1", fieldClassName)}>
+      <FieldLabel className="content-bold">{label}</FieldLabel>
+      {isLoading ? (
+        <Skeleton className={skeletonClassName ?? "h-6 w-full"} />
+      ) : (
+        <>
+          <p className="content">{value}</p>
+          {description}
+        </>
+      )}
+    </Field>
   );
 }

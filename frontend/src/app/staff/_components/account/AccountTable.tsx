@@ -13,34 +13,30 @@ import {
   useUpdatePoliceAccount,
 } from "@/lib/api/account/account.queries";
 import type {
-  AccountRole,
-  AccountUpdateData,
   AggregateAccountDto,
-  CreateInviteDto,
   InviteTokenRole,
 } from "@/lib/api/account/account.types";
 import { ACCOUNT_ROLES } from "@/lib/api/account/account.types";
-import type {
-  PoliceAccountUpdate,
-  PoliceRole,
-} from "@/lib/api/police/police.types";
-import {
-  DEFAULT_TABLE_PARAMS,
-  ServerTableParams,
-} from "@/lib/api/shared/query-params";
+import type { PoliceRole } from "@/lib/api/police/police.types";
 import { getErrorMessage } from "@/lib/errors";
 import { formatRoleLabel } from "@/lib/utils";
 import { ColumnDef } from "@tanstack/react-table";
 import { Send } from "lucide-react";
 import { useSession } from "next-auth/react";
-import { useState } from "react";
 import * as z from "zod";
-import { useSidebar } from "../shared/sidebar/SidebarContext";
+import { FormSidebar } from "../shared/sidebar/FormSidebar";
+import { useFormSidebarState } from "../shared/sidebar/useFormSidebarState";
 import { TableTemplate } from "../shared/table/TableTemplate";
+import {
+  type RowAction,
+  deleteAction,
+  editAction,
+} from "../shared/table/rowActions";
+import { useServerTableState } from "../shared/table/useServerTableState";
 import AccountTableForm, { accountTableFormSchema } from "./AccountTableForm";
-import PoliceAccountForm, {
+import PoliceAccountTableForm, {
   type PoliceAccountFormValues,
-} from "./PoliceAccountForm";
+} from "./PoliceAccountTableForm";
 
 type AccountTableFormValues = z.infer<typeof accountTableFormSchema>;
 
@@ -61,111 +57,57 @@ const ACCOUNT_STATUS_FILTER_OPTIONS = [
 
 const ACCOUNT_ERROR_OPTIONS = {
   status: {
-    404: "Account not found.",
+    404: "Account not found",
   },
-  fallback: "Operation failed.",
+} as const;
+
+const POLICE_ACCOUNT_ERROR_OPTIONS = {
+  ...ACCOUNT_ERROR_OPTIONS,
+  fallback: "Failed to update police account",
 } as const;
 
 export const AccountTable = () => {
-  const { openSidebar, closeSidebar } = useSidebar();
   const { openSnackbar } = useSnackbar();
   const { data: session } = useSession();
-  const [editingRow, setEditingRow] = useState<AggregateAccountDto | null>(
-    null
-  );
-  const [serverParams, setServerParams] =
-    useState<ServerTableParams>(DEFAULT_TABLE_PARAMS);
+  const {
+    mode,
+    row,
+    submissionError,
+    setSubmissionError,
+    openCreate,
+    openEdit,
+    closeSidebar,
+  } = useFormSidebarState<AggregateAccountDto>();
 
-  const aggregateQuery = useAggregateAccounts(serverParams);
-
-  const { mutate: exportCsv, isPending: isExporting } =
-    useDownloadAggregateAccountsCsv();
+  const exportMutation = useDownloadAggregateAccountsCsv();
 
   const createAccountMutation = useCreateAccount({
-    onError: (error: Error, variables: CreateInviteDto) => {
-      const message = getErrorMessage(error, ACCOUNT_ERROR_OPTIONS);
-
-      openSidebar(
-        "create-account",
-        "New Invite",
-        "Send a staff or admin invitation",
-        <AccountTableForm
-          onSubmit={handleAccountCreateSubmit}
-          submissionError={message}
-          editData={{
-            email: variables.email,
-            role: variables.role,
-          }}
-        />
-      );
+    onError: (error: Error) => {
+      setSubmissionError(getErrorMessage(error, ACCOUNT_ERROR_OPTIONS));
     },
     onSuccess: () => {
       closeSidebar();
-      setEditingRow(null);
       openSnackbar("Invite sent successfully", "success");
     },
   });
 
   const updateAccountMutation = useUpdateAccount({
-    onError: (
-      error: Error,
-      variables: { id: number; data: AccountUpdateData }
-    ) => {
-      const message = getErrorMessage(error, ACCOUNT_ERROR_OPTIONS);
-
-      openSidebar(
-        `edit-account-${variables.id}`,
-        "Edit Account",
-        "Update account information",
-        <AccountTableForm
-          onSubmit={(data) => handleAccountEditSubmit(variables.id, data)}
-          submissionError={message}
-          editData={{
-            email: editingRow?.email ?? "",
-            role: (editingRow?.role ?? variables.data.role) as AccountRole,
-          }}
-        />
-      );
+    onError: (error: Error) => {
+      setSubmissionError(getErrorMessage(error, ACCOUNT_ERROR_OPTIONS));
     },
     onSuccess: () => {
       openSnackbar("Account edited successfully", "success");
       closeSidebar();
-      setEditingRow(null);
     },
   });
 
   const updatePoliceAccountMutation = useUpdatePoliceAccount({
-    onError: (
-      error: Error,
-      variables: { id: number; data: PoliceAccountUpdate }
-    ) => {
-      console.error("Failed to update police account:", error);
-      const errorMessage = getErrorMessage(error, {
-        status: {
-          404: "Account not found.",
-        },
-        fallback: "Failed to update police account.",
-      });
-
-      openSidebar(
-        `edit-police-${variables.id}`,
-        "Edit Police Account",
-        "Update police account credentials",
-        <PoliceAccountForm
-          onSubmit={(data) => handlePoliceEditSubmit(variables.id, data)}
-          submissionError={errorMessage}
-          editData={{
-            email: variables.data.email,
-            role: variables.data.role,
-            is_verified: variables.data.is_verified,
-          }}
-          disableVerificationToggle
-        />
-      );
+    onError: (error: Error) => {
+      setSubmissionError(getErrorMessage(error, POLICE_ACCOUNT_ERROR_OPTIONS));
     },
     onSuccess: () => {
+      openSnackbar("Police account updated successfully", "success");
       closeSidebar();
-      setEditingRow(null);
     },
   });
 
@@ -205,37 +147,7 @@ export const AccountTable = () => {
 
   const handleEdit = (row: AggregateAccountDto) => {
     if (row.status === "invited") return;
-    setEditingRow(row);
-
-    if (isPoliceRow(row)) {
-      openSidebar(
-        `edit-police-${row.source_id}`,
-        "Edit Police Account",
-        "Update police account credentials",
-        <PoliceAccountForm
-          onSubmit={(data) => handlePoliceEditSubmit(row.source_id, data)}
-          editData={{
-            email: row.email,
-            role: row.role as PoliceRole,
-            is_verified: row.status === "active",
-          }}
-          disableVerificationToggle={false}
-        />
-      );
-    } else {
-      openSidebar(
-        `edit-account-${row.source_id}`,
-        "Edit Account",
-        "Update account information",
-        <AccountTableForm
-          onSubmit={(data) => handleAccountEditSubmit(row.source_id, data)}
-          editData={{
-            email: row.email,
-            role: row.role as AccountRole,
-          }}
-        />
-      );
-    }
+    openEdit(row);
   };
 
   const handleDelete = (row: AggregateAccountDto) => {
@@ -248,24 +160,10 @@ export const AccountTable = () => {
     }
   };
 
-  const handleResendInvite = (row: AggregateAccountDto) => {
-    resendInviteMutation.mutate(row.source_id);
-  };
-
-  const handleCreate = () => {
-    setEditingRow(null);
-    openSidebar(
-      "create-account",
-      "New Invite",
-      "Send a staff or admin invitation",
-      <AccountTableForm onSubmit={handleAccountCreateSubmit} />
-    );
-  };
-
   const handleAccountCreateSubmit = async (data: AccountTableFormValues) => {
     createAccountMutation.mutate({
       email: data.email,
-      role: data.role as InviteTokenRole,
+      role: data.role,
     });
   };
 
@@ -275,7 +173,7 @@ export const AccountTable = () => {
   ) => {
     updateAccountMutation.mutate({
       id: accountId,
-      data: { role: data.role as AccountRole },
+      data: { role: data.role },
     });
   };
 
@@ -363,55 +261,104 @@ export const AccountTable = () => {
     },
   ];
 
+  const serverTableState = useServerTableState({
+    columns,
+    pageSizeStorageKey: "staff-accounts",
+  });
+  const query = useAggregateAccounts(serverTableState.serverParams);
+
   return (
-    <div className="h-full min-h-0 flex flex-col">
+    <>
       <TableTemplate
-        data={aggregateQuery.data?.items ?? []}
+        query={query}
+        serverTableState={serverTableState}
         columns={columns}
-        resourceName="Account"
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        onCreateNewRow={handleCreate}
-        isLoading={aggregateQuery.isLoading}
-        isFetching={aggregateQuery.isFetching}
-        error={aggregateQuery.error as Error | null}
-        getDeleteDescription={(row: AggregateAccountDto) =>
-          `Are you sure you want to delete ${isPoliceRow(row) ? "police " : ""}account ${row.email}? This action cannot be undone.`
-        }
-        isDeleting={
-          deleteAccountMutation.isPending ||
-          deletePoliceAccountMutation.isPending ||
-          deleteInviteMutation.isPending ||
-          resendInviteMutation.isPending
-        }
-        canEditRow={(row) => row.status !== "invited"}
-        canDeleteRow={(row) =>
-          row.status === "invited" ||
-          isPoliceRow(row) ||
-          (session?.id != null && row.source_id !== session.id)
-        }
+        createAction={{ label: "New Invite", fn: openCreate }}
         rowActions={[
+          editAction<AggregateAccountDto>({
+            onClick: handleEdit,
+            isVisible: (row) => row.status !== "invited",
+          }),
           {
             label: "Resend invite",
-            onClick: handleResendInvite,
+            onClick: (row) => resendInviteMutation.mutate(row.source_id),
             icon: <Send className="mr-2 size-4" />,
             isVisible: (row) => row.status === "invited",
-          },
+          } satisfies RowAction<AggregateAccountDto>,
+          deleteAction<AggregateAccountDto>({
+            onClick: handleDelete,
+            resourceName: "Account",
+            description: (row) =>
+              `Are you sure you want to delete ${isPoliceRow(row) ? "police " : ""}account ${row.email}? This action cannot be undone.`,
+            isPending:
+              deleteAccountMutation.isPending ||
+              deletePoliceAccountMutation.isPending ||
+              deleteInviteMutation.isPending ||
+              resendInviteMutation.isPending,
+            isVisible: (row) =>
+              row.status === "invited" ||
+              isPoliceRow(row) ||
+              (session?.id != null && row.source_id !== session.id),
+          }),
         ]}
-        serverMeta={
-          aggregateQuery.data
-            ? {
-                totalRecords: aggregateQuery.data.total_records,
-                totalPages: aggregateQuery.data.total_pages,
-                sortBy: aggregateQuery.data.sort_by,
-                sortOrder: aggregateQuery.data.sort_order,
-              }
-            : undefined
-        }
-        onStateChange={setServerParams}
-        onExportCsv={exportCsv}
-        isExporting={isExporting}
+        exportMutation={exportMutation}
       />
-    </div>
+      <FormSidebar
+        mode={mode}
+        row={row}
+        modes={{
+          create: {
+            key: "create-account",
+            title: "New Invite",
+            description: "Send a staff or admin invitation",
+            render: () => (
+              <AccountTableForm
+                onSubmit={handleAccountCreateSubmit}
+                submissionError={submissionError}
+              />
+            ),
+          },
+          edit: {
+            key: (account) =>
+              isPoliceRow(account)
+                ? `edit-police-${account.source_id}`
+                : `edit-account-${account.source_id}`,
+            title: (account) =>
+              isPoliceRow(account) ? "Edit Police Account" : "Edit Account",
+            description: (account) =>
+              isPoliceRow(account)
+                ? "Update police account credentials"
+                : "Update account information",
+            render: (account) =>
+              isPoliceRow(account) ? (
+                <PoliceAccountTableForm
+                  onSubmit={(data) =>
+                    handlePoliceEditSubmit(account.source_id, data)
+                  }
+                  submissionError={submissionError}
+                  editData={{
+                    email: account.email,
+                    role: account.role as PoliceRole,
+                    is_verified: account.status === "active",
+                  }}
+                  disableVerificationToggle={false}
+                />
+              ) : (
+                <AccountTableForm
+                  onSubmit={(data) =>
+                    handleAccountEditSubmit(account.source_id, data)
+                  }
+                  submissionError={submissionError}
+                  editData={{
+                    email: account.email,
+                    role: account.role as InviteTokenRole,
+                  }}
+                />
+              ),
+          },
+        }}
+        onClose={closeSidebar}
+      />
+    </>
   );
 };

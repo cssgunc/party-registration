@@ -29,9 +29,6 @@ const avenirNext = localFont({
 export const metadata: Metadata = {
   title: "Party Registration",
   description: "Party Registration",
-  icons: {
-    icon: "/Home1CarolinaBlue.png",
-  },
 };
 
 export default function RootLayout({
@@ -45,8 +42,20 @@ export default function RootLayout({
         className={`${avenirNext.variable} font-(family-name:--font-avenir-next) antialiased h-screen overflow-hidden flex flex-col`}
       >
         <Providers>
+          <a
+            href="#main-content"
+            className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-white focus:text-black focus:rounded focus:shadow"
+          >
+            Skip to main content
+          </a>
           <Header />
-          <div className="flex-1 overflow-hidden min-h-0">{children}</div>
+          <main
+            id="main-content"
+            tabIndex={-1}
+            className="flex-1 overflow-hidden min-h-0"
+          >
+            {children}
+          </main>
           <Footer />
         </Providers>
       </body>

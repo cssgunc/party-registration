@@ -40,7 +40,7 @@ export function formatPhoneNumberInput(value: string): string {
  * Format a date as a human-readable time string, e.g. "8:30 PM".
  */
 export function formatTime(date: Date): string {
-  return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  return format(date, "h:mm a");
 }
 
 /**
@@ -113,18 +113,15 @@ export function formatRoleLabel(role: AppRole): string {
   return ROLE_LABELS[role];
 }
 
-const ADDRESS_FIELD_ORDER = [
-  "street_number",
-  "street_name",
-  "unit",
-  "city",
-  "county",
-  "state",
-  "zip_code",
-  "country",
+const ADDRESS_GROUPS = [
+  ["street_number", "street_name", "unit"],
+  ["city"],
+  ["county"],
+  ["state", "zip_code"],
+  ["country"],
 ] as const;
 
-export type AddressField = (typeof ADDRESS_FIELD_ORDER)[number];
+export type AddressField = (typeof ADDRESS_GROUPS)[number][number];
 
 type AddressFields = Partial<Record<AddressField, string | null>>;
 
@@ -133,10 +130,24 @@ export function formatAddress(
   fields: AddressField[]
 ): string {
   if (!location) return "";
-  return ADDRESS_FIELD_ORDER.filter((f) => fields.includes(f))
-    .map((f) => location[f])
+  return ADDRESS_GROUPS.map((group) =>
+    group
+      .filter((f) => fields.includes(f))
+      .map((f) => location[f])
+      .filter(Boolean)
+      .join(" ")
+  )
     .filter(Boolean)
-    .join(" ");
+    .join(", ");
+}
+
+export function buildMapsUrl(address: string, placeId: string): string {
+  const params = new URLSearchParams({
+    api: "1",
+    query: address,
+    query_place_id: placeId,
+  });
+  return `https://www.google.com/maps/search/?${params}`;
 }
 
 export function formatContactPreference(

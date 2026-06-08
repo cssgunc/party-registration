@@ -12,6 +12,7 @@ from src.modules.account.account_router import account_router
 from src.modules.auth.auth_router import router as auth_router
 from src.modules.incident.incident_router import incident_router
 from src.modules.location.location_router import location_router
+from src.modules.notification.notification_router import notification_router
 from src.modules.party.party_router import party_router
 from src.modules.police.police_router import police_router
 from src.modules.student.student_router import student_router
@@ -31,7 +32,7 @@ app.add_middleware(SlowAPIMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[env.FRONTEND_BASE_URL],
+    allow_origins=[str(env.FRONTEND_BASE_URL).rstrip("/")],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -89,3 +90,4 @@ app.include_router(party_router)
 app.include_router(student_router)
 app.include_router(location_router)
 app.include_router(incident_router)
+app.include_router(notification_router)

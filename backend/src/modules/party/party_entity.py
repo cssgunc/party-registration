@@ -9,7 +9,15 @@ from src.core.types import UTCDateTime
 from src.modules.student.student_model import ContactPreference
 
 from ..student.student_entity import StudentEntity
-from .party_model import ContactDto, PartyData, PartyDraft, PartyDto, PartyStatus
+from .party_model import (
+    ContactDto,
+    ContactPoliceDto,
+    PartyData,
+    PartyDraft,
+    PartyDto,
+    PartyPoliceDto,
+    PartyStatus,
+)
 
 if TYPE_CHECKING:
     from ..location.location_entity import LocationEntity
@@ -80,6 +88,31 @@ class PartyEntity(MappedAsDataclass, EntityBase):
         self.location_id = draft.location.id
         self.contact_one_id = draft.contact_one.id
         self.set_contact_two(draft.contact_two)
+
+    def to_police_dto(self) -> PartyPoliceDto:
+        """Convert entity to police DTO — contacts stripped of PII. Requires relationships loaded"""
+        party_dt = self.party_datetime
+        if party_dt.tzinfo is None:
+            party_dt = party_dt.replace(tzinfo=UTC)
+
+        return PartyPoliceDto(
+            id=self.id,
+            party_datetime=party_dt,
+            location=self.location.to_dto(),
+            contact_one=ContactPoliceDto(
+                first_name=self.contact_one.account.first_name,
+                last_name=self.contact_one.account.last_name,
+                phone_number=self.contact_one.phone_number,
+                contact_preference=self.contact_one.contact_preference,
+            ),
+            contact_two=ContactPoliceDto(
+                first_name=self.contact_two_first_name,
+                last_name=self.contact_two_last_name,
+                phone_number=self.contact_two_phone_number,
+                contact_preference=self.contact_two_contact_preference,
+            ),
+            status=self.status,
+        )
 
     def to_dto(self) -> PartyDto:
         """Convert entity to model. Requires relationships to be eagerly loaded."""

@@ -1,5 +1,6 @@
 from datetime import UTC, datetime, timedelta
 from typing import ClassVar, TypedDict, Unpack
+from urllib.parse import urljoin
 
 from fastapi import Depends
 from sqlalchemy import String, case, cast, func, literal, null, select, union_all
@@ -85,7 +86,7 @@ _ACCOUNT_QUERY_FIELDS = QueryFieldSet(
         "role": AccountEntity.role,
     },
     searchable=("email", "first_name", "last_name", "pid", "onyen"),
-    default_sort=SortParam(field="email", order=SortOrder.ASC),
+    default_sort=SortParam(field="onyen", order=SortOrder.DESC),
 )
 
 
@@ -93,7 +94,7 @@ def _build_aggregate_query_fields(fields: dict) -> QueryFieldSet:
     return QueryFieldSet(
         fields=fields,
         searchable=("email", "first_name", "last_name", "onyen", "pid"),
-        default_sort=SortParam(field="email", order=SortOrder.ASC),
+        default_sort=SortParam(field="onyen", order=SortOrder.DESC),
     )
 
 
@@ -323,7 +324,7 @@ class AccountService:
             raise
 
     async def _send_invite_email(self, to: str) -> None:
-        login_url = f"{env.FRONTEND_BASE_URL}/staff/login"
+        login_url = urljoin(str(env.FRONTEND_BASE_URL), "/staff/login")
         html = f"""
             <p>You have been invited to join PartySmart as a staff member.</p>
             <p>Sign in with your UNC credentials at the link below:</p>

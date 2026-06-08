@@ -2,9 +2,10 @@ import mockData from "@/../shared/mock_data.json";
 import type { AccountDto } from "@/lib/api/account/account.types";
 import {
   IncidentDto,
-  IncidentSeverity,
-  LocationDto,
-} from "./api/location/location.types";
+  LocationSummaryDto,
+  NestedIncidentDto,
+} from "./api/incident/incident.types";
+import { IncidentSeverity, LocationDto } from "./api/location/location.types";
 import { ContactDto, PartyDto } from "./api/party/party.types";
 import { PoliceAccountDto } from "./api/police/police.types";
 import { StudentDto } from "./api/student/student.types";
@@ -81,19 +82,49 @@ export const STUDENTS: StudentDto[] = mockData.students.map((student) => ({
   residence: null,
 }));
 
+function buildLocationSummary(locationId: number): LocationSummaryDto {
+  const loc = mockData.locations.find((l) => l.id === locationId);
+  return {
+    id: loc?.id ?? locationId,
+    google_place_id: loc?.google_place_id ?? "",
+    formatted_address: loc?.formatted_address ?? "",
+    latitude: loc?.latitude ?? 0,
+    longitude: loc?.longitude ?? 0,
+    hold_expiration: parseRelativeDate(loc?.hold_expiration ?? null),
+    street_number: loc?.street_number ?? null,
+    street_name: loc?.street_name ?? null,
+    unit: loc?.unit ?? null,
+    city: loc?.city ?? null,
+    county: loc?.county ?? null,
+    state: loc?.state ?? null,
+    country: loc?.country ?? null,
+    zip_code: loc?.zip_code ?? null,
+  };
+}
+
 // Parse Incidents
 export const INCIDENTS: IncidentDto[] = mockData.incidents.map((incident) => ({
   id: incident.id,
-  location_id: incident.location_id,
+  location: buildLocationSummary(incident.location_id),
   incident_datetime:
     parseRelativeDate(incident.incident_datetime) ?? new Date(),
   severity: incident.severity as IncidentSeverity,
   description: incident.description,
+  reference_id: incident.reference_id ?? null,
 }));
 
 // Helper to get incidents by location ID
-function getIncidentsByLocationId(locationId: number): IncidentDto[] {
-  return INCIDENTS.filter((incident) => incident.location_id === locationId);
+function getIncidentsByLocationId(locationId: number): NestedIncidentDto[] {
+  return mockData.incidents
+    .filter((incident) => incident.location_id === locationId)
+    .map((incident) => ({
+      id: incident.id,
+      incident_datetime:
+        parseRelativeDate(incident.incident_datetime) ?? new Date(),
+      severity: incident.severity as IncidentSeverity,
+      description: incident.description,
+      reference_id: incident.reference_id ?? null,
+    }));
 }
 
 // Parse Locations

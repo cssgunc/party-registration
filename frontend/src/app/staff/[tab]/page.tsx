@@ -21,6 +21,7 @@ import {
   STAFF_TABS,
   TAB_CONFIG,
   type TabSlug,
+  isStaffTabSlug,
 } from "../_lib/tabs";
 
 const TAB_CONTENT: Record<TabSlug, React.ReactNode> = {
@@ -34,41 +35,50 @@ const TAB_CONTENT: Record<TabSlug, React.ReactNode> = {
 export default function StaffTabPage() {
   const { tab } = useParams<{ tab: string }>();
   const router = useRouter();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const role = session?.role;
 
-  const isValidTab = STAFF_TABS.includes(tab as TabSlug);
-  const config = isValidTab ? TAB_CONFIG[tab as TabSlug] : null;
+  const isValidTab = isStaffTabSlug(tab);
+  const config = isValidTab ? TAB_CONFIG[tab] : null;
+  const isLoadingAdminTab = status === "loading" && config?.adminOnly;
 
   // Redirect to default tab if on an admin-only tab without admin role
   useEffect(() => {
+    if (status === "loading") return;
+
     if (config?.adminOnly && role !== "admin") {
       router.replace(`/staff/${DEFAULT_TAB}`);
     }
-  }, [config, role, router]);
+  }, [config, role, router, status]);
 
   if (!isValidTab) {
     router.replace(`/staff/${DEFAULT_TAB}`);
     return null;
   }
 
-  if (config!.adminOnly && role !== "admin") {
+  const currentTab = tab;
+  const currentConfig = TAB_CONFIG[currentTab];
+
+  if (currentConfig.adminOnly && role !== "admin" && !isLoadingAdminTab) {
     return null; // briefly render nothing while redirecting
   }
 
   const visibleTabs = STAFF_TABS.filter(
-    (slug) => !TAB_CONFIG[slug].adminOnly || role === "admin"
+    (slug) =>
+      !TAB_CONFIG[slug].adminOnly ||
+      role === "admin" ||
+      (isLoadingAdminTab && slug === currentTab)
   );
 
   return (
     <div className="container mx-auto px-6 pt-6 pb-2 h-full overflow-hidden flex flex-col min-h-0">
       <Tabs
-        value={tab as TabSlug}
+        value={currentTab}
         onValueChange={(value) => router.push(`/staff/${value}`)}
         className="flex h-full min-h-0 flex-col gap-4"
       >
         <Select
-          value={tab as TabSlug}
+          value={currentTab}
           onValueChange={(value) => router.push(`/staff/${value}`)}
         >
           <SelectTrigger className="sm:hidden w-40">

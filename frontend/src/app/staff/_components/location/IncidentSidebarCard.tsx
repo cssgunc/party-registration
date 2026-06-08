@@ -11,27 +11,19 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card";
-import {
-  INCIDENT_SEVERITY_LABELS,
-  IncidentDto,
-} from "@/lib/api/incident/incident.types";
+import { NestedIncidentDto } from "@/lib/api/incident/incident.types";
 import { formatTime } from "@/lib/utils";
 import { format } from "date-fns";
 import { ChevronDown, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { useSession } from "next-auth/react";
-import { memo } from "react";
 
 type IncidentSidebarCardProps = {
-  incidents: IncidentDto;
+  incidents: NestedIncidentDto;
   onDeleteIncidentAction: (incidentId: number) => void;
-  onEditIncidentAction: (incident: IncidentDto) => void;
+  onEditIncidentAction: (incident: NestedIncidentDto) => void;
 };
-const IncidentSidebarCard = memo(function IncidentSidebarCard({
+
+function IncidentSidebarCard({
   incidents,
   onDeleteIncidentAction,
   onEditIncidentAction,
@@ -53,21 +45,17 @@ const IncidentSidebarCard = memo(function IncidentSidebarCard({
                   <p className="text-sm w-20 whitespace-nowrap">
                     {formatTime(incidents.incident_datetime)}
                   </p>
-                  <HoverCard>
-                    <HoverCardTrigger asChild>
-                      <IncidentFlag type={incidents.severity} />
-                    </HoverCardTrigger>
-                    <HoverCardContent>
-                      <p>{INCIDENT_SEVERITY_LABELS[incidents.severity]}</p>
-                    </HoverCardContent>
-                  </HoverCard>
+                  <IncidentFlag type={incidents.severity} hoverCard />
                 </div>
               </div>
             </CollapsibleTrigger>
             {role === "admin" && (
               <DropdownMenu>
-                <DropdownMenuTrigger className="ml-2">
-                  <MoreHorizontal className="size-4" />
+                <DropdownMenuTrigger
+                  className="ml-2"
+                  aria-label="Incident options"
+                >
+                  <MoreHorizontal className="size-4" aria-hidden="true" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
                   <DropdownMenuItem
@@ -104,6 +92,6 @@ const IncidentSidebarCard = memo(function IncidentSidebarCard({
       </Collapsible>
     </div>
   );
-});
+}
 
 export default IncidentSidebarCard;

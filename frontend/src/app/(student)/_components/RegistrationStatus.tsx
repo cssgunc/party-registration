@@ -2,6 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { hasActiveHold } from "@/lib/api/location/location.service";
 import { clientEnv } from "@/lib/config/env.client";
+import { getErrorMessage } from "@/lib/errors";
 import { isFromThisSchoolYear } from "@/lib/utils";
 import { format } from "date-fns";
 import { AlertTriangleIcon, CheckCircle, ExternalLink } from "lucide-react";
@@ -25,7 +26,7 @@ export default function RegistrationStatus({
         <CardContent className="p-0">
           <div className="text-center text-destructive py-4">
             <p className="font-semibold mb-1">Error loading course status</p>
-            <p className="text-sm">{error.message}</p>
+            <p className="text-sm">{getErrorMessage(error)}</p>
           </div>
         </CardContent>
       </Card>
@@ -63,12 +64,14 @@ export default function RegistrationStatus({
         )}
         {isCompleted ? (
           <>
-            <div className="flex items-center gap-2 text-gray-800">
+            <div className="flex items-center gap-2">
               <CheckCircle className="size-4 mb-0.5" />
               <p className="content">
                 Completed on{" "}
                 <span className="content-bold">
-                  {last_registered?.toLocaleDateString()}
+                  {last_registered
+                    ? format(last_registered, "M/d/yyyy")
+                    : undefined}
                 </span>
               </p>
             </div>
@@ -87,7 +90,7 @@ export default function RegistrationStatus({
               rel="noopener noreferrer"
             >
               Schedule a meeting
-              <ExternalLink className="size-4 ml-2" />
+              <ExternalLink className="size-4 ml-2" aria-hidden="true" />
             </a>
           </div>
         )}

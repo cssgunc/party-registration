@@ -1,7 +1,7 @@
 "use client";
 
 import { PhoneLink } from "@/components/PhoneLink";
-import { PartyDto } from "@/lib/api/party/party.types";
+import { ExactMatchDto, PartyPoliceDto } from "@/lib/api/party/party.types";
 import { clientEnv } from "@/lib/config/env.client";
 import { formatAddress, formatContactPreference } from "@/lib/utils";
 import {
@@ -13,43 +13,51 @@ import {
   useMap,
 } from "@vis.gl/react-google-maps";
 import { format } from "date-fns";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 type Poi = {
   key: string;
-  activePoiKey?: string;
   location: google.maps.LatLngLiteral;
 };
 
 interface EmbeddedMapProps {
-  parties: PartyDto[];
-  activeParty?: PartyDto;
+  parties: PartyPoliceDto[];
+  activeParty?: PartyPoliceDto;
   center?: { lat: number; lng: number };
-  onSelect?: (party: PartyDto | null) => void;
+  exactMatch?: ExactMatchDto;
+  onSelect?: (party: PartyPoliceDto | null) => void;
 }
 
 const EmbeddedMap = ({
   parties,
   activeParty,
   center,
+  exactMatch,
   onSelect,
 }: EmbeddedMapProps) => {
-  const locations = useMemo(
-    () =>
-      parties && parties.length > 0
-        ? parties.map((party) => ({
-            key: party.id.toString(),
-            location: {
-              lat: party.location.latitude,
-              lng: party.location.longitude,
-            },
-            party,
-          }))
-        : [],
-    [parties]
-  );
+  const locations =
+    parties && parties.length > 0
+      ? parties.map((party) => ({
+          key: String(party.id),
+          location: {
+            lat: party.location.latitude,
+            lng: party.location.longitude,
+          },
+          party,
+        }))
+      : [];
 
-  const activePoiKey = activeParty ? activeParty.id.toString() : undefined;
+  const activePoiKey =
+    activeParty?.id !== undefined ? String(activeParty.id) : undefined;
+
+  const exactMatchPoiMatch = exactMatch?.google_place_id
+    ? parties?.find(
+        (p) => p.location.google_place_id === exactMatch.google_place_id
+      )
+    : undefined;
+  const exactMatchPoiKey = exactMatchPoiMatch
+    ? String(exactMatchPoiMatch.id)
+    : undefined;
   const defaultZoom = center ? 17 : 14;
   const mapCenter =
     center ||
@@ -60,20 +68,25 @@ const EmbeddedMap = ({
   const API_KEY = clientEnv.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const mapKey = center ? `${center.lat}-${center.lng}` : "default";
 
-  // Stabilize reference so the circle effect doesn't re-fire when the parent
-  // passes a new inline object with the same lat/lng values.
-  const searchCenter = useMemo(
-    () => (center ? { lat: center.lat, lng: center.lng } : undefined),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [center?.lat, center?.lng]
-  );
+  const searchCenter = center
+    ? { lat: center.lat, lng: center.lng }
+    : undefined;
+
+  const exactMatchKey = exactMatch?.google_place_id;
+
+  const exactMatchNoPartyLocation =
+    exactMatch && !exactMatch.party
+      ? exactMatch.location
+        ? {
+            lat: exactMatch.location.latitude,
+            lng: exactMatch.location.longitude,
+          }
+        : center
+      : undefined;
 
   return (
     <div className="w-full h-full overflow-hidden rounded-md">
-      <APIProvider
-        apiKey={API_KEY}
-        onLoad={() => console.log("Maps API loaded.")}
-      >
+      <APIProvider apiKey={API_KEY}>
         <Map
           key={mapKey}
           defaultZoom={defaultZoom}
@@ -85,6 +98,9 @@ const EmbeddedMap = ({
           <PoiMarkers
             pois={locations}
             activePoiKey={activePoiKey}
+            exactMatchPoiKey={exactMatchPoiKey}
+            exactMatchKey={exactMatchKey}
+            exactMatchNoPartyLocation={exactMatchNoPartyLocation}
             onSelect={onSelect}
             searchCenter={searchCenter}
           />
@@ -95,11 +111,30 @@ const EmbeddedMap = ({
 };
 
 type PoiMarkersProps = {
-  pois: (Poi & { party?: PartyDto })[];
+  pois: (Poi & { party?: PartyPoliceDto })[];
   activePoiKey?: string;
-  onSelect?: (party: PartyDto | null) => void;
+  exactMatchPoiKey?: string;
+  exactMatchKey?: string;
+  exactMatchNoPartyLocation?: google.maps.LatLngLiteral;
+  onSelect?: (party: PartyPoliceDto | null) => void;
   searchCenter?: { lat: number; lng: number };
 };
+
+const PIN_COLORS = {
+  default: { background: "#EA4335", border: "#B31412" },
+  exactMatch: { background: "#1967D2", border: "#0D47A1" },
+  selected: { background: "#4285F4", border: "#1967D2" },
+} as const;
+
+function getPinColors(
+  key: string,
+  activePoiKey?: string,
+  exactMatchPoiKey?: string
+) {
+  if (key === activePoiKey) return PIN_COLORS.selected;
+  if (key === exactMatchPoiKey) return PIN_COLORS.exactMatch;
+  return PIN_COLORS.default;
+}
 
 const SELECTED_ZOOM = 17;
 const METERS_PER_MILE = 1609.344;
@@ -109,13 +144,16 @@ const SEARCH_RADIUS_METERS =
 const PoiMarkers = ({
   pois,
   activePoiKey,
+  exactMatchPoiKey,
+  exactMatchKey,
+  exactMatchNoPartyLocation,
   onSelect,
   searchCenter,
 }: PoiMarkersProps) => {
   const map = useMap();
   const [selectedPoi, setSelectedPoi] = useState<(typeof pois)[0] | null>(null);
 
-  const getShortAddress = (location: PartyDto["location"]): string => {
+  const getShortAddress = (location: PartyPoliceDto["location"]): string => {
     return (
       formatAddress(location, ["street_number", "street_name", "unit"]) ||
       location.formatted_address
@@ -127,9 +165,11 @@ const PoiMarkers = ({
 
     const target = pois.find((p) => p.key === activePoiKey);
     if (target) {
+      if (map.getZoom() !== SELECTED_ZOOM) map.setZoom(SELECTED_ZOOM);
       map.panTo(target.location);
-      map.setZoom(SELECTED_ZOOM);
     }
+
+    setSelectedPoi((prev) => (prev?.key === activePoiKey ? prev : null));
   }, [activePoiKey, map, pois]);
 
   useEffect(() => {
@@ -152,7 +192,7 @@ const PoiMarkers = ({
     };
   }, [map, searchCenter]);
 
-  const handleClick = useCallback(
+  const handleClick =
     (poi: (typeof pois)[0]) => (ev: google.maps.MapMouseEvent) => {
       if (!map || !ev.latLng) return;
       map.panTo(ev.latLng);
@@ -162,45 +202,65 @@ const PoiMarkers = ({
       if (poi.party && onSelect) {
         onSelect(poi.party);
       }
-    },
-    [map, onSelect]
-  );
+    };
 
-  const handleClose = useCallback(() => {
+  const handleClose = () => {
     setSelectedPoi(null);
     if (onSelect) {
       onSelect(null);
     }
-  }, [onSelect]);
+  };
 
   return (
     <>
-      {pois.map((poi: Poi) => (
+      {pois.map((poi: Poi) => {
+        const colors = getPinColors(poi.key, activePoiKey, exactMatchPoiKey);
+        return (
+          <AdvancedMarker
+            key={poi.key}
+            position={poi.location}
+            clickable={true}
+            onClick={handleClick(poi)}
+          >
+            <Pin
+              background={colors.background}
+              glyphColor="#fff"
+              borderColor={colors.border}
+            />
+          </AdvancedMarker>
+        );
+      })}
+      {exactMatchNoPartyLocation && exactMatchKey && (
         <AdvancedMarker
-          key={poi.key}
-          position={poi.location}
-          clickable={true}
-          onClick={handleClick(poi)}
+          key={exactMatchKey}
+          position={exactMatchNoPartyLocation}
+          clickable={false}
         >
           <Pin
-            background={poi == selectedPoi ? "#4285F4" : "#EA4335"}
-            glyphColor={"#fff"}
-            borderColor={poi == selectedPoi ? "#1967D2" : "#B31412"}
+            background={PIN_COLORS.exactMatch.background}
+            glyphColor="#fff"
+            borderColor={PIN_COLORS.exactMatch.border}
           />
         </AdvancedMarker>
-      ))}
+      )}
       {selectedPoi && selectedPoi.party && (
         <InfoWindow
           position={selectedPoi.location}
           onCloseClick={handleClose}
           headerContent={
-            <div className="font-semibold text-sm flex">
+            <span
+              className="font-semibold text-sm flex"
+              style={{ fontFamily: "var(--font-avenir-next)" }}
+            >
               {getShortAddress(selectedPoi.party.location)}
-            </div>
+            </span>
           }
         >
-          <div className="space-y-1.5 text-sm">
-            <p className="text-gray-700">
+          <div
+            className="space-y-1.5 text-sm -translate-y-1"
+            style={{ fontFamily: "var(--font-avenir-next)" }}
+          >
+            <p>
               {format(selectedPoi.party.party_datetime, "MMM d, yyyy")} at{" "}
               {format(selectedPoi.party.party_datetime, "h:mm a")}
             </p>
@@ -218,7 +278,7 @@ const PoiMarkers = ({
                     selectedPoi.party.contact_one.contact_preference
                   }
                 />
-                <span className="text-gray-600">
+                <span>
                   {formatContactPreference(
                     selectedPoi.party.contact_one.contact_preference
                   )}
