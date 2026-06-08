@@ -211,20 +211,21 @@ export function useServerTableState<T>({
     );
   };
 
-  const syncServerSorting = (
-    serverSortBy?: string,
-    serverSortOrder?: "asc" | "desc"
-  ) => {
-    const columnId = Object.entries(columnFilterMap).find(
-      ([, config]) => config.backendField === serverSortBy
-    )?.[0];
-    if (!columnId) return;
+  // eslint-disable-next-line react-no-manual-memo/no-hook-memo -- stable ref needed as effect dep in TableTemplate; unstable reference causes stale query.data to overwrite user sort selection
+  const syncServerSorting = useCallback(
+    (serverSortBy?: string, serverSortOrder?: "asc" | "desc") => {
+      const columnId = Object.entries(columnFilterMap).find(
+        ([, config]) => config.backendField === serverSortBy
+      )?.[0];
+      if (!columnId) return;
 
-    const nextSorting = [{ id: columnId, desc: serverSortOrder === "desc" }];
-    setSorting((prev) =>
-      areSortingStatesEqual(prev, nextSorting) ? prev : nextSorting
-    );
-  };
+      const nextSorting = [{ id: columnId, desc: serverSortOrder === "desc" }];
+      setSorting((prev) =>
+        areSortingStatesEqual(prev, nextSorting) ? prev : nextSorting
+      );
+    },
+    [columnFilterMap]
+  );
 
   return {
     serverParams,

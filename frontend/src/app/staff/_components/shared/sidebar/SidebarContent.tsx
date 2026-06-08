@@ -54,7 +54,8 @@ export function SidebarContent({
         closeSidebar();
       }
     };
-  }, [closeSidebar]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only cleanup; closeSidebar is intentionally excluded (unstable reference, would run cleanup on every context re-render)
+  }, []);
 
   // Keep a ref to the latest selectedKey so the unmount cleanup can read it
   const selectedKeyRef = useRef(selectedKey);

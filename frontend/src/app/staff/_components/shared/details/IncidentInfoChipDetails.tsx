@@ -1,8 +1,8 @@
 import IncidentDialog from "@/components/IncidentDialog";
 import { Button } from "@/components/ui/button";
-import { useCreateIncident } from "@/lib/api/incident/incident.queries";
 import { IncidentCreateDto } from "@/lib/api/incident/incident.types";
 import {
+  useCreateIncidentInLocation,
   useDeleteIncidentInLocation,
   useUpdateIncidentInLocation,
 } from "@/lib/api/location/location.queries";
@@ -52,7 +52,7 @@ export default function IncidentInfoChipDetails({
     deleteMutation.mutate(confirmStateDelete);
   };
 
-  const createMutation = useCreateIncident({
+  const createMutation = useCreateIncidentInLocation({
     onSuccess: () => {
       setModalState(null);
     },
@@ -96,16 +96,22 @@ export default function IncidentInfoChipDetails({
           headerActionNode
         )}
       <div>
-        {incidents.map((incident) => (
-          <IncidentSidebarCard
-            incidents={incident}
-            key={incident.id}
-            onDeleteIncidentAction={setConfirmStateDelete}
-            onEditIncidentAction={(incident: NestedIncidentDto) => {
-              setModalState({ mode: "edit", incident });
-            }}
-          />
-        ))}
+        {incidents.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4 text-center">
+            No incidents
+          </p>
+        ) : (
+          incidents.map((incident) => (
+            <IncidentSidebarCard
+              incidents={incident}
+              key={incident.id}
+              onDeleteIncidentAction={setConfirmStateDelete}
+              onEditIncidentAction={(incident: NestedIncidentDto) => {
+                setModalState({ mode: "edit", incident });
+              }}
+            />
+          ))
+        )}
       </div>
       <ConfirmDialog
         open={confirmStateDelete !== null}

@@ -153,7 +153,7 @@ function PartyCard({
                 {formatTime(data.party.party_datetime)}
               </p>
             ) : (
-              <p className="content text-muted-foreground text-sm italic">
+              <p className="content text-muted-foreground text-sm italic pb-1">
                 No party registered at this location
               </p>
             )}

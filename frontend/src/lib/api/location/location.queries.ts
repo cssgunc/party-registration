@@ -1,9 +1,13 @@
 import {
   UpdateIncidentVars,
+  useCreateIncident,
   useDeleteIncident,
   useUpdateIncident,
 } from "@/lib/api/incident/incident.queries";
-import { IncidentDto } from "@/lib/api/incident/incident.types";
+import {
+  IncidentCreateDto,
+  IncidentDto,
+} from "@/lib/api/incident/incident.types";
 import { ListQueryParams } from "@/lib/api/shared/query-params";
 import { OptimisticMutationOptions, PaginatedResponse } from "@/lib/shared";
 import {
@@ -98,6 +102,20 @@ type LocationsSnapshot = [
   QueryKey,
   PaginatedResponse<LocationDto> | undefined,
 ][];
+
+export function useCreateIncidentInLocation(
+  options?: OptimisticMutationOptions<IncidentDto, Error, IncidentCreateDto>
+) {
+  const queryClient = useQueryClient();
+
+  return useCreateIncident({
+    ...options,
+    onSuccess: (...params) => {
+      queryClient.invalidateQueries({ queryKey: LOCATIONS_KEY });
+      options?.onSuccess?.(...params);
+    },
+  });
+}
 
 export function useUpdateIncidentInLocation(
   options?: OptimisticMutationOptions<

@@ -54,7 +54,11 @@ function PaginationLink({
       asChild
       variant={isActive ? "outline" : "ghost"}
       size={size}
-      className={cn(isActive && "card-shadow", className)}
+      className={cn(
+        isActive && "card-shadow",
+        !isActive && "hover:bg-primary/5",
+        className
+      )}
     >
       <a
         aria-current={isActive ? "page" : undefined}

@@ -32,6 +32,17 @@ function Sidebar() {
         // doesn't warn about a dangling reference.
         {...(description ? {} : { "aria-describedby": undefined })}
         className="w-full max-w-[25em] gap-0 bg-card p-0 sm:max-w-[25em]"
+        onInteractOutside={(e) => {
+          // Radix portals (Popover, Select, DatePicker, etc.) render outside the
+          // Sheet's DOM but are logically inside it. Prevent them from closing the sheet.
+          if (
+            (e.target as Element | null)?.closest(
+              "[data-radix-popper-content-wrapper]"
+            )
+          ) {
+            e.preventDefault();
+          }
+        }}
       >
         <SheetHeader className="mb-2 gap-0 px-6 pb-2 pt-12">
           <div className="flex items-center justify-between">

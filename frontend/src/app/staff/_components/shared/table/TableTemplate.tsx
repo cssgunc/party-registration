@@ -1,5 +1,5 @@
 "use client";
-
+/* eslint-disable react-no-manual-memo/no-hook-memo -- "use no memo" opts this file out of React Compiler; all manual memos here are load-bearing */
 import PaginationControls from "@/components/PaginationControls";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -36,7 +36,14 @@ import {
 } from "@tanstack/react-table";
 import { Download, Loader2, MoreHorizontal, Plus } from "lucide-react";
 import { useSession } from "next-auth/react";
-import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { ConfirmDialog } from "../dialog/ConfirmDialog";
 import { SidebarContent } from "../sidebar/SidebarContent";
 import { useSidebar } from "../sidebar/SidebarContext";
@@ -117,6 +124,10 @@ export function TableTemplate<T extends object>({
   const sampleRowRef = useRef<HTMLTableRowElement | null>(null);
   const syncServerSorting = serverTableState.actions.syncServerSorting;
 
+  const handleFilterSidebarOpenChange = useCallback((open: boolean) => {
+    if (!open) setFilterSidebar(null);
+  }, []);
+
   useEffect(() => {
     if (!isOpen && Object.keys(rowSelection).length > 0) {
       setRowSelection({});
@@ -132,7 +143,6 @@ export function TableTemplate<T extends object>({
   const showActionsColumn =
     hasManagePermission && (rowActions?.length ?? 0) > 0;
 
-  // eslint-disable-next-line react-no-manual-memo/no-hook-memo -- TanStack Table requires stable column references; new array identity each render causes internal state resets and infinite update loops
   const columnsWithActions: ColumnDef<T, unknown>[] = useMemo(() => {
     const baseColumns = columns.map((column) =>
       column.meta?.filter
@@ -509,7 +519,7 @@ export function TableTemplate<T extends object>({
       {/* Filter Sidebar */}
       <SidebarContent
         open={filterSidebar !== null}
-        onOpenChange={(o) => !o && setFilterSidebar(null)}
+        onOpenChange={handleFilterSidebarOpenChange}
         sidebarKey={
           filterSidebar ? `filter-${filterSidebar.columnId}` : "filter"
         }
