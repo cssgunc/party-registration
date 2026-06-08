@@ -56,3 +56,21 @@ export async function loginAsAdmin(
 export async function loginAsStaff(page: Page, callbackUrl = "/staff/parties") {
   await loginViaSaml(page, "staff1", "staff1pass", "staff", callbackUrl);
 }
+
+/**
+ * Logs in as a police account via the /police/login form (not SAML).
+ *
+ * Police accounts are stored in the app's own database, not the SAML IdP.
+ */
+export async function loginAsPoliceAdmin(
+  page: Page,
+  callbackUrl = "/police/admin"
+) {
+  await page.goto(
+    `/police/login?callbackUrl=${encodeURIComponent(callbackUrl)}`
+  );
+  await page.locator('[name="email"]').fill("dreyes@chapelhillnc.gov");
+  await page.locator('[name="password"]').fill("securepassword");
+  await page.locator('[name="password"]').press("Enter");
+  await page.waitForURL(`**${callbackUrl}`, { timeout: 15_000 });
+}

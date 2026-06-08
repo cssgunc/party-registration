@@ -34,7 +34,8 @@ export async function waitForTableReady(page: Page) {
   await expect(
     page.locator("text=/Results\\s+\\d+\\s+-\\s+\\d+\\s+of\\s+\\d+/")
   ).toBeVisible();
-  await page.waitForTimeout(450);
+  // Wait for any in-flight fetch to finish (table dims with opacity-60 while fetching)
+  await expect(page.locator(".opacity-60")).toHaveCount(0, { timeout: 15_000 });
 }
 
 async function waitForDebouncedTableReady(page: Page) {
@@ -109,7 +110,7 @@ export async function clearSort(
 }
 
 function getOpenSidebar(page: Page): Locator {
-  return page.locator("div.fixed.top-0.right-0").last();
+  return page.locator('[data-slot="sheet-content"]').last();
 }
 
 async function openFilterSidebar(page: Page, headerText: string) {
@@ -397,7 +398,7 @@ export async function selectSidebarCombobox(
   index: number,
   optionText: string
 ) {
-  const sidebar = page.locator("div.fixed.top-0.right-0").last();
+  const sidebar = page.locator('[data-slot="sheet-content"]').last();
   await sidebar.getByRole("combobox").nth(index).click();
   await page.getByRole("option", { name: optionText, exact: true }).click();
 }

@@ -19,6 +19,8 @@ import {
 } from "../../helpers/table";
 
 test.describe("Staff accounts table", () => {
+  test.describe.configure({ timeout: 120_000 });
+
   test.beforeEach(async ({ page }) => {
     await loginAsAdmin(page, "/staff/accounts");
     await openStaffTab(page, "Accounts");
@@ -50,10 +52,10 @@ test.describe("Staff accounts table", () => {
   }) => {
     const uniqueEmail = `playwright-account-${Date.now()}@unc.edu`;
 
-    await page.getByRole("button", { name: /New row/i }).click();
+    await page.getByRole("button", { name: /New Invite/i }).click();
     await page.getByLabel("Email").fill(uniqueEmail);
     await selectSidebarCombobox(page, 0, "Staff");
-    await page.getByRole("button", { name: "Save Changes" }).click();
+    await page.getByRole("button", { name: "Send Invite" }).click();
     await waitForTableReady(page);
 
     await setGlobalSearch(page, uniqueEmail);

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { loginViaSaml } from "../../helpers/auth";
+import { loginAsPoliceAdmin } from "../../helpers/auth";
 import { POLICE_ACCOUNTS, countWhere } from "../../helpers/seedData";
 import {
   applySelectFilter,
@@ -17,13 +17,7 @@ import {
 
 test.describe("Police admin table", () => {
   test.beforeEach(async ({ page }) => {
-    await loginViaSaml(
-      page,
-      "dreyes@chapelhillnc.gov",
-      "securepassword",
-      "admin",
-      "/police/admin"
-    );
+    await loginAsPoliceAdmin(page);
     await waitForTableReady(page);
   });
 
