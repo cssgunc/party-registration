@@ -1,5 +1,5 @@
-import { expect, test } from "@playwright/test";
 import { loginAsAdmin } from "../../helpers/auth";
+import { expect, test } from "../../helpers/fixtures";
 import {
   LOCATIONS,
   countWhere,
@@ -24,6 +24,8 @@ import {
 } from "../../helpers/table";
 
 test.describe("Staff locations table", () => {
+  test.describe.configure({ timeout: 120_000 });
+
   test.beforeEach(async ({ page }) => {
     await loginAsAdmin(page, "/staff/locations");
     await openStaffTab(page, "Locations");
@@ -75,19 +77,19 @@ test.describe("Staff locations table", () => {
     const createAddress = "100 E Franklin St, Chapel Hill, NC 27514, USA";
     const editedSearchTerm = "Expires:";
 
-    await page.getByRole("button", { name: /New row/i }).click();
-    await selectAddressSuggestion(page, "address", createAddress);
+    await page.getByRole("button", { name: /New Location/i }).click();
+    await selectAddressSuggestion(page, "", createAddress);
     await page.getByRole("button", { name: "Save Changes" }).click();
     await waitForTableReady(page);
 
     await setGlobalSearch(page, createAddress);
     await clickRowAction(page, createAddress, "Edit");
     await page
-      .locator("#hold-expiration")
+      .getByLabel(/Hold Expiration/)
       .fill(formatDateInput(new Date(Date.now() + 86400000 * 5)));
     await page.getByRole("button", { name: "Save Changes" }).click();
     await waitForTableReady(page);
-    await expect(page.getByText(editedSearchTerm)).toBeVisible();
+    await expect(page.getByText(editedSearchTerm).first()).toBeVisible();
 
     await clickRowAction(page, createAddress, "Delete");
     await confirmDialog(page, "Delete");

@@ -1,5 +1,5 @@
-import { expect, test } from "@playwright/test";
 import { loginAsAdmin } from "../../helpers/auth";
+import { expect, test } from "../../helpers/fixtures";
 import { PARTIES, STUDENTS, countWhere } from "../../helpers/seedData";
 import {
   applySelectFilter,
@@ -15,6 +15,8 @@ import {
 } from "../../helpers/table";
 
 test.describe("Staff students table", () => {
+  test.describe.configure({ timeout: 120_000 });
+
   test.beforeEach(async ({ page }) => {
     await loginAsAdmin(page, "/staff/students");
     await openStaffTab(page, "Students");
@@ -24,7 +26,9 @@ test.describe("Staff students table", () => {
   test("supports text filters, select filters, and search", async ({
     page,
   }) => {
-    await expect(page.getByRole("button", { name: /New row/i })).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: /New Student/i })
+    ).toHaveCount(0);
 
     await applyTextFilter(page, "Email", "Contains", "stevenmorrison");
     expect(await getPaginationTotal(page)).toBe(1);

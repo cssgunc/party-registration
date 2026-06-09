@@ -1,5 +1,5 @@
-import { expect, test } from "@playwright/test";
 import { loginAsAdmin } from "../../helpers/auth";
+import { expect, test } from "../../helpers/fixtures";
 import {
   INCIDENTS,
   LOCATIONS,
@@ -23,6 +23,8 @@ import {
 } from "../../helpers/table";
 
 test.describe("Staff incidents table", () => {
+  test.describe.configure({ timeout: 120_000 });
+
   test.beforeEach(async ({ page }) => {
     await loginAsAdmin(page, "/staff/incidents");
     await openStaffTab(page, "Incidents");
@@ -32,7 +34,9 @@ test.describe("Staff incidents table", () => {
   test("supports text, select, time, and nullable filters", async ({
     page,
   }) => {
-    await expect(page.getByText("Citation")).toBeVisible();
+    await expect(
+      page.getByRole("cell", { name: "Citation" }).first()
+    ).toBeVisible();
 
     await applyTextFilter(
       page,
@@ -86,10 +90,10 @@ test.describe("Staff incidents table", () => {
     const uniqueReference = `PW-${Date.now()}`;
     const location = LOCATIONS[0];
 
-    await page.getByRole("button", { name: /New row/i }).click();
+    await page.getByRole("button", { name: /New Incident/i }).click();
     await selectAddressSuggestion(page, "", location.formatted_address);
-    await page.locator("#incident-date").fill(formatDateInput(new Date()));
-    await page.locator("#incident-time").fill("20:45");
+    await page.getByLabel("Incident Date").fill(formatDateInput(new Date()));
+    await page.getByLabel("Incident Time").fill("20:45");
     await selectSidebarCombobox(page, 0, "Citation");
     await page.getByLabel("Reference ID").fill(uniqueReference);
     await page

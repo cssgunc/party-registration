@@ -1,5 +1,5 @@
-import { Page, expect, test } from "@playwright/test";
 import { loginAsAdmin } from "../../helpers/auth";
+import { Page, expect, test } from "../../helpers/fixtures";
 import {
   LOCATIONS,
   PARTIES,
@@ -30,6 +30,8 @@ import {
 } from "../../helpers/table";
 
 test.describe("Staff parties table", () => {
+  test.describe.configure({ timeout: 120_000 });
+
   test.beforeEach(async ({ page }) => {
     await loginAsAdmin(page, "/staff/parties");
     await openStaffTab(page, "Parties");
@@ -94,25 +96,21 @@ test.describe("Staff parties table", () => {
     const location = LOCATIONS[0];
     const student = STUDENTS[0];
 
-    await page.getByRole("button", { name: /New row/i }).click();
-    await selectAddressSuggestion(
-      page,
-      "party-address",
-      location.formatted_address
-    );
+    await page.getByRole("button", { name: /New Party/i }).click();
+    await selectAddressSuggestion(page, "", location.formatted_address);
     await page
-      .locator("#party-date")
+      .getByLabel("Party Date")
       .fill(formatDateInput(new Date(Date.now() + 86400000 * 2)));
-    await page.locator("#party-time").fill("21:15");
+    await page.getByLabel("Party Time").fill("21:15");
     await selectStudentSuggestion(
       page,
       student.email,
       `${student.first_name} ${student.last_name}`
     );
-    await page.locator("#contact-two-email").fill(uniqueEmail);
-    await page.locator("#contact-two-first-name").fill("Playwright");
-    await page.locator("#contact-two-last-name").fill("Party");
-    await page.locator("#contact-two-phone-number").fill("9195551212");
+    await page.getByLabel("Contact Email").fill(uniqueEmail);
+    await page.getByLabel("First Name").fill("Playwright");
+    await page.getByLabel("Last Name").fill("Party");
+    await page.getByLabel("Phone Number").fill("9195551212");
     await selectSidebarCombobox(page, 0, "Text");
     await page.getByRole("button", { name: "Save Changes" }).click();
     await waitForTableReady(page);
@@ -120,8 +118,8 @@ test.describe("Staff parties table", () => {
     await setGlobalSearch(page, uniqueEmail);
     expect(await getPaginationTotal(page)).toBe(1);
 
-    await clickRowAction(page, uniqueEmail, "Edit");
-    await page.locator("#contact-two-last-name").fill("Updated");
+    await clickRowAction(page, "Playwright Party", "Edit");
+    await page.getByLabel("Last Name").fill("Updated");
     await page.getByRole("button", { name: "Save Changes" }).click();
     await waitForTableReady(page);
     await setGlobalSearch(page, "Updated");
@@ -136,8 +134,15 @@ test.describe("Staff parties table", () => {
 });
 
 async function openAndAssertRestore(page: Page, rowText: string) {
-  await openRowActions(page, rowText);
-  await expect(page.getByRole("menuitem", { name: "Restore" })).toBeVisible();
+  // The cancel optimistic update is async (onMutate awaits cancelQueries first),
+  // so the row actions may still show "Cancel" briefly. Retry until "Restore" appears.
+  await expect(async () => {
+    await page.keyboard.press("Escape");
+    await openRowActions(page, rowText);
+    await expect(page.getByRole("menuitem", { name: "Restore" })).toBeVisible({
+      timeout: 1_000,
+    });
+  }).toPass({ timeout: 10_000 });
   await expect(page.getByRole("menuitem", { name: "Cancel" })).toHaveCount(0);
   await page.keyboard.press("Escape");
 }

@@ -1,23 +1,25 @@
-import { expect, test } from "@playwright/test";
 import { loginAsAdmin } from "../../helpers/auth";
+import { expect, test } from "../../helpers/fixtures";
 import {
   LOCATIONS,
-  PARTIES,
   countWhere,
   firstUniqueToken,
+  formatDateInput,
 } from "../../helpers/seedData";
 import {
-  applyNumberFilter,
-  applySelectFilter,
   applyTextFilter,
-  applyTimeFilter,
   clearFilter,
+  clickRowAction,
+  confirmDialog,
+  expectSorted,
+  getColumnCellTexts,
   getPaginationTotal,
   getResultsSummary,
   goToPage,
-  openRowActions,
   openStaffTab,
+  selectAddressSuggestion,
   setGlobalSearch,
+  setPageSize,
   sortColumn,
   waitForTableReady,
 } from "../../helpers/table";
@@ -25,72 +27,71 @@ import {
 test.describe("Shared table smoke pack", () => {
   test.describe.configure({ timeout: 120_000 });
 
-  test("accounts smoke: sort, text filter, search, and row-action exception", async ({
-    page,
-  }) => {
-    await loginAsAdmin(page, "/staff/accounts");
-    await openStaffTab(page, "Accounts");
-    await waitForTableReady(page);
-
-    await sortColumn(page, "Email", "asc");
-    await applyTextFilter(page, "Email", "Contains", "johndoe");
-    expect(await getPaginationTotal(page)).toBe(1);
-    await clearFilter(page, "Email");
-    await setGlobalSearch(page, "johndoe");
-    expect(await getPaginationTotal(page)).toBe(1);
-    await openRowActions(page, "johndoe@unc.edu");
-    await expect(page.getByRole("menuitem", { name: "Delete" })).toHaveCount(0);
-  });
-
-  test("locations smoke: number filter, nullable date filter, and pagination", async ({
-    page,
-  }) => {
+  test.beforeEach(async ({ page }) => {
     await loginAsAdmin(page, "/staff/locations");
     await openStaffTab(page, "Locations");
     await waitForTableReady(page);
+  });
 
-    await applyNumberFilter(page, "Incidents", "Greater than", 1);
-    expect(await getPaginationTotal(page)).toBe(
-      countWhere(LOCATIONS, (location) => location.incident_count >= 1)
-    );
-    await clearFilter(page, "Incidents");
+  test("viewing data, sort, filter, pagination, and full table search", async ({
+    page,
+  }) => {
+    // viewing data: cells are populated with expected values
+    const initialAddresses = await getColumnCellTexts(page, "Address");
+    expect(initialAddresses.length).toBeGreaterThan(0);
+    expect(initialAddresses[0]).not.toBe("");
 
-    await applyTextFilter(
-      page,
-      "Address",
-      "Contains",
-      firstUniqueToken(LOCATIONS.map((location) => location.formatted_address))
+    // sort
+    await sortColumn(page, "Address", "asc");
+    expectSorted(await getColumnCellTexts(page, "Address"), "text", "asc");
+
+    // filter
+    const addressToken = firstUniqueToken(
+      LOCATIONS.map((l) => l.formatted_address)
     );
-    expect(await getPaginationTotal(page)).toBeGreaterThan(0);
+    const expectedCount = countWhere(LOCATIONS, (l) =>
+      l.formatted_address.toLowerCase().includes(addressToken.toLowerCase())
+    );
+    await applyTextFilter(page, "Address", "Contains", addressToken);
+    expect(await getPaginationTotal(page)).toBe(expectedCount);
     await clearFilter(page, "Address");
 
+    // pagination
+    await setPageSize(page, 10);
     const firstPage = await getResultsSummary(page);
     await goToPage(page, 2);
     const secondPage = await getResultsSummary(page);
     expect(secondPage.start).toBe(firstPage.end + 1);
+
+    // full table search
+    await setGlobalSearch(page, addressToken);
+    expect(await getPaginationTotal(page)).toBeGreaterThan(0);
   });
 
-  test("parties smoke: select filter, time filter, and search", async ({
-    page,
-  }) => {
-    await loginAsAdmin(page, "/staff/parties");
-    await openStaffTab(page, "Parties");
+  test("new row, edit row, and delete row", async ({ page }) => {
+    const createAddress = "100 E Franklin St, Chapel Hill, NC 27514, USA";
+
+    // new row
+    await page.getByRole("button", { name: /New Location/i }).click();
+    await selectAddressSuggestion(page, "", createAddress);
+    await page.getByRole("button", { name: "Save Changes" }).click();
     await waitForTableReady(page);
+    await setGlobalSearch(page, createAddress);
+    expect(await getPaginationTotal(page)).toBe(1);
 
-    await applySelectFilter(page, "Active", "Equals", "Cancelled");
-    expect(await getPaginationTotal(page)).toBe(
-      countWhere(PARTIES, (party) => party.status === "cancelled")
-    );
-    await clearFilter(page, "Active");
+    // edit row
+    await clickRowAction(page, createAddress, "Edit");
+    await page
+      .getByLabel(/Hold Expiration/)
+      .fill(formatDateInput(new Date(Date.now() + 86400000 * 5)));
+    await page.getByRole("button", { name: "Save Changes" }).click();
+    await waitForTableReady(page);
+    await expect(page.getByText("Expires:")).toBeVisible();
 
-    await applyTimeFilter(page, "Time", "Between", {
-      from: "20:00",
-      to: "22:00",
-    });
-    expect(await getPaginationTotal(page)).toBeGreaterThan(0);
-    await clearFilter(page, "Time");
-
-    await setGlobalSearch(page, PARTIES[0].location_address);
-    expect(await getPaginationTotal(page)).toBeGreaterThan(0);
+    // delete row
+    await clickRowAction(page, createAddress, "Delete");
+    await confirmDialog(page, "Delete");
+    await setGlobalSearch(page, createAddress);
+    expect(await getPaginationTotal(page)).toBe(0);
   });
 });

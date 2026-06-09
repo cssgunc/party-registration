@@ -72,5 +72,5 @@ export async function loginAsPoliceAdmin(
   await page.locator('[name="email"]').fill("dreyes@chapelhillnc.gov");
   await page.locator('[name="password"]').fill("securepassword");
   await page.locator('[name="password"]').press("Enter");
-  await page.waitForURL(`**${callbackUrl}`, { timeout: 15_000 });
+  await page.waitForURL(`**${callbackUrl}**`, { timeout: 15_000 });
 }

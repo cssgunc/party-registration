@@ -44,6 +44,24 @@ export function formatTime(date: Date): string {
 }
 
 /**
+ * Converts a local "HH:MM" time string to its UTC equivalent.
+ *
+ * Time filter values come from <input type="time"> which gives local time,
+ * but the backend compares against cast(datetime, SATime()) which is UTC.
+ * This conversion keeps them consistent regardless of the browser timezone.
+ */
+export function localTimeToUtc(timeStr: string): string {
+  const parts = timeStr.split(":").map(Number);
+  if (parts.length < 2 || parts.some(isNaN)) return timeStr;
+  const offsetMinutes = new Date().getTimezoneOffset(); // positive = behind UTC
+  const totalMinutes = parts[0] * 60 + parts[1] + offsetMinutes;
+  const utcMinutes = ((totalMinutes % 1440) + 1440) % 1440;
+  return `${Math.floor(utcMinutes / 60)
+    .toString()
+    .padStart(2, "0")}:${(utcMinutes % 60).toString().padStart(2, "0")}`;
+}
+
+/**
  * Zod schema for phone number fields in forms.
  * Validates at least 10 digits and transforms to raw digits on parse.
  */

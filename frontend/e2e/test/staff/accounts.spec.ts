@@ -1,5 +1,5 @@
-import { Page, expect, test } from "@playwright/test";
 import { loginAsAdmin } from "../../helpers/auth";
+import { Page, expect, test } from "../../helpers/fixtures";
 import { AGGREGATE_ACCOUNTS } from "../../helpers/seedData";
 import {
   applySelectFilter,

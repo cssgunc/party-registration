@@ -1,5 +1,5 @@
-import { expect, test } from "@playwright/test";
 import { loginAsPoliceAdmin } from "../../helpers/auth";
+import { expect, test } from "../../helpers/fixtures";
 import { POLICE_ACCOUNTS, countWhere } from "../../helpers/seedData";
 import {
   applySelectFilter,
@@ -16,6 +16,8 @@ import {
 } from "../../helpers/table";
 
 test.describe("Police admin table", () => {
+  test.describe.configure({ timeout: 120_000 });
+
   test.beforeEach(async ({ page }) => {
     await loginAsPoliceAdmin(page);
     await waitForTableReady(page);

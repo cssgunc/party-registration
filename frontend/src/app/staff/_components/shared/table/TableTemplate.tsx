@@ -34,7 +34,7 @@ import {
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { Download, Loader2, MoreHorizontal, Plus } from "lucide-react";
+import { Download, Loader2, MoreHorizontal, Plus, X } from "lucide-react";
 import { useSession } from "next-auth/react";
 import {
   ReactNode,
@@ -249,7 +249,7 @@ export function TableTemplate<T extends object>({
       {/* Toolbar */}
       <div className="flex items-center gap-2 w-full">
         {/* Global Search */}
-        <div className="flex-1 min-w-0 max-w-lg bg-card rounded-md">
+        <div className="relative flex-1 min-w-0 max-w-lg bg-card rounded-md">
           <Input
             type="text"
             value={serverTableState.tableState.globalFilter}
@@ -257,8 +257,20 @@ export function TableTemplate<T extends object>({
               serverTableState.actions.setGlobalFilter(e.target.value)
             }
             placeholder="Search all columns..."
-            className="p-2 pl-3 h-9 rounded-md"
+            className="p-2 pl-3 h-9 rounded-md pr-8"
           />
+          {serverTableState.tableState.globalFilter && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => serverTableState.actions.setGlobalFilter("")}
+              className="group absolute right-2 top-1/2 -translate-y-1/2 size-6 p-0 hover:bg-transparent cursor-pointer"
+              aria-label="Clear search"
+              tabIndex={-1}
+            >
+              <X className="size-4 text-muted-foreground group-hover:text-text" />
+            </Button>
+          )}
         </div>
 
         {/* Header Slot (desktop: inline in toolbar) */}
