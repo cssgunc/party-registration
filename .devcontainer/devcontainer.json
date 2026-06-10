@@ -22,7 +22,9 @@
         "ms-azuretools.vscode-docker",
         "github.vscode-github-actions",
         "github.vscode-pull-request-github",
-        "eamodio.gitlens"
+        "eamodio.gitlens",
+        "ms-playwright.playwright",
+        "anthropic.claude-code"
       ],
       "settings": {
         "terminal.integrated.defaultProfile.linux": "zsh",
@@ -82,7 +84,8 @@
         "python.analysis.extraPaths": ["backend"],
         "python.testing.pytestEnabled": true,
         "python.testing.unittestEnabled": false,
-        "python.analysis.autoImportCompletions": true
+        "python.analysis.autoImportCompletions": true,
+        "playwright.runGlobalSetupOnEachRun": true
       }
     }
   }

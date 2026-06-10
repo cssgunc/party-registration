@@ -34,7 +34,7 @@ info "Repo root : $REPO_ROOT"
 info "OS        : $OS"
 
 # ══════════════════════════════════════════════════════════════════════════════
-step "1/7  Python 3.13"
+step "1/8  Python 3.13"
 # ══════════════════════════════════════════════════════════════════════════════
 
 PYTHON=""
@@ -62,7 +62,7 @@ fi
 success "Found Python 3.13: $(command -v "$PYTHON")"
 
 # ══════════════════════════════════════════════════════════════════════════════
-step "2/7  Virtual environment + Python packages"
+step "2/8  Virtual environment + Python packages"
 # ══════════════════════════════════════════════════════════════════════════════
 
 VENV_DIR="$REPO_ROOT/.venv"
@@ -91,7 +91,7 @@ pip install -e backend
 success "Python packages installed"
 
 # ══════════════════════════════════════════════════════════════════════════════
-step "3/7  backend/.env"
+step "3/8  backend/.env"
 # ══════════════════════════════════════════════════════════════════════════════
 
 ENV_FILE="$REPO_ROOT/backend/.env"
@@ -146,7 +146,7 @@ else
 fi
 
 # ══════════════════════════════════════════════════════════════════════════════
-step "4/7  Start containers (db + saml-idp + mailpit) + reset dev DB"
+step "4/8  Start containers (db + saml-idp + mailpit) + reset dev DB"
 # ══════════════════════════════════════════════════════════════════════════════
 
 if ! command -v docker &>/dev/null; then
@@ -253,7 +253,31 @@ cd "$REPO_ROOT"
 success "Dev database reset"
 
 # ══════════════════════════════════════════════════════════════════════════════
-step "5/7  Frontend SAML SP certificates"
+step "5/8  Frontend dependencies + Playwright browser"
+# ══════════════════════════════════════════════════════════════════════════════
+
+if ! command -v npm &>/dev/null; then
+  error "npm not found. Install Node.js (which includes npm):"
+  if [[ "$OS" == "mac" ]]; then
+    error "  brew install node    # or download from https://nodejs.org/"
+  else
+    error "  Download from: https://nodejs.org/"
+  fi
+  exit 1
+fi
+
+info "Installing frontend dependencies (npm i) ..."
+cd "$REPO_ROOT/frontend"
+npm i
+success "Frontend dependencies installed"
+
+info "Installing Playwright Chromium browser (npx playwright install chromium) ..."
+npx playwright install chromium
+cd "$REPO_ROOT"
+success "Playwright Chromium installed"
+
+# ══════════════════════════════════════════════════════════════════════════════
+step "6/8  Frontend SAML SP certificates"
 # ══════════════════════════════════════════════════════════════════════════════
 
 CERTS_DIR="$REPO_ROOT/frontend/certs"
@@ -278,7 +302,7 @@ else
 fi
 
 # ══════════════════════════════════════════════════════════════════════════════
-step "6/7  pre-commit hooks"
+step "7/8  pre-commit hooks"
 # ══════════════════════════════════════════════════════════════════════════════
 
 # pre-commit is installed as part of .[dev], but check just in case
@@ -293,7 +317,7 @@ pre-commit install-hooks
 success "pre-commit hooks installed"
 
 # ══════════════════════════════════════════════════════════════════════════════
-step "7/7  .vscode/settings.json + extensions"
+step "8/8  .vscode/settings.json + extensions"
 # ══════════════════════════════════════════════════════════════════════════════
 
 VSCODE_DIR="$REPO_ROOT/.vscode"

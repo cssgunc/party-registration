@@ -18,22 +18,20 @@ export async function loginViaSaml(
   role: SamlRole,
   callbackUrl = "/"
 ) {
+  // The SAML flow redirects the browser to localhost:8080. The socat proxy
+  // started in global-setup.ts forwards that to saml-idp:8080 (bridging the
+  // container's IPv4→IPv6 gap), so no in-browser URL rewriting is needed here.
   await page.goto(
     `/api/auth/login/saml?role=${role}&callbackUrl=${encodeURIComponent(callbackUrl)}`
   );
 
-  // Wait for redirect to the SimpleSAMLphp login page.
-  const idpOrigin = new URL(
-    process.env.SAML_IDP_SSO_LOGIN_URL ?? "http://localhost:8080"
-  ).origin;
-  await page.waitForURL(`${idpOrigin}/**`);
-
+  await page.locator('[name="username"]').waitFor();
   await page.locator('[name="username"]').fill(username);
   await page.locator('[name="password"]').fill(password);
   await page.locator('[name="password"]').press("Enter");
 
   // After the IdP POST assertion, Next.js redirects back to the app.
-  await page.waitForURL(`**${callbackUrl}`, { timeout: 15_000 });
+  await page.waitForURL(`**${callbackUrl}`, { timeout: 30_000 });
 
   // The staff area is tab-driven and settles more reliably when opened on its
   // default route; the specs switch tabs explicitly after login.

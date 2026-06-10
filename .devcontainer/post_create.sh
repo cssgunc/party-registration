@@ -4,8 +4,9 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 
-# Ensure pre-commit cache directory has correct permissions
+# Ensure pre-commit cache and node_modules have correct permissions
 sudo chown -R vscode:vscode /home/vscode/.cache/pre-commit 2>/dev/null || true
+sudo chown -R vscode:vscode "$REPO_ROOT/frontend/node_modules" 2>/dev/null || true
 
 echo "================== Installing pre-commit hooks ================="
 cd "$REPO_ROOT"
@@ -41,6 +42,11 @@ echo "MySQL is ready."
 python -m script.create_db
 python -m script.create_test_db
 python -m script.reset_dev
+
+echo ""
+echo "================ Installing Playwright browsers ================="
+cd "$REPO_ROOT/frontend"
+npx --yes playwright install chromium
 
 echo ""
 echo "================= Generating frontend SAML certs ==============="

@@ -6,11 +6,14 @@ dotenv.config({ path: path.resolve(__dirname, ".env.local") });
 
 const baseURL = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
 
+const expectTimeout = Number(process.env.E2E_EXPECT_TIMEOUT ?? 15_000);
+const actionTimeout = Number(process.env.E2E_ACTION_TIMEOUT ?? 30_000);
+const navigationTimeout = Number(process.env.E2E_NAVIGATION_TIMEOUT ?? 60_000);
+
 /**
  * Run from within the devcontainer (VS Code integrated terminal).
  * Requires both the frontend (port 3000) and backend (port 8000) to already
- * be running. The globalSetup handles resetting the dev DB and proxying the
- * SAML IdP.
+ * be running. globalSetup will fail fast with a clear message if they aren't.
  *
  * Quick start:
  *   npm run test:e2e        — headless run
@@ -29,12 +32,14 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   reporter: [["html", { open: "never" }], ["list"]],
 
+  expect: { timeout: expectTimeout },
+
   use: {
     baseURL,
+    launchOptions: { chromiumSandbox: false },
     trace: "on-first-retry",
-    // Keep a longer timeout for SAML redirects.
-    actionTimeout: 15_000,
-    navigationTimeout: 30_000,
+    actionTimeout,
+    navigationTimeout,
   },
 
   projects: [
@@ -43,13 +48,4 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
     },
   ],
-
-  // Reuse the dev server that's already running in the devcontainer.
-  // If it isn't running yet, Playwright will start it automatically.
-  webServer: {
-    command: "npm run dev",
-    url: baseURL,
-    reuseExistingServer: true,
-    timeout: 60_000,
-  },
 });

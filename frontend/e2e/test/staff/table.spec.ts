@@ -1,5 +1,6 @@
-import { loginAsAdmin } from "../../helpers/auth";
-import { expect, test } from "../../helpers/fixtures";
+import { ADMIN_AUTH_FILE } from "../../global-setup";
+import { resetDatabase } from "../../helpers/db";
+import { expect, suiteTest as test } from "../../helpers/fixtures";
 import {
   LOCATIONS,
   countWhere,
@@ -26,9 +27,14 @@ import {
 
 test.describe("Shared table smoke pack", () => {
   test.describe.configure({ timeout: 120_000 });
+  test.use({ storageState: ADMIN_AUTH_FILE });
+
+  test.beforeAll(() => {
+    resetDatabase();
+  });
 
   test.beforeEach(async ({ page }) => {
-    await loginAsAdmin(page, "/staff/locations");
+    await page.goto("/staff/locations");
     await openStaffTab(page, "Locations");
     await waitForTableReady(page);
   });
