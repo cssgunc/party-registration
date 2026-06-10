@@ -1,4 +1,3 @@
-import { localTimeToUtc } from "@/lib/utils";
 import {
   ColumnFiltersState,
   PaginationState,
@@ -138,11 +137,11 @@ export function buildServerTableParams(
           // Only send trange when both ends are specified; fall back to single-side operators otherwise.
           if (range?.from != null && range?.to != null) {
             params.filters[`${field}_trange`] =
-              `${localTimeToUtc(String(range.from))},${localTimeToUtc(String(range.to))}`;
+              `${String(range.from)},${String(range.to)}`;
           } else if (range?.from != null) {
-            params.filters[`${field}_gte`] = localTimeToUtc(String(range.from));
+            params.filters[`${field}_gte`] = String(range.from);
           } else if (range?.to != null) {
-            params.filters[`${field}_lte`] = localTimeToUtc(String(range.to));
+            params.filters[`${field}_lte`] = String(range.to);
           }
         } else {
           if (range?.from != null) {
@@ -170,9 +169,7 @@ export function buildServerTableParams(
           params.filters[`${field}_gte`] = startOfDay(date).toISOString();
           params.filters[`${field}_lte`] = endOfDay(date).toISOString();
         } else if (isTimeLike) {
-          params.filters[`${field}_${operator}`] = localTimeToUtc(
-            String(value)
-          );
+          params.filters[`${field}_${operator}`] = String(value);
         } else {
           params.filters[`${field}_${operator}`] = String(value);
         }
@@ -180,9 +177,7 @@ export function buildServerTableParams(
       default:
         params.filters[`${field}_${operator}`] = isDateLike
           ? new Date(value as string | Date).toISOString()
-          : isTimeLike
-            ? localTimeToUtc(String(value))
-            : String(value);
+          : String(value);
     }
   }
 

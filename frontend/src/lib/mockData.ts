@@ -96,7 +96,14 @@ export const STUDENTS: StudentDto[] = mockData.students.map((student) => ({
   last_registered: student.last_registered
     ? parseRelativeDate(student.last_registered)
     : null,
-  residence: null,
+  residence: student.residence
+    ? {
+        location: buildLocationDto(student.residence.location_id),
+        residence_chosen_date:
+          parseRelativeDate(student.residence.residence_chosen_date) ??
+          new Date(),
+      }
+    : null,
 }));
 
 function buildLocationSummary(locationId: number): LocationSummaryDto {
@@ -119,6 +126,14 @@ function buildLocationSummary(locationId: number): LocationSummaryDto {
   };
 }
 
+function buildLocationDto(locationId: number): LocationDto {
+  const summary = buildLocationSummary(locationId);
+  return {
+    ...summary,
+    incidents: getIncidentsByLocationId(locationId),
+  };
+}
+
 // Parse Incidents
 export const INCIDENTS: IncidentDto[] = mockData.incidents.map((incident) => ({
   id: incident.id,
@@ -126,7 +141,7 @@ export const INCIDENTS: IncidentDto[] = mockData.incidents.map((incident) => ({
   incident_datetime:
     parseRelativeDate(incident.incident_datetime) ?? new Date(),
   severity: incident.severity as IncidentSeverity,
-  description: incident.description,
+  description: incident.description ?? null,
   reference_id: incident.reference_id ?? null,
 }));
 
@@ -139,7 +154,7 @@ function getIncidentsByLocationId(locationId: number): NestedIncidentDto[] {
       incident_datetime:
         parseRelativeDate(incident.incident_datetime) ?? new Date(),
       severity: incident.severity as IncidentSeverity,
-      description: incident.description,
+      description: incident.description ?? null,
       reference_id: incident.reference_id ?? null,
     }));
 }

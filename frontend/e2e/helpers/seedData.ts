@@ -1,3 +1,4 @@
+import rawMockData from "../../shared/mock_data.json";
 import type { AccountDto } from "../../src/lib/api/account/account.types";
 import {
   ACCOUNTS as APP_ACCOUNTS,
@@ -9,6 +10,13 @@ import {
 } from "../../src/lib/mockData";
 
 export { POLICE_ACCOUNTS, STUDENTS };
+
+export const WITHOUT_RESIDENCE_COUNT = rawMockData.students.filter(
+  (s) => s.residence === null
+).length;
+export const WITH_RESIDENCE_COUNT = rawMockData.students.filter(
+  (s) => s.residence !== null
+).length;
 
 export function formatUiDate(date: Date): string {
   return date.toLocaleDateString();
@@ -65,6 +73,23 @@ export const PARTIES = APP_PARTIES.map((party) => ({
   contact_two_name: `${party.contact_two.first_name} ${party.contact_two.last_name}`,
   contact_two_email: party.contact_two.email,
 }));
+
+/**
+ * Mirrors backend current_academic_year_start(). Returns the start of the
+ * current academic year, using NEXT_PUBLIC_ACADEMIC_YEAR_SWITCH_DATE (default 08-01).
+ */
+export function currentAcademicYearStart(): Date {
+  const [month, day] = (
+    process.env.NEXT_PUBLIC_ACADEMIC_YEAR_SWITCH_DATE ?? "08-01"
+  )
+    .split("-")
+    .map(Number);
+  const now = new Date();
+  const switchThisYear = new Date(now.getFullYear(), month - 1, day);
+  const year =
+    now >= switchThisYear ? now.getFullYear() : now.getFullYear() - 1;
+  return new Date(year, month - 1, day);
+}
 
 export function exactOne<T>(items: T[], predicate: (item: T) => boolean): T {
   const matches = items.filter(predicate);

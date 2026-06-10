@@ -55,7 +55,9 @@ _PARTY_QUERY_FIELDS = QueryFieldSet(
     fields={
         "id": PartyEntity.id,
         "party_datetime": PartyEntity.party_datetime,
-        "party_datetime_time": cast(PartyEntity.party_datetime, SATime()),
+        "party_datetime_time": cast(
+            func.convert_tz(PartyEntity.party_datetime, "UTC", "America/New_York"), SATime()
+        ),
         "status": PartyEntity.status,
         "contact_one.id": PartyEntity.contact_one_id,
         "contact_one.first_name": AccountEntity.first_name,

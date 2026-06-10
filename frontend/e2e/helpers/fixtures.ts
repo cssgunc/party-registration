@@ -11,4 +11,8 @@ const test = base.extend<{ _dbReset: void }>({
   ],
 });
 
-export { test, expect, type Page };
+// For exhaustive suites: no auto-reset per test.
+// Each spec using suiteTest must call resetDatabase() in a test.beforeAll.
+const suiteTest = base;
+
+export { test, suiteTest, expect, type Page };
