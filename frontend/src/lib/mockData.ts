@@ -39,9 +39,26 @@ function parseRelativeDate(dateStr: string | null): Date | null {
     }
   }
 
-  // Apply static time if provided (e.g., @20:30)
+  // Apply static time interpreted as America/New_York, matching backend parse_date behavior.
   if (hour !== undefined && minute !== undefined) {
-    date.setHours(parseInt(hour, 10), parseInt(minute, 10), 0, 0);
+    const h = parseInt(hour, 10);
+    const m = parseInt(minute, 10);
+    // Get the NY calendar date for the base date, then find the UTC instant
+    // where New York local time equals h:m (probe-and-correct approach).
+    const nyDate = date.toLocaleDateString("en-CA", {
+      timeZone: "America/New_York",
+    }); // "YYYY-MM-DD"
+    const [y, mo, d] = nyDate.split("-").map(Number);
+    const candidate = new Date(Date.UTC(y, mo - 1, d, h, m, 0));
+    const nyHour =
+      parseInt(
+        new Intl.DateTimeFormat("en-US", {
+          timeZone: "America/New_York",
+          hour: "2-digit",
+          hour12: false,
+        }).format(candidate)
+      ) % 24;
+    date.setTime(candidate.getTime() + (h - nyHour) * 3_600_000);
   }
 
   return date;
@@ -79,7 +96,14 @@ export const STUDENTS: StudentDto[] = mockData.students.map((student) => ({
   last_registered: student.last_registered
     ? parseRelativeDate(student.last_registered)
     : null,
-  residence: null,
+  residence: student.residence
+    ? {
+        location: buildLocationDto(student.residence.location_id),
+        residence_chosen_date:
+          parseRelativeDate(student.residence.residence_chosen_date) ??
+          new Date(),
+      }
+    : null,
 }));
 
 function buildLocationSummary(locationId: number): LocationSummaryDto {
@@ -102,6 +126,14 @@ function buildLocationSummary(locationId: number): LocationSummaryDto {
   };
 }
 
+function buildLocationDto(locationId: number): LocationDto {
+  const summary = buildLocationSummary(locationId);
+  return {
+    ...summary,
+    incidents: getIncidentsByLocationId(locationId),
+  };
+}
+
 // Parse Incidents
 export const INCIDENTS: IncidentDto[] = mockData.incidents.map((incident) => ({
   id: incident.id,
@@ -109,7 +141,7 @@ export const INCIDENTS: IncidentDto[] = mockData.incidents.map((incident) => ({
   incident_datetime:
     parseRelativeDate(incident.incident_datetime) ?? new Date(),
   severity: incident.severity as IncidentSeverity,
-  description: incident.description,
+  description: incident.description ?? null,
   reference_id: incident.reference_id ?? null,
 }));
 
@@ -122,7 +154,7 @@ function getIncidentsByLocationId(locationId: number): NestedIncidentDto[] {
       incident_datetime:
         parseRelativeDate(incident.incident_datetime) ?? new Date(),
       severity: incident.severity as IncidentSeverity,
-      description: incident.description,
+      description: incident.description ?? null,
       reference_id: incident.reference_id ?? null,
     }));
 }

@@ -26,6 +26,7 @@ RUN apt-get update \
         zsh \
         net-tools \
         procps \
+        socat \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Node.js 22 from https://github.com/nodesource
@@ -63,6 +64,9 @@ RUN git config --system core.editor "code --wait" \
 # Install frontend dependencies
 COPY frontend/package.json frontend/package-lock.json /workspace/frontend/
 RUN cd /workspace/frontend && npm ci
+
+# Install Playwright OS-level dependencies for headless Chromium
+RUN cd /workspace/frontend && npx playwright install-deps chromium
 
 # Install python dev dependencies
 RUN pip install --upgrade pip

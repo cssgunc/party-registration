@@ -17,7 +17,7 @@ const INCIDENT_SEVERITY_LABELS: Record<IncidentSeverity, string> = {
 type IncidentCreateDto = {
   location_place_id: string;
   incident_datetime: Date;
-  description: string;
+  description: string | null;
   severity: IncidentSeverity;
   reference_id?: string | null;
 };
@@ -46,7 +46,7 @@ type LocationSummaryDtoBackend = Omit<LocationSummaryDto, "hold_expiration"> & {
 type IncidentFields = {
   id: number;
   incident_datetime: Date;
-  description: string;
+  description: string | null;
   severity: IncidentSeverity;
   reference_id?: string | null;
 };

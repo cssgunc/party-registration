@@ -28,7 +28,7 @@ class IncidentEntity(MappedAsDataclass, EntityBase):
     severity: Mapped[IncidentSeverity] = mapped_column(
         Enum(IncidentSeverity, native_enum=False, length=20), nullable=False
     )
-    description: Mapped[str] = mapped_column(String(2000), nullable=False, default="")
+    description: Mapped[str | None] = mapped_column(String(2000), nullable=True, default=None)
     reference_id: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, server_default=func.now(), init=False)
 

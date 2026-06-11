@@ -46,14 +46,11 @@ export const StudentTable = () => {
   const checkboxMutation = useUpdateIsRegistered();
 
   const editFormMutation = useUpdateStudent({
-    onOptimisticUpdate: () => {
-      // Optimistic close — toast handles error visibility (no reopen).
-      closeSidebar();
-    },
     onError: (error) => {
       openSnackbar(getErrorMessage(error, STUDENT_ERROR_OPTIONS), "error");
     },
     onSuccess: () => {
+      closeSidebar();
       openSnackbar("Student updated successfully", "success");
     },
   });

@@ -64,7 +64,7 @@ class TestIncidentService:
 
         incident = await self.incident_service.create_incident(create_dto)
 
-        assert incident.description == ""
+        assert incident.description is None
 
     @pytest.mark.asyncio
     async def test_create_incident_with_severity(self) -> None:

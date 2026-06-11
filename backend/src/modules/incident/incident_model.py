@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Self
 
-from pydantic import AwareDatetime, BaseModel, Field
+from pydantic import AwareDatetime, BaseModel, Field, field_validator
 from src.core.utils.query_utils import PaginatedResponse
 from src.modules.location.location_base_model import LocationData
 
@@ -22,9 +22,16 @@ class IncidentFields(BaseModel):
     """Incident fields shared across create/update/internal data models."""
 
     incident_datetime: AwareDatetime
-    description: str = ""
+    description: str | None = None
     severity: IncidentSeverity
     reference_id: str | None = None
+
+    @field_validator("description", "reference_id", mode="before")
+    @classmethod
+    def empty_str_to_none(cls, v: object) -> object:
+        if isinstance(v, str) and v.strip() == "":
+            return None
+        return v
 
 
 class IncidentUpdateDto(IncidentFields):

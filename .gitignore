@@ -53,6 +53,11 @@ page-*.png
 page-*.jpeg
 backend/script/test.py
 
+# Playwright test output
+test-results/
+playwright-report/
+blob-report/
+
 # Ignore coverage reports
 coverage/
 .coverage

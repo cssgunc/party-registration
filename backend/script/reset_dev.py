@@ -157,6 +157,11 @@ async def reset_dev():
         await session.flush()
 
         for student_data in data["students"]:
+            residence = student_data.get("residence")
+            residence_id = residence["location_id"] if residence else None
+            residence_chosen_date = (
+                parse_date(residence["residence_chosen_date"]) if residence else None
+            )
             student = entities.StudentEntity.from_data(
                 StudentData(
                     contact_preference=ContactPreference(student_data["contact_preference"]),
@@ -164,8 +169,10 @@ async def reset_dev():
                     last_registered=parse_date(student_data.get("last_registered")),
                 ),
                 account_id_by_onyen[student_data["onyen"]],
-                residence_id=student_data.get("residence_id"),
+                residence_id=residence_id,
             )
+            if residence_chosen_date is not None:
+                student.residence_chosen_date = residence_chosen_date
             session.add(student)
 
         await session.flush()
@@ -180,7 +187,7 @@ async def reset_dev():
                 location_id=incident_data["location_id"],
                 incident_datetime=incident_datetime,
                 severity=IncidentSeverity(incident_data["severity"]),
-                description=incident_data.get("description", ""),
+                description=incident_data.get("description"),
                 reference_id=incident_data.get("reference_id"),
             )
             session.add(incident)

@@ -521,8 +521,8 @@ class TestQueryUtilsDefaultSorting:
 
 
 def _at_time(hour: int, minute: int = 0) -> datetime:
-    """Create a UTC datetime on a fixed date with the given time of day."""
-    return datetime(2026, 7, 15, hour, minute, tzinfo=UTC)
+    """Create a UTC datetime that maps to the given Eastern time of day (EDT = UTC-4 in July)."""
+    return datetime(2026, 7, 15, (hour + 4) % 24, minute, tzinfo=UTC)
 
 
 class TestQueryUtilsTimeRangeFilter:

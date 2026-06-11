@@ -1,0 +1,74 @@
+import { Page } from "@playwright/test";
+
+type SamlRole = "student" | "staff" | "admin";
+
+/**
+ * Performs a full SAML login through the mock SimpleSAMLphp IdP.
+ *
+ * Flow:
+ *  1. Navigate to /api/auth/login/saml  →  Next.js redirects to IdP
+ *  2. Fill credentials on the SimpleSAMLphp form
+ *  3. IdP POSTs assertion back to /api/auth/login/saml via browser form
+ *  4. Next.js sets NextAuth + backend JWT cookies, redirects to callbackUrl
+ */
+export async function loginViaSaml(
+  page: Page,
+  username: string,
+  password: string,
+  role: SamlRole,
+  callbackUrl = "/"
+) {
+  // The SAML flow redirects the browser to localhost:8080. The socat proxy
+  // started in global-setup.ts forwards that to saml-idp:8080 (bridging the
+  // container's IPv4→IPv6 gap), so no in-browser URL rewriting is needed here.
+  await page.goto(
+    `/api/auth/login/saml?role=${role}&callbackUrl=${encodeURIComponent(callbackUrl)}`
+  );
+
+  await page.locator('[name="username"]').waitFor();
+  await page.locator('[name="username"]').fill(username);
+  await page.locator('[name="password"]').fill(password);
+  await page.locator('[name="password"]').press("Enter");
+
+  // After the IdP POST assertion, Next.js redirects back to the app.
+  await page.waitForURL(`**${callbackUrl}`, { timeout: 30_000 });
+
+  // The staff area is tab-driven and settles more reliably when opened on its
+  // default route; the specs switch tabs explicitly after login.
+  if (callbackUrl.startsWith("/staff/")) {
+    await page.goto("/staff/parties");
+  } else {
+    await page.goto(callbackUrl);
+  }
+}
+
+/** Logs in as the seeded admin account (johndoe / admin1 / admin role). */
+export async function loginAsAdmin(
+  page: Page,
+  callbackUrl = "/staff/accounts"
+) {
+  await loginViaSaml(page, "admin1", "admin1pass", "admin", callbackUrl);
+}
+
+/** Logs in as the seeded staff account (janesmith / staff1 / staff role). */
+export async function loginAsStaff(page: Page, callbackUrl = "/staff/parties") {
+  await loginViaSaml(page, "staff1", "staff1pass", "staff", callbackUrl);
+}
+
+/**
+ * Logs in as a police account via the /police/login form (not SAML).
+ *
+ * Police accounts are stored in the app's own database, not the SAML IdP.
+ */
+export async function loginAsPoliceAdmin(
+  page: Page,
+  callbackUrl = "/police/admin"
+) {
+  await page.goto(
+    `/police/login?callbackUrl=${encodeURIComponent(callbackUrl)}`
+  );
+  await page.locator('[name="email"]').fill("dreyes@chapelhillnc.gov");
+  await page.locator('[name="password"]').fill("securepassword");
+  await page.locator('[name="password"]').press("Enter");
+  await page.waitForURL(`**${callbackUrl}**`, { timeout: 15_000 });
+}

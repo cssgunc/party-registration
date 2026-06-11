@@ -366,11 +366,35 @@ You can then make any requests using the provided GUI
 ### Unit Tests
 
 The best way to run unit tests is by using the "Testing" window on the sidebar. This provides an intuitive GUI for running tests within the IDE.
-You can also run all tests by opening a new terminal and simply running
+
+You can also run backend tests using the [pytest CLI tool](https://docs.pytest.org/en/stable/how-to/usage.html)
+
+## Running E2E Tests
+
+E2E tests use [Playwright](https://playwright.dev/) and run against the live app inside the dev container. Both the frontend and backend must be running before starting the tests. The test suite will reuse the existing dev server rather than starting a new one.
+
+The post-create script automatically installs the Chromium browser binary. If you ever need to reinstall it manually:
 
 ```sh
-pytest
+cd frontend
+npx playwright install chromium
 ```
+
+### Testing panel (recommended)
+
+Open the **Testing** tab in the VS Code sidebar (beaker icon, provided by the Playwright extension). From there you can run the full suite, a single file, or an individual test with one click.
+
+> **Trace Viewer:** To step through a run visually (DOM snapshots before/after every action, network, console, and the call log), enable tracing. The easiest way is the **Show trace viewer** checkbox in the Playwright section of the Testing panel (toggle it on, run a test, then select a test in the Testing panel)
+
+### CLI
+
+```sh
+cd frontend
+npm run test:e2e          # headless
+npm run test:e2e:ui       # full Playwright UI with timeline and trace viewer
+```
+
+> **Note:** Tests run sequentially (single worker) to avoid database conflicts. Each test resets the dev database to a clean seed state before running.
 
 ## Accessing the Database
 

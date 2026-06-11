@@ -78,7 +78,7 @@ export default function IncidentTableForm({
     return onSubmit({
       location_place_id: data.location_place_id,
       incident_datetime: combined_datetime,
-      description: data.description,
+      description: data.description || null,
       severity: data.severity,
       reference_id: data.reference_id || null,
     });

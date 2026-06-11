@@ -205,7 +205,7 @@ class TestIncidentRouter:
         )
         data = assert_res_success(response, IncidentDto, status=201)
 
-        assert data.description == ""
+        assert data.description is None
 
     @pytest.mark.asyncio
     async def test_create_incident_severity_required(self) -> None:
