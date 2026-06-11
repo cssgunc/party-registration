@@ -3,7 +3,7 @@ import { type ChildProcess, spawn } from "child_process";
 import fs from "fs";
 import net from "net";
 import path from "path";
-import { loginAsAdmin, loginAsPoliceAdmin } from "./helpers/auth";
+import { loginAsAdmin, loginAsPoliceAdmin } from "./helpers/auth.helpers";
 
 // Shared auth file paths — exhaustive spec files import these to skip per-test login.
 export const ADMIN_AUTH_FILE = path.join(__dirname, ".auth/admin.json");

@@ -1,14 +1,14 @@
 import { POLICE_AUTH_FILE } from "../../global-setup";
-import { resetDatabase } from "../../helpers/db";
+import { resetDatabase } from "../../helpers/db.helpers";
 import {
   FilterCase,
   SortCase,
   filterAndExpect,
   filterTestTitle,
   sortAndVerify,
-} from "../../helpers/exhaustive";
-import { expect, suiteTest as test } from "../../helpers/fixtures";
-import { POLICE_ACCOUNTS, countWhere } from "../../helpers/seedData";
+} from "../../helpers/exhaustive.helpers";
+import { expect, suiteTest as test } from "../../helpers/fixtures.helpers";
+import { POLICE_ACCOUNTS, countWhere } from "../../helpers/seed.helpers";
 import {
   clickRowAction,
   getPaginationTotal,
@@ -16,7 +16,7 @@ import {
   openRowActions,
   selectSidebarCombobox,
   waitForTableReady,
-} from "../../helpers/table";
+} from "../../helpers/table.helpers";
 
 // --- Seed data constants -------------------------------------------------------
 

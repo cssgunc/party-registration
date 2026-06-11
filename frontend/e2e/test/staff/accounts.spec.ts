@@ -1,15 +1,18 @@
 import { ADMIN_AUTH_FILE } from "../../global-setup";
-import { resetDatabase } from "../../helpers/db";
+import { resetDatabase } from "../../helpers/db.helpers";
 import {
   FilterCase,
   SortCase,
   filterAndExpect,
   filterTestTitle,
   sortAndVerify,
-} from "../../helpers/exhaustive";
-import { expect, suiteTest as test } from "../../helpers/fixtures";
-import { AGGREGATE_ACCOUNTS, POLICE_ACCOUNTS } from "../../helpers/seedData";
-import { Steps } from "../../helpers/steps";
+} from "../../helpers/exhaustive.helpers";
+import { expect, suiteTest as test } from "../../helpers/fixtures.helpers";
+import {
+  AGGREGATE_ACCOUNTS,
+  POLICE_ACCOUNTS,
+} from "../../helpers/seed.helpers";
+import { Steps } from "../../helpers/steps.helpers";
 import {
   clickRowAction,
   confirmDialog,
@@ -20,7 +23,7 @@ import {
   selectSidebarCombobox,
   setGlobalSearch,
   waitForTableReady,
-} from "../../helpers/table";
+} from "../../helpers/table.helpers";
 
 // --- Seed data constants -------------------------------------------------------
 

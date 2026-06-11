@@ -1,12 +1,12 @@
 import { ADMIN_AUTH_FILE } from "../../global-setup";
-import { resetDatabase } from "../../helpers/db";
-import { expect, suiteTest as test } from "../../helpers/fixtures";
+import { resetDatabase } from "../../helpers/db.helpers";
+import { expect, suiteTest as test } from "../../helpers/fixtures.helpers";
 import {
   LOCATIONS,
   countWhere,
   firstUniqueToken,
   formatDateInput,
-} from "../../helpers/seedData";
+} from "../../helpers/seed.helpers";
 import {
   applyTextFilter,
   clearFilter,
@@ -23,7 +23,7 @@ import {
   setPageSize,
   sortColumn,
   waitForTableReady,
-} from "../../helpers/table";
+} from "../../helpers/table.helpers";
 
 test.describe("Shared table smoke pack", () => {
   test.describe.configure({ timeout: 120_000 });
