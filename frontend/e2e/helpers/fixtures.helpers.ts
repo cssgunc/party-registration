@@ -1,5 +1,5 @@
 import { type Page, test as base, expect } from "@playwright/test";
-import { resetDatabase } from "./db";
+import { resetDatabase } from "./db.helpers";
 
 const test = base.extend<{ _dbReset: void }>({
   _dbReset: [

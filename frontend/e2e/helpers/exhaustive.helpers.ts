@@ -10,7 +10,7 @@ import {
   getColumnCellTexts,
   getPaginationTotal,
   sortColumn,
-} from "./table";
+} from "./table.helpers";
 
 export type SortCase = {
   header: string;
