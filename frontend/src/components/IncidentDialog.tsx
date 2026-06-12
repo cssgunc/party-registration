@@ -63,7 +63,7 @@ export default function IncidentDialog({
   incident,
   defaultSeverity = "in_person_warning",
   onSubmit,
-  isSubmitting = false,
+  isSubmitting,
 }: IncidentDialogProps) {
   const defaultDatetime = incident?.incident_datetime ?? new Date();
 

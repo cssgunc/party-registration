@@ -51,6 +51,7 @@ class LocationEntity(MappedAsDataclass, EntityBase):
         back_populates="location",
         cascade="all, delete-orphan",
         lazy="selectin",  # Use selectin loading to avoid N+1 queries
+        order_by="IncidentEntity.incident_datetime.asc()",
         init=False,
     )
 

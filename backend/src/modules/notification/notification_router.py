@@ -6,7 +6,13 @@ from .notification_service import NotificationService
 notification_router = APIRouter(prefix="/api/notifications", tags=["notifications"])
 
 
-@notification_router.post("/unsubscribe", status_code=204)
+@notification_router.post(
+    "/unsubscribe",
+    status_code=204,
+    responses={
+        400: {"description": "Token is malformed or has an invalid signature"},
+    },
+)
 async def unsubscribe(
     body: UnsubscribeDto,
     notification_service: NotificationService = Depends(),
@@ -21,7 +27,13 @@ async def unsubscribe(
     await notification_service.unsubscribe(email)
 
 
-@notification_router.post("/unsubscribe/one-click", status_code=204)
+@notification_router.post(
+    "/unsubscribe/one-click",
+    status_code=204,
+    responses={
+        400: {"description": "Token is malformed or has an invalid signature"},
+    },
+)
 async def unsubscribe_one_click(
     token: str = Query(...),
     notification_service: NotificationService = Depends(),
@@ -34,7 +46,13 @@ async def unsubscribe_one_click(
     await notification_service.unsubscribe(email)
 
 
-@notification_router.post("/resubscribe", status_code=204)
+@notification_router.post(
+    "/resubscribe",
+    status_code=204,
+    responses={
+        400: {"description": "Token is malformed or has an invalid signature"},
+    },
+)
 async def resubscribe(
     body: ResubscribeDto,
     notification_service: NotificationService = Depends(),
@@ -47,7 +65,12 @@ async def resubscribe(
     await notification_service.resubscribe(email)
 
 
-@notification_router.get("/subscription-status")
+@notification_router.get(
+    "/subscription-status",
+    responses={
+        400: {"description": "Token is malformed or has an invalid signature"},
+    },
+)
 async def subscription_status(
     token: str = Query(...),
     notification_service: NotificationService = Depends(),

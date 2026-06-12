@@ -28,12 +28,14 @@ interface LocationTableFormProps {
   onSubmit: (data: LocationTableFormValues) => void | Promise<void>;
   editData?: LocationTableFormValues;
   submissionError?: string | null;
+  isPending?: boolean;
 }
 
 export default function LocationTableForm({
   onSubmit,
   editData,
   submissionError,
+  isPending,
 }: LocationTableFormProps) {
   const initialAddressSelection: AutocompleteResult | null =
     editData?.address && editData?.placeId
@@ -63,6 +65,7 @@ export default function LocationTableForm({
       onSubmit={onSubmit}
       submitLabel="Save Changes"
       submissionError={submissionError}
+      pending={isPending}
     >
       <AddressField
         control={form.control}

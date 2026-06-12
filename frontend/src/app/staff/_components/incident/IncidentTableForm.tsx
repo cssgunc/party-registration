@@ -41,12 +41,14 @@ interface IncidentTableFormProps {
   onSubmit: (data: IncidentCreateDto) => void | Promise<void>;
   editData?: IncidentDto;
   submissionError?: string | null;
+  isPending?: boolean;
 }
 
 export default function IncidentTableForm({
   onSubmit,
   editData,
   submissionError,
+  isPending,
 }: IncidentTableFormProps) {
   const initialAddressSelection: AutocompleteResult | null = editData?.location
     ? {
@@ -90,6 +92,7 @@ export default function IncidentTableForm({
       onSubmit={handleValid}
       submitLabel="Save"
       submissionError={submissionError}
+      pending={isPending}
     >
       <AddressField
         control={form.control}

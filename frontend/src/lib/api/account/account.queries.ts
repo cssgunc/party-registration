@@ -9,10 +9,7 @@ import type {
   PoliceAccountDto,
   PoliceAccountUpdate,
 } from "@/lib/api/police/police.types";
-import {
-  ListQueryParams,
-  ServerTableParams,
-} from "@/lib/api/shared/query-params";
+import { ServerTableParams } from "@/lib/api/shared/query-params";
 import { OptimisticMutationOptions, PaginatedResponse } from "@/lib/shared";
 import {
   UseQueryOptions,
@@ -217,12 +214,6 @@ export function useUpdatePoliceAccount(
       queryClient.invalidateQueries({ queryKey: AGGREGATE_ACCOUNTS_KEY });
       options?.onSuccess?.(...params);
     },
-  });
-}
-
-export function useDownloadAccountsCsv() {
-  return useMutation<void, Error, ListQueryParams | undefined>({
-    mutationFn: (params) => accountService.downloadAccountsCsv(params),
   });
 }
 

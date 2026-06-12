@@ -1,5 +1,6 @@
 import IncidentDialog from "@/components/IncidentDialog";
 import { Button } from "@/components/ui/button";
+import { useSnackbar } from "@/contexts/SnackbarContext";
 import { IncidentCreateDto } from "@/lib/api/incident/incident.types";
 import {
   useCreateIncidentInLocation,
@@ -18,7 +19,7 @@ import IncidentSidebarCard from "../../location/IncidentSidebarCard";
 import { ConfirmDialog } from "../dialog/ConfirmDialog";
 import { useSidebar } from "../sidebar/SidebarContext";
 
-type IncidentSidebarProps = {
+type Props = {
   incidents: NestedIncidentDto[];
   location: LocationDto;
 };
@@ -31,51 +32,76 @@ type ModalState =
 export default function IncidentInfoChipDetails({
   incidents,
   location,
-}: IncidentSidebarProps) {
+}: Props) {
   const { data: session } = useSession();
   const role = session?.role;
   const { headerActionNode } = useSidebar();
+  const { snackbarPromise } = useSnackbar();
 
   const [modalState, setModalState] = useState<ModalState>(null);
   const [confirmStateDelete, setConfirmStateDelete] = useState<number | null>(
     null
   );
+  const [openIncidentIds, setOpenIncidentIds] = useState<Set<number>>(
+    new Set()
+  );
 
-  const deleteMutation = useDeleteIncidentInLocation({
-    onSuccess: () => {
-      setConfirmStateDelete(null);
-    },
-  });
+  const setIncidentOpen = (id: number, open: boolean) => {
+    setOpenIncidentIds((prev) => {
+      const next = new Set(prev);
+      if (open) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  const deleteMutation = useDeleteIncidentInLocation();
 
   const handleDelete = () => {
     if (confirmStateDelete === null) return;
-    deleteMutation.mutate(confirmStateDelete);
+    setConfirmStateDelete(null);
+    snackbarPromise(deleteMutation.mutateAsync(confirmStateDelete), {
+      loading: "Deleting incident...",
+      success: "Incident deleted successfully",
+      error: "Failed to delete incident",
+    });
   };
 
-  const createMutation = useCreateIncidentInLocation({
-    onSuccess: () => {
-      setModalState(null);
-    },
-  });
+  const createMutation = useCreateIncidentInLocation();
 
-  const updateMutation = useUpdateIncidentInLocation({
-    onSuccess: () => {
-      setModalState(null);
-    },
-  });
+  const handleCreateIncident = (data: IncidentCreateDto) => {
+    setModalState(null);
+    snackbarPromise(createMutation.mutateAsync(data), {
+      loading: "Creating incident...",
+      success: "Incident created successfully",
+      error: "Failed to create incident",
+    });
+  };
+
+  const updateMutation = useUpdateIncidentInLocation();
 
   const handleEditIncident = (data: IncidentCreateDto) => {
     if (modalState?.mode !== "edit") return;
-    updateMutation.mutate({
-      id: modalState.incident.id,
-      payload: {
-        location_place_id: location.google_place_id,
-        incident_datetime: data.incident_datetime,
-        description: data.description,
-        severity: data.severity,
-        reference_id: data.reference_id ?? null,
-      },
-    });
+    const incidentId = modalState.incident.id;
+    setModalState(null);
+    setIncidentOpen(incidentId, true);
+    snackbarPromise(
+      updateMutation.mutateAsync({
+        id: incidentId,
+        payload: {
+          location_place_id: location.google_place_id,
+          incident_datetime: data.incident_datetime,
+          description: data.description,
+          severity: data.severity,
+          reference_id: data.reference_id ?? null,
+        },
+      }),
+      {
+        loading: "Updating incident...",
+        success: "Incident updated successfully",
+        error: "Failed to update incident",
+      }
+    );
   };
 
   return (
@@ -103,8 +129,10 @@ export default function IncidentInfoChipDetails({
         ) : (
           incidents.map((incident) => (
             <IncidentSidebarCard
-              incidents={incident}
+              incident={incident}
               key={incident.id}
+              open={openIncidentIds.has(incident.id)}
+              onOpenChange={(open) => setIncidentOpen(incident.id, open)}
               onDeleteIncidentAction={setConfirmStateDelete}
               onEditIncidentAction={(incident: NestedIncidentDto) => {
                 setModalState({ mode: "edit", incident });
@@ -142,7 +170,7 @@ export default function IncidentInfoChipDetails({
         onSubmit={
           modalState?.mode === "edit"
             ? handleEditIncident
-            : createMutation.mutate
+            : handleCreateIncident
         }
         location={location}
       />

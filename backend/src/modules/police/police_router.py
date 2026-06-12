@@ -19,7 +19,15 @@ police_router = APIRouter(prefix="/api/police", tags=["police"])
 _OPENAPI_PARAMS = get_paginated_openapi_params(PoliceService.QUERY_FIELDS)
 
 
-@police_router.get("", openapi_extra=_OPENAPI_PARAMS)
+@police_router.get(
+    "",
+    openapi_extra=_OPENAPI_PARAMS,
+    responses={
+        400: {
+            "description": "Invalid sort or filter parameter: unknown field or unsupported operator"
+        },
+    },
+)
 async def list_police(
     params: ListQueryParams = parse_list_query_params(),
     police_service: PoliceService = Depends(),
@@ -28,7 +36,15 @@ async def list_police(
     return await police_service.get_police_paginated(params)
 
 
-@police_router.get("/csv", openapi_extra=_OPENAPI_PARAMS)
+@police_router.get(
+    "/csv",
+    openapi_extra=_OPENAPI_PARAMS,
+    responses={
+        400: {
+            "description": "Invalid sort or filter parameter: unknown field or unsupported operator"
+        },
+    },
+)
 async def get_police_csv(
     params: ListQueryParams = parse_export_list_query_params(),
     police_service: PoliceService = Depends(),
@@ -43,7 +59,12 @@ async def get_police_csv(
     )
 
 
-@police_router.get("/{police_id}")
+@police_router.get(
+    "/{police_id}",
+    responses={
+        404: {"description": "Police account with the given ID was not found"},
+    },
+)
 async def get_police(
     police_id: int,
     police_service: PoliceService = Depends(),
@@ -52,7 +73,13 @@ async def get_police(
     return await police_service.get_police_by_id(police_id)
 
 
-@police_router.put("/{police_id}")
+@police_router.put(
+    "/{police_id}",
+    responses={
+        404: {"description": "Police account with the given ID was not found"},
+        409: {"description": "The new email address is already in use by another police account"},
+    },
+)
 async def update_police(
     police_id: int,
     data: PoliceAccountUpdate,
@@ -62,7 +89,13 @@ async def update_police(
     return await police_service.update_police(police_id, data.email, data.role, data.is_verified)
 
 
-@police_router.delete("/{police_id}")
+@police_router.delete(
+    "/{police_id}",
+    responses={
+        403: {"description": "Police admins cannot delete their own account"},
+        404: {"description": "Police account with the given ID was not found"},
+    },
+)
 async def delete_police(
     police_id: int,
     police_service: PoliceService = Depends(),

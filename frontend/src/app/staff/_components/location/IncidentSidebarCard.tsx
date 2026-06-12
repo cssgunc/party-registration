@@ -18,13 +18,17 @@ import { ChevronDown, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { useSession } from "next-auth/react";
 
 type IncidentSidebarCardProps = {
-  incidents: NestedIncidentDto;
+  incident: NestedIncidentDto;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   onDeleteIncidentAction: (incidentId: number) => void;
   onEditIncidentAction: (incident: NestedIncidentDto) => void;
 };
 
 function IncidentSidebarCard({
-  incidents,
+  incident,
+  open,
+  onOpenChange,
   onDeleteIncidentAction,
   onEditIncidentAction,
 }: IncidentSidebarCardProps) {
@@ -32,7 +36,7 @@ function IncidentSidebarCard({
   const role = session?.role;
   return (
     <div>
-      <Collapsible>
+      <Collapsible open={open} onOpenChange={onOpenChange}>
         <div>
           <div className="flex flex-row w-full items-center justify-left py-2 px-2 rounded cursor-pointer hover:bg-muted transition-colors">
             <CollapsibleTrigger className="flex-1 text-left group" asChild>
@@ -40,12 +44,12 @@ function IncidentSidebarCard({
                 <ChevronDown className="mr-2 size-4 transition-transform duration-100 group-data-[state=open]:rotate-180" />
                 <div className="flex items-center gap-10">
                   <p className="text-sm whitespace-nowrap">
-                    {format(incidents.incident_datetime, "MM/dd")}
+                    {format(incident.incident_datetime, "MM/dd/yy")}
                   </p>
                   <p className="text-sm w-20 whitespace-nowrap">
-                    {formatTime(incidents.incident_datetime)}
+                    {formatTime(incident.incident_datetime)}
                   </p>
-                  <IncidentFlag type={incidents.severity} hoverCard />
+                  <IncidentFlag type={incident.severity} hoverCard />
                 </div>
               </div>
             </CollapsibleTrigger>
@@ -59,13 +63,13 @@ function IncidentSidebarCard({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
                   <DropdownMenuItem
-                    onClick={() => onEditIncidentAction?.(incidents)}
+                    onClick={() => onEditIncidentAction?.(incident)}
                   >
                     <Pencil className="mr-2 size-4" />
                     Edit
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={() => onDeleteIncidentAction(incidents.id)}
+                    onClick={() => onDeleteIncidentAction(incident.id)}
                     variant="destructive"
                   >
                     <Trash2 className="mr-2 size-4" />
@@ -80,10 +84,10 @@ function IncidentSidebarCard({
         <CollapsibleContent>
           <div className="py-2 px-6">
             <p className="text-sm italic">
-              Reference ID: {incidents.reference_id || "None"}
+              Reference ID: {incident.reference_id || "None"}
             </p>
-            {incidents.description ? (
-              <p className="text-sm">Description: {incidents.description}</p>
+            {incident.description ? (
+              <p className="text-sm">Description: {incident.description}</p>
             ) : (
               <p className="text-sm italic">No description provided.</p>
             )}

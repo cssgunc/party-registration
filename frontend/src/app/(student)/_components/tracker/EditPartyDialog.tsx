@@ -58,6 +58,7 @@ export function EditPartyDialog({
         partyId: party.id,
         data: partyData,
       });
+      openSnackbar("Party updated successfully", "success");
       onOpenChange(false);
     } catch (error) {
       const validationError = getPartyValidationError(error);
@@ -69,8 +70,13 @@ export function EditPartyDialog({
     }
   };
 
+  function handleOpenChange(nextOpen: boolean) {
+    if (!nextOpen) setSubmissionError(null);
+    onOpenChange(nextOpen);
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>Edit Party</DialogTitle>

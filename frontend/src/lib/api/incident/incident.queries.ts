@@ -10,7 +10,6 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { useRef } from "react";
 import { IncidentService } from "./incident.service";
 import {
   IncidentCreateDto,
@@ -81,9 +80,15 @@ export function useUpdateIncident<TContext = unknown>(
   >
 ) {
   const queryClient = useQueryClient();
-  const previousByIdRef = useRef<IncidentDto | undefined>(undefined);
 
-  return useMutation<IncidentDto, Error, UpdateIncidentVars, TContext>({
+  // Combine our rollback snapshot with the consumer's onMutate result so both
+  // ride the per-invocation context channel
+  type MutationContext = {
+    previous: IncidentDto | undefined;
+    consumer: TContext;
+  };
+
+  return useMutation<IncidentDto, Error, UpdateIncidentVars, MutationContext>({
     ...options,
     mutationFn: ({ id, payload }: UpdateIncidentVars) =>
       incidentService.updateIncident(id, payload),
@@ -91,39 +96,53 @@ export function useUpdateIncident<TContext = unknown>(
     onMutate: async ({ id, payload }, context) => {
       await queryClient.cancelQueries({ queryKey: INCIDENTS_KEY });
 
-      previousByIdRef.current = queryClient.getQueryData<IncidentDto>([
+      const previous = queryClient.getQueryData<IncidentDto>([
         ...INCIDENTS_KEY,
         id,
       ]);
 
-      if (previousByIdRef.current) {
+      if (previous) {
         queryClient.setQueryData<IncidentDto>([...INCIDENTS_KEY, id], {
-          ...previousByIdRef.current,
+          ...previous,
           ...payload,
           incident_datetime:
             payload.incident_datetime instanceof Date
               ? payload.incident_datetime
-              : (previousByIdRef.current.incident_datetime ?? new Date()),
+              : (previous.incident_datetime ?? new Date()),
         });
         options?.onOptimisticUpdate?.({ id, payload });
       }
 
-      return (await options?.onMutate?.({ id, payload }, context)) as TContext;
+      const consumer = (await options?.onMutate?.(
+        { id, payload },
+        context
+      )) as TContext;
+      return { previous, consumer };
     },
 
     onError: (error, vars, onMutateResult, context) => {
-      if (previousByIdRef.current) {
+      if (onMutateResult?.previous) {
         queryClient.setQueryData(
           [...INCIDENTS_KEY, vars.id],
-          previousByIdRef.current
+          onMutateResult.previous
         );
       }
-      options?.onError?.(error, vars, onMutateResult, context);
+      options?.onError?.(error, vars, onMutateResult?.consumer, context);
     },
 
-    onSuccess: (...params) => {
+    onSuccess: (data, vars, onMutateResult, context) => {
       queryClient.invalidateQueries({ queryKey: INCIDENTS_KEY });
-      options?.onSuccess?.(...params);
+      options?.onSuccess?.(data, vars, onMutateResult.consumer, context);
+    },
+
+    onSettled: (data, error, vars, onMutateResult, context) => {
+      options?.onSettled?.(
+        data,
+        error,
+        vars,
+        onMutateResult?.consumer,
+        context
+      );
     },
   });
 }
@@ -132,21 +151,24 @@ export function useDeleteIncident<TContext = unknown>(
   options?: OptimisticMutationOptions<void, Error, number, TContext>
 ) {
   const queryClient = useQueryClient();
-  const previousQueriesRef = useRef<
-    ReturnType<typeof queryClient.getQueriesData<PaginatedIncidentsResponse>>
-  >([]);
 
-  return useMutation<void, Error, number, TContext>({
+  type MutationContext = {
+    previous: ReturnType<
+      typeof queryClient.getQueriesData<PaginatedIncidentsResponse>
+    >;
+    consumer: TContext;
+  };
+
+  return useMutation<void, Error, number, MutationContext>({
     ...options,
     mutationFn: (id: number) => incidentService.deleteIncident(id),
 
     onMutate: async (id, context) => {
       await queryClient.cancelQueries({ queryKey: INCIDENTS_KEY });
 
-      previousQueriesRef.current =
-        queryClient.getQueriesData<PaginatedIncidentsResponse>({
-          queryKey: INCIDENTS_KEY,
-        });
+      const previous = queryClient.getQueriesData<PaginatedIncidentsResponse>({
+        queryKey: INCIDENTS_KEY,
+      });
 
       queryClient.setQueriesData<PaginatedIncidentsResponse>(
         { queryKey: INCIDENTS_KEY },
@@ -155,19 +177,24 @@ export function useDeleteIncident<TContext = unknown>(
       );
 
       options?.onOptimisticUpdate?.(id);
-      return (await options?.onMutate?.(id, context)) as TContext;
+      const consumer = (await options?.onMutate?.(id, context)) as TContext;
+      return { previous, consumer };
     },
 
     onError: (error, id, onMutateResult, context) => {
-      previousQueriesRef.current.forEach(([queryKey, data]) => {
+      onMutateResult?.previous.forEach(([queryKey, data]) => {
         queryClient.setQueryData(queryKey, data);
       });
-      options?.onError?.(error, id, onMutateResult, context);
+      options?.onError?.(error, id, onMutateResult?.consumer, context);
     },
 
-    onSuccess: (...params) => {
+    onSuccess: (data, id, onMutateResult, context) => {
       queryClient.invalidateQueries({ queryKey: INCIDENTS_KEY });
-      options?.onSuccess?.(...params);
+      options?.onSuccess?.(data, id, onMutateResult.consumer, context);
+    },
+
+    onSettled: (data, error, id, onMutateResult, context) => {
+      options?.onSettled?.(data, error, id, onMutateResult?.consumer, context);
     },
   });
 }
