@@ -26,7 +26,7 @@ import { useSession } from "next-auth/react";
 
 export default function PoliceAccountsTable() {
   const { data: session } = useSession();
-  const { openSnackbar } = useSnackbar();
+  const { openSnackbar, snackbarPromise } = useSnackbar();
   const {
     mode,
     row,
@@ -43,7 +43,14 @@ export default function PoliceAccountsTable() {
 
   const updatePoliceAccountMutation = useUpdatePoliceAccount({
     onError: (error: Error) => {
-      setSubmissionError(getErrorMessage(error));
+      setSubmissionError(
+        getErrorMessage(error, {
+          status: {
+            409: "That email is already in use by another police account.",
+          },
+          fallback: "Failed to update police account.",
+        })
+      );
     },
     onSuccess: () => {
       openSnackbar("Police account updated successfully", "success");
@@ -51,14 +58,7 @@ export default function PoliceAccountsTable() {
     },
   });
 
-  const deletePoliceAccountMutation = useDeletePoliceAccount({
-    onSuccess: () => {
-      openSnackbar("Police account deleted successfully", "success");
-    },
-    onError: () => {
-      openSnackbar("Failed to delete police account.", "error");
-    },
-  });
+  const deletePoliceAccountMutation = useDeletePoliceAccount();
 
   const currentPoliceId = session?.id ? Number(session.id) : null;
 
@@ -67,7 +67,11 @@ export default function PoliceAccountsTable() {
       openSnackbar("You cannot delete your own account", "error");
       return;
     }
-    deletePoliceAccountMutation.mutate(row.id);
+    snackbarPromise(deletePoliceAccountMutation.mutateAsync(row.id), {
+      loading: "Deleting police account...",
+      success: "Police account deleted successfully",
+      error: "Failed to delete police account",
+    });
   };
 
   const handlePoliceEditSubmit = async (
@@ -151,6 +155,7 @@ export default function PoliceAccountsTable() {
               <PoliceAccountTableForm
                 onSubmit={(data) => handlePoliceEditSubmit(account.id, data)}
                 submissionError={submissionError}
+                isPending={updatePoliceAccountMutation.isPending}
                 editData={{
                   email: account.email,
                   role: account.role,

@@ -39,7 +39,7 @@ function truncateDescription(
 }
 
 export const IncidentTable = () => {
-  const { openSnackbar } = useSnackbar();
+  const { openSnackbar, snackbarPromise } = useSnackbar();
   const {
     mode,
     row,
@@ -53,7 +53,11 @@ export const IncidentTable = () => {
 
   const createMutation = useCreateIncident({
     onError: (error: Error) => {
-      setSubmissionError(getErrorMessage(error));
+      setSubmissionError(
+        getErrorMessage(error, {
+          fallback: "Failed to save the incident. Please try again.",
+        })
+      );
     },
     onSuccess: () => {
       openSnackbar("Incident created successfully", "success");
@@ -63,7 +67,11 @@ export const IncidentTable = () => {
 
   const updateMutation = useUpdateIncidentInLocation({
     onError: (error: Error) => {
-      setSubmissionError(getErrorMessage(error));
+      setSubmissionError(
+        getErrorMessage(error, {
+          fallback: "Failed to save the incident. Please try again.",
+        })
+      );
     },
     onSuccess: () => {
       openSnackbar("Incident updated successfully", "success");
@@ -71,14 +79,7 @@ export const IncidentTable = () => {
     },
   });
 
-  const deleteMutation = useDeleteIncident({
-    onError: (error: Error) => {
-      console.error("Failed to delete incident:", error);
-    },
-    onSuccess: () => {
-      openSnackbar("Incident deleted successfully", "success");
-    },
-  });
+  const deleteMutation = useDeleteIncident();
 
   const columns: ColumnDef<IncidentDto>[] = [
     {
@@ -203,7 +204,12 @@ export const IncidentTable = () => {
         rowActions={[
           editAction<IncidentDto>({ onClick: openEdit }),
           deleteAction<IncidentDto>({
-            onClick: (incident) => deleteMutation.mutate(incident.id),
+            onClick: (incident) =>
+              snackbarPromise(deleteMutation.mutateAsync(incident.id), {
+                loading: "Deleting incident...",
+                success: "Incident deleted successfully",
+                error: "Failed to delete incident",
+              }),
             resourceName: "Incident",
             description: (incident) =>
               `Are you sure you want to delete this incident at ${formatAddress(incident.location, ["street_number", "street_name", "unit"])}? This action cannot be undone.`,
@@ -233,6 +239,7 @@ export const IncidentTable = () => {
               <IncidentTableForm
                 onSubmit={(data) => createMutation.mutate(data)}
                 submissionError={submissionError}
+                isPending={createMutation.isPending}
               />
             ),
           },
@@ -247,6 +254,7 @@ export const IncidentTable = () => {
                   updateMutation.mutate({ id: incident.id, payload: data })
                 }
                 submissionError={submissionError}
+                isPending={updateMutation.isPending}
               />
             ),
           },

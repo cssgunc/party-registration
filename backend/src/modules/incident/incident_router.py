@@ -30,6 +30,11 @@ _OPENAPI_PARAMS = get_paginated_openapi_params(IncidentService.QUERY_FIELDS)
     summary="Get all incidents (paginated)",
     description="Returns paginated incidents. Police, staff, or admin only.",
     openapi_extra=_OPENAPI_PARAMS,
+    responses={
+        400: {
+            "description": "Invalid sort or filter parameter: unknown field or unsupported operator"
+        },
+    },
 )
 async def get_incidents_paginated(
     params: ListQueryParams = parse_list_query_params(),
@@ -39,7 +44,15 @@ async def get_incidents_paginated(
     return await incident_service.get_incidents_paginated(params)
 
 
-@incident_router.get("/incidents/csv", openapi_extra=_OPENAPI_PARAMS)
+@incident_router.get(
+    "/incidents/csv",
+    openapi_extra=_OPENAPI_PARAMS,
+    responses={
+        400: {
+            "description": "Invalid sort or filter parameter: unknown field or unsupported operator"
+        },
+    },
+)
 async def get_incidents_csv(
     params: ListQueryParams = parse_export_list_query_params(),
     incident_service: IncidentService = Depends(),
@@ -77,6 +90,12 @@ async def get_incidents_by_location(
     status_code=status.HTTP_201_CREATED,
     summary="Create an incident",
     description="Creates a new incident, auto-creating the location if needed. Police or admin.",
+    responses={
+        400: {"description": "Invalid place ID format"},
+        404: {"description": "Place ID not found in Google Maps"},
+        409: {"description": "Location with the given place ID already exists"},
+        500: {"description": "Google Maps API request failed"},
+    },
 )
 async def create_incident(
     incident_data: IncidentCreateDto,
@@ -93,6 +112,12 @@ async def create_incident(
     status_code=status.HTTP_200_OK,
     summary="Update an incident",
     description="Updates an existing incident. Police or admin only.",
+    responses={
+        400: {"description": "Invalid place ID format"},
+        404: {"description": "Incident not found, or place ID not found in Google Maps"},
+        409: {"description": "Location conflict during location update"},
+        500: {"description": "Google Maps API request failed"},
+    },
 )
 async def update_incident(
     incident_id: int,
@@ -110,6 +135,9 @@ async def update_incident(
     status_code=status.HTTP_200_OK,
     summary="Delete an incident",
     description="Deletes an incident. Police or admin only.",
+    responses={
+        404: {"description": "Incident with the given id was not found"},
+    },
 )
 async def delete_incident(
     incident_id: int,

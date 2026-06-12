@@ -2,7 +2,10 @@
 
 import IncidentDialog from "@/components/IncidentDialog";
 import { useSnackbar } from "@/contexts/SnackbarContext";
-import type { IncidentSeverity } from "@/lib/api/incident/incident.types";
+import type {
+  IncidentCreateDto,
+  IncidentSeverity,
+} from "@/lib/api/incident/incident.types";
 import { ExactMatchDto, PartyPoliceDto } from "@/lib/api/party/party.types";
 import { usePoliceCreateIncident } from "@/lib/api/party/police-party.queries";
 import { getErrorMessage } from "@/lib/errors";
@@ -27,19 +30,24 @@ const PartyList = ({
   const [incidentType, setIncidentType] =
     useState<IncidentSeverity>("in_person_warning");
   const [selectedData, setSelectedData] = useState<PartyCardData | null>(null);
-  const { openSnackbar } = useSnackbar();
+  const { snackbarPromise } = useSnackbar();
 
   const createIncidentMutation = usePoliceCreateIncident({
     onOptimisticUpdate: () => {
       setIncidentDialogOpen(false);
     },
-    onSuccess: () => {
-      openSnackbar("Incident created successfully", "success");
-    },
-    onError: (error) => {
-      openSnackbar(getErrorMessage(error), "error");
-    },
   });
+
+  const handleCreateIncident = (data: IncidentCreateDto) => {
+    snackbarPromise(createIncidentMutation.mutateAsync(data), {
+      loading: "Creating incident...",
+      success: "Incident created successfully",
+      error: (err) =>
+        getErrorMessage(err, {
+          fallback: "Failed to create the incident. Please try again.",
+        }),
+    });
+  };
 
   const openIncidentDialog = (
     data: PartyCardData,
@@ -165,7 +173,7 @@ const PartyList = ({
         formattedAddress={
           selectedData?.hasParty ? undefined : selectedData?.formattedAddress
         }
-        onSubmit={createIncidentMutation.mutate}
+        onSubmit={handleCreateIncident}
         isSubmitting={createIncidentMutation.isPending}
         key={dialogKey}
       />

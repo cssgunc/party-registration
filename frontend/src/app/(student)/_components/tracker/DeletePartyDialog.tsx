@@ -31,6 +31,7 @@ export function DeletePartyDialog({
   const handleCancel = async () => {
     try {
       await deletePartyMutation.mutateAsync(party.id);
+      openSnackbar("Party cancelled successfully", "success");
       onOpenChange(false);
     } catch {
       openSnackbar("Failed to cancel party", "error");

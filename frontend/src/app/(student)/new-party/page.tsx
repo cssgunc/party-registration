@@ -12,6 +12,7 @@ import {
   useCurrentStudent,
   useUpdateStudent,
 } from "@/lib/api/student/student.queries";
+import { getErrorMessage } from "@/lib/errors";
 import { isFromThisSchoolYear } from "@/lib/utils";
 import { ArrowLeft, Info } from "lucide-react";
 import Link from "next/link";
@@ -66,11 +67,17 @@ export default function RegistrationForm() {
       router.push("/");
     } catch (err) {
       const validationError = getPartyValidationError(err);
-      if (validationError) {
-        setSubmissionError(validationError.message);
-      } else {
-        openSnackbar("Failed to create party", "error");
-      }
+      setSubmissionError(
+        validationError
+          ? validationError.message
+          : getErrorMessage(err, {
+              status: {
+                409: "That phone number is already in use.",
+                400: "You've already set your residence for this academic year.",
+              },
+              fallback: "Failed to register your party. Please try again.",
+            })
+      );
     }
   };
 

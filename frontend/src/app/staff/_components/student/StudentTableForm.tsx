@@ -46,12 +46,14 @@ interface StudentTableFormProps {
   onSubmit: (data: StudentTableFormValues) => void | Promise<void>;
   editData?: Partial<StudentTableFormValues>;
   submissionError?: string | null;
+  isPending?: boolean;
 }
 
 export default function StudentTableForm({
   onSubmit,
   editData,
   submissionError,
+  isPending,
 }: StudentTableFormProps) {
   const initialResidenceSelection: AutocompleteResult | null =
     editData?.residence
@@ -93,6 +95,7 @@ export default function StudentTableForm({
       onSubmit={onSubmit}
       submitLabel="Save Changes"
       submissionError={submissionError}
+      pending={isPending}
     >
       <TextField
         control={form.control}

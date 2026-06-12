@@ -24,7 +24,15 @@ _OPENAPI_PARAMS = get_paginated_openapi_params(AccountService.QUERY_FIELDS)
 _AGGREGATE_OPENAPI_PARAMS = get_paginated_openapi_params(AccountService.AGGREGATE_QUERY_FIELDS)
 
 
-@account_router.get("", openapi_extra=_OPENAPI_PARAMS)
+@account_router.get(
+    "",
+    openapi_extra=_OPENAPI_PARAMS,
+    responses={
+        400: {
+            "description": "Invalid sort or filter parameter: unknown field or unsupported operator"
+        },
+    },
+)
 async def list_accounts(
     params: ListQueryParams = parse_list_query_params(),
     account_service: AccountService = Depends(),
@@ -33,7 +41,14 @@ async def list_accounts(
     return await account_service.get_accounts_paginated(params)
 
 
-@account_router.post("", status_code=status.HTTP_204_NO_CONTENT)
+@account_router.post(
+    "",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        409: {"description": "An account or pending invite already exists for this email"},
+        500: {"description": "Failed to send the invitation email"},
+    },
+)
 async def create_account(
     data: CreateInviteDto,
     account_service: AccountService = Depends(),
@@ -42,7 +57,15 @@ async def create_account(
     await account_service.create_invite(data)
 
 
-@account_router.get("/aggregate", openapi_extra=_AGGREGATE_OPENAPI_PARAMS)
+@account_router.get(
+    "/aggregate",
+    openapi_extra=_AGGREGATE_OPENAPI_PARAMS,
+    responses={
+        400: {
+            "description": "Invalid sort or filter parameter: unknown field or unsupported operator"
+        },
+    },
+)
 async def get_aggregate_accounts(
     params: ListQueryParams = parse_list_query_params(),
     account_service: AccountService = Depends(),
@@ -51,7 +74,15 @@ async def get_aggregate_accounts(
     return await account_service.get_aggregate_accounts_paginated(params)
 
 
-@account_router.get("/csv", openapi_extra=_OPENAPI_PARAMS)
+@account_router.get(
+    "/csv",
+    openapi_extra=_OPENAPI_PARAMS,
+    responses={
+        400: {
+            "description": "Invalid sort or filter parameter: unknown field or unsupported operator"
+        },
+    },
+)
 async def get_accounts_csv(
     params: ListQueryParams = parse_export_list_query_params(),
     account_service: AccountService = Depends(),
@@ -67,7 +98,15 @@ async def get_accounts_csv(
     )
 
 
-@account_router.get("/aggregate/csv", openapi_extra=_AGGREGATE_OPENAPI_PARAMS)
+@account_router.get(
+    "/aggregate/csv",
+    openapi_extra=_AGGREGATE_OPENAPI_PARAMS,
+    responses={
+        400: {
+            "description": "Invalid sort or filter parameter: unknown field or unsupported operator"
+        },
+    },
+)
 async def get_aggregate_accounts_csv(
     params: ListQueryParams = parse_export_list_query_params(),
     account_service: AccountService = Depends(),
@@ -85,7 +124,13 @@ async def get_aggregate_accounts_csv(
     )
 
 
-@account_router.delete("/invites/{invite_id}", status_code=status.HTTP_204_NO_CONTENT)
+@account_router.delete(
+    "/invites/{invite_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        404: {"description": "Invite token with the given id was not found"},
+    },
+)
 async def delete_invite(
     invite_id: int,
     account_service: AccountService = Depends(),
@@ -94,7 +139,14 @@ async def delete_invite(
     await account_service.delete_invite(invite_id)
 
 
-@account_router.post("/invites/{invite_id}/resend", status_code=status.HTTP_204_NO_CONTENT)
+@account_router.post(
+    "/invites/{invite_id}/resend",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        404: {"description": "Invite token with the given id was not found"},
+        500: {"description": "Failed to send the invitation email"},
+    },
+)
 async def resend_invite(
     invite_id: int,
     account_service: AccountService = Depends(),
@@ -103,7 +155,12 @@ async def resend_invite(
     await account_service.resend_invite(invite_id)
 
 
-@account_router.put("/{account_id}")
+@account_router.put(
+    "/{account_id}",
+    responses={
+        404: {"description": "Account with the given id was not found"},
+    },
+)
 async def update_account(
     account_id: int,
     data: AccountUpdateData,
@@ -113,7 +170,12 @@ async def update_account(
     return await account_service.update_account(account_id, data)
 
 
-@account_router.delete("/{account_id}")
+@account_router.delete(
+    "/{account_id}",
+    responses={
+        404: {"description": "Account with the given id was not found"},
+    },
+)
 async def delete_account(
     account_id: int,
     account_service: AccountService = Depends(),

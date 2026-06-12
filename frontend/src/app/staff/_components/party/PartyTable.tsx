@@ -40,14 +40,15 @@ const PARTY_ERROR_OPTIONS = {
   status: {
     404: "Party not found",
   },
+  fallback: "Failed to update the party. Please try again.",
 } as const;
 
-const getPartyErrorMessage = (error: Error) =>
+const getPartyErrorMessage = (error: unknown) =>
   getPartyValidationError(error)?.message ??
   getErrorMessage(error, PARTY_ERROR_OPTIONS);
 
 export const PartyTable = () => {
-  const { openSnackbar } = useSnackbar();
+  const { openSnackbar, snackbarPromise } = useSnackbar();
   const {
     mode,
     row,
@@ -61,7 +62,7 @@ export const PartyTable = () => {
   const exportMutation = useDownloadPartiesCsv();
 
   const createMutation = useCreateAdminParty({
-    onError: (error: Error) => {
+    onError: (error: unknown) => {
       setSubmissionError(getPartyErrorMessage(error));
     },
     onSuccess: () => {
@@ -71,7 +72,7 @@ export const PartyTable = () => {
   });
 
   const updateMutation = useUpdateAdminParty({
-    onError: (error: Error) => {
+    onError: (error: unknown) => {
       setSubmissionError(getPartyErrorMessage(error));
     },
     onSuccess: () => {
@@ -79,24 +80,8 @@ export const PartyTable = () => {
       closeSidebar();
     },
   });
-
-  const cancelMutation = useCancelAdminParty({
-    onError: (error: Error) => {
-      openSnackbar(getPartyErrorMessage(error), "error");
-    },
-    onSuccess: () => {
-      openSnackbar("Party cancelled successfully", "success");
-    },
-  });
-
-  const restoreMutation = useRestoreAdminParty({
-    onError: (error: Error) => {
-      openSnackbar(getPartyErrorMessage(error), "error");
-    },
-    onSuccess: () => {
-      openSnackbar("Party restored successfully", "success");
-    },
-  });
+  const cancelMutation = useCancelAdminParty();
+  const restoreMutation = useRestoreAdminParty();
 
   const buildPayload = (data: PartyTableFormValues) => {
     // Construct party datetime
@@ -122,17 +107,12 @@ export const PartyTable = () => {
     return payload;
   };
 
-  const handleCreateSubmit = async (data: PartyTableFormValues) => {
-    const payload = buildPayload(data);
-    createMutation.mutate(payload);
+  const handleCreateSubmit = (data: PartyTableFormValues) => {
+    createMutation.mutate(buildPayload(data));
   };
 
-  const handleEditSubmit = async (
-    partyId: number,
-    data: PartyTableFormValues
-  ) => {
-    const payload = buildPayload(data);
-    updateMutation.mutate({ id: partyId, payload });
+  const handleEditSubmit = (partyId: number, data: PartyTableFormValues) => {
+    updateMutation.mutate({ id: partyId, payload: buildPayload(data) });
   };
 
   const columns: ColumnDef<PartyDto>[] = [
@@ -282,7 +262,12 @@ export const PartyTable = () => {
             icon: <Ban className="mr-2 size-4" />,
             variant: "destructive",
             isVisible: (party) => party.status !== PartyStatus.CANCELLED,
-            onClick: (party) => cancelMutation.mutate(party.id),
+            onClick: (party) =>
+              snackbarPromise(cancelMutation.mutateAsync(party.id), {
+                loading: "Cancelling party...",
+                success: "Party cancelled successfully",
+                error: (err) => getPartyErrorMessage(err),
+              }),
             confirm: {
               title: "Cancel Party",
               description: (party) =>
@@ -300,7 +285,12 @@ export const PartyTable = () => {
             label: "Restore",
             icon: <Undo2 className="mr-2 size-4" />,
             isVisible: (party) => party.status === PartyStatus.CANCELLED,
-            onClick: (party) => restoreMutation.mutate(party.id),
+            onClick: (party) =>
+              snackbarPromise(restoreMutation.mutateAsync(party.id), {
+                loading: "Restoring party...",
+                success: "Party restored successfully",
+                error: (err) => getPartyErrorMessage(err),
+              }),
           } satisfies RowAction<PartyDto>,
         ]}
         exportMutation={exportMutation}
@@ -317,6 +307,7 @@ export const PartyTable = () => {
               <PartyTableForm
                 onSubmit={handleCreateSubmit}
                 submissionError={submissionError}
+                isPending={createMutation.isPending}
               />
             ),
           },
@@ -329,6 +320,7 @@ export const PartyTable = () => {
                 onSubmit={(data) => handleEditSubmit(party.id, data)}
                 editData={party}
                 submissionError={submissionError}
+                isPending={updateMutation.isPending}
               />
             ),
           },

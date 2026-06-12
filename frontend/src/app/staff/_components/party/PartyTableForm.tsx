@@ -75,12 +75,14 @@ interface PartyTableFormProps {
   onSubmit: (data: PartyTableFormValues) => void | Promise<void>;
   editData?: PartyDto;
   submissionError?: string | null;
+  isPending?: boolean;
 }
 
 export default function PartyTableForm({
   onSubmit,
   editData,
   submissionError,
+  isPending,
 }: PartyTableFormProps) {
   const { data: session } = useSession();
   const isAdmin = session?.role === "admin";
@@ -113,6 +115,7 @@ export default function PartyTableForm({
       onSubmit={onSubmit}
       submitLabel="Save Changes"
       submissionError={submissionError}
+      pending={isPending}
     >
       <AddressField
         control={form.control}
@@ -184,6 +187,7 @@ export default function PartyTableForm({
                   field.onChange(student?.student_id ?? undefined)
                 }
                 placeholder="Search by name, PID, email, onyen, etc..."
+                autoComplete={false}
                 error={fieldState.error?.message}
               />
             </FormControl>

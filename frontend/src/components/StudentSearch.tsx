@@ -27,6 +27,7 @@ interface StudentSearchProps {
   placeholder?: string;
   className?: string;
   disabled?: boolean;
+  autoComplete?: boolean;
   adminStudentService?: AdminStudentService;
   error?: string;
 }
@@ -87,6 +88,7 @@ export default function StudentSearch({
   placeholder = "Search by name, PID, email, onyen, or phone...",
   className,
   disabled = false,
+  autoComplete = true,
   adminStudentService = new AdminStudentService(),
   error: externalError,
 }: StudentSearchProps) {
@@ -307,6 +309,7 @@ export default function StudentSearch({
               placeholder={placeholder}
               disabled={disabled}
               readOnly={!!selectedStudent}
+              autoComplete={autoComplete ? "on" : "off"}
               className={cn(
                 "pr-16",
                 selectedStudent &&

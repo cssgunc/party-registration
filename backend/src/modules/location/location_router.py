@@ -32,6 +32,10 @@ _OPENAPI_PARAMS = get_paginated_openapi_params(LocationService.QUERY_FIELDS)
     status_code=status.HTTP_200_OK,
     summary="Autocomplete address search",
     description="Returns address suggestions based on user input using Google Maps Places API.",
+    responses={
+        400: {"description": "Invalid address input"},
+        500: {"description": "Google Maps API request failed"},
+    },
 )
 async def autocomplete_address(
     input_data: AutocompleteInput,
@@ -66,6 +70,11 @@ async def autocomplete_address(
     status_code=status.HTTP_200_OK,
     summary="Get place details from Google Maps place ID",
     description="Returns address details including coordinates for a given place ID.",
+    responses={
+        400: {"description": "Invalid place ID or malformed request"},
+        404: {"description": "Place not found for the given place ID"},
+        500: {"description": "Google Maps API request failed"},
+    },
 )
 async def get_place_details(
     place_id: str,
@@ -96,6 +105,11 @@ async def get_place_details(
     "",
     response_model=PaginatedLocationResponse,
     openapi_extra=_OPENAPI_PARAMS,
+    responses={
+        400: {
+            "description": "Invalid sort or filter parameter: unknown field or unsupported operator"
+        },
+    },
 )
 async def get_locations(
     params: ListQueryParams = parse_list_query_params(),
@@ -108,7 +122,15 @@ async def get_locations(
     return await location_service.get_locations_paginated(params)
 
 
-@location_router.get("/csv", openapi_extra=_OPENAPI_PARAMS)
+@location_router.get(
+    "/csv",
+    openapi_extra=_OPENAPI_PARAMS,
+    responses={
+        400: {
+            "description": "Invalid sort or filter parameter: unknown field or unsupported operator"
+        },
+    },
+)
 async def get_locations_csv(
     params: ListQueryParams = parse_export_list_query_params(),
     location_service: LocationService = Depends(),
@@ -124,7 +146,13 @@ async def get_locations_csv(
     )
 
 
-@location_router.get("/{location_id}", response_model=LocationDto)
+@location_router.get(
+    "/{location_id}",
+    response_model=LocationDto,
+    responses={
+        404: {"description": "Location not found"},
+    },
+)
 async def get_location(
     location_id: int,
     location_service: LocationService = Depends(),
@@ -133,7 +161,17 @@ async def get_location(
     return await location_service.get_location_by_id(location_id)
 
 
-@location_router.post("", status_code=201, response_model=LocationDto)
+@location_router.post(
+    "",
+    status_code=201,
+    response_model=LocationDto,
+    responses={
+        400: {"description": "Invalid Google place ID"},
+        404: {"description": "Place not found for the given place ID"},
+        409: {"description": "Location with this Google place ID already exists"},
+        500: {"description": "Google Maps API request failed"},
+    },
+)
 async def create_location(
     data: LocationCreate,
     location_service: LocationService = Depends(),
@@ -148,7 +186,16 @@ async def create_location(
     )
 
 
-@location_router.put("/{location_id}", response_model=LocationDto)
+@location_router.put(
+    "/{location_id}",
+    response_model=LocationDto,
+    responses={
+        400: {"description": "Invalid Google place ID"},
+        404: {"description": "Location not found, or place not found for the given place ID"},
+        409: {"description": "Location with this Google place ID already exists"},
+        500: {"description": "Google Maps API request failed"},
+    },
+)
 async def update_location(
     location_id: int,
     data: LocationCreate,
@@ -173,7 +220,13 @@ async def update_location(
     return await location_service.update_location(location_id, location_data)
 
 
-@location_router.delete("/{location_id}", response_model=LocationDto)
+@location_router.delete(
+    "/{location_id}",
+    response_model=LocationDto,
+    responses={
+        404: {"description": "Location not found"},
+    },
+)
 async def delete_location(
     location_id: int,
     location_service: LocationService = Depends(),
