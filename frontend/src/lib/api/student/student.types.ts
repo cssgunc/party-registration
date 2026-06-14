@@ -59,16 +59,7 @@ type ResidenceStudentDtoBackend = {
   residence_chosen_date: string;
 };
 
-type StudentSelfDto = {
-  id: number;
-  pid: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  onyen: string;
-  phone_number: string | null;
-  contact_preference: ContactPreference | null;
-  last_registered: Date | null;
+type StudentSelfDto = Omit<StudentDto, "residence"> & {
   residence: ResidenceStudentDto | null;
 };
 

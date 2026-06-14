@@ -111,26 +111,9 @@ class LocationEntity(MappedAsDataclass, EntityBase):
         """Location DTO for student view — incidents restricted to type and date/time."""
         insp = inspect(self)
         incidents_loaded = "incidents" not in insp.unloaded
-
-        hold_exp = self.hold_expiration
-        if hold_exp is not None and hold_exp.tzinfo is None:
-            hold_exp = hold_exp.replace(tzinfo=UTC)
-
+        dto = self.to_dto()
         return LocationStudentDto(
-            id=self.id,
-            google_place_id=self.google_place_id,
-            formatted_address=self.formatted_address,
-            latitude=float(self.latitude),
-            longitude=float(self.longitude),
-            street_number=self.street_number,
-            street_name=self.street_name,
-            unit=self.unit,
-            city=self.city,
-            county=self.county,
-            state=self.state,
-            country=self.country,
-            zip_code=self.zip_code,
-            hold_expiration=hold_exp,
+            **dto.model_dump(exclude={"incidents"}),
             incidents=[incident.to_nested_student_dto() for incident in self.incidents]
             if incidents_loaded
             else [],

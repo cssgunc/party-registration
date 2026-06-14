@@ -18,6 +18,7 @@ from src.modules.student.student_service import (
     StudentService,
 )
 from test.modules.account.account_utils import AccountTestUtils
+from test.modules.incident.incident_utils import IncidentTestUtils
 from test.modules.location.location_utils import GmapsMockUtils, LocationTestUtils
 from test.modules.student.student_utils import StudentTestUtils
 
@@ -157,11 +158,11 @@ class TestStudentService:
             await self.student_service.update_is_registered(99999, is_registered=True)
 
     @pytest.mark.asyncio
-    async def test_get_student_me_self_dto_no_entity(self):
+    async def test_get_student_me_dto_no_entity(self):
         """Account with student role but no Student entity returns partial DTO with nulls."""
         account = await self.account_utils.create_one(role=AccountRole.STUDENT.value)
 
-        dto = await self.student_service.get_student_me_self_dto(account.id)
+        dto = await self.student_service.get_student_me_dto(account.id)
 
         assert isinstance(dto, StudentSelfDto)
         assert dto.phone_number is None
@@ -170,13 +171,37 @@ class TestStudentService:
         assert dto.residence is None
 
     @pytest.mark.asyncio
-    async def test_get_student_me_self_dto_with_entity(self):
+    async def test_get_student_me_dto_with_entity(self):
         """Account with Student entity returns full DTO."""
         student_entity = await self.student_utils.create_one()
 
-        dto = await self.student_service.get_student_me_self_dto(student_entity.account_id)
+        dto = await self.student_service.get_student_me_dto(student_entity.account_id)
 
         self.student_utils.assert_matches(dto, student_entity)
+
+    @pytest.mark.asyncio
+    async def test_get_student_me_dto_incidents_restricted(
+        self,
+        incident_utils: IncidentTestUtils,
+    ):
+        """Incidents in the student self-view must not expose description or reference_id."""
+        student_entity = await self.student_utils.create_one(
+            residence_place_id="ChIJincident_restriction_test"
+        )
+        assert student_entity.residence_id is not None
+        await incident_utils.create_one(
+            location_id=student_entity.residence_id,
+            description="sensitive details",
+            reference_id="REF-001",
+        )
+
+        dto = await self.student_service.get_student_me_dto(student_entity.account_id)
+
+        assert dto.residence is not None
+        assert len(dto.residence.location.incidents) == 1
+        incident = dto.residence.location.incidents[0]
+        assert not hasattr(incident, "description")
+        assert not hasattr(incident, "reference_id")
 
     @pytest.mark.asyncio
     async def test_update_student_self_upserts_when_no_entity(self):

@@ -109,37 +109,16 @@ class StudentEntity(MappedAsDataclass, EntityBase):
 
     def to_self_dto(self) -> "StudentSelfDto":
         """Student self-view DTO — residence incidents restricted to type and date/time."""
-        last_reg = self.last_registered
-        if last_reg is not None and last_reg.tzinfo is None:
-            last_reg = last_reg.replace(tzinfo=UTC)
-
-        residence_chosen = self.residence_chosen_date
-        if residence_chosen is not None and residence_chosen.tzinfo is None:
-            residence_chosen = residence_chosen.replace(tzinfo=UTC)
-
-        residence_dto = None
-        if (
-            self.residence_id is not None
-            and self.residence is not None
-            and residence_chosen is not None
-        ):
-            residence_dto = ResidenceStudentDto(
+        dto = self.to_dto()
+        residence = (
+            ResidenceStudentDto(
                 location=self.residence.to_student_dto(),
-                residence_chosen_date=residence_chosen,
+                residence_chosen_date=dto.residence.residence_chosen_date,
             )
-
-        return StudentSelfDto(
-            id=self.account_id,
-            pid=self.account.pid,
-            email=self.account.email,
-            first_name=self.account.first_name,
-            last_name=self.account.last_name,
-            onyen=self.account.onyen,
-            phone_number=self.phone_number,
-            contact_preference=self.contact_preference,
-            last_registered=last_reg,
-            residence=residence_dto,
+            if dto.residence is not None and self.residence is not None
+            else None
         )
+        return StudentSelfDto(**dto.model_dump(exclude={"residence"}), residence=residence)
 
     async def load_dto(self, session: AsyncSession) -> StudentDto:
         """
