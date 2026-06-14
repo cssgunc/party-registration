@@ -111,18 +111,34 @@ class NotificationService:
             "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
         }
 
-    def _party_notification_html(self, party: PartyDto, recipient_name: str, email: str) -> str:
+    def _party_notification_html(
+        self, party: PartyDto, recipient_name: str, email: str, *, is_contact_two: bool = False
+    ) -> str:
         dt = party.party_datetime.astimezone(ZoneInfo("America/New_York")).strftime(
             "%B %-d, %Y at %-I:%M %p %Z"
         )
         management_url = self._management_url(email)
         c1 = party.contact_one
         c2 = party.contact_two
+        contact_two_notice = (
+            """
+            <p style="margin:0 0 16px 0;">
+                <strong>Please note:</strong> You are listed as the
+                <strong>secondary contact</strong>
+                for this registration. Being listed as a secondary contact does not mean you are
+                registered for Party Smart. If you wish to become a primary contact, you must
+                complete the required course and registration process independently.
+            </p>
+            """
+            if is_contact_two
+            else ""
+        )
         return f"""
             <p style="margin:0 0 12px 0;">Hi {escape(recipient_name)},</p>
             <p style="margin:0 0 16px 0;">
                 A party registration has been submitted with you listed as a contact.
             </p>
+            {contact_two_notice}
             <ul style="margin:0 0 16px 0;padding-left:20px;">
                 <li><strong>Address:</strong> {escape(party.location.formatted_address)}</li>
                 <li><strong>Date &amp; Time:</strong> {dt}</li>
@@ -134,12 +150,16 @@ class NotificationService:
             <p style="margin:24px 0 0 0;font-size:12px;color:#6b7280;">
                 <a href="{management_url}" style="color:#6b7280;">
                     Unsubscribe or manage your notifications here
-                </a>.
+                </a>
             </p>
         """
 
-    async def _send_party_notification(self, party: PartyDto, email: str, first_name: str) -> None:
-        html = self._party_notification_html(party, first_name, email)
+    async def _send_party_notification(
+        self, party: PartyDto, email: str, first_name: str, *, is_contact_two: bool = False
+    ) -> None:
+        html = self._party_notification_html(
+            party, first_name, email, is_contact_two=is_contact_two
+        )
         headers = self._list_unsubscribe_headers(email)
         await self.email_service.send_email(
             email, "Party registration confirmation", html, headers=headers
@@ -148,14 +168,16 @@ class NotificationService:
     async def notify_party_created(self, party: PartyDto) -> None:
         """Send party notification emails to both contacts. Failures are logged, not raised."""
         recipients = [
-            (party.contact_one.email, party.contact_one.first_name),
-            (party.contact_two.email, party.contact_two.first_name),
+            (party.contact_one.email, party.contact_one.first_name, False),
+            (party.contact_two.email, party.contact_two.first_name, True),
         ]
-        for email, first_name in recipients:
+        for email, first_name, is_contact_two in recipients:
             try:
                 if await self.is_unsubscribed(email):
                     continue
-                await self._send_party_notification(party, email, first_name)
+                await self._send_party_notification(
+                    party, email, first_name, is_contact_two=is_contact_two
+                )
             except Exception:
                 logger.exception("Failed to send party notification to %s", email)
 
@@ -165,6 +187,8 @@ class NotificationService:
         try:
             if await self.is_unsubscribed(email):
                 return
-            await self._send_party_notification(party, email, party.contact_two.first_name)
+            await self._send_party_notification(
+                party, email, party.contact_two.first_name, is_contact_two=True
+            )
         except Exception:
             logger.exception("Failed to send party notification to %s", email)

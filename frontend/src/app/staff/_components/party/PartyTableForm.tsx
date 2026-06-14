@@ -22,7 +22,6 @@ import { phoneNumberSchema } from "@/lib/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { addBusinessDays, format, isAfter, startOfDay } from "date-fns";
 import { useSession } from "next-auth/react";
-import { useMemo } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 
@@ -76,23 +75,23 @@ interface PartyTableFormProps {
   onSubmit: (data: PartyTableFormValues) => void | Promise<void>;
   editData?: PartyDto;
   submissionError?: string | null;
+  isPending?: boolean;
 }
 
 export default function PartyTableForm({
   onSubmit,
   editData,
   submissionError,
+  isPending,
 }: PartyTableFormProps) {
   const { data: session } = useSession();
   const isAdmin = session?.role === "admin";
 
-  const partyTableFormSchema = useMemo(
-    () => createPartyTableFormSchema(isAdmin),
-    [isAdmin]
-  );
+  const partyTableFormSchema = createPartyTableFormSchema(isAdmin);
 
   const form = useForm<PartyTableFormInput, unknown, PartyTableFormValues>({
     resolver: zodResolver(partyTableFormSchema),
+    mode: "onBlur",
     defaultValues: {
       address: editData?.location.formatted_address ?? "",
       placeId: editData?.location.google_place_id ?? "",
@@ -116,6 +115,7 @@ export default function PartyTableForm({
       onSubmit={onSubmit}
       submitLabel="Save Changes"
       submissionError={submissionError}
+      pending={isPending}
     >
       <AddressField
         control={form.control}
@@ -187,6 +187,7 @@ export default function PartyTableForm({
                   field.onChange(student?.student_id ?? undefined)
                 }
                 placeholder="Search by name, PID, email, onyen, etc..."
+                autoComplete={false}
                 error={fieldState.error?.message}
               />
             </FormControl>

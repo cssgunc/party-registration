@@ -1,6 +1,8 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { Loader2 } from "lucide-react";
 
 type SubmitButtonProps = React.ComponentProps<typeof Button> & {
   /** Whether a submit is in progress (disables + swaps the label). */
@@ -21,11 +23,26 @@ export function SubmitButton({
   label,
   pendingLabel = "Submitting...",
   disabled,
+  className,
   ...props
 }: SubmitButtonProps) {
   return (
-    <Button type="submit" {...props} disabled={pending || disabled}>
-      {pending ? pendingLabel : label}
+    <Button
+      type="submit"
+      {...props}
+      // Override the base `transition-all`: animating width on a `w-fit` button
+      // makes it briefly blow out to the container width on the pending swap.
+      className={cn("transition-colors", className)}
+      disabled={pending || disabled}
+    >
+      {pending ? (
+        <>
+          <Loader2 className="size-4 animate-spin" />
+          {pendingLabel}
+        </>
+      ) : (
+        label
+      )}
     </Button>
   );
 }

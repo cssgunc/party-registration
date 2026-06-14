@@ -1,31 +1,27 @@
 "use client";
 import PartyRegistrationForm, {
-  PartyFormInitialValues,
   PartyFormValues,
+  partyFormValuesToDto,
 } from "@/app/(student)/_components/PartyRegistrationForm";
 import { Card } from "@/components/ui/card";
 import { useSnackbar } from "@/contexts/SnackbarContext";
 import { hasActiveHold } from "@/lib/api/location/location.service";
 import { useRegisterParty } from "@/lib/api/party/party.queries";
-import {
-  StudentCreatePartyDto,
-  getPartyValidationError,
-} from "@/lib/api/party/party.types";
+import { getPartyValidationError } from "@/lib/api/party/party.types";
 import {
   useCurrentStudent,
-  useMyParties,
   useUpdateStudent,
 } from "@/lib/api/student/student.queries";
+import { getErrorMessage } from "@/lib/errors";
 import { isFromThisSchoolYear } from "@/lib/utils";
 import { ArrowLeft, Info } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function RegistrationForm() {
   const registerPartyMutation = useRegisterParty();
   const updateStudentMutation = useUpdateStudent();
-  const partiesQuery = useMyParties();
   const studentQuery = useCurrentStudent();
   const router = useRouter();
   const { openSnackbar } = useSnackbar();
@@ -45,65 +41,11 @@ export default function RegistrationForm() {
     router.replace("/");
   }, [isRedirectingBlockedStudent, router]);
 
-  /**
-   * Get initial values from the student's most recent party (if they have one).
-   * Prefills second contact information to save time for repeat registrations.
-   */
-  const initialValues: PartyFormInitialValues | undefined = useMemo(() => {
-    if (!partiesQuery.data || partiesQuery.data.length === 0) {
-      return undefined;
-    }
-
-    // Sort parties by date (most recent first) and get the latest
-    const sortedParties = [...partiesQuery.data].sort(
-      (a, b) =>
-        new Date(b.party_datetime).getTime() -
-        new Date(a.party_datetime).getTime()
-    );
-    const lastParty = sortedParties[0];
-
-    if (!lastParty.contact_two) {
-      return undefined;
-    }
-
-    return {
-      address: lastParty.location.formatted_address,
-      placeId: lastParty.location.google_place_id,
-      secondContactFirstName: lastParty.contact_two.first_name,
-      secondContactLastName: lastParty.contact_two.last_name,
-      phoneNumber: lastParty.contact_two.phone_number,
-      contactPreference: lastParty.contact_two.contact_preference,
-      contactTwoEmail: lastParty.contact_two.email,
-    };
-  }, [partiesQuery.data]);
-
-  const formToData = (
-    values: PartyFormValues,
-    placeId: string
-  ): StudentCreatePartyDto => {
-    const [hours, minutes] = values.partyTime.split(":");
-    const partyDateTime = new Date(values.partyDate);
-    partyDateTime.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
-
-    return {
-      type: "student",
-      party_datetime: partyDateTime,
-      google_place_id: placeId,
-      contact_two: {
-        email: values.contactTwoEmail,
-        first_name: values.secondContactFirstName,
-        last_name: values.secondContactLastName,
-        phone_number: values.phoneNumber,
-        contact_preference: values.contactPreference,
-      },
-    };
-  };
-
-  const handleSubmit = async (values: PartyFormValues, placeId: string) => {
+  const handleSubmit = async (values: PartyFormValues) => {
     setSubmissionError(null);
     try {
-      // If student provided contact info inline (first-time onboarding), save it first
-      if (values.studentPhoneNumber && values.studentContactPreference) {
+      // If student didn't have contact info yet, save what they entered inline
+      if (!studentQuery.data?.phone_number) {
         await updateStudentMutation.mutateAsync({
           phone_number: values.studentPhoneNumber,
           contact_preference: values.studentContactPreference,
@@ -111,23 +53,31 @@ export default function RegistrationForm() {
         });
       }
 
-      const partyData = formToData(values, placeId);
+      const partyData = partyFormValuesToDto(values);
       const hasValidResidence = isFromThisSchoolYear(
         studentQuery.data?.residence?.residence_chosen_date
       );
       await registerPartyMutation.mutateAsync({
         partyData,
-        residencePlaceId: hasValidResidence ? undefined : placeId,
+        residencePlaceId: hasValidResidence
+          ? undefined
+          : values.location.google_place_id,
       });
       openSnackbar("Party created successfully!", "success");
       router.push("/");
     } catch (err) {
       const validationError = getPartyValidationError(err);
-      if (validationError) {
-        setSubmissionError(validationError.message);
-      } else {
-        openSnackbar("Failed to create party", "error");
-      }
+      setSubmissionError(
+        validationError
+          ? validationError.message
+          : getErrorMessage(err, {
+              status: {
+                409: "That phone number is already in use.",
+                400: "You've already set your residence for this academic year.",
+              },
+              fallback: "Failed to register your party. Please try again.",
+            })
+      );
     }
   };
 
@@ -161,7 +111,6 @@ export default function RegistrationForm() {
 
               <PartyRegistrationForm
                 onSubmit={handleSubmit}
-                initialValues={initialValues}
                 student={studentQuery.data}
                 submissionError={submissionError}
               />

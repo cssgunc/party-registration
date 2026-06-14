@@ -117,6 +117,7 @@ export function buildServerTableParams(
     if (!operator) continue;
 
     const isDateLike = config.type === "date" || config.type === "datetime";
+    const isTimeLike = config.type === "time";
     if (
       operator !== "null" &&
       operator !== "notnull" &&
@@ -131,11 +132,12 @@ export function buildServerTableParams(
         break;
       case "between": {
         const range = value as { from?: unknown; to?: unknown };
-        if (config.type === "time") {
+        if (isTimeLike) {
           // Time range uses the trange operator which handles midnight wrap-around server-side.
           // Only send trange when both ends are specified; fall back to single-side operators otherwise.
           if (range?.from != null && range?.to != null) {
-            params.filters[`${field}_trange`] = `${range.from},${range.to}`;
+            params.filters[`${field}_trange`] =
+              `${String(range.from)},${String(range.to)}`;
           } else if (range?.from != null) {
             params.filters[`${field}_gte`] = String(range.from);
           } else if (range?.to != null) {
@@ -166,6 +168,8 @@ export function buildServerTableParams(
           const date = new Date(value as string | Date);
           params.filters[`${field}_gte`] = startOfDay(date).toISOString();
           params.filters[`${field}_lte`] = endOfDay(date).toISOString();
+        } else if (isTimeLike) {
+          params.filters[`${field}_${operator}`] = String(value);
         } else {
           params.filters[`${field}_${operator}`] = String(value);
         }

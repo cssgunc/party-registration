@@ -18,14 +18,16 @@ import { InfoChip } from "../shared/sidebar/InfoChip";
 import { useFormSidebarState } from "../shared/sidebar/useFormSidebarState";
 import { TableTemplate } from "../shared/table/TableTemplate";
 import { deleteAction, editAction } from "../shared/table/rowActions";
+import { useServerTableState } from "../shared/table/useServerTableState";
 import LocationTableForm from "./LocationTableForm";
 
 const LOCATION_ERROR_OPTIONS = {
   status: { 409: "This location already exists" },
+  fallback: "Failed to save the location. Please try again.",
 } as const;
 
 export const LocationTable = () => {
-  const { openSnackbar } = useSnackbar();
+  const { openSnackbar, snackbarPromise } = useSnackbar();
   const exportMutation = useDownloadLocationsCsv();
   const {
     mode,
@@ -57,14 +59,7 @@ export const LocationTable = () => {
     },
   });
 
-  const deleteMutation = useDeleteLocation({
-    onError: () => {
-      openSnackbar("Failed to delete location.", "error");
-    },
-    onSuccess: () => {
-      openSnackbar("Location deleted successfully", "success");
-    },
-  });
+  const deleteMutation = useDeleteLocation();
 
   const columns: ColumnDef<LocationDto>[] = [
     {
@@ -133,17 +128,28 @@ export const LocationTable = () => {
       },
     },
   ];
+  const serverTableState = useServerTableState({
+    columns,
+    pageSizeStorageKey: "staff-locations",
+  });
+  const query = useLocations(serverTableState.serverParams);
+
   return (
     <>
       <TableTemplate
-        useQuery={useLocations}
+        query={query}
+        serverTableState={serverTableState}
         columns={columns}
         createAction={{ label: "New Location", fn: openCreate }}
-        pageSizeStorageKey="staff-locations"
         rowActions={[
           editAction<LocationDto>({ onClick: openEdit }),
           deleteAction<LocationDto>({
-            onClick: (location) => deleteMutation.mutate(location.id),
+            onClick: (location) =>
+              snackbarPromise(deleteMutation.mutateAsync(location.id), {
+                loading: "Deleting location...",
+                success: "Location deleted successfully",
+                error: "Failed to delete location",
+              }),
             resourceName: "Location",
             description: (location) =>
               `Are you sure you want to delete location ${location.formatted_address}? This action cannot be undone.`,
@@ -169,6 +175,7 @@ export const LocationTable = () => {
                   })
                 }
                 submissionError={submissionError}
+                isPending={createMutation.isPending}
               />
             ),
           },
@@ -191,6 +198,7 @@ export const LocationTable = () => {
                   holdExpiration: location.hold_expiration || null,
                 }}
                 submissionError={submissionError}
+                isPending={updateMutation.isPending}
               />
             ),
           },

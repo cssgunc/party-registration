@@ -206,6 +206,26 @@ deploy:
 
 ---
 
+## OCSL Configuration Checklist
+
+The following variables are OCSL-owned — confirm their values with OCSL before
+deploying. Most have built-in defaults (see `backend/src/core/config.py` and
+`frontend/src/lib/config/env.client.ts`); set them explicitly only if the
+default is wrong.
+
+| Variable | Notes |
+|---|---|
+| `OCSL_WEBSITE_URL` | OCSL's public website URL, linked in the app footer |
+| `NEXT_PUBLIC_COURSE_LINK` | Link where students can schedule the Party Smart course |
+| `NEXT_PUBLIC_CONTACT_EMAIL` | Contact email displayed in the app |
+| `NEXT_PUBLIC_CHPD_EMAIL_DOMAIN` | Expected email domain for police officers during signup |
+| `NEXT_PUBLIC_ACADEMIC_YEAR_SWITCH_DATE` | MM-DD date when the academic year rolls over |
+| `NEXT_PUBLIC_PARTY_MIN_LEAD_HOURS` | Minimum hours of advance notice required to register a party |
+| `NEXT_PUBLIC_PARTY_MAX_LEAD_DAYS` | Maximum days in advance a party can be registered |
+| `NEXT_PUBLIC_PARTY_SEARCH_RADIUS_MILES` | Radius used to cluster nearby parties on the map |
+
+---
+
 ## Deploy Checklist
 
 ### First deploy

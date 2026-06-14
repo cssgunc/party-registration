@@ -34,7 +34,6 @@ import {
 } from "@/lib/utils";
 import { format } from "date-fns";
 import { AlertTriangle, EllipsisVertical, ExternalLink } from "lucide-react";
-import { memo } from "react";
 
 const INCIDENT_MENU_ITEMS: {
   severity: IncidentSeverity;
@@ -71,7 +70,7 @@ interface PartyCardProps {
   onOpenIncidentDialog: (severity: IncidentSeverity) => void;
 }
 
-const PartyCard = memo(function PartyCard({
+function PartyCard({
   data,
   onClick,
   isActive,
@@ -154,7 +153,7 @@ const PartyCard = memo(function PartyCard({
                 {formatTime(data.party.party_datetime)}
               </p>
             ) : (
-              <p className="content text-muted-foreground text-sm italic">
+              <p className="content text-muted-foreground text-sm italic pb-1">
                 No party registered at this location
               </p>
             )}
@@ -256,6 +255,6 @@ const PartyCard = memo(function PartyCard({
       </div>
     </article>
   );
-});
+}
 
 export default PartyCard;

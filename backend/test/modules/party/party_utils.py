@@ -22,9 +22,9 @@ from test.utils.resource_test_utils import ResourceTestUtils
 
 
 def get_valid_party_datetime() -> datetime:
-    """Get a datetime that is at least 3 business days from now."""
-    days_ahead = 5  # Start with 5 calendar days to ensure 3 business days
-    return datetime.now(UTC) + timedelta(days=days_ahead)
+    """Get a datetime that satisfies all student scheduling rules:
+    not same day, at least 24 hours out, and within 30 days."""
+    return datetime.now(UTC) + timedelta(days=2)
 
 
 def assert_party_validation_error(

@@ -1,7 +1,6 @@
 import type { RefreshTokenResponse } from "@/lib/api/auth/auth.types";
 import { signOut } from "@/lib/auth/signout";
 import { clientEnv } from "@/lib/config/env.client";
-import { getErrorMessage } from "@/lib/errors";
 import axios, { AxiosRequestConfig, AxiosRequestHeaders } from "axios";
 import { getServerSession } from "next-auth";
 import { getSession } from "next-auth/react";
@@ -153,12 +152,10 @@ export const setupErrorInterceptor = (showError: (message: string) => void) => {
   apiClient.interceptors.response.use(
     (response) => response,
     (error) => {
-      // Skip 401 errors (handled by token refresh interceptor)
-      if (error.response?.status === 401) {
+      if ((error.response?.status ?? 0) < 500) {
         return Promise.reject(error);
       }
-
-      showError(getErrorMessage(error));
+      showError("Something went wrong. Please try again.");
       return Promise.reject(error);
     }
   );

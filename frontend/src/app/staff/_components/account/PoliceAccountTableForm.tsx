@@ -31,6 +31,7 @@ interface Props {
   editData?: { email: string; role: PoliceRole; is_verified: boolean };
   submissionError?: string | null;
   disableVerificationToggle?: boolean;
+  isPending?: boolean;
 }
 
 export default function PoliceAccountTableForm({
@@ -38,9 +39,11 @@ export default function PoliceAccountTableForm({
   editData,
   submissionError,
   disableVerificationToggle = false,
+  isPending,
 }: Props) {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
+    mode: "onBlur",
     defaultValues: {
       email: editData?.email ?? "",
       role: editData?.role ?? "officer",
@@ -57,6 +60,7 @@ export default function PoliceAccountTableForm({
       onSubmit={handleValid}
       submitLabel="Save Changes"
       submissionError={submissionError}
+      pending={isPending}
     >
       <TextField
         control={form.control}

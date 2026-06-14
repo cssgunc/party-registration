@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { FieldGroup, FieldSet } from "@/components/ui/field";
 import { Form } from "@/components/ui/form";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useSnackbar } from "@/contexts/SnackbarContext";
 import { AutocompleteResult } from "@/lib/api/location/location.types";
 import {
   useCurrentStudent,
@@ -87,6 +88,7 @@ function StudentInfo() {
   const { data: student, isLoading, error } = useCurrentStudent();
   const updateStudentMutation = useUpdateStudent();
   const updateResidenceMutation = useUpdateResidence();
+  const { openSnackbar } = useSnackbar();
   const [isEditing, setIsEditing] = useState(false);
   const [locationPlaceId, setLocationPlaceId] = useState("");
   const [formattedAddress, setFormattedAddress] = useState("");
@@ -94,6 +96,7 @@ function StudentInfo() {
 
   const form = useForm<StudentInfoValues>({
     resolver: zodResolver(studentInfoSchema),
+    mode: "onBlur",
     defaultValues: {
       first_name: "",
       last_name: "",
@@ -141,10 +144,19 @@ function StudentInfo() {
         });
       }
 
+      openSnackbar("Profile updated successfully", "success");
       setLocationPlaceId("");
       setIsEditing(false);
     } catch (error) {
-      setSubmitError(getErrorMessage(error));
+      setSubmitError(
+        getErrorMessage(error, {
+          status: {
+            409: "That phone number is already in use.",
+            400: "You've already set your residence for this academic year.",
+          },
+          fallback: "Failed to update your profile. Please try again.",
+        })
+      );
     }
   };
 

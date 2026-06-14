@@ -7,7 +7,6 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { useRef } from "react";
 import { PartyService } from "./party.service";
 import {
   AdminCreatePartyDto,
@@ -73,20 +72,26 @@ export function useCancelAdminParty<TContext = unknown>(
   options?: OptimisticMutationOptions<PartyDto, Error, number, TContext>
 ) {
   const queryClient = useQueryClient();
-  const previousQueriesRef = useRef<
-    ReturnType<typeof queryClient.getQueriesData<PaginatedResponse<PartyDto>>>
-  >([]);
 
-  return useMutation<PartyDto, Error, number, TContext>({
+  // Combine our rollback snapshot with the consumer's onMutate result so both
+  // ride the per-invocation context channel
+  type MutationContext = {
+    previous: ReturnType<
+      typeof queryClient.getQueriesData<PaginatedResponse<PartyDto>>
+    >;
+    consumer: TContext;
+  };
+
+  return useMutation<PartyDto, Error, number, MutationContext>({
     ...options,
     mutationFn: (id: number) => partyService.cancelParty(id),
 
     onMutate: async (id, context) => {
       await queryClient.cancelQueries({ queryKey: PARTIES_KEY });
 
-      previousQueriesRef.current = queryClient.getQueriesData<
-        PaginatedResponse<PartyDto>
-      >({ queryKey: PARTIES_KEY });
+      const previous = queryClient.getQueriesData<PaginatedResponse<PartyDto>>({
+        queryKey: PARTIES_KEY,
+      });
 
       queryClient.setQueriesData<PaginatedResponse<PartyDto>>(
         { queryKey: PARTIES_KEY },
@@ -102,19 +107,24 @@ export function useCancelAdminParty<TContext = unknown>(
       );
 
       options?.onOptimisticUpdate?.(id);
-      return (await options?.onMutate?.(id, context)) as TContext;
+      const consumer = (await options?.onMutate?.(id, context)) as TContext;
+      return { previous, consumer };
     },
 
     onError: (error, id, onMutateResult, context) => {
-      previousQueriesRef.current.forEach(([queryKey, data]) => {
+      onMutateResult?.previous.forEach(([queryKey, data]) => {
         queryClient.setQueryData(queryKey, data);
       });
-      options?.onError?.(error, id, onMutateResult, context);
+      options?.onError?.(error, id, onMutateResult?.consumer, context);
     },
 
-    onSuccess: (...params) => {
+    onSuccess: (data, id, onMutateResult, context) => {
       queryClient.invalidateQueries({ queryKey: PARTIES_KEY });
-      options?.onSuccess?.(...params);
+      options?.onSuccess?.(data, id, onMutateResult.consumer, context);
+    },
+
+    onSettled: (data, error, id, onMutateResult, context) => {
+      options?.onSettled?.(data, error, id, onMutateResult?.consumer, context);
     },
   });
 }
@@ -123,20 +133,26 @@ export function useRestoreAdminParty<TContext = unknown>(
   options?: OptimisticMutationOptions<PartyDto, Error, number, TContext>
 ) {
   const queryClient = useQueryClient();
-  const previousQueriesRef = useRef<
-    ReturnType<typeof queryClient.getQueriesData<PaginatedResponse<PartyDto>>>
-  >([]);
 
-  return useMutation<PartyDto, Error, number, TContext>({
+  // Combine our rollback snapshot with the consumer's onMutate result so both
+  // ride the per-invocation context channel
+  type MutationContext = {
+    previous: ReturnType<
+      typeof queryClient.getQueriesData<PaginatedResponse<PartyDto>>
+    >;
+    consumer: TContext;
+  };
+
+  return useMutation<PartyDto, Error, number, MutationContext>({
     ...options,
     mutationFn: (id: number) => partyService.restoreParty(id),
 
     onMutate: async (id, context) => {
       await queryClient.cancelQueries({ queryKey: PARTIES_KEY });
 
-      previousQueriesRef.current = queryClient.getQueriesData<
-        PaginatedResponse<PartyDto>
-      >({ queryKey: PARTIES_KEY });
+      const previous = queryClient.getQueriesData<PaginatedResponse<PartyDto>>({
+        queryKey: PARTIES_KEY,
+      });
 
       queryClient.setQueriesData<PaginatedResponse<PartyDto>>(
         { queryKey: PARTIES_KEY },
@@ -152,19 +168,24 @@ export function useRestoreAdminParty<TContext = unknown>(
       );
 
       options?.onOptimisticUpdate?.(id);
-      return (await options?.onMutate?.(id, context)) as TContext;
+      const consumer = (await options?.onMutate?.(id, context)) as TContext;
+      return { previous, consumer };
     },
 
     onError: (error, id, onMutateResult, context) => {
-      previousQueriesRef.current.forEach(([queryKey, data]) => {
+      onMutateResult?.previous.forEach(([queryKey, data]) => {
         queryClient.setQueryData(queryKey, data);
       });
-      options?.onError?.(error, id, onMutateResult, context);
+      options?.onError?.(error, id, onMutateResult?.consumer, context);
     },
 
-    onSuccess: (...params) => {
+    onSuccess: (data, id, onMutateResult, context) => {
       queryClient.invalidateQueries({ queryKey: PARTIES_KEY });
-      options?.onSuccess?.(...params);
+      options?.onSuccess?.(data, id, onMutateResult.consumer, context);
+    },
+
+    onSettled: (data, error, id, onMutateResult, context) => {
+      options?.onSettled?.(data, error, id, onMutateResult?.consumer, context);
     },
   });
 }

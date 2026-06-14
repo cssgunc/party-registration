@@ -2,14 +2,12 @@ import { PartyService } from "@/lib/api/party/party.service";
 import {
   CreatePartyDto,
   MY_PARTIES_KEY,
-  PARTIES_KEY,
   PartyDto,
   StudentCreatePartyDto,
 } from "@/lib/api/party/party.types";
 import { ListQueryParams } from "@/lib/api/shared/query-params";
 import StudentService from "@/lib/api/student/student.service";
 import { CURRENT_STUDENT_KEY } from "@/lib/api/student/student.types";
-import { OptimisticMutationOptions } from "@/lib/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 const partyService = new PartyService();
@@ -39,26 +37,6 @@ export function useRegisterParty() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: MY_PARTIES_KEY });
       queryClient.invalidateQueries({ queryKey: CURRENT_STUDENT_KEY });
-    },
-  });
-}
-
-/**
- * Hook to create a new party registration
- */
-export function useCreateParty(
-  options?: OptimisticMutationOptions<PartyDto, Error, CreatePartyDto>
-) {
-  const queryClient = useQueryClient();
-
-  return useMutation<PartyDto, Error, CreatePartyDto>({
-    ...options,
-    mutationFn: (data) => partyService.createParty(data),
-    onSuccess: (...params) => {
-      // Invalidate all party queries using prefix matching
-      // This will invalidate ["parties"], ["parties", "me"], ["parties", ...dates], etc.
-      queryClient.invalidateQueries({ queryKey: PARTIES_KEY });
-      options?.onSuccess?.(...params);
     },
   });
 }

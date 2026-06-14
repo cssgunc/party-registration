@@ -1,11 +1,5 @@
 "use client";
-import {
-  ReactNode,
-  createContext,
-  useCallback,
-  useContext,
-  useState,
-} from "react";
+import { ReactNode, createContext, useContext, useState } from "react";
 
 type SidebarContextType = {
   isOpen: boolean;
@@ -36,22 +30,19 @@ export function SidebarProvider({ children }: SidebarProviderProps) {
     null
   );
 
-  const openSidebar = useCallback(
-    (key: string, title: string, description: string) => {
-      setSelectedKey(key);
-      setTitle(title);
-      setDescription(description);
-      setIsOpen(true);
-    },
-    []
-  );
+  const openSidebar = (key: string, title: string, description: string) => {
+    setSelectedKey(key);
+    setTitle(title);
+    setDescription(description);
+    setIsOpen(true);
+  };
 
-  const closeSidebar = useCallback(() => {
+  const closeSidebar = () => {
     setIsOpen(false);
     setSelectedKey(null);
     setTitle(null);
     setDescription(null);
-  }, []);
+  };
 
   return (
     <SidebarContext.Provider

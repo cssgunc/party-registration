@@ -17,15 +17,18 @@ interface AccountTableFormProps {
   onSubmit: (data: AccountTableFormValues) => void | Promise<void>;
   editData?: AccountTableFormValues;
   submissionError?: string | null;
+  isPending?: boolean;
 }
 
 export default function AccountTableForm({
   onSubmit,
   editData,
   submissionError,
+  isPending,
 }: AccountTableFormProps) {
   const form = useForm<AccountTableFormValues>({
     resolver: zodResolver(accountTableFormSchema),
+    mode: "onBlur",
     defaultValues: {
       email: editData?.email ?? "",
       role: editData?.role ?? undefined,
@@ -38,8 +41,9 @@ export default function AccountTableForm({
     <FormShell
       form={form}
       onSubmit={onSubmit}
-      submitLabel="Send Invite"
+      submitLabel={isEditMode ? "Save Changes" : "Send Invite"}
       submissionError={submissionError}
+      pending={isPending}
     >
       <TextField
         control={form.control}

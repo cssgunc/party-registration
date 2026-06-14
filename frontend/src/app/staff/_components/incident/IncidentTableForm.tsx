@@ -41,12 +41,14 @@ interface IncidentTableFormProps {
   onSubmit: (data: IncidentCreateDto) => void | Promise<void>;
   editData?: IncidentDto;
   submissionError?: string | null;
+  isPending?: boolean;
 }
 
 export default function IncidentTableForm({
   onSubmit,
   editData,
   submissionError,
+  isPending,
 }: IncidentTableFormProps) {
   const initialAddressSelection: AutocompleteResult | null = editData?.location
     ? {
@@ -57,6 +59,7 @@ export default function IncidentTableForm({
 
   const form = useForm<IncidentTableFormValues>({
     resolver: zodResolver(incidentTableFormSchema),
+    mode: "onBlur",
     defaultValues: {
       location_place_id: editData?.location?.google_place_id ?? "",
       incident_datetime: editData?.incident_datetime ?? new Date(),
@@ -77,7 +80,7 @@ export default function IncidentTableForm({
     return onSubmit({
       location_place_id: data.location_place_id,
       incident_datetime: combined_datetime,
-      description: data.description,
+      description: data.description || null,
       severity: data.severity,
       reference_id: data.reference_id || null,
     });
@@ -89,6 +92,7 @@ export default function IncidentTableForm({
       onSubmit={handleValid}
       submitLabel="Save"
       submissionError={submissionError}
+      pending={isPending}
     >
       <AddressField
         control={form.control}

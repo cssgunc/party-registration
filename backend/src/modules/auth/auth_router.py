@@ -49,7 +49,14 @@ def verify_internal_secret(
         raise InvalidInternalSecretException()
 
 
-@router.post("/exchange")
+@router.post(
+    "/exchange",
+    responses={
+        400: {"description": "Both account_id and police_id were provided to token creation"},
+        403: {"description": "Invalid X-Internal-Secret or invite invalid/expired/role mismatch"},
+        409: {"description": "Account already exists with conflicting email, onyen, or PID"},
+    },
+)
 async def exchange_account_data_for_tokens(
     data: AccountData,
     account_service: AccountService = Depends(),
@@ -73,7 +80,14 @@ async def exchange_account_data_for_tokens(
     return await auth_service.exchange_for_tokens(account)
 
 
-@router.post("/police/signup", status_code=status.HTTP_204_NO_CONTENT)
+@router.post(
+    "/police/signup",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        400: {"description": "Email is not a valid CHPD domain address"},
+        409: {"description": "Email is already registered to a police account"},
+    },
+)
 async def police_signup(
     data: PoliceSignupDto,
     police_service: PoliceService = Depends(),
@@ -84,7 +98,10 @@ async def police_signup(
     await police_service.signup_police(data.email, data.password)
 
 
-@router.post("/police/retry-verification", status_code=status.HTTP_204_NO_CONTENT)
+@router.post(
+    "/police/retry-verification",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
 async def police_retry_verification(
     data: RetryVerificationDto,
     police_service: PoliceService = Depends(),
@@ -95,7 +112,13 @@ async def police_retry_verification(
     await police_service.retry_verification(data.email)
 
 
-@router.post("/police/verify", status_code=status.HTTP_204_NO_CONTENT)
+@router.post(
+    "/police/verify",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        400: {"description": "Verification token is invalid or expired"},
+    },
+)
 async def police_verify_email(
     data: VerifyEmailDto,
     police_service: PoliceService = Depends(),
@@ -106,7 +129,13 @@ async def police_verify_email(
     await police_service.verify_police_email(data.token)
 
 
-@router.post("/police/login")
+@router.post(
+    "/police/login",
+    responses={
+        401: {"description": "Invalid email or password"},
+        403: {"description": "Invalid X-Internal-Secret header, or police email is not verified"},
+    },
+)
 async def police_login(
     credentials: PoliceCredentialsDto,
     police_service: PoliceService = Depends(),
@@ -127,7 +156,13 @@ async def police_login(
     return await auth_service.exchange_for_tokens(police)
 
 
-@router.post("/refresh")
+@router.post(
+    "/refresh",
+    responses={
+        403: {"description": "Invalid X-Internal-Secret header"},
+        404: {"description": "The account or police user for this token was not found"},
+    },
+)
 async def refresh_access_token(
     data: RefreshTokenDto,
     auth_service: AuthService = Depends(),

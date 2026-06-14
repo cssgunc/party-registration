@@ -42,3 +42,11 @@ def business_days_ahead(target_date: datetime) -> int:
             business_days += 1
         current += timedelta(days=1)
     return business_days
+
+
+def hours_ahead(target_datetime: datetime) -> float:
+    """Hours between now (UTC) and target_datetime."""
+    now = datetime.now(UTC)
+    if target_datetime.tzinfo is None:
+        target_datetime = target_datetime.replace(tzinfo=UTC)
+    return (target_datetime - now).total_seconds() / 3600

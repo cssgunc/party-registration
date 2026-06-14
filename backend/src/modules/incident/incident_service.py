@@ -33,7 +33,9 @@ _INCIDENT_QUERY_FIELDS = QueryFieldSet(
     fields={
         "id": IncidentEntity.id,
         "incident_datetime": IncidentEntity.incident_datetime,
-        "incident_datetime_time": cast(IncidentEntity.incident_datetime, SATime()),
+        "incident_datetime_time": cast(
+            func.convert_tz(IncidentEntity.incident_datetime, "UTC", "America/New_York"), SATime()
+        ),
         "severity": IncidentEntity.severity,
         "description": IncidentEntity.description,
         "reference_id": IncidentEntity.reference_id,

@@ -46,7 +46,10 @@
       "contact_preference": "text",
       "last_registered": "NOW-14d",
       "onyen": "stevenmorrison",
-      "residence_id": 1
+      "residence": {
+        "location_id": 1,
+        "residence_chosen_date": "NOW-1d"
+      }
     },
     {
       "id": 4,
@@ -58,7 +61,7 @@
       "contact_preference": "text",
       "last_registered": null,
       "onyen": "monicamalone",
-      "residence_id": null
+      "residence": null
     },
     {
       "id": 5,
@@ -70,7 +73,10 @@
       "contact_preference": "call",
       "last_registered": "NOW-700d",
       "onyen": "lauragonzales",
-      "residence_id": 2
+      "residence": {
+        "location_id": 2,
+        "residence_chosen_date": "NOW-180d"
+      }
     },
     {
       "id": 6,
@@ -82,7 +88,10 @@
       "contact_preference": "text",
       "last_registered": "NOW-580d",
       "onyen": "jonathanbowers",
-      "residence_id": 3
+      "residence": {
+        "location_id": 3,
+        "residence_chosen_date": "NOW-270d"
+      }
     },
     {
       "id": 7,
@@ -94,7 +103,10 @@
       "contact_preference": "call",
       "last_registered": "NOW-306d",
       "onyen": "joshuataylor",
-      "residence_id": 4
+      "residence": {
+        "location_id": 4,
+        "residence_chosen_date": "NOW-365d"
+      }
     },
     {
       "id": 8,
@@ -106,7 +118,10 @@
       "contact_preference": "text",
       "last_registered": "NOW-118d",
       "onyen": "carolynwall",
-      "residence_id": 5
+      "residence": {
+        "location_id": 5,
+        "residence_chosen_date": "NOW-450d"
+      }
     },
     {
       "id": 9,
@@ -118,7 +133,10 @@
       "contact_preference": "text",
       "last_registered": "NOW-594d",
       "onyen": "ambercallahan",
-      "residence_id": 6
+      "residence": {
+        "location_id": 6,
+        "residence_chosen_date": "NOW-120d"
+      }
     },
     {
       "id": 10,
@@ -130,7 +148,10 @@
       "contact_preference": "text",
       "last_registered": "NOW-171d",
       "onyen": "georgeperry",
-      "residence_id": 7
+      "residence": {
+        "location_id": 7,
+        "residence_chosen_date": "NOW-200d"
+      }
     },
     {
       "id": 11,
@@ -142,7 +163,10 @@
       "contact_preference": "text",
       "last_registered": "NOW-526d",
       "onyen": "martinellis",
-      "residence_id": 8
+      "residence": {
+        "location_id": 8,
+        "residence_chosen_date": "NOW-300d"
+      }
     },
     {
       "id": 12,
@@ -154,7 +178,10 @@
       "contact_preference": "text",
       "last_registered": "NOW-395d",
       "onyen": "williamlamb",
-      "residence_id": 9
+      "residence": {
+        "location_id": 9,
+        "residence_chosen_date": "NOW-400d"
+      }
     },
     {
       "id": 13,
@@ -166,7 +193,10 @@
       "contact_preference": "call",
       "last_registered": "NOW-699d",
       "onyen": "theodoresmith",
-      "residence_id": 10
+      "residence": {
+        "location_id": 10,
+        "residence_chosen_date": "NOW-500d"
+      }
     },
     {
       "id": 14,
@@ -178,7 +208,10 @@
       "contact_preference": "call",
       "last_registered": "NOW-240d",
       "onyen": "nicholasboone",
-      "residence_id": 11
+      "residence": {
+        "location_id": 11,
+        "residence_chosen_date": "NOW-400d"
+      }
     },
     {
       "id": 15,
@@ -190,7 +223,10 @@
       "contact_preference": "text",
       "last_registered": "NOW-450d",
       "onyen": "bryangarcia",
-      "residence_id": 12
+      "residence": {
+        "location_id": 12,
+        "residence_chosen_date": "NOW-180d"
+      }
     },
     {
       "id": 16,
@@ -202,7 +238,10 @@
       "contact_preference": "call",
       "last_registered": "NOW-621d",
       "onyen": "karenboone",
-      "residence_id": 13
+      "residence": {
+        "location_id": 13,
+        "residence_chosen_date": "NOW-270d"
+      }
     },
     {
       "id": 17,
@@ -214,7 +253,10 @@
       "contact_preference": "call",
       "last_registered": null,
       "onyen": "markmccoy",
-      "residence_id": 14
+      "residence": {
+        "location_id": 14,
+        "residence_chosen_date": "NOW-365d"
+      }
     },
     {
       "id": 18,
@@ -226,7 +268,10 @@
       "contact_preference": "call",
       "last_registered": "NOW-77d",
       "onyen": "ericbennett",
-      "residence_id": 15
+      "residence": {
+        "location_id": 15,
+        "residence_chosen_date": "NOW-450d"
+      }
     },
     {
       "id": 19,
@@ -238,7 +283,10 @@
       "contact_preference": "call",
       "last_registered": "NOW-578d",
       "onyen": "carolinewalker",
-      "residence_id": 16
+      "residence": {
+        "location_id": 16,
+        "residence_chosen_date": "NOW-120d"
+      }
     },
     {
       "id": 20,
@@ -250,7 +298,10 @@
       "contact_preference": "call",
       "last_registered": "NOW-141d",
       "onyen": "marywilliams",
-      "residence_id": 17
+      "residence": {
+        "location_id": 17,
+        "residence_chosen_date": "NOW-200d"
+      }
     },
     {
       "id": 21,
@@ -262,7 +313,10 @@
       "contact_preference": "text",
       "last_registered": "NOW-516d",
       "onyen": "jordanwilson",
-      "residence_id": 18
+      "residence": {
+        "location_id": 18,
+        "residence_chosen_date": "NOW-300d"
+      }
     },
     {
       "id": 22,
@@ -274,7 +328,10 @@
       "contact_preference": "call",
       "last_registered": "NOW-491d",
       "onyen": "jeremyramos",
-      "residence_id": 19
+      "residence": {
+        "location_id": 19,
+        "residence_chosen_date": "NOW-400d"
+      }
     },
     {
       "id": 23,
@@ -286,7 +343,10 @@
       "contact_preference": "text",
       "last_registered": "NOW-3d",
       "onyen": "ronaldjones",
-      "residence_id": 20
+      "residence": {
+        "location_id": 20,
+        "residence_chosen_date": "NOW-500d"
+      }
     },
     {
       "id": 24,
@@ -298,7 +358,10 @@
       "contact_preference": "call",
       "last_registered": "NOW-448d",
       "onyen": "manuelschwartz",
-      "residence_id": 21
+      "residence": {
+        "location_id": 21,
+        "residence_chosen_date": "NOW-400d"
+      }
     },
     {
       "id": 25,
@@ -310,7 +373,10 @@
       "contact_preference": "text",
       "last_registered": "NOW-231d",
       "onyen": "timothycohen",
-      "residence_id": 22
+      "residence": {
+        "location_id": 22,
+        "residence_chosen_date": "NOW-180d"
+      }
     },
     {
       "id": 26,
@@ -322,7 +388,10 @@
       "contact_preference": "text",
       "last_registered": "NOW-180d",
       "onyen": "christineolson",
-      "residence_id": 23
+      "residence": {
+        "location_id": 23,
+        "residence_chosen_date": "NOW-270d"
+      }
     },
     {
       "id": 27,
@@ -334,7 +403,10 @@
       "contact_preference": "call",
       "last_registered": "NOW-409d",
       "onyen": "kristinadavidson",
-      "residence_id": 24
+      "residence": {
+        "location_id": 24,
+        "residence_chosen_date": "NOW-365d"
+      }
     },
     {
       "id": 28,
@@ -346,7 +418,10 @@
       "contact_preference": "text",
       "last_registered": "NOW-186d",
       "onyen": "richardmccoy",
-      "residence_id": 25
+      "residence": {
+        "location_id": 25,
+        "residence_chosen_date": "NOW-450d"
+      }
     },
     {
       "id": 29,
@@ -358,7 +433,10 @@
       "contact_preference": "text",
       "last_registered": "NOW-689d",
       "onyen": "timothylopez",
-      "residence_id": 26
+      "residence": {
+        "location_id": 26,
+        "residence_chosen_date": "NOW-120d"
+      }
     },
     {
       "id": 30,
@@ -370,7 +448,10 @@
       "contact_preference": "call",
       "last_registered": "NOW-420d",
       "onyen": "perrycolon",
-      "residence_id": 27
+      "residence": {
+        "location_id": 27,
+        "residence_chosen_date": "NOW-200d"
+      }
     },
     {
       "id": 31,
@@ -382,7 +463,10 @@
       "contact_preference": "call",
       "last_registered": "NOW-690d",
       "onyen": "katelynbennett",
-      "residence_id": 28
+      "residence": {
+        "location_id": 28,
+        "residence_chosen_date": "NOW-300d"
+      }
     },
     {
       "id": 32,
@@ -394,7 +478,10 @@
       "contact_preference": "call",
       "last_registered": "NOW-110d",
       "onyen": "davidhowe",
-      "residence_id": 29
+      "residence": {
+        "location_id": 29,
+        "residence_chosen_date": "NOW-400d"
+      }
     },
     {
       "id": 33,
@@ -406,7 +493,10 @@
       "contact_preference": "text",
       "last_registered": "NOW-282d",
       "onyen": "jonathanthomas",
-      "residence_id": 30
+      "residence": {
+        "location_id": 30,
+        "residence_chosen_date": "NOW-500d"
+      }
     },
     {
       "id": 34,
@@ -418,7 +508,10 @@
       "contact_preference": "call",
       "last_registered": "NOW-434d",
       "onyen": "mercedesdavenport",
-      "residence_id": 31
+      "residence": {
+        "location_id": 31,
+        "residence_chosen_date": "NOW-400d"
+      }
     },
     {
       "id": 35,
@@ -430,7 +523,10 @@
       "contact_preference": "call",
       "last_registered": "NOW-508d",
       "onyen": "susanjones",
-      "residence_id": 32
+      "residence": {
+        "location_id": 32,
+        "residence_chosen_date": "NOW-180d"
+      }
     },
     {
       "id": 36,
@@ -442,7 +538,10 @@
       "contact_preference": "text",
       "last_registered": "NOW-518d",
       "onyen": "nancypatterson",
-      "residence_id": 33
+      "residence": {
+        "location_id": 33,
+        "residence_chosen_date": "NOW-270d"
+      }
     },
     {
       "id": 37,
@@ -454,7 +553,10 @@
       "contact_preference": "text",
       "last_registered": "NOW-384d",
       "onyen": "amandabenson",
-      "residence_id": 34
+      "residence": {
+        "location_id": 34,
+        "residence_chosen_date": "NOW-365d"
+      }
     },
     {
       "id": 38,
@@ -466,7 +568,10 @@
       "contact_preference": "text",
       "last_registered": "NOW-724d",
       "onyen": "brianajones",
-      "residence_id": 35
+      "residence": {
+        "location_id": 35,
+        "residence_chosen_date": "NOW-450d"
+      }
     },
     {
       "id": 39,
@@ -478,7 +583,10 @@
       "contact_preference": "text",
       "last_registered": "NOW-652d",
       "onyen": "austindouglas",
-      "residence_id": 36
+      "residence": {
+        "location_id": 36,
+        "residence_chosen_date": "NOW-120d"
+      }
     },
     {
       "id": 40,
@@ -490,7 +598,10 @@
       "contact_preference": "text",
       "last_registered": "NOW-223d",
       "onyen": "kellypruitt",
-      "residence_id": 37
+      "residence": {
+        "location_id": 37,
+        "residence_chosen_date": "NOW-200d"
+      }
     },
     {
       "id": 41,
@@ -502,7 +613,7 @@
       "contact_preference": "text",
       "last_registered": "NOW-690d",
       "onyen": "angelasawyer",
-      "residence_id": null
+      "residence": null
     },
     {
       "id": 42,
@@ -514,7 +625,7 @@
       "contact_preference": "text",
       "last_registered": "NOW-453d",
       "onyen": "michellebooth",
-      "residence_id": null
+      "residence": null
     },
     {
       "id": 43,
@@ -526,7 +637,7 @@
       "contact_preference": "text",
       "last_registered": "NOW-458d",
       "onyen": "michellelawson",
-      "residence_id": null
+      "residence": null
     },
     {
       "id": 44,
@@ -538,7 +649,7 @@
       "contact_preference": "text",
       "last_registered": "NOW-393d",
       "onyen": "ashleygordon",
-      "residence_id": null
+      "residence": null
     },
     {
       "id": 45,
@@ -550,7 +661,7 @@
       "contact_preference": "text",
       "last_registered": "NOW-692d",
       "onyen": "douglastrujillo",
-      "residence_id": null
+      "residence": null
     },
     {
       "id": 46,
@@ -562,7 +673,7 @@
       "contact_preference": "text",
       "last_registered": "NOW-312d",
       "onyen": "anawashington",
-      "residence_id": null
+      "residence": null
     },
     {
       "id": 47,
@@ -574,7 +685,7 @@
       "contact_preference": "call",
       "last_registered": "NOW-636d",
       "onyen": "nicoledoyle",
-      "residence_id": null
+      "residence": null
     },
     {
       "id": 48,
@@ -586,7 +697,7 @@
       "contact_preference": "text",
       "last_registered": "NOW-426d",
       "onyen": "shauncardenas",
-      "residence_id": null
+      "residence": null
     },
     {
       "id": 49,
@@ -598,7 +709,7 @@
       "contact_preference": "text",
       "last_registered": "NOW-353d",
       "onyen": "frankwallace",
-      "residence_id": null
+      "residence": null
     },
     {
       "id": 50,
@@ -610,7 +721,7 @@
       "contact_preference": "text",
       "last_registered": "NOW-20d",
       "onyen": "keithmartinez",
-      "residence_id": null
+      "residence": null
     },
     {
       "id": 51,
@@ -622,7 +733,7 @@
       "contact_preference": "text",
       "last_registered": null,
       "onyen": "christophermiller",
-      "residence_id": null
+      "residence": null
     },
     {
       "id": 52,
@@ -634,7 +745,7 @@
       "contact_preference": "text",
       "last_registered": "NOW-631d",
       "onyen": "marksolis",
-      "residence_id": null
+      "residence": null
     },
     {
       "id": 53,
@@ -646,7 +757,7 @@
       "contact_preference": "text",
       "last_registered": "NOW-659d",
       "onyen": "travisandersen",
-      "residence_id": null
+      "residence": null
     },
     {
       "id": 54,
@@ -658,7 +769,7 @@
       "contact_preference": "text",
       "last_registered": "NOW-726d",
       "onyen": "melindaholland",
-      "residence_id": null
+      "residence": null
     },
     {
       "id": 55,
@@ -670,7 +781,7 @@
       "contact_preference": "text",
       "last_registered": "NOW-585d",
       "onyen": "catherinestevens",
-      "residence_id": null
+      "residence": null
     },
     {
       "id": 56,
@@ -682,7 +793,7 @@
       "contact_preference": "call",
       "last_registered": "NOW-37d",
       "onyen": "joannewhite",
-      "residence_id": null
+      "residence": null
     },
     {
       "id": 57,
@@ -694,7 +805,7 @@
       "contact_preference": "text",
       "last_registered": null,
       "onyen": "savannahjohnson",
-      "residence_id": null
+      "residence": null
     },
     {
       "id": 58,
@@ -706,7 +817,7 @@
       "contact_preference": "text",
       "last_registered": "NOW-162d",
       "onyen": "roygonzalez",
-      "residence_id": null
+      "residence": null
     },
     {
       "id": 59,
@@ -718,7 +829,7 @@
       "contact_preference": "text",
       "last_registered": null,
       "onyen": "ryanpope",
-      "residence_id": null
+      "residence": null
     },
     {
       "id": 60,
@@ -730,7 +841,7 @@
       "contact_preference": "text",
       "last_registered": "NOW-384d",
       "onyen": "christophersmith",
-      "residence_id": null
+      "residence": null
     },
     {
       "id": 61,
@@ -742,7 +853,7 @@
       "contact_preference": "text",
       "last_registered": "NOW-135d",
       "onyen": "carlsmith",
-      "residence_id": null
+      "residence": null
     },
     {
       "id": 62,
@@ -754,7 +865,7 @@
       "contact_preference": "text",
       "last_registered": "NOW-592d",
       "onyen": "williamperez",
-      "residence_id": null
+      "residence": null
     },
     {
       "id": 63,
@@ -766,7 +877,7 @@
       "contact_preference": "call",
       "last_registered": "NOW-133d",
       "onyen": "jameswilson",
-      "residence_id": null
+      "residence": null
     },
     {
       "id": 64,
@@ -778,7 +889,7 @@
       "contact_preference": "text",
       "last_registered": "NOW-22d",
       "onyen": "angelicahamilton",
-      "residence_id": null
+      "residence": null
     },
     {
       "id": 65,
@@ -790,7 +901,7 @@
       "contact_preference": "text",
       "last_registered": "NOW-318d",
       "onyen": "michaeltorres",
-      "residence_id": null
+      "residence": null
     },
     {
       "id": 66,
@@ -802,7 +913,7 @@
       "contact_preference": "text",
       "last_registered": "NOW-410d",
       "onyen": "jeffreytaylor",
-      "residence_id": null
+      "residence": null
     },
     {
       "id": 67,
@@ -814,7 +925,7 @@
       "contact_preference": "text",
       "last_registered": "NOW-574d",
       "onyen": "samanthamarshall",
-      "residence_id": null
+      "residence": null
     },
     {
       "id": 68,
@@ -826,7 +937,7 @@
       "contact_preference": "call",
       "last_registered": "NOW-143d",
       "onyen": "michaelsmith",
-      "residence_id": null
+      "residence": null
     },
     {
       "id": 69,
@@ -838,7 +949,7 @@
       "contact_preference": "text",
       "last_registered": "NOW-673d",
       "onyen": "hayleygarcia",
-      "residence_id": null
+      "residence": null
     },
     {
       "id": 70,
@@ -850,7 +961,7 @@
       "contact_preference": "text",
       "last_registered": "NOW-63d",
       "onyen": "williammiddleton",
-      "residence_id": null
+      "residence": null
     },
     {
       "id": 71,
@@ -862,7 +973,7 @@
       "contact_preference": "call",
       "last_registered": "NOW-584d",
       "onyen": "bryanhale",
-      "residence_id": null
+      "residence": null
     },
     {
       "id": 72,
@@ -874,7 +985,7 @@
       "contact_preference": "call",
       "last_registered": "NOW-566d",
       "onyen": "dianemerritt",
-      "residence_id": null
+      "residence": null
     },
     {
       "id": 73,
@@ -886,7 +997,7 @@
       "contact_preference": "text",
       "last_registered": "NOW-223d",
       "onyen": "angelatodd",
-      "residence_id": null
+      "residence": null
     },
     {
       "id": 74,
@@ -898,7 +1009,7 @@
       "contact_preference": "text",
       "last_registered": "NOW-550d",
       "onyen": "daniellestewart",
-      "residence_id": null
+      "residence": null
     },
     {
       "id": 75,
@@ -910,7 +1021,7 @@
       "contact_preference": "text",
       "last_registered": "NOW-79d",
       "onyen": "ryanoliver",
-      "residence_id": null
+      "residence": null
     },
     {
       "id": 76,
@@ -922,7 +1033,7 @@
       "contact_preference": "text",
       "last_registered": "NOW-561d",
       "onyen": "masonwatson",
-      "residence_id": null
+      "residence": null
     }
   ],
   "parties": [
@@ -4586,7 +4697,7 @@
       "location_id": 6,
       "incident_datetime": "NOW-283d@21:45",
       "severity": "remote_warning",
-      "description": "",
+      "description": null,
       "reference_id": "K51-FPKH"
     },
     {
@@ -4601,14 +4712,14 @@
       "location_id": 6,
       "incident_datetime": "NOW-22d@18:00",
       "severity": "remote_warning",
-      "description": ""
+      "description": null
     },
     {
       "id": 6,
       "location_id": 23,
       "incident_datetime": "NOW-121d@21:45",
       "severity": "citation",
-      "description": "",
+      "description": null,
       "reference_id": "1DN-MMJB"
     },
     {
@@ -4624,7 +4735,7 @@
       "location_id": 17,
       "incident_datetime": "NOW-19d@20:45",
       "severity": "remote_warning",
-      "description": "",
+      "description": null,
       "reference_id": "NGC-X194"
     },
     {
@@ -4640,28 +4751,28 @@
       "location_id": 17,
       "incident_datetime": "NOW-201d@21:45",
       "severity": "citation",
-      "description": ""
+      "description": null
     },
     {
       "id": 11,
       "location_id": 14,
       "incident_datetime": "NOW-23d@21:00",
       "severity": "in_person_warning",
-      "description": ""
+      "description": null
     },
     {
       "id": 12,
       "location_id": 14,
       "incident_datetime": "NOW-30d@18:15",
       "severity": "citation",
-      "description": ""
+      "description": null
     },
     {
       "id": 13,
       "location_id": 41,
       "incident_datetime": "NOW-303d@20:30",
       "severity": "in_person_warning",
-      "description": ""
+      "description": null
     },
     {
       "id": 14,
@@ -4675,7 +4786,7 @@
       "location_id": 1,
       "incident_datetime": "NOW-313d@21:30",
       "severity": "remote_warning",
-      "description": "",
+      "description": null,
       "reference_id": "ZYC-WTIQ"
     },
     {
@@ -4683,7 +4794,7 @@
       "location_id": 1,
       "incident_datetime": "NOW-31d@18:45",
       "severity": "citation",
-      "description": "",
+      "description": null,
       "reference_id": "J7Y-HL1C"
     },
     {
@@ -4713,7 +4824,7 @@
       "location_id": 15,
       "incident_datetime": "NOW-300d@20:30",
       "severity": "remote_warning",
-      "description": ""
+      "description": null
     },
     {
       "id": 21,
@@ -4727,7 +4838,7 @@
       "location_id": 38,
       "incident_datetime": "NOW-321d@21:00",
       "severity": "in_person_warning",
-      "description": ""
+      "description": null
     },
     {
       "id": 23,
@@ -4741,14 +4852,14 @@
       "location_id": 38,
       "incident_datetime": "NOW-40d@21:30",
       "severity": "remote_warning",
-      "description": ""
+      "description": null
     },
     {
       "id": 25,
       "location_id": 52,
       "incident_datetime": "NOW-159d@20:15",
       "severity": "in_person_warning",
-      "description": ""
+      "description": null
     },
     {
       "id": 26,
@@ -4762,14 +4873,14 @@
       "location_id": 52,
       "incident_datetime": "NOW-105d@20:15",
       "severity": "in_person_warning",
-      "description": ""
+      "description": null
     },
     {
       "id": 28,
       "location_id": 52,
       "incident_datetime": "NOW-363d@18:45",
       "severity": "remote_warning",
-      "description": "",
+      "description": null,
       "reference_id": "HR5-XFF0"
     },
     {
@@ -4777,28 +4888,28 @@
       "location_id": 62,
       "incident_datetime": "NOW-43d@20:15",
       "severity": "citation",
-      "description": ""
+      "description": null
     },
     {
       "id": 30,
       "location_id": 62,
       "incident_datetime": "NOW-158d@20:30",
       "severity": "in_person_warning",
-      "description": ""
+      "description": null
     },
     {
       "id": 31,
       "location_id": 62,
       "incident_datetime": "NOW-116d@20:30",
       "severity": "in_person_warning",
-      "description": ""
+      "description": null
     },
     {
       "id": 32,
       "location_id": 62,
       "incident_datetime": "NOW-29d@20:45",
       "severity": "remote_warning",
-      "description": ""
+      "description": null
     },
     {
       "id": 33,
@@ -4827,7 +4938,7 @@
       "location_id": 27,
       "incident_datetime": "NOW-145d@19:15",
       "severity": "citation",
-      "description": "",
+      "description": null,
       "reference_id": "R14-FFYV"
     },
     {
@@ -4842,7 +4953,7 @@
       "location_id": 11,
       "incident_datetime": "NOW-9d@23:00",
       "severity": "remote_warning",
-      "description": "",
+      "description": null,
       "reference_id": "NVQ-JT7Y"
     },
     {
@@ -4850,21 +4961,21 @@
       "location_id": 11,
       "incident_datetime": "NOW-33d@21:15",
       "severity": "in_person_warning",
-      "description": ""
+      "description": null
     },
     {
       "id": 40,
       "location_id": 67,
       "incident_datetime": "NOW-256d@18:00",
       "severity": "remote_warning",
-      "description": ""
+      "description": null
     },
     {
       "id": 41,
       "location_id": 13,
       "incident_datetime": "NOW-12d@23:00",
       "severity": "remote_warning",
-      "description": "",
+      "description": null,
       "reference_id": "E51-1MKF"
     },
     {

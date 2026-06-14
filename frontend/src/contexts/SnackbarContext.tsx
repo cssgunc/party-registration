@@ -5,6 +5,12 @@ import { toast } from "sonner";
 
 type ToastType = "success" | "error" | "warning" | "info" | "loading";
 
+interface PromiseOptions<T> {
+  loading: string;
+  success: string | ((data: T) => string);
+  error: string | ((err: unknown) => string);
+}
+
 interface SnackbarContextType {
   openSnackbar: (message: string, type: ToastType, duration?: number) => void;
   success: (message: string, duration?: number) => void;
@@ -12,6 +18,7 @@ interface SnackbarContextType {
   warning: (message: string, duration?: number) => void;
   info: (message: string, duration?: number) => void;
   loading: (message: string) => void;
+  snackbarPromise: <T>(p: Promise<T>, options: PromiseOptions<T>) => void;
 }
 
 const SnackbarContext = createContext<SnackbarContextType | undefined>(
@@ -55,6 +62,13 @@ export function SnackbarProvider({ children }: { children: ReactNode }) {
     openSnackbar(message, "info", duration);
   const loading = (message: string) => openSnackbar(message, "loading");
 
+  const snackbarPromise = <T,>(
+    p: Promise<T>,
+    options: PromiseOptions<T>
+  ): void => {
+    void toast.promise(p, options);
+  };
+
   const value: SnackbarContextType = {
     openSnackbar,
     success,
@@ -62,6 +76,7 @@ export function SnackbarProvider({ children }: { children: ReactNode }) {
     warning,
     info,
     loading,
+    snackbarPromise,
   };
 
   return (

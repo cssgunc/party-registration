@@ -237,7 +237,7 @@ class TestLocationServiceWithIncidents:
         # Fetch the location
         fetched = await self.location_service.get_location_by_id(location.id)
 
-        # Verify incidents are included
+        # Verify incidents are included, ordered earliest-first by incident_datetime
         assert len(fetched.incidents) == 2
         self.incident_utils.assert_matches(fetched.incidents[0], incident1)
         self.incident_utils.assert_matches(fetched.incidents[1], incident2)

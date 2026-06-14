@@ -32,6 +32,7 @@ import {
   deleteAction,
   editAction,
 } from "../shared/table/rowActions";
+import { useServerTableState } from "../shared/table/useServerTableState";
 import AccountTableForm, { accountTableFormSchema } from "./AccountTableForm";
 import PoliceAccountTableForm, {
   type PoliceAccountFormValues,
@@ -57,7 +58,9 @@ const ACCOUNT_STATUS_FILTER_OPTIONS = [
 const ACCOUNT_ERROR_OPTIONS = {
   status: {
     404: "Account not found",
+    409: "An account with this email already exists",
   },
+  fallback: "Failed to complete the account action. Please try again.",
 } as const;
 
 const POLICE_ACCOUNT_ERROR_OPTIONS = {
@@ -66,7 +69,7 @@ const POLICE_ACCOUNT_ERROR_OPTIONS = {
 } as const;
 
 export const AccountTable = () => {
-  const { openSnackbar } = useSnackbar();
+  const { openSnackbar, snackbarPromise } = useSnackbar();
   const { data: session } = useSession();
   const {
     mode,
@@ -110,39 +113,10 @@ export const AccountTable = () => {
     },
   });
 
-  const deleteAccountMutation = useDeleteAccount({
-    onError: (error: Error) => {
-      const message = getErrorMessage(error, ACCOUNT_ERROR_OPTIONS);
-      console.error("Failed to delete account:", message);
-      openSnackbar("Failed to delete account", "error");
-    },
-  });
-
-  const deletePoliceAccountMutation = useDeletePoliceAccount({
-    onError: (error: Error) => {
-      console.error("Failed to delete police account:", error);
-      openSnackbar("Failed to delete police account", "error");
-    },
-  });
-
-  const deleteInviteMutation = useDeleteInvite({
-    onError: (error: Error) => {
-      const message = getErrorMessage(error, ACCOUNT_ERROR_OPTIONS);
-      console.error("Failed to delete invite:", message);
-      openSnackbar("Failed to delete invite", "error");
-    },
-  });
-
-  const resendInviteMutation = useResendInvite({
-    onError: (error: Error) => {
-      const message = getErrorMessage(error, ACCOUNT_ERROR_OPTIONS);
-      console.error("Failed to resend invite:", message);
-      openSnackbar("Failed to resend invite", "error");
-    },
-    onSuccess: () => {
-      openSnackbar("Invite resent successfully", "success");
-    },
-  });
+  const deleteAccountMutation = useDeleteAccount();
+  const deletePoliceAccountMutation = useDeletePoliceAccount();
+  const deleteInviteMutation = useDeleteInvite();
+  const resendInviteMutation = useResendInvite();
 
   const handleEdit = (row: AggregateAccountDto) => {
     if (row.status === "invited") return;
@@ -151,11 +125,23 @@ export const AccountTable = () => {
 
   const handleDelete = (row: AggregateAccountDto) => {
     if (row.status === "invited") {
-      deleteInviteMutation.mutate(row.source_id);
+      snackbarPromise(deleteInviteMutation.mutateAsync(row.source_id), {
+        loading: "Deleting invite...",
+        success: "Invite deleted successfully",
+        error: (err) => getErrorMessage(err, ACCOUNT_ERROR_OPTIONS),
+      });
     } else if (isPoliceRow(row)) {
-      deletePoliceAccountMutation.mutate(row.source_id);
+      snackbarPromise(deletePoliceAccountMutation.mutateAsync(row.source_id), {
+        loading: "Deleting police account...",
+        success: "Police account deleted successfully",
+        error: "Failed to delete police account",
+      });
     } else {
-      deleteAccountMutation.mutate(row.source_id);
+      snackbarPromise(deleteAccountMutation.mutateAsync(row.source_id), {
+        loading: "Deleting account...",
+        success: "Account deleted successfully",
+        error: (err) => getErrorMessage(err, ACCOUNT_ERROR_OPTIONS),
+      });
     }
   };
 
@@ -260,13 +246,19 @@ export const AccountTable = () => {
     },
   ];
 
+  const serverTableState = useServerTableState({
+    columns,
+    pageSizeStorageKey: "staff-accounts",
+  });
+  const query = useAggregateAccounts(serverTableState.serverParams);
+
   return (
     <>
       <TableTemplate
-        useQuery={useAggregateAccounts}
+        query={query}
+        serverTableState={serverTableState}
         columns={columns}
         createAction={{ label: "New Invite", fn: openCreate }}
-        pageSizeStorageKey="staff-accounts"
         rowActions={[
           editAction<AggregateAccountDto>({
             onClick: handleEdit,
@@ -274,7 +266,12 @@ export const AccountTable = () => {
           }),
           {
             label: "Resend invite",
-            onClick: (row) => resendInviteMutation.mutate(row.source_id),
+            onClick: (row) =>
+              snackbarPromise(resendInviteMutation.mutateAsync(row.source_id), {
+                loading: "Resending invite...",
+                success: "Invite resent successfully",
+                error: (err) => getErrorMessage(err, ACCOUNT_ERROR_OPTIONS),
+              }),
             icon: <Send className="mr-2 size-4" />,
             isVisible: (row) => row.status === "invited",
           } satisfies RowAction<AggregateAccountDto>,
@@ -308,6 +305,7 @@ export const AccountTable = () => {
               <AccountTableForm
                 onSubmit={handleAccountCreateSubmit}
                 submissionError={submissionError}
+                isPending={createAccountMutation.isPending}
               />
             ),
           },
@@ -329,6 +327,7 @@ export const AccountTable = () => {
                     handlePoliceEditSubmit(account.source_id, data)
                   }
                   submissionError={submissionError}
+                  isPending={updatePoliceAccountMutation.isPending}
                   editData={{
                     email: account.email,
                     role: account.role as PoliceRole,
@@ -342,6 +341,7 @@ export const AccountTable = () => {
                     handleAccountEditSubmit(account.source_id, data)
                   }
                   submissionError={submissionError}
+                  isPending={updateAccountMutation.isPending}
                   editData={{
                     email: account.email,
                     role: account.role as InviteTokenRole,

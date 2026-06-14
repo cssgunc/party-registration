@@ -30,13 +30,37 @@ from .party_model import (
     ProximitySearchResponse,
     StudentCreatePartyDto,
 )
-from .party_service import PartyService
+from .party_service import PartyRule, PartyService
 
 party_router = APIRouter(prefix="/api/parties", tags=["parties"])
 _OPENAPI_PARAMS = get_paginated_openapi_params(PartyService.QUERY_FIELDS)
+_PARTY_RULE_CODES = ", ".join(rule.value for rule in PartyRule)
 
 
-@party_router.post("", status_code=201)
+@party_router.post(
+    "",
+    status_code=201,
+    responses={
+        400: {
+            "description": f"Request validation failed. Possible rule codes: {_PARTY_RULE_CODES}"
+        },
+        404: {
+            "description": (
+                "The referenced contact student or Google Maps place was not found (admin only)"
+            )
+        },
+        409: {
+            "description": (
+                "A location with the same Google place ID already exists (rare race condition)"
+            )
+        },
+        500: {
+            "description": (
+                "Google Maps API request failed while resolving the location (admin only)"
+            )
+        },
+    },
+)
 async def create_party(
     party_data: CreatePartyDto,
     party_service: PartyService = Depends(),
@@ -74,7 +98,15 @@ async def create_party(
             raise ForbiddenException(detail="Invalid request type")
 
 
-@party_router.get("", openapi_extra=_OPENAPI_PARAMS)
+@party_router.get(
+    "",
+    openapi_extra=_OPENAPI_PARAMS,
+    responses={
+        400: {
+            "description": "Invalid sort or filter parameter: unknown field or unsupported operator"
+        },
+    },
+)
 async def list_parties(
     params: ListQueryParams = parse_list_query_params(),
     party_service: PartyService = Depends(),
@@ -87,7 +119,21 @@ async def list_parties(
     )
 
 
-@party_router.get("/nearby")
+@party_router.get(
+    "/nearby",
+    responses={
+        400: {
+            "description": (
+                "Start date is after end date, or the provided place ID has an invalid format"
+            )
+        },
+        500: {
+            "description": (
+                "Google Maps API request failed while resolving the place ID to coordinates"
+            )
+        },
+    },
+)
 async def get_parties_nearby(
     place_id: str = Query(..., description="Google Maps place ID"),
     start_datetime: datetime = Query(
@@ -132,7 +178,15 @@ async def get_parties_nearby(
     return await party_service.get_proximity_search(place_id, start_datetime, end_datetime)
 
 
-@party_router.get("/csv", openapi_extra=_OPENAPI_PARAMS)
+@party_router.get(
+    "/csv",
+    openapi_extra=_OPENAPI_PARAMS,
+    responses={
+        400: {
+            "description": "Invalid sort or filter parameter: unknown field or unsupported operator"
+        },
+    },
+)
 async def get_parties_csv(
     params: ListQueryParams = parse_export_list_query_params(),
     party_service: PartyService = Depends(),
@@ -163,7 +217,25 @@ async def get_parties_csv(
     )
 
 
-@party_router.put("/{party_id}")
+@party_router.put(
+    "/{party_id}",
+    responses={
+        400: {
+            "description": f"Request validation failed. Possible rule codes: {_PARTY_RULE_CODES}"
+        },
+        404: {"description": ("The party, contact student, or Google Maps place was not found")},
+        409: {
+            "description": (
+                "A location with the same Google place ID already exists (rare race condition)"
+            )
+        },
+        500: {
+            "description": (
+                "Google Maps API request failed while resolving the location (admin only)"
+            )
+        },
+    },
+)
 async def update_party(
     party_id: int,
     party_data: CreatePartyDto,
@@ -202,7 +274,12 @@ async def update_party(
             raise ForbiddenException(detail="Invalid request type")
 
 
-@party_router.get("/{party_id}")
+@party_router.get(
+    "/{party_id}",
+    responses={
+        404: {"description": "Party with the given ID was not found"},
+    },
+)
 async def get_party(
     party_id: int,
     party_service: PartyService = Depends(),
@@ -211,7 +288,18 @@ async def get_party(
     return await party_service.get_party_by_id(party_id)
 
 
-@party_router.post("/{party_id}/cancel")
+@party_router.post(
+    "/{party_id}/cancel",
+    responses={
+        400: {
+            "description": (
+                f"Validation failed: {PartyRule.PARTY_NOT_OWNED_BY_STUDENT.value} "
+                f"or {PartyRule.PARTY_IN_PAST.value}"
+            )
+        },
+        404: {"description": "Party with the given ID was not found"},
+    },
+)
 async def cancel_party(
     party_id: int,
     party_service: PartyService = Depends(),
@@ -227,7 +315,12 @@ async def cancel_party(
     return await party_service.cancel_party(party_id, student_id)
 
 
-@party_router.post("/{party_id}/restore")
+@party_router.post(
+    "/{party_id}/restore",
+    responses={
+        404: {"description": "Party with the given ID was not found"},
+    },
+)
 async def restore_party(
     party_id: int,
     party_service: PartyService = Depends(),

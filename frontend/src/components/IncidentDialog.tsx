@@ -63,12 +63,13 @@ export default function IncidentDialog({
   incident,
   defaultSeverity = "in_person_warning",
   onSubmit,
-  isSubmitting = false,
+  isSubmitting,
 }: IncidentDialogProps) {
   const defaultDatetime = incident?.incident_datetime ?? new Date();
 
   const form = useForm<IncidentFormValues>({
     resolver: zodResolver(incidentSchema),
+    mode: "onBlur",
     defaultValues: {
       severity: incident?.severity ?? defaultSeverity,
       date: defaultDatetime,

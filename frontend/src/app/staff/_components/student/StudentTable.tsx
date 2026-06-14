@@ -11,7 +11,11 @@ import {
 } from "@/lib/api/student/admin-student.queries";
 import { StudentDto } from "@/lib/api/student/student.types";
 import { getErrorMessage } from "@/lib/errors";
-import { formatAddress, isFromThisSchoolYear } from "@/lib/utils";
+import {
+  formatAddress,
+  formatPhoneNumber,
+  isFromThisSchoolYear,
+} from "@/lib/utils";
 import { ColumnDef } from "@tanstack/react-table";
 import LocationInfoChipDetails from "../shared/details/LocationInfoChipDetails";
 import { FormSidebar } from "../shared/sidebar/FormSidebar";
@@ -19,6 +23,7 @@ import { InfoChip } from "../shared/sidebar/InfoChip";
 import { useFormSidebarState } from "../shared/sidebar/useFormSidebarState";
 import { TableTemplate } from "../shared/table/TableTemplate";
 import { deleteAction, editAction } from "../shared/table/rowActions";
+import { useServerTableState } from "../shared/table/useServerTableState";
 import StudentTableForm from "./StudentTableForm";
 
 const STUDENT_ERROR_OPTIONS = {
@@ -26,6 +31,7 @@ const STUDENT_ERROR_OPTIONS = {
     404: "Student not found",
     409: "This phone number is taken by another student",
   },
+  fallback: "Failed to update the student. Please try again.",
 } as const;
 
 const toEditData = (student: StudentDto) => ({
@@ -36,35 +42,39 @@ const toEditData = (student: StudentDto) => ({
 });
 
 export const StudentTable = () => {
-  const { openSnackbar } = useSnackbar();
-  const { mode, row, openEdit, closeSidebar } =
-    useFormSidebarState<StudentDto>();
+  const { openSnackbar, snackbarPromise } = useSnackbar();
+  const {
+    mode,
+    row,
+    submissionError,
+    setSubmissionError,
+    openEdit,
+    closeSidebar,
+  } = useFormSidebarState<StudentDto>();
 
   const exportMutation = useDownloadStudentsCsv();
 
-  const checkboxMutation = useUpdateIsRegistered();
+  const checkboxMutation = useUpdateIsRegistered({
+    onError: (error) =>
+      openSnackbar(
+        getErrorMessage(error, {
+          fallback: "Failed to update registration status.",
+        }),
+        "error"
+      ),
+  });
 
   const editFormMutation = useUpdateStudent({
-    onOptimisticUpdate: () => {
-      // Optimistic close — toast handles error visibility (no reopen).
-      closeSidebar();
-    },
     onError: (error) => {
-      openSnackbar(getErrorMessage(error, STUDENT_ERROR_OPTIONS), "error");
+      setSubmissionError(getErrorMessage(error, STUDENT_ERROR_OPTIONS));
     },
     onSuccess: () => {
+      closeSidebar();
       openSnackbar("Student updated successfully", "success");
     },
   });
 
-  const deleteMutation = useDeleteStudent({
-    onError: (error) => {
-      console.error("Failed to delete student:", error);
-    },
-    onSuccess: () => {
-      openSnackbar("Student deleted successfully", "success");
-    },
-  });
+  const deleteMutation = useDeleteStudent();
 
   const columns: ColumnDef<StudentDto>[] = [
     {
@@ -103,9 +113,7 @@ export const StudentTable = () => {
       enableColumnFilter: true,
       cell: ({ row }) => {
         const number = row.getValue("phone_number") as string;
-        return number
-          ? `(${number.slice(0, 3)}) ${number.slice(3, 6)}-${number.slice(6, 10)}`
-          : "—";
+        return formatPhoneNumber(number) || "—";
       },
       meta: { filter: { type: "text", backendField: "phone_number" } },
     },
@@ -190,16 +198,27 @@ export const StudentTable = () => {
     },
   ];
 
+  const serverTableState = useServerTableState({
+    columns,
+    pageSizeStorageKey: "staff-students",
+  });
+  const query = useStudents(serverTableState.serverParams);
+
   return (
     <>
       <TableTemplate
-        useQuery={useStudents}
+        query={query}
+        serverTableState={serverTableState}
         columns={columns}
-        pageSizeStorageKey="staff-students"
         rowActions={[
           editAction<StudentDto>({ onClick: openEdit }),
           deleteAction<StudentDto>({
-            onClick: (student) => deleteMutation.mutate(student.id),
+            onClick: (student) =>
+              snackbarPromise(deleteMutation.mutateAsync(student.id), {
+                loading: "Deleting student...",
+                success: "Student deleted successfully",
+                error: "Failed to delete student",
+              }),
             resourceName: "Student",
             description: (student) =>
               `Are you sure you want to delete ${student.first_name} ${student.last_name}? This action cannot be undone.`,
@@ -222,6 +241,8 @@ export const StudentTable = () => {
                   editFormMutation.mutate({ id: student.id, data })
                 }
                 editData={toEditData(student)}
+                submissionError={submissionError}
+                isPending={editFormMutation.isPending}
               />
             ),
           },

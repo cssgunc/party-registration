@@ -10,6 +10,7 @@ import {
   deleteAction,
   editAction,
 } from "@/app/staff/_components/shared/table/rowActions";
+import { useServerTableState } from "@/app/staff/_components/shared/table/useServerTableState";
 import { useSnackbar } from "@/contexts/SnackbarContext";
 import {
   useDeletePoliceAccount,
@@ -22,11 +23,10 @@ import { getErrorMessage } from "@/lib/errors";
 import { formatRoleLabel } from "@/lib/utils";
 import { ColumnDef } from "@tanstack/react-table";
 import { useSession } from "next-auth/react";
-import { useMemo } from "react";
 
 export default function PoliceAccountsTable() {
   const { data: session } = useSession();
-  const { openSnackbar } = useSnackbar();
+  const { openSnackbar, snackbarPromise } = useSnackbar();
   const {
     mode,
     row,
@@ -43,7 +43,14 @@ export default function PoliceAccountsTable() {
 
   const updatePoliceAccountMutation = useUpdatePoliceAccount({
     onError: (error: Error) => {
-      setSubmissionError(getErrorMessage(error));
+      setSubmissionError(
+        getErrorMessage(error, {
+          status: {
+            409: "That email is already in use by another police account.",
+          },
+          fallback: "Failed to update police account.",
+        })
+      );
     },
     onSuccess: () => {
       openSnackbar("Police account updated successfully", "success");
@@ -51,14 +58,7 @@ export default function PoliceAccountsTable() {
     },
   });
 
-  const deletePoliceAccountMutation = useDeletePoliceAccount({
-    onSuccess: () => {
-      openSnackbar("Police account deleted successfully", "success");
-    },
-    onError: () => {
-      openSnackbar("Failed to delete police account.", "error");
-    },
-  });
+  const deletePoliceAccountMutation = useDeletePoliceAccount();
 
   const currentPoliceId = session?.id ? Number(session.id) : null;
 
@@ -67,7 +67,11 @@ export default function PoliceAccountsTable() {
       openSnackbar("You cannot delete your own account", "error");
       return;
     }
-    deletePoliceAccountMutation.mutate(row.id);
+    snackbarPromise(deletePoliceAccountMutation.mutateAsync(row.id), {
+      loading: "Deleting police account...",
+      success: "Police account deleted successfully",
+      error: "Failed to delete police account",
+    });
   };
 
   const handlePoliceEditSubmit = async (
@@ -84,45 +88,48 @@ export default function PoliceAccountsTable() {
     });
   };
 
-  const columns: ColumnDef<PoliceAccountDto>[] = useMemo(
-    () => [
-      {
-        accessorKey: "email",
-        header: "Email",
-        enableColumnFilter: true,
-        meta: { filter: { type: "text", backendField: "email" } },
-      },
-      {
-        accessorKey: "role",
-        header: "Role",
-        enableColumnFilter: true,
-        meta: { filter: { type: "text", backendField: "role" } },
-        cell: ({ row }) =>
-          formatRoleLabel(row.getValue("role") as PoliceAccountDto["role"]),
-      },
-      {
-        accessorKey: "is_verified",
-        header: "Verified",
-        enableColumnFilter: true,
-        meta: {
-          filter: {
-            type: "select",
-            backendField: "is_verified",
-            selectOptions: ["true", "false"],
-          },
+  const columns: ColumnDef<PoliceAccountDto>[] = [
+    {
+      accessorKey: "email",
+      header: "Email",
+      enableColumnFilter: true,
+      meta: { filter: { type: "text", backendField: "email" } },
+    },
+    {
+      accessorKey: "role",
+      header: "Role",
+      enableColumnFilter: true,
+      meta: { filter: { type: "text", backendField: "role" } },
+      cell: ({ row }) =>
+        formatRoleLabel(row.getValue("role") as PoliceAccountDto["role"]),
+    },
+    {
+      accessorKey: "is_verified",
+      header: "Verified",
+      enableColumnFilter: true,
+      meta: {
+        filter: {
+          type: "select",
+          backendField: "is_verified",
+          selectOptions: ["true", "false"],
         },
-        cell: ({ row }) => (row.original.is_verified ? "Yes" : "No"),
       },
-    ],
-    []
-  );
+      cell: ({ row }) => (row.original.is_verified ? "Yes" : "No"),
+    },
+  ];
+
+  const serverTableState = useServerTableState({
+    columns,
+    pageSizeStorageKey: "police-accounts",
+  });
+  const query = usePoliceAccountsPaginated(serverTableState.serverParams);
 
   return (
     <>
       <TableTemplate
-        useQuery={usePoliceAccountsPaginated}
+        query={query}
+        serverTableState={serverTableState}
         columns={columns}
-        pageSizeStorageKey="police-accounts"
         rowActions={[
           editAction<PoliceAccountDto>({ onClick: openEdit }),
           deleteAction<PoliceAccountDto>({
@@ -148,6 +155,7 @@ export default function PoliceAccountsTable() {
               <PoliceAccountTableForm
                 onSubmit={(data) => handlePoliceEditSubmit(account.id, data)}
                 submissionError={submissionError}
+                isPending={updatePoliceAccountMutation.isPending}
                 editData={{
                   email: account.email,
                   role: account.role,

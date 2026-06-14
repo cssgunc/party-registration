@@ -15,6 +15,32 @@
       }
     },
     {
+      "label": "E2E Tests",
+      "type": "shell",
+      "command": "npm run test:e2e",
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "group": "test"
+    },
+    {
+      "label": "E2E Tests (UI)",
+      "type": "shell",
+      "command": "npm run test:e2e:ui",
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "group": "test"
+    },
+    {
       "label": "Reset DB",
       "type": "shell",
       "command": "${command:python.interpreterPath} -m script.reset_dev && ${command:python.interpreterPath} -m alembic stamp head",

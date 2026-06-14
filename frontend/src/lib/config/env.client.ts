@@ -49,7 +49,18 @@ const schema = z.object({
     emptyToUndefined,
     z.email().default("offcampus@unc.edu")
   ),
-  NEXT_PUBLIC_COURSE_LINK: z.url(),
+  NEXT_PUBLIC_COURSE_LINK: z.preprocess(
+    emptyToUndefined,
+    z.url().default("https://go.unc.edu/PartySmartClass")
+  ),
+  NEXT_PUBLIC_PARTY_MIN_LEAD_HOURS: z.preprocess(
+    emptyToUndefined,
+    z.coerce.number().int().positive().default(24)
+  ),
+  NEXT_PUBLIC_PARTY_MAX_LEAD_DAYS: z.preprocess(
+    emptyToUndefined,
+    z.coerce.number().int().positive().default(30)
+  ),
   NEXT_PUBLIC_ACADEMIC_YEAR_SWITCH_DATE: z.preprocess(
     emptyToUndefined,
     mmDd.default("08-01")
@@ -70,6 +81,9 @@ const result = schema.safeParse({
     process.env.NEXT_PUBLIC_PARTY_SEARCH_RADIUS_MILES,
   NEXT_PUBLIC_CONTACT_EMAIL: process.env.NEXT_PUBLIC_CONTACT_EMAIL,
   NEXT_PUBLIC_COURSE_LINK: process.env.NEXT_PUBLIC_COURSE_LINK,
+  NEXT_PUBLIC_PARTY_MIN_LEAD_HOURS:
+    process.env.NEXT_PUBLIC_PARTY_MIN_LEAD_HOURS,
+  NEXT_PUBLIC_PARTY_MAX_LEAD_DAYS: process.env.NEXT_PUBLIC_PARTY_MAX_LEAD_DAYS,
   NEXT_PUBLIC_ACADEMIC_YEAR_SWITCH_DATE:
     process.env.NEXT_PUBLIC_ACADEMIC_YEAR_SWITCH_DATE,
 });

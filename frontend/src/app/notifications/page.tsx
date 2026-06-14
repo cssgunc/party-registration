@@ -15,9 +15,13 @@ import {
   useSubscriptionStatus,
   useUnsubscribe,
 } from "@/lib/api/notification/notification.queries";
+import { getErrorMessage } from "@/lib/errors";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
+
+const INVALID_LINK_MESSAGE =
+  "This link is invalid or has expired. Please use the link from your most recent party registration email.";
 
 export default function NotificationsPage() {
   return (
@@ -37,7 +41,13 @@ function NotificationsContent() {
 
   const isSubscribed = data?.is_subscribed;
   const isMutating = unsubscribe.isPending || resubscribe.isPending;
-  const hasMutationError = unsubscribe.isError || resubscribe.isError;
+  const mutationError = unsubscribe.error ?? resubscribe.error;
+  const mutationErrorMessage = mutationError
+    ? getErrorMessage(mutationError, {
+        status: { 400: INVALID_LINK_MESSAGE },
+        fallback: "Something went wrong. Please try again.",
+      })
+    : null;
 
   return (
     <div className="flex h-full items-center justify-center px-4 py-6">
@@ -61,8 +71,7 @@ function NotificationsContent() {
         <CardContent className="px-10 pt-4 pb-8 flex flex-col gap-6">
           {!token || isError ? (
             <p className="text-sm text-destructive text-center">
-              This link is invalid or has expired. Please use the link from your
-              most recent party registration email.
+              {INVALID_LINK_MESSAGE}
             </p>
           ) : isLoading ? (
             <div className="flex flex-col gap-3">
@@ -76,9 +85,9 @@ function NotificationsContent() {
                   ? "You are currently receiving party registration emails."
                   : "You are not receiving party registration emails."}
               </p>
-              {hasMutationError && (
+              {mutationErrorMessage && (
                 <p className="text-sm text-destructive text-center">
-                  Something went wrong. Please try again.
+                  {mutationErrorMessage}
                 </p>
               )}
               {isSubscribed ? (

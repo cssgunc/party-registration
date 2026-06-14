@@ -3,17 +3,13 @@ import {
   NestedIncidentStudentDto,
 } from "@/lib/api/incident/incident.types";
 import { formatTime } from "@/lib/utils";
-import { memo } from "react";
 
 type Props = {
   date: string;
   incidents: NestedIncidentStudentDto[];
 };
 
-const RegistrationIncidentCard = memo(function RegistrationIncidentCard({
-  date,
-  incidents,
-}: Props) {
+function RegistrationIncidentCard({ date, incidents }: Props) {
   return (
     <div className="px-4 py-4 border-b border-gray-200 rounded-none">
       <div>
@@ -31,6 +27,6 @@ const RegistrationIncidentCard = memo(function RegistrationIncidentCard({
       </div>
     </div>
   );
-});
+}
 
 export default RegistrationIncidentCard;

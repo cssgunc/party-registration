@@ -6,6 +6,7 @@ services:
     depends_on:
       - db
       - saml-idp
+    ipc: host
     volumes:
       - ..:/workspace
       - party-reg-node-modules:/workspace/frontend/node_modules

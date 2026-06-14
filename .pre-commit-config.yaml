@@ -42,7 +42,7 @@ repos:
     hooks:
       - id: tsgo
         name: tsgo
-        entry: bash -c 'cd frontend && npx tsgo --noEmit'
+        entry: bash -c 'cd frontend && npx tsgo --noEmit && npx tsgo --project e2e/tsconfig.json --noEmit'
         language: system
         files: ^frontend/.*\.tsx?$
         pass_filenames: false
