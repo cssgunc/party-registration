@@ -16,10 +16,10 @@ import {
   useUpdateStudent,
 } from "@/lib/api/student/student.queries";
 import { StudentDto } from "@/lib/api/student/student.types";
+import { signOut } from "@/lib/auth/signout";
 import { clientEnv } from "@/lib/config/env.client";
 import { getErrorMessage } from "@/lib/errors";
 import {
-  cn,
   formatPhoneNumber,
   getAcademicYearLabels,
   isFromThisSchoolYear,
@@ -64,8 +64,8 @@ function ProfileField({
   className?: string;
 }) {
   return (
-    <div className={cn(!isLoading && "", className)}>
-      <p className="subhead-content mb-1">{label}</p>
+    <div className={className}>
+      <p className="subhead-content">{label}</p>
       {isLoading ? (
         <Skeleton className="h-6 w-full" />
       ) : (
@@ -163,6 +163,7 @@ function StudentInfo() {
   const displayData = {
     first_name: student?.first_name ?? "",
     last_name: student?.last_name ?? "",
+    email: student?.email ?? "",
     phone_number: student?.phone_number ?? "",
     contact_preference: student?.contact_preference ?? undefined,
   };
@@ -174,8 +175,8 @@ function StudentInfo() {
 
   if (!isEditing) {
     return (
-      <div className="bg-card rounded-lg p-8 w-full flex flex-col">
-        <div className="flex justify-between items-center">
+      <div className="bg-card rounded-lg p-8 w-full flex flex-col gap-8">
+        <div className="flex justify-between items-center min-h-9">
           <h1 className="page-title">Profile</h1>
           {!error && (
             <Button
@@ -196,8 +197,8 @@ function StudentInfo() {
             <p className="text-sm">Please try again later.</p>
           </div>
         ) : (
-          <div className="mt-6 mb-8">
-            <div className="flex flex-wrap gap-x-12 gap-y-6 mb-4">
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-wrap gap-x-12 gap-y-6">
               <ProfileField
                 label="First Name"
                 value={displayData.first_name}
@@ -208,6 +209,14 @@ function StudentInfo() {
                 value={displayData.last_name}
                 isLoading={isLoading}
               />
+              <ProfileField
+                label="Email"
+                value={displayData.email || "—"}
+                isLoading={isLoading}
+                className="basis-full"
+              />
+            </div>
+            <div className="flex flex-wrap gap-x-12 gap-y-6">
               <ProfileField
                 label="Phone Number"
                 value={formatPhoneNumber(displayData.phone_number) || "—"}
@@ -228,14 +237,16 @@ function StudentInfo() {
               label={`${schoolYear} Address`}
               value={student?.residence?.location.formatted_address ?? "None"}
               isLoading={isLoading}
-              className="mt-6"
             />
+            {!isLoading && (
+              <WarningNote>
+                Your name and email come from your Onyen. If any of this
+                information is inaccurate, try logging out and back in to
+                refresh it.
+              </WarningNote>
+            )}
           </div>
         )}
-
-        <div className="flex justify-center">
-          <Button variant="default">Log Out</Button>
-        </div>
       </div>
     );
   }
@@ -257,90 +268,88 @@ function StudentInfo() {
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(handleValid)}
-        className="bg-card rounded-lg w-full p-8"
+        className="bg-card rounded-lg w-full p-8 flex flex-col gap-8"
       >
-        <div className="mb-6">
-          <h1 className="page-title">Edit Profile Information</h1>
+        <div className="flex items-center min-h-9">
+          <h1 className="page-title">Edit Profile</h1>
         </div>
         <FieldGroup>
-          <FieldSet className="rounded-lg w-full flex flex-col">
-            <div>
-              <div className="mb-6">
-                <div className="flex flex-wrap gap-x-12 gap-y-2 mb-2">
-                  <ProfileField
-                    label="First Name"
-                    value={displayData.first_name}
-                    isLoading={false}
+          <FieldSet className="rounded-lg w-full">
+            <div className="flex flex-wrap gap-x-12 gap-y-6">
+              <ProfileField
+                label="First Name"
+                value={displayData.first_name}
+                isLoading={false}
+              />
+              <ProfileField
+                label="Last Name"
+                value={displayData.last_name}
+                isLoading={false}
+              />
+              <ProfileField
+                label="Email"
+                value={displayData.email || "—"}
+                isLoading={false}
+                className="basis-full"
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-x-12 gap-y-6">
+              <PhoneField
+                control={form.control}
+                name="phone_number"
+                label="Phone Number"
+                labelClassName="subhead-content"
+                inputClassName="content"
+                className="flex-1 min-w-50"
+              />
+
+              <SelectField
+                control={form.control}
+                name="contact_preference"
+                label="Contact Method"
+                labelClassName="subhead-content"
+                triggerClassName="content"
+                itemClassName="content"
+                placeholder="Select your preference"
+                className="flex-1 min-w-50"
+                options={[
+                  { value: "call", label: "Call" },
+                  { value: "text", label: "Text" },
+                ]}
+              />
+              {!validAddress && (
+                <div className="basis-full flex flex-col gap-2">
+                  <p className="subhead-content">{schoolYear} Address</p>
+                  <AddressSearch
+                    onSelect={handleAddressSelect}
+                    placeholder="Search for the location address..."
+                    className="w-full"
+                    chapelHillOnly
                   />
-
-                  <ProfileField
-                    label="Last Name"
-                    value={displayData.last_name}
-                    isLoading={false}
-                  />
-                </div>
-                <WarningNote>
-                  Your name is associated with your Onyen
-                </WarningNote>
-              </div>
-
-              <div className="flex flex-wrap gap-x-12 gap-y-4">
-                <PhoneField
-                  control={form.control}
-                  name="phone_number"
-                  label="Phone Number"
-                  labelClassName="subhead-content"
-                  inputClassName="content"
-                  className="flex-1 min-w-50"
-                />
-
-                <SelectField
-                  control={form.control}
-                  name="contact_preference"
-                  label="Contact Method"
-                  labelClassName="subhead-content"
-                  triggerClassName="content"
-                  itemClassName="content"
-                  placeholder="Select your preference"
-                  className="flex-1 min-w-50"
-                  options={[
-                    { value: "call", label: "Call" },
-                    { value: "text", label: "Text" },
-                  ]}
-                />
-                {!validAddress && (
-                  <div className="basis-full flex flex-col gap-2">
-                    <p className="subhead-content">{schoolYear} Address</p>
-                    <AddressSearch
-                      onSelect={handleAddressSelect}
-                      placeholder="Search for the location address..."
-                      className="w-full"
-                      chapelHillOnly
-                    />
-                  </div>
-                )}
-              </div>
-
-              {validAddress && (
-                <div className="mt-6">
-                  <p className="subhead-content mb-1">{schoolYear} Address</p>
-                  <p className="content mb-2">
-                    {student?.residence?.location.formatted_address}
-                  </p>
-
-                  <WarningNote>
-                    You cannot change your address until {changeDate}. For
-                    extraneous circumstances, contact{" "}
-                    <a
-                      href={`mailto:${clientEnv.NEXT_PUBLIC_CONTACT_EMAIL}`}
-                      className="underline"
-                    >
-                      {clientEnv.NEXT_PUBLIC_CONTACT_EMAIL}
-                    </a>{" "}
-                  </WarningNote>
                 </div>
               )}
             </div>
+
+            {validAddress && (
+              <div>
+                <p className="subhead-content mb-1">{schoolYear} Address</p>
+                <p className="content mb-2">
+                  {student?.residence?.location.formatted_address}
+                </p>
+
+                <WarningNote>
+                  You cannot change your address until {changeDate}. For
+                  extraneous circumstances, contact{" "}
+                  <a
+                    href={`mailto:${clientEnv.NEXT_PUBLIC_CONTACT_EMAIL}`}
+                    className="underline"
+                  >
+                    {clientEnv.NEXT_PUBLIC_CONTACT_EMAIL}
+                  </a>{" "}
+                </WarningNote>
+              </div>
+            )}
 
             {submitError && (
               <div className="p-4 bg-red-50 border border-red-200 rounded-md text-center">
@@ -376,6 +385,14 @@ export default function StudentProfilePage() {
         <Card className="max-w-4xl mt-2 w-full border">
           <StudentInfo />
         </Card>
+        <div className="flex justify-center mt-8">
+          <Button
+            variant="default"
+            onClick={() => signOut({ callbackUrl: "/" })}
+          >
+            Log Out
+          </Button>
+        </div>
       </div>
     </div>
   );
