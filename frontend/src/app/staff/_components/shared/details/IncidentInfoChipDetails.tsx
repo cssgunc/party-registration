@@ -1,3 +1,4 @@
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import IncidentDialog from "@/components/IncidentDialog";
 import { Button } from "@/components/ui/button";
 import { useSnackbar } from "@/contexts/SnackbarContext";
@@ -16,7 +17,6 @@ import { useSession } from "next-auth/react";
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import IncidentSidebarCard from "../../location/IncidentSidebarCard";
-import { ConfirmDialog } from "../dialog/ConfirmDialog";
 import { useSidebar } from "../sidebar/SidebarContext";
 
 type Props = {
