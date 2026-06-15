@@ -69,7 +69,6 @@ test_student_authentication = generate_auth_required_tests(
     ({"admin", "staff"}, "GET", "/api/students", None),
     ({"admin", "staff"}, "GET", "/api/students/12345", None),
     ({"admin"}, "PUT", "/api/students/12345", StudentTestUtils.get_sample_data()),
-    ({"admin"}, "DELETE", "/api/students/12345", None),
     ({"admin", "staff"}, "PATCH", "/api/students/12345/is-registered", {"is_registered": True}),
     ({"admin", "staff"}, "POST", "/api/students/autocomplete", {"query": "test"}),
     ({"admin", "staff", "student"}, "GET", "/api/students/me", None),

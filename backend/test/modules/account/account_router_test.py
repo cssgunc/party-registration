@@ -272,7 +272,8 @@ class TestAccountRouter:
 
     @pytest.mark.asyncio
     async def test_update_last_admin_cannot_demote(self):
-        # The test admin (99999) is the sole admin; try to demote it
+        # Persist the test admin (99999) as the sole admin; try to demote it.
+        await self.account_utils.initialize_client_account(AccountRole.ADMIN)
         response = await self.admin_client.put(
             "/api/accounts/99999",
             json={"role": "staff"},

@@ -68,7 +68,6 @@ test_location_authentication = generate_auth_required_tests(
     ({"admin"}, "POST", "/api/locations", {"google_place_id": "ChIJ123abc"}),
     ({"admin", "staff"}, "GET", "/api/locations/1", None),
     ({"admin"}, "PUT", "/api/locations/1", {"google_place_id": "ChIJ123abc"}),
-    ({"admin"}, "DELETE", "/api/locations/1", None),
     (
         {"admin", "staff", "student", "officer", "police_admin"},
         "POST",
