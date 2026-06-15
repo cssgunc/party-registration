@@ -84,17 +84,12 @@ function WarningNote({ children }: { children: React.ReactNode }) {
   );
 }
 
-function StudentInfo({
-  isEditing,
-  setIsEditing,
-}: {
-  isEditing: boolean;
-  setIsEditing: (editing: boolean) => void;
-}) {
+function StudentInfo() {
   const { data: student, isLoading, error } = useCurrentStudent();
   const updateStudentMutation = useUpdateStudent();
   const updateResidenceMutation = useUpdateResidence();
   const { openSnackbar } = useSnackbar();
+  const [isEditing, setIsEditing] = useState(false);
   const [locationPlaceId, setLocationPlaceId] = useState("");
   const [formattedAddress, setFormattedAddress] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -380,8 +375,6 @@ function StudentInfo({
 }
 
 export default function StudentProfilePage() {
-  const [isEditing, setIsEditing] = useState(false);
-
   return (
     <div className="flex flex-col items-center h-full overflow-y-auto">
       <div className="w-5/6 mx-4 my-4 max-w-2xl flex flex-col">
@@ -390,7 +383,7 @@ export default function StudentProfilePage() {
           <Link href="/">Back</Link>
         </nav>
         <Card className="max-w-4xl mt-2 w-full border">
-          <StudentInfo isEditing={isEditing} setIsEditing={setIsEditing} />
+          <StudentInfo />
         </Card>
         <div className="flex justify-center mt-8">
           <Button
