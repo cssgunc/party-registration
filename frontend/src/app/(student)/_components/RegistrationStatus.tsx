@@ -89,7 +89,7 @@ export default function RegistrationStatus({
               target="_blank"
               rel="noopener noreferrer"
             >
-              Schedule a meeting
+              Schedule a meeting to complete it
               <ExternalLink className="size-4 ml-2" aria-hidden="true" />
             </a>
           </div>

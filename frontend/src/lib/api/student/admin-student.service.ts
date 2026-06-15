@@ -100,14 +100,4 @@ export class AdminStudentService {
     );
     return convertStudent(response.data);
   }
-
-  /**
-   * Deletes a student (DELETE /api/students/{student_id})
-   */
-  async deleteStudent(id: number): Promise<StudentDto> {
-    const response = await this.client.delete<StudentDtoBackend>(
-      `/students/${id}`
-    );
-    return convertStudent(response.data);
-  }
 }

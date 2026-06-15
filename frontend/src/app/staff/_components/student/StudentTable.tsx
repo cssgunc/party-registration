@@ -3,7 +3,6 @@
 import { Checkbox } from "@/components/ui/checkbox";
 import { useSnackbar } from "@/contexts/SnackbarContext";
 import {
-  useDeleteStudent,
   useDownloadStudentsCsv,
   useStudents,
   useUpdateIsRegistered,
@@ -22,7 +21,7 @@ import { FormSidebar } from "../shared/sidebar/FormSidebar";
 import { InfoChip } from "../shared/sidebar/InfoChip";
 import { useFormSidebarState } from "../shared/sidebar/useFormSidebarState";
 import { TableTemplate } from "../shared/table/TableTemplate";
-import { deleteAction, editAction } from "../shared/table/rowActions";
+import { editAction } from "../shared/table/rowActions";
 import { useServerTableState } from "../shared/table/useServerTableState";
 import StudentTableForm from "./StudentTableForm";
 
@@ -42,7 +41,7 @@ const toEditData = (student: StudentDto) => ({
 });
 
 export const StudentTable = () => {
-  const { openSnackbar, snackbarPromise } = useSnackbar();
+  const { openSnackbar } = useSnackbar();
   const {
     mode,
     row,
@@ -73,8 +72,6 @@ export const StudentTable = () => {
       openSnackbar("Student updated successfully", "success");
     },
   });
-
-  const deleteMutation = useDeleteStudent();
 
   const columns: ColumnDef<StudentDto>[] = [
     {
@@ -210,21 +207,7 @@ export const StudentTable = () => {
         query={query}
         serverTableState={serverTableState}
         columns={columns}
-        rowActions={[
-          editAction<StudentDto>({ onClick: openEdit }),
-          deleteAction<StudentDto>({
-            onClick: (student) =>
-              snackbarPromise(deleteMutation.mutateAsync(student.id), {
-                loading: "Deleting student...",
-                success: "Student deleted successfully",
-                error: "Failed to delete student",
-              }),
-            resourceName: "Student",
-            description: (student) =>
-              `Are you sure you want to delete ${student.first_name} ${student.last_name}? This action cannot be undone.`,
-            isPending: deleteMutation.isPending,
-          }),
-        ]}
+        rowActions={[editAction<StudentDto>({ onClick: openEdit })]}
         exportMutation={exportMutation}
       />
       <FormSidebar

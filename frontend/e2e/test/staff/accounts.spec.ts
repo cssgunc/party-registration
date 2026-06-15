@@ -249,9 +249,24 @@ test.describe("Accounts — exhaustive", () => {
       ).toBeVisible();
       await expect(page.getByRole("menuitem", { name: "Edit" })).toHaveCount(0);
       await page.keyboard.press("Escape");
-      // cleanup
-      await clickRowAction(page, inviteEmail, "Delete");
-      await confirmDialog(page, "Delete");
+      // cleanup — invited rows use "Revoke invite" action
+      await clickRowAction(page, inviteEmail, "Revoke invite");
+      await confirmDialog(page, "Revoke");
+    });
+
+    test("exception: cannot demote the last admin", async ({ page }) => {
+      // ADMIN_ACCOUNT is the only admin in the seed; demoting to Staff must fail
+      await setGlobalSearch(page, ADMIN_ACCOUNT.email);
+      await clickRowAction(page, ADMIN_ACCOUNT.email, "Edit");
+      await selectSidebarCombobox(page, 0, "Staff");
+      await page.getByRole("button", { name: "Save Changes" }).click();
+      await expect(
+        page.getByText("Cannot remove the last remaining admin")
+      ).toBeVisible();
+      // Close sidebar (error keeps it open), then verify role is unchanged
+      await page.keyboard.press("Escape");
+      await waitForTableReady(page);
+      await expect(page.getByText("Admin")).toBeVisible();
     });
   });
 });

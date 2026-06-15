@@ -218,18 +218,3 @@ async def update_location(
         )
 
     return await location_service.update_location(location_id, location_data)
-
-
-@location_router.delete(
-    "/{location_id}",
-    response_model=LocationDto,
-    responses={
-        404: {"description": "Location not found"},
-    },
-)
-async def delete_location(
-    location_id: int,
-    location_service: LocationService = Depends(),
-    _=Depends(authenticate_by_role("admin")),
-):
-    return await location_service.delete_location(location_id)

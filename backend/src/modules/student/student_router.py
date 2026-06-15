@@ -183,20 +183,6 @@ async def update_student(
     return await student_service.update_student(student_id, data)
 
 
-@student_router.delete(
-    "/{student_id}",
-    responses={
-        404: {"description": "Student with the given id was not found"},
-    },
-)
-async def delete_student(
-    student_id: int,
-    student_service: StudentService = Depends(),
-    _=Depends(authenticate_by_role("admin")),
-) -> StudentDto:
-    return await student_service.delete_student(student_id)
-
-
 @student_router.patch(
     "/{student_id}/is-registered",
     responses={

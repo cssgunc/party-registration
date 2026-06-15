@@ -21,7 +21,7 @@ import type { PoliceRole } from "@/lib/api/police/police.types";
 import { getErrorMessage } from "@/lib/errors";
 import { formatRoleLabel } from "@/lib/utils";
 import { ColumnDef } from "@tanstack/react-table";
-import { Send } from "lucide-react";
+import { Send, Trash2 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import * as z from "zod";
 import { FormSidebar } from "../shared/sidebar/FormSidebar";
@@ -57,6 +57,7 @@ const ACCOUNT_STATUS_FILTER_OPTIONS = [
 
 const ACCOUNT_ERROR_OPTIONS = {
   status: {
+    403: "Cannot remove the last remaining admin",
     404: "Account not found",
     409: "An account with this email already exists",
   },
@@ -123,14 +124,16 @@ export const AccountTable = () => {
     openEdit(row);
   };
 
+  const handleRevokeInvite = (row: AggregateAccountDto) => {
+    snackbarPromise(deleteInviteMutation.mutateAsync(row.source_id), {
+      loading: "Revoking invite...",
+      success: "Invite revoked successfully",
+      error: (err) => getErrorMessage(err, ACCOUNT_ERROR_OPTIONS),
+    });
+  };
+
   const handleDelete = (row: AggregateAccountDto) => {
-    if (row.status === "invited") {
-      snackbarPromise(deleteInviteMutation.mutateAsync(row.source_id), {
-        loading: "Deleting invite...",
-        success: "Invite deleted successfully",
-        error: (err) => getErrorMessage(err, ACCOUNT_ERROR_OPTIONS),
-      });
-    } else if (isPoliceRow(row)) {
+    if (isPoliceRow(row)) {
       snackbarPromise(deletePoliceAccountMutation.mutateAsync(row.source_id), {
         loading: "Deleting police account...",
         success: "Police account deleted successfully",
@@ -275,6 +278,21 @@ export const AccountTable = () => {
             icon: <Send className="mr-2 size-4" />,
             isVisible: (row) => row.status === "invited",
           } satisfies RowAction<AggregateAccountDto>,
+          {
+            label: "Revoke invite",
+            icon: <Trash2 className="mr-2 size-4" />,
+            variant: "destructive",
+            isVisible: (row) => row.status === "invited",
+            confirm: {
+              title: "Revoke Invite",
+              description: (row) =>
+                `Are you sure you want to revoke the invite for ${row.email}? This action cannot be undone.`,
+              confirmLabel: "Revoke",
+              pendingLabel: "Revoking...",
+              isPending: deleteInviteMutation.isPending,
+            },
+            onClick: handleRevokeInvite,
+          } satisfies RowAction<AggregateAccountDto>,
           deleteAction<AggregateAccountDto>({
             onClick: handleDelete,
             resourceName: "Account",
@@ -283,12 +301,11 @@ export const AccountTable = () => {
             isPending:
               deleteAccountMutation.isPending ||
               deletePoliceAccountMutation.isPending ||
-              deleteInviteMutation.isPending ||
               resendInviteMutation.isPending,
             isVisible: (row) =>
-              row.status === "invited" ||
-              isPoliceRow(row) ||
-              (session?.id != null && row.source_id !== session.id),
+              row.status !== "invited" &&
+              (isPoliceRow(row) ||
+                (session?.id != null && row.source_id !== session.id)),
           }),
         ]}
         exportMutation={exportMutation}

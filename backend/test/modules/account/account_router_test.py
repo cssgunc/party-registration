@@ -9,6 +9,7 @@ from src.modules.account.account_model import (
 from src.modules.account.account_service import (
     AccountNotFoundException,
     CannotDeleteOwnAccountException,
+    CannotRemoveLastAdminException,
     InviteConflictException,
 )
 from test.modules.account.account_utils import AccountTestUtils
@@ -260,6 +261,38 @@ class TestAccountRouter:
 
         accounts = await self.account_utils.get_all()
         assert len(accounts) == len(accounts_two_per_role)
+
+    @pytest.mark.asyncio
+    async def test_delete_last_admin_forbidden(self):
+        # Only admin in DB is the test admin (99999); try to delete another admin
+        # when they're the sole remaining admin
+        sole_admin = await self.account_utils.create_one(role="admin")
+        response = await self.admin_client.delete(f"/api/accounts/{sole_admin.id}")
+        assert_res_failure(response, CannotRemoveLastAdminException())
+
+    @pytest.mark.asyncio
+    async def test_update_last_admin_cannot_demote(self):
+        # Persist the test admin (99999) as the sole admin; try to demote it.
+        await self.account_utils.initialize_client_account(AccountRole.ADMIN)
+        response = await self.admin_client.put(
+            "/api/accounts/99999",
+            json={"role": "staff"},
+        )
+        assert_res_failure(response, CannotRemoveLastAdminException())
+
+    @pytest.mark.asyncio
+    async def test_update_admin_with_multiple_admins_succeeds(
+        self, accounts_two_per_role: list[AccountEntity]
+    ):
+        # accounts_two_per_role contains 2 ADMIN accounts plus the test admin = 3 total
+        admin_accounts = [a for a in accounts_two_per_role if a.role == AccountRole.ADMIN]
+        account_to_demote = admin_accounts[0]
+        response = await self.admin_client.put(
+            f"/api/accounts/{account_to_demote.id}",
+            json={"role": "staff"},
+        )
+        data = assert_res_success(response, AccountDto)
+        assert data.role == AccountRole.STAFF
 
 
 class TestAccountListSearch:

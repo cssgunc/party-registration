@@ -70,6 +70,11 @@ class CannotDeleteOwnAccountException(ForbiddenException):
         super().__init__(detail="Admins cannot delete their own account")
 
 
+class CannotRemoveLastAdminException(ForbiddenException):
+    def __init__(self):
+        super().__init__(detail="Cannot remove the last remaining admin")
+
+
 class InviteConflictException(ConflictException):
     def __init__(self, email: str):
         super().__init__(f"An account or pending invitation already exists for {email}")
@@ -237,6 +242,10 @@ class AccountService:
 
     async def update_account(self, account_id: int, data: AccountUpdateData) -> AccountDto:
         account_entity = await self.get_account_entity_by(id=account_id)
+        if account_entity.role == AccountRole.ADMIN and data.role != AccountRole.ADMIN:
+            admins = await self.get_accounts_by_roles([AccountRole.ADMIN])
+            if len(admins) <= 1:
+                raise CannotRemoveLastAdminException()
         account_entity.role = data.role
         self.session.add(account_entity)
         await self.session.commit()
@@ -245,6 +254,10 @@ class AccountService:
 
     async def delete_account(self, account_id: int) -> AccountDto:
         account_entity = await self.get_account_entity_by(id=account_id)
+        if account_entity.role == AccountRole.ADMIN:
+            admins = await self.get_accounts_by_roles([AccountRole.ADMIN])
+            if len(admins) <= 1:
+                raise CannotRemoveLastAdminException()
         account = account_entity.to_dto()
         await self.session.delete(account_entity)
         await self.session.commit()

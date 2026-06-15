@@ -81,19 +81,3 @@ export function useUpdateIsRegistered(
     },
   });
 }
-
-export function useDeleteStudent(
-  options?: OptimisticMutationOptions<StudentDto, Error, number>
-) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    ...options,
-    mutationFn: (id: number) => studentService.deleteStudent(id),
-
-    onSuccess: (...params) => {
-      queryClient.invalidateQueries({ queryKey: STUDENTS_KEY });
-      options?.onSuccess?.(...params);
-    },
-  });
-}
