@@ -95,22 +95,6 @@ export function useDownloadLocationsCsv() {
   });
 }
 
-export function useDeleteLocation(
-  options?: OptimisticMutationOptions<LocationDto, Error, number>
-) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    ...options,
-    mutationFn: (id: number) => locationService.deleteLocation(id),
-
-    onSuccess: (...params) => {
-      queryClient.invalidateQueries({ queryKey: LOCATIONS_KEY });
-      options?.onSuccess?.(...params);
-    },
-  });
-}
-
 type LocationsSnapshot = [
   QueryKey,
   PaginatedResponse<LocationDto> | undefined,

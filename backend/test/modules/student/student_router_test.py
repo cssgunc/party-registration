@@ -355,26 +355,6 @@ class TestStudentCRUDRouter:
         )
         assert_res_failure(response, StudentConflictException(updated_data.phone_number or ""))
 
-    @pytest.mark.asyncio
-    async def test_delete_student_success(self):
-        """Test successfully deleting a student."""
-        student = await self.student_utils.create_one()
-
-        response = await self.admin_client.delete(f"/api/students/{student.account_id}")
-        data = assert_res_success(response, StudentDto)
-
-        self.student_utils.assert_matches(student, data)
-
-        # Verify deletion
-        get_response = await self.admin_client.get(f"/api/students/{student.account_id}")
-        assert_res_failure(get_response, StudentNotFoundException(student.account_id))
-
-    @pytest.mark.asyncio
-    async def test_delete_student_not_found(self):
-        """Test deleting a non-existent student."""
-        response = await self.admin_client.delete("/api/students/99999")
-        assert_res_failure(response, StudentNotFoundException(99999))
-
 
 class TestStudentCSVRouter:
     """Tests for GET /api/students/csv endpoint."""

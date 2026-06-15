@@ -390,25 +390,6 @@ class TestLocationCRUDRouter:
         )
         assert_res_failure(response, LocationConflictException(update_data.google_place_id))
 
-    @pytest.mark.asyncio
-    async def test_delete_location_success(self):
-        """Test successfully deleting a location."""
-        location = await self.location_utils.create_one()
-
-        response = await self.admin_client.delete(f"/api/locations/{location.id}")
-        data = assert_res_success(response, LocationDto)
-
-        self.location_utils.assert_matches(location, data)
-
-        locations = await self.location_utils.get_all()
-        assert len(locations) == 0
-
-    @pytest.mark.asyncio
-    async def test_delete_location_not_found(self):
-        """Test deleting a non-existent location."""
-        response = await self.admin_client.delete("/api/locations/999")
-        assert_res_failure(response, LocationNotFoundException(999))
-
 
 class TestLocationCSVRouter:
     """Tests for GET /api/locations/csv endpoint."""

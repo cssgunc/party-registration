@@ -12,6 +12,7 @@ from src.modules.account.account_service import (
     AccountConflictException,
     AccountNotFoundException,
     AccountService,
+    CannotRemoveLastAdminException,
 )
 from test.modules.account.account_utils import AccountTestUtils
 from test.modules.account.invite_token_utils import InviteTokenTestUtils
@@ -230,6 +231,34 @@ class TestAccountService:
     async def test_delete_account_not_found(self):
         with pytest.raises(AccountNotFoundException):
             await self.account_service.delete_account(999)
+
+    @pytest.mark.asyncio
+    async def test_delete_last_admin_forbidden(self):
+        admin = await self.account_utils.create_one(role="admin")
+        with pytest.raises(CannotRemoveLastAdminException):
+            await self.account_service.delete_account(admin.id)
+
+    @pytest.mark.asyncio
+    async def test_delete_admin_with_multiple_admins_succeeds(self):
+        admin1 = await self.account_utils.create_one(role="admin")
+        await self.account_utils.create_one(role="admin")
+        deleted = await self.account_service.delete_account(admin1.id)
+        assert deleted.id == admin1.id
+
+    @pytest.mark.asyncio
+    async def test_update_last_admin_cannot_demote(self):
+        admin = await self.account_utils.create_one(role="admin")
+        update_data = AccountUpdateData(role=AccountRole.STAFF)
+        with pytest.raises(CannotRemoveLastAdminException):
+            await self.account_service.update_account(admin.id, update_data)
+
+    @pytest.mark.asyncio
+    async def test_update_admin_with_multiple_admins_succeeds(self):
+        admin1 = await self.account_utils.create_one(role="admin")
+        await self.account_utils.create_one(role="admin")
+        update_data = AccountUpdateData(role=AccountRole.STAFF)
+        updated = await self.account_service.update_account(admin1.id, update_data)
+        assert updated.role == AccountRole.STAFF
 
     @pytest.mark.asyncio
     async def test_get_accounts_by_roles_none_returns_all(

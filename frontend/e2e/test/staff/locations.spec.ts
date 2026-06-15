@@ -18,7 +18,6 @@ import {
 import { Steps } from "../../helpers/steps.helpers";
 import {
   clickRowAction,
-  confirmDialog,
   getColumnCellTexts,
   getPaginationTotal,
   getResultsSummary,
@@ -344,16 +343,6 @@ test.describe("Locations — exhaustive", () => {
       await page.getByRole("button", { name: "Delete" }).click();
       await expect(page.getByText(sidebarRef)).toBeHidden({ timeout: 5_000 });
       await page.keyboard.press("Escape");
-    });
-
-    // Runs last — cleans up the location used by all modify tests above.
-    test("delete location", async ({ page }) => {
-      const { address } = await ensureLocationEdited(page);
-      await setGlobalSearch(page, address);
-      await clickRowAction(page, address, "Delete");
-      await confirmDialog(page, "Delete");
-      await waitForTableReady(page);
-      expect(await getPaginationTotal(page)).toBe(0);
     });
   });
 });
