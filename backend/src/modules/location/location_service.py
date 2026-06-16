@@ -96,6 +96,16 @@ def get_gmaps_client() -> googlemaps.Client:
     return googlemaps.Client(key=env.GOOGLE_MAPS_API_KEY)
 
 
+# Place types that indicate a specific dwelling rather than a whole street.
+# A bare street comes back as `route`-only with no street number, which is not a
+# valid residence to register, so we drop those from autocomplete suggestions.
+_PRECISE_ADDRESS_TYPES = frozenset({"street_address", "premise", "subpremise"})
+
+
+def _is_precise_address(prediction_types: list[str]) -> bool:
+    return any(t in _PRECISE_ADDRESS_TYPES for t in prediction_types)
+
+
 def _incident_count_subquery(severity: IncidentSeverity | None = None):
     q = select(func.count()).where(IncidentEntity.location_id == LocationEntity.id)
     if severity is not None:
@@ -265,7 +275,10 @@ class LocationService:
         return location_entity.to_dto()
 
     async def autocomplete_address(self, input_text: str) -> list[AutocompleteResult]:
-        # Autocomplete an address using Google Maps Places API. Biased towards Chapel Hill, NC area
+        # Autocomplete an address using Google Maps Places API, restricted to the
+        # Chapel Hill, NC area (roughly the Triangle). location + radius only bias
+        # results, so strict_bounds is required to actually fence out far-away
+        # matches (e.g. same street name in another state).
         with _googlemaps_error_handler("Failed to autocomplete address"):
             try:
                 autocomplete_result = await asyncio.to_thread(
@@ -275,13 +288,17 @@ class LocationService:
                     types="address",
                     language="en",
                     location=(35.9132, -79.0558),  # Chapel Hill, NC coordinates
-                    radius=50000,  # 50km radius around Chapel Hill
+                    radius=10_000,  # meter radius around Chapel Hill
+                    strict_bounds=True,  # restrict to the radius, not just bias
                 )
             except googlemaps.exceptions.ApiError as e:
                 raise GoogleMapsAPIException(f"API error ({e.status}): {e!s}") from e
 
             suggestions = []
             for prediction in autocomplete_result:
+                # Skip bare streets (route-only); only suggest specific addresses.
+                if not _is_precise_address(prediction.get("types", [])):
+                    continue
                 suggestion = AutocompleteResult(
                     formatted_address=prediction["description"],
                     google_place_id=prediction["place_id"],

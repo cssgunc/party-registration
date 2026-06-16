@@ -272,7 +272,33 @@ class TestLocationServiceGoogleMapsAutocomplete:
             types="address",
             language="en",
             location=(35.9132, -79.0558),
-            radius=50000,
+            radius=10_000,
+            strict_bounds=True,
+        )
+
+    @pytest.mark.asyncio
+    async def test_autocomplete_filters_out_bare_streets(self):
+        """Route-only predictions (whole streets) should be dropped."""
+        self.gmaps_utils.mock_autocomplete_predictions(count=2, types=["route"])
+
+        results = await self.location_service.autocomplete_address("Cedar Falls Road")
+
+        assert results == []
+
+    @pytest.mark.asyncio
+    async def test_autocomplete_keeps_subpremise_addresses(self):
+        """Unit/apartment addresses (subpremise) are precise and kept."""
+        mock_predictions = self.gmaps_utils.mock_autocomplete_predictions(
+            count=1, types=["subpremise"]
+        )
+
+        results = await self.location_service.autocomplete_address("140 W Franklin St")
+
+        assert len(results) == 1
+        self.gmaps_utils.assert_autocomplete_matches(
+            result=results[0],
+            expected_description=mock_predictions[0]["description"],
+            expected_place_id=mock_predictions[0]["place_id"],
         )
 
     @pytest.mark.asyncio

@@ -182,17 +182,24 @@ class GmapsMockUtils:
         self.mock_autocomplete = mock_autocomplete
 
     def mock_autocomplete_predictions(
-        self, count: int = 2, **overrides: Unpack[LocationOverrides]
+        self,
+        count: int = 2,
+        types: list[str] | None = None,
+        **overrides: Unpack[LocationOverrides],
     ) -> list[dict]:
         """Generate mock autocomplete predictions for Google Maps API testing.
 
         Args:
             count: Number of predictions to generate
+            types: Place types to attach to each prediction. Defaults to a precise
+                address (``["street_address"]``); pass ``["route"]`` to simulate a
+                bare street.
             **overrides: Optional overrides for specific fields
 
         Returns:
             List of mock prediction dictionaries matching Google Maps API format
         """
+        prediction_types = types if types is not None else ["street_address"]
         predictions = []
         for _ in range(count):
             data = self.location_utils.get_or_default(
@@ -203,6 +210,7 @@ class GmapsMockUtils:
                 {
                     "description": data["formatted_address"],
                     "place_id": data["google_place_id"],
+                    "types": prediction_types,
                 }
             )
 

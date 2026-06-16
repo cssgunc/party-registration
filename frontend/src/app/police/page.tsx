@@ -231,6 +231,7 @@ export default function PolicePage() {
                 value={searchAddress?.formatted_address || ""}
                 onSelect={setSearchAddress}
                 placeholder="Search by address..."
+                browserAutocomplete={false}
               />
             </div>
             <div className="flex flex-col gap-2 order-1 sm:order-2">
