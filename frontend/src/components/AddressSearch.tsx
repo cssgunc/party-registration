@@ -32,6 +32,7 @@ interface AddressSearchProps {
   error?: string;
   chapelHillOnly?: boolean;
   id?: string;
+  browserAutocomplete?: boolean;
 }
 
 /**
@@ -48,6 +49,7 @@ export default function AddressSearch({
   error: externalError,
   chapelHillOnly = false,
   id,
+  browserAutocomplete = true,
 }: AddressSearchProps) {
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState(
@@ -266,6 +268,7 @@ export default function AddressSearch({
                   "bg-muted/50 text-muted-foreground cursor-not-allowed",
                 displayError && "border-destructive"
               )}
+              autoComplete={browserAutocomplete ? "on" : "off"}
               aria-label="Address search input"
               aria-describedby={displayError ? "address-error" : undefined}
               aria-invalid={!!displayError}
@@ -325,7 +328,8 @@ export default function AddressSearch({
                 searchTerm.trim().length >= 3 &&
                 suggestions.length === 0 && (
                   <CommandEmpty>
-                    No addresses found. Try a different search.
+                    No addresses found. Make sure to include the full street
+                    address.
                   </CommandEmpty>
                 )}
               {!isLoading && suggestions.length > 0 && (
