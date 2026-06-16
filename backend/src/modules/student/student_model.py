@@ -53,11 +53,10 @@ class ResidenceDto(BaseModel):
     residence_chosen_date: AwareDatetime
 
 
-class ResidenceStudentDto(BaseModel):
+class ResidenceStudentDto(ResidenceDto):
     """Residence DTO for student self-view; incidents restricted to type and date/time."""
 
     location: "LocationStudentDto"
-    residence_chosen_date: AwareDatetime
 
 
 class StudentDto(BaseModel):
@@ -86,18 +85,9 @@ class StudentDto(BaseModel):
     residence: ResidenceDto | None = None
 
 
-class StudentSelfDto(BaseModel):
+class StudentSelfDto(StudentDto):
     """Student self-view DTO — same as StudentDto but residence incidents are restricted."""
 
-    id: int
-    pid: str
-    email: EmailStr
-    first_name: str
-    last_name: str
-    onyen: str
-    phone_number: str | None = None
-    contact_preference: ContactPreference | None = None
-    last_registered: AwareDatetime | None = None
     residence: ResidenceStudentDto | None = None
 
 

@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PartyDto } from "@/lib/api/party/party.types";
+import { PartyStudentDto } from "@/lib/api/party/party.types";
 import {
   formatContactPreference,
   formatPhoneNumber,
@@ -18,13 +18,13 @@ import { format } from "date-fns/format";
 import { Ban, Mail, MoreVertical, Pencil, Phone } from "lucide-react";
 
 type Props = {
-  party: PartyDto;
+  party: PartyStudentDto;
   showActions?: boolean;
   showAddress?: boolean;
   residenceLocationId?: number;
   isPartiesPending?: boolean;
-  onEdit: (party: PartyDto) => void;
-  onDelete: (party: PartyDto) => void;
+  onEdit: (party: PartyStudentDto) => void;
+  onDelete: (party: PartyStudentDto) => void;
 };
 
 function RegistrationPartyCard({

@@ -8,7 +8,7 @@ import { SkeletonText } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NestedIncidentStudentDto } from "@/lib/api/incident/incident.types";
 import { hasActiveHold } from "@/lib/api/location/location.service";
-import { PartyDto } from "@/lib/api/party/party.types";
+import { PartyStudentDto } from "@/lib/api/party/party.types";
 import {
   useCurrentStudent,
   useMyParties,
@@ -24,13 +24,13 @@ import RegistrationPartyCard from "./RegistrationPartyCard";
 const EMPTY_CLASS =
   "flex h-full items-center justify-center px-12 text-center content-sub text-base!";
 
-function splitParties(parties: PartyDto[]): {
-  activeParties: PartyDto[];
-  pastParties: PartyDto[];
+function splitParties(parties: PartyStudentDto[]): {
+  activeParties: PartyStudentDto[];
+  pastParties: PartyStudentDto[];
 } {
   const now = new Date();
-  const active: PartyDto[] = [];
-  const past: PartyDto[] = [];
+  const active: PartyStudentDto[] = [];
+  const past: PartyStudentDto[] = [];
 
   parties.forEach((party) => {
     const partyDate = new Date(party.party_datetime);
@@ -96,8 +96,8 @@ type TabValue = "active" | "past" | "incidents";
 
 export default function RegistrationTracker(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<TabValue>("active");
-  const [editParty, setEditParty] = useState<PartyDto | null>(null);
-  const [deleteParty, setDeleteParty] = useState<PartyDto | null>(null);
+  const [editParty, setEditParty] = useState<PartyStudentDto | null>(null);
+  const [deleteParty, setDeleteParty] = useState<PartyStudentDto | null>(null);
 
   const { data: student } = useCurrentStudent();
   const partiesQuery = useMyParties();

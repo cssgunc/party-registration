@@ -17,6 +17,7 @@ from .party_model import (
     PartyDto,
     PartyPoliceDto,
     PartyStatus,
+    PartyStudentDto,
 )
 
 if TYPE_CHECKING:
@@ -112,6 +113,14 @@ class PartyEntity(MappedAsDataclass, EntityBase):
                 contact_preference=self.contact_two_contact_preference,
             ),
             status=self.status,
+        )
+
+    def to_student_dto(self) -> PartyStudentDto:
+        """Convert entity to student DTO — location incidents restricted to type and date/time."""
+        dto = self.to_dto()
+        return PartyStudentDto(
+            **dto.model_dump(exclude={"location"}),
+            location=self.location.to_student_dto(),
         )
 
     def to_dto(self) -> PartyDto:

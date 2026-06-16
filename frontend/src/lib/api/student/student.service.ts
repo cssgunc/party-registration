@@ -5,13 +5,17 @@ import {
   LocationDtoBackend,
   convertLocation,
 } from "../location/location.types";
-import { PartyDto, PartyDtoBackend, convertParty } from "../party/party.types";
+import {
+  PartyStudentDto,
+  PartyStudentDtoBackend,
+  convertParty,
+} from "../party/party.types";
 import {
   ResidenceUpdateDto,
   StudentData,
   StudentSelfDto,
   StudentSelfDtoBackend,
-  convertStudentSelf,
+  convertStudent,
 } from "./student.types";
 
 export class StudentService {
@@ -20,7 +24,7 @@ export class StudentService {
   async getCurrentStudent(): Promise<StudentSelfDto> {
     const response =
       await this.client.get<StudentSelfDtoBackend>("/students/me");
-    return convertStudentSelf(response.data);
+    return convertStudent(response.data, "self");
   }
 
   async updateMe(data: StudentData): Promise<StudentSelfDto> {
@@ -28,7 +32,7 @@ export class StudentService {
       "/students/me",
       data
     );
-    return convertStudentSelf(response.data);
+    return convertStudent(response.data, "self");
   }
 
   async updateResidence(data: ResidenceUpdateDto): Promise<LocationDto> {
@@ -39,11 +43,11 @@ export class StudentService {
     return convertLocation(response.data);
   }
 
-  async getMyParties(): Promise<PartyDto[]> {
-    const response = await this.client.get<PartyDtoBackend[]>(
+  async getMyParties(): Promise<PartyStudentDto[]> {
+    const response = await this.client.get<PartyStudentDtoBackend[]>(
       "/students/me/parties"
     );
-    return response.data.map(convertParty);
+    return response.data.map((p) => convertParty(p, "student"));
   }
 }
 

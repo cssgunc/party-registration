@@ -1,5 +1,5 @@
 import { LocationDto } from "@/lib/api/location/location.types";
-import { MY_PARTIES_KEY, PartyDto } from "@/lib/api/party/party.types";
+import { MY_PARTIES_KEY, PartyStudentDto } from "@/lib/api/party/party.types";
 import StudentService from "@/lib/api/student/student.service";
 import {
   CURRENT_STUDENT_KEY,
@@ -135,8 +135,8 @@ export function useUpdateResidence() {
   });
 }
 
-export function useMyParties(options?: UseQueryOptions<PartyDto[]>) {
-  return useQuery<PartyDto[], Error>({
+export function useMyParties(options?: UseQueryOptions<PartyStudentDto[]>) {
+  return useQuery<PartyStudentDto[], Error>({
     queryKey: MY_PARTIES_KEY,
     queryFn: () => studentService.getMyParties(),
     ...options,

@@ -11,11 +11,11 @@ import {
 } from "@/components/ui/dialog";
 import { useSnackbar } from "@/contexts/SnackbarContext";
 import { useDeleteParty } from "@/lib/api/party/party.queries";
-import { PartyDto } from "@/lib/api/party/party.types";
+import { PartyStudentDto } from "@/lib/api/party/party.types";
 import { format } from "date-fns";
 
 interface DeletePartyDialogProps {
-  party: PartyDto;
+  party: PartyStudentDto;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }

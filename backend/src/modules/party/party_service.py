@@ -41,6 +41,7 @@ from .party_model import (
     PartyDraft,
     PartyDto,
     PartyStatus,
+    PartyStudentDto,
     ProximitySearchResponse,
     StudentCreatePartyDto,
 )
@@ -308,7 +309,7 @@ class PartyService:
         party_entity = await self._get_party_entity_by_id(party_id)
         return party_entity.to_dto()
 
-    async def get_parties_by_contact(self, student_id: int) -> list[PartyDto]:
+    async def get_parties_for_student(self, student_id: int) -> list[PartyStudentDto]:
         """Get all parties for a specific student (no pagination)."""
         result = await self.session.execute(
             select(PartyEntity)
@@ -319,7 +320,7 @@ class PartyService:
             .options(*_PARTY_LOAD_OPTIONS)
         )
         parties = result.scalars().all()
-        return [party.to_dto() for party in parties]
+        return [party.to_student_dto() for party in parties]
 
     async def _build_student_draft(
         self,

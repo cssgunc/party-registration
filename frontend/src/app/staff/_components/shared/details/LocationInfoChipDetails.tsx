@@ -5,9 +5,7 @@ import { LocationSummaryDto } from "@/lib/api/incident/incident.types";
 import { hasActiveHold } from "@/lib/api/location/location.service";
 import {
   LocationDto,
-  getCitationCount,
-  getInPersonWarningCount,
-  getRemoteWarningCount,
+  getIncidentCounts,
 } from "@/lib/api/location/location.types";
 import { format } from "date-fns";
 
@@ -17,23 +15,19 @@ interface LocationInfoChipDetailsProps {
 
 function LocationInfoChipDetails({ data }: LocationInfoChipDetailsProps) {
   const hasIncidents = "incidents" in data;
+  const counts = hasIncidents ? getIncidentCounts(data) : null;
+  const countFields: [string, number][] = counts
+    ? [
+        ["In-Person Warning Count", counts.in_person_warning],
+        ["Remote Warning Count", counts.remote_warning],
+        ["Citation Count", counts.citation],
+      ]
+    : [];
   return (
     <InfoChipDetails
       fields={[
         ["Address", data.formatted_address],
-        ...(hasIncidents
-          ? [
-              ["In-Person Warning Count", getInPersonWarningCount(data)] as [
-                string,
-                number,
-              ],
-              ["Remote Warning Count", getRemoteWarningCount(data)] as [
-                string,
-                number,
-              ],
-              ["Citation Count", getCitationCount(data)] as [string, number],
-            ]
-          : []),
+        ...countFields,
         [
           "Active Hold",
           hasActiveHold(data.hold_expiration)

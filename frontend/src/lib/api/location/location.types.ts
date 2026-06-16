@@ -1,6 +1,7 @@
 import {
   type IncidentCreateDto,
   type IncidentSeverity,
+  type IncidentSeverityCounts,
   type NestedIncidentDto,
   type NestedIncidentDtoBackend,
   type NestedIncidentStudentDto,
@@ -119,6 +120,18 @@ type LocationCreate = {
   hold_expiration?: Date | null;
 };
 
+function getIncidentCounts(location: LocationDto): IncidentSeverityCounts {
+  const counts: IncidentSeverityCounts = {
+    remote_warning: 0,
+    in_person_warning: 0,
+    citation: 0,
+  };
+  for (const incident of location.incidents) {
+    counts[incident.severity]++;
+  }
+  return counts;
+}
+
 export type {
   AddressData,
   AutocompleteInput,
@@ -138,42 +151,4 @@ export type {
   NestedIncidentStudentDtoBackend,
 };
 
-/**
- * Count incidents of a specific severity for a location
- */
-function countIncidentsBySeverity(
-  location: LocationDto,
-  severity: IncidentSeverity
-): number {
-  return location.incidents.filter((i) => i.severity === severity).length;
-}
-
-/**
- * Get remote warning count for a location
- */
-function getRemoteWarningCount(location: LocationDto): number {
-  return countIncidentsBySeverity(location, "remote_warning");
-}
-
-/**
- * Get in-person warning count for a location
- */
-function getInPersonWarningCount(location: LocationDto): number {
-  return countIncidentsBySeverity(location, "in_person_warning");
-}
-
-/**
- * Get citation count for a location
- */
-function getCitationCount(location: LocationDto): number {
-  return countIncidentsBySeverity(location, "citation");
-}
-
-export {
-  convertLocation,
-  convertLocationStudent,
-  countIncidentsBySeverity,
-  getCitationCount,
-  getInPersonWarningCount,
-  getRemoteWarningCount,
-};
+export { convertLocation, convertLocationStudent, getIncidentCounts };

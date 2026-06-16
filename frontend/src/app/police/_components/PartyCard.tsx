@@ -18,11 +18,10 @@ import {
   INCIDENT_SEVERITY_LABELS,
   type IncidentSeverity,
 } from "@/lib/api/incident/incident.types";
+import { hasActiveHold } from "@/lib/api/location/location.service";
 import {
   LocationDto,
-  getCitationCount,
-  getInPersonWarningCount,
-  getRemoteWarningCount,
+  getIncidentCounts,
 } from "@/lib/api/location/location.types";
 import { PartyPoliceDto } from "@/lib/api/party/party.types";
 import {
@@ -78,24 +77,17 @@ function PartyCard({
   onOpenIncidentDialog,
 }: PartyCardProps) {
   const countBySeverity: Record<IncidentSeverity, number> = data.hasParty
-    ? {
-        remote_warning: getRemoteWarningCount(data.party.location),
-        in_person_warning: getInPersonWarningCount(data.party.location),
-        citation: getCitationCount(data.party.location),
-      }
-    : {
-        remote_warning:
-          data.location?.incidents.filter(
-            (i) => i.severity === "remote_warning"
-          ).length ?? 0,
-        in_person_warning:
-          data.location?.incidents.filter(
-            (i) => i.severity === "in_person_warning"
-          ).length ?? 0,
-        citation:
-          data.location?.incidents.filter((i) => i.severity === "citation")
-            .length ?? 0,
-      };
+    ? getIncidentCounts(data.party.location)
+    : data.location
+      ? getIncidentCounts(data.location)
+      : { remote_warning: 0, in_person_warning: 0, citation: 0 };
+
+  const rawHoldExpiration = data.hasParty
+    ? data.party.location.hold_expiration
+    : data.location?.hold_expiration;
+  const holdExpiration = hasActiveHold(rawHoldExpiration ?? null)
+    ? rawHoldExpiration
+    : null;
 
   const articleClass = cn(
     "border-b border-border px-4 py-2 transition-colors",
@@ -232,7 +224,7 @@ function PartyCard({
               </div>
             ))}
           </div>
-          {data.hasParty && data.party.location.hold_expiration && (
+          {holdExpiration && (
             <div className="flex flex-row gap-2 justify-end items-center mr-4">
               <HoverCard>
                 <HoverCardTrigger asChild>
@@ -247,7 +239,7 @@ function PartyCard({
                 </HoverCardContent>
               </HoverCard>
               <p className="text-destructive">
-                {format(data.party.location.hold_expiration, "MM/dd/yy")}
+                {format(holdExpiration, "MM/dd/yy")}
               </p>
             </div>
           )}
