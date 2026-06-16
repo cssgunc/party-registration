@@ -1,13 +1,15 @@
 "use client";
 
-import { DeletePartyDialog } from "@/app/(student)/_components/tracker/DeletePartyDialog";
 import { EditPartyDialog } from "@/app/(student)/_components/tracker/EditPartyDialog";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SkeletonText } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useSnackbar } from "@/contexts/SnackbarContext";
 import { NestedIncidentStudentDto } from "@/lib/api/incident/incident.types";
 import { hasActiveHold } from "@/lib/api/location/location.service";
+import { useDeleteParty } from "@/lib/api/party/party.queries";
 import { PartyStudentDto } from "@/lib/api/party/party.types";
 import {
   useCurrentStudent,
@@ -99,9 +101,21 @@ export default function RegistrationTracker(): React.JSX.Element {
   const [editParty, setEditParty] = useState<PartyStudentDto | null>(null);
   const [deleteParty, setDeleteParty] = useState<PartyStudentDto | null>(null);
 
+  const { openSnackbar } = useSnackbar();
+  const deletePartyMutation = useDeleteParty();
+
   const { data: student } = useCurrentStudent();
   const partiesQuery = useMyParties();
   const residenceLocationId = student?.residence?.location.id;
+
+  const handleDeleteParty = async (party: PartyStudentDto) => {
+    try {
+      await deletePartyMutation.mutateAsync(party.id);
+      openSnackbar("Party cancelled successfully", "success");
+    } catch {
+      openSnackbar("Failed to cancel party", "error");
+    }
+  };
 
   const isPartiesPending = partiesQuery.isPending;
   const isPartiesError = partiesQuery.error;
@@ -271,12 +285,21 @@ export default function RegistrationTracker(): React.JSX.Element {
       )}
 
       {deleteParty && (
-        <DeletePartyDialog
-          party={deleteParty}
+        <ConfirmDialog
           open={!!deleteParty}
           onOpenChange={(open) => {
             if (!open) setDeleteParty(null);
           }}
+          onConfirm={() => handleDeleteParty(deleteParty)}
+          title="Cancel Party"
+          description={`Are you sure you want to cancel the party on ${format(
+            deleteParty.party_datetime,
+            "PPP"
+          )} at ${format(deleteParty.party_datetime, "p")}?`}
+          confirmLabel="Cancel Party"
+          pendingLabel="Cancelling..."
+          dismissLabel="Back"
+          isPending={deletePartyMutation.isPending}
         />
       )}
     </div>

@@ -264,13 +264,6 @@ class LocationService:
         await self.session.refresh(location_entity)
         return location_entity.to_dto()
 
-    async def delete_location(self, location_id: int) -> LocationDto:
-        location_entity = await self._get_location_entity_by_id(location_id)
-        location = location_entity.to_dto()
-        await self.session.delete(location_entity)
-        await self.session.commit()
-        return location
-
     async def autocomplete_address(self, input_text: str) -> list[AutocompleteResult]:
         # Autocomplete an address using Google Maps Places API. Biased towards Chapel Hill, NC area
         with _googlemaps_error_handler("Failed to autocomplete address"):

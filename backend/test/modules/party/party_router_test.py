@@ -53,6 +53,13 @@ test_party_authentication = generate_auth_required_tests(
 )
 
 
+def _same_eastern_day_datetime(base: datetime) -> datetime:
+    """Return a UTC datetime on the same Eastern calendar day as base."""
+    base_et = base.astimezone(ZoneInfo("America/New_York"))
+    target_hour = 12 if base_et.hour != 12 else 13
+    return base_et.replace(hour=target_hour, minute=0, second=0, microsecond=0).astimezone(UTC)
+
+
 def _colliding_contact_two(contact_one: StudentDto, field: str) -> ContactDto:
     """Build a ContactDto that collides with contact_one on the named field ("email" or "phone")."""
     assert contact_one.phone_number is not None
@@ -387,7 +394,7 @@ class TestPartyCreateAdminRouter(AdminRouterTestBase):
 
         second_payload = await self.party_utils.next_admin_create_dto(
             contact_one_student_id=first_payload.contact_one_student_id,
-            party_datetime=conflict_datetime.replace(hour=(conflict_datetime.hour + 1) % 24),
+            party_datetime=_same_eastern_day_datetime(conflict_datetime),
         )
         response = await self.admin_client.post(
             "/api/parties", json=second_payload.model_dump(mode="json")
@@ -576,7 +583,7 @@ class TestPartyCreateStudentRouter(StudentRouterTestBase):
         )
 
         payload = await self.party_utils.next_student_create_dto(
-            party_datetime=existing_datetime.replace(hour=(existing_datetime.hour + 1) % 24),
+            party_datetime=_same_eastern_day_datetime(existing_datetime),
         )
         response = await self.student_client.post(
             "/api/parties", json=payload.model_dump(mode="json")
@@ -768,7 +775,7 @@ class TestPartyUpdateAdminRouter(AdminRouterTestBase):
         update_payload = await self.party_utils.next_admin_create_dto(
             google_place_id=create_payload.google_place_id,
             contact_one_student_id=create_payload.contact_one_student_id,
-            party_datetime=conflict_datetime.replace(hour=(conflict_datetime.hour + 1) % 24),
+            party_datetime=_same_eastern_day_datetime(conflict_datetime),
         )
         response = await self.admin_client.put(
             f"/api/parties/{created.id}", json=update_payload.model_dump(mode="json")
@@ -950,7 +957,7 @@ class TestPartyUpdateStudentRouter(StudentRouterTestBase):
 
         # Try to move it onto the conflict day
         update_payload = await self.party_utils.next_student_create_dto(
-            party_datetime=conflict_datetime.replace(hour=(conflict_datetime.hour + 1) % 24),
+            party_datetime=_same_eastern_day_datetime(conflict_datetime),
         )
         response = await self.student_client.put(
             f"/api/parties/{created.id}", json=update_payload.model_dump(mode="json")

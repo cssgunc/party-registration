@@ -290,13 +290,6 @@ class StudentService:
 
         return await self._save_student(student_entity)
 
-    async def delete_student(self, account_id: int) -> StudentDto:
-        student_entity = await self._get_student_entity_by_account_id(account_id)
-        student_dto = student_entity.to_dto()
-        await self.session.delete(student_entity)
-        await self.session.commit()
-        return student_dto
-
     _AUTOCOMPLETE_LIMIT = 10
 
     async def autocomplete_students(self, query: str) -> list[StudentSuggestionDto]:

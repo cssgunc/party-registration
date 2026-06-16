@@ -105,14 +105,4 @@ export class LocationService {
     );
     return convertLocation(response.data);
   }
-
-  /**
-   * Delete location (DELETE /api/locations/{location_id})
-   */
-  async deleteLocation(id: number): Promise<LocationDto> {
-    const response = await this.client.delete<LocationDtoBackend>(
-      `/locations/${id}`
-    );
-    return convertLocation(response.data);
-  }
 }

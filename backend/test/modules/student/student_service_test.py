@@ -101,21 +101,6 @@ class TestStudentService:
             )
 
     @pytest.mark.asyncio
-    async def test_delete_student(self):
-        student_entity = await self.student_utils.create_one()
-
-        deleted = await self.student_service.delete_student(student_entity.account_id)
-        self.student_utils.assert_matches(deleted, student_entity)
-
-        with pytest.raises(StudentNotFoundException):
-            await self.student_service.get_student_by_id(student_entity.account_id)
-
-    @pytest.mark.asyncio
-    async def test_delete_student_not_found(self):
-        with pytest.raises(StudentNotFoundException):
-            await self.student_service.delete_student(999)
-
-    @pytest.mark.asyncio
     async def test_update_student_with_datetime_timezone(self):
         student_entity = await self.student_utils.create_one()
 

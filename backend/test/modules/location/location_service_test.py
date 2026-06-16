@@ -139,37 +139,6 @@ class TestLocationServiceCRUD:
         self.location_utils.assert_matches(updated, update_data)
 
     @pytest.mark.asyncio
-    async def test_delete_location(self):
-        """Test deleting a location"""
-        location = await self.location_utils.create_one()
-
-        deleted = await self.location_service.delete_location(location.id)
-
-        self.location_utils.assert_matches(deleted, location)
-
-        # Verify it's actually deleted
-        locations = await self.location_utils.get_all()
-        assert len(locations) == 0
-
-    @pytest.mark.asyncio
-    async def test_delete_location_not_found(self):
-        """Test deleting a non-existent location raises not found exception"""
-        with pytest.raises(LocationNotFoundException):
-            await self.location_service.delete_location(999)
-
-    @pytest.mark.asyncio
-    async def test_delete_location_verify_others_remain(self):
-        """Test that deleting one location doesn't affect others"""
-        location1, location2 = await self.location_utils.create_many(i=2)
-
-        await self.location_service.delete_location(location1.id)
-
-        # Only one location should remain
-        all_locations = await self.location_utils.get_all()
-        assert len(all_locations) == 1
-        self.location_utils.assert_matches(all_locations[0], location2)
-
-    @pytest.mark.asyncio
     async def test_location_data_persistence(self):
         """Test that all location data fields are properly persisted"""
         data = await self.location_utils.next_data()
@@ -241,27 +210,6 @@ class TestLocationServiceWithIncidents:
         assert len(fetched.incidents) == 2
         self.incident_utils.assert_matches(fetched.incidents[0], incident1)
         self.incident_utils.assert_matches(fetched.incidents[1], incident2)
-
-    @pytest.mark.asyncio
-    async def test_delete_location_with_incidents_cascades(self):
-        """Test that deleting a location also deletes its incidents (cascade delete)."""
-        location = await self.location_utils.create_one()
-
-        # Add incidents to the location
-        await self.incident_utils.create_many(i=2, location_id=location.id)
-
-        # Delete the location
-        deleted = await self.location_service.delete_location(location.id)
-
-        assert deleted.id == location.id
-
-        # Verify the location is deleted
-        all_locations = await self.location_utils.get_all()
-        assert len(all_locations) == 0
-
-        # Verify the incidents are also deleted (cascade delete)
-        all_incidents = await self.incident_utils.get_all()
-        assert len(all_incidents) == 0
 
     @pytest.mark.asyncio
     async def test_update_location_retains_incidents(self):

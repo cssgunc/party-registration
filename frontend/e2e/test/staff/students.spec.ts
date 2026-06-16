@@ -9,7 +9,6 @@ import {
 } from "../../helpers/exhaustive.helpers";
 import { expect, suiteTest as test } from "../../helpers/fixtures.helpers";
 import {
-  PARTIES,
   STUDENTS,
   WITHOUT_RESIDENCE_COUNT,
   WITH_RESIDENCE_COUNT,
@@ -20,7 +19,6 @@ import {
 import { Steps } from "../../helpers/steps.helpers";
 import {
   clickRowAction,
-  confirmDialog,
   getPaginationTotal,
   getResultsSummary,
   openStaffTab,
@@ -49,11 +47,6 @@ const NOT_REGISTERED_COUNT = TOTAL - REGISTERED_COUNT;
 
 const EMAIL_TOKEN = firstUniqueToken(STUDENTS.map((s) => s.email));
 const FIRST_NAME_TOKEN = firstUniqueToken(STUDENTS.map((s) => s.first_name));
-
-// A student not referenced by any party — can be safely deleted.
-const partyStudentIds = new Set(PARTIES.map((p) => p.contact_one_id));
-const DELETABLE_STUDENT = STUDENTS.find((s) => !partyStudentIds.has(s.id));
-if (!DELETABLE_STUDENT) throw new Error("No unreferenced student in seed");
 
 // --- Sort and filter definitions -----------------------------------------------
 
@@ -216,8 +209,8 @@ test.describe("Students — exhaustive", () => {
     const steps = new Steps({});
 
     const ensureStudentEdited = steps.step(async (page) => {
-      await setGlobalSearch(page, DELETABLE_STUDENT.email);
-      await clickRowAction(page, DELETABLE_STUDENT.email, "Edit");
+      await setGlobalSearch(page, STUDENTS[0].email);
+      await clickRowAction(page, STUDENTS[0].email, "Edit");
       await page.getByLabel("Phone Number").fill("9195556789");
       await selectSidebarCombobox(page, 0, "Call");
       await page.getByRole("button", { name: "Save Changes" }).click();
@@ -230,15 +223,6 @@ test.describe("Students — exhaustive", () => {
     }) => {
       await ensureStudentEdited(page);
       await expect(page.getByText("(919) 555-6789")).toBeVisible();
-    });
-
-    test("delete student", async ({ page }) => {
-      await ensureStudentEdited(page);
-      await setGlobalSearch(page, DELETABLE_STUDENT.email);
-      await clickRowAction(page, DELETABLE_STUDENT.email, "Delete");
-      await confirmDialog(page, "Delete");
-      await setGlobalSearch(page, DELETABLE_STUDENT.email);
-      expect(await getPaginationTotal(page)).toBe(0);
     });
   });
 });

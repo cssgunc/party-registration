@@ -3,7 +3,6 @@
 import { useSnackbar } from "@/contexts/SnackbarContext";
 import {
   useCreateLocation,
-  useDeleteLocation,
   useDownloadLocationsCsv,
   useLocations,
   useUpdateLocation,
@@ -17,7 +16,7 @@ import { FormSidebar } from "../shared/sidebar/FormSidebar";
 import { InfoChip } from "../shared/sidebar/InfoChip";
 import { useFormSidebarState } from "../shared/sidebar/useFormSidebarState";
 import { TableTemplate } from "../shared/table/TableTemplate";
-import { deleteAction, editAction } from "../shared/table/rowActions";
+import { editAction } from "../shared/table/rowActions";
 import { useServerTableState } from "../shared/table/useServerTableState";
 import LocationTableForm from "./LocationTableForm";
 
@@ -27,7 +26,7 @@ const LOCATION_ERROR_OPTIONS = {
 } as const;
 
 export const LocationTable = () => {
-  const { openSnackbar, snackbarPromise } = useSnackbar();
+  const { openSnackbar } = useSnackbar();
   const exportMutation = useDownloadLocationsCsv();
   const {
     mode,
@@ -58,8 +57,6 @@ export const LocationTable = () => {
       closeSidebar();
     },
   });
-
-  const deleteMutation = useDeleteLocation();
 
   const columns: ColumnDef<LocationDto>[] = [
     {
@@ -141,21 +138,7 @@ export const LocationTable = () => {
         serverTableState={serverTableState}
         columns={columns}
         createAction={{ label: "New Location", fn: openCreate }}
-        rowActions={[
-          editAction<LocationDto>({ onClick: openEdit }),
-          deleteAction<LocationDto>({
-            onClick: (location) =>
-              snackbarPromise(deleteMutation.mutateAsync(location.id), {
-                loading: "Deleting location...",
-                success: "Location deleted successfully",
-                error: "Failed to delete location",
-              }),
-            resourceName: "Location",
-            description: (location) =>
-              `Are you sure you want to delete location ${location.formatted_address}? This action cannot be undone.`,
-            isPending: deleteMutation.isPending,
-          }),
-        ]}
+        rowActions={[editAction<LocationDto>({ onClick: openEdit })]}
         exportMutation={exportMutation}
       />
       <FormSidebar

@@ -44,7 +44,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { ConfirmDialog } from "../dialog/ConfirmDialog";
+import { ConfirmDialog } from "../../../../../components/ConfirmDialog";
 import { SidebarContent } from "../sidebar/SidebarContent";
 import { useSidebar } from "../sidebar/SidebarContext";
 import { ColumnHeader } from "./ColumnHeader";
