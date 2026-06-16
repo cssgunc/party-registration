@@ -61,7 +61,7 @@ class TestAuthRouter:
     async def test_exchange_student_creates_account_if_not_found(
         self, account_utils: AccountTestUtils
     ) -> None:
-        """Student exchange creates a new account when onyen doesn't exist."""
+        """Student exchange creates a new account when pid doesn't exist."""
         account_data = await account_utils.next_data(role="student")
 
         response = await self.unauthenticated_client.post(
@@ -94,8 +94,8 @@ class TestAuthRouter:
             email="newemail@unc.edu",
             first_name="Updated",
             last_name="Name",
-            pid="987654321",
-            onyen=existing.onyen,
+            pid=existing.pid,
+            onyen="newonyen",
             role=AccountRole.STUDENT,
         )
 
