@@ -151,6 +151,12 @@ export default function PartyRegistrationInfo({
               courtyards) cannot be registered.
             </li>
             <li>
+              If the police should show up at your residence, be respectful. Let
+              them know you registered and be sure to shut your party down. If
+              you ignore your warning, whether by phone or by the police, you
+              are likely to get a citation.
+            </li>
+            <li>
               Residences that receive two consecutive warnings on registered
               parties from Chapel Hill police will lose party registration
               privileges for 90 days, enforced as a hold on the residence (see
