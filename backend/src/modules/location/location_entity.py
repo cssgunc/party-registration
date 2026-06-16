@@ -8,7 +8,7 @@ from src.core.database import EntityBase
 from src.core.types import UTCDateTime
 from src.modules.incident.incident_model import LocationSummaryDto
 
-from .location_model import LocationData, LocationDto
+from .location_model import LocationData, LocationDto, LocationStudentDto
 
 if TYPE_CHECKING:
     from src.modules.incident.incident_entity import IncidentEntity
@@ -104,6 +104,18 @@ class LocationEntity(MappedAsDataclass, EntityBase):
             zip_code=self.zip_code,
             hold_expiration=hold_exp,
             incidents=[incident.to_nested_dto() for incident in self.incidents]
+            if incidents_loaded
+            else [],
+        )
+
+    def to_student_dto(self) -> LocationStudentDto:
+        """Location DTO for student view — incidents restricted to type and date/time."""
+        insp = inspect(self)
+        incidents_loaded = "incidents" not in insp.unloaded
+        dto = self.to_dto()
+        return LocationStudentDto(
+            **dto.model_dump(exclude={"incidents"}),
+            incidents=[incident.to_nested_student_dto() for incident in self.incidents]
             if incidents_loaded
             else [],
         )

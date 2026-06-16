@@ -11,6 +11,7 @@ from src.modules.incident.incident_model import (
     IncidentDto,
     IncidentSeverity,
     NestedIncidentDto,
+    NestedIncidentStudentDto,
 )
 
 if TYPE_CHECKING:
@@ -77,4 +78,12 @@ class IncidentEntity(MappedAsDataclass, EntityBase):
             description=self.description,
             severity=self.severity,
             reference_id=self.reference_id,
+        )
+
+    def to_nested_student_dto(self) -> NestedIncidentStudentDto:
+        """Convert entity to student view — type and date/time only."""
+        return NestedIncidentStudentDto(
+            id=self.id,
+            incident_datetime=self._normalized_datetime(),
+            severity=self.severity,
         )

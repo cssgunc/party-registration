@@ -25,7 +25,7 @@ import {
   PARTY_RULE_MESSAGES,
   StudentCreatePartyDto,
 } from "@/lib/api/party/party.types";
-import { StudentDto } from "@/lib/api/student/student.types";
+import { StudentSelfDto } from "@/lib/api/student/student.types";
 import { clientEnv } from "@/lib/config/env.client";
 import {
   cn,
@@ -183,7 +183,7 @@ interface PartyRegistrationFormProps {
   onSubmit: (data: PartyFormValues) => void | Promise<void>;
   initialValues?: PartyFormInitialValues;
   /** The authenticated student */
-  student?: StudentDto | null;
+  student?: StudentSelfDto | null;
   /** Whether this form is used for creating or editing a party */
   mode?: "create" | "edit";
   /** Server-side validation message to surface as a banner above the submit button. */

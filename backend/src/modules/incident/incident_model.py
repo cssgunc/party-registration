@@ -65,6 +65,14 @@ class NestedIncidentDto(IncidentFields):
     id: int
 
 
+class NestedIncidentStudentDto(BaseModel):
+    """Incident DTO for student view — type and date/time only; no description or reference_id."""
+
+    id: int
+    incident_datetime: AwareDatetime
+    severity: IncidentSeverity
+
+
 class IncidentSeverityCounts(BaseModel):
     """Counts of incidents grouped by severity (over the filtered result set)."""
 

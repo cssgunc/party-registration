@@ -1,6 +1,6 @@
 from pydantic import AwareDatetime, BaseModel, Field
 from src.core.utils.query_utils import PaginatedResponse
-from src.modules.incident.incident_model import NestedIncidentDto
+from src.modules.incident.incident_model import NestedIncidentDto, NestedIncidentStudentDto
 from src.modules.location.location_base_model import LocationData
 
 
@@ -18,6 +18,13 @@ class AutocompleteResult(BaseModel):
 class LocationDto(LocationData):
     id: int
     incidents: list[NestedIncidentDto] = Field(default_factory=list)
+
+
+class LocationStudentDto(LocationData):
+    """Location DTO for student view — incidents restricted to type and date/time."""
+
+    id: int
+    incidents: list[NestedIncidentStudentDto] = Field(default_factory=list)
 
 
 class PaginatedLocationResponse(PaginatedResponse[LocationDto]):

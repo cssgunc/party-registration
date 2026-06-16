@@ -2,7 +2,10 @@ import { isAxiosError } from "axios";
 import {
   LocationDto,
   LocationDtoBackend,
+  LocationStudentDto,
+  LocationStudentDtoBackend,
   convertLocation,
+  convertLocationStudent,
 } from "../location/location.types";
 import {
   ContactPreference,
@@ -86,17 +89,33 @@ type PartyPoliceDtoBackend = Omit<
 };
 
 /**
+ * Party DTO for student self-view — location incidents restricted to type and date/time.
+ */
+type PartyStudentDto = Omit<PartyDto, "location"> & {
+  location: LocationStudentDto;
+};
+
+type PartyStudentDtoBackend = Omit<PartyDtoBackend, "location"> & {
+  location: LocationStudentDtoBackend;
+};
+
+/**
  * Role discriminant used to select the correct party DTO shape.
- * "police" → PartyPoliceDto (contacts stripped of PII)
+ * "police"  → PartyPoliceDto (contacts stripped of PII)
+ * "student" → PartyStudentDto (location incidents restricted to type and date/time)
  * "default" → PartyDto (full contact info for staff/admin)
  */
-type PartyRole = "police" | "default";
+type PartyRole = "police" | "student" | "default";
 type PartyDtoOf<R extends PartyRole> = R extends "police"
   ? PartyPoliceDto
-  : PartyDto;
+  : R extends "student"
+    ? PartyStudentDto
+    : PartyDto;
 type PartyDtoBackendOf<R extends PartyRole> = R extends "police"
   ? PartyPoliceDtoBackend
-  : PartyDtoBackend;
+  : R extends "student"
+    ? PartyStudentDtoBackend
+    : PartyDtoBackend;
 
 /**
  * Single generic converter — role param drives both input type narrowing and output type.
@@ -108,22 +127,39 @@ export function convertParty<R extends PartyRole>(
 ): PartyDtoOf<R>;
 export function convertParty(backend: PartyDtoBackend): PartyDto;
 export function convertParty(
-  backend: PartyDtoBackend | PartyPoliceDtoBackend,
+  backend: PartyDtoBackend | PartyPoliceDtoBackend | PartyStudentDtoBackend,
   role: PartyRole = "default"
-): PartyDto | PartyPoliceDto {
-  const base = {
+): PartyDto | PartyPoliceDto | PartyStudentDto {
+  const common = {
     id: backend.id,
     party_datetime: new Date(backend.party_datetime),
-    location: convertLocation(backend.location),
     status: backend.status,
   };
+  if (role === "student") {
+    const b = backend as PartyStudentDtoBackend;
+    return {
+      ...common,
+      location: convertLocationStudent(b.location),
+      contact_one: convertStudent(b.contact_one),
+      contact_two: b.contact_two,
+    };
+  }
+  const location = convertLocation(
+    (backend as PartyDtoBackend | PartyPoliceDtoBackend).location
+  );
   if (role === "police") {
     const b = backend as PartyPoliceDtoBackend;
-    return { ...base, contact_one: b.contact_one, contact_two: b.contact_two };
+    return {
+      ...common,
+      location,
+      contact_one: b.contact_one,
+      contact_two: b.contact_two,
+    };
   }
   const b = backend as PartyDtoBackend;
   return {
-    ...base,
+    ...common,
+    location,
     contact_one: convertStudent(b.contact_one),
     contact_two: b.contact_two,
   };
@@ -305,6 +341,8 @@ export type {
   PartyPoliceDto,
   PartyPoliceDtoBackend,
   PartyRole,
+  PartyStudentDto,
+  PartyStudentDtoBackend,
   PartyValidationError,
   ProximitySearchResponse,
   ProximitySearchResponseBackend,

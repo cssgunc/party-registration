@@ -5,29 +5,34 @@ import {
   LocationDtoBackend,
   convertLocation,
 } from "../location/location.types";
-import { PartyDto, PartyDtoBackend, convertParty } from "../party/party.types";
+import {
+  PartyStudentDto,
+  PartyStudentDtoBackend,
+  convertParty,
+} from "../party/party.types";
 import {
   ResidenceUpdateDto,
   StudentData,
-  StudentDto,
-  StudentDtoBackend,
+  StudentSelfDto,
+  StudentSelfDtoBackend,
   convertStudent,
 } from "./student.types";
 
 export class StudentService {
   constructor(private client: AxiosInstance = apiClient) {}
 
-  async getCurrentStudent(): Promise<StudentDto> {
-    const response = await this.client.get<StudentDtoBackend>("/students/me");
-    return convertStudent(response.data);
+  async getCurrentStudent(): Promise<StudentSelfDto> {
+    const response =
+      await this.client.get<StudentSelfDtoBackend>("/students/me");
+    return convertStudent(response.data, "self");
   }
 
-  async updateMe(data: StudentData): Promise<StudentDto> {
-    const response = await this.client.put<StudentDtoBackend>(
+  async updateMe(data: StudentData): Promise<StudentSelfDto> {
+    const response = await this.client.put<StudentSelfDtoBackend>(
       "/students/me",
       data
     );
-    return convertStudent(response.data);
+    return convertStudent(response.data, "self");
   }
 
   async updateResidence(data: ResidenceUpdateDto): Promise<LocationDto> {
@@ -38,11 +43,11 @@ export class StudentService {
     return convertLocation(response.data);
   }
 
-  async getMyParties(): Promise<PartyDto[]> {
-    const response = await this.client.get<PartyDtoBackend[]>(
+  async getMyParties(): Promise<PartyStudentDto[]> {
+    const response = await this.client.get<PartyStudentDtoBackend[]>(
       "/students/me/parties"
     );
-    return response.data.map(convertParty);
+    return response.data.map((p) => convertParty(p, "student"));
   }
 }
 

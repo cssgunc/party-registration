@@ -1,9 +1,13 @@
 import {
   type IncidentCreateDto,
   type IncidentSeverity,
+  type IncidentSeverityCounts,
   type NestedIncidentDto,
   type NestedIncidentDtoBackend,
+  type NestedIncidentStudentDto,
+  type NestedIncidentStudentDtoBackend,
   convertNestedIncident,
+  convertNestedIncidentStudent,
 } from "../incident/incident.types";
 
 /**
@@ -81,12 +85,52 @@ function convertLocation(backend: LocationDtoBackend): LocationDto {
 }
 
 /**
+ * Location DTO for student self-view — incidents restricted to type and date/time.
+ */
+type LocationStudentDto = LocationData & {
+  id: number;
+  incidents: NestedIncidentStudentDto[];
+};
+
+type LocationStudentDtoBackend = Omit<
+  LocationStudentDto,
+  "hold_expiration" | "incidents"
+> & {
+  hold_expiration: string | null;
+  incidents: NestedIncidentStudentDtoBackend[];
+};
+
+function convertLocationStudent(
+  backend: LocationStudentDtoBackend
+): LocationStudentDto {
+  return {
+    ...backend,
+    hold_expiration: backend.hold_expiration
+      ? new Date(backend.hold_expiration)
+      : null,
+    incidents: backend.incidents.map(convertNestedIncidentStudent),
+  };
+}
+
+/**
  * Input for creating/updating a location
  */
 type LocationCreate = {
   google_place_id: string;
   hold_expiration?: Date | null;
 };
+
+function getIncidentCounts(location: LocationDto): IncidentSeverityCounts {
+  const counts: IncidentSeverityCounts = {
+    remote_warning: 0,
+    in_person_warning: 0,
+    citation: 0,
+  };
+  for (const incident of location.incidents) {
+    counts[incident.severity]++;
+  }
+  return counts;
+}
 
 export type {
   AddressData,
@@ -99,45 +143,12 @@ export type {
   LocationData,
   LocationDto,
   LocationDtoBackend,
+  LocationStudentDto,
+  LocationStudentDtoBackend,
   NestedIncidentDto,
   NestedIncidentDtoBackend,
+  NestedIncidentStudentDto,
+  NestedIncidentStudentDtoBackend,
 };
 
-/**
- * Count incidents of a specific severity for a location
- */
-function countIncidentsBySeverity(
-  location: LocationDto,
-  severity: IncidentSeverity
-): number {
-  return location.incidents.filter((i) => i.severity === severity).length;
-}
-
-/**
- * Get remote warning count for a location
- */
-function getRemoteWarningCount(location: LocationDto): number {
-  return countIncidentsBySeverity(location, "remote_warning");
-}
-
-/**
- * Get in-person warning count for a location
- */
-function getInPersonWarningCount(location: LocationDto): number {
-  return countIncidentsBySeverity(location, "in_person_warning");
-}
-
-/**
- * Get citation count for a location
- */
-function getCitationCount(location: LocationDto): number {
-  return countIncidentsBySeverity(location, "citation");
-}
-
-export {
-  convertLocation,
-  countIncidentsBySeverity,
-  getCitationCount,
-  getInPersonWarningCount,
-  getRemoteWarningCount,
-};
+export { convertLocation, convertLocationStudent, getIncidentCounts };

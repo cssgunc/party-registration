@@ -1,7 +1,10 @@
 import {
   LocationDto,
   LocationDtoBackend,
+  LocationStudentDto,
+  LocationStudentDtoBackend,
   convertLocation,
+  convertLocationStudent,
 } from "../location/location.types";
 
 type ContactPreference = "call" | "text";
@@ -46,6 +49,28 @@ type StudentDtoBackend = Omit<StudentDto, "last_registered" | "residence"> & {
   residence: ResidenceDtoBackend | null;
 };
 
+type ResidenceStudentDto = {
+  location: LocationStudentDto;
+  residence_chosen_date: Date;
+};
+
+type ResidenceStudentDtoBackend = {
+  location: LocationStudentDtoBackend;
+  residence_chosen_date: string;
+};
+
+type StudentSelfDto = Omit<StudentDto, "residence"> & {
+  residence: ResidenceStudentDto | null;
+};
+
+type StudentSelfDtoBackend = Omit<
+  StudentSelfDto,
+  "last_registered" | "residence"
+> & {
+  last_registered: string | null;
+  residence: ResidenceStudentDtoBackend | null;
+};
+
 type ResidenceUpdateDto = {
   residence_place_id: string;
 };
@@ -54,18 +79,56 @@ type ResidenceUpdateWithDisplayDto = ResidenceUpdateDto & {
   formatted_address: string;
 };
 
-function convertStudent(backend: StudentDtoBackend): StudentDto {
+/**
+ * Role discriminant used to select the correct student DTO shape.
+ * "self" → StudentSelfDto (residence uses the student-visible LocationStudentDto)
+ * "default" → StudentDto (residence uses full LocationDto for staff/admin)
+ */
+type StudentRole = "self" | "default";
+type StudentDtoOf<R extends StudentRole> = R extends "self"
+  ? StudentSelfDto
+  : StudentDto;
+type StudentDtoBackendOf<R extends StudentRole> = R extends "self"
+  ? StudentSelfDtoBackend
+  : StudentDtoBackend;
+
+/**
+ * Single generic converter — role param drives both input type narrowing and
+ * output type. Omitting role defaults to "default" (full StudentDto).
+ */
+function convertStudent<R extends StudentRole>(
+  backend: StudentDtoBackendOf<R>,
+  role: R
+): StudentDtoOf<R>;
+function convertStudent(backend: StudentDtoBackend): StudentDto;
+function convertStudent(
+  backend: StudentDtoBackend | StudentSelfDtoBackend,
+  role: StudentRole = "default"
+): StudentDto | StudentSelfDto {
+  const last_registered = backend.last_registered
+    ? new Date(backend.last_registered)
+    : null;
+  if (role === "self") {
+    const b = backend as StudentSelfDtoBackend;
+    return {
+      ...b,
+      last_registered,
+      residence: b.residence
+        ? {
+            location: convertLocationStudent(b.residence.location),
+            residence_chosen_date: new Date(b.residence.residence_chosen_date),
+          }
+        : null,
+    };
+  }
+  const b = backend as StudentDtoBackend;
   return {
-    ...backend,
-    last_registered: backend.last_registered
-      ? new Date(backend.last_registered)
-      : null,
-    residence: backend.residence
+    ...b,
+    last_registered,
+    residence: b.residence
       ? {
-          location: convertLocation(backend.residence.location),
-          residence_chosen_date: new Date(
-            backend.residence.residence_chosen_date
-          ),
+          location: convertLocation(b.residence.location),
+          residence_chosen_date: new Date(b.residence.residence_chosen_date),
         }
       : null,
   };
@@ -104,6 +167,8 @@ export type {
   ContactPreference,
   IsRegisteredUpdate,
   ResidenceDto,
+  ResidenceStudentDto,
+  ResidenceStudentDtoBackend,
   ResidenceUpdateDto,
   ResidenceUpdateWithDisplayDto,
   StudentAutocompleteInput,
@@ -111,6 +176,11 @@ export type {
   StudentUpdateDto,
   StudentDto,
   StudentDtoBackend,
+  StudentDtoBackendOf,
+  StudentDtoOf,
+  StudentRole,
+  StudentSelfDto,
+  StudentSelfDtoBackend,
   StudentSuggestionDto,
 };
 

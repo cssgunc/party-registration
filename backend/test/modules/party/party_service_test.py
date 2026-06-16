@@ -138,7 +138,7 @@ class TestPartyServiceQueries:
         # Create party with different contact_one
         party3 = await self.party_utils.create_one(contact_one_id=student2.account_id)
 
-        parties = await self.party_service.get_parties_by_contact(student1.account_id)
+        parties = await self.party_service.get_parties_for_student(student1.account_id)
 
         assert len(parties) == 2
         party_ids = [p.id for p in parties]

@@ -4,7 +4,7 @@ from typing import Annotated, Literal
 from pydantic import AwareDatetime, BaseModel, EmailStr, Field, field_validator
 from src.core.types import PhoneNumber
 from src.core.utils.query_utils import PaginatedResponse
-from src.modules.location.location_model import LocationDto
+from src.modules.location.location_model import LocationDto, LocationStudentDto
 from src.modules.student.student_model import ContactPreference, StudentDto
 
 
@@ -47,6 +47,12 @@ class PartyDto(BaseModel):
     contact_one: StudentDto = Field(..., description="First contact student")
     contact_two: ContactDto = Field(..., description="Contact information for the second contact")
     status: PartyStatus
+
+
+class PartyStudentDto(PartyDto):
+    """Party DTO for student view - location incidents restricted to type and date/time."""
+
+    location: LocationStudentDto
 
 
 class PartyDraft(BaseModel):

@@ -1,12 +1,12 @@
 import {
   INCIDENT_SEVERITY_LABELS,
-  NestedIncidentDto,
+  NestedIncidentStudentDto,
 } from "@/lib/api/incident/incident.types";
 import { formatTime } from "@/lib/utils";
 
 type Props = {
   date: string;
-  incidents: NestedIncidentDto[];
+  incidents: NestedIncidentStudentDto[];
 };
 
 function RegistrationIncidentCard({ date, incidents }: Props) {
@@ -21,7 +21,6 @@ function RegistrationIncidentCard({ date, incidents }: Props) {
                 {formatTime(incident.incident_datetime)} -{" "}
                 <span>{INCIDENT_SEVERITY_LABELS[incident.severity]}</span>
               </p>
-              <p className="content ml-3 mt-1">{incident.description}</p>
             </div>
           ))}
         </div>

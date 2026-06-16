@@ -13,14 +13,17 @@ import {
 } from "@/components/ui/dialog";
 import { useSnackbar } from "@/contexts/SnackbarContext";
 import { useUpdateParty } from "@/lib/api/party/party.queries";
-import { PartyDto, getPartyValidationError } from "@/lib/api/party/party.types";
+import {
+  PartyStudentDto,
+  getPartyValidationError,
+} from "@/lib/api/party/party.types";
 import { useCurrentStudent } from "@/lib/api/student/student.queries";
 import { getErrorMessage } from "@/lib/errors";
 import { format } from "date-fns";
 import { useState } from "react";
 
 interface EditPartyDialogProps {
-  party: PartyDto;
+  party: PartyStudentDto;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }

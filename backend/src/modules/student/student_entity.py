@@ -7,7 +7,14 @@ from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column, relationshi
 from src.core.database import EntityBase
 from src.core.types import UTCDateTime
 
-from .student_model import ContactPreference, ResidenceDto, StudentData, StudentDto
+from .student_model import (
+    ContactPreference,
+    ResidenceDto,
+    ResidenceStudentDto,
+    StudentData,
+    StudentDto,
+    StudentSelfDto,
+)
 
 if TYPE_CHECKING:
     from src.modules.account.account_entity import AccountEntity
@@ -99,6 +106,19 @@ class StudentEntity(MappedAsDataclass, EntityBase):
             last_registered=last_reg,
             residence=residence_dto,
         )
+
+    def to_self_dto(self) -> "StudentSelfDto":
+        """Student self-view DTO — residence incidents restricted to type and date/time."""
+        dto = self.to_dto()
+        residence = (
+            ResidenceStudentDto(
+                location=self.residence.to_student_dto(),
+                residence_chosen_date=dto.residence.residence_chosen_date,
+            )
+            if dto.residence is not None and self.residence is not None
+            else None
+        )
+        return StudentSelfDto(**dto.model_dump(exclude={"residence"}), residence=residence)
 
     async def load_dto(self, session: AsyncSession) -> StudentDto:
         """

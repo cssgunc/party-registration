@@ -15,7 +15,7 @@ import {
   useUpdateResidence,
   useUpdateStudent,
 } from "@/lib/api/student/student.queries";
-import { StudentDto } from "@/lib/api/student/student.types";
+import { StudentSelfDto } from "@/lib/api/student/student.types";
 import { signOut } from "@/lib/auth/signout";
 import { clientEnv } from "@/lib/config/env.client";
 import { getErrorMessage } from "@/lib/errors";
@@ -44,7 +44,7 @@ const studentInfoSchema = z.object({
 
 type StudentInfoValues = z.infer<typeof studentInfoSchema>;
 
-const mapStudentToFormData = (student: StudentDto): StudentInfoValues => ({
+const mapStudentToFormData = (student: StudentSelfDto): StudentInfoValues => ({
   first_name: student.first_name,
   last_name: student.last_name,
   phone_number: student.phone_number ?? "",

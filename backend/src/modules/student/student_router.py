@@ -11,7 +11,7 @@ from src.core.utils.query_utils import (
 )
 from src.modules.auth.auth_model import AuthPrincipal
 from src.modules.location.location_model import LocationDto
-from src.modules.party.party_model import PartyDto
+from src.modules.party.party_model import PartyStudentDto
 from src.modules.party.party_service import PartyService
 
 from .student_model import (
@@ -21,6 +21,7 @@ from .student_model import (
     ResidenceUpdateDto,
     SelfUpdateStudentDto,
     StudentDto,
+    StudentSelfDto,
     StudentSuggestionDto,
     StudentUpdateDto,
 )
@@ -39,7 +40,7 @@ _OPENAPI_PARAMS = get_paginated_openapi_params(StudentService.QUERY_FIELDS)
 async def get_me(
     student_service: StudentService = Depends(),
     user: AuthPrincipal = Depends(authenticate_by_role("student", "staff", "admin")),
-) -> StudentDto:
+) -> StudentSelfDto:
     return await student_service.get_student_me_dto(user.id)
 
 
@@ -54,7 +55,7 @@ async def update_me(
     data: SelfUpdateStudentDto,
     student_service: StudentService = Depends(),
     user: AuthPrincipal = Depends(authenticate_by_role("student", "staff", "admin")),
-) -> StudentDto:
+) -> StudentSelfDto:
     return await student_service.update_student_self(user.id, data)
 
 
@@ -79,8 +80,8 @@ async def update_my_residence(
 async def get_my_parties(
     party_service: PartyService = Depends(),
     user: AuthPrincipal = Depends(authenticate_by_role("student", "staff", "admin")),
-) -> list[PartyDto]:
-    return await party_service.get_parties_by_contact(user.id)
+) -> list[PartyStudentDto]:
+    return await party_service.get_parties_for_student(user.id)
 
 
 @student_router.get(

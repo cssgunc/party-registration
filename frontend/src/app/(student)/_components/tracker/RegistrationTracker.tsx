@@ -7,10 +7,10 @@ import { Card } from "@/components/ui/card";
 import { SkeletonText } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSnackbar } from "@/contexts/SnackbarContext";
-import { NestedIncidentDto } from "@/lib/api/incident/incident.types";
+import { NestedIncidentStudentDto } from "@/lib/api/incident/incident.types";
 import { hasActiveHold } from "@/lib/api/location/location.service";
 import { useDeleteParty } from "@/lib/api/party/party.queries";
-import { PartyDto } from "@/lib/api/party/party.types";
+import { PartyStudentDto } from "@/lib/api/party/party.types";
 import {
   useCurrentStudent,
   useMyParties,
@@ -26,13 +26,13 @@ import RegistrationPartyCard from "./RegistrationPartyCard";
 const EMPTY_CLASS =
   "flex h-full items-center justify-center px-12 text-center content-sub text-base!";
 
-function splitParties(parties: PartyDto[]): {
-  activeParties: PartyDto[];
-  pastParties: PartyDto[];
+function splitParties(parties: PartyStudentDto[]): {
+  activeParties: PartyStudentDto[];
+  pastParties: PartyStudentDto[];
 } {
   const now = new Date();
-  const active: PartyDto[] = [];
-  const past: PartyDto[] = [];
+  const active: PartyStudentDto[] = [];
+  const past: PartyStudentDto[] = [];
 
   parties.forEach((party) => {
     const partyDate = new Date(party.party_datetime);
@@ -61,9 +61,9 @@ function splitParties(parties: PartyDto[]): {
 }
 
 function groupIncidentsByDate(
-  incidents: NestedIncidentDto[]
-): [string, NestedIncidentDto[]][] {
-  const groups: Record<string, NestedIncidentDto[]> = {};
+  incidents: NestedIncidentStudentDto[]
+): [string, NestedIncidentStudentDto[]][] {
+  const groups: Record<string, NestedIncidentStudentDto[]> = {};
   incidents.forEach((incident) => {
     const dateKey = format(incident.incident_datetime, "MM/dd/yyyy");
     if (!groups[dateKey]) groups[dateKey] = [];
@@ -98,8 +98,8 @@ type TabValue = "active" | "past" | "incidents";
 
 export default function RegistrationTracker(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<TabValue>("active");
-  const [editParty, setEditParty] = useState<PartyDto | null>(null);
-  const [deleteParty, setDeleteParty] = useState<PartyDto | null>(null);
+  const [editParty, setEditParty] = useState<PartyStudentDto | null>(null);
+  const [deleteParty, setDeleteParty] = useState<PartyStudentDto | null>(null);
 
   const { openSnackbar } = useSnackbar();
   const deletePartyMutation = useDeleteParty();
@@ -108,7 +108,7 @@ export default function RegistrationTracker(): React.JSX.Element {
   const partiesQuery = useMyParties();
   const residenceLocationId = student?.residence?.location.id;
 
-  const handleDeleteParty = async (party: PartyDto) => {
+  const handleDeleteParty = async (party: PartyStudentDto) => {
     try {
       await deletePartyMutation.mutateAsync(party.id);
       openSnackbar("Party cancelled successfully", "success");
