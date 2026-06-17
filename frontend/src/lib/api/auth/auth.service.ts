@@ -8,11 +8,13 @@ import type {
   AccessTokenPayload,
   CurrentPrincipal,
   ExchangeTokenRequest,
+  ForgotPolicePasswordRequest,
   PoliceLoginRequest,
   PoliceLoginResponse,
   PoliceSignupRequest,
   RefreshTokenRequest,
   RefreshTokenResponse,
+  ResetPolicePasswordRequest,
   RetryPoliceVerificationRequest,
   TokenPair,
   VerifyPoliceEmailRequest,
@@ -201,4 +203,16 @@ export async function revokeRefreshToken(
 export async function getCurrentPrincipal(): Promise<CurrentPrincipal> {
   const response = await apiClient.get<CurrentPrincipal>("/auth/me");
   return response.data;
+}
+
+export async function forgotPolicePassword(
+  data: ForgotPolicePasswordRequest
+): Promise<void> {
+  await axios.post(`${publicApiBase}/auth/police/forgot-password`, data);
+}
+
+export async function resetPolicePassword(
+  data: ResetPolicePasswordRequest
+): Promise<void> {
+  await axios.post(`${publicApiBase}/auth/police/reset-password`, data);
 }

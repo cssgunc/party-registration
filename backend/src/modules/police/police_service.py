@@ -4,7 +4,7 @@ from typing import ClassVar
 from urllib.parse import urljoin
 
 from fastapi import Depends
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.config import env
@@ -26,6 +26,7 @@ from src.core.utils.query_utils import (
     SortOrder,
     SortParam,
 )
+from src.modules.auth.refresh_token_entity import RefreshTokenEntity
 from src.modules.police.police_entity import PoliceEntity
 from src.modules.police.police_model import (
     PaginatedPoliceResponse,
@@ -231,3 +232,58 @@ class PoliceService:
         if not police.is_verified:
             raise ForbiddenException("EMAIL_NOT_VERIFIED")
         return police.to_dto()
+
+    def _populate_password_reset_token(self, police: PoliceEntity) -> str:
+        token = secrets.token_urlsafe(32)
+        expires_at = datetime.now(UTC) + timedelta(hours=env.PASSWORD_RESET_TOKEN_EXPIRE_HOURS)
+        police.password_reset_token = token
+        police.password_reset_token_expires_at = expires_at
+        return token
+
+    async def request_password_reset(self, email: str) -> None:
+        police = await self._find_police_entity_by_email(email)
+        if police is None or not police.is_verified:
+            # Silently succeed to prevent user enumeration.
+            return
+
+        token = self._populate_password_reset_token(police)
+        self.session.add(police)
+        await self.session.commit()
+
+        await self.send_password_reset_email(email, token)
+
+    async def reset_password(self, token: str, new_password: str) -> None:
+        result = await self.session.execute(
+            select(PoliceEntity).where(PoliceEntity.password_reset_token == token)
+        )
+        police = result.scalar_one_or_none()
+        if police is None:
+            raise CredentialsException()
+
+        if (
+            police.password_reset_token_expires_at is None
+            or police.password_reset_token_expires_at < datetime.now(UTC)
+        ):
+            raise CredentialsException()
+
+        police.hashed_password = hash_password(new_password)
+        police.password_reset_token = None
+        police.password_reset_token_expires_at = None
+        self.session.add(police)
+
+        await self.session.execute(
+            delete(RefreshTokenEntity).where(RefreshTokenEntity.police_id == police.id)
+        )
+
+        await self.session.commit()
+
+    async def send_password_reset_email(self, to: str, token: str) -> None:
+        reset_url = urljoin(str(env.FRONTEND_BASE_URL), f"/police/reset-password?token={token}")
+        html = f"""
+            <p>We received a request to reset your PartySmart password.</p>
+            <p>Click the link below to set a new password:</p>
+            <p><a href="{reset_url}">{reset_url}</a></p>
+            <p>This link will expire in {env.PASSWORD_RESET_TOKEN_EXPIRE_HOURS} hour(s).</p>
+            <p>If you did not request a password reset, you can ignore this email.</p>
+        """
+        await self.email_service.send_email(to, "Reset your PartySmart password", html)

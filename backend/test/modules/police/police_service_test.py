@@ -2,11 +2,15 @@ from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock
 
 import pytest
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.exceptions import (
     BadRequestException,
     CredentialsException,
     ForbiddenException,
 )
+from src.core.utils.bcrypt_utils import verify_password
+from src.modules.auth.refresh_token_entity import RefreshTokenEntity
 from src.modules.police.police_model import PoliceAccountDto, PoliceRole
 from src.modules.police.police_service import (
     PoliceConflictException,
@@ -425,3 +429,160 @@ class TestPoliceRetryVerification:
         await self.police_service.retry_verification(entity.email)
 
         mock_email_service.send_email.assert_not_awaited()
+
+
+class TestPoliceRequestPasswordReset:
+    police_utils: PoliceTestUtils
+    police_service: PoliceService
+
+    @pytest.fixture(autouse=True)
+    def _setup(self, police_utils: PoliceTestUtils, police_service: PoliceService):
+        self.police_utils = police_utils
+        self.police_service = police_service
+
+    @pytest.mark.asyncio
+    async def test_request_password_reset_sends_email_for_valid_account(
+        self, mock_email_service: AsyncMock
+    ) -> None:
+        """Verified police accounts receive a password reset email with a token set."""
+        entity = await self.police_utils.create_verified_one()
+
+        await self.police_service.request_password_reset(entity.email)
+
+        mock_email_service.send_email.assert_awaited_once()
+        all_police = await self.police_utils.get_all()
+        updated = next(p for p in all_police if p.id == entity.id)
+        assert updated.password_reset_token is not None, "Expected password_reset_token to be set"
+        assert updated.password_reset_token_expires_at is not None, (
+            "Expected password_reset_token_expires_at to be set"
+        )
+
+    @pytest.mark.asyncio
+    async def test_request_password_reset_unknown_email_is_no_op(
+        self, mock_email_service: AsyncMock
+    ) -> None:
+        """Unknown email silently succeeds without sending an email (anti-enumeration)."""
+        await self.police_service.request_password_reset("unknown@chapelhillnc.gov")
+
+        mock_email_service.send_email.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_request_password_reset_unverified_account_is_no_op(
+        self, mock_email_service: AsyncMock
+    ) -> None:
+        """Unverified accounts do not receive a reset email."""
+        entity = await self.police_utils.create_one()
+
+        await self.police_service.request_password_reset(entity.email)
+
+        mock_email_service.send_email.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_request_password_reset_overwrites_existing_token(
+        self, mock_email_service: AsyncMock
+    ) -> None:
+        """Calling request twice replaces the previous reset token."""
+        entity = await self.police_utils.create_with_reset_token(token="first_token")
+
+        await self.police_service.request_password_reset(entity.email)
+
+        all_police = await self.police_utils.get_all()
+        updated = next(p for p in all_police if p.id == entity.id)
+        assert updated.password_reset_token != "first_token", "Expected old token to be replaced"
+        mock_email_service.send_email.assert_awaited_once()
+
+
+class TestPoliceResetPassword:
+    police_utils: PoliceTestUtils
+    police_service: PoliceService
+    test_session: AsyncSession
+
+    @pytest.fixture(autouse=True)
+    def _setup(
+        self,
+        police_utils: PoliceTestUtils,
+        police_service: PoliceService,
+        test_session: AsyncSession,
+    ):
+        self.police_utils = police_utils
+        self.police_service = police_service
+        self.test_session = test_session
+
+    async def _count_refresh_tokens(self, police_id: int) -> int:
+        result = await self.test_session.execute(
+            select(RefreshTokenEntity).where(RefreshTokenEntity.police_id == police_id)
+        )
+        return len(result.scalars().all())
+
+    async def _create_refresh_token(self, police_id: int) -> RefreshTokenEntity:
+        token = RefreshTokenEntity(token_hash=f"testhash_{police_id}", police_id=police_id)
+        self.test_session.add(token)
+        await self.test_session.commit()
+        return token
+
+    @pytest.mark.asyncio
+    async def test_reset_password_valid_token_updates_password(self) -> None:
+        """Valid reset token changes the hashed password."""
+        entity = await self.police_utils.create_with_reset_token()
+        old_hash = entity.hashed_password
+        new_password = "new_secure_password"
+
+        await self.police_service.reset_password(entity.password_reset_token, new_password)  # type: ignore[arg-type]
+
+        all_police = await self.police_utils.get_all()
+        updated = next(p for p in all_police if p.id == entity.id)
+        assert updated.hashed_password != old_hash, "Expected hashed_password to change"
+        assert verify_password(new_password, updated.hashed_password), (
+            "New password should verify against new hash"
+        )
+
+    @pytest.mark.asyncio
+    async def test_reset_password_valid_token_clears_token(self) -> None:
+        """Valid reset token is cleared after use."""
+        entity = await self.police_utils.create_with_reset_token()
+
+        await self.police_service.reset_password(entity.password_reset_token, "newpassword1")  # type: ignore[arg-type]
+
+        all_police = await self.police_utils.get_all()
+        updated = next(p for p in all_police if p.id == entity.id)
+        self.police_utils.assert_password_reset_token_cleared(updated)
+
+    @pytest.mark.asyncio
+    async def test_reset_password_valid_token_revokes_refresh_tokens(self) -> None:
+        """All existing sessions (refresh tokens) are invalidated on password reset."""
+        entity = await self.police_utils.create_with_reset_token()
+        await self._create_refresh_token(entity.id)
+        assert await self._count_refresh_tokens(entity.id) == 1
+
+        await self.police_service.reset_password(entity.password_reset_token, "newpassword1")  # type: ignore[arg-type]
+
+        assert await self._count_refresh_tokens(entity.id) == 0, (
+            "Expected all refresh tokens to be revoked"
+        )
+
+    @pytest.mark.asyncio
+    async def test_reset_password_invalid_token_raises(self) -> None:
+        """Non-existent token raises CredentialsException."""
+        with pytest.raises(CredentialsException):
+            await self.police_service.reset_password("not_a_real_token", "newpassword1")
+
+    @pytest.mark.asyncio
+    async def test_reset_password_expired_token_raises(self) -> None:
+        """Expired token raises CredentialsException."""
+        entity = await self.police_utils.create_with_reset_token(
+            expires_at=datetime.now(UTC) - timedelta(hours=1)
+        )
+
+        with pytest.raises(CredentialsException):
+            await self.police_service.reset_password(entity.password_reset_token, "newpassword1")  # type: ignore[arg-type]
+
+    @pytest.mark.asyncio
+    async def test_reset_password_token_cannot_be_reused(self) -> None:
+        """A reset token cannot be used a second time."""
+        entity = await self.police_utils.create_with_reset_token()
+        token = entity.password_reset_token
+
+        await self.police_service.reset_password(token, "newpassword1")  # type: ignore[arg-type]
+
+        with pytest.raises(CredentialsException):
+            await self.police_service.reset_password(token, "anotherpassword")  # type: ignore[arg-type]

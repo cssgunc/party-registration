@@ -21,6 +21,8 @@ class PoliceUpdateOverrides(TypedDict, total=False):
     is_verified: bool
     verification_token: str | None
     verification_token_expires_at: datetime | None
+    password_reset_token: str | None
+    password_reset_token_expires_at: datetime | None
 
 
 class PoliceTestUtils(
@@ -72,6 +74,8 @@ class PoliceTestUtils(
             is_verified=d.get("is_verified", False),
             verification_token=d.get("verification_token", None),
             verification_token_expires_at=d.get("verification_token_expires_at", None),
+            password_reset_token=d.get("password_reset_token", None),
+            password_reset_token_expires_at=d.get("password_reset_token_expires_at", None),
         )
 
     @override
@@ -147,6 +151,28 @@ class PoliceTestUtils(
 
         return await self.create_one(
             verification_token=token, verification_token_expires_at=expires_at, is_verified=False
+        )
+
+    async def create_with_reset_token(
+        self,
+        token: str = "test_reset_token",
+        expires_at: datetime | None = None,
+    ) -> PoliceEntity:
+        """Create a verified police entity with a specific password reset token."""
+        if expires_at is None:
+            expires_at = datetime.now(UTC) + timedelta(hours=env.PASSWORD_RESET_TOKEN_EXPIRE_HOURS)
+
+        return await self.create_one(
+            is_verified=True,
+            password_reset_token=token,
+            password_reset_token_expires_at=expires_at,
+        )
+
+    def assert_password_reset_token_cleared(self, entity: PoliceEntity) -> None:
+        """Assert that the password reset token fields are cleared."""
+        assert entity.password_reset_token is None, "Expected password_reset_token to be None"
+        assert entity.password_reset_token_expires_at is None, (
+            "Expected password_reset_token_expires_at to be None"
         )
 
     # ================================ Typing Overrides ================================

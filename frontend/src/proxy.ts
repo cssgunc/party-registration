@@ -5,7 +5,12 @@ import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
 
 const PUBLIC_PATHS = new Set(["/police/login"]);
-const PUBLIC_POLICE_PATHS = new Set(["/police/signup", "/police/verify"]);
+const PUBLIC_POLICE_PATHS = new Set([
+  "/police/signup",
+  "/police/verify",
+  "/police/forgot-password",
+  "/police/reset-password",
+]);
 
 function getDefaultRoleForPath(pathname: string): AppRole | null {
   if (

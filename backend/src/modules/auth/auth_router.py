@@ -17,7 +17,7 @@ from src.modules.auth.auth_model import (
     VerifyEmailDto,
 )
 from src.modules.auth.auth_service import AuthService, InvalidInternalSecretException
-from src.modules.police.police_model import PoliceSignupDto
+from src.modules.police.police_model import ForgotPasswordDto, PoliceSignupDto, ResetPasswordDto
 from src.modules.police.police_service import PoliceService
 from src.modules.student.student_service import StudentService
 
@@ -127,6 +127,39 @@ async def police_verify_email(
     Verify a police officer's email using the token from the verification email.
     """
     await police_service.verify_police_email(data.token)
+
+
+@router.post(
+    "/police/forgot-password",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def police_forgot_password(
+    data: ForgotPasswordDto,
+    police_service: PoliceService = Depends(),
+) -> None:
+    """
+    Send a password reset email to a police officer.
+
+    Always returns 204 regardless of whether the email exists, to prevent user enumeration.
+    """
+    await police_service.request_password_reset(data.email)
+
+
+@router.post(
+    "/police/reset-password",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        401: {"description": "Reset token is invalid or expired"},
+    },
+)
+async def police_reset_password(
+    data: ResetPasswordDto,
+    police_service: PoliceService = Depends(),
+) -> None:
+    """
+    Reset a police officer's password using a valid reset token.
+    """
+    await police_service.reset_password(data.token, data.password)
 
 
 @router.post(

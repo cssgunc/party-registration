@@ -127,6 +127,15 @@ function PoliceLoginForm() {
         </Form>
 
         <p className="mt-4 text-center text-sm text-muted-foreground">
+          <Link
+            href="/police/forgot-password"
+            className="text-primary underline"
+          >
+            Forgot password?
+          </Link>
+        </p>
+
+        <p className="mt-2 text-center text-sm text-muted-foreground">
           Need an account?{" "}
           <Link href="/police/signup" className="text-primary underline">
             Sign up

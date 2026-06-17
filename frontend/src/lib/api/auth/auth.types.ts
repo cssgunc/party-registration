@@ -74,17 +74,29 @@ type VerifyPoliceEmailRequest = {
   token: string;
 };
 
+type ForgotPolicePasswordRequest = {
+  email: string;
+};
+
+type ResetPolicePasswordRequest = {
+  token: string;
+  password: string;
+  confirm_password: string;
+};
+
 export type {
   AccessTokenPayload,
   AccountCurrentPrincipal,
   CurrentPrincipal,
   ExchangeTokenRequest,
+  ForgotPolicePasswordRequest,
   PoliceCurrentPrincipal,
   PoliceLoginRequest,
   PoliceLoginResponse,
   PoliceSignupRequest,
   RefreshTokenRequest,
   RefreshTokenResponse,
+  ResetPolicePasswordRequest,
   RetryPoliceVerificationRequest,
   TokenPair,
   VerifyPoliceEmailRequest,
