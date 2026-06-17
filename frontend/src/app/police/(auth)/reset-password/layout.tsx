@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Verify Police Account",
-  description: "Verify Police Account",
+  title: "Reset Password",
+  description: "Set a new password for your PartySmart police account",
   robots: { index: false, follow: false },
 };
 
-export default function PoliceVerifyLayout({
+export default function PoliceResetPasswordLayout({
   children,
 }: {
   children: React.ReactNode;

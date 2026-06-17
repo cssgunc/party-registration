@@ -17,6 +17,12 @@ class PoliceEntity(MappedAsDataclass, EntityBase):
             " OR (verification_token IS NOT NULL AND verification_token_expires_at IS NOT NULL)",
             name="ck_police_verification_token_expiry_both_null_or_set",
         ),
+        CheckConstraint(
+            "(password_reset_token IS NULL AND password_reset_token_expires_at IS NULL)"
+            " OR (password_reset_token IS NOT NULL"
+            " AND password_reset_token_expires_at IS NOT NULL)",
+            name="ck_police_password_reset_token_both_null_or_set",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, init=False)
@@ -32,6 +38,12 @@ class PoliceEntity(MappedAsDataclass, EntityBase):
     )
     verification_token: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
     verification_token_expires_at: Mapped[datetime | None] = mapped_column(
+        UTCDateTime, nullable=True, default=None
+    )
+    password_reset_token: Mapped[str | None] = mapped_column(
+        String(255), nullable=True, default=None
+    )
+    password_reset_token_expires_at: Mapped[datetime | None] = mapped_column(
         UTCDateTime, nullable=True, default=None
     )
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, server_default=func.now(), init=False)

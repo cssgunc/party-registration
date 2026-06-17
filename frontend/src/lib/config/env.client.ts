@@ -65,6 +65,10 @@ const schema = z.object({
     emptyToUndefined,
     mmDd.default("08-01")
   ),
+  NEXT_PUBLIC_PASSWORD_RESET_TOKEN_EXPIRE_HOURS: z.preprocess(
+    emptyToUndefined,
+    z.coerce.number().int().positive().default(1)
+  ),
 });
 
 // Explicitly reference each var so Next.js's static analyzer inlines them into
@@ -86,6 +90,8 @@ const result = schema.safeParse({
   NEXT_PUBLIC_PARTY_MAX_LEAD_DAYS: process.env.NEXT_PUBLIC_PARTY_MAX_LEAD_DAYS,
   NEXT_PUBLIC_ACADEMIC_YEAR_SWITCH_DATE:
     process.env.NEXT_PUBLIC_ACADEMIC_YEAR_SWITCH_DATE,
+  NEXT_PUBLIC_PASSWORD_RESET_TOKEN_EXPIRE_HOURS:
+    process.env.NEXT_PUBLIC_PASSWORD_RESET_TOKEN_EXPIRE_HOURS,
 });
 if (!result.success) {
   const issues = result.error.issues

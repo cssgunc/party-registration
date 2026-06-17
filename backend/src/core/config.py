@@ -75,6 +75,9 @@ class Config(BaseSettings):
     PARTY_MAX_LEAD_DAYS: int = Field(default=30, validation_alias="NEXT_PUBLIC_PARTY_MAX_LEAD_DAYS")
     EMAIL_VERIFICATION_TOKEN_EXPIRE_HOURS: int = 24
     INVITE_TOKEN_EXPIRY_HOURS: int = 48
+    PASSWORD_RESET_TOKEN_EXPIRE_HOURS: int = Field(
+        default=1, validation_alias="NEXT_PUBLIC_PASSWORD_RESET_TOKEN_EXPIRE_HOURS"
+    )
 
     @field_validator("ACADEMIC_YEAR_SWITCH_DATE")
     @classmethod

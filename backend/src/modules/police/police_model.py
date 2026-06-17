@@ -32,6 +32,26 @@ class PoliceSignupDto(BaseModel):
         return self
 
 
+class ForgotPasswordDto(BaseModel):
+    """DTO for requesting a password reset email."""
+
+    email: EmailStr
+
+
+class ResetPasswordDto(BaseModel):
+    """DTO for resetting a password using a reset token."""
+
+    token: str
+    password: str = Field(min_length=8)
+    confirm_password: str
+
+    @model_validator(mode="after")
+    def passwords_match(self) -> "ResetPasswordDto":
+        if self.password != self.confirm_password:
+            raise ValueError("Passwords do not match")
+        return self
+
+
 class PoliceAccountUpdate(BaseModel):
     """DTO for updating police account details."""
 

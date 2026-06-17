@@ -1,14 +1,18 @@
 import {
+  forgotPolicePassword,
   getCurrentPrincipal,
   policeLoginViaRoute,
+  resetPolicePassword,
   retryPoliceVerification,
   signupPolice,
   verifyPoliceEmail,
 } from "@/lib/api/auth/auth.service";
 import {
   CurrentPrincipal,
+  ForgotPolicePasswordRequest,
   PoliceLoginRequest,
   PoliceSignupRequest,
+  ResetPolicePasswordRequest,
   RetryPoliceVerificationRequest,
   VerifyPoliceEmailRequest,
 } from "@/lib/api/auth/auth.types";
@@ -60,6 +64,26 @@ export function useVerifyPoliceEmail(options?: {
 }) {
   return useMutation<void, Error, VerifyPoliceEmailRequest>({
     mutationFn: verifyPoliceEmail,
+    ...options,
+  });
+}
+
+export function useForgotPolicePassword(options?: {
+  onSuccess?: () => void;
+  onError?: (error: Error) => void;
+}) {
+  return useMutation<void, Error, ForgotPolicePasswordRequest>({
+    mutationFn: forgotPolicePassword,
+    ...options,
+  });
+}
+
+export function useResetPolicePassword(options?: {
+  onSuccess?: () => void;
+  onError?: (error: Error) => void;
+}) {
+  return useMutation<void, Error, ResetPolicePasswordRequest>({
+    mutationFn: resetPolicePassword,
     ...options,
   });
 }
