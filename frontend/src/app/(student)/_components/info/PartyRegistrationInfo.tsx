@@ -31,9 +31,8 @@ export default function PartyRegistrationInfo({
               <span className="content-bold">
                 Complete the Party Smart course.
               </span>{" "}
-              This is a short meeting with the program administrators (no more
-              than 15 minutes, held over video call). You only need to do this
-              once per academic year. You can schedule it{" "}
+              This is a short meeting with the program administrators. You only
+              need to do this once per academic year. You can schedule it{" "}
               <a
                 href={courseLink}
                 target="_blank"
