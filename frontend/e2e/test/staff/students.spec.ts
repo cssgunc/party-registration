@@ -4,7 +4,6 @@ import {
   FilterCase,
   SortCase,
   filterAndExpect,
-  filterTestTitle,
   sortAndVerify,
 } from "../../helpers/exhaustive.helpers";
 import { expect, suiteTest as test } from "../../helpers/fixtures.helpers";
@@ -173,20 +172,18 @@ test.describe("Students — exhaustive", () => {
       ).toHaveCount(0);
     });
 
-    for (const { header, kind } of SORT_CASES) {
-      test(`sort ${header} ascending`, async ({ page }) => {
+    test("sort: all columns ascending and descending", async ({ page }) => {
+      for (const { header, kind } of SORT_CASES) {
         await sortAndVerify(page, header, kind, "asc");
-      });
-      test(`sort ${header} descending`, async ({ page }) => {
         await sortAndVerify(page, header, kind, "desc");
-      });
-    }
+      }
+    });
 
-    for (const tc of FILTER_CASES) {
-      test(filterTestTitle(tc), async ({ page }) => {
+    test("filter: all cases", async ({ page }) => {
+      for (const tc of FILTER_CASES) {
         await filterAndExpect(page, tc);
-      });
-    }
+      }
+    });
 
     test("pagination: total matches seed", async ({ page }) => {
       expect(await getPaginationTotal(page)).toBe(TOTAL);

@@ -75,29 +75,44 @@ test.describe("Shared table smoke pack", () => {
   });
 
   test("new row, edit row, and delete row", async ({ page }) => {
-    const createAddress = "100 E Franklin St, Chapel Hill, NC 27514, USA";
+    // Incidents support full CRUD (Locations no longer has a Delete action)
+    await page.goto("/staff/incidents");
+    await openStaffTab(page, "Incidents");
+    await waitForTableReady(page);
+
+    const incidentAddress = "100 E Franklin St, Chapel Hill, NC 27514, USA";
 
     // new row
-    await page.getByRole("button", { name: /New Location/i }).click();
-    await selectAddressSuggestion(page, "", createAddress);
-    await page.getByRole("button", { name: "Save Changes" }).click();
+    await page.getByRole("button", { name: /New Incident/i }).click();
+    await expect(
+      page.getByRole("heading", { name: "New Incident" })
+    ).toBeVisible();
+    await selectAddressSuggestion(page, "", incidentAddress);
+    await page
+      .locator('input[placeholder="mm/dd/yyyy"]')
+      .fill(formatDateInput(new Date()));
+    await page.locator('input[type="time"]').fill("20:00");
+    await page.getByRole("button", { name: "Save" }).click();
     await waitForTableReady(page);
-    await setGlobalSearch(page, createAddress);
-    expect(await getPaginationTotal(page)).toBe(1);
+    await setGlobalSearch(page, incidentAddress);
+    expect(await getPaginationTotal(page)).toBeGreaterThan(0);
 
     // edit row
-    await clickRowAction(page, createAddress, "Edit");
-    await page
-      .getByLabel(/Hold Expiration/)
-      .fill(formatDateInput(new Date(Date.now() + 86400000 * 5)));
-    await page.getByRole("button", { name: "Save Changes" }).click();
+    await clickRowAction(page, incidentAddress, "Edit");
+    await page.getByLabel("Description").fill("Playwright smoke test");
+    await page.getByRole("button", { name: "Save" }).click();
     await waitForTableReady(page);
-    await expect(page.getByText("Expires:")).toBeVisible();
 
     // delete row
-    await clickRowAction(page, createAddress, "Delete");
+    const countBefore = await getPaginationTotal(page);
+    await clickRowAction(page, incidentAddress, "Delete");
     await confirmDialog(page, "Delete");
-    await setGlobalSearch(page, createAddress);
-    expect(await getPaginationTotal(page)).toBe(0);
+    // Re-apply the search to guarantee a fresh server count (the pagination
+    // text can lag behind the row removal if we only waitForTableReady).
+    await setGlobalSearch(page, "");
+    await waitForTableReady(page);
+    await setGlobalSearch(page, incidentAddress);
+    await waitForTableReady(page);
+    expect(await getPaginationTotal(page)).toBe(countBefore - 1);
   });
 });

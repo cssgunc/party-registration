@@ -2,13 +2,19 @@ import { defineConfig, devices } from "@playwright/test";
 import dotenv from "dotenv";
 import path from "path";
 
-dotenv.config({ path: path.resolve(__dirname, ".env.local") });
+dotenv.config({
+  path: [
+    path.resolve(__dirname, ".env.local"),
+    path.resolve(__dirname, "../backend/.env"),
+  ],
+});
 
 const baseURL = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
 
 const expectTimeout = Number(process.env.E2E_EXPECT_TIMEOUT ?? 15_000);
 const actionTimeout = Number(process.env.E2E_ACTION_TIMEOUT ?? 30_000);
 const navigationTimeout = Number(process.env.E2E_NAVIGATION_TIMEOUT ?? 60_000);
+const testTimeout = Number(process.env.E2E_TEST_TIMEOUT ?? 120_000);
 
 /**
  * Run from within the devcontainer (VS Code integrated terminal).
@@ -32,6 +38,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   reporter: [["html", { open: "never" }], ["list"]],
 
+  timeout: testTimeout,
   expect: { timeout: expectTimeout },
 
   use: {

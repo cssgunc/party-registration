@@ -356,6 +356,9 @@ export function TableTemplate<T extends object>({
                                 ? header.column.columnDef.header
                                 : header.column.id
                             }
+                            isFiltered={header.column.getIsFiltered()}
+                            isSorted={header.column.getIsSorted()}
+                            canFilter={header.column.getCanFilter()}
                             onFilterClick={() => {
                               if (isLoading) return;
                               const columnDef = header.column.columnDef;

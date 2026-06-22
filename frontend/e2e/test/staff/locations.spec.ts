@@ -4,7 +4,6 @@ import {
   FilterCase,
   SortCase,
   filterAndExpect,
-  filterTestTitle,
   openIncidentSidebar,
   sortAndVerify,
 } from "../../helpers/exhaustive.helpers";
@@ -46,7 +45,11 @@ const WITHOUT_INCIDENTS_COUNT = countWhere(
   LOCATIONS,
   (l) => l.incident_count === 0
 );
-// Incidents filter uses gte/lte semantics ("Less than 2" = incident_count <= 1)
+// Incidents filter labels map to backend gte/lte semantics.
+const GTE_1_INCIDENT_COUNT = countWhere(
+  LOCATIONS,
+  (l) => l.incident_count >= 1
+);
 const LTE_1_INCIDENT_COUNT = countWhere(
   LOCATIONS,
   (l) => l.incident_count <= 1
@@ -105,14 +108,14 @@ const FILTER_CASES: FilterCase[] = [
     kind: "number",
     column: "Incidents",
     operator: "Greater than",
-    value: 0,
-    expectedCount: WITH_INCIDENTS_COUNT,
+    value: 1,
+    expectedCount: GTE_1_INCIDENT_COUNT,
   },
   {
     kind: "number",
     column: "Incidents",
     operator: "Less than",
-    value: 2,
+    value: 1,
     expectedCount: LTE_1_INCIDENT_COUNT,
   },
   {
@@ -132,7 +135,7 @@ const FILTER_CASES: FilterCase[] = [
   {
     kind: "date",
     column: "Active Hold",
-    operator: "Inactive",
+    operator: "None",
     expectedCount: INACTIVE_HOLD_COUNT,
   },
   // Active Hold — After/Before (all active holds are ~90 days in the future)
@@ -182,20 +185,18 @@ test.describe("Locations — exhaustive", () => {
       expect(total).toBe(TOTAL);
     });
 
-    for (const { header, kind } of SORT_CASES) {
-      test(`sort ${header} ascending`, async ({ page }) => {
+    test("sort: all columns ascending and descending", async ({ page }) => {
+      for (const { header, kind } of SORT_CASES) {
         await sortAndVerify(page, header, kind, "asc");
-      });
-      test(`sort ${header} descending`, async ({ page }) => {
         await sortAndVerify(page, header, kind, "desc");
-      });
-    }
+      }
+    });
 
-    for (const tc of FILTER_CASES) {
-      test(filterTestTitle(tc), async ({ page }) => {
+    test("filter: all cases", async ({ page }) => {
+      for (const tc of FILTER_CASES) {
         await filterAndExpect(page, tc);
-      });
-    }
+      }
+    });
 
     test("pagination: change page size to 10", async ({ page }) => {
       await setPageSize(page, 10);

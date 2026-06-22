@@ -17,6 +17,7 @@ import * as React from "react";
 interface DatePickerProps {
   value: Date | null | undefined;
   onChange: (date: Date | null) => void;
+  onBlur?: () => void;
   disabled?: (date: Date) => boolean;
   placeholder?: string;
   id?: string;
@@ -38,6 +39,7 @@ function parseNatural(input: string, forwardDate: boolean): Date | null {
 export default function DatePicker({
   value,
   onChange,
+  onBlur,
   disabled,
   placeholder = "mm/dd/yyyy",
   id,
@@ -74,7 +76,7 @@ export default function DatePicker({
       return;
     }
     const parsed = parseNatural(raw, forwardDate);
-    if (parsed && (!disabled || !disabled(parsed))) {
+    if (parsed) {
       onChange(parsed);
     }
   }
@@ -82,6 +84,7 @@ export default function DatePicker({
   function handleBlur() {
     const expected = value ? format(value, dateFormat) : "";
     if (inputValue !== expected) setInputValue(expected);
+    onBlur?.();
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {

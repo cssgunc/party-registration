@@ -94,6 +94,11 @@ class InviteTokenTestUtils(
         ids = [t.id for t in all_tokens]
         assert entity.id not in ids, f"Invite token {entity.id} should have been deleted"
 
+    @staticmethod
+    def assert_token_exists(entity: InviteTokenEntity, all_tokens: list[InviteTokenEntity]) -> None:
+        ids = [t.id for t in all_tokens]
+        assert entity.id in ids, f"Invite token {entity.id} should still exist but was not found"
+
     # ================================ Typing Overrides ================================
 
     @override

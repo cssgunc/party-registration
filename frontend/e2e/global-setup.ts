@@ -1,12 +1,26 @@
-import { type FullConfig, chromium } from "@playwright/test";
+import {
+  type Browser,
+  type FullConfig,
+  type Page,
+  chromium,
+} from "@playwright/test";
 import { type ChildProcess, spawn } from "child_process";
 import fs from "fs";
 import net from "net";
 import path from "path";
-import { loginAsAdmin, loginAsPoliceAdmin } from "./helpers/auth.helpers";
+import {
+  loginAsAdmin,
+  loginAsOfficer,
+  loginAsPoliceAdmin,
+  loginAsStaff,
+  loginAsStudent,
+} from "./helpers/auth.helpers";
 
 // Shared auth file paths — exhaustive spec files import these to skip per-test login.
+export const STUDENT_AUTH_FILE = path.join(__dirname, ".auth/student.json");
+export const STAFF_AUTH_FILE = path.join(__dirname, ".auth/staff.json");
 export const ADMIN_AUTH_FILE = path.join(__dirname, ".auth/admin.json");
+export const OFFICER_AUTH_FILE = path.join(__dirname, ".auth/officer.json");
 export const POLICE_AUTH_FILE = path.join(__dirname, ".auth/police.json");
 
 // Chromium inside the container resolves localhost:8080 to IPv6 (::1) and fails
@@ -57,6 +71,47 @@ async function startSamlProxy(): Promise<ChildProcess | null> {
   return proxy;
 }
 
+async function saveAuthState(
+  browser: Browser,
+  baseURL: string,
+  loginFn: (page: Page) => Promise<void>,
+  authFile: string
+) {
+  const context = await browser.newContext({ baseURL });
+  const page = await context.newPage();
+  await loginFn(page);
+  await context.storageState({ path: authFile });
+  await context.close();
+}
+
+// Re-auth if the file is older than the backend's access token lifetime so we
+// never reuse a session whose access token has expired (refresh would fail
+// because DB resets wipe the refresh_tokens table).
+const ACCESS_TOKEN_EXPIRE_MINUTES = Number(
+  process.env.ACCESS_TOKEN_EXPIRE_MINUTES ?? 15
+);
+const ACCESS_TOKEN_VALID_MS = (ACCESS_TOKEN_EXPIRE_MINUTES - 1) * 60 * 1000;
+
+function isAuthFileValid(authFile: string): boolean {
+  if (!fs.existsSync(authFile)) return false;
+  try {
+    const stat = fs.statSync(authFile);
+    if (Date.now() - stat.mtimeMs > ACCESS_TOKEN_VALID_MS) return false;
+
+    const state = JSON.parse(fs.readFileSync(authFile, "utf-8")) as {
+      cookies: Array<{ expires: number }>;
+    };
+    const oneHourFromNow = Date.now() / 1000 + 3600;
+    const timedCookies = state.cookies.filter((c) => c.expires > 0);
+    return (
+      timedCookies.length > 0 &&
+      timedCookies.every((c) => c.expires > oneHourFromNow)
+    );
+  } catch {
+    return false;
+  }
+}
+
 // DB reset is handled per-test via the auto-use fixture in helpers/fixtures.ts.
 // Exhaustive suites call resetDatabase() in their own beforeAll.
 export default async function globalSetup(config: FullConfig) {
@@ -69,21 +124,25 @@ export default async function globalSetup(config: FullConfig) {
     throw new Error(`App is not running at ${baseURL}. Start it first`);
   }
   fs.mkdirSync(path.dirname(ADMIN_AUTH_FILE), { recursive: true });
-  const browser = await chromium.launch({ chromiumSandbox: false });
 
-  const adminContext = await browser.newContext({ baseURL });
-  const adminPage = await adminContext.newPage();
-  await loginAsAdmin(adminPage, "/staff/parties");
-  await adminContext.storageState({ path: ADMIN_AUTH_FILE });
-  await adminContext.close();
+  const authEntries = [
+    { loginFn: loginAsStudent, authFile: STUDENT_AUTH_FILE },
+    { loginFn: loginAsStaff, authFile: STAFF_AUTH_FILE },
+    { loginFn: loginAsAdmin, authFile: ADMIN_AUTH_FILE },
+    { loginFn: loginAsOfficer, authFile: OFFICER_AUTH_FILE },
+    { loginFn: loginAsPoliceAdmin, authFile: POLICE_AUTH_FILE },
+  ];
+  const stale = authEntries.filter(
+    ({ authFile }) => !isAuthFileValid(authFile)
+  );
 
-  const policeContext = await browser.newContext({ baseURL });
-  const policePage = await policeContext.newPage();
-  await loginAsPoliceAdmin(policePage);
-  await policeContext.storageState({ path: POLICE_AUTH_FILE });
-  await policeContext.close();
-
-  await browser.close();
+  if (stale.length > 0) {
+    const browser = await chromium.launch({ chromiumSandbox: false });
+    for (const { loginFn, authFile } of stale) {
+      await saveAuthState(browser, baseURL, loginFn, authFile);
+    }
+    await browser.close();
+  }
 
   // Returned function runs as Playwright's global teardown after all tests.
   return () => {
