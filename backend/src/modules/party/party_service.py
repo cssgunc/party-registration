@@ -128,9 +128,12 @@ async def _has_same_day_conflict(draft: "PartyDraft", session: AsyncSession) -> 
 
 
 class PartyRule(enum.Enum):
-    """Validation rules for party operations. The enum value is the API error code.
-    Each rule's predicate returns True when the violation applies (matching the code name).
-    Predicates may be sync (lambda) or async (taking draft + session for DB queries)."""
+    """Validation rules for party operations.
+
+    The enum value is the API error code. Each rule's predicate returns True when
+    the violation applies (matching the code name). Predicates may be sync (lambda)
+    or async (taking draft + session for DB queries).
+    """
 
     STUDENT_INFO_NOT_PROVIDED = (
         "STUDENT_INFO_NOT_PROVIDED",
@@ -204,6 +207,7 @@ class PartyRule(enum.Enum):
         message: str,
         is_violated_by: PartyRulePredicate,
     ):
+        """Construct a member whose value is ``code`` and attach its message/predicate."""
         obj = object.__new__(cls)
         obj._value_ = code
         obj.message = message
@@ -212,17 +216,32 @@ class PartyRule(enum.Enum):
 
 
 class PartyValidationException(BadRequestException):
+    """Raised when a party draft violates a `PartyRule` (HTTP 400).
+
+    Serializes to ``{"detail": {"code", "message"}}`` — see
+    `PartyRuleErrorResponse` in ``party_model.py`` for the OpenAPI shape.
+    """
+
     def __init__(self, rule: PartyRule):
         self.rule = rule
         super().__init__(detail={"code": rule.value, "message": rule.message})
 
 
 class PartyNotFoundException(NotFoundException):
+    """Raised when no party exists for the requested ID (HTTP 404)."""
+
     def __init__(self, party_id: int):
         super().__init__(f"Party with ID {party_id} not found")
 
 
 class PartyService:
+    """Business-logic layer for party registration, lookup, export, and proximity search.
+
+    Sits between the router and persistence: builds drafts, runs the
+    `PartyRule` validation suite, and triggers notifications. Injected per
+    request via FastAPI ``Depends``.
+    """
+
     QUERY_FIELDS: ClassVar[QueryFieldSet] = _PARTY_QUERY_FIELDS
 
     def __init__(
@@ -241,7 +260,13 @@ class PartyService:
 
     async def _check_rules(self, draft: PartyDraft, *rules: PartyRule) -> None:
         """Check the draft against the given rules, raising on the first violation.
-        Predicates may be sync or async; async ones receive self.session for DB queries."""
+
+        Predicates may be sync or async; async ones receive ``self.session`` for
+        DB queries.
+
+        Raises:
+            PartyValidationException: On the first rule whose predicate matches.
+        """
         for rule in rules:
             if inspect.iscoroutinefunction(rule.is_violated_by):
                 violated = await rule.is_violated_by(draft, self.session)
@@ -272,19 +297,16 @@ class PartyService:
     async def get_parties_paginated(
         self, params: ListQueryParams, as_police: bool = False
     ) -> PaginatedPartiesResponse | PaginatedPartiesPoliceResponse:
-        """
-        Get parties with server-side pagination, sorting, and filtering.
+        """Get parties with server-side pagination, sorting, and filtering.
 
-        Query parameters are automatically parsed from the request:
-        - page_number: Page number (1-indexed, default: 1)
-        - page_size: Items per page (default: all)
-        - sort_by: Field to sort by
-        - sort_order: Sort order ('asc' or 'desc')
-        - location_id: Filter by location ID
-        - contact_one_id: Filter by contact one (student) ID
+        Args:
+            params: Parsed pagination/sort/filter parameters from the request.
+            as_police: When True, return the PII-stripped police DTOs.
 
         Returns:
-            PaginatedPartiesResponse (staff/admin) or PaginatedPartiesPoliceResponse (police)
+            A `PaginatedPartiesResponse` (staff/admin) or
+            `PaginatedPartiesPoliceResponse` (police) depending on
+            ``as_police``.
         """
         base_query = (
             select(PartyEntity)
@@ -306,6 +328,11 @@ class PartyService:
         return PaginatedPartiesResponse(**result.model_dump())
 
     async def get_party_by_id(self, party_id: int) -> PartyDto:
+        """Fetch a single party by ID.
+
+        Raises:
+            PartyNotFoundException: If no party has the given ID.
+        """
         party_entity = await self._get_party_entity_by_id(party_id)
         return party_entity.to_dto()
 
@@ -328,9 +355,10 @@ class PartyService:
         student_id: int,
         existing: PartyDto | None = None,
     ) -> PartyDraft:
-        """Gather data for a student-initiated party. Does not run validation rules:
-        location is None if the student has no residence; phone/contact_preference
-        may be None. The rules layer catches these cases.
+        """Gather data for a student-initiated party (no validation).
+
+        ``location`` is None if the student has no residence; phone and
+        contact_preference may be None. The rules layer catches these cases.
         """
         student = await self.student_service.get_student_by_id(student_id)
         location = student.residence.location if student.residence is not None else None
@@ -348,7 +376,9 @@ class PartyService:
         existing: PartyDto | None = None,
     ) -> PartyDraft:
         """Gather all data for an admin-initiated party.
-        Admins skip the residence/hold flow: location is created/fetched directly.
+
+        Admins skip the residence/hold flow: the location is created or fetched
+        directly from the supplied Google place ID.
         """
         contact_one = await self.student_service.get_student_by_id(dto.contact_one_student_id)
         location = await self.location_service.get_or_create_location(dto.google_place_id)
@@ -363,6 +393,14 @@ class PartyService:
     async def create_party_from_student_dto(
         self, dto: StudentCreatePartyDto, student_id: int
     ) -> PartyDto:
+        """Register a party hosted by a student, then notify the contacts.
+
+        Runs the full student rule suite (lead time, residence, Party Smart,
+        same-day conflict, contact distinctness).
+
+        Raises:
+            PartyValidationException: If any student rule is violated.
+        """
         draft = await self._build_student_draft(dto, student_id)
         await self._check_rules(
             draft,
@@ -384,6 +422,14 @@ class PartyService:
         return party_dto
 
     async def create_party_from_admin_dto(self, dto: AdminCreatePartyDto) -> PartyDto:
+        """Register a party on a student's behalf (admin flow), then notify the contacts.
+
+        Only the contact-info rules apply; admins bypass the lead-time, residence,
+        and Party Smart checks.
+
+        Raises:
+            PartyValidationException: If a contact-info rule is violated.
+        """
         draft = await self._build_admin_draft(dto)
         await self._check_rules(
             draft,
@@ -401,6 +447,15 @@ class PartyService:
     async def update_party_from_student_dto(
         self, party_id: int, dto: StudentCreatePartyDto, student_id: int
     ) -> PartyDto:
+        """Update a student-owned party; notify contact two if their email changed.
+
+        Adds ownership and mutability rules (not owned, cancelled, in past) on top
+        of the create-time student rules.
+
+        Raises:
+            PartyNotFoundException: If no party has the given ID.
+            PartyValidationException: If any student or ownership rule is violated.
+        """
         party_entity = await self._get_party_entity_by_id(party_id)
         old_contact_two_email = party_entity.contact_two_email
         draft = await self._build_student_draft(dto, student_id, existing=party_entity.to_dto())
@@ -430,6 +485,14 @@ class PartyService:
     async def update_party_from_admin_dto(
         self, party_id: int, dto: AdminCreatePartyDto
     ) -> PartyDto:
+        """Update any party as an admin; notify contact two if their email changed.
+
+        Only contact-info rules apply, matching the admin create flow.
+
+        Raises:
+            PartyNotFoundException: If no party has the given ID.
+            PartyValidationException: If a contact-info rule is violated.
+        """
         party_entity = await self._get_party_entity_by_id(party_id)
         old_contact_two_email = party_entity.contact_two_email
         draft = await self._build_admin_draft(dto, existing=party_entity.to_dto())
@@ -448,8 +511,19 @@ class PartyService:
         return party_dto
 
     async def cancel_party(self, party_id: int, student_id: int | None) -> PartyDto:
-        """Cancel a party. If student_id is given, only the owner can cancel.
-        Idempotent: cancelling an already-cancelled party is a no-op."""
+        """Cancel a party; idempotent if already cancelled.
+
+        Args:
+            party_id: ID of the party to cancel.
+            student_id: If given, only the owning student may cancel, and only
+                before the party has occurred; pass None for admin cancels.
+
+        Raises:
+            PartyNotFoundException: If no party has the given ID.
+            PartyValidationException: If the student does not own the party
+                (``PARTY_NOT_OWNED_BY_STUDENT``) or it has already occurred
+                (``PARTY_IN_PAST``).
+        """
         party_entity = await self._get_party_entity_by_id(party_id)
 
         if student_id is not None and party_entity.contact_one_id != student_id:
@@ -468,8 +542,13 @@ class PartyService:
         return party_entity.to_dto()
 
     async def restore_party(self, party_id: int) -> PartyDto:
-        """Restore a cancelled party to CONFIRMED. Admin-only at the router level.
-        Idempotent: restoring an already-confirmed party is a no-op."""
+        """Restore a cancelled party to CONFIRMED; idempotent if already confirmed.
+
+        Admin-only at the router level.
+
+        Raises:
+            PartyNotFoundException: If no party has the given ID.
+        """
         party_entity = await self._get_party_entity_by_id(party_id)
 
         if party_entity.status == PartyStatus.CONFIRMED:
@@ -487,9 +566,12 @@ class PartyService:
         start_date: datetime,
         end_date: datetime,
     ) -> ProximitySearchResponse:
-        """Resolve the location for `google_place_id`, then return:
-        - exact_match: the searched place plus the confirmed party at that exact location, if any
-        - nearby: other confirmed parties within env.PARTY_SEARCH_RADIUS_MILES, sorted by distance
+        """Find confirmed parties at and near a searched location, within a date range.
+
+        Resolves ``google_place_id`` (from the DB if known, else Google Maps), then
+        returns an ``exact_match`` (the searched place plus the confirmed party at
+        that exact location, if any) and ``nearby`` (other confirmed parties within
+        ``env.PARTY_SEARCH_RADIUS_MILES``, sorted by distance).
         """
         try:
             db_location: LocationDto | None = await self.location_service.get_location_by_place_id(
@@ -567,6 +649,7 @@ class PartyService:
         return c * r
 
     def export_parties_to_excel_police(self, parties_response: PaginatedPartiesResponse) -> bytes:
+        """Render parties as a police-facing Excel workbook (full names, no residence)."""
         return export_to_excel(
             resource_name="Parties",
             field_map={
@@ -598,6 +681,7 @@ class PartyService:
         )
 
     def export_parties_to_excel_staff(self, parties_response: PaginatedPartiesResponse) -> bytes:
+        """Render parties as a staff/admin Excel workbook (split names, includes residence)."""
         return export_to_excel(
             resource_name="Parties",
             field_map={

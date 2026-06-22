@@ -18,12 +18,18 @@ import {
   convertProximitySearchResponse,
 } from "./party.types";
 
+/**
+ * Typed client for the `/api/parties` endpoints.
+ *
+ * Each method calls the backend and maps the raw response (string dates, backend
+ * DTO shapes) into the frontend domain types via the converters in
+ * `party.types.ts`. Inject a custom Axios instance for testing; defaults to the
+ * shared `apiClient`.
+ */
 export class PartyService {
   constructor(private client: AxiosInstance = apiClient) {}
 
-  /**
-   * Create party (POST /api/parties)
-   */
+  /** Register a party (`POST /api/parties`). */
   async createParty(
     data: StudentCreatePartyDto | AdminCreatePartyDto
   ): Promise<PartyDto> {
@@ -32,9 +38,11 @@ export class PartyService {
   }
 
   /**
-   * List parties (GET /api/parties).
-   * Pass role="police" to get ContactPoliceDto contacts (no email/PII).
-   * Defaults to full PartyDto for staff/admin callers.
+   * List parties with pagination/sort/filter (`GET /api/parties`).
+   *
+   * Pass `role="police"` to get PII-stripped `ContactPoliceDto` contacts; the
+   * role param drives both the response narrowing and the converter. Defaults to
+   * the full `PartyDto` for staff/admin callers.
    */
   async listParties<R extends PartyRole = "default">(
     params?: ListQueryParams,
@@ -52,9 +60,11 @@ export class PartyService {
   }
 
   /**
-   * Get nearby parties (GET /api/parties/nearby).
-   * Always returns ProximitySearchResponse with PartyPoliceDto items
-   * — /nearby is only used in the police view context.
+   * Search for parties near a location (`GET /api/parties/nearby`).
+   *
+   * Always returns a `ProximitySearchResponse` with `PartyPoliceDto` items —
+   * `/nearby` is only used in the police view. `endDate` is widened to end-of-day
+   * so the window is inclusive.
    */
   async getPartiesNearby(
     placeId: string,
@@ -74,9 +84,7 @@ export class PartyService {
     return convertProximitySearchResponse(response.data);
   }
 
-  /**
-   * Download parties as Excel (GET /api/parties/csv)
-   */
+  /** Download the filtered parties list as an Excel file (`GET /api/parties/csv`). */
   async downloadPartiesCsv(params?: ListQueryParams): Promise<void> {
     const { sort_by, sort_order, search, filters } = params ?? { filters: {} };
     const response = await this.client.get("/parties/csv", {
@@ -92,9 +100,7 @@ export class PartyService {
     downloadExcelFile(response, "parties.xlsx");
   }
 
-  /**
-   * Update party (PUT /api/parties/{party_id})
-   */
+  /** Update an existing party (`PUT /api/parties/{party_id}`). */
   async updateParty(
     partyId: number,
     data: StudentCreatePartyDto | AdminCreatePartyDto
@@ -106,9 +112,7 @@ export class PartyService {
     return convertParty(response.data);
   }
 
-  /**
-   * Get party by ID (GET /api/parties/{party_id})
-   */
+  /** Fetch a single party by ID (`GET /api/parties/{party_id}`). */
   async getParty(partyId: number): Promise<PartyDto> {
     const response = await this.client.get<PartyDtoBackend>(
       `/parties/${partyId}`
@@ -116,9 +120,7 @@ export class PartyService {
     return convertParty(response.data);
   }
 
-  /**
-   * Cancel party (POST /api/parties/{party_id}/cancel)
-   */
+  /** Cancel a party (`POST /api/parties/{party_id}/cancel`); idempotent. */
   async cancelParty(partyId: number): Promise<PartyDto> {
     const response = await this.client.post<PartyDtoBackend>(
       `/parties/${partyId}/cancel`
@@ -126,9 +128,7 @@ export class PartyService {
     return convertParty(response.data);
   }
 
-  /**
-   * Restore a cancelled party (POST /api/parties/{party_id}/restore)
-   */
+  /** Restore a cancelled party to confirmed (`POST /api/parties/{party_id}/restore`). */
   async restoreParty(partyId: number): Promise<PartyDto> {
     const response = await this.client.post<PartyDtoBackend>(
       `/parties/${partyId}/restore`

@@ -19,7 +19,7 @@ type RegisterPartyInput = {
 };
 
 /**
- * Hook to register a party, optionally setting residence first if the student
+ * Mutation to register a party, optionally setting residence first if the student
  * doesn't have one set for this academic year.
  */
 export function useRegisterParty() {
@@ -41,9 +41,7 @@ export function useRegisterParty() {
   });
 }
 
-/**
- * Hook to update an existing party registration
- */
+/** Mutation to update an existing party registration. */
 export function useUpdateParty() {
   const queryClient = useQueryClient();
   return useMutation<
@@ -59,9 +57,7 @@ export function useUpdateParty() {
   });
 }
 
-/**
- * Hook to delete a party registration
- */
+/** Mutation to cancel a party registration. */
 export function useDeleteParty() {
   const queryClient = useQueryClient();
 
@@ -74,6 +70,7 @@ export function useDeleteParty() {
   });
 }
 
+/** Mutation that downloads the filtered parties list as an Excel file. */
 export function useDownloadPartiesCsv() {
   return useMutation<void, Error, ListQueryParams | undefined>({
     mutationFn: (params) => partyService.downloadPartiesCsv(params),

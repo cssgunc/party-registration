@@ -1,5 +1,4 @@
-"""
-Package initializer for application modules.
+"""Package initializer for application modules.
 
 Importing this package is an explicit way to make sure module
 subpackages and their model files are imported.

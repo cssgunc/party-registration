@@ -19,11 +19,38 @@ line-length = 100
 target-version = "py313"  # Should match Dockerfile
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "B", "UP", "C4", "SIM", "RUF", "N", "PLC0415"]
+select = ["E", "F", "W", "I", "B", "UP", "C4", "SIM", "RUF", "N", "PLC0415", "D"]
 fixable = ["E", "F", "W", "I", "B", "UP", "C4", "SIM", "RUF", "N"]
 ignore = [
   "B008", # Allows use of Depends()
+  "D100", # Missing docstring in public module — module-level docstrings not required
+  "D104", # Missing docstring in public package (__init__.py)
+  "D105", # Missing docstring in magic method (e.g. __init__, __repr__)
+  "D107", # Missing docstring in __init__ — document the class instead
 ]
+
+[tool.ruff.lint.pydocstyle]
+# Google-style docstrings. See backend/AGENTS.md for the convention + when to skip.
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+# Tests, migrations, and one-off scripts don't need docstrings.
+"backend/test/**" = ["D"]
+"backend/alembic/**" = ["D"]
+"backend/script/**" = ["D"]
+# --- Docstring rollout in progress (plan workstream C) ---
+# `D` is armed repo-wide; these areas are exempt until documented, then removed
+# one-by-one as each is completed. The party module is the golden reference and
+# is intentionally NOT listed here. Remove an entry once its area is documented.
+"backend/src/main.py" = ["D"]
+"backend/src/core/**" = ["D"]
+"backend/src/modules/account/**" = ["D"]
+"backend/src/modules/auth/**" = ["D"]
+"backend/src/modules/incident/**" = ["D"]
+"backend/src/modules/location/**" = ["D"]
+"backend/src/modules/notification/**" = ["D"]
+"backend/src/modules/police/**" = ["D"]
+"backend/src/modules/student/**" = ["D"]
 
 [tool.ruff.format]
 quote-style = "double"

@@ -60,6 +60,7 @@
     "baseline-browser-mapping": "^2.9.19",
     "eslint": "^9",
     "eslint-config-next": "15.5.9",
+    "eslint-plugin-jsdoc": "^63.0.7",
     "eslint-plugin-react-no-manual-memo": "^1.0.4",
     "exceljs": "^4.4.0",
     "prettier": "^3.7.4",

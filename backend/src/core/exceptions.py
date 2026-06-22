@@ -7,6 +7,34 @@ These all extend FastAPI's HTTPException to provide specific HTTP status codes
 from typing import Any
 
 from fastapi import HTTPException
+from pydantic import BaseModel
+
+
+class ErrorResponse(BaseModel):
+    """Standard error response body returned for HTTP error status codes.
+
+    The global exception handler serializes every API error as
+    ``{"detail": <message>}``. Reference this model from a route's ``responses``
+    map (via `error_response`) so the generated OpenAPI docs show the real
+    error shape instead of a generic body.
+    """
+
+    detail: str
+
+
+def error_response(description: str) -> dict[str, Any]:
+    """Build an OpenAPI ``responses`` entry that documents an error status code.
+
+    Args:
+        description: When this error occurs. Only document status codes a client
+            can realistically trigger (see the error-reachability convention in
+            ``backend/AGENTS.md``).
+
+    Returns:
+        A value for a route's ``responses={...}`` map, wiring in the shared
+        `ErrorResponse` schema.
+    """
+    return {"model": ErrorResponse, "description": description}
 
 
 class ConflictException(HTTPException):

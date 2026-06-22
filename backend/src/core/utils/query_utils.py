@@ -22,7 +22,7 @@ from sqlalchemy import Time as SATime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import SQLColumnExpression
 from src.core.database import get_session
-from src.core.exceptions import BadRequestException
+from src.core.exceptions import BadRequestException, error_response
 
 
 class PaginatedResponse[T](BaseModel):
@@ -279,6 +279,15 @@ def _format_searchable_entry(entry: str | tuple[str, ...]) -> str:
     if isinstance(entry, str):
         return entry
     return " + ".join(entry)
+
+
+# Standard error response for any route that accepts list-query params (the
+# `openapi_extra=get_paginated_openapi_params(...)` routes). Spread into the
+# route's `responses` so the 400 is documented consistently in one place:
+#   responses={**PAGINATED_QUERY_RESPONSES, 404: error_response(...)}
+PAGINATED_QUERY_RESPONSES: dict[int | str, dict[str, Any]] = {
+    400: error_response("Invalid sort or filter parameter: unknown field or unsupported operator"),
+}
 
 
 def get_paginated_openapi_params(field_set: QueryFieldSet) -> dict[str, Any]:

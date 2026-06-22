@@ -22,6 +22,7 @@ type UpdatePartyVars = {
   payload: AdminCreatePartyDto;
 };
 
+/** Query the paginated parties list for the staff/admin table. */
 export function useAdminParties(
   serverParams?: ServerTableParams,
   options?: UseQueryOptions<PaginatedResponse<PartyDto>>
@@ -34,6 +35,7 @@ export function useAdminParties(
   });
 }
 
+/** Mutation to create a party as an admin, invalidating the parties list on success. */
 export function useCreateAdminParty(
   options?: OptimisticMutationOptions<PartyDto, Error, AdminCreatePartyDto>
 ) {
@@ -51,6 +53,7 @@ export function useCreateAdminParty(
   });
 }
 
+/** Mutation to update a party as an admin, invalidating the parties list on success. */
 export function useUpdateAdminParty(
   options?: OptimisticMutationOptions<PartyDto, Error, UpdatePartyVars>
 ) {
@@ -68,6 +71,13 @@ export function useUpdateAdminParty(
   });
 }
 
+/**
+ * Mutation to cancel a party as an admin, with an optimistic update.
+ *
+ * Optimistically flips the party's status to cancelled across all cached parties
+ * queries and rolls back on error. The consumer's own `onMutate` result is
+ * preserved alongside the rollback snapshot on the mutation context.
+ */
 export function useCancelAdminParty<TContext = unknown>(
   options?: OptimisticMutationOptions<PartyDto, Error, number, TContext>
 ) {
@@ -129,6 +139,12 @@ export function useCancelAdminParty<TContext = unknown>(
   });
 }
 
+/**
+ * Mutation to restore a cancelled party as an admin, with an optimistic update.
+ *
+ * Mirror of {@link useCancelAdminParty}: optimistically flips status back to
+ * confirmed across cached parties queries and rolls back on error.
+ */
 export function useRestoreAdminParty<TContext = unknown>(
   options?: OptimisticMutationOptions<PartyDto, Error, number, TContext>
 ) {
