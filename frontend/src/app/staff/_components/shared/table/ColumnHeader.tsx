@@ -23,18 +23,21 @@ import { useState } from "react";
 interface ColumnHeaderProps<T> {
   column: Column<T, unknown>;
   title: string;
+  isFiltered: boolean;
+  isSorted: false | "asc" | "desc";
+  canFilter: boolean;
   onFilterClick?: () => void;
 }
 
 export function ColumnHeader<T>({
   column,
   title,
+  isFiltered,
+  isSorted,
+  canFilter,
   onFilterClick,
 }: ColumnHeaderProps<T>) {
   const [open, setOpen] = useState(false);
-  const isFiltered = column.getIsFiltered();
-  const isSorted = column.getIsSorted();
-  const canFilter = column.getCanFilter();
 
   return (
     <div className="flex h-full items-start">

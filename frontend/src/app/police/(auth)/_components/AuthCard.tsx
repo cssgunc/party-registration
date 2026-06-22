@@ -1,10 +1,5 @@
 import partySamrtVertical from "@/components/icons/party_smart_logo_vertical.svg";
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardDescription, CardHeader } from "@/components/ui/card";
 import Image from "next/image";
 
 type AuthCardProps = {
@@ -30,7 +25,7 @@ export default function AuthCard({
               className="h-[min(22dvh,240px)] w-auto"
             />
           </div>
-          <CardTitle className="text-2xl mb-2">{title}</CardTitle>
+          <h1 className="leading-none font-semibold text-2xl mb-2">{title}</h1>
           {description && <CardDescription>{description}</CardDescription>}
         </CardHeader>
         {children}

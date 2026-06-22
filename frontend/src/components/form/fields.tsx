@@ -346,7 +346,7 @@ export function SelectField<T extends FieldValues>({
 type DateFieldProps<T extends FieldValues> = BaseFieldProps<T> &
   Omit<
     React.ComponentProps<typeof DatePicker>,
-    "value" | "onChange" | "aria-invalid"
+    "value" | "onChange" | "onBlur" | "aria-invalid"
   >;
 
 export function DateField<T extends FieldValues>({
@@ -371,6 +371,7 @@ export function DateField<T extends FieldValues>({
               {...datePickerProps}
               value={(field.value as Date | null | undefined) ?? null}
               onChange={field.onChange}
+              onBlur={field.onBlur}
               aria-invalid={fieldState.invalid}
             />
           </FormControl>
@@ -432,6 +433,7 @@ export function AddressField<T extends FieldValues>({
                 {...addressProps}
                 value={displayValue}
                 error={fieldState.error?.message}
+                onBlur={field.onBlur}
                 onSelect={(address) => {
                   field.onChange(
                     getStoredValue

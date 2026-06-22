@@ -92,16 +92,6 @@ export async function filterAndExpect(page: Page, tc: FilterCase) {
   await clearFilter(page, tc.column);
 }
 
-export function filterTestTitle(tc: FilterCase): string {
-  let valueStr = "";
-  if ("value" in tc && tc.value !== undefined) {
-    valueStr = Array.isArray(tc.value)
-      ? `: [${(tc.value as string[]).join(", ")}]`
-      : `: ${tc.value}`;
-  }
-  return `filter ${tc.column} — ${tc.operator}${valueStr}`;
-}
-
 // Click the Incidents info chip for a given location row and wait for the sidebar.
 export async function openIncidentSidebar(page: Page, rowAddress: string) {
   await page

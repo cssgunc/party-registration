@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.config import env
 from src.core.database import get_session
 from src.core.exceptions import BadRequestException, CredentialsException, ForbiddenException
-from src.modules.account.account_model import AccountDto
+from src.modules.account.account_model import AccountData, AccountDto, AccountRole
 from src.modules.account.account_service import AccountService
 from src.modules.auth.auth_model import (
     AccessTokenDto,
@@ -23,6 +23,7 @@ from src.modules.auth.auth_model import (
 from src.modules.auth.refresh_token_entity import RefreshTokenEntity
 from src.modules.police.police_model import PoliceAccountDto
 from src.modules.police.police_service import PoliceService
+from src.modules.student.student_service import StudentService
 
 
 class InvalidRefreshTokenException(CredentialsException):
@@ -44,10 +45,12 @@ class AuthService:
         session: AsyncSession = Depends(get_session),
         account_service: AccountService = Depends(),
         police_service: PoliceService = Depends(),
+        student_service: StudentService = Depends(),
     ):
         self.session = session
         self.account_service = account_service
         self.police_service = police_service
+        self.student_service = student_service
 
     # Helper Methods
     @staticmethod
@@ -149,6 +152,13 @@ class AuthService:
             pass
 
     # High-Level Operations
+    async def provision_saml_account(self, data: AccountData) -> AccountDto:
+        account = await self.account_service.upsert_idp_account(data)
+        account = await self.account_service.resolve_invite(account, data.role)
+        if data.role == AccountRole.STUDENT:
+            await self.student_service.ensure_student_entity_exists(account.id)
+        return account
+
     async def exchange_for_tokens(self, account: AccountDto | PoliceAccountDto) -> TokensDto:
         access_token, access_expires = self.create_access_token(account)
         kwargs = (

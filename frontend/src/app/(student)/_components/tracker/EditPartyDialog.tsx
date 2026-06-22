@@ -8,6 +8,7 @@ import PartyRegistrationForm, {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -83,6 +84,9 @@ export function EditPartyDialog({
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>Edit Party</DialogTitle>
+          <DialogDescription className="sr-only">
+            Edit the details of your registered party.
+          </DialogDescription>
         </DialogHeader>
         <PartyRegistrationForm
           onSubmit={handleSubmit}

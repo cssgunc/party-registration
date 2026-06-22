@@ -26,8 +26,12 @@ interface AddressSearchProps {
   value?: string;
   initialSelection?: AutocompleteResult | null;
   onSelect: (address: AutocompleteResult | null) => void;
+  /** Called when focus leaves the field (not when moving into the suggestions
+   * popover). Lets the bound form field validate on blur, like other fields. */
+  onBlur?: () => void;
   placeholder?: string;
   className?: string;
+  inputClassName?: string;
   disabled?: boolean;
   error?: string;
   chapelHillOnly?: boolean;
@@ -43,8 +47,10 @@ export default function AddressSearch({
   value = "",
   initialSelection,
   onSelect,
+  onBlur,
   placeholder = "Search for an address...",
   className,
+  inputClassName,
   disabled = false,
   error: externalError,
   chapelHillOnly = false,
@@ -259,6 +265,16 @@ export default function AddressSearch({
               onChange={handleInputChange}
               onFocus={handleFocus}
               onKeyDown={handleKeyDown}
+              onBlur={(e) => {
+                // Treat focus moving into the suggestions popover as staying in
+                // the field; only propagate blur (which triggers the bound
+                // form's validation) when focus truly leaves the component.
+                if (
+                  commandRef.current?.contains(e.relatedTarget as Node | null)
+                )
+                  return;
+                onBlur?.();
+              }}
               placeholder={placeholder}
               disabled={disabled}
               readOnly={!!selectedAddress}
@@ -266,7 +282,8 @@ export default function AddressSearch({
                 "pr-16",
                 selectedAddress &&
                   "bg-muted/50 text-muted-foreground cursor-not-allowed",
-                displayError && "border-destructive"
+                displayError && "border-destructive",
+                inputClassName
               )}
               autoComplete={browserAutocomplete ? "on" : "off"}
               aria-label="Address search input"
