@@ -22,6 +22,27 @@ We aim to facilitate and better secure the party registration process at UNC.
   - ShadCN
   - Typescript
 
+## Documentation & Architecture
+
+- **[backend/README.md](backend/README.md)** — backend architecture, module pattern, API docs, common tasks
+- **[frontend/README.md](frontend/README.md)** — frontend architecture, the service/queries/types trio, scripts
+- **[AGENTS.md](AGENTS.md)** — coding conventions and standards for contributors and AI agents (also read by `CLAUDE.md`)
+- **Live API reference** — with the backend running, Swagger UI at `<API_BASE_URL>/docs` and ReDoc at `<API_BASE_URL>/redoc` (generated from the code)
+- **Product spec (TDD)** — feature specifications and flows per role: [Technical Design Document](NOTION_TDD_PUBLIC_LINK)
+
+The codebase follows a strict, one-directional layering — a layer never skips the one below it:
+
+```
+ BACKEND                          FRONTEND
+ persistence  (*_entity.py)       FE service   (*.service.ts)   typed Axios client
+      ↓                                ↓
+ service      (*_service.py)      query layer  (*.queries.ts)   React Query hooks
+      ↓                                ↓
+ router       (*_router.py)       presentational (components/pages)
+      ↓  HTTP  ↑
+      └────────┘
+```
+
 ## File Structure
 
 Root-level config files:
@@ -242,21 +263,21 @@ After copying the templates, fill in the `REPLACE_ME` values in each file before
 
 **`backend/.env`**
 
-| Variable | How to get it |
-| --- | --- |
-| `JWT_SECRET_KEY` | Any random string — run `python -c "import secrets; print(secrets.token_hex(32))"` |
-| `REFRESH_TOKEN_SECRET_KEY` | Same as above, use a **different** value from `JWT_SECRET_KEY` |
-| `INTERNAL_API_SECRET` | Any random string — must match `INTERNAL_API_SECRET` in `frontend/.env.local` |
-| `GOOGLE_MAPS_API_KEY` | Obtain from the team, or create one in [Google Cloud Console](https://console.cloud.google.com) with **Maps JavaScript API** and **Places API** enabled |
+| Variable                   | How to get it                                                                                                                                           |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `JWT_SECRET_KEY`           | Any random string — run `python -c "import secrets; print(secrets.token_hex(32))"`                                                                      |
+| `REFRESH_TOKEN_SECRET_KEY` | Same as above, use a **different** value from `JWT_SECRET_KEY`                                                                                          |
+| `INTERNAL_API_SECRET`      | Any random string — must match `INTERNAL_API_SECRET` in `frontend/.env.local`                                                                           |
+| `GOOGLE_MAPS_API_KEY`      | Obtain from the team, or create one in [Google Cloud Console](https://console.cloud.google.com) with **Maps JavaScript API** and **Places API** enabled |
 
 **`frontend/.env.local`**
 
-| Variable | How to get it |
-| --- | --- |
-| `INTERNAL_API_SECRET` | Must match `INTERNAL_API_SECRET` in `backend/.env` |
-| `NEXTAUTH_SECRET` | Any random string — run `python -c "import secrets; print(secrets.token_hex(32))"` |
-| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | Same key as `GOOGLE_MAPS_API_KEY` in `backend/.env` |
-| `NEXT_PUBLIC_GOOGLE_MAP_ID` | Create a Map ID in [Google Cloud Console](https://console.cloud.google.com) under Google Maps Platform → Map Management |
+| Variable                          | How to get it                                                                                                           |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `INTERNAL_API_SECRET`             | Must match `INTERNAL_API_SECRET` in `backend/.env`                                                                      |
+| `NEXTAUTH_SECRET`                 | Any random string — run `python -c "import secrets; print(secrets.token_hex(32))"`                                      |
+| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | Same key as `GOOGLE_MAPS_API_KEY` in `backend/.env`                                                                     |
+| `NEXT_PUBLIC_GOOGLE_MAP_ID`       | Create a Map ID in [Google Cloud Console](https://console.cloud.google.com) under Google Maps Platform → Map Management |
 
 All other values in both templates are pre-configured for the local dev container and can be left as-is.
 
@@ -266,7 +287,6 @@ Or you can do the actions manually. Then,
 - Run the command **Dev Containers: Rebuild and Reopen in Container**
 - This should open the dev container with the same file directory mounted so any changes in the dev container will be seen in the local repo
 - The dev container is fully built once the file directory is populated and the post create script finished running
-
 
 ### Troubleshooting
 
