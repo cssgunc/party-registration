@@ -9,6 +9,14 @@ from src.modules.account.account_model import CreateInviteDto, InviteTokenRole
 
 
 class InviteTokenEntity(MappedAsDataclass, EntityBase):
+    """Persistence model for a pending staff/admin invitation (``invite_tokens`` table).
+
+    Created when an admin sends an invitation email and deleted once the invitee
+    completes sign-in. ``email`` is unique so a user cannot hold multiple live
+    invites simultaneously. Expiry is enforced by `is_expired`; the token TTL is
+    configured via ``env.INVITE_TOKEN_EXPIRY_HOURS``.
+    """
+
     __tablename__ = "invite_tokens"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, init=False)
@@ -20,7 +28,11 @@ class InviteTokenEntity(MappedAsDataclass, EntityBase):
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, server_default=func.now(), init=False)
 
     @classmethod
-    def from_data(cls, data: CreateInviteDto):
+    def from_data(cls, data: CreateInviteDto) -> "InviteTokenEntity":
+        """Build an unsaved invite token from a `CreateInviteDto`.
+
+        Sets ``expires_at`` to ``now + env.INVITE_TOKEN_EXPIRY_HOURS``.
+        """
         expires_at = datetime.now(UTC) + timedelta(hours=env.INVITE_TOKEN_EXPIRY_HOURS)
         return cls(
             email=data.email,
@@ -29,4 +41,5 @@ class InviteTokenEntity(MappedAsDataclass, EntityBase):
         )
 
     def is_expired(self, current_time: datetime) -> bool:
+        """Return True if ``current_time`` is at or past ``expires_at``."""
         return current_time >= self.expires_at

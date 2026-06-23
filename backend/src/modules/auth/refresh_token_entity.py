@@ -13,10 +13,13 @@ if TYPE_CHECKING:
 
 
 class RefreshTokenEntity(MappedAsDataclass, EntityBase):
-    """
-    Refresh token allow-list entity.
-    Stores hashed JWT identifiers (jti) for server-side session management.
-    Exactly one of account_id or police_id must be non-null.
+    """Server-side allow-list entry for a single refresh token (``refresh_tokens`` table).
+
+    Only the SHA-256 hash of the JWT ``jti`` claim is stored — the raw token
+    value is never persisted.  A DB-level CHECK constraint enforces that exactly
+    one of ``account_id`` or ``police_id`` is non-null, ensuring every row can
+    be traced to a single owner.  Cascade deletes keep the table self-cleaning
+    when the referenced account or police user is removed.
     """
 
     __tablename__ = "refresh_tokens"

@@ -55,11 +55,20 @@ _INCIDENT_QUERY_FIELDS = QueryFieldSet(
 
 
 class IncidentNotFoundException(NotFoundException):
+    """Raised when no incident exists for the requested ID (HTTP 404)."""
+
     def __init__(self, incident_id: int):
         super().__init__(f"Incident with ID {incident_id} not found")
 
 
 class IncidentService:
+    """Business-logic layer for incident creation, lookup, update, deletion, and export.
+
+    Sits between the router and persistence: resolves locations via
+    `LocationService` and runs paginated queries. Injected per request via
+    FastAPI ``Depends``.
+    """
+
     QUERY_FIELDS: ClassVar[QueryFieldSet] = _INCIDENT_QUERY_FIELDS
 
     def __init__(
@@ -73,6 +82,11 @@ class IncidentService:
         self.query_service = query_service
 
     async def _get_incident_entity_by_id(self, incident_id: int) -> IncidentEntity:
+        """Fetch a single incident entity with its location eagerly loaded.
+
+        Raises:
+            IncidentNotFoundException: If no incident has the given ID.
+        """
         result = await self.session.execute(
             select(IncidentEntity)
             .where(IncidentEntity.id == incident_id)
@@ -84,6 +98,14 @@ class IncidentService:
         return incident_entity
 
     async def get_incidents_paginated(self, params: ListQueryParams) -> PaginatedIncidentsResponse:
+        """Get incidents with server-side pagination, sorting, and filtering.
+
+        Also computes per-severity counts over the filtered result set and
+        attaches them to the response.
+
+        Args:
+            params: Parsed pagination/sort/filter parameters from the request.
+        """
         base_query = (
             select(IncidentEntity)
             .join(LocationEntity, IncidentEntity.location_id == LocationEntity.id)
@@ -104,6 +126,16 @@ class IncidentService:
     async def _get_severity_counts(
         self, base_query: Select, params: ListQueryParams
     ) -> IncidentSeverityCounts:
+        """Count incidents per severity over the same filters and search as the paginated query.
+
+        Applies filters and search from ``params`` to ``base_query``, groups by
+        severity, and returns an `IncidentSeverityCounts` with all three levels
+        populated (zero for any absent severity).
+
+        Args:
+            base_query: The unfiltered base select for incidents.
+            params: The same params used for the paginated list (filters + search applied).
+        """
         filtered = self.query_service.apply_filters(
             base_query, params.filters, _INCIDENT_QUERY_FIELDS
         )
@@ -121,6 +153,14 @@ class IncidentService:
     async def get_incidents_with_addresses(
         self, params: ListQueryParams
     ) -> list[tuple[IncidentDto, str]]:
+        """Fetch paginated incidents paired with their formatted address strings (for export).
+
+        Args:
+            params: Parsed pagination/sort/filter parameters from the request.
+
+        Returns:
+            A list of ``(IncidentDto, formatted_address)`` tuples in the sorted order.
+        """
         base_query = (
             select(IncidentEntity)
             .join(LocationEntity, IncidentEntity.location_id == LocationEntity.id)
@@ -136,6 +176,12 @@ class IncidentService:
         return result.items
 
     def export_incidents_to_excel(self, incident_data: list[tuple[IncidentDto, str]]) -> bytes:
+        """Render incidents as an Excel workbook.
+
+        Args:
+            incident_data: List of ``(IncidentDto, formatted_address)`` tuples
+                as returned by `get_incidents_with_addresses`.
+        """
         return export_to_excel(
             resource_name="Incidents",
             field_map={
@@ -161,12 +207,23 @@ class IncidentService:
         return [incident.to_dto() for incident in incidents]
 
     async def get_incident_by_id(self, incident_id: int) -> IncidentDto:
-        """Get a single incident by ID."""
+        """Get a single incident by ID.
+
+        Raises:
+            IncidentNotFoundException: If no incident has the given ID.
+        """
         incident_entity = await self._get_incident_entity_by_id(incident_id)
         return incident_entity.to_dto()
 
     async def create_incident(self, data: IncidentCreateDto) -> IncidentDto:
-        """Create a new incident, resolving or creating the location by place ID."""
+        """Create a new incident, resolving or creating the location by place ID.
+
+        Raises:
+            InvalidPlaceIdException: If ``location_place_id`` has an invalid format.
+            PlaceNotFoundException: If the place ID is not found in Google Maps.
+            LocationConflictException: If a concurrent insert causes a unique violation.
+            GoogleMapsAPIException: If the Maps API request fails.
+        """
         location = await self.location_service.get_or_create_location(data.location_place_id)
         new_incident = IncidentEntity.from_data(
             IncidentData(
@@ -183,7 +240,18 @@ class IncidentService:
         return (await self._get_incident_entity_by_id(new_incident.id)).to_dto()
 
     async def update_incident(self, incident_id: int, data: IncidentUpdateDto) -> IncidentDto:
-        """Update an existing incident's datetime, description, and severity."""
+        """Update an existing incident's datetime, description, severity, and location.
+
+        The location is resolved (or created) first; the incident is fetched after
+        to avoid stale identity-map relationships.
+
+        Raises:
+            IncidentNotFoundException: If no incident has the given ID.
+            InvalidPlaceIdException: If ``location_place_id`` has an invalid format.
+            PlaceNotFoundException: If the place ID is not found in Google Maps.
+            LocationConflictException: If a concurrent insert causes a unique violation.
+            GoogleMapsAPIException: If the Maps API request fails.
+        """
         # Resolve location first — get_or_create may commit (creating a new location).
         # Fetch the incident entity after to avoid stale identity-map relationships.
         location = await self.location_service.get_or_create_location(data.location_place_id)
@@ -203,7 +271,11 @@ class IncidentService:
         return incident_entity.to_dto()
 
     async def delete_incident(self, incident_id: int) -> IncidentDto:
-        """Delete an incident."""
+        """Delete an incident by ID and return its final state.
+
+        Raises:
+            IncidentNotFoundException: If no incident has the given ID.
+        """
         incident_entity = await self._get_incident_entity_by_id(incident_id)
         incident = incident_entity.to_dto()
         await self.session.delete(incident_entity)

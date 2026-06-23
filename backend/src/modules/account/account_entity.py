@@ -10,6 +10,13 @@ from src.modules.student.student_model import StudentDto, StudentSelfDto
 
 
 class AccountEntity(MappedAsDataclass, EntityBase):
+    """Persistence model for a UNC-identity account (``accounts`` table).
+
+    Stores staff, admin, and student accounts that authenticate via the UNC IdP.
+    ``pid`` and ``onyen`` are unique identifiers from the identity provider;
+    a CHECK constraint enforces the 9-digit PID format at the DB level.
+    """
+
     __tablename__ = "accounts"
     __table_args__ = (
         CheckConstraint(
@@ -36,6 +43,7 @@ class AccountEntity(MappedAsDataclass, EntityBase):
 
     @classmethod
     def from_data(cls, data: AccountData) -> Self:
+        """Build an unsaved entity from an `AccountData` DTO."""
         return cls(
             email=data.email,
             first_name=data.first_name,
@@ -46,6 +54,7 @@ class AccountEntity(MappedAsDataclass, EntityBase):
         )
 
     def to_dto(self) -> AccountDto:
+        """Convert entity to full account DTO."""
         return AccountDto(
             id=self.id,
             email=self.email,
@@ -57,6 +66,12 @@ class AccountEntity(MappedAsDataclass, EntityBase):
         )
 
     def to_student_dto(self) -> StudentDto:
+        """Convert entity to a student DTO with no student-profile fields set.
+
+        Student-profile fields (``phone_number``, ``contact_preference``,
+        ``last_registered``, ``residence``) are ``None`` because those live on
+        ``StudentEntity``, not ``AccountEntity``.
+        """
         return StudentDto(
             id=self.id,
             pid=self.pid,
@@ -71,5 +86,6 @@ class AccountEntity(MappedAsDataclass, EntityBase):
         )
 
     def to_student_self_dto(self) -> StudentSelfDto:
+        """Convert entity to a student self-view DTO."""
         dto = self.to_student_dto()
         return StudentSelfDto(**dto.model_dump())

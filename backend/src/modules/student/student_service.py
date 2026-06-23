@@ -37,6 +37,8 @@ from .student_model import (
 
 
 class StudentNotFoundException(NotFoundException):
+    """Raised when no student record exists for the requested ID or email (HTTP 404)."""
+
     def __init__(self, account_id: int | None = None, email: str | None = None):
         if account_id is not None and email is not None:
             raise ValueError("Provide either account_id or email, not both")
@@ -47,11 +49,15 @@ class StudentNotFoundException(NotFoundException):
 
 
 class StudentConflictException(ConflictException):
+    """Raised when a phone number is already in use by another student (HTTP 409)."""
+
     def __init__(self, phone_number: str):
         super().__init__(f"Student with phone number {phone_number} already exists")
 
 
 class ResidenceAlreadyChosenException(BadRequestException):
+    """Raised when a student tries to re-select their residence this academic year (HTTP 400)."""
+
     def __init__(self):
         super().__init__(
             "Student has already chosen a residence for this academic year and cannot change it"
@@ -97,6 +103,13 @@ _STUDENT_QUERY_FIELDS = QueryFieldSet(
 
 
 class StudentService:
+    """Business-logic layer for student lookup, profile updates, and residence management.
+
+    Sits between the router and persistence: fetches student entities, enforces
+    academic-year residence restrictions, and delegates location creation to
+    ``LocationService``. Injected per request via FastAPI ``Depends``.
+    """
+
     QUERY_FIELDS: ClassVar[QueryFieldSet] = _STUDENT_QUERY_FIELDS
 
     def __init__(
@@ -112,6 +125,11 @@ class StudentService:
         self.query_service = query_service
 
     async def _persist_student(self, student_entity: StudentEntity) -> StudentEntity:
+        """Commit a student entity, rolling back and raising on phone-number conflicts.
+
+        Raises:
+            StudentConflictException: If the phone number violates the unique constraint.
+        """
         phone_number = student_entity.phone_number
         try:
             self.session.add(student_entity)
@@ -123,9 +141,15 @@ class StudentService:
         return student_entity
 
     async def _save_student(self, student_entity: StudentEntity) -> StudentDto:
+        """Persist and convert a student entity to a DTO."""
         return (await self._persist_student(student_entity)).to_dto()
 
     async def _get_student_entity_by_account_id(self, account_id: int) -> StudentEntity:
+        """Fetch a StudentEntity by account ID with account and residence eagerly loaded.
+
+        Raises:
+            StudentNotFoundException: If no student row exists for this account.
+        """
         result = await self.session.execute(
             select(StudentEntity)
             .where(StudentEntity.account_id == account_id)
@@ -137,17 +161,13 @@ class StudentService:
         return student_entity
 
     async def get_students_paginated(self, params: ListQueryParams) -> PaginatedStudentsResponse:
-        """
-        Get students with server-side pagination and sorting.
+        """Get students with server-side pagination, sorting, and filtering.
 
-        Query parameters are automatically parsed from the request:
-        - page_number: Page number (1-indexed, default: 1)
-        - page_size: Items per page (default: all)
-        - sort_by: Field to sort by
-        - sort_order: Sort order ('asc' or 'desc')
+        Joins ``AccountEntity`` and ``LocationEntity`` so all ``_STUDENT_QUERY_FIELDS``
+        are addressable in filter and sort expressions.
 
-        Returns:
-            PaginatedStudentsResponse with items and metadata
+        Args:
+            params: Parsed pagination/sort/filter parameters from the request.
         """
         # Build base query with JOIN for filter/sort and eager loading for hydration
         base_query = (
@@ -165,6 +185,7 @@ class StudentService:
         return PaginatedStudentsResponse(**result.model_dump())
 
     def export_students_to_excel(self, students_response: PaginatedStudentsResponse) -> bytes:
+        """Render students as an Excel workbook with contact and registration columns."""
         return export_to_excel(
             resource_name="Students",
             field_map={
@@ -186,12 +207,20 @@ class StudentService:
         )
 
     async def get_student_by_id(self, account_id: int) -> StudentDto:
+        """Fetch a single student by account ID.
+
+        Raises:
+            StudentNotFoundException: If no student has the given account ID.
+        """
         student_entity = await self._get_student_entity_by_account_id(account_id)
         return student_entity.to_dto()
 
     async def ensure_student_entity_exists(self, account_id: int) -> None:
-        """Ensure a StudentEntity exists for this account, creating one with null
-        phone/preference if missing. Called after SSO login for student accounts."""
+        """Ensure a StudentEntity exists for this account, creating one with null fields if missing.
+
+        Called after SSO login for student accounts so the student row is always
+        present before the student attempts to update their profile.
+        """
         result = await self.session.execute(
             select(StudentEntity).where(StudentEntity.account_id == account_id)
         )
@@ -205,9 +234,12 @@ class StudentService:
             await self.session.rollback()
 
     async def get_student_me_dto(self, account_id: int) -> StudentSelfDto:
-        """Get StudentSelfDto for the authenticated student — residence incidents restricted to
-        type and date/time. Returns a partial DTO (null phone/preference) if the Student entity
-        does not exist yet."""
+        """Get the student self-view DTO for the authenticated user.
+
+        Residence incidents are restricted to type and date/time. Returns a
+        partial DTO (null phone/preference) if the StudentEntity does not exist
+        yet (account exists but student row was not yet created).
+        """
         try:
             student_entity = await self._get_student_entity_by_account_id(account_id)
             return student_entity.to_self_dto()
@@ -216,6 +248,15 @@ class StudentService:
             return account.to_student_self_dto()
 
     async def update_student(self, account_id: int, data: StudentUpdateDto) -> StudentDto:
+        """Update a student's contact info and optionally their residence (admin only).
+
+        Admins can set residence at any time, bypassing academic-year restrictions.
+        Students must use ``update_residence`` to change their own residence.
+
+        Raises:
+            StudentNotFoundException: If no student has the given account ID.
+            StudentConflictException: If the new phone number is already in use.
+        """
         student_entity = await self._get_student_entity_by_account_id(account_id)
 
         # Handle residence_place_id for admin updates
@@ -236,6 +277,15 @@ class StudentService:
     async def update_student_self(
         self, account_id: int, data: SelfUpdateStudentDto
     ) -> StudentSelfDto:
+        """Update or create the student's own contact info (upsert).
+
+        If the student row does not yet exist, a new one is created (the account
+        must already exist). Residence is not updated here; students use
+        ``update_residence`` for that.
+
+        Raises:
+            StudentConflictException: If the new phone number is already in use.
+        """
         result = await self.session.execute(
             select(StudentEntity)
             .where(StudentEntity.account_id == account_id)
@@ -258,7 +308,17 @@ class StudentService:
         return (await self._persist_student(student_entity)).to_self_dto()
 
     async def update_residence(self, account_id: int, residence_place_id: str) -> LocationDto:
-        """Update student's residence. Can only be done once per academic year."""
+        """Set or update the student's residence; locked to once per academic year.
+
+        The location is created via Google Maps if it does not already exist in
+        the DB. A student who has already chosen a residence this academic year
+        must wait until the next academic year or ask an admin to change it.
+
+        Raises:
+            StudentNotFoundException: If no student has the given account ID.
+            ResidenceAlreadyChosenException: If the student already chose a
+                residence in the current academic year.
+        """
         student_entity = await self._get_student_entity_by_account_id(account_id)
 
         # Check if student has already chosen a residence this academic year
@@ -279,10 +339,14 @@ class StudentService:
         return location
 
     async def update_is_registered(self, account_id: int, is_registered: bool) -> StudentDto:
-        """
-        Update the registration status of a student.
-        If is_registered is True, sets last_registered to current datetime.
-        If is_registered is False, sets last_registered to None.
+        """Update the Party Smart registration status of a student.
+
+        Sets ``last_registered`` to the current UTC time when ``is_registered``
+        is True; clears it to None when False.
+
+        Raises:
+            StudentNotFoundException: If no student has the given account ID.
+            StudentConflictException: If the save triggers a phone-number conflict.
         """
         student_entity = await self._get_student_entity_by_account_id(account_id)
 

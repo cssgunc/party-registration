@@ -19,6 +19,12 @@ if TYPE_CHECKING:
 
 
 class IncidentEntity(MappedAsDataclass, EntityBase):
+    """Persistence model for a police incident (``incidents`` table).
+
+    Each incident is linked to a location via a foreign key.  The ``to_*_dto``
+    helpers require the ``location`` relationship to be eagerly loaded.
+    """
+
     __tablename__ = "incidents"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, init=False)
@@ -40,6 +46,7 @@ class IncidentEntity(MappedAsDataclass, EntityBase):
 
     @classmethod
     def from_data(cls, data: IncidentData) -> Self:
+        """Build an unsaved entity from an `IncidentData` value object."""
         return cls(
             location_id=data.location_id,
             incident_datetime=data.incident_datetime,
@@ -49,6 +56,7 @@ class IncidentEntity(MappedAsDataclass, EntityBase):
         )
 
     def set_from_data(self, data: IncidentData) -> None:
+        """Mutate this entity in place to match an `IncidentData` value object (update flow)."""
         self.location_id = data.location_id
         self.incident_datetime = data.incident_datetime
         self.severity = data.severity
@@ -56,6 +64,7 @@ class IncidentEntity(MappedAsDataclass, EntityBase):
         self.reference_id = data.reference_id
 
     def _normalized_datetime(self) -> datetime:
+        """Return ``incident_datetime`` with UTC tzinfo attached if it was naive."""
         dt = self.incident_datetime
         return dt if dt.tzinfo is not None else dt.replace(tzinfo=UTC)
 

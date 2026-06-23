@@ -44,13 +44,6 @@ convention = "google"
 # is intentionally NOT listed here. Remove an entry once its area is documented.
 "backend/src/main.py" = ["D"]
 "backend/src/core/**" = ["D"]
-"backend/src/modules/account/**" = ["D"]
-"backend/src/modules/auth/**" = ["D"]
-"backend/src/modules/incident/**" = ["D"]
-"backend/src/modules/location/**" = ["D"]
-"backend/src/modules/notification/**" = ["D"]
-"backend/src/modules/police/**" = ["D"]
-"backend/src/modules/student/**" = ["D"]
 
 [tool.ruff.format]
 quote-style = "double"

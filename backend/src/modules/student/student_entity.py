@@ -22,6 +22,18 @@ if TYPE_CHECKING:
 
 
 class StudentEntity(MappedAsDataclass, EntityBase):
+    """Persistence model for a student account (``students`` table).
+
+    Extends the ``accounts`` row via a shared primary key (``account_id``).
+    Names and identity fields (PID, onyen, email) are stored in
+    ``AccountEntity``; this table holds contact info and the chosen
+    residence. ``phone_number`` is unique to prevent duplicate contact-one
+    entries across parties.
+
+    The ``chk_residence_consistency`` constraint ensures ``residence_id``
+    and ``residence_chosen_date`` are always set together or both null.
+    """
+
     __tablename__ = "students"
 
     account_id: Mapped[int] = mapped_column(
@@ -61,6 +73,14 @@ class StudentEntity(MappedAsDataclass, EntityBase):
     def from_data(
         cls, data: "StudentData", account_id: int, residence_id: int | None = None
     ) -> Self:
+        """Build an unsaved entity from ``StudentData`` and an account ID.
+
+        Args:
+            data: Mutable student fields (phone, preference, last_registered).
+            account_id: FK to the ``accounts`` table.
+            residence_id: Optional location FK; if set, ``residence_chosen_date``
+                is recorded as the current UTC time.
+        """
         return cls(
             contact_preference=data.contact_preference,
             last_registered=data.last_registered,
@@ -71,7 +91,7 @@ class StudentEntity(MappedAsDataclass, EntityBase):
         )
 
     def to_dto(self) -> "StudentDto":
-        """Convert entity to DTO using the account relationship."""
+        """Convert entity to the full staff/admin DTO. Requires relationships loaded."""
         # Ensure last_registered is timezone-aware if present
         last_reg = self.last_registered
         if last_reg is not None and last_reg.tzinfo is None:
@@ -121,9 +141,10 @@ class StudentEntity(MappedAsDataclass, EntityBase):
         return StudentSelfDto(**dto.model_dump(exclude={"residence"}), residence=residence)
 
     async def load_dto(self, session: AsyncSession) -> StudentDto:
-        """
-        Load student with account relationship from database and convert to DTO.
-        Should be used to get the DTO only if the account relationship hasn't been loaded yet.
+        """Re-fetch this student with relationships loaded, then convert to a DTO.
+
+        Use when relationships may not already be loaded (e.g. right after an
+        insert) and a direct ``to_dto`` would trigger lazy-load errors.
         """
         result = await session.execute(
             select(self.__class__)

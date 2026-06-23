@@ -5,7 +5,12 @@ from pydantic import AwareDatetime, BaseModel
 
 
 class AddressData(BaseModel):
-    # Location data without OCSL-specific fields
+    """Raw address data returned by Google Maps, without OCSL-specific fields.
+
+    Populated by `LocationService.get_place_details` and used as an intermediate
+    form before converting to `LocationData` for persistence.
+    """
+
     google_place_id: str
     formatted_address: str
     latitude: float
@@ -21,6 +26,12 @@ class AddressData(BaseModel):
 
 
 class LocationData(AddressData):
+    """Persistence-shaped location data that includes the optional OCSL hold.
+
+    Extends `AddressData` with ``hold_expiration``, which is set by admins when
+    a location is barred from hosting parties for a period of time.
+    """
+
     hold_expiration: AwareDatetime | None = None
 
     @classmethod
@@ -29,6 +40,12 @@ class LocationData(AddressData):
         address: AddressData,
         hold_expiration: AwareDatetime | None = None,
     ) -> Self:
+        """Build a `LocationData` from an `AddressData`, optionally attaching a hold.
+
+        Args:
+            address: Raw address data from Google Maps.
+            hold_expiration: Optional hold expiry to attach; defaults to no hold.
+        """
         return cls(
             google_place_id=address.google_place_id,
             formatted_address=address.formatted_address,
@@ -46,6 +63,6 @@ class LocationData(AddressData):
         )
 
     def has_active_hold(self) -> bool:
-        """Check if the location currently has an active hold."""
+        """Return True if ``hold_expiration`` is set and is in the future (UTC)."""
         now = datetime.now(UTC)
         return self.hold_expiration is not None and self.hold_expiration > now

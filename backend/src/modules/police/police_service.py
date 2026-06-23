@@ -46,16 +46,26 @@ _POLICE_QUERY_FIELDS = QueryFieldSet(
 
 
 class PoliceNotFoundException(NotFoundException):
+    """Raised when no police account exists for the requested ID (HTTP 404)."""
+
     def __init__(self, police_id: int):
         super().__init__(f"Police account with ID {police_id} not found")
 
 
 class PoliceConflictException(ConflictException):
+    """Raised when a police account with the given email already exists (HTTP 409)."""
+
     def __init__(self, email: str):
         super().__init__(f"Police account with email {email} already exists")
 
 
 class PoliceService:
+    """Business-logic layer for police account management, authentication, and email flows.
+
+    Owns the database session, email dispatch, and the paginated-query helper.
+    Injected per request via FastAPI ``Depends``.
+    """
+
     QUERY_FIELDS: ClassVar[QueryFieldSet] = _POLICE_QUERY_FIELDS
 
     def __init__(
@@ -69,6 +79,11 @@ class PoliceService:
         self.query_service = query_service
 
     async def _get_police_entity_by_id(self, police_id: int) -> PoliceEntity:
+        """Fetch a `PoliceEntity` by primary key, raising if not found.
+
+        Raises:
+            PoliceNotFoundException: If no account has the given ID.
+        """
         result = await self.session.execute(
             select(PoliceEntity).where(PoliceEntity.id == police_id)
         )
@@ -78,16 +93,23 @@ class PoliceService:
         return police
 
     async def _find_police_entity_by_email(self, email: str) -> PoliceEntity | None:
+        """Look up a `PoliceEntity` by email (case-insensitive); returns None if absent."""
         result = await self.session.execute(
             select(PoliceEntity).where(func.lower(PoliceEntity.email) == email.lower())
         )
         return result.scalar_one_or_none()
 
     async def get_police_by_id(self, police_id: int) -> PoliceAccountDto:
+        """Fetch a single police account by ID.
+
+        Raises:
+            PoliceNotFoundException: If no account has the given ID.
+        """
         police = await self._get_police_entity_by_id(police_id)
         return police.to_dto()
 
     async def get_police_paginated(self, params: ListQueryParams) -> PaginatedPoliceResponse:
+        """Get police accounts with server-side pagination, sorting, and filtering."""
         base_query = select(PoliceEntity)
         result = await self.query_service.get_paginated(
             params=params,
@@ -97,6 +119,7 @@ class PoliceService:
         return PaginatedPoliceResponse(**result.model_dump())
 
     def export_police_to_excel(self, police_response: PaginatedPoliceResponse) -> bytes:
+        """Render a police account list as an Excel workbook (.xlsx bytes)."""
         return export_to_excel(
             resource_name="Police Accounts",
             field_map={
@@ -109,6 +132,16 @@ class PoliceService:
         )
 
     async def signup_police(self, email: str, password: str) -> None:
+        """Register a new police officer account and dispatch a verification email.
+
+        If the email already belongs to an unverified account, the existing
+        record's password and verification token are refreshed (idempotent
+        re-signup). Verified accounts are never overwritten.
+
+        Raises:
+            BadRequestException: If the email is not on the configured CHPD domain.
+            PoliceConflictException: If the email belongs to an already-verified account.
+        """
         if not email.endswith(f"@{env.CHPD_EMAIL_DOMAIN}"):
             raise BadRequestException(f"CHPD email must use the @{env.CHPD_EMAIL_DOMAIN} domain")
 
@@ -137,6 +170,11 @@ class PoliceService:
         await self.send_verification_email(email, token)
 
     async def retry_verification(self, email: str) -> None:
+        """Re-send the verification email for an unverified account.
+
+        Silently succeeds when the email is unknown or the account is already
+        verified, preventing user enumeration.
+        """
         police = await self._find_police_entity_by_email(email)
         if police is None or police.is_verified:
             # To prevent user enumeration, we return success even if the email doesn't exist or is
@@ -151,10 +189,7 @@ class PoliceService:
         await self.send_verification_email(email, token)
 
     def _populate_verification_token(self, police: PoliceEntity) -> str:
-        """
-        Reset the verification token and expiry for a police entity. Does not commit changes.
-        """
-
+        """Reset the verification token and expiry on a police entity; does not commit."""
         token = secrets.token_urlsafe(32)
         expires_at = datetime.now(UTC) + timedelta(hours=env.EMAIL_VERIFICATION_TOKEN_EXPIRE_HOURS)
 
@@ -164,6 +199,7 @@ class PoliceService:
         return token
 
     async def send_verification_email(self, to: str, token: str) -> None:
+        """Send an account-verification email containing a one-time link."""
         verification_url = urljoin(str(env.FRONTEND_BASE_URL), f"/police/verify?token={token}")
         html = f"""
             <p>Welcome to PartySmart.</p>
@@ -174,6 +210,13 @@ class PoliceService:
         await self.email_service.send_email(to, "Verify your PartySmart account", html)
 
     async def verify_police_email(self, token: str) -> None:
+        """Mark a police account as verified using the emailed token.
+
+        Clears the token and expiry after a successful verification.
+
+        Raises:
+            BadRequestException: If the token is invalid or has expired.
+        """
         result = await self.session.execute(
             select(PoliceEntity).where(PoliceEntity.verification_token == token)
         )
@@ -196,6 +239,12 @@ class PoliceService:
     async def update_police(
         self, police_id: int, email: str, role: PoliceRole, is_verified: bool | None = None
     ) -> PoliceAccountDto:
+        """Update a police account's email, role, and optionally its verified status.
+
+        Raises:
+            PoliceNotFoundException: If no account has the given ID.
+            PoliceConflictException: If the new email is already used by another account.
+        """
         police = await self._get_police_entity_by_id(police_id)
 
         if email.lower() != police.email.lower():
@@ -218,6 +267,11 @@ class PoliceService:
         return police.to_dto()
 
     async def delete_police(self, police_id: int) -> PoliceAccountDto:
+        """Delete a police account and return its final state.
+
+        Raises:
+            PoliceNotFoundException: If no account has the given ID.
+        """
         police = await self._get_police_entity_by_id(police_id)
         dto = police.to_dto()
         await self.session.delete(police)
@@ -234,6 +288,7 @@ class PoliceService:
         return police.to_dto()
 
     def _populate_password_reset_token(self, police: PoliceEntity) -> str:
+        """Reset the password-reset token and expiry on a police entity; does not commit."""
         token = secrets.token_urlsafe(32)
         expires_at = datetime.now(UTC) + timedelta(hours=env.PASSWORD_RESET_TOKEN_EXPIRE_HOURS)
         police.password_reset_token = token
@@ -241,6 +296,11 @@ class PoliceService:
         return token
 
     async def request_password_reset(self, email: str) -> None:
+        """Generate a password-reset token and email it to the account holder.
+
+        Silently succeeds when the email is unknown or the account is unverified,
+        preventing user enumeration.
+        """
         police = await self._find_police_entity_by_email(email)
         if police is None or not police.is_verified:
             # Silently succeed to prevent user enumeration.
@@ -253,6 +313,14 @@ class PoliceService:
         await self.send_password_reset_email(email, token)
 
     async def reset_password(self, token: str, new_password: str) -> None:
+        """Set a new password using a previously emailed reset token.
+
+        Invalidates all active refresh tokens for the account after a successful
+        reset. Clears the reset token and expiry on success.
+
+        Raises:
+            CredentialsException: If the token is invalid or has expired.
+        """
         result = await self.session.execute(
             select(PoliceEntity).where(PoliceEntity.password_reset_token == token)
         )
@@ -278,6 +346,7 @@ class PoliceService:
         await self.session.commit()
 
     async def send_password_reset_email(self, to: str, token: str) -> None:
+        """Send a password-reset email containing a one-time link."""
         reset_url = urljoin(str(env.FRONTEND_BASE_URL), f"/police/reset-password?token={token}")
         html = f"""
             <p>We received a request to reset your PartySmart password.</p>

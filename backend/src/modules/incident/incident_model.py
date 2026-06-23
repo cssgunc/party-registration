@@ -13,6 +13,8 @@ class LocationSummaryDto(LocationData):
 
 
 class IncidentSeverity(Enum):
+    """Severity levels for a police incident."""
+
     REMOTE_WARNING = "remote_warning"
     IN_PERSON_WARNING = "in_person_warning"
     CITATION = "citation"
@@ -29,6 +31,7 @@ class IncidentFields(BaseModel):
     @field_validator("description", "reference_id", mode="before")
     @classmethod
     def empty_str_to_none(cls, v: object) -> object:
+        """Coerce blank strings to None so the DB stores NULL instead of empty string."""
         if isinstance(v, str) and v.strip() == "":
             return None
         return v
@@ -82,6 +85,7 @@ class IncidentSeverityCounts(BaseModel):
 
     @classmethod
     def from_counts(cls, counts: dict[IncidentSeverity, int]) -> Self:
+        """Build an instance from a ``{severity: count}`` mapping."""
         return cls(
             remote_warning=counts.get(IncidentSeverity.REMOTE_WARNING, 0),
             in_person_warning=counts.get(IncidentSeverity.IN_PERSON_WARNING, 0),

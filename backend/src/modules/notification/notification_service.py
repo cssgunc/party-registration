@@ -22,11 +22,20 @@ logger = logging.getLogger(__name__)
 
 
 class UnsubscribeTokenInvalidException(BadRequestException):
+    """Raised when an unsubscribe token is missing, malformed, or has a bad signature (HTTP 400)."""
+
     def __init__(self, detail: str):
         super().__init__(detail=detail)
 
 
 class NotificationService:
+    """Service for email notification delivery and subscription management.
+
+    Handles sending party registration confirmation emails to both contacts,
+    building HMAC-signed subscription tokens, and persisting unsubscribe/resubscribe
+    state. Injected per request via FastAPI ``Depends``.
+    """
+
     def __init__(
         self,
         session: AsyncSession = Depends(get_session),
@@ -38,7 +47,12 @@ class NotificationService:
     # ============================= Token helpers =============================
 
     def _make_token(self, email: str) -> str:
-        """Return a URL-safe token encoding the email, signed with INTERNAL_API_SECRET."""
+        """Build a URL-safe token encoding the email, signed with INTERNAL_API_SECRET.
+
+        The token format is ``<base64url(email)>.<sha256-hmac-hex>``. The email
+        is lowercased before encoding so tokens are case-insensitive and the
+        signature can be verified independently of the original casing.
+        """
         email_b64 = base64.urlsafe_b64encode(email.lower().encode()).decode()
         sig = hmac.new(
             env.INTERNAL_API_SECRET.encode(),
@@ -48,7 +62,16 @@ class NotificationService:
         return f"{email_b64}.{sig}"
 
     def decode_token(self, token: str) -> str:
-        """Decode and verify a token, returning the email. Raises on invalid token."""
+        """Decode and verify a signed subscription token, returning the email.
+
+        Splits on the first ``.``, base64url-decodes the email segment, then
+        recomputes the HMAC and compares with a constant-time digest to prevent
+        timing attacks.
+
+        Raises:
+            UnsubscribeTokenInvalidException: If the token cannot be split/decoded
+                (malformed) or if the HMAC signature does not match (tampered).
+        """
         try:
             email_b64, sig = token.split(".", 1)
             email = base64.urlsafe_b64decode(email_b64.encode()).decode()
@@ -69,6 +92,7 @@ class NotificationService:
     # ============================= Unsubscribe ===============================
 
     async def is_unsubscribed(self, email: str) -> bool:
+        """Return True if the email is on the unsubscribe list."""
         result = await self.session.execute(
             select(EmailUnsubscribeEntity).where(EmailUnsubscribeEntity.email == email.lower())
         )
@@ -95,10 +119,12 @@ class NotificationService:
     # ============================= Notifications =============================
 
     def _management_url(self, email: str) -> str:
+        """Build the frontend notification management URL for the given email."""
         token = self._make_token(email)
         return urljoin(str(env.FRONTEND_BASE_URL), f"/notifications?token={token}")
 
     def _one_click_unsubscribe_url(self, email: str) -> str:
+        """Build the RFC 8058 one-click unsubscribe API URL for the given email."""
         token = self._make_token(email)
         return urljoin(
             str(env.API_BASE_URL),
@@ -106,6 +132,7 @@ class NotificationService:
         )
 
     def _list_unsubscribe_headers(self, email: str) -> dict[str, str]:
+        """Return the ``List-Unsubscribe`` and ``List-Unsubscribe-Post`` headers for RFC 8058."""
         return {
             "List-Unsubscribe": f"<{self._one_click_unsubscribe_url(email)}>",
             "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
@@ -114,6 +141,12 @@ class NotificationService:
     def _party_notification_html(
         self, party: PartyDto, recipient_name: str, email: str, *, is_contact_two: bool = False
     ) -> str:
+        """Render the HTML body for a party registration confirmation email.
+
+        All user-supplied strings are HTML-escaped. When ``is_contact_two`` is
+        True, a secondary-contact notice is inserted to clarify the recipient's
+        role in the registration.
+        """
         dt = party.party_datetime.astimezone(ZoneInfo("America/New_York")).strftime(
             "%B %-d, %Y at %-I:%M %p %Z"
         )
@@ -157,6 +190,11 @@ class NotificationService:
     async def _send_party_notification(
         self, party: PartyDto, email: str, first_name: str, *, is_contact_two: bool = False
     ) -> None:
+        """Send a single party registration confirmation email.
+
+        Attaches RFC 8058 ``List-Unsubscribe`` headers so mail clients can
+        surface an unsubscribe action without the recipient opening the email.
+        """
         html = self._party_notification_html(
             party, first_name, email, is_contact_two=is_contact_two
         )
