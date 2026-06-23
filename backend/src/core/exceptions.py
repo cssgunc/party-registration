@@ -1,7 +1,6 @@
-"""
-Custom exceptions for the application.
+"""Custom exceptions for the application.
 
-These all extend FastAPI's HTTPException to provide specific HTTP status codes
+These all extend FastAPI's HTTPException to provide specific HTTP status codes.
 """
 
 from typing import Any
@@ -38,31 +37,43 @@ def error_response(description: str) -> dict[str, Any]:
 
 
 class ConflictException(HTTPException):
+    """Represents a 409 Conflict — the request conflicts with an existing resource."""
+
     def __init__(self, detail: str):
         super().__init__(status_code=409, detail=detail)
 
 
 class NotFoundException(HTTPException):
+    """Represents a 404 Not Found — the requested resource does not exist."""
+
     def __init__(self, detail: str):
         super().__init__(status_code=404, detail=detail)
 
 
 class ForbiddenException(HTTPException):
+    """Represents a 403 Forbidden — the caller lacks permission to perform the action."""
+
     def __init__(self, detail: str):
         super().__init__(status_code=403, detail=detail)
 
 
 class BadRequestException(HTTPException):
+    """Represents a 400 Bad Request — the request is malformed or violates business rules."""
+
     def __init__(self, detail: str | dict[str, Any]):
         super().__init__(status_code=400, detail=detail)
 
 
 class UnprocessableEntityException(HTTPException):
+    """Represents a 422 Unprocessable Entity — semantically invalid input."""
+
     def __init__(self, detail: str):
         super().__init__(status_code=422, detail=detail)
 
 
 class CredentialsException(HTTPException):
+    """Represents a 401 Unauthorized — the bearer token is missing, invalid, or expired."""
+
     def __init__(self):
         super().__init__(
             status_code=401,
@@ -72,5 +83,7 @@ class CredentialsException(HTTPException):
 
 
 class InternalServerException(HTTPException):
+    """Represents a 500 Internal Server Error — an unexpected server-side failure."""
+
     def __init__(self, detail: str):
         super().__init__(status_code=500, detail=detail)

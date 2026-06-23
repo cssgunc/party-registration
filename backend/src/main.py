@@ -36,6 +36,12 @@ API_SECURITY_HEADERS = {
 
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next: RequestResponseEndpoint):
+    """Attach security headers to every ``/api`` response.
+
+    Headers applied: ``X-Content-Type-Options``, ``X-Frame-Options``,
+    ``Referrer-Policy``, ``Permissions-Policy``, and ``Content-Security-Policy``.
+    Non-API paths (e.g. ``/docs``) are left unmodified.
+    """
     response = await call_next(request)
 
     if request.url.path.startswith("/api"):
@@ -47,6 +53,7 @@ async def add_security_headers(request: Request, call_next: RequestResponseEndpo
 
 @app.exception_handler(HTTPException)
 def handle_http_exception(req: Request, exc: HTTPException):
+    """Serialize any HTTPException to a ``{"detail": ...}`` JSON response."""
     return JSONResponse(
         status_code=exc.status_code,
         content={"detail": exc.detail},
@@ -56,6 +63,7 @@ def handle_http_exception(req: Request, exc: HTTPException):
 
 @app.exception_handler(Exception)
 def handle_general_exception(req: Request, exc: Exception):
+    """Catch-all handler that returns a generic 500 response for unhandled exceptions."""
     return JSONResponse(
         status_code=500,
         content={"detail": "An unexpected error occurred."},
@@ -64,6 +72,7 @@ def handle_general_exception(req: Request, exc: Exception):
 
 @app.get("/api")
 def read_root():
+    """Health-check endpoint confirming the API is reachable."""
     return {"message": "Successful Test"}
 
 

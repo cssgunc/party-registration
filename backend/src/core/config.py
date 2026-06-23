@@ -1,6 +1,4 @@
-"""
-Reads configuration from environment variables or .env file.
-"""
+"""Reads configuration from environment variables or .env file."""
 
 import re
 from datetime import date
@@ -11,6 +9,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Config(BaseSettings):
+    """Application settings loaded from environment variables or the root ``.env`` file.
+
+    Several fields use ``NEXT_PUBLIC_`` validation aliases so a single env var is
+    shared between the backend and the Next.js frontend build without duplication.
+    """
+
     model_config = SettingsConfigDict(
         env_file=str(Path(__file__).parent.parent.parent / ".env"),
         env_file_encoding="utf-8",
@@ -94,10 +98,12 @@ class Config(BaseSettings):
 
     @property
     def academic_year_switch_month(self) -> int:
+        """Return the month component of ``ACADEMIC_YEAR_SWITCH_DATE``."""
         return int(self.ACADEMIC_YEAR_SWITCH_DATE.split("-")[0])
 
     @property
     def academic_year_switch_day(self) -> int:
+        """Return the day component of ``ACADEMIC_YEAR_SWITCH_DATE``."""
         return int(self.ACADEMIC_YEAR_SWITCH_DATE.split("-")[1])
 
 

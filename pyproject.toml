@@ -38,12 +38,6 @@ convention = "google"
 "backend/test/**" = ["D"]
 "backend/alembic/**" = ["D"]
 "backend/script/**" = ["D"]
-# --- Docstring rollout in progress (plan workstream C) ---
-# `D` is armed repo-wide; these areas are exempt until documented, then removed
-# one-by-one as each is completed. The party module is the golden reference and
-# is intentionally NOT listed here. Remove an entry once its area is documented.
-"backend/src/main.py" = ["D"]
-"backend/src/core/**" = ["D"]
 
 [tool.ruff.format]
 quote-style = "double"

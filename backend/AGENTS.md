@@ -65,9 +65,9 @@ async def cancel_party(self, party_id: int, student_id: int | None) -> PartyDto:
 - For a genuinely self-evident public function the rule still fires; add a one-line
   summary rather than reaching for `# noqa: D` (reserve that for true exceptions).
 
-> **Rollout:** `D` is armed repo-wide but undocumented areas are temporarily exempt
-> via `per-file-ignores` in the root `pyproject.toml`. When you finish documenting a
-> module, **delete its line from that ignore list** so the linter keeps it covered.
+> Docstrings are now **enforced across all of `backend/src`** — only tests,
+> Alembic migrations, and one-off scripts are exempt (see `per-file-ignores` in the
+> root `pyproject.toml`). New code needs docstrings to pass `ruff check`.
 
 ## OpenAPI: document every route
 

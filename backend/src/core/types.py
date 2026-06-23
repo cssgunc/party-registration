@@ -13,6 +13,7 @@ class UTCDateTime(TypeDecorator):
     cache_ok = True
 
     def process_result_value(self, value, dialect):  # type: ignore[override]
+        """Attach UTC timezone to naive datetimes returned by MySQL."""
         if value is not None and value.tzinfo is None:
             return value.replace(tzinfo=UTC)
         return value
