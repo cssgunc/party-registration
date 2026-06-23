@@ -7,9 +7,9 @@ rules live in nested files — read the one for the area you're editing:
 - **[backend/AGENTS.md](backend/AGENTS.md)** — Python / FastAPI / SQLAlchemy
 - **[frontend/AGENTS.md](frontend/AGENTS.md)** — TypeScript / Next.js / React Query
 
-> Documentation effort in progress (see `.claude/plans/`): docstrings and OpenAPI
-> are being rolled out module-by-module behind linters. The **party module** is the
-> golden reference in both stacks — mirror it when documenting other areas.
+> Docstrings (Python Google-style via Ruff `D`; TypeScript via eslint-plugin-jsdoc)
+> and OpenAPI route metadata are **enforced repo-wide** by the linters. The **party
+> module** is the golden reference in both stacks — mirror it when adding code.
 
 ## What this project is
 

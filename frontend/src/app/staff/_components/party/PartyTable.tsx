@@ -47,6 +47,14 @@ const getPartyErrorMessage = (error: unknown) =>
   getPartyValidationError(error)?.message ??
   getErrorMessage(error, PARTY_ERROR_OPTIONS);
 
+/**
+ * Staff dashboard Parties tab — server-paginated table of registered parties.
+ *
+ * Displays party address, date, time, both contacts, and active status.
+ * Admins can create new parties, edit existing ones, and cancel or restore
+ * cancelled parties via row actions. Info chips open location and student
+ * detail sidebars. Supports CSV export.
+ */
 export const PartyTable = () => {
   const { openSnackbar, snackbarPromise } = useSnackbar();
   const {

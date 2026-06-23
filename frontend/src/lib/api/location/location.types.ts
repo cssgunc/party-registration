@@ -71,9 +71,7 @@ type LocationDtoBackend = Omit<LocationDto, "hold_expiration" | "incidents"> & {
   incidents: NestedIncidentDtoBackend[];
 };
 
-/**
- * Convert location from backend format (string dates) to frontend format (Date objects)
- */
+/** Converts a `LocationDtoBackend` to a `LocationDto`, parsing string dates and nested incidents. */
 function convertLocation(backend: LocationDtoBackend): LocationDto {
   return {
     ...backend,
@@ -100,6 +98,12 @@ type LocationStudentDtoBackend = Omit<
   incidents: NestedIncidentStudentDtoBackend[];
 };
 
+/**
+ * Converts a `LocationStudentDtoBackend` to the student-visible `LocationStudentDto`.
+ *
+ * Student incidents are converted via `convertNestedIncidentStudent`, which strips
+ * description and reference_id.
+ */
 function convertLocationStudent(
   backend: LocationStudentDtoBackend
 ): LocationStudentDto {
@@ -120,6 +124,7 @@ type LocationCreate = {
   hold_expiration?: Date | null;
 };
 
+/** Tallies the incidents on a location by severity, returning a per-severity count map. */
 function getIncidentCounts(location: LocationDto): IncidentSeverityCounts {
   const counts: IncidentSeverityCounts = {
     remote_warning: 0,

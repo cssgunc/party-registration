@@ -28,6 +28,15 @@ interface EmbeddedMapProps {
   onSelect?: (party: PartyPoliceDto | null) => void;
 }
 
+/**
+ * Google Maps panel displaying pin markers for registered parties in the police
+ * view.
+ *
+ * Wraps `@vis.gl/react-google-maps` with `PoiMarkers` to render color-coded
+ * pins (default red, exact-match blue, selected blue), a search-radius circle
+ * when an address is active, and an `InfoWindow` popup with party contact
+ * details. Selecting a pin notifies the parent via `onSelect`.
+ */
 const EmbeddedMap = ({
   parties,
   activeParty,
@@ -126,6 +135,13 @@ const PIN_COLORS = {
   selected: { background: "#4285F4", border: "#1967D2" },
 } as const;
 
+/**
+ * Select background/border colors for a map pin.
+ *
+ * Returns the "selected" palette when the pin is the active selection, the
+ * "exactMatch" palette when it matches the proximity-search address, or the
+ * default red palette otherwise.
+ */
 function getPinColors(
   key: string,
   activePoiKey?: string,
@@ -141,6 +157,15 @@ const METERS_PER_MILE = 1609.344;
 const SEARCH_RADIUS_METERS =
   clientEnv.NEXT_PUBLIC_PARTY_SEARCH_RADIUS_MILES * METERS_PER_MILE;
 
+/**
+ * Renders all party pin markers, an optional exact-match location pin, the
+ * search-radius circle, and the selected-pin info window inside a Google Map.
+ *
+ * Pans and zooms the map when `activePoiKey` changes, draws a translucent
+ * radius circle around `searchCenter`, and manages the open/closed state of
+ * the `InfoWindow`. Clicking a pin updates both the local selected state and
+ * notifies the parent via `onSelect`.
+ */
 const PoiMarkers = ({
   pois,
   activePoiKey,

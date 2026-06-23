@@ -23,16 +23,10 @@ const eslintConfig = [
   },
   // TSDoc enforcement. The stack is fully typed, so we require a description on
   // exported functions/classes/methods/components but NOT redundant @param/@returns
-  // types (see frontend/AGENTS.md for the convention).
-  //
-  // Rollout in progress (plan workstream D): enforced only on the globs in `files`
-  // below. As each area is documented, add its glob here; once the whole tree is
-  // covered, collapse this to `src/**/*.{ts,tsx}`.
+  // types (see frontend/AGENTS.md for the convention). Enforced across all of src;
+  // shadcn primitives under components/ui are exempt (see below).
   {
-    files: [
-      "src/lib/api/party/**/*.{ts,tsx}",
-      "src/app/staff/_components/shared/table/useServerTableState.ts",
-    ],
+    files: ["src/**/*.{ts,tsx}"],
     plugins: { jsdoc },
     rules: {
       "jsdoc/require-jsdoc": [
@@ -55,6 +49,11 @@ const eslintConfig = [
       "jsdoc/no-types": "warn",
       "jsdoc/check-alignment": "warn",
     },
+  },
+  {
+    // shadcn/ui primitives are generated/third-party — don't require docstrings.
+    files: ["src/components/ui/**/*.{ts,tsx}"],
+    rules: { "jsdoc/require-jsdoc": "off" },
   },
   {
     ignores: [

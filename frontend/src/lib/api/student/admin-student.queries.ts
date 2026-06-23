@@ -30,6 +30,7 @@ type UpdateIsRegisteredVars = {
   data: IsRegisteredUpdate;
 };
 
+/** Query the paginated students list for the staff/admin table. */
 export function useStudents(
   serverParams?: ServerTableParams,
   options?: UseQueryOptions<PaginatedResponse<StudentDto>>
@@ -42,6 +43,7 @@ export function useStudents(
   });
 }
 
+/** Mutation to update a student's profile as an admin, invalidating the students list on success. */
 export function useUpdateStudent(
   options?: OptimisticMutationOptions<StudentDto, Error, UpdateStudentVars>
 ) {
@@ -59,12 +61,14 @@ export function useUpdateStudent(
   });
 }
 
+/** Mutation that downloads the filtered students list as an Excel file. */
 export function useDownloadStudentsCsv() {
   return useMutation<void, Error, ListQueryParams | undefined>({
     mutationFn: (params) => studentService.downloadStudentsCsv(params),
   });
 }
 
+/** Mutation to toggle a student's Party Smart registration status, invalidating the students list on success. */
 export function useUpdateIsRegistered(
   options?: OptimisticMutationOptions<StudentDto, Error, UpdateIsRegisteredVars>
 ) {

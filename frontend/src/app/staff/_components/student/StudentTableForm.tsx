@@ -49,6 +49,13 @@ interface StudentTableFormProps {
   isPending?: boolean;
 }
 
+/**
+ * Edit form for a student rendered in the staff sidebar.
+ *
+ * Identity fields (PID, name, email, onyen) are read-only in edit mode because
+ * they are managed by UNC SSO. Staff can update phone number, contact preference,
+ * residence address, and last registered date.
+ */
 export default function StudentTableForm({
   onSubmit,
   editData,

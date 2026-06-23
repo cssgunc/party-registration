@@ -29,6 +29,14 @@ type ModalState =
   | { mode: "edit"; incident: NestedIncidentDto }
   | null;
 
+/**
+ * Sidebar detail panel listing all incidents at a location.
+ *
+ * Renders a collapsible `IncidentSidebarCard` for each incident. Admin users
+ * additionally get a portal-rendered "Add" button in the sidebar header and
+ * inline edit/delete actions on each card. Create and edit operations open
+ * an `IncidentDialog` modal; deletes trigger a `ConfirmDialog`.
+ */
 export default function IncidentInfoChipDetails({
   incidents,
   location,

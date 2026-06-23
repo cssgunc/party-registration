@@ -19,14 +19,16 @@ import {
 } from "./account.types";
 
 /**
- * Service class for account-related operations
+ * Typed client for the `/api/accounts` and `/api/police` endpoints.
+ *
+ * Covers staff/admin account management, police account management, and invite
+ * tokens. Inject a custom Axios instance for testing; defaults to the shared
+ * `apiClient`.
  */
 export class AccountService {
   constructor(private client: AxiosInstance = apiClient) {}
 
-  /**
-   * List accounts (GET /api/accounts)
-   */
+  /** List accounts with pagination/sort/filter (`GET /api/accounts`). */
   async listAccounts(
     params?: ListQueryParams
   ): Promise<PaginatedResponse<AccountDto>> {
@@ -38,7 +40,10 @@ export class AccountService {
   }
 
   /**
-   * Download accounts as Excel (GET /api/accounts/csv)
+   * Download the filtered accounts list as an Excel file (`GET /api/accounts/csv`).
+   *
+   * Automatically excludes student-role accounts from the export by injecting a
+   * `role_not_in=student` filter.
    */
   async downloadAccountsCsv(params?: ListQueryParams): Promise<void> {
     const { sort_by, sort_order, search, filters } = params ?? { filters: {} };
@@ -93,9 +98,7 @@ export class AccountService {
     return response.data;
   }
 
-  /**
-   * Download aggregate accounts as Excel (GET /api/accounts/aggregate/csv)
-   */
+  /** Download the aggregate accounts view as an Excel file (`GET /api/accounts/aggregate/csv`). */
   async downloadAggregateAccountsCsv(
     params?: ServerTableParams
   ): Promise<void> {
@@ -106,9 +109,7 @@ export class AccountService {
     downloadExcelFile(response);
   }
 
-  /**
-   * Update account role (PUT /api/accounts/{account_id})
-   */
+  /** Update an account's role (`PUT /api/accounts/{account_id}`). */
   async updateAccount(
     accountId: number,
     data: AccountUpdateData
@@ -120,9 +121,7 @@ export class AccountService {
     return response.data;
   }
 
-  /**
-   * Delete account (DELETE /api/accounts/{account_id})
-   */
+  /** Delete an account (`DELETE /api/accounts/{account_id}`). */
   async deleteAccount(accountId: number): Promise<AccountDto> {
     const response = await this.client.delete<AccountDto>(
       `/accounts/${accountId}`
@@ -130,9 +129,7 @@ export class AccountService {
     return response.data;
   }
 
-  /**
-   * List police accounts (GET /api/police)
-   */
+  /** List police accounts with pagination/sort/filter (`GET /api/police`). */
   async listPoliceAccounts(
     params?: ServerTableParams
   ): Promise<PaginatedResponse<PoliceAccountDto>> {
@@ -143,9 +140,7 @@ export class AccountService {
     return response.data;
   }
 
-  /**
-   * Download police accounts as Excel (GET /api/police/csv)
-   */
+  /** Download the filtered police accounts list as an Excel file (`GET /api/police/csv`). */
   async downloadPoliceAccountsCsv(params?: ServerTableParams): Promise<void> {
     const response = await this.client.get("/police/csv", {
       params: params ? toAxiosParams(params) : undefined,
@@ -165,9 +160,7 @@ export class AccountService {
     URL.revokeObjectURL(url);
   }
 
-  /**
-   * Update police account (PUT /api/police/{police_id})
-   */
+  /** Update a police account's details (`PUT /api/police/{police_id}`). */
   async updatePoliceAccount(
     policeId: number,
     data: PoliceAccountUpdate
@@ -179,9 +172,7 @@ export class AccountService {
     return response.data;
   }
 
-  /**
-   * Delete police account (DELETE /api/police/{police_id})
-   */
+  /** Delete a police account (`DELETE /api/police/{police_id}`). */
   async deletePoliceAccount(policeId: number): Promise<PoliceAccountDto> {
     const response = await this.client.delete<PoliceAccountDto>(
       `/police/${policeId}`

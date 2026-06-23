@@ -14,6 +14,12 @@ const variants = {
   minimal: "text-muted-foreground",
 };
 
+/**
+ * Application footer bar.
+ *
+ * Shows a contact email link when the current path is in the student area;
+ * always shows the "Made with ♥ by CS+SG" credit on the right.
+ */
 export default function Footer() {
   const pathname = usePathname();
   const showContact = isStudentAreaPath(pathname ?? "");

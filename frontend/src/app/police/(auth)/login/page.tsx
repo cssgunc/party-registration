@@ -24,6 +24,10 @@ const policeLoginSchema = z.object({
 
 type PoliceLoginFormValues = z.infer<typeof policeLoginSchema>;
 
+/**
+ * Police login page; wraps `PoliceLoginForm` in a `Suspense` boundary to allow
+ * the form to read `useSearchParams` without blocking the page render.
+ */
 export default function PoliceLoginPage() {
   return (
     <Suspense>
@@ -32,6 +36,14 @@ export default function PoliceLoginPage() {
   );
 }
 
+/**
+ * Email/password login form for police accounts.
+ *
+ * Handles the unverified-account 403 case by surfacing a `ResendVerificationButton`
+ * inline so officers can recover without leaving the page. On success, navigates
+ * via `window.location.href` so the freshly-set session cookie is used for the
+ * next render.
+ */
 function PoliceLoginForm() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/police";

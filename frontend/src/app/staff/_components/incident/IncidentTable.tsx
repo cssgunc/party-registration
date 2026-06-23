@@ -38,6 +38,14 @@ function truncateDescription(
   return description.substring(0, limit) + "...";
 }
 
+/**
+ * Staff dashboard Incidents tab — server-paginated table of police incidents.
+ *
+ * Displays location, date, time, severity, reference ID, and a truncated
+ * description chip. The table header shows aggregate severity counts via
+ * `IncidentSeverityCountsHeader`. Admins can create, edit, and delete incidents.
+ * Supports CSV export.
+ */
 export const IncidentTable = () => {
   const { openSnackbar, snackbarPromise } = useSnackbar();
   const {

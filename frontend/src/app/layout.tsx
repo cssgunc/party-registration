@@ -31,6 +31,13 @@ export const metadata: Metadata = {
   description: "Party Registration",
 };
 
+/**
+ * Root layout for the entire application.
+ *
+ * Applies the Avenir Next font, wraps all pages in the shared `Providers`, and
+ * renders the persistent `Header` and `Footer` around the page content.
+ * Includes a skip-to-main-content link for keyboard accessibility.
+ */
 export default function RootLayout({
   children,
 }: Readonly<{

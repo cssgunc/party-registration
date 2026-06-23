@@ -7,6 +7,14 @@ import { PoliceRole } from "@/lib/api/police/police.types";
 import { isAxiosError } from "axios";
 import { NextRequest, NextResponse } from "next/server";
 
+/**
+ * Credentials-based login endpoint for police accounts (`POST /api/auth/police/login`).
+ *
+ * Validates the request body, delegates to `policeLogin`, then encodes a
+ * NextAuth session JWT and sets the auth cookies on success. Returns 403 with
+ * the backend's `detail` message when the account is forbidden (e.g. unverified),
+ * or 401 for any other authentication failure.
+ */
 export async function POST(req: NextRequest) {
   const { email, password } = (await req.json()) as {
     email?: string;

@@ -33,6 +33,14 @@ type PaginationControlsProps = {
   className?: string;
 };
 
+/**
+ * Pagination bar with page navigation, a page-size selector, and a result range label.
+ *
+ * Renders up to `maxVisiblePages` page links centred on the current page, with
+ * ellipsis-style jump links to the first and last pages when they fall outside
+ * the window. Adapts to container width via `@container` — labels and "Rows per
+ * page" text are hidden at narrow sizes.
+ */
 export default function PaginationControls({
   currentPage,
   pageCount,

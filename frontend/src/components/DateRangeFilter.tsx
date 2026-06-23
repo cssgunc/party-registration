@@ -23,6 +23,12 @@ interface DateRangeFilterProps {
   dateFormat?: DateFormatConfig;
 }
 
+/**
+ * Date range picker rendered as a popover calendar, designed for table filters.
+ *
+ * Displays the selected range as formatted strings on the trigger button; shows
+ * two calendar months side-by-side for easy range selection.
+ */
 export default function DateRangeFilter({
   id,
   value,

@@ -40,6 +40,14 @@ const toEditData = (student: StudentDto) => ({
   residence_place_id: student.residence?.location.google_place_id ?? null,
 });
 
+/**
+ * Staff dashboard Students tab — server-paginated table of registered students.
+ *
+ * Displays identity, contact, residence, and Party Smart registration status.
+ * The "Is Registered" column is an inline checkbox that admins can toggle
+ * directly. Admins can also open the edit sidebar for full student updates.
+ * Supports CSV export.
+ */
 export const StudentTable = () => {
   const { openSnackbar } = useSnackbar();
   const {

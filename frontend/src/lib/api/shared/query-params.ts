@@ -66,6 +66,7 @@ export const OPERATOR_LABELS_DATE: Partial<Record<FilterOperator, string>> = {
   lte: "Before",
 };
 
+/** Return the allowed filter operators for a column, appending null/notnull when the column is nullable. */
 export function getColumnOperators(config: ColumnFilterMeta): FilterOperator[] {
   const base = OPERATORS_BY_TYPE[config.type];
   return config.nullable ? [...base, "null", "notnull"] : base;
@@ -82,6 +83,14 @@ export type ListQueryParams = {
 
 export type ServerTableParams = ListQueryParams;
 
+/**
+ * Translate TanStack Table state (pagination, sorting, column filters, search)
+ * into a `ServerTableParams` object ready to send to the backend.
+ *
+ * Date/datetime filters are expanded into ISO strings; `between` ranges become
+ * separate `_gte` / `_lte` params; time ranges use the server's `_trange`
+ * operator when both bounds are set.
+ */
 export function buildServerTableParams(
   pagination: PaginationState,
   sorting: SortingState,
@@ -190,6 +199,12 @@ export const DEFAULT_TABLE_PARAMS: ServerTableParams = {
   filters: {},
 };
 
+/**
+ * Flatten a `ServerTableParams` object into a plain record for use as Axios query params.
+ *
+ * Omits undefined optional fields and spreads the arbitrary `filters` map so
+ * each filter key becomes a top-level query parameter as expected by the backend.
+ */
 export function toAxiosParams(
   params: ServerTableParams
 ): Record<string, string | number> {

@@ -7,6 +7,10 @@ export const metadata: Metadata = {
   description: "Admin Dashboard",
 };
 
+/**
+ * Layout for the police admin dashboard; wraps children in a `SidebarProvider`
+ * and renders the shared `Sidebar` alongside the main content area.
+ */
 export default function PoliceAdminLayout({
   children,
 }: {

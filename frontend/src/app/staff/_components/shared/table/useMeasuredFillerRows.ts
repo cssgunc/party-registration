@@ -14,6 +14,20 @@ type UseMeasuredFillerRowsResult = {
   partialFillerRowHeight: number;
 };
 
+/**
+ * Calculate the number of blank filler rows needed to fill the table's visible height.
+ *
+ * Measures the scroll container, table header, and a sample data row via a
+ * `ResizeObserver`, then computes how many full rows plus a partial row
+ * (fractional remainder) are required to prevent the table body from
+ * collapsing when fewer rows than the page size are present.
+ *
+ * @param visibleRowCount - Number of data rows currently rendered.
+ * @param scrollContainerRef - Ref to the table's scrollable wrapper div.
+ * @param tableHeaderRef - Ref to the `<thead>` element.
+ * @param sampleRowRef - Ref attached to the first data row, used to measure row height.
+ * @returns The number of full filler rows and the height of an optional partial filler row.
+ */
 export function useMeasuredFillerRows({
   visibleRowCount,
   scrollContainerRef,

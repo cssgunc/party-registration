@@ -4,6 +4,13 @@ import { useState } from "react";
 
 export type FormSidebarMode = "create" | "edit";
 
+/**
+ * Manage open/closed state and the currently selected row for a create/edit sidebar.
+ *
+ * Tracks the sidebar mode (`"create"` | `"edit"` | `null`), the row being
+ * edited, and any submission error string. Exposes `openCreate`, `openEdit`,
+ * and `closeSidebar` actions that reset the error on each transition.
+ */
 export function useFormSidebarState<T>() {
   const [mode, setMode] = useState<FormSidebarMode | null>(null);
   const [row, setRow] = useState<T | null>(null);

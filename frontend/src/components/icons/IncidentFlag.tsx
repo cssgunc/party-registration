@@ -17,6 +17,13 @@ const severityToColor: Record<IncidentSeverity, string> = {
   citation: "fill-ocsl-red",
 };
 
+/**
+ * Colour-coded flag icon representing an incident severity.
+ *
+ * The fill colour maps to the OCSL severity palette (navy / yellow / red).
+ * When `hoverCard` is true, the flag is wrapped in a `HoverCard` that shows
+ * the human-readable severity label on hover.
+ */
 const IncidentFlag = forwardRef<
   SVGSVGElement,
   { className?: string; type: IncidentSeverity; hoverCard?: boolean }

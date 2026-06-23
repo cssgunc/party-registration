@@ -53,6 +53,15 @@ export interface IncidentDialogProps {
   isSubmitting?: boolean;
 }
 
+/**
+ * Dialog for creating or editing a location incident.
+ *
+ * Renders a form with severity, date/time, reference ID, and description fields.
+ * In create mode the title reflects the selected severity; in edit mode it reads
+ * "Edit &lt;severity label&gt;". The address is displayed as a read-only field.
+ * Combines `date` and `time` fields into a single `incident_datetime` before
+ * calling `onSubmit`.
+ */
 export default function IncidentDialog({
   open,
   onOpenChange,

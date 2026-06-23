@@ -40,8 +40,12 @@ interface AddressSearchProps {
 }
 
 /**
- * Reusable address search component with autocomplete functionality
- * Built using shadcn Combobox pattern with async address fetching
+ * Address autocomplete field backed by the location service.
+ *
+ * Debounces API calls (300 ms) and shows suggestions in a shadcn Popover/Command
+ * list. When `chapelHillOnly` is set, suggestions are filtered to Chapel Hill
+ * addresses. Blur propagates to the consuming form field only when focus truly
+ * leaves the component (not when moving into the suggestions popover).
  */
 export default function AddressSearch({
   value = "",

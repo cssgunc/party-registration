@@ -2,6 +2,10 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import PartyRegistrationInfo from "../_components/info/PartyRegistrationInfo";
 
+/**
+ * Full-page view of the party registration informational content, accessible
+ * via the mobile "Learn About Party Registration" link on the dashboard.
+ */
 export default function AboutPartyRegistration() {
   return (
     <div className="flex flex-col items-center">

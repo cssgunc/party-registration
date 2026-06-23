@@ -30,12 +30,26 @@ interface DatePickerProps {
   forwardDate?: boolean;
 }
 
+/**
+ * Parse a natural-language date string using `chrono-node`.
+ *
+ * @param forwardDate - When `true`, ambiguous dates (e.g. "Friday") resolve to the
+ *   next occurrence in the future rather than the most recent past occurrence.
+ */
 function parseNatural(input: string, forwardDate: boolean): Date | null {
   const trimmed = input.trim();
   if (!trimmed) return null;
   return chrono.parseDate(trimmed, new Date(), { forwardDate }) ?? null;
 }
 
+/**
+ * Combined date-input field with a calendar popover.
+ *
+ * The text input accepts natural-language input (parsed via chrono-node) and
+ * formats accepted dates according to `dateFormat`. The calendar icon opens a
+ * popover calendar; the clear button (when `clearable`) nulls the value.
+ * Arrow-down or Enter on the input opens the calendar without stealing focus.
+ */
 export default function DatePicker({
   value,
   onChange,

@@ -20,6 +20,13 @@ const forgotPasswordSchema = z.object({
 
 type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
 
+/**
+ * Forgot-password page for police accounts.
+ *
+ * Renders a single-field form that submits the officer's email. On success,
+ * displays a confirmation message with the token expiry time; on error, shows
+ * an inline message.
+ */
 export default function PoliceForgotPasswordPage() {
   const [isComplete, setIsComplete] = useState(false);
   const [submissionError, setSubmissionError] = useState<string | null>(null);

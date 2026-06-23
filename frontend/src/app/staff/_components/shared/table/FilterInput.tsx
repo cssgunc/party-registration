@@ -59,6 +59,17 @@ function formatSelectOptionLabel(option: string): string {
     .join(" ");
 }
 
+/**
+ * Filter form rendered in the column-filter sidebar panel.
+ *
+ * Reads the column's `meta.filter` config to determine available operators
+ * and renders the appropriate value input (text, number, select with
+ * checkboxes, date/datetime picker, date-range picker, or time range).
+ * Calls `column.setFilterValue` on apply and clears it on clear.
+ *
+ * @param column - The TanStack Table column whose filter is being configured.
+ * @param onClose - Callback to close the filter panel after apply or clear.
+ */
 export function FilterInput<T>({ column, onClose }: FilterInputProps<T>) {
   const filterMeta = column?.columnDef.meta?.filter;
   const existingValue = column?.getFilterValue();

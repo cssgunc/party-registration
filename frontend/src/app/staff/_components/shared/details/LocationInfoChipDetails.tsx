@@ -13,6 +13,12 @@ interface LocationInfoChipDetailsProps {
   data: LocationSummaryDto | LocationDto;
 }
 
+/**
+ * Sidebar detail panel showing address, hold status, and incident severity counts for a location.
+ *
+ * Accepts either a `LocationSummaryDto` (no incident list) or a full `LocationDto`;
+ * incident counts are only shown when the full DTO is provided.
+ */
 function LocationInfoChipDetails({ data }: LocationInfoChipDetailsProps) {
   const hasIncidents = "incidents" in data;
   const counts = hasIncidents ? getIncidentCounts(data) : null;

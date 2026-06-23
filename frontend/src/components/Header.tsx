@@ -23,6 +23,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import PartySmartLogo from "./PartySmartLogo";
 
+/**
+ * Application header bar with the PartySmart logo and authenticated user menu.
+ *
+ * The logo links to the role-appropriate dashboard. When authenticated, an
+ * avatar dropdown lets the user navigate to their profile (student area only)
+ * or sign out. Shows a skeleton while the session or principal is loading.
+ */
 export default function Header({ className }: { className?: string }) {
   const { data: session, status } = useSession();
   const { data: currentPrincipal, isPending: isPrincipalPending } =

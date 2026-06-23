@@ -8,6 +8,7 @@ interface PartyInfoChipDetailsProps {
   data: PartyDto;
 }
 
+/** Sidebar detail panel showing address, date, and first contact name for a party. */
 export function PartyInfoChipDetails({ data }: PartyInfoChipDetailsProps) {
   return (
     <InfoChipDetails

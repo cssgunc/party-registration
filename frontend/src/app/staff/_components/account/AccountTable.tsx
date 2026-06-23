@@ -69,6 +69,14 @@ const POLICE_ACCOUNT_ERROR_OPTIONS = {
   fallback: "Failed to update police account",
 } as const;
 
+/**
+ * Staff dashboard Accounts tab (admin-only) — server-paginated aggregate view of all accounts.
+ *
+ * Combines staff/admin accounts and police accounts in a single table. Admins
+ * can invite new staff, edit existing accounts (routing to the correct form for
+ * staff vs police rows), resend or revoke pending invitations, and delete
+ * accounts. Supports CSV export.
+ */
 export const AccountTable = () => {
   const { openSnackbar, snackbarPromise } = useSnackbar();
   const { data: session } = useSession();

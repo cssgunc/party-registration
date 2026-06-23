@@ -34,6 +34,15 @@ interface Props {
   isPending?: boolean;
 }
 
+/**
+ * Edit form for a police account rendered in the staff sidebar.
+ *
+ * Allows updating the officer's email, role (officer/police_admin), and
+ * verification status. The verification toggle can be disabled when only
+ * OCSL admins are permitted to change it. Internally stores `is_verified`
+ * as a string enum for the SelectField, then converts back to boolean
+ * before calling `onSubmit`.
+ */
 export default function PoliceAccountTableForm({
   onSubmit,
   editData,

@@ -145,6 +145,11 @@ const partyFormSchema = partyFormBaseSchema
 export { partyFormSchema };
 export type { PartyFormValues };
 
+/**
+ * Convert validated party form values into the `StudentCreatePartyDto` shape
+ * expected by the backend, combining the date and time fields into a single
+ * `party_datetime`.
+ */
 export const partyFormValuesToDto = (
   values: PartyFormValues
 ): StudentCreatePartyDto => {
@@ -194,6 +199,16 @@ interface PartyRegistrationFormProps {
 const DEFAULT_PARTY_TIME = "20:00";
 const DEFAULT_CONTACT_PREFERENCE: "call" | "text" = "text";
 
+/**
+ * The main party registration form used by students to register or edit a
+ * party, collecting the event date/time, address, student contact info, and a
+ * required second contact.
+ *
+ * The address field is pre-filled with the student's current-year residence
+ * (checked via `isFromThisSchoolYear`) and locked with a confirmation dialog
+ * when the student tries to change it, since updating the address also updates
+ * their on-file residence for the academic year.
+ */
 export default function PartyRegistrationForm({
   onSubmit,
   initialValues,

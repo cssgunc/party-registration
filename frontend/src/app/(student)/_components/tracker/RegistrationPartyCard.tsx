@@ -27,6 +27,15 @@ type Props = {
   onDelete: (party: PartyStudentDto) => void;
 };
 
+/**
+ * Renders a summary card for a single registered party, showing the date/time,
+ * both contacts' names and phone/email details, and — when `showActions` is
+ * true — an overflow menu with Edit and Cancel options.
+ *
+ * The address line is shown when `showAddress` is true or when the party's
+ * location differs from the student's current residence (identified by
+ * `residenceLocationId`).
+ */
 function RegistrationPartyCard({
   party,
   showActions,

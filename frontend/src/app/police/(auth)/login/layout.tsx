@@ -5,6 +5,7 @@ export const metadata: Metadata = {
   description: "Police Login",
 };
 
+/** Layout for the police login page; passes children through without modification. */
 export default function PoliceLoginLayout({
   children,
 }: {

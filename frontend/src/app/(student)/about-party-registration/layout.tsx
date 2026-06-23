@@ -5,6 +5,7 @@ export const metadata: Metadata = {
   description: "About Party Registration",
 };
 
+/** Layout for the about-party-registration route; sets the page title and renders children without additional wrapping. */
 export default function StudentLayout({
   children,
 }: {

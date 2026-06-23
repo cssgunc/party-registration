@@ -8,6 +8,13 @@ type AuthCardProps = {
   children: React.ReactNode;
 };
 
+/**
+ * Branded card shell used by every police authentication page (login, signup,
+ * verify, forgot/reset password).
+ *
+ * Centres the card on the page, displays the Party Smart logo, the page title,
+ * and an optional description above the slotted form content.
+ */
 export default function AuthCard({
   title,
   description,

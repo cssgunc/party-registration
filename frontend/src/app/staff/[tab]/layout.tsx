@@ -7,6 +7,7 @@ type Props = {
   params: Promise<{ tab: string }>;
 };
 
+/** Generates page metadata whose title reflects the active tab label. */
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { tab } = await params;
   const config = isStaffTabSlug(tab) ? TAB_CONFIG[tab] : null;
@@ -18,6 +19,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
+/** Layout shared by all staff tab pages — provides the `SidebarProvider` context and renders the global `Sidebar` shell. */
 export default function StaffLayout({
   children,
 }: {

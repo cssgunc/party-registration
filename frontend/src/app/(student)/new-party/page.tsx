@@ -19,6 +19,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+/**
+ * Page that renders the new-party registration form for students to submit a
+ * party registration request.
+ *
+ * Students who have not completed the Party Smart course this academic year or
+ * whose residence has an active hold are redirected to the dashboard
+ * immediately. On successful submission, the student is navigated back to the
+ * dashboard. If the student had no contact info on file, their phone and
+ * contact preference are saved alongside the party creation.
+ */
 export default function RegistrationForm() {
   const registerPartyMutation = useRegisterParty();
   const updateStudentMutation = useUpdateStudent();

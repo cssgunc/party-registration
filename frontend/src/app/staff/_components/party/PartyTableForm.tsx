@@ -25,6 +25,14 @@ import { useSession } from "next-auth/react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 
+/**
+ * Build the Zod validation schema for the party create/edit form.
+ *
+ * Non-admin users face an additional date constraint: the party date must be
+ * at least two business days in the future. Admins bypass that restriction.
+ *
+ * @param isAdmin - When true, the future-date constraint is omitted.
+ */
 export const createPartyTableFormSchema = (isAdmin: boolean) => {
   const partyDateSchema = isAdmin
     ? z.date({ message: "Party date is required" })
@@ -78,6 +86,14 @@ interface PartyTableFormProps {
   isPending?: boolean;
 }
 
+/**
+ * Create/edit form for a party rendered in the staff sidebar.
+ *
+ * Collects address (Chapel Hill autocomplete), party date and time, the
+ * first contact via student search, and second contact details. The date
+ * field restricts non-admins to future-only dates. `editData` pre-populates
+ * all fields for edit mode.
+ */
 export default function PartyTableForm({
   onSubmit,
   editData,

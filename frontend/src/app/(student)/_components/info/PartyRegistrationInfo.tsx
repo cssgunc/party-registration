@@ -4,6 +4,15 @@ import { clientEnv } from "@/lib/config/env.client";
 import { format } from "date-fns";
 import DialogItem from "./DialogItem";
 
+/**
+ * Renders the "About Party Registration" informational panel as a set of
+ * expandable `DialogItem` accordion rows covering how the program works, why
+ * students should register, residence and hold rules, and the fine print.
+ *
+ * Lead-time and day limits, the academic-year reset date, and contact details
+ * are read from client-side environment variables so they stay in sync with
+ * backend configuration.
+ */
 export default function PartyRegistrationInfo({
   className,
 }: {

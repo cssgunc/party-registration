@@ -8,6 +8,7 @@ export const STAFF_TABS = [
 
 export type TabSlug = (typeof STAFF_TABS)[number];
 
+/** Narrows an arbitrary string to the `TabSlug` union. */
 export function isStaffTabSlug(value: string): value is TabSlug {
   return STAFF_TABS.some((tab) => tab === value);
 }

@@ -19,13 +19,16 @@ import {
 
 const incidentService = new IncidentService();
 
+/** Root query key for all incident-related cache entries. */
 export const INCIDENTS_KEY = ["incidents"] as const;
 
+/** Variables for an incident update mutation. */
 export type UpdateIncidentVars = {
   id: number;
   payload: IncidentCreateDto;
 };
 
+/** Query the paginated, filterable incidents list. */
 export function useIncidents(
   params?: ServerTableParams,
   options?: UseQueryOptions<PaginatedIncidentsResponse>
@@ -38,6 +41,7 @@ export function useIncidents(
   });
 }
 
+/** Query a single incident by ID. */
 export function useIncident(
   id: number,
   options?: UseQueryOptions<IncidentDto>
@@ -49,6 +53,13 @@ export function useIncident(
   });
 }
 
+/**
+ * Mutation to create a new incident, invalidating the incidents cache on success.
+ *
+ * Accepts `OptimisticMutationOptions` so callers (e.g. `usePoliceCreateIncident`,
+ * `useCreateIncidentInLocation`) can inject `onMutate`/`onError` hooks for
+ * domain-specific optimistic updates without losing the base invalidation.
+ */
 export function useCreateIncident<TContext = unknown>(
   options?: OptimisticMutationOptions<
     IncidentDto,
@@ -71,6 +82,13 @@ export function useCreateIncident<TContext = unknown>(
   });
 }
 
+/**
+ * Mutation to update an incident, with an optimistic update.
+ *
+ * Optimistically applies the payload to the individual incident query cache and
+ * rolls back on error. Invalidates the incidents cache on success. Consumer
+ * `onMutate` result is preserved in the mutation context alongside the rollback snapshot.
+ */
 export function useUpdateIncident<TContext = unknown>(
   options?: OptimisticMutationOptions<
     IncidentDto,
@@ -147,6 +165,12 @@ export function useUpdateIncident<TContext = unknown>(
   });
 }
 
+/**
+ * Mutation to delete an incident by ID, with an optimistic update.
+ *
+ * Optimistically removes the incident from all cached paginated responses and
+ * rolls back on error. Invalidates the incidents cache on success.
+ */
 export function useDeleteIncident<TContext = unknown>(
   options?: OptimisticMutationOptions<void, Error, number, TContext>
 ) {
@@ -199,6 +223,7 @@ export function useDeleteIncident<TContext = unknown>(
   });
 }
 
+/** Mutation that downloads the filtered incidents list as an Excel file. */
 export function useDownloadIncidentsCsv() {
   return useMutation<void, Error, ListQueryParams | undefined>({
     mutationFn: (params) => incidentService.downloadIncidentsCsv(params),

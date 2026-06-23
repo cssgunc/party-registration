@@ -23,6 +23,7 @@ import { Suspense } from "react";
 const INVALID_LINK_MESSAGE =
   "This link is invalid or has expired. Please use the link from your most recent party registration email.";
 
+/** Email notification preferences page (Suspense shell for the token-based content). */
 export default function NotificationsPage() {
   return (
     <Suspense>
@@ -31,6 +32,10 @@ export default function NotificationsPage() {
   );
 }
 
+/**
+ * Subscribe/unsubscribe UI for the email encoded in the signed `token` query
+ * param, with loading, invalid-link, and mutation-error states.
+ */
 function NotificationsContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");

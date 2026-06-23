@@ -19,6 +19,16 @@ interface PartyListProps {
   exactMatch?: ExactMatchDto;
 }
 
+/**
+ * Scrollable list of `PartyCard` entries for the police dashboard, with
+ * integrated incident-reporting dialog.
+ *
+ * Renders an exact-match section above the nearby-parties section when a
+ * proximity search is active. Automatically scrolls the active party card
+ * into view when `activeParty` changes (e.g. when a map pin is selected).
+ * Submits new incidents via `usePoliceCreateIncident` with optimistic
+ * feedback through the snackbar.
+ */
 const PartyList = ({
   parties = [],
   onSelect,

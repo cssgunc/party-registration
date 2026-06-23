@@ -8,6 +8,13 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 
+/**
+ * Global right-hand sidebar sheet rendered once in the staff layout.
+ *
+ * Reads open/close state, title, description, and the portal target refs
+ * from `SidebarContext`. Individual panels portal their content into the
+ * `bodyNode` div via `SidebarContent`.
+ */
 function Sidebar() {
   const {
     isOpen,

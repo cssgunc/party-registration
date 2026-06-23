@@ -22,6 +22,11 @@ export type RowAction<T> = {
   confirm?: RowActionConfirm<T>;
 };
 
+/**
+ * Build a pre-configured "Edit" row action.
+ *
+ * Sets `selectRow: true` so the row is highlighted when the edit sidebar opens.
+ */
 export function editAction<T>(opts: {
   onClick: (row: T) => void;
   isVisible?: (row: T) => boolean;
@@ -34,6 +39,12 @@ export function editAction<T>(opts: {
   };
 }
 
+/**
+ * Build a pre-configured "Delete" row action with a destructive confirmation dialog.
+ *
+ * @param opts.resourceName - Human-readable resource name used in the dialog title and default description.
+ * @param opts.description - Optional override for the confirmation body text; receives the row.
+ */
 export function deleteAction<T>(opts: {
   onClick: (row: T) => void;
   resourceName: string;

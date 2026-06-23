@@ -5,6 +5,7 @@ export const metadata: Metadata = {
   description: "New Party",
 };
 
+/** Layout for the new-party route; sets the page title and renders children without additional wrapping. */
 export default function StudentLayout({
   children,
 }: {

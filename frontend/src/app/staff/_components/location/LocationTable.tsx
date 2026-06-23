@@ -25,6 +25,13 @@ const LOCATION_ERROR_OPTIONS = {
   fallback: "Failed to save the location. Please try again.",
 } as const;
 
+/**
+ * Staff dashboard Locations tab — server-paginated table of registered locations.
+ *
+ * Displays address, incident count (as an info chip that opens the incident
+ * detail panel), and active hold status. Admins can create new locations and
+ * edit existing ones including setting a hold expiration date. Supports CSV export.
+ */
 export const LocationTable = () => {
   const { openSnackbar } = useSnackbar();
   const exportMutation = useDownloadLocationsCsv();

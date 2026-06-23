@@ -5,6 +5,7 @@ export const metadata: Metadata = {
   description: "Profile",
 };
 
+/** Layout for the student profile route; sets the page title and renders children without additional wrapping. */
 export default function StudentLayout({
   children,
 }: {

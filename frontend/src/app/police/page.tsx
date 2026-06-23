@@ -29,20 +29,35 @@ import AdvancedPartySearch, {
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
 
+/** Normalize a string for case-insensitive, whitespace-trimmed comparison. */
 function normalizeStr(value: string): string {
   return value.trim().toLowerCase();
 }
 
+/** Strip all non-digit characters from a phone number string for comparison. */
 function normalizePhone(value: string): string {
   return value.replace(/\D/g, "");
 }
 
+/**
+ * Convert a "HH:MM" time string to a total-minutes integer.
+ *
+ * @returns The number of minutes since midnight, or null if the string is not
+ *   a valid HH:MM value.
+ */
 function toMinutes(time: string): number | null {
   const [h, m] = time.split(":").map(Number);
   if (Number.isNaN(h) || Number.isNaN(m)) return null;
   return h * 60 + m;
 }
 
+/**
+ * Apply the advanced filter set to a list of police party records, returning
+ * only parties that match every active filter criterion.
+ *
+ * @param parties - The full list of parties to filter.
+ * @param filters - The active advanced filter values from `AdvancedPartySearch`.
+ */
 function filterParties(
   parties: PartyPoliceDto[],
   filters: AdvancedPartyFilters
@@ -107,6 +122,15 @@ function filterParties(
   });
 }
 
+/**
+ * Main police dashboard page combining a searchable party list with an
+ * interactive Google Map.
+ *
+ * Supports date-range filtering, proximity search by address, and an
+ * expandable advanced-filter panel for name, phone, contact preference, and
+ * incident severity. Selecting a map pin scrolls the list to the matching
+ * party, and vice versa.
+ */
 export default function PolicePage() {
   const { data: session } = useSession();
   const canAccessAdmin =

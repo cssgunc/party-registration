@@ -44,6 +44,14 @@ interface IncidentTableFormProps {
   isPending?: boolean;
 }
 
+/**
+ * Create/edit form for an incident rendered in the staff sidebar.
+ *
+ * Collects location (Chapel Hill autocomplete), date, time, severity,
+ * an optional reference ID, and an optional free-text description. The date
+ * and time fields are merged into a single `incident_datetime` before
+ * forwarding to `onSubmit`.
+ */
 export default function IncidentTableForm({
   onSubmit,
   editData,

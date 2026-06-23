@@ -91,6 +91,16 @@ const serverFilterPassthrough = () => true;
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
+/**
+ * Full-featured staff data table with server-side pagination, sorting, and filtering.
+ *
+ * Composes `useServerTableState` with TanStack Table to render a paginated table
+ * that delegates all data operations to the server. Provides a global search input,
+ * per-column filter sidebar (via `FilterInput`), CSV export, a create button
+ * (admin/police_admin only), per-row action menus with optional confirmation
+ * dialogs, and filler rows to maintain a fixed height layout. An optional
+ * `headerSlot` renders additional content in the toolbar (desktop) or above it (mobile).
+ */
 export function TableTemplate<T extends object>({
   query,
   serverTableState,

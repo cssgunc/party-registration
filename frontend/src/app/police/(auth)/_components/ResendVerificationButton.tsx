@@ -13,6 +13,14 @@ type ResendVerificationButtonProps = {
   startInCooldown?: boolean;
 };
 
+/**
+ * Button that triggers a resend of the police account verification email,
+ * with a countdown cooldown enforced between successive sends.
+ *
+ * @param email - The address to resend the verification email to.
+ * @param startInCooldown - When true the cooldown timer starts immediately
+ *   (used right after signup when an email was just sent).
+ */
 export default function ResendVerificationButton({
   email,
   startInCooldown = false,

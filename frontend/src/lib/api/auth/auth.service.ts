@@ -35,10 +35,17 @@ export function decodeAccessTokenPayload(token: string): AccessTokenPayload {
   );
 }
 
+/** Returns the `X-Internal-Secret` header used for server-to-server auth calls. */
 function internalHeaders() {
   return { "X-Internal-Secret": serverEnv.INTERNAL_API_SECRET };
 }
 
+/**
+ * Returns the correct NextAuth session cookie name for the current environment.
+ *
+ * Uses the `__Secure-` prefix on HTTPS (production) and the plain name on HTTP
+ * (local dev), matching NextAuth's own cookie-naming convention.
+ */
 function getSessionCookieName() {
   return serverEnv.NEXTAUTH_URL.startsWith("https://")
     ? "__Secure-next-auth.session-token"
@@ -128,6 +135,10 @@ export async function refreshSessionCookie(
   });
 }
 
+/**
+ * Exchanges a SAML-derived identity payload for a backend token pair
+ * (`POST /auth/exchange`). Called server-side after IdP callback.
+ */
 export async function exchangeToken(
   data: ExchangeTokenRequest
 ): Promise<TokenPair> {
@@ -139,6 +150,10 @@ export async function exchangeToken(
   return resp.data;
 }
 
+/**
+ * Exchanges a refresh token for a new access token (`POST /auth/refresh`).
+ * Called server-side; uses the internal secret header.
+ */
 export async function refreshToken(
   data: RefreshTokenRequest
 ): Promise<RefreshTokenResponse> {
@@ -150,6 +165,10 @@ export async function refreshToken(
   return resp.data;
 }
 
+/**
+ * Authenticates a police account with email/password (`POST /auth/police/login`).
+ * Called server-side via the Next.js API route; returns a full token pair on success.
+ */
 export async function policeLogin(
   data: PoliceLoginRequest
 ): Promise<PoliceLoginResponse> {
@@ -161,22 +180,29 @@ export async function policeLogin(
   return resp.data;
 }
 
+/**
+ * Submits police login credentials to the Next.js API route (`POST /api/auth/police/login`).
+ * Client-side counterpart to `policeLogin` — the route handler calls the backend and sets cookies.
+ */
 export async function policeLoginViaRoute(
   data: PoliceLoginRequest
 ): Promise<void> {
   await axios.post("/api/auth/police/login", data);
 }
 
+/** Registers a new police account (`POST /auth/police/signup`). Sends a verification email. */
 export async function signupPolice(data: PoliceSignupRequest): Promise<void> {
   await axios.post(`${publicApiBase}/auth/police/signup`, data);
 }
 
+/** Re-sends the verification email for a police account (`POST /auth/police/retry-verification`). */
 export async function retryPoliceVerification(
   data: RetryPoliceVerificationRequest
 ): Promise<void> {
   await axios.post(`${publicApiBase}/auth/police/retry-verification`, data);
 }
 
+/** Verifies a police account email using the token from the verification link (`POST /auth/police/verify`). */
 export async function verifyPoliceEmail(
   data: VerifyPoliceEmailRequest
 ): Promise<void> {
@@ -184,10 +210,10 @@ export async function verifyPoliceEmail(
 }
 
 /**
- * Calls the backend's /auth/logout route to revoke the refresh token.
- * @param refreshTokenValue The refresh token to revoke
- * @param accessToken The access token to use for authentication
- * @returns void
+ * Revokes the given refresh token via `POST /auth/logout`, ending the session server-side.
+ *
+ * @param refreshTokenValue - The refresh token to invalidate.
+ * @param accessToken - Bearer token used to authenticate the logout request.
  */
 export async function revokeRefreshToken(
   refreshTokenValue: string,
@@ -200,17 +226,20 @@ export async function revokeRefreshToken(
   );
 }
 
+/** Fetches the currently authenticated principal from `GET /auth/me`. */
 export async function getCurrentPrincipal(): Promise<CurrentPrincipal> {
   const response = await apiClient.get<CurrentPrincipal>("/auth/me");
   return response.data;
 }
 
+/** Initiates the password-reset flow by emailing a reset link (`POST /auth/police/forgot-password`). */
 export async function forgotPolicePassword(
   data: ForgotPolicePasswordRequest
 ): Promise<void> {
   await axios.post(`${publicApiBase}/auth/police/forgot-password`, data);
 }
 
+/** Sets a new password for a police account using the token from the reset email (`POST /auth/police/reset-password`). */
 export async function resetPolicePassword(
   data: ResetPolicePasswordRequest
 ): Promise<void> {

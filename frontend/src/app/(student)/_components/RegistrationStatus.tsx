@@ -14,6 +14,16 @@ type Props = {
   error?: Error | null;
 };
 
+/**
+ * Displays the student's Party Smart course completion status and any active
+ * residence hold on the student dashboard.
+ *
+ * Completion is considered valid only when `last_registered` falls within the
+ * current academic year (checked via `isFromThisSchoolYear`); a non-null date
+ * from a prior year is treated as expired and shows the "not completed" state.
+ * An active residence hold is rendered as a separate warning alongside the
+ * completion status.
+ */
 export default function RegistrationStatus({
   last_registered = null,
   hold_expiration = null,

@@ -9,6 +9,10 @@ type Props = {
   incidents: NestedIncidentStudentDto[];
 };
 
+/**
+ * Renders a card showing all incidents recorded at the student's residence on a
+ * given date, displaying each incident's time and severity label.
+ */
 function RegistrationIncidentCard({ date, incidents }: Props) {
   return (
     <div className="px-4 py-4 border-b border-gray-200 rounded-none">

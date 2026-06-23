@@ -27,6 +27,12 @@ const schema = z.object({
   API_BASE_URL: z.url(),
 });
 
+/**
+ * Parse and validate server-side environment variables.
+ *
+ * Throws if called in a browser context (guards against accidental client-side
+ * imports) or if any required variable is missing or invalid.
+ */
 function parseServerEnv(): z.infer<typeof schema> {
   if (typeof window !== "undefined") {
     throw new Error(

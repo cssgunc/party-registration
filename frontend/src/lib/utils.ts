@@ -6,6 +6,7 @@ import { twMerge } from "tailwind-merge";
 import * as z from "zod";
 import { ContactPreference } from "./api/student/student.types";
 
+/** Merge Tailwind class names, resolving conflicts via tailwind-merge. */
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -109,6 +110,7 @@ const ROLE_LABELS: Record<AppRole, string> = {
   police_admin: "Police Admin",
 };
 
+/** Return the human-readable display label for an application role. */
 export function formatRoleLabel(role: AppRole): string {
   return ROLE_LABELS[role];
 }
@@ -125,6 +127,13 @@ export type AddressField = (typeof ADDRESS_GROUPS)[number][number];
 
 type AddressFields = Partial<Record<AddressField, string | null>>;
 
+/**
+ * Build a formatted address string from a location object.
+ *
+ * Only the fields listed in `fields` are included; they are grouped by
+ * semantic row (street, city, county, state/zip, country) and joined with
+ * spaces within each group and commas between groups.
+ */
 export function formatAddress(
   location: AddressFields | null | undefined,
   fields: AddressField[]
@@ -141,6 +150,7 @@ export function formatAddress(
     .join(", ");
 }
 
+/** Build a Google Maps search URL for the given address and place ID. */
 export function buildMapsUrl(address: string, placeId: string): string {
   const params = new URLSearchParams({
     api: "1",
@@ -150,6 +160,10 @@ export function buildMapsUrl(address: string, placeId: string): string {
   return `https://www.google.com/maps/search/?${params}`;
 }
 
+/**
+ * Return a human-readable label for a contact preference.
+ * Returns `"-"` when the preference is null, undefined, or an unrecognised value.
+ */
 export function formatContactPreference(
   preference: ContactPreference | null | undefined
 ): string {

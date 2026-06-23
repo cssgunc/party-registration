@@ -35,6 +35,13 @@ const policeSignupSchema = z
 
 type PoliceSignupFormValues = z.infer<typeof policeSignupSchema>;
 
+/**
+ * Police account registration page.
+ *
+ * Enforces the department email domain at the Zod schema level. On success,
+ * switches to a verification-pending state with a `ResendVerificationButton`
+ * so the officer can immediately request another email if needed.
+ */
 export default function PoliceSignupPage() {
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [isComplete, setIsComplete] = useState(false);

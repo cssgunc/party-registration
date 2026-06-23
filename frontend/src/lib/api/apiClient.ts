@@ -147,7 +147,10 @@ apiClient.interceptors.response.use(
 
 export default apiClient;
 
-// Setup error interceptor with custom error handler
+/**
+ * Register a response interceptor that surfaces a generic snackbar for server
+ * (5xx) errors; client errors (<500) pass through to the caller to handle.
+ */
 export const setupErrorInterceptor = (showError: (message: string) => void) => {
   apiClient.interceptors.response.use(
     (response) => response,

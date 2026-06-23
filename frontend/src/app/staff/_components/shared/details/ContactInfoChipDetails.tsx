@@ -8,6 +8,7 @@ interface ContactInfoChipDetailsProps {
   data: ContactDto;
 }
 
+/** Sidebar detail panel listing contact information (name, email, phone, preference) for a party's second contact. */
 export function ContactInfoChipDetails({ data }: ContactInfoChipDetailsProps) {
   return (
     <InfoChipDetails

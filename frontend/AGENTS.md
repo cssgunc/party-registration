@@ -67,10 +67,9 @@ async getPartiesNearby(placeId: string, startDate: Date, endDate: Date) { ... }
 - **Skip / exempt**: `components/ui/` (shadcn primitives), `e2e/`, generated files.
   e2e is not linted but should still be commented so the suite is followable.
 
-> **Rollout:** enforcement is **opt-in** by glob — `eslint.config.mjs` lists the
-> documented areas under `files`. When you finish documenting an area, **add its
-> glob** to that list. Once the whole tree is covered, collapse the list to
-> `src/**/*.{ts,tsx}`.
+> TSDoc is now **enforced across all of `src`** (`src/**/*.{ts,tsx}` in
+> `eslint.config.mjs`); `components/ui` (shadcn primitives) is exempt. New exported
+> symbols need a `/** ... */` block to pass `eslint`.
 
 ## Directory map
 

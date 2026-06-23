@@ -5,6 +5,13 @@ import * as saml2 from "saml2-js";
 
 const certsDir = path.join(process.cwd(), "certs");
 
+/**
+ * Read the SP private key and certificate from `frontend/certs/`.
+ *
+ * Throws a descriptive error if the files are missing, which typically means
+ * the Dev Container post-create script has not yet run (or certs need to be
+ * generated manually — see the README).
+ */
 function loadCerts(): { privateKey: string; certificate: string } {
   try {
     return {
@@ -31,6 +38,13 @@ function loadCerts(): { privateKey: string; certificate: string } {
 let _sp: saml2.ServiceProvider | undefined;
 let _idp: saml2.IdentityProvider | undefined;
 
+/**
+ * Return the singleton SAML Service Provider instance, creating it on first call.
+ *
+ * Lazy initialisation is intentional: Next.js evaluates module-level code at
+ * build time when cert files are not yet available. Deferring construction to
+ * the first request avoids a build-time crash.
+ */
 function getServiceProvider(): saml2.ServiceProvider {
   if (!_sp) {
     const { privateKey, certificate } = loadCerts();
@@ -44,6 +58,11 @@ function getServiceProvider(): saml2.ServiceProvider {
   return _sp;
 }
 
+/**
+ * Return the singleton SAML Identity Provider instance, creating it on first call.
+ *
+ * See `getServiceProvider` for why construction is deferred to request time.
+ */
 function getIdentityProvider(): saml2.IdentityProvider {
   if (!_idp) {
     _idp = new saml2.IdentityProvider({

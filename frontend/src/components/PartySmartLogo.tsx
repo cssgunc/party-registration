@@ -3,6 +3,13 @@ import PartySmartDesktopLogoSVG from "@/components/icons/party_smart_desktop_log
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 
+/**
+ * Responsive PartySmart / OCSL logo.
+ *
+ * Renders the full desktop SVG on `lg` screens and the compact mobile SVG below
+ * that breakpoint. Both variants load eagerly because the logo appears in the
+ * persistent header above the fold.
+ */
 export default function PartySmartLogo({ className }: { className?: string }) {
   return (
     <>
