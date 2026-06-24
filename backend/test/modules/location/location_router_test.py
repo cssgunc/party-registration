@@ -2,11 +2,11 @@ import googlemaps.exceptions
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
-from src.core.exceptions import InternalServerException
 from src.modules.incident.incident_model import IncidentSeverity
 from src.modules.location.location_entity import LocationEntity
 from src.modules.location.location_model import AutocompleteResult, LocationDto
 from src.modules.location.location_service import (
+    GoogleMapsAPIException,
     LocationConflictException,
     LocationNotFoundException,
 )
@@ -532,7 +532,7 @@ class TestLocationAutocompleteRouter:
 
         assert_res_failure(
             response,
-            InternalServerException("Failed to fetch address suggestions. Please try again later."),
+            GoogleMapsAPIException("API error (REQUEST_DENIED): REQUEST_DENIED"),
         )
 
 
