@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { SkeletonText } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSnackbar } from "@/contexts/SnackbarContext";
+import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
 import { NestedIncidentStudentDto } from "@/lib/api/incident/incident.types";
 import { hasActiveHold } from "@/lib/api/location/location.service";
 import { useDeleteParty } from "@/lib/api/party/party.queries";
@@ -22,6 +23,8 @@ import Link from "next/link";
 import { useState } from "react";
 import RegistrationIncidentCard from "./RegistrationIncidentCard";
 import RegistrationPartyCard from "./RegistrationPartyCard";
+
+const PAST_PAGE_SIZE = 1;
 
 const EMPTY_CLASS =
   "flex h-full items-center justify-center px-12 text-center content-sub text-base!";
@@ -132,6 +135,11 @@ export default function RegistrationTracker(): React.JSX.Element {
       : undefined;
 
   const { activeParties, pastParties } = splitParties(partiesQuery.data ?? []);
+  const [pastVisibleCount, pastSentinelRef] = useInfiniteScroll(
+    pastParties.length,
+    PAST_PAGE_SIZE
+  );
+  const visiblePastParties = pastParties.slice(0, pastVisibleCount);
 
   const hasNoParties = (partiesQuery.data?.length ?? 0) === 0;
   const showPartySmartPrompt = hasNoParties && !courseCompleted;
@@ -182,17 +190,24 @@ export default function RegistrationTracker(): React.JSX.Element {
         pastParties.length === 0 ? (
           <p className={EMPTY_CLASS}>Your party history will appear here.</p>
         ) : (
-          pastParties.map((party) => (
-            <RegistrationPartyCard
-              key={party.id}
-              party={party}
-              showAddress
-              residenceLocationId={residenceLocationId}
-              isPartiesPending={isPartiesPending}
-              onEdit={setEditParty}
-              onDelete={setDeleteParty}
-            />
-          ))
+          <>
+            {visiblePastParties.map((party) => (
+              <RegistrationPartyCard
+                key={party.id}
+                party={party}
+                showAddress
+                residenceLocationId={residenceLocationId}
+                isPartiesPending={isPartiesPending}
+                onEdit={setEditParty}
+                onDelete={setDeleteParty}
+              />
+            ))}
+            {pastVisibleCount < pastParties.length && (
+              <div ref={pastSentinelRef} className="px-4 py-4">
+                <SkeletonText className="max-w-full" />
+              </div>
+            )}
+          </>
         ),
     },
     {
