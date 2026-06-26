@@ -110,7 +110,7 @@ export const LocationTable = () => {
           backendField: "hold_expiration",
           nullable: true,
           operatorLabels: {
-            null: "Inactive",
+            null: "None",
             notnull: "Active",
           },
         },

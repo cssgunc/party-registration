@@ -38,7 +38,7 @@ export function StudentInfoChipDetails({ data }: StudentInfoChipDetailsProps) {
         ],
         [
           "Completed Party Smart",
-          data.last_registered != null ? "Yes" : "Not Registered",
+          isFromThisSchoolYear(data.last_registered) ? "Yes" : "Not Registered",
         ],
       ]}
     />

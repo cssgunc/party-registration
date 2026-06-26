@@ -129,20 +129,28 @@ function StudentInfo() {
     const residenceChanged = !!locationPlaceId;
 
     try {
+      const saves: Promise<unknown>[] = [];
+
       if (studentFieldsChanged) {
-        await updateStudentMutation.mutateAsync({
-          phone_number: data.phone_number,
-          contact_preference: data.contact_preference,
-          last_registered: student.last_registered,
-        });
+        saves.push(
+          updateStudentMutation.mutateAsync({
+            phone_number: data.phone_number,
+            contact_preference: data.contact_preference,
+            last_registered: student.last_registered,
+          })
+        );
       }
 
       if (residenceChanged && locationPlaceId) {
-        await updateResidenceMutation.mutateAsync({
-          residence_place_id: locationPlaceId,
-          formatted_address: formattedAddress || "",
-        });
+        saves.push(
+          updateResidenceMutation.mutateAsync({
+            residence_place_id: locationPlaceId,
+            formatted_address: formattedAddress || "",
+          })
+        );
       }
+
+      await Promise.all(saves);
 
       openSnackbar("Profile updated successfully", "success");
       setLocationPlaceId("");
@@ -325,6 +333,7 @@ function StudentInfo() {
                     onSelect={handleAddressSelect}
                     placeholder="Search for the location address..."
                     className="w-full"
+                    inputClassName="content"
                     chapelHillOnly
                   />
                 </div>

@@ -355,6 +355,7 @@ export default function PartyRegistrationForm({
                     name="location"
                     label="Party Address"
                     labelClassName="content-bold"
+                    inputClassName="content"
                     placeholder="Search for the party address..."
                     initialSelection={initialValues?.location}
                     value={form.watch("location")?.formatted_address}

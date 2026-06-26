@@ -153,14 +153,24 @@ class TestAccountRouter:
         assert response.status_code == 204
 
     @pytest.mark.asyncio
-    async def test_create_invite_conflict_existing_account(
+    async def test_create_invite_conflict_existing_staff_or_admin(
         self, accounts_two_per_role: list[AccountEntity]
     ):
-        existing_email = accounts_two_per_role[0].email
+        staff_account = next(a for a in accounts_two_per_role if a.role == AccountRole.STAFF)
         response = await self.admin_client.post(
-            "/api/accounts", json={"email": existing_email, "role": "staff"}
+            "/api/accounts", json={"email": staff_account.email, "role": "staff"}
         )
-        assert_res_failure(response, InviteConflictException(existing_email))
+        assert_res_failure(response, InviteConflictException(staff_account.email))
+
+    @pytest.mark.asyncio
+    async def test_create_invite_student_email_succeeds(
+        self, accounts_two_per_role: list[AccountEntity]
+    ):
+        student_account = next(a for a in accounts_two_per_role if a.role == AccountRole.STUDENT)
+        response = await self.admin_client.post(
+            "/api/accounts", json={"email": student_account.email, "role": "staff"}
+        )
+        assert response.status_code == 204
 
     @pytest.mark.asyncio
     async def test_create_invite_conflict_existing_token(

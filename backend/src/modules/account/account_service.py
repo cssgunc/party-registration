@@ -289,13 +289,8 @@ class AccountService:
     async def upsert_idp_account(self, data: AccountData) -> AccountDto:
         try:
             account_entity = await self.get_account_entity_by(pid=data.pid)
-        except AccountNotFoundException as e:
-            if data.role != AccountRole.STUDENT:
-                raise ForbiddenException(detail="No matching account found") from e
-            return await self.create_account(data)
-
-        if data.role != AccountRole.STUDENT and account_entity.role != data.role:
-            raise ForbiddenException(detail="Role mismatch")
+        except AccountNotFoundException:
+            return await self.create_account(data.model_copy(update={"role": AccountRole.STUDENT}))
 
         account_entity.first_name = data.first_name
         account_entity.last_name = data.last_name
@@ -306,10 +301,30 @@ class AccountService:
         await self.session.refresh(account_entity)
         return account_entity.to_dto()
 
+    async def resolve_invite(self, account: AccountDto, requesting_role: AccountRole) -> AccountDto:
+        invite = await self._get_invite_token_by_email(account.email)
+        if invite is None:
+            return account
+        if invite.is_expired(datetime.now(UTC)):
+            if requesting_role in (AccountRole.STAFF, AccountRole.ADMIN):
+                raise ForbiddenException(detail="Invite token has expired")
+            # Student login is unaffected by an expired staff invite. Leave the
+            # row so the user gets "Invite token has expired" if they eventually
+            # try the staff login path, rather than a silent redirect to /.
+            return account
+        account_entity = await self.get_account_entity_by(id=account.id)
+        account_entity.role = AccountRole(invite.role.value)
+        self.session.add(account_entity)
+        await self.session.delete(invite)
+        await self.session.commit()
+        await self.session.refresh(account_entity)
+        return account_entity.to_dto()
+
     async def create_invite(self, data: CreateInviteDto) -> None:
         try:
-            await self.get_account_entity_by(email=data.email)
-            raise InviteConflictException(data.email)
+            existing_account = await self.get_account_entity_by(email=data.email)
+            if existing_account.role in (AccountRole.STAFF, AccountRole.ADMIN):
+                raise InviteConflictException(data.email)
         except AccountNotFoundException:
             pass
 
@@ -345,50 +360,6 @@ class AccountService:
             <p>Your invitation will expire in {env.INVITE_TOKEN_EXPIRY_HOURS} hours.</p>
         """
         await self.email_service.send_email(to, "You're invited to PartySmart", html)
-
-    async def provision_staff_account(self, data: AccountData) -> AccountDto:
-        try:
-            account_entity = await self.get_account_entity_by(pid=data.pid)
-        except AccountNotFoundException:
-            account_entity = None
-
-        invite = await self._get_invite_token_by_email(data.email)
-
-        if account_entity is not None and account_entity.role in {
-            AccountRole.STAFF,
-            AccountRole.ADMIN,
-        }:
-            account_entity.first_name = data.first_name
-            account_entity.last_name = data.last_name
-            account_entity.email = data.email
-            account_entity.onyen = data.onyen
-            account_entity.pid = data.pid
-
-            if invite is not None:
-                await self.session.delete(invite)
-
-            self.session.add(account_entity)
-            await self.session.commit()
-            await self.session.refresh(account_entity)
-            return account_entity.to_dto()
-
-        if invite is None:
-            raise ForbiddenException(detail="No matching invite token found")
-
-        if invite.is_expired(datetime.now(UTC)):
-            raise ForbiddenException(detail="Invite token has expired")
-
-        new_account = AccountEntity.from_data(data)
-        new_account.role = AccountRole(invite.role.value)
-        try:
-            self.session.add(new_account)
-            await self.session.delete(invite)
-            await self.session.commit()
-        except IntegrityError as e:
-            await self.session.rollback()
-            raise AccountConflictException(email=data.email, onyen=data.onyen, pid=data.pid) from e
-        await self.session.refresh(new_account)
-        return new_account.to_dto()
 
     async def get_aggregate_accounts_paginated(
         self, params: ListQueryParams
