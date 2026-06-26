@@ -25,6 +25,7 @@ import RegistrationIncidentCard from "./RegistrationIncidentCard";
 import RegistrationPartyCard from "./RegistrationPartyCard";
 
 const PAST_PAGE_SIZE = 1;
+const INITIAL_PAST_VISIBLE_COUNT = 5;
 
 const EMPTY_CLASS =
   "flex h-full items-center justify-center px-12 text-center content-sub text-base!";
@@ -103,6 +104,9 @@ export default function RegistrationTracker(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<TabValue>("active");
   const [editParty, setEditParty] = useState<PartyStudentDto | null>(null);
   const [deleteParty, setDeleteParty] = useState<PartyStudentDto | null>(null);
+  const [pastScrollRoot, setPastScrollRoot] = useState<HTMLDivElement | null>(
+    null
+  );
 
   const { openSnackbar } = useSnackbar();
   const deletePartyMutation = useDeleteParty();
@@ -137,7 +141,12 @@ export default function RegistrationTracker(): React.JSX.Element {
   const { activeParties, pastParties } = splitParties(partiesQuery.data ?? []);
   const [pastVisibleCount, pastSentinelRef] = useInfiniteScroll(
     pastParties.length,
-    PAST_PAGE_SIZE
+    PAST_PAGE_SIZE,
+    {
+      initialCount: INITIAL_PAST_VISIBLE_COUNT,
+      root: pastScrollRoot,
+      rootMargin: "200px 0px",
+    }
   );
   const visiblePastParties = pastParties.slice(0, pastVisibleCount);
 
@@ -275,7 +284,10 @@ export default function RegistrationTracker(): React.JSX.Element {
         <Card className="w-full flex-1 min-h-0 overflow-hidden mt-2 flex flex-col">
           {tabs.map(({ value, children }) => (
             <TabsContent key={value} value={value} className="h-full">
-              <div className={TAB_CONTENT_CLASS}>
+              <div
+                ref={value === "past" ? setPastScrollRoot : undefined}
+                className={TAB_CONTENT_CLASS}
+              >
                 {isPartiesPending ? (
                   <PartiesLoading />
                 ) : isPartiesError ? (
