@@ -5,10 +5,7 @@ function Skeleton({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="skeleton"
-      className={cn(
-        "animate-pulse rounded-md bg-[var(--muted-background)]",
-        className
-      )}
+      className={cn("animate-pulse rounded-md bg-muted-background", className)}
       {...props}
     />
   );
@@ -19,8 +16,8 @@ function SkeletonAvatar({ className, ...props }: React.ComponentProps<"div">) {
     <div className={cn("flex w-fit items-center gap-4", className)} {...props}>
       <Skeleton className="size-10 shrink-0 rounded-full" />
       <div className="grid gap-2">
-        <Skeleton className="h-4 w-[150px]" />
-        <Skeleton className="h-4 w-[100px]" />
+        <Skeleton className="h-4 w-37.5" />
+        <Skeleton className="h-4 w-25" />
       </div>
     </div>
   );
