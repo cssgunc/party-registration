@@ -7,6 +7,7 @@ interface Props {
   data: IncidentDto;
 }
 
+/** Sidebar detail panel showing the full description text of an incident. */
 function DescriptionInfoChipDetails({ data }: Props) {
   return (
     <InfoChipDetails

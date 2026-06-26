@@ -23,6 +23,7 @@ const UNIQUE_STUDENT_FIELDS = [
   "phone_number",
 ] as const satisfies (keyof StudentData)[];
 
+/** Query the authenticated student's own profile (`GET /api/students/me`). */
 export function useCurrentStudent(options?: UseQueryOptions<StudentSelfDto>) {
   return useQuery<StudentSelfDto, Error>({
     queryKey: CURRENT_STUDENT_KEY,
@@ -31,6 +32,13 @@ export function useCurrentStudent(options?: UseQueryOptions<StudentSelfDto>) {
   });
 }
 
+/**
+ * Mutation to update the authenticated student's contact info, with an optimistic update.
+ *
+ * Skips the optimistic write if any unique fields (e.g. `phone_number`) are
+ * changing, to avoid races with server-side uniqueness errors. Rolls back on
+ * error and invalidates all student queries on success.
+ */
 export function useUpdateStudent(
   options?: OptimisticMutationOptions<StudentSelfDto, Error, StudentData>
 ) {
@@ -80,6 +88,14 @@ export function useUpdateStudent(
   });
 }
 
+/**
+ * Mutation to set or replace the student's registered residence, with an optimistic update.
+ *
+ * Immediately writes a partial `LocationDto` (no geocode data yet) into the
+ * cached student profile so the UI reflects the new address before the server
+ * responds. Rolls back on error and invalidates the current-student query on
+ * success.
+ */
 export function useUpdateResidence() {
   const queryClient = useQueryClient();
 
@@ -135,6 +151,7 @@ export function useUpdateResidence() {
   });
 }
 
+/** Query the authenticated student's own party registrations (`GET /api/students/me/parties`). */
 export function useMyParties(options?: UseQueryOptions<PartyStudentDto[]>) {
   return useQuery<PartyStudentDto[], Error>({
     queryKey: MY_PARTIES_KEY,

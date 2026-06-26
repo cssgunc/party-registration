@@ -20,6 +20,13 @@ interface SidebarProviderProps {
 
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
 
+/**
+ * Provides the shared sidebar context to the staff tab layout.
+ *
+ * Manages which sidebar panel is open (identified by a `selectedKey`),
+ * its title and description, and the DOM portal targets (`bodyNode`,
+ * `headerActionNode`) that `SidebarContent` renders into.
+ */
 export function SidebarProvider({ children }: SidebarProviderProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [title, setTitle] = useState<string | null>(null);
@@ -64,6 +71,7 @@ export function SidebarProvider({ children }: SidebarProviderProps) {
   );
 }
 
+/** Consume the sidebar context; throws if used outside `SidebarProvider`. */
 export const useSidebar = () => {
   const context = useContext(SidebarContext);
   if (!context)

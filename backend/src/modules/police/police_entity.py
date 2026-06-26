@@ -10,6 +10,13 @@ from src.modules.police.police_model import PoliceAccountDto, PoliceRole
 
 
 class PoliceEntity(MappedAsDataclass, EntityBase):
+    """Persistence model for a police account (``police`` table).
+
+    Stores credentials, role, email-verification state, and password-reset
+    tokens. The two check constraints enforce that each token is always paired
+    with its expiry column — both null or both set.
+    """
+
     __tablename__ = "police"
     __table_args__: ClassVar[tuple] = (
         CheckConstraint(

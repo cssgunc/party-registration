@@ -221,6 +221,12 @@ type ProximitySearchResponseBackend = {
   nearby: PartyPoliceDtoBackend[];
 };
 
+/**
+ * Map a backend proximity-search payload into frontend types.
+ *
+ * Converts the exact-match location/party and every nearby party (all police
+ * DTOs), parsing string dates into `Date` objects along the way.
+ */
 function convertProximitySearchResponse(
   backend: ProximitySearchResponseBackend
 ): ProximitySearchResponse {

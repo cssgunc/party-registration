@@ -5,6 +5,7 @@ export const metadata: Metadata = {
   description: "Dashboard",
 };
 
+/** Root layout for the student route group; renders children without additional wrapping. */
 export default function StudentLayout({
   children,
 }: {

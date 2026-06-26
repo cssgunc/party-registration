@@ -29,6 +29,13 @@ interface ColumnHeaderProps<T> {
   onFilterClick?: () => void;
 }
 
+/**
+ * Sortable, filterable column header rendered inside each `<TableHead>`.
+ *
+ * Renders a dropdown that exposes ascending/descending sort actions and,
+ * when `canFilter` is true, an option to open the column filter sidebar.
+ * A coloured dot on the label indicates an active filter.
+ */
 export function ColumnHeader<T>({
   column,
   title,

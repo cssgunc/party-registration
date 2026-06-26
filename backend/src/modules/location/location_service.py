@@ -39,12 +39,24 @@ from .location_model import (
 
 
 class GoogleMapsAPIException(InternalServerException):
+    """Raised when the Google Maps API returns an unexpected error (HTTP 500)."""
+
     def __init__(self, detail: str):
         super().__init__(f"Google Maps API error: {detail}")
 
 
 @contextmanager
 def _googlemaps_error_handler(fallback_msg: str):
+    """Context manager that translates googlemaps transport errors to `GoogleMapsAPIException`.
+
+    Domain-specific exceptions (`PlaceNotFoundException`, `InvalidPlaceIdException`,
+    `GoogleMapsAPIException`) are re-raised as-is. All other googlemaps exceptions
+    (Timeout, HTTPError, TransportError) and unexpected errors are wrapped into a
+    `GoogleMapsAPIException` with a descriptive message.
+
+    Args:
+        fallback_msg: Prefix used for the ``Exception`` catch-all clause.
+    """
     try:
         yield
     except (PlaceNotFoundException, InvalidPlaceIdException, GoogleMapsAPIException):
@@ -60,16 +72,22 @@ def _googlemaps_error_handler(fallback_msg: str):
 
 
 class PlaceNotFoundException(NotFoundException):
+    """Raised when Google Maps cannot find a place for the given place ID (HTTP 404)."""
+
     def __init__(self, place_id: str):
         super().__init__(f"Place with ID {place_id} not found")
 
 
 class InvalidPlaceIdException(BadRequestException):
+    """Raised when Google Maps rejects the place ID format (HTTP 400)."""
+
     def __init__(self, place_id: str):
         super().__init__(f"Invalid place ID: {place_id}")
 
 
 class LocationNotFoundException(NotFoundException):
+    """Raised when no location row exists for the given database ID or place ID (HTTP 404)."""
+
     def __init__(self, location_id: int | None = None, google_place_id: str | None = None):
         if location_id is not None and google_place_id is not None:
             raise ValueError("Provide either location_id or place_id, not both")
@@ -80,11 +98,18 @@ class LocationNotFoundException(NotFoundException):
 
 
 class LocationConflictException(ConflictException):
+    """Raised on a unique-constraint violation for ``google_place_id`` (HTTP 409).
+
+    Can occur as a race condition when two concurrent requests create the same place.
+    """
+
     def __init__(self, google_place_id: str):
         super().__init__(f"Location with Google Place ID {google_place_id} already exists")
 
 
 class LocationHoldActiveException(BadRequestException):
+    """Raised when a write operation targets a location that is currently on hold (HTTP 400)."""
+
     def __init__(self, location_id: int, hold_expiration: datetime):
         super().__init__(
             f"Location {location_id} has an active hold until {hold_expiration.isoformat()}"
@@ -92,7 +117,7 @@ class LocationHoldActiveException(BadRequestException):
 
 
 def get_gmaps_client() -> googlemaps.Client:
-    # Dependency injection function for Google Maps client.
+    """FastAPI dependency that constructs a Google Maps client from the configured API key."""
     return googlemaps.Client(key=env.GOOGLE_MAPS_API_KEY)
 
 
@@ -103,10 +128,20 @@ _PRECISE_ADDRESS_TYPES = frozenset({"street_address", "premise", "subpremise"})
 
 
 def _is_precise_address(prediction_types: list[str]) -> bool:
+    """Return True if the prediction types include at least one dwelling-level type.
+
+    Filters out bare street (``route``-only) predictions that lack a street number
+    and therefore cannot be used as a party registration address.
+    """
     return any(t in _PRECISE_ADDRESS_TYPES for t in prediction_types)
 
 
 def _incident_count_subquery(severity: IncidentSeverity | None = None):
+    """Build a correlated scalar subquery that counts incidents for each location row.
+
+    Args:
+        severity: When provided, restrict the count to incidents of that severity.
+    """
     q = select(func.count()).where(IncidentEntity.location_id == LocationEntity.id)
     if severity is not None:
         q = q.where(IncidentEntity.severity == severity)
@@ -151,6 +186,12 @@ _LOCATION_QUERY_FIELDS = QueryFieldSet(
 
 
 class LocationService:
+    """Business-logic layer for location management, Google Maps integration, and export.
+
+    Wraps database access and external Google Maps API calls behind typed methods.
+    Injected per request via FastAPI ``Depends``.
+    """
+
     QUERY_FIELDS: ClassVar[QueryFieldSet] = _LOCATION_QUERY_FIELDS
 
     def __init__(
@@ -164,6 +205,11 @@ class LocationService:
         self.query_service = query_service
 
     async def _get_location_entity_by_id(self, location_id: int) -> LocationEntity:
+        """Fetch a `LocationEntity` by primary key.
+
+        Raises:
+            LocationNotFoundException: If no location has the given ID.
+        """
         result = await self.session.execute(
             select(LocationEntity).where(LocationEntity.id == location_id)
         )
@@ -173,6 +219,11 @@ class LocationService:
         return location_entity
 
     async def _get_location_entity_by_place_id(self, google_place_id: str) -> LocationEntity:
+        """Fetch a `LocationEntity` by its Google Maps place ID.
+
+        Raises:
+            LocationNotFoundException: If no location has the given place ID.
+        """
         result = await self.session.execute(
             select(LocationEntity).where(LocationEntity.google_place_id == google_place_id)
         )
@@ -182,19 +233,11 @@ class LocationService:
         return location_entity
 
     async def get_locations_paginated(self, params: ListQueryParams) -> "PaginatedLocationResponse":
-        """
-        Get locations with server-side pagination and sorting.
+        """Get locations with server-side pagination, sorting, and filtering.
 
-        Query parameters are automatically parsed from the request:
-        - page_number: Page number (1-indexed, default: 1)
-        - page_size: Items per page (default: all)
-        - sort_by: Field to sort by
-        - sort_order: Sort order ('asc' or 'desc')
-
-        Returns:
-            PaginatedLocationResponse with items and metadata
+        Args:
+            params: Parsed pagination/sort/filter parameters from the request.
         """
-        # Build base query
         base_query = select(LocationEntity)
 
         result = await self.query_service.get_paginated(
@@ -205,6 +248,7 @@ class LocationService:
         return PaginatedLocationResponse(**result.model_dump())
 
     def export_locations_to_excel(self, locations_response: PaginatedLocationResponse) -> bytes:
+        """Render locations as an Excel workbook with per-severity incident counts."""
         return export_to_excel(
             resource_name="Locations",
             field_map={
@@ -223,14 +267,30 @@ class LocationService:
         )
 
     async def get_location_by_id(self, location_id: int) -> LocationDto:
+        """Fetch a single location by database ID.
+
+        Raises:
+            LocationNotFoundException: If no location has the given ID.
+        """
         location_entity = await self._get_location_entity_by_id(location_id)
         return location_entity.to_dto()
 
     async def get_location_by_place_id(self, google_place_id: str) -> LocationDto:
+        """Fetch a single location by Google Maps place ID.
+
+        Raises:
+            LocationNotFoundException: If no location has the given place ID.
+        """
         location_entity = await self._get_location_entity_by_place_id(google_place_id)
         return location_entity.to_dto()
 
     async def create_location(self, data: LocationData) -> LocationDto:
+        """Persist a new location from already-resolved `LocationData`.
+
+        Raises:
+            LocationConflictException: If a location with the same ``google_place_id``
+                already exists (unique-constraint violation).
+        """
         new_location = LocationEntity.from_data(data)
         try:
             self.session.add(new_location)
@@ -242,13 +302,31 @@ class LocationService:
         return new_location.to_dto()
 
     async def create_location_from_place_id(self, place_id: str) -> LocationDto:
+        """Resolve a Google Maps place ID to address data and persist a new location.
+
+        Raises:
+            InvalidPlaceIdException: If the place ID format is rejected by Google Maps.
+            PlaceNotFoundException: If Google Maps cannot find the place.
+            GoogleMapsAPIException: If the Maps API request fails.
+            LocationConflictException: If the place ID already exists in the DB.
+        """
         address_data = await self.get_place_details(place_id)
         location_data = LocationData.from_address(address_data)
         return await self.create_location(location_data)
 
     async def get_or_create_location(self, place_id: str) -> LocationDto:
-        """Get existing location by place_id, or create it if it doesn't exist."""
-        # Try to get existing location
+        """Return the existing location for a place ID, or create it from Google Maps.
+
+        Used by the incident and party layers when they need a location row but
+        cannot know ahead of time whether it already exists.
+
+        Raises:
+            InvalidPlaceIdException: If the place ID format is rejected by Google Maps.
+            PlaceNotFoundException: If Google Maps cannot find the place.
+            GoogleMapsAPIException: If the Maps API request fails.
+            LocationConflictException: If a concurrent request inserted the same
+                place ID between the failed lookup and the insert (rare race).
+        """
         try:
             location = await self.get_location_by_place_id(place_id)
         except LocationNotFoundException:
@@ -257,6 +335,13 @@ class LocationService:
         return location
 
     async def update_location(self, location_id: int, data: LocationData) -> LocationDto:
+        """Update an existing location's address data and hold expiration.
+
+        Raises:
+            LocationNotFoundException: If no location has the given ID.
+            LocationConflictException: If the new ``google_place_id`` conflicts
+                with another existing location.
+        """
         location_entity = await self._get_location_entity_by_id(location_id)
 
         for key, value in data.model_dump().items():
@@ -275,10 +360,18 @@ class LocationService:
         return location_entity.to_dto()
 
     async def autocomplete_address(self, input_text: str) -> list[AutocompleteResult]:
-        # Autocomplete an address using Google Maps Places API, restricted to the
-        # Chapel Hill, NC area (roughly the Triangle). location + radius only bias
-        # results, so strict_bounds is required to actually fence out far-away
-        # matches (e.g. same street name in another state).
+        """Return dwelling-level address suggestions from Google Maps for the Chapel Hill area.
+
+        The search is biased to a 10 km radius around Chapel Hill, NC and enforces
+        ``strict_bounds`` so only addresses within that radius are returned. Bare
+        street predictions (``route``-only, no street number) are filtered out because
+        they cannot serve as valid party registration addresses.
+
+        Raises:
+            GoogleMapsAPIException: If the Maps API request fails.
+        """
+        # location + radius only bias results; strict_bounds is required to fence
+        # out far-away matches (e.g. same street name in another state).
         with _googlemaps_error_handler("Failed to autocomplete address"):
             try:
                 autocomplete_result = await asyncio.to_thread(
@@ -308,11 +401,17 @@ class LocationService:
             return suggestions
 
     async def get_place_details(self, place_id: str) -> AddressData:
-        """
-        Get detailed location data for a Google Maps place ID
-        Raises PlaceNotFoundException if the place cannot be found
-        Raises InvalidPlaceIdException if the place ID format is invalid
-        Raises GoogleMapsAPIException for other API errors
+        """Fetch full address components and coordinates for a Google Maps place ID.
+
+        Calls the Places Details API (fields: ``formatted_address``, ``geometry``,
+        ``address_component``) and parses the response into an `AddressData` instance.
+
+        Raises:
+            InvalidPlaceIdException: If Google Maps rejects the place ID format
+                (``INVALID_REQUEST`` status).
+            PlaceNotFoundException: If Google Maps cannot find the place
+                (``NOT_FOUND`` status, or the result has no ``result`` key).
+            GoogleMapsAPIException: For all other Maps API or transport errors.
         """
         with _googlemaps_error_handler("Failed to get place details"):
             try:

@@ -12,6 +12,7 @@ interface StudentInfoChipDetailsProps {
   data: StudentDto;
 }
 
+/** Sidebar detail panel showing full student info: identity fields, contact, residence, and Party Smart registration status. */
 export function StudentInfoChipDetails({ data }: StudentInfoChipDetailsProps) {
   return (
     <InfoChipDetails

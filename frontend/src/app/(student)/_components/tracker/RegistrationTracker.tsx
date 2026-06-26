@@ -30,6 +30,14 @@ const INITIAL_PAST_VISIBLE_COUNT = 5;
 const EMPTY_CLASS =
   "flex h-full items-center justify-center px-12 text-center content-sub text-base!";
 
+/**
+ * Partition a flat party list into active and past buckets.
+ *
+ * A party is considered "past" once 12 hours have elapsed since
+ * `party_datetime`; this grace window keeps parties visible on the active tab
+ * during and immediately after the event. Active parties are sorted by
+ * proximity to now; past parties are sorted newest-first.
+ */
 function splitParties(parties: PartyStudentDto[]): {
   activeParties: PartyStudentDto[];
   pastParties: PartyStudentDto[];
@@ -64,6 +72,10 @@ function splitParties(parties: PartyStudentDto[]): {
   return { activeParties: active, pastParties: past };
 }
 
+/**
+ * Group a flat incident list by formatted date string (`MM/dd/yyyy`) for
+ * rendering under per-day headings in the Incidents tab.
+ */
 function groupIncidentsByDate(
   incidents: NestedIncidentStudentDto[]
 ): [string, NestedIncidentStudentDto[]][] {
@@ -100,6 +112,16 @@ function PartiesError() {
 
 type TabValue = "active" | "past" | "incidents";
 
+/**
+ * The main party tracker panel shown on the student dashboard, displaying the
+ * student's active registrations, past parties, and residence incidents across
+ * three tabs, with controls to add, edit, or cancel parties.
+ *
+ * The "New Party" button is disabled when the student has not completed the
+ * Party Smart course this academic year (checked via `isFromThisSchoolYear`) or
+ * when their residence has an active hold. The Past tab renders incrementally,
+ * revealing more cards via `useInfiniteScroll` as the user scrolls.
+ */
 export default function RegistrationTracker(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<TabValue>("active");
   const [editParty, setEditParty] = useState<PartyStudentDto | null>(null);

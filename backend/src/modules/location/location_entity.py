@@ -15,6 +15,17 @@ if TYPE_CHECKING:
 
 
 class LocationEntity(MappedAsDataclass, EntityBase):
+    """Persistence model for a registered location (``locations`` table).
+
+    Each row corresponds to a unique Google Maps place. Address components are
+    stored as individual columns for filtering and export. The ``incidents``
+    relationship is loaded with ``selectin`` to avoid N+1 queries.
+
+    ``hold_expiration`` is set by admins to bar a location from hosting parties
+    until the given UTC datetime. The ``to_*_dto`` helpers serialise this field
+    to a timezone-aware value regardless of whether the DB returned a naive one.
+    """
+
     __tablename__ = "locations"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, init=False)
@@ -58,6 +69,7 @@ class LocationEntity(MappedAsDataclass, EntityBase):
     __table_args__ = (Index("idx_lat_lng", "latitude", "longitude"),)
 
     def to_summary_dto(self) -> LocationSummaryDto:
+        """Convert to the lightweight summary DTO used by the incident layer."""
         hold_exp = self.hold_expiration
         if hold_exp is not None and hold_exp.tzinfo is None:
             hold_exp = hold_exp.replace(tzinfo=UTC)
@@ -79,6 +91,12 @@ class LocationEntity(MappedAsDataclass, EntityBase):
         )
 
     def to_dto(self) -> LocationDto:
+        """Convert entity to model (staff/admin view, all incidents included).
+
+        Checks whether the ``incidents`` relationship is already loaded to avoid
+        triggering an implicit lazy-load (which fails in async contexts). If
+        unloaded, ``incidents`` is returned as an empty list.
+        """
         # Check if incidents relationship is loaded to avoid lazy loading in tests
         # This prevents issues when LocationEntity is created without loading relationships
         insp = inspect(self)
@@ -122,6 +140,7 @@ class LocationEntity(MappedAsDataclass, EntityBase):
 
     @classmethod
     def from_data(cls, data: LocationData) -> Self:
+        """Build an unsaved entity from already-resolved `LocationData`."""
         return cls(
             google_place_id=data.google_place_id,
             formatted_address=data.formatted_address,

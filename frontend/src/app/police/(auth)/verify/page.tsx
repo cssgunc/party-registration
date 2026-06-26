@@ -8,6 +8,10 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 
+/**
+ * Police email-verification landing page; wraps `PoliceVerifyContent` in a
+ * `Suspense` boundary so the token search param can be read safely.
+ */
 export default function PoliceVerifyPage() {
   return (
     <Suspense>
@@ -16,6 +20,13 @@ export default function PoliceVerifyPage() {
   );
 }
 
+/**
+ * Consumes a `token` search parameter to verify a police account email.
+ *
+ * Fires the verification mutation once on mount (guarded by a ref to prevent
+ * double-submission in strict mode). Displays loading, success, or error states
+ * and a link back to the login page in all terminal states.
+ */
 function PoliceVerifyContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");

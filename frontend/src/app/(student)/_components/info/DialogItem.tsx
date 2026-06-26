@@ -16,6 +16,10 @@ type DialogItemProps = {
   children: ReactNode;
 };
 
+/**
+ * An expandable info item that renders as a full-width button row and opens a
+ * scrollable modal dialog containing its children when clicked.
+ */
 export default function DialogItem({ title, children }: DialogItemProps) {
   const [open, setOpen] = useState(false);
 

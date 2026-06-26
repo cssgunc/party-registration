@@ -69,6 +69,15 @@ interface PartyCardProps {
   onOpenIncidentDialog: (severity: IncidentSeverity) => void;
 }
 
+/**
+ * Compact card summarizing a single party (or an address with no party) in the
+ * police party list.
+ *
+ * Shows the address, date/time, contact names and phone numbers with
+ * click-to-call links, incident flag counts, and an active-hold warning.
+ * The overflow menu lets officers open the incident-reporting dialog directly
+ * from the card.
+ */
 function PartyCard({
   data,
   onClick,

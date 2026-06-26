@@ -26,8 +26,13 @@ import { LocationCreate, LocationDto } from "./location.types";
 
 const locationService = new LocationService();
 
+/** Root query key for all location-related cache entries. */
 export const LOCATIONS_KEY = ["locations"] as const;
 
+/**
+ * Applies an updater function to every location item across all cached paginated
+ * locations queries. Used by optimistic-update helpers to patch cache in place.
+ */
 function setLocationsCache(
   queryClient: QueryClient,
   updateLocation: (loc: LocationDto) => LocationDto
@@ -43,6 +48,7 @@ type UpdateLocationVars = {
   payload: LocationCreate;
 };
 
+/** Query the paginated, filterable locations list. */
 export function useLocations(
   serverParams?: ListQueryParams,
   options?: UseQueryOptions<PaginatedResponse<LocationDto>>
@@ -55,6 +61,7 @@ export function useLocations(
   });
 }
 
+/** Mutation to create a new location, invalidating the locations cache on success. */
 export function useCreateLocation(
   options?: OptimisticMutationOptions<LocationDto, Error, LocationCreate>
 ) {
@@ -72,6 +79,7 @@ export function useCreateLocation(
   });
 }
 
+/** Mutation to update a location (e.g. hold expiration), invalidating the locations cache on success. */
 export function useUpdateLocation(
   options?: OptimisticMutationOptions<LocationDto, Error, UpdateLocationVars>
 ) {
@@ -89,6 +97,7 @@ export function useUpdateLocation(
   });
 }
 
+/** Mutation that downloads the filtered locations list as an Excel file. */
 export function useDownloadLocationsCsv() {
   return useMutation<void, Error, ListQueryParams | undefined>({
     mutationFn: (params) => locationService.downloadLocationsCsv(params),
@@ -100,6 +109,13 @@ type LocationsSnapshot = [
   PaginatedResponse<LocationDto> | undefined,
 ][];
 
+/**
+ * Mutation to create an incident from the locations context, with an optimistic update.
+ *
+ * Extends `useCreateIncident`: optimistically inserts the new incident into the
+ * matching location's incident list (sorted earliest-first to match the backend
+ * `order_by`), then invalidates the locations cache on success or rolls back on error.
+ */
 export function useCreateIncidentInLocation(
   options?: OptimisticMutationOptions<
     IncidentDto,
@@ -156,6 +172,13 @@ export function useCreateIncidentInLocation(
   });
 }
 
+/**
+ * Mutation to update an incident from the locations context, with an optimistic update.
+ *
+ * Extends `useUpdateIncident`: optimistically patches the incident in every cached
+ * location's incident list, then invalidates the locations cache on success or rolls
+ * back on error.
+ */
 export function useUpdateIncidentInLocation(
   options?: OptimisticMutationOptions<
     IncidentDto,
@@ -203,6 +226,13 @@ type DeleteLocationsSnapshot = [
   PaginatedResponse<LocationDto> | undefined,
 ][];
 
+/**
+ * Mutation to delete an incident from the locations context, with an optimistic update.
+ *
+ * Extends `useDeleteIncident`: optimistically removes the incident from every cached
+ * location's incident list, then invalidates the locations cache on success or rolls
+ * back on error.
+ */
 export function useDeleteIncidentInLocation(
   options?: OptimisticMutationOptions<
     void,

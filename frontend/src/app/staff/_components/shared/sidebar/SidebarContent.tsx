@@ -14,6 +14,20 @@ interface Props {
   headerAction?: ReactNode;
 }
 
+/**
+ * Portal bridge between a caller's open/close state and the global `Sidebar` shell.
+ *
+ * When `open` is true and no other panel has taken over, this component
+ * registers itself as the active panel in `SidebarContext` and portals
+ * `children` into the sidebar's `bodyNode`. An optional `headerAction` is
+ * portaled into `headerActionNode`. Detects external closes (X button,
+ * backdrop, another panel stealing focus) and calls `onOpenChange(false)` so
+ * the caller can reset its own state.
+ *
+ * @param sidebarKey - Stable unique key identifying this panel; used by the
+ *   context to determine which panel is active.
+ * @param onOpenChange - Called with `false` when the panel is closed externally.
+ */
 export function SidebarContent({
   open,
   onOpenChange,

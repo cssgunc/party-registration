@@ -30,6 +30,14 @@ type Props = {
   onFiltersChange: (next: AdvancedPartyFilters) => void;
 };
 
+/**
+ * Collapsible advanced-filter panel for the police party search page.
+ *
+ * Renders fields for start-time comparison (before/after/exact), phone number,
+ * contact name, contact preference, and incident severity. All filtering is
+ * applied client-side; this component is purely controlled via `filters` and
+ * `onFiltersChange`.
+ */
 export default function AdvancedPartySearch({
   filters,
   onFiltersChange,

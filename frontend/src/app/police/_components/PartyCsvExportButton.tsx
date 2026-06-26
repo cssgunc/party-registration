@@ -10,6 +10,13 @@ interface PartyCsvExportButtonProps {
   endDate: Date | undefined;
 }
 
+/**
+ * Button that triggers an Excel export of registered parties filtered to the
+ * current date range in the police dashboard.
+ *
+ * Disabled when either date is unset or an export is in progress; shows an
+ * inline error message if the download fails.
+ */
 export default function PartyCsvExportButton({
   startDate,
   endDate,

@@ -24,6 +24,14 @@ import { formatRoleLabel } from "@/lib/utils";
 import { ColumnDef } from "@tanstack/react-table";
 import { useSession } from "next-auth/react";
 
+/**
+ * Paginated, sortable, and filterable table of police accounts for the admin
+ * dashboard.
+ *
+ * Wires up `useServerTableState` for server-side pagination/sorting/filtering,
+ * the `TableTemplate` for the data table UI, and a `FormSidebar` for inline
+ * editing. Delete is guarded so an admin cannot remove their own account.
+ */
 export default function PoliceAccountsTable() {
   const { data: session } = useSession();
   const { openSnackbar, snackbarPromise } = useSnackbar();

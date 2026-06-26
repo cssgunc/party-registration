@@ -5,6 +5,7 @@ export const metadata: Metadata = {
   description: "Dashboard",
 };
 
+/** Root layout for the police dashboard; passes children through without modification. */
 export default function StudentLayout({
   children,
 }: {

@@ -64,7 +64,7 @@ function parseRelativeDate(dateStr: string | null): Date | null {
   return date;
 }
 
-// Parse Police Accounts
+/** Police accounts parsed from the shared mock JSON, typed as `PoliceAccountDto`. */
 export const POLICE_ACCOUNTS: PoliceAccountDto[] = mockData.police.map((p) => ({
   id: p.id,
   email: p.email,
@@ -72,7 +72,7 @@ export const POLICE_ACCOUNTS: PoliceAccountDto[] = mockData.police.map((p) => ({
   is_verified: p.is_verified,
 }));
 
-// Parse Accounts
+/** Staff/admin/student accounts parsed from the shared mock JSON, typed as `AccountDto`. */
 export const ACCOUNTS: AccountDto[] = mockData.accounts.map((acc) => ({
   id: acc.id,
   email: acc.email,
@@ -83,7 +83,7 @@ export const ACCOUNTS: AccountDto[] = mockData.accounts.map((acc) => ({
   role: acc.role as "staff" | "admin" | "student",
 }));
 
-// Parse Students
+/** Students parsed from the shared mock JSON, with relative date strings resolved to `Date` objects. */
 export const STUDENTS: StudentDto[] = mockData.students.map((student) => ({
   id: student.id,
   pid: student.pid,
@@ -106,6 +106,7 @@ export const STUDENTS: StudentDto[] = mockData.students.map((student) => ({
     : null,
 }));
 
+/** Build a `LocationSummaryDto` from the raw mock location with the given ID. */
 function buildLocationSummary(locationId: number): LocationSummaryDto {
   const loc = mockData.locations.find((l) => l.id === locationId);
   return {
@@ -126,6 +127,7 @@ function buildLocationSummary(locationId: number): LocationSummaryDto {
   };
 }
 
+/** Build a `LocationDto` (summary + nested incidents) for the given location ID. */
 function buildLocationDto(locationId: number): LocationDto {
   const summary = buildLocationSummary(locationId);
   return {
@@ -134,7 +136,7 @@ function buildLocationDto(locationId: number): LocationDto {
   };
 }
 
-// Parse Incidents
+/** Incidents parsed from the shared mock JSON, with relative date strings resolved. */
 export const INCIDENTS: IncidentDto[] = mockData.incidents.map((incident) => ({
   id: incident.id,
   location: buildLocationSummary(incident.location_id),
@@ -145,7 +147,7 @@ export const INCIDENTS: IncidentDto[] = mockData.incidents.map((incident) => ({
   reference_id: incident.reference_id ?? null,
 }));
 
-// Helper to get incidents by location ID
+/** Return all mock incidents nested under the given location ID. */
 function getIncidentsByLocationId(locationId: number): NestedIncidentDto[] {
   return mockData.incidents
     .filter((incident) => incident.location_id === locationId)
@@ -159,7 +161,7 @@ function getIncidentsByLocationId(locationId: number): NestedIncidentDto[] {
     }));
 }
 
-// Parse Locations
+/** Locations parsed from the shared mock JSON, with nested incidents attached. */
 export const LOCATIONS: LocationDto[] = mockData.locations.map((loc) => ({
   id: loc.id,
   hold_expiration: parseRelativeDate(loc.hold_expiration),
@@ -178,21 +180,21 @@ export const LOCATIONS: LocationDto[] = mockData.locations.map((loc) => ({
   incidents: getIncidentsByLocationId(loc.id),
 }));
 
-// Helper to find student by ID
+/** Look up a student in `STUDENTS` by ID, throwing if not found. */
 function findStudentById(id: number): StudentDto {
   const student = STUDENTS.find((s) => s.id === id);
   if (!student) throw new Error(`Student with id ${id} not found`);
   return student;
 }
 
-// Helper to find location by ID
+/** Look up a location in `LOCATIONS` by ID, throwing if not found. */
 function findLocationById(id: number): LocationDto {
   const location = LOCATIONS.find((l) => l.id === id);
   if (!location) throw new Error(`Location with id ${id} not found`);
   return location;
 }
 
-// Parse contact two objects
+/** Map the raw mock `contact_two` shape to a `ContactDto`. */
 function parseContactTwo(
   contactData: (typeof mockData)["parties"][0]["contact_two"]
 ): ContactDto {
@@ -205,7 +207,7 @@ function parseContactTwo(
   };
 }
 
-// Parse Parties
+/** Parties parsed from the shared mock JSON, with all nested relations resolved. */
 export const PARTIES: PartyDto[] = mockData.parties.map((party) => ({
   id: party.id,
   party_datetime: parseRelativeDate(party.party_datetime) ?? new Date(),

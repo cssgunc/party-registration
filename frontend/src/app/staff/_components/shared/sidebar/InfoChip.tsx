@@ -15,6 +15,13 @@ interface InfoChipProps {
   sidebarContent: ReactNode;
 }
 
+/**
+ * Inline pill button that opens a detail panel in the staff sidebar.
+ *
+ * Renders a ghost button showing `shortName`; clicking it toggles a
+ * `SidebarContent` panel keyed by `chipKey`. While this panel is active
+ * the button adopts the primary colour so the selected row is visually clear.
+ */
 export function InfoChip({
   chipKey,
   shortName,

@@ -23,6 +23,12 @@ interface Props {
   variant?: "default" | "destructive";
 }
 
+/**
+ * Generic confirmation dialog with a cancel and a confirm button.
+ *
+ * Calls `onConfirm` and closes the dialog when the user confirms; the `variant`
+ * prop controls the confirm button style (defaults to `"destructive"`).
+ */
 export function ConfirmDialog({
   open,
   onOpenChange,

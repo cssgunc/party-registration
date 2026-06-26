@@ -18,11 +18,11 @@ def validate_sql_identifier(name: str) -> str:
 
 
 def server_url(sync: bool = False) -> URL:
-    """
-    Gets the URL for admin operations (CREATE/DROP DATABASE).
+    """Build the server-level URL for admin operations (CREATE/DROP DATABASE).
 
-    :param sync: Whether to use synchronous or asynchronous database driver
-    :type sync: bool
+    Args:
+        sync: Use the synchronous ``pymysql`` driver when True, otherwise the
+            async ``aiomysql`` driver.
     """
     return URL.create(
         drivername="mysql+pymysql" if sync else "mysql+aiomysql",
@@ -34,11 +34,10 @@ def server_url(sync: bool = False) -> URL:
 
 
 def database_url(database: str = env.MYSQL_DATABASE) -> URL:
-    """
-    Gets the URL for the application database.
+    """Build the async URL for the application database.
 
-    :param database: The database name (default: ocsl)
-    :type database: str
+    Args:
+        database: Target database name; defaults to ``MYSQL_DATABASE`` from config.
     """
     return URL.create(
         drivername="mysql+aiomysql",
@@ -65,7 +64,7 @@ AsyncSessionLocal = async_sessionmaker(
 
 
 class EntityBase(DeclarativeBase):
-    pass
+    """Declarative base class for all SQLAlchemy ORM entity models."""
 
 
 async def get_session() -> AsyncGenerator[AsyncSession]:

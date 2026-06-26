@@ -5,6 +5,7 @@ export const metadata: Metadata = {
   description: "About Party Smart",
 };
 
+/** Layout for the about-party-smart route; sets the page title and renders children without additional wrapping. */
 export default function StudentLayout({
   children,
 }: {

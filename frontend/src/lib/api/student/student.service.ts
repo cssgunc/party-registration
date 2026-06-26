@@ -18,15 +18,23 @@ import {
   convertStudent,
 } from "./student.types";
 
+/**
+ * Typed client for the `/api/students/me` endpoints used by the student-facing flow.
+ *
+ * Covers the current student's profile, residence, and party list. Inject a
+ * custom Axios instance for testing; defaults to the shared `apiClient`.
+ */
 export class StudentService {
   constructor(private client: AxiosInstance = apiClient) {}
 
+  /** Fetch the authenticated student's profile (`GET /api/students/me`). */
   async getCurrentStudent(): Promise<StudentSelfDto> {
     const response =
       await this.client.get<StudentSelfDtoBackend>("/students/me");
     return convertStudent(response.data, "self");
   }
 
+  /** Update the authenticated student's contact info (`PUT /api/students/me`). */
   async updateMe(data: StudentData): Promise<StudentSelfDto> {
     const response = await this.client.put<StudentSelfDtoBackend>(
       "/students/me",
@@ -35,6 +43,7 @@ export class StudentService {
     return convertStudent(response.data, "self");
   }
 
+  /** Set or replace the student's registered residence (`PUT /api/students/me/residence`). */
   async updateResidence(data: ResidenceUpdateDto): Promise<LocationDto> {
     const response = await this.client.put<LocationDtoBackend>(
       "/students/me/residence",
@@ -43,6 +52,7 @@ export class StudentService {
     return convertLocation(response.data);
   }
 
+  /** Fetch the student's own party registrations (`GET /api/students/me/parties`). */
   async getMyParties(): Promise<PartyStudentDto[]> {
     const response = await this.client.get<PartyStudentDtoBackend[]>(
       "/students/me/parties"

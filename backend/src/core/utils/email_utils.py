@@ -108,6 +108,8 @@ def _render_plain(body_html: str) -> str:
 
 
 class EmailService:
+    """Async SMTP email sender that applies the shared PartySmart HTML template."""
+
     async def send_email(
         self,
         to: str,

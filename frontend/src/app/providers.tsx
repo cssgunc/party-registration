@@ -7,7 +7,10 @@ import { SessionProvider } from "next-auth/react";
 import { useEffect } from "react";
 import { Toaster } from "sonner";
 
-// Component that sets up the error interceptor
+/**
+ * Mounts the global Axios error interceptor that shows a snackbar for
+ * unexpected API errors. Renders nothing — side-effect only.
+ */
 function InterceptorSetup() {
   const { openSnackbar } = useSnackbar();
 
@@ -28,6 +31,12 @@ const queryClient = new QueryClient({
   },
 });
 
+/**
+ * Composes all client-side context providers for the application.
+ *
+ * Stacks NextAuth's `SessionProvider`, React Query's `QueryClientProvider`,
+ * `SnackbarProvider`, the Axios error interceptor, and the Sonner `Toaster`.
+ */
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>

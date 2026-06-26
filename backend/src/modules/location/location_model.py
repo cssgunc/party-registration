@@ -5,17 +5,21 @@ from src.modules.location.location_base_model import LocationData
 
 
 class AutocompleteInput(BaseModel):
-    # Input for address autocomplete
+    """Request body for the address autocomplete endpoint."""
+
     address: str
 
 
 class AutocompleteResult(BaseModel):
-    # Result from Google Maps autocomplete
+    """A single address suggestion returned by Google Maps autocomplete."""
+
     formatted_address: str
     google_place_id: str
 
 
 class LocationDto(LocationData):
+    """Full location representation returned to staff and admins, including all incidents."""
+
     id: int
     incidents: list[NestedIncidentDto] = Field(default_factory=list)
 
@@ -28,11 +32,18 @@ class LocationStudentDto(LocationData):
 
 
 class PaginatedLocationResponse(PaginatedResponse[LocationDto]):
-    """Paginated response for locations."""
+    """Paginated list of locations for the staff/admin view."""
 
     pass
 
 
 class LocationCreate(BaseModel):
+    """Request body for creating or updating a location.
+
+    The ``google_place_id`` is resolved via Google Maps to populate all address
+    fields. ``hold_expiration`` is optional and is set by admins to bar a location
+    from hosting parties until the given time.
+    """
+
     google_place_id: str
     hold_expiration: AwareDatetime | None = None

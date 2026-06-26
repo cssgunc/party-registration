@@ -24,6 +24,14 @@ const TAB_CONTENT: Record<PoliceAdminTabSlug, React.ReactNode> = {
   incidents: <IncidentTable />,
 };
 
+/**
+ * Dynamic tab page for the police admin dashboard (`/police/admin/[tab]`).
+ *
+ * Renders either the Accounts management table or the Incidents table depending
+ * on the active tab slug. Invalid slugs are redirected to the default tab. A
+ * compact `Select` control is shown on mobile while a `Tabs` strip is shown on
+ * larger screens; both update the URL on change.
+ */
 export default function PoliceAdminTabPage() {
   const { tab } = useParams<{ tab: string }>();
   const router = useRouter();

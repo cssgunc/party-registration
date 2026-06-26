@@ -7,7 +7,10 @@ from src.modules.auth.auth_service import AuthService
 
 
 class HTTPBearer401(HTTPBearer):
+    """HTTPBearer variant that raises CredentialsException (401) instead of the default 403."""
+
     async def __call__(self, request: Request):
+        """Extract and return the bearer credentials, raising 401 on any failure."""
         try:
             return await super().__call__(request)
         except Exception as e:
@@ -18,8 +21,23 @@ bearer_scheme = HTTPBearer401()
 
 
 def authenticate_by_role(*roles: StringRole):
-    """
-    Middleware factory to ensure the authenticated user has one of the specified roles.
+    """Return a FastAPI dependency that validates the JWT and enforces role membership.
+
+    Decodes the bearer token from the Authorization header and verifies that
+    the caller's role is one of the allowed ``roles``. Pass no roles to skip
+    the role check (authenticate any valid token).
+
+    Args:
+        *roles: Roles permitted to access the endpoint. If empty, any
+            authenticated user is allowed.
+
+    Returns:
+        An async FastAPI dependency that resolves to the ``AuthPrincipal`` of
+        the authenticated caller.
+
+    Raises:
+        CredentialsException: If the token is missing, invalid, or expired (401).
+        ForbiddenException: If the caller's role is not in ``roles`` (403).
     """
 
     async def _authenticate(

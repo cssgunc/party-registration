@@ -25,6 +25,12 @@ const SnackbarContext = createContext<SnackbarContextType | undefined>(
   undefined
 );
 
+/**
+ * Provides snackbar/toast functionality to the component tree via `SnackbarContext`.
+ *
+ * Wraps Sonner's `toast` calls behind a consistent API (typed toast variants,
+ * promise toasts) so consumers never import Sonner directly.
+ */
 export function SnackbarProvider({ children }: { children: ReactNode }) {
   const openSnackbar = (
     message: string,
@@ -86,6 +92,11 @@ export function SnackbarProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * Access the snackbar context.
+ *
+ * Must be called inside a `SnackbarProvider`; throws otherwise.
+ */
 export function useSnackbar(): SnackbarContextType {
   const context = useContext(SnackbarContext);
   if (context === undefined) {

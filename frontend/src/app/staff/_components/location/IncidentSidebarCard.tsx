@@ -25,6 +25,13 @@ type IncidentSidebarCardProps = {
   onEditIncidentAction: (incident: NestedIncidentDto) => void;
 };
 
+/**
+ * Collapsible card representing a single incident inside the location's incident sidebar panel.
+ *
+ * Shows date, time, and severity flag in the trigger row. Admin users get a
+ * dropdown menu with edit and delete options. Expanding the card reveals the
+ * reference ID and description.
+ */
 function IncidentSidebarCard({
   incident,
   open,

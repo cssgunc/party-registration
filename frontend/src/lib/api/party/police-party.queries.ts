@@ -136,6 +136,7 @@ function addOptimisticIncidentToNearbyResponse(
   };
 }
 
+/** Query Google Place details for an address; disabled until a `placeId` is given. */
 export function usePlaceDetails(
   placeId: string | undefined,
   options?: UseQueryOptions<AddressData>
@@ -148,6 +149,12 @@ export function usePlaceDetails(
   });
 }
 
+/**
+ * Query confirmed parties in a date range for the police view (PII-stripped).
+ *
+ * Translates the date range into backend filter params and is disabled until
+ * both `startDate` and `endDate` are set.
+ */
 export function usePoliceParties(
   { startDate, endDate }: { startDate?: Date; endDate?: Date },
   options?: UseQueryOptions<PartyPoliceDto[]>
@@ -174,6 +181,11 @@ export function usePoliceParties(
   });
 }
 
+/**
+ * Query the proximity search for a place + date range (police view).
+ *
+ * Disabled until `placeId`, `startDate`, and `endDate` are all set.
+ */
 export function usePartiesNearby(
   {
     placeId,
@@ -191,7 +203,13 @@ export function usePartiesNearby(
   });
 }
 
-/* Extended Create Incident hook to optimistically update and refresh police party data */
+/**
+ * Create an incident from the police view, optimistically updating party data.
+ *
+ * Extends the base create-incident mutation: it injects the new incident into the
+ * cached proximity-search results (exact match + nearby parties) so the map
+ * updates immediately, then refreshes on settle.
+ */
 export function usePoliceCreateIncident<TContext = unknown>(
   options?: OptimisticMutationOptions<
     IncidentDto,

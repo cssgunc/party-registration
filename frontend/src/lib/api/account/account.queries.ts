@@ -35,6 +35,7 @@ type UpdatePoliceAccountVars = {
   data: PoliceAccountUpdate;
 };
 
+/** Query the paginated accounts list for the staff/admin table. */
 export function useAccounts(
   serverParams?: ServerTableParams,
   options?: UseQueryOptions<PaginatedResponse<AccountDto>>
@@ -47,6 +48,7 @@ export function useAccounts(
   });
 }
 
+/** Query the flat (non-paginated) list of police accounts. */
 export function usePoliceAccounts(
   serverParams?: ServerTableParams,
   options?: UseQueryOptions<PoliceAccountDto[]>
@@ -59,6 +61,7 @@ export function usePoliceAccounts(
   });
 }
 
+/** Query the paginated police accounts list for the admin table. */
 export function usePoliceAccountsPaginated(
   serverParams?: ServerTableParams,
   options?: UseQueryOptions<PaginatedResponse<PoliceAccountDto>>
@@ -71,6 +74,7 @@ export function usePoliceAccountsPaginated(
   });
 }
 
+/** Mutation to send a staff/admin invite, invalidating the accounts and aggregate caches on success. */
 export function useCreateAccount(
   options?: OptimisticMutationOptions<void, Error, CreateInviteDto>
 ) {
@@ -88,6 +92,7 @@ export function useCreateAccount(
   });
 }
 
+/** Mutation to delete a pending invite token, invalidating the aggregate accounts cache on success. */
 export function useDeleteInvite(
   options?: OptimisticMutationOptions<void, Error, number>
 ) {
@@ -104,6 +109,7 @@ export function useDeleteInvite(
   });
 }
 
+/** Mutation to rotate and resend an invite token, invalidating the aggregate accounts cache on success. */
 export function useResendInvite(
   options?: OptimisticMutationOptions<void, Error, number>
 ) {
@@ -120,6 +126,7 @@ export function useResendInvite(
   });
 }
 
+/** Query the paginated aggregate accounts view (staff, police, and pending invites combined). */
 export function useAggregateAccounts(
   serverParams?: ServerTableParams,
   options?: UseQueryOptions<PaginatedResponse<AggregateAccountDto>>
@@ -132,6 +139,7 @@ export function useAggregateAccounts(
   });
 }
 
+/** Mutation to update an account's role, invalidating the accounts and aggregate caches on success. */
 export function useUpdateAccount(
   options?: OptimisticMutationOptions<AccountDto, Error, UpdateAccountVars>
 ) {
@@ -150,6 +158,7 @@ export function useUpdateAccount(
   });
 }
 
+/** Mutation to delete an account, invalidating the accounts and aggregate caches on success. */
 export function useDeleteAccount(
   options?: OptimisticMutationOptions<AccountDto, Error, number>
 ) {
@@ -167,6 +176,7 @@ export function useDeleteAccount(
   });
 }
 
+/** Mutation to update a police account's details, invalidating the police and aggregate caches on success. */
 export function useUpdatePoliceAccount(
   options?: OptimisticMutationOptions<
     PoliceAccountDto,
@@ -189,12 +199,20 @@ export function useUpdatePoliceAccount(
   });
 }
 
+/** Mutation that downloads the aggregate accounts view as an Excel file. */
 export function useDownloadAggregateAccountsCsv() {
   return useMutation<void, Error, ServerTableParams | undefined>({
     mutationFn: (params) => accountService.downloadAggregateAccountsCsv(params),
   });
 }
 
+/**
+ * Mutation to delete a police account, with an optimistic update.
+ *
+ * Immediately removes the account from the cached police accounts list and
+ * rolls back on error. Invalidates both the police and aggregate caches on
+ * success.
+ */
 export function useDeletePoliceAccount(
   options?: OptimisticMutationOptions<PoliceAccountDto, Error, number>
 ) {
@@ -234,6 +252,7 @@ export function useDeletePoliceAccount(
   });
 }
 
+/** Mutation that downloads the filtered police accounts list as an Excel file. */
 export function useDownloadPoliceAccountsCsv(
   options?: OptimisticMutationOptions<
     void,

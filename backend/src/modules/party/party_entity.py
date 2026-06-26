@@ -25,6 +25,13 @@ if TYPE_CHECKING:
 
 
 class PartyEntity(MappedAsDataclass, EntityBase):
+    """Persistence model for a registered party (``parties`` table).
+
+    Contact one is a foreign key to a student account; contact two is stored as
+    denormalized columns since it need not be a registered user. The ``to_*_dto``
+    helpers require relationships to be eagerly loaded (see `load_dto`).
+    """
+
     __tablename__ = "parties"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, init=False)
@@ -59,6 +66,7 @@ class PartyEntity(MappedAsDataclass, EntityBase):
 
     @classmethod
     def from_data(cls, data: PartyData) -> Self:
+        """Build an unsaved entity from already-resolved `PartyData`."""
         return cls(
             party_datetime=data.party_datetime,
             location_id=data.location_id,
@@ -73,6 +81,11 @@ class PartyEntity(MappedAsDataclass, EntityBase):
 
     @classmethod
     def from_draft(cls, draft: PartyDraft) -> Self:
+        """Build an unsaved entity from a validated `PartyDraft`.
+
+        Assumes the draft has passed the rules layer; ``location`` must be set
+        (the ``NO_RESIDENCE`` rule guarantees this for student flows).
+        """
         assert draft.location is not None, "location must be set before persisting draft"
         return cls.from_data(
             PartyData(
@@ -84,6 +97,7 @@ class PartyEntity(MappedAsDataclass, EntityBase):
         )
 
     def apply_draft(self, draft: PartyDraft) -> None:
+        """Mutate this persisted entity in place to match a validated draft (update flow)."""
         assert draft.location is not None, "location must be set before applying draft"
         self.party_datetime = draft.party_datetime
         self.location_id = draft.location.id
@@ -91,7 +105,7 @@ class PartyEntity(MappedAsDataclass, EntityBase):
         self.set_contact_two(draft.contact_two)
 
     def to_police_dto(self) -> PartyPoliceDto:
-        """Convert entity to police DTO — contacts stripped of PII. Requires relationships loaded"""
+        """Convert to the police DTO, stripping contact PII. Requires relationships loaded."""
         party_dt = self.party_datetime
         if party_dt.tzinfo is None:
             party_dt = party_dt.replace(tzinfo=UTC)
@@ -146,11 +160,11 @@ class PartyEntity(MappedAsDataclass, EntityBase):
         )
 
     async def load_dto(self, session: AsyncSession) -> PartyDto:
-        """
-        Load party with relationships from database and convert to model.
-        Should be used to get the model only if relationships haven't been loaded yet.
-        """
+        """Re-fetch this party with relationships eagerly loaded, then convert to a DTO.
 
+        Use when relationships may not already be loaded (e.g. right after an
+        insert) and a direct `to_dto` would trigger lazy-load errors.
+        """
         result = await session.execute(
             select(self.__class__)
             .where(self.__class__.id == self.id)
@@ -166,12 +180,14 @@ class PartyEntity(MappedAsDataclass, EntityBase):
         return party_entity.to_dto()
 
     def has_occurred(self) -> bool:
+        """Return whether the party's start time is in the past (UTC)."""
         party_dt = self.party_datetime
         if party_dt.tzinfo is None:
             party_dt = party_dt.replace(tzinfo=UTC)
         return party_dt <= datetime.now(UTC)
 
     def set_contact_two(self, contact: ContactDto) -> None:
+        """Copy a `ContactDto` into this entity's denormalized contact-two columns."""
         self.contact_two_email = contact.email
         self.contact_two_first_name = contact.first_name
         self.contact_two_last_name = contact.last_name

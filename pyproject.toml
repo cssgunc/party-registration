@@ -19,11 +19,25 @@ line-length = 100
 target-version = "py313"  # Should match Dockerfile
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "B", "UP", "C4", "SIM", "RUF", "N", "PLC0415"]
+select = ["E", "F", "W", "I", "B", "UP", "C4", "SIM", "RUF", "N", "PLC0415", "D"]
 fixable = ["E", "F", "W", "I", "B", "UP", "C4", "SIM", "RUF", "N"]
 ignore = [
   "B008", # Allows use of Depends()
+  "D100", # Missing docstring in public module — module-level docstrings not required
+  "D104", # Missing docstring in public package (__init__.py)
+  "D105", # Missing docstring in magic method (e.g. __init__, __repr__)
+  "D107", # Missing docstring in __init__ — document the class instead
 ]
+
+[tool.ruff.lint.pydocstyle]
+# Google-style docstrings. See backend/AGENTS.md for the convention + when to skip.
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+# Tests, migrations, and one-off scripts don't need docstrings.
+"backend/test/**" = ["D"]
+"backend/alembic/**" = ["D"]
+"backend/script/**" = ["D"]
 
 [tool.ruff.format]
 quote-style = "double"

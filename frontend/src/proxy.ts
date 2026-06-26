@@ -12,6 +12,10 @@ const PUBLIC_POLICE_PATHS = new Set([
   "/police/reset-password",
 ]);
 
+/**
+ * Infer which role a path is intended for when the user is unauthenticated, so
+ * the request can be routed to the correct login (police login vs. SAML SSO).
+ */
 function getDefaultRoleForPath(pathname: string): AppRole | null {
   if (
     pathname === "/" ||
@@ -26,6 +30,13 @@ function getDefaultRoleForPath(pathname: string): AppRole | null {
   return null;
 }
 
+/**
+ * Route-access middleware run on every matched request.
+ *
+ * Lets public police auth paths through, redirects authenticated users to their
+ * dashboard when they lack the required role (or hit the login page), and sends
+ * unauthenticated users to police login or SAML SSO based on the target path.
+ */
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 

@@ -1,6 +1,4 @@
-"""
-Auth module for JWT authentication and token management.
-"""
+"""Auth module for JWT authentication and token management."""
 
 from .auth_model import AccessTokenDto, PoliceCredentialsDto, RefreshTokenDto, TokensDto
 from .auth_router import router

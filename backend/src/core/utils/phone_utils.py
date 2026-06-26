@@ -1,4 +1,5 @@
 def digits_only(phone: str) -> str:
+    """Strip all non-digit characters from a phone string."""
     return "".join(filter(str.isdigit, phone))
 
 

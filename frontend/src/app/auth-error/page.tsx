@@ -41,6 +41,13 @@ const DEFAULT_ERROR = {
     "An unexpected error occurred. Please try again or contact support if the problem persists.",
 };
 
+/**
+ * Error page shown after a failed SSO/SAML sign-in.
+ *
+ * Maps the `error` query param to a friendly title/description; permanent
+ * failures (access denied, missing email) show a Contact Support link instead
+ * of a retry button.
+ */
 export default async function AuthErrorPage({ searchParams }: Props) {
   const { error } = await searchParams;
   const { title, description } =

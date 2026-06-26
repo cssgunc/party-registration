@@ -23,6 +23,7 @@ import {
   useState,
 } from "react";
 
+/** Build the column-id -> server filter config map from a table's column defs. */
 function buildColumnFilterMap<T>(
   columns: ColumnDef<T, unknown>[]
 ): ServerColumnMap {
@@ -48,6 +49,12 @@ function areSortingStatesEqual(a: SortingState, b: SortingState) {
 const DEFAULT_PAGE_SIZE = 50;
 const VALID_PAGE_SIZES = [10, 25, 50, 100];
 
+/**
+ * Read a previously persisted page size from localStorage, if valid.
+ *
+ * Returns undefined on SSR, missing/invalid storage, or a value outside the
+ * allowed page sizes — callers fall back to the default page size.
+ */
 function resolveStoredPageSize(
   storageKey: string | undefined
 ): number | undefined {
@@ -92,6 +99,22 @@ export type UseServerTableStateResult = {
   };
 };
 
+/**
+ * Manage server-side pagination, sorting, filtering, and search for a data table.
+ *
+ * Owns the TanStack Table state (pagination/sorting/columnFilters/globalFilter)
+ * and derives the `ServerTableParams` sent to the backend. Column and global
+ * filter changes are debounced (300ms) and reset to page 1; the chosen page size
+ * is persisted to localStorage under `pageSizeStorageKey` when provided.
+ *
+ * Returns the derived `serverParams`, the `columnFilterMap` (column id ->
+ * backend field config), the raw `tableState`, and `actions` to mutate it.
+ * `syncServerSorting` reconciles the table's sort UI with the sort the server
+ * actually applied, without clobbering an in-flight user selection.
+ *
+ * @param columns - Column defs; their `meta.filter` drives the server filter map.
+ * @param pageSizeStorageKey - Optional key to persist the page size per table.
+ */
 export function useServerTableState<T>({
   columns,
   pageSizeStorageKey,

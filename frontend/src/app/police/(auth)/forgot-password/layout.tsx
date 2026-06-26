@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+/** Layout for the forgot-password page; passes children through without modification. */
 export default function PoliceForgotPasswordLayout({
   children,
 }: {

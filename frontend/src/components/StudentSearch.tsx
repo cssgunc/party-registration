@@ -32,6 +32,10 @@ interface StudentSearchProps {
   error?: string;
 }
 
+/**
+ * Wrap the first occurrence of `query` (case-insensitive) in `text` with a
+ * `<strong>` element. Returns the original string when there is no match.
+ */
 function highlightMatch(text: string, query: string): React.ReactNode {
   if (!query) return text;
   const index = text.toLowerCase().indexOf(query.toLowerCase());
@@ -45,6 +49,14 @@ function highlightMatch(text: string, query: string): React.ReactNode {
   );
 }
 
+/**
+ * Highlight a digit-sequence match inside a formatted phone number.
+ *
+ * Strips non-digit characters from `query` to find the match position in the
+ * raw digits of `rawPhone`, then maps that back to the formatted string's
+ * character positions so the `<strong>` span covers the correct characters
+ * (including formatting punctuation like parentheses and dashes).
+ */
 function highlightPhoneMatch(rawPhone: string, query: string): React.ReactNode {
   const digitQuery = query.replace(/\D/g, "");
   const formatted = formatPhoneNumber(rawPhone);

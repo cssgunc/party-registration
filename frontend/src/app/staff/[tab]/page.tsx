@@ -32,6 +32,13 @@ const TAB_CONTENT: Record<TabSlug, React.ReactNode> = {
   accounts: <AccountTable />,
 };
 
+/**
+ * Staff dashboard page rendered for a given `[tab]` route segment.
+ *
+ * Reads the active tab from the URL, guards admin-only tabs by redirecting
+ * non-admins to the default tab, and renders the corresponding table
+ * component inside a tab switcher (tabs on desktop, a select on mobile).
+ */
 export default function StaffTabPage() {
   const { tab } = useParams<{ tab: string }>();
   const router = useRouter();

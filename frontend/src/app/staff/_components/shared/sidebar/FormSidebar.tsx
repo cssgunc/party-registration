@@ -33,6 +33,15 @@ type FormSidebarProps<T> = {
 const resolveText = <T,>(value: ResolvableText<T>, row: T) =>
   typeof value === "function" ? value(row) : value;
 
+/**
+ * Sidebar panel that renders a create or edit form for a table row.
+ *
+ * Selects between `modes.create` and `modes.edit` based on the current
+ * `mode` value, resolves the key, title, and description (which may be
+ * static strings or row-based functions), and delegates rendering to
+ * `SidebarContent`. Returns null when no mode is active or when the
+ * required config for the active mode is missing.
+ */
 export function FormSidebar<T>({
   mode,
   row,

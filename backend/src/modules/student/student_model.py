@@ -10,6 +10,8 @@ if TYPE_CHECKING:
 
 
 class ContactPreference(enum.Enum):
+    """Preferred method for contacting a student or party contact."""
+
     CALL = "call"
     TEXT = "text"
 
@@ -23,7 +25,7 @@ class StudentData(BaseModel):
 
 
 class StudentUpdateDto(BaseModel):
-    """DTO for admin creating or updating a student (without names - those are in Account)."""
+    """Request body for an admin creating or updating a student's mutable fields."""
 
     phone_number: PhoneNumber
     contact_preference: ContactPreference
@@ -34,20 +36,20 @@ class StudentUpdateDto(BaseModel):
 
 
 class SelfUpdateStudentDto(BaseModel):
-    """DTO for students updating their own information."""
+    """Request body for a student updating their own contact information."""
 
     phone_number: PhoneNumber
     contact_preference: ContactPreference
 
 
 class ResidenceUpdateDto(BaseModel):
-    """DTO for updating student residence."""
+    """Request body for a student setting or updating their residence."""
 
     residence_place_id: str
 
 
 class ResidenceDto(BaseModel):
-    """DTO for student residence information."""
+    """A student's chosen residence: the resolved location and the date it was chosen."""
 
     location: "LocationDto"
     residence_chosen_date: AwareDatetime
@@ -60,17 +62,10 @@ class ResidenceStudentDto(ResidenceDto):
 
 
 class StudentDto(BaseModel):
-    """
-    Admin-facing Student DTO combining student and account data.
+    """Full student representation for staff/admin, combining account and student data.
 
-    - id: account id (primary key)
-    - pid: PID string
-    - email: account email
-    - first_name, last_name: from account
-    - onyen: from account
-    - phone_number, contact_preference: from student (null if student info not yet provided)
-    - last_registered: from student
-    - residence: residence information if set
+    ``phone_number`` and ``contact_preference`` are ``None`` until the student
+    completes their profile; ``residence`` is ``None`` until one is chosen.
     """
 
     id: int
@@ -86,7 +81,7 @@ class StudentDto(BaseModel):
 
 
 class StudentSelfDto(StudentDto):
-    """Student self-view DTO — same as StudentDto but residence incidents are restricted."""
+    """Student self-view DTO — same fields as StudentDto but residence incidents are restricted."""
 
     residence: ResidenceStudentDto | None = None
 
@@ -104,7 +99,7 @@ class AutocompleteInput(BaseModel):
 
 
 class StudentSuggestionDto(BaseModel):
-    """DTO for student autocomplete suggestions."""
+    """A single autocomplete suggestion with the field that matched the query."""
 
     student_id: int
     first_name: str
@@ -114,7 +109,7 @@ class StudentSuggestionDto(BaseModel):
 
 
 class PaginatedStudentsResponse(PaginatedResponse[StudentDto]):
-    """Paginated response for students."""
+    """Paginated list of students for the staff/admin view."""
 
     pass
 

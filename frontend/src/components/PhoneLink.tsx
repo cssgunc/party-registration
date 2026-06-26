@@ -14,6 +14,15 @@ export type PhoneLinkProps = Omit<
   children?: ReactNode;
 };
 
+/**
+ * Renders a phone number as a clickable `tel:` or `sms:` link based on the
+ * contact preference, or as a plain `<span>` when the preference is absent or
+ * unsupported.
+ *
+ * The `href` scheme is `sms:` for `"text"` preference and `tel:` for `"call"`.
+ * Falls back to a span when `contactPreference` is null/undefined or the phone
+ * number has no digits.
+ */
 export function PhoneLink({
   phoneNumber,
   contactPreference,

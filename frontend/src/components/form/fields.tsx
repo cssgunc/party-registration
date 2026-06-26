@@ -58,6 +58,7 @@ type TextFieldProps<T extends FieldValues> = BaseFieldProps<T> & {
     "name" | "value" | "defaultValue" | "onChange" | "onBlur" | "className"
   >;
 
+/** react-hook-form field wiring a plain text (or typed) `<Input>` with label, description, and validation message. */
 export function TextField<T extends FieldValues>({
   control,
   name,
@@ -108,6 +109,12 @@ type PhoneFieldProps<T extends FieldValues> = BaseFieldProps<T> & {
   autoComplete?: string;
 };
 
+/**
+ * react-hook-form field for a phone number input.
+ *
+ * Displays the formatted `(XXX) XXX-XXXX` representation while storing only
+ * the raw 10 digits in the form state. Caps input at 14 visible characters.
+ */
 export function PhoneField<T extends FieldValues>({
   control,
   name,
@@ -164,6 +171,12 @@ type PasswordFieldProps<T extends FieldValues> = BaseFieldProps<T> & {
   inputClassName?: string;
 };
 
+/**
+ * react-hook-form field for a password input with a show/hide toggle.
+ *
+ * Toggles between `type="password"` and `type="text"` via an icon button
+ * positioned inside the input.
+ */
 export function PasswordField<T extends FieldValues>({
   control,
   name,
@@ -232,6 +245,7 @@ type TextareaFieldProps<T extends FieldValues> = BaseFieldProps<T> & {
     "name" | "value" | "defaultValue" | "onChange" | "onBlur" | "className"
   >;
 
+/** react-hook-form field wiring a `<Textarea>` with label, description, and validation message. */
 export function TextareaField<T extends FieldValues>({
   control,
   name,
@@ -285,6 +299,7 @@ type SelectFieldProps<T extends FieldValues> = BaseFieldProps<T> & {
   triggerTitle?: string;
 };
 
+/** react-hook-form field wiring a shadcn `<Select>` with label, description, and validation message. */
 export function SelectField<T extends FieldValues>({
   control,
   name,
@@ -349,6 +364,7 @@ type DateFieldProps<T extends FieldValues> = BaseFieldProps<T> &
     "value" | "onChange" | "onBlur" | "aria-invalid"
   >;
 
+/** react-hook-form field wiring the `<DatePicker>` with label, description, and validation message. */
 export function DateField<T extends FieldValues>({
   control,
   name,
@@ -402,6 +418,15 @@ type AddressFieldProps<T extends FieldValues> = BaseFieldProps<T> & {
     "onSelect" | "error" | "id"
   >;
 
+/**
+ * react-hook-form field wiring the `<AddressSearch>` autocomplete with label,
+ * description, and validation message.
+ *
+ * By default stores the `formatted_address` string in the field; supply
+ * `getStoredValue` to store a different derived value (e.g. `google_place_id`).
+ * Use `onSelect` as a side-effect hook (e.g. to populate a companion field)
+ * without overriding the stored value.
+ */
 export function AddressField<T extends FieldValues>({
   control,
   name,

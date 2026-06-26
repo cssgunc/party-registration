@@ -20,6 +20,10 @@ def current_academic_year_start(date: datetime | None = None) -> datetime:
 
 
 def is_same_academic_year(date1: datetime | None, date2: datetime | None = None) -> bool:
+    """Return True if date1 and date2 fall in the same academic year.
+
+    date2 defaults to now (UTC) when omitted. Returns False if date1 is None.
+    """
     if date1 is None:
         return False
 

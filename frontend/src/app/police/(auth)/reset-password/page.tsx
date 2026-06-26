@@ -27,6 +27,10 @@ const resetPasswordSchema = z
 
 type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;
 
+/**
+ * Police reset-password page; wraps `PoliceResetPasswordContent` in a
+ * `Suspense` boundary to allow reading the `token` search param.
+ */
 export default function PoliceResetPasswordPage() {
   return (
     <Suspense>
@@ -35,6 +39,13 @@ export default function PoliceResetPasswordPage() {
   );
 }
 
+/**
+ * Form for setting a new password using a token from a reset-password email.
+ *
+ * Shows an error state immediately when the token is missing from the URL, and
+ * a success state after the password is updated, with a link back to login.
+ * Maps the 401 response to a human-readable "link expired" message.
+ */
 function PoliceResetPasswordContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");

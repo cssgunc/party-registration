@@ -2,6 +2,11 @@
 
 import DialogItem from "./DialogItem";
 
+/**
+ * Renders the "About Party Smart" informational panel with responsible hosting
+ * guidelines grouped into before, during, and after party sections via
+ * expandable `DialogItem` rows.
+ */
 export default function PartySmartInfo({ className }: { className?: string }) {
   return (
     <div className={className}>

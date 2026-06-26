@@ -31,6 +31,13 @@ interface LocationTableFormProps {
   isPending?: boolean;
 }
 
+/**
+ * Create/edit form for a location rendered in the staff sidebar.
+ *
+ * Collects a Chapel Hill address via autocomplete and an optional hold
+ * expiration date. A hold prevents students from registering parties at
+ * that address until the expiration date passes.
+ */
 export default function LocationTableForm({
   onSubmit,
   editData,

@@ -6,6 +6,12 @@ import {
   IncidentSeverityCounts,
 } from "@/lib/api/incident/incident.types";
 
+/**
+ * Toolbar header slot for the Incidents table showing per-severity counts.
+ *
+ * Renders a flag icon and count for each severity level. Displays skeleton
+ * placeholders while the query is loading or when counts are unavailable.
+ */
 export function IncidentSeverityCountsHeader({
   counts,
   isLoading,

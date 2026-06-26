@@ -5,6 +5,8 @@ from src.core.utils.query_utils import PaginatedResponse
 
 
 class PoliceRole(StrEnum):
+    """Role levels for a police account."""
+
     OFFICER = "officer"
     POLICE_ADMIN = "police_admin"
 
@@ -27,6 +29,7 @@ class PoliceSignupDto(BaseModel):
 
     @model_validator(mode="after")
     def passwords_match(self) -> "PoliceSignupDto":
+        """Reject the signup if ``password`` and ``confirm_password`` differ."""
         if self.password != self.confirm_password:
             raise ValueError("Passwords do not match")
         return self
@@ -47,6 +50,7 @@ class ResetPasswordDto(BaseModel):
 
     @model_validator(mode="after")
     def passwords_match(self) -> "ResetPasswordDto":
+        """Reject the reset if ``password`` and ``confirm_password`` differ."""
         if self.password != self.confirm_password:
             raise ValueError("Passwords do not match")
         return self

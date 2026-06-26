@@ -1,8 +1,8 @@
-"""
-Core utilities for server-side pagination, sorting, and filtering.
+"""Core utilities for server-side pagination, sorting, and filtering.
 
-This module provides reusable functions to apply pagination, sorting, and filtering
-to SQLAlchemy queries in a type-safe and flexible manner.
+Provides the `QueryService`, `QueryFieldSet`, and supporting types used by list
+endpoints to apply pagination, sorting, field-level filtering, and full-text search
+against SQLAlchemy async queries in a uniform, type-safe way.
 """
 
 from collections.abc import Callable
@@ -22,10 +22,16 @@ from sqlalchemy import Time as SATime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import SQLColumnExpression
 from src.core.database import get_session
-from src.core.exceptions import BadRequestException
+from src.core.exceptions import BadRequestException, error_response
 
 
 class PaginatedResponse[T](BaseModel):
+    """Paginated result envelope returned by list endpoints.
+
+    Carries a page of items alongside the metadata needed for the client to
+    render pagination controls and know the full result size.
+    """
+
     items: list[T]
     total_records: int
     page_size: int
@@ -43,6 +49,11 @@ class PaginatedResponse[T](BaseModel):
         pagination: "PaginationParams",
         sort: "SortParam",
     ) -> "PaginatedResponse":
+        """Construct a `PaginatedResponse` from query results and pagination state.
+
+        When `pagination.page_size` is `None` (all-items mode), `page_size` is set
+        to `total_records` and `total_pages` is 0 or 1 accordingly.
+        """
         if pagination.page_size is None:
             return cls(
                 items=items,
@@ -74,6 +85,24 @@ type QueryField = SQLColumnExpression[Any]
 
 
 class QueryFieldSet(BaseModel):
+    """Schema that maps logical API field names to their SQLAlchemy column expressions.
+
+    Declares which fields are available for sorting, filtering, and full-text
+    search on a given list endpoint.  The `fields` dict is the single source of
+    truth; `sortable`, `filterable`, and `searchable` restrict the allowed
+    subsets (defaulting to all fields when omitted).
+
+    Each value in `fields` is a `QueryField` (a `SQLColumnExpression`), so it
+    can be a plain column, a cast, a `func.*`, or any composed expression —
+    callers never expose raw SQL to the API consumer.
+
+    The `searchable` sequence supports two entry forms:
+
+    - `str` — match the field value with a single `ILIKE` pattern.
+    - `tuple[str, ...]` — concatenate the named fields with spaces before
+      matching (useful for searching a full name across first/last columns).
+    """
+
     model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
 
     fields: dict[str, QueryField]
@@ -84,6 +113,16 @@ class QueryFieldSet(BaseModel):
 
     @model_validator(mode="after")
     def validate_field_references(self) -> Self:
+        """Validate that all field name references point to declared fields.
+
+        Fills in `sortable` and `filterable` from `fields` when they are `None`,
+        then confirms every name in `sortable`, `filterable`, `searchable`, and
+        `default_sort` is present in `fields` (and that `default_sort.field` is
+        also in the sortable set).
+
+        Raises:
+            ValueError: If any referenced field name is not declared in `fields`.
+        """
         field_keys = set(self.fields)
 
         if self.sortable is None:
@@ -126,10 +165,12 @@ class QueryFieldSet(BaseModel):
 
     @property
     def sortable_set(self) -> set[str]:
+        """Return sortable field names as a set for O(1) membership checks."""
         return set(self.sortable) if self.sortable is not None else set(self.fields)
 
     @property
     def filterable_set(self) -> set[str]:
+        """Return filterable field names as a set for O(1) membership checks."""
         return set(self.filterable) if self.filterable is not None else set(self.fields)
 
 
@@ -143,6 +184,7 @@ class PaginationParams(BaseModel):
 
     @classmethod
     def from_dict(cls, params: dict[str, str]) -> Self:
+        """Parse pagination parameters from a flat query-string dict."""
         page_number = int(params.get("page_number", 1))
         page_size = int(params["page_size"]) if "page_size" in params else None
         return cls(page_number=page_number, page_size=page_size)
@@ -156,6 +198,8 @@ class PaginationParams(BaseModel):
 
 
 class SortOrder(str, Enum):
+    """Enumeration of SQL sort directions."""
+
     ASC = "asc"
     DESC = "desc"
 
@@ -168,6 +212,7 @@ class SortParam(BaseModel):
 
     @classmethod
     def from_dict(cls, params: dict[str, str]) -> Self | None:
+        """Parse a `SortParam` from a flat query-string dict, or return `None` if absent."""
         sort_by = params.get("sort_by")
         if sort_by is None:
             return None
@@ -176,6 +221,11 @@ class SortParam(BaseModel):
 
 
 def _parse_filter_value(value: str) -> bool | int | time_type | datetime | str:
+    """Coerce a raw query-string value to the most specific Python type.
+
+    Tries in order: boolean literal, integer, ISO time, ISO datetime, date-only
+    string (`%Y-%m-%d`), and falls back to the original string if nothing matches.
+    """
     if value.lower() in ("true", "false"):
         return value.lower() == "true"
     with suppress(ValueError):
@@ -190,6 +240,11 @@ def _parse_filter_value(value: str) -> bool | int | time_type | datetime | str:
 
 
 def _escape_like_wildcards(value: str, escape_char: str = "\\") -> str:
+    """Escape SQL `LIKE` wildcard characters in `value`.
+
+    Escapes the escape character itself first, then `%` and `_`, so that
+    user-supplied strings cannot accidentally match any character sequence.
+    """
     escaped = value.replace(escape_char, escape_char * 2)
     escaped = escaped.replace("%", f"{escape_char}%")
     escaped = escaped.replace("_", f"{escape_char}_")
@@ -201,24 +256,45 @@ FilterValidateFn = Callable[[QueryField], None]
 
 
 def _validate_comparison(field: QueryField) -> None:
+    """Reject comparison operators (gt/gte/lt/lte) on string or enum columns.
+
+    Raises:
+        BadRequestException: If the field's SQLAlchemy type is `String` or `Enum`.
+    """
     field_type = getattr(field, "type", None)
     if isinstance(field_type, (SAString, SAEnum)):
         raise BadRequestException("Comparison operators are not supported for string/enum fields")
 
 
 def _validate_contains(field: QueryField) -> None:
+    """Reject the `contains` operator on non-string columns.
+
+    Raises:
+        BadRequestException: If the field's SQLAlchemy type is not `String`.
+    """
     field_type = getattr(field, "type", None)
     if field_type is not None and not isinstance(field_type, SAString):
         raise BadRequestException("Operator 'contains' is only supported for string fields")
 
 
 def _validate_trange(field: QueryField) -> None:
+    """Reject the `trange` operator on string or enum columns.
+
+    Raises:
+        BadRequestException: If the field's SQLAlchemy type is `String` or `Enum`.
+    """
     field_type = getattr(field, "type", None)
     if isinstance(field_type, (SAString, SAEnum)):
         raise BadRequestException("Operator 'trange' is only supported for datetime/time fields")
 
 
 def _apply_trange(field: QueryField, value: list[time_type]) -> Any:
+    """Build a SQL time-range condition for `trange`, handling midnight wrap-around.
+
+    Casts the field to `TIME` before comparison.  When `from_time <= to_time` the
+    range is a simple `BETWEEN`-style `AND`; when the range crosses midnight (e.g.
+    22:00 to 02:00) it becomes an `OR` of two half-open intervals.
+    """
     from_time, to_time = value[0], value[1]
     time_field = cast(field, SATime)
     if from_time <= to_time:
@@ -233,16 +309,46 @@ def _op(
     apply: FilterApplyFn,
     validate: FilterValidateFn | None = None,
 ) -> tuple[str, FilterApplyFn, FilterValidateFn]:
+    """Bundle an operator string, its apply function, and optional validate function.
+
+    Used as the member constructor for `FilterOperator` enum values.  When
+    `validate` is omitted, a no-op lambda is substituted so callers never need
+    a `None` check.
+    """
     return value, apply, validate or (lambda _: None)
 
 
 class FilterOperator(StrEnum):
+    """Enumeration of supported filter operators for query parameters.
+
+    Each member bundles its string value (used in query-param keys), an
+    `apply_fn` that produces a SQLAlchemy `WHERE` clause expression, and an
+    optional `validate_fn` that raises `BadRequestException` when the operator
+    is used with an incompatible column type.
+
+    Operators whose value must be a comma-separated list in the query string
+    (`in`, `nin`, `trange`) are flagged by `is_list`.
+
+    Available operators:
+
+    - ``eq`` / ``ne`` — equality / inequality.
+    - ``gt`` / ``gte`` / ``lt`` / ``lte`` — ordered comparisons (numeric/datetime
+      only; rejected for string/enum columns).
+    - ``contains`` — case-insensitive substring match via ``ILIKE``; user input is
+      wildcard-escaped automatically (string columns only).
+    - ``in`` / ``nin`` — membership / exclusion; value is a comma-separated list.
+    - ``null`` / ``notnull`` — `IS NULL` / `IS NOT NULL`; value is ignored.
+    - ``trange`` — time-range match; value is ``from_time,to_time`` (ISO 8601);
+      handles midnight wrap-around.
+    """
+
     _apply_fn: FilterApplyFn
     _validate_fn: FilterValidateFn
 
     def __new__(
         cls, value: str, apply_fn: FilterApplyFn, validate_fn: FilterValidateFn | None = None
     ):
+        """Construct a `FilterOperator` member with its apply and validate callables."""
         obj = str.__new__(cls, value)
         obj._value_ = value
         obj._apply_fn = apply_fn
@@ -250,11 +356,17 @@ class FilterOperator(StrEnum):
         return obj
 
     def apply(self, field: QueryField, value: Any) -> Any:
+        """Validate field compatibility, then return the SQLAlchemy filter expression.
+
+        Raises:
+            BadRequestException: If the field type is incompatible with this operator.
+        """
         self._validate_fn(field)
         return self._apply_fn(field, value)
 
     @property
     def is_list(self) -> bool:
+        """Return `True` if this operator expects a list value (``in``, ``nin``, ``trange``)."""
         return self in (FilterOperator.IN, FilterOperator.NOT_IN, FilterOperator.TRANGE)
 
     EQUALS = _op("eq", apply=lambda f, v: f == v)
@@ -276,12 +388,34 @@ class FilterOperator(StrEnum):
 
 
 def _format_searchable_entry(entry: str | tuple[str, ...]) -> str:
+    """Format a searchable entry for display in OpenAPI descriptions.
+
+    A plain string is returned as-is; a tuple is joined with ` + ` to indicate
+    concatenated-field search (e.g. `("first_name", "last_name")` → `"first_name + last_name"`).
+    """
     if isinstance(entry, str):
         return entry
     return " + ".join(entry)
 
 
+# Standard error response for any route that accepts list-query params (the
+# `openapi_extra=get_paginated_openapi_params(...)` routes). Spread into the
+# route's `responses` so the 400 is documented consistently in one place:
+#   responses={**PAGINATED_QUERY_RESPONSES, 404: error_response(...)}
+PAGINATED_QUERY_RESPONSES: dict[int | str, dict[str, Any]] = {
+    400: error_response("Invalid sort or filter parameter: unknown field or unsupported operator"),
+}
+
+
 def get_paginated_openapi_params(field_set: QueryFieldSet) -> dict[str, Any]:
+    """Build the `openapi_extra` dict that documents list-query parameters for a route.
+
+    Returns an OpenAPI-compatible `{"parameters": [...]}` dict suitable for
+    passing as `openapi_extra=` on a FastAPI route decorator.  The generated
+    parameter descriptions are dynamically populated from the `field_set` so
+    the `/docs` UI always reflects the actual sortable, filterable, and
+    searchable fields for that endpoint.
+    """
     operators = ", ".join(op.value for op in FilterOperator)
     searchable = tuple(_format_searchable_entry(entry) for entry in field_set.searchable)
     filterable, sortable = field_set.filterable_set, field_set.sortable_set
@@ -373,6 +507,15 @@ class FilterParam(BaseModel):
     @field_validator("value")
     @classmethod
     def validate_value_for_operator(cls, v: Any, info: Any) -> Any:
+        """Ensure the filter value is compatible with its operator.
+
+        Forces `value` to `None` for null-check operators, and validates that
+        list operators (`in`, `nin`, `trange`) receive a list, with `trange`
+        requiring exactly two elements.
+
+        Raises:
+            ValueError: If the value shape does not match the operator's requirements.
+        """
         operator = info.data.get("operator")
 
         if operator in (FilterOperator.IS_NULL, FilterOperator.NOT_NULL):
@@ -388,6 +531,14 @@ class FilterParam(BaseModel):
 
     @classmethod
     def from_param(cls, key: str, raw: str) -> Self | None:
+        """Parse a single filter from a query-string key/value pair, or return `None`.
+
+        Expects keys in the form ``{field}_{operator}`` (e.g. ``status_eq``).
+        The rightmost ``_``-delimited segment is tried as an operator string; if
+        it is not a valid `FilterOperator` the key is silently ignored.  For
+        list operators the raw value is split on commas and each element is
+        independently coerced by `_parse_filter_value`.
+        """
         if "_" not in key:
             return None
         field, operator_str = key.rsplit("_", 1)
@@ -403,6 +554,7 @@ class FilterParam(BaseModel):
         return cls(field=field, operator=operator, value=value)
 
     def apply(self, field: QueryField) -> Any:
+        """Apply this filter to the given SQLAlchemy column expression."""
         return self.operator.apply(field, self.value)
 
 
@@ -416,6 +568,7 @@ class ListQueryParams(BaseModel):
 
     @classmethod
     def from_dict(cls, query_params: dict[str, str]) -> Self:
+        """Parse all list-query parameters from a flat query-string dict."""
         filter_params = [
             p
             for key, raw in query_params.items()
@@ -430,6 +583,12 @@ class ListQueryParams(BaseModel):
 
 
 class QueryService:
+    """FastAPI-injectable service for executing paginated, sorted, and filtered queries.
+
+    Inject via `Depends(QueryService)` in a router or service; the underlying
+    `AsyncSession` is resolved automatically through `get_session`.
+    """
+
     def __init__(self, session: AsyncSession = Depends(get_session)):
         self.session = session
 
@@ -442,6 +601,28 @@ class QueryService:
         field_set: QueryFieldSet,
         use_mappings: bool = False,
     ) -> PaginatedResponse[ModelType]:
+        """Execute a list query with filtering, sorting, search, and pagination applied.
+
+        The count query runs against the filtered/sorted/searched result set
+        (before pagination) so `total_records` accurately reflects all matching
+        rows.  Pass `use_mappings=True` when the query returns ad-hoc column
+        mappings rather than ORM model instances.
+
+        Args:
+            params: Parsed pagination, sort, filter, and search parameters.
+            base_query: Base `SELECT` statement to augment; must already include
+                any required `JOIN`s.
+            dto_converter: Callable that converts each row to `ModelType`.
+                Defaults to calling `.to_dto()` on ORM entities.
+            field_set: Field registry that governs which fields are sortable,
+                filterable, and searchable.
+            use_mappings: If `True`, rows are fetched as `RowMapping` dicts
+                instead of scalar ORM objects.
+
+        Raises:
+            BadRequestException: If any filter field or sort field is not
+                permitted by `field_set`.
+        """
         effective_sort = params.sort or field_set.default_sort
         query = self.apply_filters(base_query, params.filters, field_set)
         query = self.apply_sorting(query, effective_sort, field_set)
@@ -465,6 +646,11 @@ class QueryService:
     def apply_filters(
         self, query: Select, filters: list[FilterParam], field_set: QueryFieldSet
     ) -> Select:
+        """Append `WHERE` clauses for each filter parameter.
+
+        Raises:
+            BadRequestException: If a filter targets a field not in `field_set.filterable_set`.
+        """
         for filter_param in filters:
             if filter_param.field not in field_set.filterable_set:
                 raise BadRequestException(
@@ -476,6 +662,11 @@ class QueryService:
         return query
 
     def apply_sorting(self, query: Select, sort: SortParam, field_set: QueryFieldSet) -> Select:
+        """Append an `ORDER BY` clause from `sort`.
+
+        Raises:
+            BadRequestException: If `sort.field` is not in `field_set.sortable_set`.
+        """
         if sort.field not in field_set.sortable_set:
             raise BadRequestException(f"Sorting on field '{sort.field}' is not allowed")
         field = field_set.fields[sort.field]
@@ -483,6 +674,10 @@ class QueryService:
         return query.order_by(order_fn(field))
 
     def apply_pagination(self, query: Select, pagination: PaginationParams) -> Select:
+        """Apply `OFFSET` and `LIMIT` to the query based on `pagination`.
+
+        When `page_size` is `None`, neither clause is added (all rows are returned).
+        """
         if pagination.skip > 0:
             query = query.offset(pagination.skip)
         if pagination.page_size is not None:
@@ -490,6 +685,14 @@ class QueryService:
         return query
 
     def apply_search(self, query: Select, search: str | None, field_set: QueryFieldSet) -> Select:
+        """Append a full-text search `WHERE` clause across all searchable fields.
+
+        Each entry in `field_set.searchable` produces one `ILIKE` condition:
+        single-field entries match directly; tuple entries concatenate the named
+        fields with a space separator before matching.  All conditions are
+        combined with `OR`.  Returns the query unchanged when `search` is empty
+        or `field_set.searchable` is empty.
+        """
         if not search or not field_set.searchable:
             return query
         pattern = f"%{search}%"
@@ -517,6 +720,13 @@ class QueryService:
 
 
 def parse_list_query_params():
+    """Return a FastAPI `Depends` that parses list-query parameters from the request.
+
+    Parses pagination, sort, filter, and search parameters from the raw query
+    string and constructs a `ListQueryParams`.  Pydantic `ValidationError`s are
+    re-raised as `RequestValidationError` so FastAPI returns a 422 response.
+    """
+
     def dependency(request: Request) -> ListQueryParams:
         try:
             return ListQueryParams.from_dict(dict(request.query_params))
@@ -527,6 +737,13 @@ def parse_list_query_params():
 
 
 def parse_export_list_query_params():
+    """Return a FastAPI `Depends` that parses list-query params with pagination disabled.
+
+    Delegates to `parse_list_query_params` and then resets `pagination` to its
+    default (no page size limit), so export endpoints always return all matching
+    rows regardless of any `page_size` the client passed.
+    """
+
     def dependency(
         params: ListQueryParams = parse_list_query_params(),
     ) -> ListQueryParams:

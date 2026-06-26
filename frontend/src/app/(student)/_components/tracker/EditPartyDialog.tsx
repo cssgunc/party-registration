@@ -29,6 +29,11 @@ interface EditPartyDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+/**
+ * A dialog wrapper around `PartyRegistrationForm` that lets a student edit an
+ * existing party registration, pre-filling the form with the party's current
+ * values and submitting the changes via the update-party mutation.
+ */
 export function EditPartyDialog({
   party,
   open,

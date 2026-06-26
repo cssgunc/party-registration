@@ -8,6 +8,11 @@ interface InfoChipDetailsProps {
   fields: InfoField[];
 }
 
+/**
+ * Renders a vertical list of label/value pairs inside a sidebar detail panel.
+ *
+ * Each entry in `fields` is a two-element tuple `[label, value]`.
+ */
 export function InfoChipDetails({ fields }: InfoChipDetailsProps) {
   return (
     <div className="space-y-4 mt-3">

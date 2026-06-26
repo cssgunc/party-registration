@@ -15,6 +15,17 @@ const DEFAULT_STATUS_MESSAGES: Record<number, string> = {
   500: "Server error. Please try again later.",
 };
 
+/**
+ * Extract a user-facing error message from an unknown thrown value.
+ *
+ * For Axios errors the HTTP status is checked first against any caller-provided
+ * overrides in `options.status`, then against the built-in `DEFAULT_STATUS_MESSAGES`
+ * map. Any status ≥ 500 that has no specific override falls through to the 500
+ * message. Non-Axios errors (or Axios errors with no response) fall back to
+ * `options.fallback` if provided, otherwise to a generic retry message.
+ *
+ * @param options - Per-status message overrides and an optional generic fallback.
+ */
 export function getErrorMessage(
   error: unknown,
   options: ErrorMessageOptions = {}

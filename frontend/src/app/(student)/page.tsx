@@ -10,6 +10,12 @@ import Link from "next/link";
 import PartyRegistrationInfo from "./_components/info/PartyRegistrationInfo";
 import PartySmartInfo from "./_components/info/PartySmartInfo";
 
+/**
+ * The student dashboard home page, showing the party registration tracker and
+ * Party Smart completion status on the left, and the informational panels
+ * (About Party Registration and About Party Smart) on the right for wider
+ * viewports.
+ */
 export default function StudentDashboard() {
   const studentQuery = useCurrentStudent();
   const isStudentLoading = studentQuery.isLoading;

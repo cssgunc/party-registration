@@ -11,21 +11,23 @@ import {
   convertIncident,
 } from "./incident.types";
 
+/**
+ * Typed client for the `/api/incidents` endpoints.
+ *
+ * Each method calls the backend and maps raw responses (string dates) into
+ * frontend types via `convertIncident`. Inject a custom Axios instance for
+ * testing; defaults to the shared `apiClient`.
+ */
 export class IncidentService {
   constructor(private client: AxiosInstance = apiClient) {}
 
-  /**
-   * Get all incidents (GET /api/incidents)
-   */
+  /** Fetch all incidents without pagination (`GET /api/incidents`). */
   async getIncidents(): Promise<IncidentDto[]> {
     const response = await this.client.get<IncidentDtoBackend[]>("/incidents");
     return response.data.map(convertIncident);
   }
 
-  /**
-   * List incidents with pagination, filtering, sorting, and search
-   * (GET /api/incidents)
-   */
+  /** List incidents with pagination, filtering, sorting, and search (`GET /api/incidents`). */
   async listIncidents(
     params?: ListQueryParams
   ): Promise<PaginatedIncidentsResponse> {
@@ -41,9 +43,7 @@ export class IncidentService {
     };
   }
 
-  /**
-   * Download incidents as Excel (GET /api/incidents/csv)
-   */
+  /** Download the filtered incidents list as an Excel file (`GET /api/incidents/csv`). */
   async downloadIncidentsCsv(params?: ListQueryParams): Promise<void> {
     const { sort_by, sort_order, search, filters } = params ?? { filters: {} };
     const response = await this.client.get("/incidents/csv", {
@@ -59,9 +59,7 @@ export class IncidentService {
     downloadExcelFile(response, "incidents.xlsx");
   }
 
-  /**
-   * Get incident by ID (GET /api/incidents/{id})
-   */
+  /** Fetch a single incident by ID (`GET /api/incidents/{id}`). */
   async getIncidentById(id: number): Promise<IncidentDto> {
     const response = await this.client.get<IncidentDtoBackend>(
       `/incidents/${id}`
@@ -69,9 +67,7 @@ export class IncidentService {
     return convertIncident(response.data);
   }
 
-  /**
-   * Get incidents for a location (GET /api/locations/{location_id}/incidents)
-   */
+  /** Fetch all incidents for a given location (`GET /api/locations/{location_id}/incidents`). */
   async getIncidentsByLocation(locationId: number): Promise<IncidentDto[]> {
     const response = await this.client.get<IncidentDtoBackend[]>(
       `/locations/${locationId}/incidents`
@@ -80,7 +76,9 @@ export class IncidentService {
   }
 
   /**
-   * Create incident (POST /api/incidents)
+   * Create a new incident (`POST /api/incidents`).
+   *
+   * Serializes `incident_datetime` to ISO string before sending if it is a `Date`.
    */
   async createIncident(data: IncidentCreateDto): Promise<IncidentDto> {
     const payload = {
@@ -98,7 +96,9 @@ export class IncidentService {
   }
 
   /**
-   * Update incident (PUT /api/incidents/{id})
+   * Update an existing incident (`PUT /api/incidents/{id}`).
+   *
+   * Serializes `incident_datetime` to ISO string before sending if it is a `Date`.
    */
   async updateIncident(
     id: number,
@@ -118,9 +118,7 @@ export class IncidentService {
     return convertIncident(response.data);
   }
 
-  /**
-   * Delete incident (DELETE /api/incidents/{id})
-   */
+  /** Delete an incident by ID (`DELETE /api/incidents/{id}`). */
   async deleteIncident(id: number): Promise<void> {
     await this.client.delete(`/incidents/${id}`);
   }

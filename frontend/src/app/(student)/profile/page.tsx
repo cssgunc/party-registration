@@ -383,6 +383,10 @@ function StudentInfo() {
   );
 }
 
+/**
+ * The student profile page, letting students view and edit their contact
+ * information and current-year residence, and log out of the application.
+ */
 export default function StudentProfilePage() {
   return (
     <div className="flex flex-col items-center h-full overflow-y-auto">

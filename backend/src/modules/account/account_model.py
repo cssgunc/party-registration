@@ -6,12 +6,19 @@ from src.core.utils.query_utils import PaginatedResponse
 
 
 class AccountRole(StrEnum):
+    """Role assigned to a UNC-identity account (staff/admin/student).
+
+    Police accounts use a separate role hierarchy defined in the police module.
+    """
+
     STUDENT = "student"
     STAFF = "staff"
     ADMIN = "admin"
 
 
 class Role(StrEnum):
+    """All principal roles across both account types (UNC identity and police)."""
+
     STUDENT = "student"
     STAFF = "staff"
     ADMIN = "admin"
@@ -20,21 +27,34 @@ class Role(StrEnum):
 
 
 class InviteTokenRole(StrEnum):
+    """Roles that can be granted via an email invitation (staff or admin only)."""
+
     STAFF = "staff"
     ADMIN = "admin"
 
 
 StringRole = Literal["student", "admin", "staff", "officer", "police_admin"]
+"""String literal union of all role names; used for route-level access-control annotations."""
 
 
 class AccountStatus(StrEnum):
+    """Lifecycle status shown in the aggregate accounts view.
+
+    ``active`` — account is fully set up; ``unverified`` — police account awaiting
+    verification; ``invited`` — a pending staff/admin invite token exists.
+    """
+
     ACTIVE = "active"
     UNVERIFIED = "unverified"
     INVITED = "invited"
 
 
 class AccountData(BaseModel):
-    """DTO for creating/updating an Account."""
+    """Internal DTO carrying all fields needed to create or update an account.
+
+    Used by the IdP upsert path and account creation helpers; not exposed directly
+    as an API request body.
+    """
 
     email: EmailStr
     first_name: str
@@ -45,7 +65,7 @@ class AccountData(BaseModel):
 
 
 class AccountDto(BaseModel):
-    """DTO for Account responses."""
+    """Full account representation returned to admins."""
 
     id: int
     email: EmailStr
@@ -57,20 +77,25 @@ class AccountDto(BaseModel):
 
 
 class AccountUpdateData(BaseModel):
-    """DTO for updating an Account's role."""
+    """Request body for changing an account's role."""
 
     role: AccountRole
 
 
 class CreateInviteDto(BaseModel):
-    """DTO for creating a staff/admin invitation."""
+    """Request body for sending a staff or admin invitation email."""
 
     email: EmailStr
     role: InviteTokenRole
 
 
 class AggregateAccountDto(BaseModel):
-    """DTO for the unified accounts aggregate view."""
+    """Unified row returned by the aggregate accounts view.
+
+    Merges UNC accounts, police accounts, and pending invite tokens into a single
+    list. Fields that do not apply to a source type (e.g. ``first_name`` for police
+    rows) are ``None``.
+    """
 
     source_id: int
     email: EmailStr
@@ -83,12 +108,12 @@ class AggregateAccountDto(BaseModel):
 
 
 class PaginatedAccountsResponse(PaginatedResponse[AccountDto]):
-    """Paginated response for accounts."""
+    """Paginated list of staff and admin accounts."""
 
     pass
 
 
 class PaginatedAggregateAccountsResponse(PaginatedResponse[AggregateAccountDto]):
-    """Paginated response for the aggregate accounts view."""
+    """Paginated list of the unified aggregate accounts view."""
 
     pass

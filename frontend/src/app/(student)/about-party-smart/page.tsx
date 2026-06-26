@@ -2,6 +2,11 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import PartySmartInfo from "../_components/info/PartySmartInfo";
 
+/**
+ * Full-page view of the Party Smart responsible-hosting guidelines, accessible
+ * from the new-party form for students who want to review the tips before
+ * registering.
+ */
 export default function AboutPartySmart() {
   return (
     <div className="flex flex-col items-center h-full">

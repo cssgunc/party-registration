@@ -20,6 +20,13 @@ interface AccountTableFormProps {
   isPending?: boolean;
 }
 
+/**
+ * Create/edit form for a staff or admin account rendered in the sidebar.
+ *
+ * In create mode the form sends an invitation email; the submit label
+ * changes to "Send Invite" and the email field is editable. In edit mode
+ * only the role can be changed — email is locked after the invite is sent.
+ */
 export default function AccountTableForm({
   onSubmit,
   editData,
