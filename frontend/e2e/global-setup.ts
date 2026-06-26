@@ -126,19 +126,26 @@ export default async function globalSetup(config: FullConfig) {
   fs.mkdirSync(path.dirname(ADMIN_AUTH_FILE), { recursive: true });
 
   const authEntries = [
-    { loginFn: loginAsStudent, authFile: STUDENT_AUTH_FILE },
-    { loginFn: loginAsStaff, authFile: STAFF_AUTH_FILE },
-    { loginFn: loginAsAdmin, authFile: ADMIN_AUTH_FILE },
-    { loginFn: loginAsOfficer, authFile: OFFICER_AUTH_FILE },
-    { loginFn: loginAsPoliceAdmin, authFile: POLICE_AUTH_FILE },
+    { label: "student", loginFn: loginAsStudent, authFile: STUDENT_AUTH_FILE },
+    { label: "staff", loginFn: loginAsStaff, authFile: STAFF_AUTH_FILE },
+    { label: "admin", loginFn: loginAsAdmin, authFile: ADMIN_AUTH_FILE },
+    { label: "officer", loginFn: loginAsOfficer, authFile: OFFICER_AUTH_FILE },
+    {
+      label: "police admin",
+      loginFn: loginAsPoliceAdmin,
+      authFile: POLICE_AUTH_FILE,
+    },
   ];
-  const stale = authEntries.filter(
-    ({ authFile }) => !isAuthFileValid(authFile)
-  );
+  const stale = authEntries.filter(({ authFile }) => {
+    const valid = isAuthFileValid(authFile);
+    if (valid) console.log(`[auth] using cached ${authFile}`);
+    return !valid;
+  });
 
   if (stale.length > 0) {
     const browser = await chromium.launch({ chromiumSandbox: false });
-    for (const { loginFn, authFile } of stale) {
+    for (const { label, loginFn, authFile } of stale) {
+      console.log(`[auth] generating new ${label} auth at ${authFile}`);
       await saveAuthState(browser, baseURL, loginFn, authFile);
     }
     await browser.close();
