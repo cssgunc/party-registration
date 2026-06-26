@@ -119,7 +119,8 @@ type TabValue = "active" | "past" | "incidents";
  *
  * The "New Party" button is disabled when the student has not completed the
  * Party Smart course this academic year (checked via `isFromThisSchoolYear`) or
- * when their residence has an active hold.
+ * when their residence has an active hold. The Past tab renders incrementally,
+ * revealing more cards via `useInfiniteScroll` as the user scrolls.
  */
 export default function RegistrationTracker(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<TabValue>("active");

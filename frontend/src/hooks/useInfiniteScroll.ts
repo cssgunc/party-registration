@@ -13,6 +13,13 @@ type InfiniteScrollOptions = {
   threshold?: number | number[];
 };
 
+/**
+ * Parse the vertical (top/bottom) pixel offsets out of a CSS `rootMargin` string.
+ *
+ * Only `px` values are interpreted (anything else resolves to 0) and horizontal
+ * margins are ignored. Used to mirror the IntersectionObserver margin in the
+ * synchronous visibility fallback below.
+ */
 function getVerticalRootMargin(rootMargin: string): {
   top: number;
   bottom: number;
@@ -30,6 +37,23 @@ function getVerticalRootMargin(rootMargin: string): {
   };
 }
 
+/**
+ * Progressively reveal a long list as the user scrolls — a lightweight windowing helper.
+ *
+ * Returns how many items to render plus a ref callback to attach to a sentinel
+ * element placed after the last rendered item. When the sentinel scrolls into view
+ * (via `IntersectionObserver`), the visible count grows by `pageSize`, capped at
+ * `total`. A synchronous `useLayoutEffect` pass also bumps the count when the
+ * sentinel is already on-screen (e.g. after the list shrinks or the options change),
+ * so short lists fill without waiting for a scroll event. The observer is rebuilt
+ * when the observer options change and disconnected on unmount.
+ *
+ * @param total - Total number of items available to reveal.
+ * @param pageSize - How many more items to reveal each time the sentinel appears.
+ * @param options - `initialCount` (defaults to `pageSize`) plus the
+ *   `IntersectionObserver` `root`, `rootMargin`, and `threshold` settings.
+ * @returns A tuple of the current visible count and the sentinel ref callback.
+ */
 export function useInfiniteScroll(
   total: number,
   pageSize: number,
