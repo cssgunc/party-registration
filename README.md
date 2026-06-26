@@ -28,7 +28,7 @@ We aim to facilitate and better secure the party registration process at UNC.
 - **[frontend/README.md](frontend/README.md)** — frontend architecture, the service/queries/types trio, scripts
 - **[AGENTS.md](AGENTS.md)** — coding conventions and standards for contributors and AI agents (also read by `CLAUDE.md`)
 - **Live API reference** — with the backend running, Swagger UI at `<API_BASE_URL>/docs` and ReDoc at `<API_BASE_URL>/redoc` (generated from the code)
-- **Product spec (TDD)** — feature specifications and flows per role: [Technical Design Document]([NOTION_TDD_PUBLIC_LINK](https://aluminum-mandolin-0ed.notion.site/TDD-2ee9089ebf738105bf90d0bb34ca8188))
+- **Product spec (TDD)** — feature specifications and flows per role: [Technical Design Document](https://aluminum-mandolin-0ed.notion.site/TDD-2ee9089ebf738105bf90d0bb34ca8188)
 
 The codebase follows a strict, one-directional layering — a layer never skips the one below it:
 
