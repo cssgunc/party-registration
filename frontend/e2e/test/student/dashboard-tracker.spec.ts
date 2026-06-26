@@ -1,4 +1,5 @@
-import { format } from "date-fns";
+import { type Locator } from "@playwright/test";
+import { format, parse } from "date-fns";
 import { STUDENT_AUTH_FILE } from "../../global-setup";
 import { resetDatabase } from "../../helpers/db.helpers";
 import {
@@ -13,6 +14,8 @@ import { formatDateInput } from "../../helpers/seed.helpers";
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+const PARTY_DATE_TIME_FORMAT = "M/d/yyyy @ h:mm a";
 
 async function openActivePartyMenu(page: Page) {
   // Skip today's party cards — a party at e.g. 18:30 today becomes locked after
@@ -40,6 +43,27 @@ async function setValidPartyDateTime(page: Page, daysAhead: number) {
     .getByLabel("Party Date")
     .fill(formatDateInput(new Date(Date.now() + daysAhead * 86_400_000)));
   await page.getByLabel("Party Time").fill("20:00");
+}
+
+async function getPartyCardTimes(panel: Locator): Promise<number[]> {
+  const dateTexts = await panel
+    .locator(".border-b.border-gray-200 .content-bold p")
+    .allTextContents();
+
+  return dateTexts.map((text) =>
+    parse(text.trim(), PARTY_DATE_TIME_FORMAT, new Date()).getTime()
+  );
+}
+
+function expectOrderedClosestToNow(times: number[]) {
+  const now = Date.now();
+  const distances = times.map((time) => Math.abs(time - now));
+
+  expect(distances).toEqual([...distances].sort((a, b) => a - b));
+}
+
+function expectOrderedNewestFirst(times: number[]) {
+  expect(times).toEqual([...times].sort((a, b) => b - a));
 }
 
 // ---------------------------------------------------------------------------
@@ -81,6 +105,18 @@ test.describe("Dashboard tracker — student1", () => {
       await expect(firstCard.locator("svg").first()).toBeVisible();
     });
 
+    test("active tab orders party cards closest to now", async ({ page }) => {
+      const activePanel = page.getByRole("tabpanel", { name: "Active" });
+      await expect(activePanel).toBeVisible();
+      await expect(
+        activePanel.locator(".border-b.border-gray-200").first()
+      ).toBeVisible();
+
+      const times = await getPartyCardTimes(activePanel);
+      expect(times.length).toBeGreaterThan(1);
+      expectOrderedClosestToNow(times);
+    });
+
     test("past tab: party cards have no action menu", async ({ page }) => {
       await page.getByRole("tab", { name: "Past" }).click();
 
@@ -98,6 +134,50 @@ test.describe("Dashboard tracker — student1", () => {
       await expect(
         page.getByRole("button", { name: "Party actions" })
       ).toHaveCount(0);
+    });
+
+    test("past tab loads more party cards when scrolled", async ({ page }) => {
+      await page.getByRole("tab", { name: "Past" }).click();
+      await expect(page.getByRole("tab", { name: "Past" })).toHaveAttribute(
+        "aria-selected",
+        "true"
+      );
+
+      const pastPanel = page.getByRole("tabpanel", { name: "Past" });
+      await expect(pastPanel).toBeVisible();
+
+      const cards = pastPanel.locator(".border-b.border-gray-200");
+      await expect(cards.first()).toBeVisible();
+      const initialCount = await cards.count();
+
+      const scrollContainer = pastPanel.locator(":scope > div").first();
+      await scrollContainer.evaluate((element) => {
+        element.scrollTop = element.scrollHeight;
+      });
+
+      await expect
+        .poll(() => cards.count(), {
+          message: "Past parties should load another page after scrolling",
+        })
+        .toBeGreaterThan(initialCount);
+    });
+
+    test("past tab orders party cards newest first", async ({ page }) => {
+      await page.getByRole("tab", { name: "Past" }).click();
+      await expect(page.getByRole("tab", { name: "Past" })).toHaveAttribute(
+        "aria-selected",
+        "true"
+      );
+
+      const pastPanel = page.getByRole("tabpanel", { name: "Past" });
+      await expect(pastPanel).toBeVisible();
+      await expect(
+        pastPanel.locator(".border-b.border-gray-200").first()
+      ).toBeVisible();
+
+      const times = await getPartyCardTimes(pastPanel);
+      expect(times.length).toBeGreaterThan(1);
+      expectOrderedNewestFirst(times);
     });
   });
 
